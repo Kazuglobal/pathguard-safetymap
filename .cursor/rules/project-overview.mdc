@@ -1,0 +1,42 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Project Overview & Key Files
+
+This project is a "Safety School Map" application built with Next.js (App Router), TypeScript, and Supabase.
+
+## Technology Stack
+
+*   **Framework:** [Next.js](mdc:next.config.mjs) (App Router)
+*   **Language:** [TypeScript](mdc:tsconfig.json)
+*   **Backend/Database:** [Supabase](mdc:lib/supabase-server.ts)
+*   **Styling:** [Tailwind CSS](mdc:tailwind.config.ts), [Global Styles](mdc:styles/globals.css)
+*   **UI Components:** [Shadcn/ui](mdc:components.json), located in [`components/ui/`](mdc:components/ui/)
+*   **Mapping:** [Mapbox GL JS](mdc:components/map/map-container.tsx) (likely, based on component names)
+*   **State Management/Data Fetching:** Likely uses Supabase clients directly, possibly SWR or similar for client-side fetching.
+
+## Directory Structure
+
+*   [`app/`](mdc:app/): Contains page routes based on the App Router structure. Each folder generally corresponds to a URL path (e.g., [`app/dashboard/`](mdc:app/dashboard/)).
+*   [`components/`](mdc:components/): Houses reusable React components.
+    *   [`components/ui/`](mdc:components/ui/): Shadcn/ui components.
+    *   [`components/map/`](mdc:components/map/): Components related to the map display and interaction.
+    *   [`components/danger-report/`](mdc:components/danger-report/): Components for reporting and viewing danger spots.
+    *   [`components/providers/`](mdc:components/providers/): Context providers, including the [Supabase Provider](mdc:components/providers/supabase-provider.tsx).
+*   [`lib/`](mdc:lib/): Contains utility functions and Supabase client configurations.
+    *   [database.types.ts](mdc:lib/database.types.ts): **Crucial file** containing TypeScript types generated from the Supabase schema. **Must be regenerated** using `supabase gen types typescript --project-id <project_id> > lib/database.types.ts` after any database schema change.
+    *   [supabase-server.ts](mdc:lib/supabase-server.ts): Utility to create Supabase client for Server Components (uses `@supabase/ssr`).
+    *   [supabase-client.ts](mdc:lib/supabase-client.ts): (Likely exists or should exist) Utility to create Supabase client for Client Components (uses `@supabase/ssr`'s `createBrowserClient`). The provider [supabase-provider.tsx](mdc:components/providers/supabase-provider.tsx) handles this for client-side context.
+*   [`public/`](mdc:public/): Static assets like images.
+*   [`styles/`](mdc:styles/): Global CSS styles.
+
+## Key Concepts & Workflows
+
+*   **Authentication:** Handled via Supabase Auth, likely using the clients defined in `lib/`. Login/Register forms are in [`components/auth/`](mdc:components/auth/).
+*   **Danger Reporting:** Users can report danger spots, likely involving form submission ([danger-report-form.tsx](mdc:components/danger-report/danger-report-form.tsx)), data storage in Supabase (e.g., `danger_reports` or `danger_spots` table), and display on the map ([map-container.tsx](mdc:components/map/map-container.tsx)).
+*   **Gamification:** Features like points ([user_points](mdc:lib/database.types.ts#L784) table), badges ([badges](mdc:lib/database.types.ts#L190), [user_badges](mdc:lib/database.types.ts#L726) tables), leaderboard ([leaderboard page](mdc:app/leaderboard/page.tsx)), and missions ([missions](mdc:lib/database.types.ts#L452) table) seem to be implemented.
+*   **Database Interaction:** Primarily done through Supabase client libraries (`@supabase/ssr`, `@supabase/supabase-js`). Server Components use `createServerClient` from `lib/supabase-server.ts`. Client Components likely use `createBrowserClient` or the context provided by `SupabaseProvider`.
+
+**Important Note on Supabase Types:** Remember to regenerate [database.types.ts](mdc:lib/database.types.ts) after modifying the database schema to ensure type safety.
