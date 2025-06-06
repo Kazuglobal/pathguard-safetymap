@@ -1,23 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu"
-import { MapPin, Menu, User, LogOut, BarChart, Car, Shield, AlertTriangle, HelpCircle, Trophy, Flag, Map, PlusCircle } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle } from "lucide-react"
 
 // Import the MapStyleSelector component
 import MapStyleSelector from "./map-style-selector"
@@ -46,39 +30,7 @@ export default function MapHeader({
   toggle3DMode,
   isSelectingLocation,
 }: MapHeaderProps) {
-  const router = useRouter()
-  const { supabase } = useSupabase()
-  const { toast } = useToast()
-  const [isAdmin, setIsAdmin] = useState(false)
   const { points } = useGamification()
-
-  // ユーザー情報を取得
-  useState(() => {
-    const checkUserRole = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-      if (data && data.role === "admin") {
-        setIsAdmin(true)
-      }
-    }
-
-    checkUserRole()
-  })
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    toast({
-      title: "ログアウト",
-      description: "ログアウトしました。",
-    })
-    router.push("/login")
-    router.refresh()
-  }
 
   return (
     <header className="bg-white border-b px-4 py-3 flex flex-col sm:flex-row items-center justify-between z-20 relative space-y-2 sm:space-y-0">
