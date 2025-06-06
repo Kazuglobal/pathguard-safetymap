@@ -186,24 +186,64 @@ export default function MapContainer() {
     if (selectionMarker.current) selectionMarker.current.remove();
 
     const markerElement = document.createElement("div");
-    markerElement.className = isSubmitted ? "submitted-marker" : "selection-marker"; // Add appropriate CSS class
+    
+    if (isSubmitted) {
+      markerElement.className = "submitted-marker";
+      markerElement.style.cssText = `
+        width: 20px; height: 20px; border-radius: 50%;
+        background: #22c55e; border: 3px solid white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer;
+      `;
+    } else {
+      markerElement.className = "selection-marker";
+      markerElement.style.cssText = `
+        width: 24px; height: 24px; border-radius: 50%;
+        background: #3b82f6; border: 4px solid white;
+        box-shadow: 0 4px 15px rgba(59,130,246,0.5);
+        cursor: grab; transition: all 0.2s ease;
+        animation: pulse 2s infinite;
+      `;
+      
+      // パルスアニメーション用のスタイルを追加
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes pulse {
+          0% { box-shadow: 0 4px 15px rgba(59,130,246,0.5); }
+          50% { box-shadow: 0 4px 25px rgba(59,130,246,0.8); }
+          100% { box-shadow: 0 4px 15px rgba(59,130,246,0.5); }
+        }
+      `;
+      if (!document.querySelector('#marker-pulse-style')) {
+        style.id = 'marker-pulse-style';
+        document.head.appendChild(style);
+      }
+    }
 
-    selectionMarker.current = new mapboxgl.Marker({ element: markerElement, draggable: !isSubmitted })
-      .setLngLat(coordinates)
-      .addTo(map.current);
+    selectionMarker.current = new mapboxgl.Marker({ 
+      element: markerElement, 
+      draggable: !isSubmitted 
+    }).setLngLat(coordinates).addTo(map.current);
 
     if (isSubmitted) {
-      markerElement.style.cursor = "pointer";
       markerElement.addEventListener("click", (e) => {
         e.stopPropagation();
         setIsSubmittedPreviewOpen(true);
       });
     } else {
+      selectionMarker.current.on("drag", () => {
+        markerElement.style.cursor = "grabbing";
+      });
+      
       selectionMarker.current.on("dragend", () => {
+        markerElement.style.cursor = "grab";
         if (!selectionMarker.current) return;
         const lngLat = selectionMarker.current.getLngLat();
         const newCoordinates: [number, number] = [lngLat.lng, lngLat.lat];
-        setSelectedLocation(newCoordinates); // Update state on drag end
+        setSelectedLocation(newCoordinates);
+        toast({ 
+          title: "地点を移動しました", 
+          description: "ドラッグで位置を調整しました" 
+        });
       });
     }
   };
@@ -215,24 +255,30 @@ export default function MapContainer() {
   // --- ▼▼▼ handleMapClick を修正 ▼▼▼ ---
   const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
     const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-    // --- ▼▼▼ 詳細ログを追加 ▼▼▼ ---
     console.log(`Map clicked at: ${coordinates}. isMobile=${isMobile}, awaitingLocationSelection=${awaitingLocationSelection}, isReportFormOpen=${isReportFormOpen}`);
-    // --- ▲▲▲ --- 
 
     if (awaitingLocationSelection) {
-      console.log("Condition met: awaitingLocationSelection is true. Selecting location and opening form."); // 実行確認ログ
+      // 地点選択モード：位置を選択してフォームを開く
+      console.log("Location selection mode: Setting location and opening form");
       setSelectedLocation(coordinates);
       setIsReportFormOpen(true);
-      setAwaitingLocationSelection(false); // 地点選択モードを解除
-    } else if (isReportFormOpen && !isMobile) { // デスクトップでフォームが開いている場合のみ
-      console.log("Condition met: Form open on desktop. Updating location."); // 実行確認ログ
+      setAwaitingLocationSelection(false);
+      toast({ 
+        title: "地点を選択しました", 
+        description: "選択した地点で危険箇所を報告できます" 
+      });
+    } else if (isReportFormOpen) { 
+      // フォームが開いている場合：モバイル・デスクトップ関係なく位置を更新
+      console.log("Form is open: Updating location");
       setSelectedLocation(coordinates);
-      // updateSelectionMarker は useEffect で呼ばれる
+      toast({ 
+        title: "地点を変更しました", 
+        description: "新しい位置に報告地点を変更しました" 
+      });
+    } else {
+      // その他の場合：何もしない（通常の地図操作）
+      console.log("Normal map interaction: No action taken");
     }
-    // それ以外（モバイルでフォームが開いている、単に地図を閲覧中など）は何もしない
-     else {
-      console.log("Condition not met: Map click ignored."); // 実行確認ログ
-     }
   };
   // --- ▲▲▲ ---
 
@@ -355,6 +401,18 @@ export default function MapContainer() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]); // Removed is3DEnabled from dependency array to prevent loop
+
+  // --- Map Cursor Style Management ---
+  useEffect(() => {
+    if (!map.current) return;
+    
+    const mapCanvas = map.current.getCanvas();
+    if (awaitingLocationSelection || isReportFormOpen) {
+      mapCanvas.style.cursor = 'crosshair';
+    } else {
+      mapCanvas.style.cursor = '';
+    }
+  }, [awaitingLocationSelection, isReportFormOpen]);
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -821,11 +879,67 @@ export default function MapContainer() {
               />
             </div>
           )}
-          {/* --- ▼▼▼ 地点選択待ちメッセージを追加 ▼▼▼ --- */}
+          {/* --- ▼▼▼ 地点選択待ちメッセージとキャンセルボタンを追加 ▼▼▼ --- */}
           {isMobile && awaitingLocationSelection && (
-            <div className="absolute top-16 left-4 right-4 z-10 px-4 py-2 flex justify-center pointer-events-none">
-              <div className="bg-blue-100 text-blue-700 px-4 py-2 rounded-md shadow-md pointer-events-auto animate-pulse">
-                <p className="text-sm font-medium">地図をタップして報告地点を選択</p>
+            <div className="absolute top-16 left-4 right-4 z-10">
+              <div className="bg-white rounded-lg shadow-lg border border-blue-200">
+                <div className="px-4 py-3 bg-blue-50 rounded-t-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                      <p className="text-sm font-medium text-blue-800">地点選択モード</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setAwaitingLocationSelection(false);
+                        toast({ title: "地点選択をキャンセルしました" });
+                      }}
+                      className="text-blue-600 hover:text-blue-800 h-6 px-2"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-sm text-gray-700 mb-3">
+                    📍 危険箇所を報告したい場所を地図上でタップしてください
+                  </p>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setAwaitingLocationSelection(false);
+                        toast({ title: "地点選択をキャンセルしました" });
+                      }}
+                      className="flex-1"
+                    >
+                      キャンセル
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* --- ▲▲▲ --- */}
+          
+          {/* --- ▼▼▼ デスクトップ用地点選択ヘルプ ▼▼▼ --- */}
+          {!isMobile && isReportFormOpen && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-3 border border-blue-200">
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-blue-600 text-sm">✚</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">地点選択モード</p>
+                    <p className="text-xs text-gray-600">
+                      🖱️ クリック：場所選択 | 🤏 ドラッグ：位置調整
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
