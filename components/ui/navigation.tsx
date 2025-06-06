@@ -38,9 +38,16 @@ export function Navigation({ user, onLogout }: NavigationProps) {
   const navItems = [
     {
       href: "/map",
-      label: "マップ", 
-      icon: <Map className="w-4 h-4" />,
-      description: "安全マップを見る"
+      label: "地図", 
+      icon: <Map className="w-5 h-5" />,
+      description: "安全マップを表示・危険箇所を確認",
+      isPrimary: true
+    },
+    {
+      href: "/dashboard",
+      label: "ダッシュボード",
+      icon: <BarChart3 className="w-4 h-4" />,
+      description: "活動状況とプロフィール"
     },
     {
       href: "/missions",
@@ -53,12 +60,6 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       label: "ランキング",
       icon: <Trophy className="w-4 h-4" />,
       description: "貢献度ランキング"
-    },
-    {
-      href: "/dashboard",
-      label: "ダッシュボード",
-      icon: <BarChart3 className="w-4 h-4" />,
-      description: "ダッシュボード"
     },
     // 管理者のみ表示
     ...(isAdmin ? [{
@@ -226,13 +227,17 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                     isActivePath(item.href)
                       ? "bg-sky-100 text-sky-700"
                       : "hover:bg-gray-100",
-                    item.href === "/admin/dashboard" && "bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200"
+                    item.href === "/admin/dashboard" && "bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200",
+                    item.isPrimary && !isActivePath(item.href) && "bg-gradient-to-r from-green-50 to-blue-50 border border-green-200"
                   )}
                 >
                   {item.icon}
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <p className="font-medium">{item.label}</p>
+                      <p className={cn(
+                        "font-medium",
+                        item.isPrimary && "text-lg font-semibold"
+                      )}>{item.label}</p>
                       {item.href === "/admin/dashboard" && (
                         <UserCheck className="w-4 h-4 ml-2 text-purple-600" />
                       )}
