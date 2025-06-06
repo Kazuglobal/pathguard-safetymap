@@ -4,7 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { SupabaseProvider } from "@/components/providers/supabase-provider"
-import { Navigation, MobileBottomNavigation } from "@/components/ui/navigation"
+import { Navigation } from "@/components/ui/navigation"
 import { createServerClient } from "@/lib/supabase-server"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -58,12 +58,11 @@ async function LayoutContent({ children }: { children: React.ReactNode }) {
       )}
       
       {/* メインコンテンツ */}
-      <main className={showNavigation ? "pb-20 md:pb-0" : ""}>
+      <main>
         {children}
       </main>
       
-      {/* モバイル用ボトムナビゲーション */}
-      {showNavigation && <MobileBottomNavigation />}
+
     </div>
   )
 }

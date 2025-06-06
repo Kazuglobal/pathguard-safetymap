@@ -17,7 +17,9 @@ import {
   Home,
   MapPin,
   Trophy,
-  LogOut
+  LogOut,
+  BarChart3,
+  UserCheck
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -29,6 +31,9 @@ interface NavigationProps {
 export function Navigation({ user, onLogout }: NavigationProps) {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+
+  // ユーザーが管理者かチェック（実際の実装では適切な権限チェックロジックを使用）
+  const isAdmin = user?.email?.includes('admin') || user?.role === 'admin'
 
   const navItems = [
     {
@@ -49,6 +54,18 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       icon: <Trophy className="w-4 h-4" />,
       description: "貢献度ランキング"
     },
+    // 管理者のみ表示
+    ...(isAdmin ? [{
+      href: "/admin/dashboard",
+      label: "管理ダッシュボード",
+      icon: <BarChart3 className="w-4 h-4" />,
+      description: "管理者機能"
+    }] : [{
+      href: "/dashboard",
+      label: "プロフィール",
+      icon: <User className="w-4 h-4" />,
+      description: "マイページ"
+    }])
   ]
 
   const isActivePath = (href: string) => {
@@ -76,7 +93,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
           </div>
 
           {/* デスクトップナビゲーション */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden lg:flex items-center space-x-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
                 <Button
@@ -86,7 +103,8 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                     "relative group",
                     isActivePath(item.href) 
                       ? "bg-sky-100 text-sky-700 hover:bg-sky-200" 
-                      : "hover:bg-gray-100"
+                      : "hover:bg-gray-100",
+                    item.href === "/admin/dashboard" && "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 hover:from-purple-200 hover:to-pink-200"
                   )}
                 >
                   {item.icon}
@@ -97,6 +115,9 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                       layoutId="activeTab"
                       initial={false}
                     />
+                  )}
+                  {item.href === "/admin/dashboard" && (
+                    <UserCheck className="w-3 h-3 ml-1 text-purple-600" />
                   )}
                 </Button>
               </Link>
@@ -120,12 +141,22 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">
                       {user.email?.split('@')[0] || 'ユーザー'}
+                      {isAdmin && (
+                        <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                          管理者
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-gray-500">
                       レベル 5 • 貢献者
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold",
+                    isAdmin 
+                      ? "bg-gradient-to-br from-purple-500 to-pink-600" 
+                      : "bg-gradient-to-br from-blue-500 to-purple-600"
+                  )}>
                     {user.email?.[0]?.toUpperCase() || 'U'}
                   </div>
                 </div>
@@ -159,7 +190,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="lg:hidden"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? (
@@ -180,7 +211,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden bg-white border-t border-gray-200"
+            className="lg:hidden bg-white border-t border-gray-200"
           >
             <div className="px-4 py-4 space-y-3">
               {/* モバイルナビゲーションアイテム */}
@@ -193,12 +224,18 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                     "flex items-center space-x-3 p-3 rounded-xl transition-colors",
                     isActivePath(item.href)
                       ? "bg-sky-100 text-sky-700"
-                      : "hover:bg-gray-100"
+                      : "hover:bg-gray-100",
+                    item.href === "/admin/dashboard" && "bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200"
                   )}
                 >
                   {item.icon}
-                  <div>
-                    <p className="font-medium">{item.label}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center">
+                      <p className="font-medium">{item.label}</p>
+                      {item.href === "/admin/dashboard" && (
+                        <UserCheck className="w-4 h-4 ml-2 text-purple-600" />
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">{item.description}</p>
                   </div>
                 </Link>
@@ -208,12 +245,22 @@ export function Navigation({ user, onLogout }: NavigationProps) {
               {user ? (
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <div className="flex items-center space-x-3 p-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold",
+                      isAdmin 
+                        ? "bg-gradient-to-br from-purple-500 to-pink-600" 
+                        : "bg-gradient-to-br from-blue-500 to-purple-600"
+                    )}>
                       {user.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
                         {user.email?.split('@')[0] || 'ユーザー'}
+                        {isAdmin && (
+                          <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                            管理者
+                          </span>
+                        )}
                       </p>
                       <p className="text-sm text-gray-500">
                         レベル 5 • 貢献者
@@ -252,59 +299,5 @@ export function Navigation({ user, onLogout }: NavigationProps) {
         )}
       </AnimatePresence>
     </nav>
-  )
-}
-
-// フッターナビゲーション（モバイル用）
-export function MobileBottomNavigation() {
-  const pathname = usePathname()
-  
-  const bottomNavItems = [
-    {
-      href: "/map",
-      label: "マップ",
-      icon: <MapPin className="w-5 h-5" />
-    },
-    {
-      href: "/missions", 
-      label: "ミッション",
-      icon: <Award className="w-5 h-5" />
-    },
-    {
-      href: "/leaderboard",
-      label: "ランキング", 
-      icon: <Trophy className="w-5 h-5" />
-    },
-    {
-      href: "/dashboard",
-      label: "プロフィール",
-      icon: <User className="w-5 h-5" />
-    }
-  ]
-
-  const isActivePath = (href: string) => {
-    return pathname === href || pathname.startsWith(href + "/")
-  }
-
-  return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-50">
-      <div className="grid grid-cols-4 gap-1 px-2 py-2">
-        {bottomNavItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex flex-col items-center space-y-1 p-3 rounded-xl transition-all duration-200",
-              isActivePath(item.href)
-                ? "bg-sky-100 text-sky-700"
-                : "text-gray-600 hover:bg-gray-100"
-            )}
-          >
-            {item.icon}
-            <span className="text-xs font-medium">{item.label}</span>
-          </Link>
-        ))}
-      </div>
-    </div>
   )
 } 
