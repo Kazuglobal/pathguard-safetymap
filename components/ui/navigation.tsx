@@ -54,18 +54,19 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       icon: <Trophy className="w-4 h-4" />,
       description: "貢献度ランキング"
     },
+    {
+      href: "/dashboard",
+      label: "ダッシュボード",
+      icon: <BarChart3 className="w-4 h-4" />,
+      description: "ダッシュボード"
+    },
     // 管理者のみ表示
     ...(isAdmin ? [{
       href: "/admin/dashboard",
       label: "管理ダッシュボード",
       icon: <BarChart3 className="w-4 h-4" />,
       description: "管理者機能"
-    }] : [{
-      href: "/dashboard",
-      label: "プロフィール",
-      icon: <User className="w-4 h-4" />,
-      description: "マイページ"
-    }])
+    }] : [])
   ]
 
   const isActivePath = (href: string) => {

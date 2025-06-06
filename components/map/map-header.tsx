@@ -135,60 +135,6 @@ export default function MapHeader({
           <span className="text-sm font-medium">{points}pt</span>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>メニュー</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem onClick={onAddReport} className="md:hidden">
-              <MapPin className="mr-2 h-4 w-4" />
-              危険箇所を報告
-            </DropdownMenuItem>
-
-            {isAdmin && (
-              <DropdownMenuItem onClick={() => router.push("/dashboard")}>
-                <BarChart className="mr-2 h-4 w-4" />
-                管理ダッシュボード
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuItem onClick={() => router.push("/leaderboard")}> 
-              <Trophy className="mr-2 h-4 w-4" />
-              ランキング
-            </DropdownMenuItem>
-
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Flag className="mr-2 h-4 w-4" />
-                ミッション
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => router.push("/missions")}>ミッション一覧</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/route-quiz")}> 
-                  <Map className="mr-2 h-4 w-4" />
-                  ルートクイズ
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              プロフィール
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              ログアウト
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   )
