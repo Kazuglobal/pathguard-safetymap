@@ -268,19 +268,6 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     }
   }
 
-  // カメラ起動ハンドラー（元画像）
-  const handleOriginalCameraCapture = () => {
-    if (originalFileInputRef.current) {
-      originalFileInputRef.current.click()
-    }
-  }
-
-  // カメラ起動ハンドラー（加工画像）
-  const handleProcessedCameraCapture = () => {
-    if (processedFileInputRef.current) {
-      processedFileInputRef.current.click()
-    }
-  }
 
   // 画像プレビュー表示
   const handleShowPreview = (imageUrl: string | null) => {
@@ -373,20 +360,34 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => originalFileInputRef.current?.click()}
+                    onClick={() => {
+                      if (originalFileInputRef.current) {
+                        originalFileInputRef.current.removeAttribute('capture');
+                        originalFileInputRef.current.click();
+                      }
+                    }}
                     className="flex-1"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    画像を選択
+                    ギャラリー
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleOriginalCameraCapture} className="flex-1">
+                  <Button 
+                    type="button" 
+                    variant="default" 
+                    onClick={() => {
+                      if (originalFileInputRef.current) {
+                        originalFileInputRef.current.setAttribute('capture', 'environment');
+                        originalFileInputRef.current.click();
+                      }
+                    }} 
+                    className="flex-1"
+                  >
                     <Camera className="h-4 w-4 mr-2" />
-                    カメラで撮影
+                    📸 カメラ撮影
                   </Button>
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handleOriginalImageSelect}
                     className="hidden"
                     ref={originalFileInputRef}
@@ -428,20 +429,34 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => processedFileInputRef.current?.click()}
+                    onClick={() => {
+                      if (processedFileInputRef.current) {
+                        processedFileInputRef.current.removeAttribute('capture');
+                        processedFileInputRef.current.click();
+                      }
+                    }}
                     className="flex-1"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    画像を選択
+                    ギャラリー
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleProcessedCameraCapture} className="flex-1">
+                  <Button 
+                    type="button" 
+                    variant="default" 
+                    onClick={() => {
+                      if (processedFileInputRef.current) {
+                        processedFileInputRef.current.setAttribute('capture', 'environment');
+                        processedFileInputRef.current.click();
+                      }
+                    }} 
+                    className="flex-1"
+                  >
                     <Camera className="h-4 w-4 mr-2" />
-                    カメラで撮影
+                    📸 カメラ撮影
                   </Button>
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handleProcessedImageSelect}
                     className="hidden"
                     ref={processedFileInputRef}

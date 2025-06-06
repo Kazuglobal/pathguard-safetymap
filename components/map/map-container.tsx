@@ -108,6 +108,10 @@ export default function MapContainer() {
   // --- ▼▼▼ モバイル判定と地点選択待ち state を追加 ▼▼▼ ---
   const isMobile = useMediaQuery("(max-width: 768px)"); // md ブレークポイント (Tailwind)
   const [awaitingLocationSelection, setAwaitingLocationSelection] = useState(false);
+  
+  // ヘルプの表示状態管理
+  const [isHelpVisible, setIsHelpVisible] = useState(true);
+  const [isHelpDismissed, setIsHelpDismissed] = useState(false);
   // --- ▲▲▲ --- 
 
   // --- Mapbox GL JS Helper Functions ---
@@ -413,6 +417,14 @@ export default function MapContainer() {
       mapCanvas.style.cursor = '';
     }
   }, [awaitingLocationSelection, isReportFormOpen]);
+
+  // --- Help Visibility Reset ---
+  useEffect(() => {
+    // 新しい報告を開始する時はヘルプを再表示（完全に消されていない場合のみ）
+    if ((awaitingLocationSelection || isReportFormOpen) && !isHelpDismissed) {
+      setIsHelpVisible(true);
+    }
+  }, [awaitingLocationSelection, isReportFormOpen, isHelpDismissed]);
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -880,7 +892,7 @@ export default function MapContainer() {
             </div>
           )}
           {/* --- ▼▼▼ 地点選択待ちメッセージとキャンセルボタンを追加 ▼▼▼ --- */}
-          {isMobile && awaitingLocationSelection && (
+          {isMobile && awaitingLocationSelection && !isHelpDismissed && (
             <div className="absolute top-16 left-4 right-4 z-10">
               <div className="bg-white rounded-lg shadow-lg border border-blue-200">
                 <div className="px-4 py-3 bg-blue-50 rounded-t-lg">
@@ -902,45 +914,199 @@ export default function MapContainer() {
                     </Button>
                   </div>
                 </div>
-                <div className="px-4 py-3">
-                  <p className="text-sm text-gray-700 mb-3">
-                    📍 危険箇所を報告したい場所を地図上でタップしてください
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setAwaitingLocationSelection(false);
-                        toast({ title: "地点選択をキャンセルしました" });
-                      }}
-                      className="flex-1"
-                    >
-                      キャンセル
-                    </Button>
+                {isHelpVisible && (
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-gray-700 mb-3">
+                      📍 危険箇所を報告したい場所を地図上でタップしてください
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAwaitingLocationSelection(false);
+                          toast({ title: "地点選択をキャンセルしました" });
+                        }}
+                        className="flex-1"
+                      >
+                        キャンセル
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsHelpVisible(false)}
+                        className="px-2 text-gray-500"
+                      >
+                        隠す
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsHelpDismissed(true);
+                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
+                        }}
+                        className="px-2 text-gray-400 hover:text-red-600"
+                      >
+                        完全に消す
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
+                {!isHelpVisible && (
+                  <div className="px-4 py-2">
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAwaitingLocationSelection(false);
+                          toast({ title: "地点選択をキャンセルしました" });
+                        }}
+                        className="flex-1"
+                      >
+                        キャンセル
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsHelpVisible(true)}
+                        className="px-2 text-blue-600"
+                      >
+                        💡
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsHelpDismissed(true);
+                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
+                        }}
+                        className="px-2 text-gray-400 hover:text-red-600"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+          
+          {/* --- ▼▼▼ ヘルプ再表示ボタン（モバイル） ▼▼▼ --- */}
+          {isMobile && awaitingLocationSelection && isHelpDismissed && (
+            <div className="absolute top-16 right-4 z-10">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsHelpDismissed(false);
+                  setIsHelpVisible(true);
+                }}
+                className="w-10 h-10 p-0 bg-white hover:bg-white border-blue-200 text-blue-600 shadow-lg rounded-full"
+              >
+                ？
+              </Button>
             </div>
           )}
           {/* --- ▲▲▲ --- */}
           
           {/* --- ▼▼▼ デスクトップ用地点選択ヘルプ ▼▼▼ --- */}
-          {!isMobile && isReportFormOpen && (
+          {!isMobile && isReportFormOpen && !isHelpDismissed && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-3 border border-blue-200">
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-600 text-sm">✚</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">地点選択モード</p>
-                    <p className="text-xs text-gray-600">
-                      🖱️ クリック：場所選択 | 🤏 ドラッグ：位置調整
-                    </p>
+              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-blue-200 min-w-80">
+                <div className="px-4 py-3 bg-blue-50/50 rounded-t-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                        <span className="text-blue-600 text-sm">✚</span>
+                      </div>
+                      <p className="text-sm font-medium text-blue-800">地点選択モード</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsHelpVisible(false)}
+                      className="text-blue-600 hover:text-blue-800 h-6 px-2"
+                    >
+                      ×
+                    </Button>
                   </div>
                 </div>
+                {isHelpVisible && (
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-gray-700 mb-2">
+                      🖱️ <strong>クリック</strong>：地図上の任意の場所を選択
+                    </p>
+                    <p className="text-sm text-gray-700 mb-3">
+                      🤏 <strong>ドラッグ</strong>：青いマーカーを移動して位置調整
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsHelpVisible(false)}
+                        className="flex-1 text-gray-500 hover:text-gray-700"
+                      >
+                        説明を隠す
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsHelpDismissed(true);
+                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
+                        }}
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        完全に消す
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {!isHelpVisible && (
+                  <div className="px-4 py-2">
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsHelpVisible(true)}
+                        className="flex-1 text-blue-600 hover:text-blue-800"
+                      >
+                        💡 使い方を表示
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsHelpDismissed(true);
+                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
+                        }}
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+          
+          {/* --- ▼▼▼ ヘルプ再表示ボタン（デスクトップ） ▼▼▼ --- */}
+          {!isMobile && isReportFormOpen && isHelpDismissed && (
+            <div className="absolute top-4 right-4 z-10">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsHelpDismissed(false);
+                  setIsHelpVisible(true);
+                }}
+                className="w-8 h-8 p-0 bg-white/90 hover:bg-white border-blue-200 text-blue-600 shadow-lg rounded-full"
+              >
+                ？
+              </Button>
             </div>
           )}
           {/* --- ▲▲▲ --- */}
