@@ -4,8 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { SupabaseProvider } from "@/components/providers/supabase-provider"
-import { Navigation } from "@/components/ui/navigation"
-import { createServerClient } from "@/lib/supabase-server"
+import { LayoutProvider } from "@/components/providers/layout-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -17,55 +16,15 @@ export const metadata: Metadata = {
   creator: "PathGuardian",
   publisher: "PathGuardian",
   robots: "index, follow",
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#0ea5e9",
-  generator: 'v0.dev'
+  generator: 'v0.dev',
+  themeColor: "#0ea5e9"
 }
 
 export const dynamic = 'force-dynamic'
 
-async function LayoutContent({ children }: { children: React.ReactNode }) {
-  const supabase = await createServerClient()
-  
-  // ユーザー情報を取得（エラーハンドリング付き）
-  let user = null
-  try {
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-    user = currentUser
-  } catch (error) {
-    console.error("ユーザー情報の取得に失敗しました:", error)
-  }
+// Next.js 15+: metadata から分離
+export const viewport = "width=device-width, initial-scale=1";
 
-  const handleLogout = async () => {
-    "use server"
-    const supabase = await createServerClient()
-    await supabase.auth.signOut()
-  }
-
-  // ナビゲーションを表示しないページ
-  const noNavPages = ['/login', '/register', '/landing']
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
-  const showNavigation = !noNavPages.some(page => currentPath.startsWith(page))
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* ナビゲーション */}
-      {showNavigation && (
-        <Navigation 
-          user={user} 
-          onLogout={handleLogout}
-        />
-      )}
-      
-      {/* メインコンテンツ */}
-      <main>
-        {children}
-      </main>
-      
-
-    </div>
-  )
-}
 
 export default function RootLayout({
   children,
@@ -82,9 +41,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <SupabaseProvider>
-            <LayoutContent>
+            <LayoutProvider>
               {children}
-            </LayoutContent>
+            </LayoutProvider>
           </SupabaseProvider>
         </ThemeProvider>
       </body>
