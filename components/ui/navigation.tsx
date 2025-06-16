@@ -16,7 +16,8 @@ import {
   Trophy,
   LogOut,
   BarChart3,
-  UserCheck
+  UserCheck,
+  Gamepad2
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -51,6 +52,12 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       label: "ミッション",
       icon: <Award className="w-4 h-4" />,
       description: "チャレンジに参加"
+    },
+    {
+      href: "/hazard-game",
+      label: "危険発見ゲーム",
+      icon: <Gamepad2 className="w-4 h-4" />,
+      description: "写真から危険を見つけよう"
     },
     {
       href: "/leaderboard", 
