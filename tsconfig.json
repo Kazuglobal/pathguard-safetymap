@@ -4,38 +4,43 @@
   // ========================
   "compilerOptions": {
     /* === プロジェクト構成 === */
-    "baseUrl": ".",               // "@/..." → ./...
+    "baseUrl": ".", // "@/..." → ./...
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
-
     /* === 型チェック & 変換ターゲット === */
     "target": "ES2022",
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-
     /* === 型検証強化 === */
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
     "incremental": true,
-
     /* === JS / JSX サポート === */
     "allowJs": true,
     "jsx": "preserve",
+    "jsxImportSource": "react",
     "isolatedModules": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-
     /* === Next.js 用プラグイン === */
     "plugins": [
-      { "name": "next" }
+      {
+        "name": "next"
+      }
     ],
-
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-
   // ========================
   // 型チェック対象ファイル
   // ========================
@@ -45,5 +50,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

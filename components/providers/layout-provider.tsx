@@ -1,6 +1,7 @@
 import React from "react"
 import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
 import { createServerClient } from "@/lib/supabase-server"
+import { SupabaseProvider } from "@/components/providers/supabase-provider"
 
 interface LayoutProviderProps {
   children: React.ReactNode
@@ -25,8 +26,10 @@ export async function LayoutProvider({ children }: LayoutProviderProps) {
   }
 
   return (
-    <NavigationWrapper user={user} onLogout={handleLogout}>
-      {children}
-    </NavigationWrapper>
+    <SupabaseProvider>
+      <NavigationWrapper user={user} onLogout={handleLogout}>
+        {children}
+      </NavigationWrapper>
+    </SupabaseProvider>
   )
 }

@@ -1,24 +1,41 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-   // Next.js の Image コンポーネントで外部ホストを許可
-   images: {
-     domains: ["ykodiivanzutyivkguza.supabase.co"],
+  // React 19互換性設定
+  reactStrictMode: true,
+  
+  // Next.js の Image コンポーネントで外部ホストを許可（新しい形式）
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'ykodiivanzutyivkguza.supabase.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
+  
   transpilePackages: ['mapbox-gl', 'react-map-gl'],
-  env: {
-    // ── Supabase（サーバー側で使う） ─────────────────────
-    SUPABASE_URL: 'https://ykodiivanzutyivkguza.supabase.co',
-    SUPABASE_ANON_KEY:
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlrb2RpaXZhbnp1dHlpdmtndXphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3ODY5NjAsImV4cCI6MjA1ODM2Mjk2MH0.VXP_YWPxtGf4MOlZY1xHGtd3ZNfmjc-r7FRRCvjuTlI',
-
-    // ── Supabase（ブラウザ側で使う） ──────────────────
-    NEXT_PUBLIC_SUPABASE_URL: 'https://ykodiivanzutyivkguza.supabase.co',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY:
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlrb2RpaXZhbnp1dHlpdmtndXphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3ODY5NjAsImV4cCI6MjA1ODM2Mjk2MH0.VXP_YWPxtGf4MOlZY1xHGtd3ZNfmjc-r7FRRCvjuTlI',
-
-    // ── Mapbox（ブラウザで使う） ──────────────────────
-    NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN:
-      'pk.eyJ1Ijoia2F6dTE5ODgiLCJhIjoiY202Nmg4NjVhMDBhMDJtc201aXBucTRoZyJ9.kUvlT0kyBj8tgXd4-vlOzQ',
+  
+  // Webpack設定の更新
+  webpack: (config, { isServer }) => {
+    // pnpm/npmの互換性問題を解決
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+    
+    // React 19対応 - JSX runtime aliases removed to prevent webpack conflicts
+    
+    return config;
+  },
+  
+  // 実験的機能（React 19対応）
+  experimental: {
+    // サーバーアクションの設定
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
 }
 
