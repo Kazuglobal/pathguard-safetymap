@@ -8,7 +8,9 @@
       "Bash(npm update:*)",
       "Bash(npx tsc:*)",
       "Bash(timeout 30s npm run build)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": []
   }

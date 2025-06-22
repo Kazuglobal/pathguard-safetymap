@@ -7,11 +7,6 @@ import { createBrowserClient } from '@supabase/ssr' // 新しいインポート
 import type { SupabaseClient } from '@supabase/supabase-js' // SupabaseClientは@supabase/supabase-jsから取得
 import type { Database } from '@/lib/database.types'
 
-// ↓↓↓ ここに追加 ↓↓↓
-console.log('⛳️ URL =', process.env.NEXT_PUBLIC_SUPABASE_URL)
-console.log('⛳️ KEY =', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-// ↑↑↑ ここに追加 ↑↑↑
-
 type SupabaseContext = {
   supabase: SupabaseClient<Database>
 }

@@ -1,24 +1,41 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-   // Next.js の Image コンポーネントで外部ホストを許可
-   images: {
-     domains: ["ykodiivanzutyivkguza.supabase.co"],
+  // React 19互換性設定
+  reactStrictMode: true,
+  
+  // Next.js の Image コンポーネントで外部ホストを許可（新しい形式）
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'ykodiivanzutyivkguza.supabase.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
+  
   transpilePackages: ['mapbox-gl', 'react-map-gl'],
-  env: {
-    // ── Supabase（サーバー側で使う） ─────────────────────
-    SUPABASE_URL: 'REDACTED_SUPABASE_URL',
-    SUPABASE_ANON_KEY:
-      'REDACTED_SUPABASE_KEY',
-
-    // ── Supabase（ブラウザ側で使う） ──────────────────
-    NEXT_PUBLIC_SUPABASE_URL: 'REDACTED_SUPABASE_URL',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY:
-      'REDACTED_SUPABASE_KEY',
-
-    // ── Mapbox（ブラウザで使う） ──────────────────────
-    NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN:
-      'REDACTED_MAPBOX_TOKEN',
+  
+  // Webpack設定の更新
+  webpack: (config, { isServer }) => {
+    // pnpm/npmの互換性問題を解決
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+    
+    // React 19対応 - JSX runtime aliases removed to prevent webpack conflicts
+    
+    return config;
+  },
+  
+  // 実験的機能（React 19対応）
+  experimental: {
+    // サーバーアクションの設定
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
 }
 

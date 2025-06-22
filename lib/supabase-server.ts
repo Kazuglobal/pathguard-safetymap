@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers'
 // import { createServerComponentClient } from '@supabase/auth-helpers-nextjs' // 古いインポートを削除
 import { createServerClient as createSupabaseServerClient, type CookieOptions } from '@supabase/ssr' // 新しいインポートと CookieOptions をインポート
-import type { Database } from '@/lib/database.types'
+// import type { Database } from '@/lib/database.types'
 
 /**
  * Next.js 13 App Router 以降は @supabase/ssr を使用します。
@@ -11,7 +11,7 @@ export const createServerClient = async () => {
   const cookieStore = await cookies()
 
   // return createServerComponentClient<Database>({ // 古い関数呼び出しを削除
-  return createSupabaseServerClient<Database>( // 新しい関数呼び出し
+  return createSupabaseServerClient( // 新しい関数呼び出し
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {

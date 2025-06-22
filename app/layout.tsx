@@ -2,8 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/providers/theme-provider"
-import { SupabaseProvider } from "@/components/providers/supabase-provider"
 import { LayoutProvider } from "@/components/providers/layout-provider"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -17,13 +15,15 @@ export const metadata: Metadata = {
   publisher: "PathGuardian",
   robots: "index, follow",
   generator: 'v0.dev',
-  themeColor: "#0ea5e9"
+}
+
+export const viewport = {
+  themeColor: "#0ea5e9",
+  width: "device-width",
+  initialScale: 1,
 }
 
 export const dynamic = 'force-dynamic'
-
-// Next.js 15+: metadata から分離
-export const viewport = "width=device-width, initial-scale=1";
 
 
 export default function RootLayout({
@@ -39,13 +39,9 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <SupabaseProvider>
-            <LayoutProvider>
-              {children}
-            </LayoutProvider>
-          </SupabaseProvider>
-        </ThemeProvider>
+        <LayoutProvider>
+          {children}
+        </LayoutProvider>
       </body>
     </html>
   )
