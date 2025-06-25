@@ -7,6 +7,8 @@ const MAX_REQUEST_SIZE = 25 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Starting hazard game analysis request...')
+    
     // Check request size before processing
     const contentLength = request.headers.get('content-length')
     if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
@@ -28,6 +30,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log(`User authenticated: ${user.id}`)
+
     let body: any
     try {
       body = await request.json()
@@ -42,6 +46,7 @@ export async function POST(request: NextRequest) {
     const { imageBase64, userDetectedHazards } = body
 
     if (!imageBase64) {
+      console.error('No image data provided')
       return NextResponse.json(
         { error: "画像データが必要です" },
         { status: 400 }
@@ -49,16 +54,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (typeof imageBase64 !== 'string') {
+      console.error('Invalid image data type:', typeof imageBase64)
       return NextResponse.json(
         { error: "画像データは文字列形式である必要があります" },
         { status: 400 }
       )
     }
 
+    console.log(`Image data received, size: ${imageBase64.length} characters`)
+
     let analysisResult: any
     let sessionId = null
 
     try {
+      console.log('Starting OpenAI analysis...')
+      console.log('User ID:', user.id)
+      console.log('Image base64 length:', imageBase64.length)
+      console.log('User detected hazards:', userDetectedHazards)
+      console.log('Environment check - OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY)
+      console.log('Environment check - OPENAI_API_KEY starts with sk-:', process.env.OPENAI_API_KEY?.startsWith('sk-'))
+      
       // Analyze image with OpenAI
       analysisResult = await analyzeImageForHazards(
         imageBase64,
@@ -68,7 +83,31 @@ export async function POST(request: NextRequest) {
       console.log(`Analysis completed for user ${user.id}: ${analysisResult.hazards.length} hazards detected, score: ${analysisResult.score}`)
       
     } catch (analysisError) {
-      console.error("Image analysis failed:", analysisError)
+      console.error("=== IMAGE ANALYSIS ERROR DETAILS ===")
+      console.error("Error occurred during image analysis:", analysisError)
+      
+      // Log detailed error information
+      if (analysisError instanceof Error) {
+        console.error('Error name:', analysisError.name)
+        console.error('Error message:', analysisError.message)
+        console.error('Error stack:', analysisError.stack)
+        
+        // Log specific error patterns for debugging
+        if (analysisError.message.includes('rate limit')) {
+          console.error('RATE LIMIT ERROR detected')
+        }
+        if (analysisError.message.includes('quota')) {
+          console.error('QUOTA ERROR detected')
+        }
+        if (analysisError.message.includes('api_key')) {
+          console.error('API KEY ERROR detected')
+        }
+        if (analysisError.message.includes('model')) {
+          console.error('MODEL ERROR detected')
+        }
+      }
+      
+      console.error("=== END ERROR DETAILS ===")
       
       // Return specific error message from OpenAI analysis
       const errorMessage = analysisError instanceof Error 
@@ -76,7 +115,10 @@ export async function POST(request: NextRequest) {
         : "画像の分析中にエラーが発生しました"
       
       return NextResponse.json(
-        { error: errorMessage },
+        { error: errorMessage, debugInfo: process.env.NODE_ENV === 'development' ? {
+          errorName: analysisError instanceof Error ? analysisError.name : 'Unknown',
+          originalError: analysisError instanceof Error ? analysisError.message : 'Unknown'
+        } : undefined },
         { status: 422 } // Unprocessable Entity for analysis failures
       )
     }
