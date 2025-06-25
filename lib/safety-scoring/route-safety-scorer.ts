@@ -292,6 +292,8 @@ function generateSafetyRecommendations(segmentScores: any[], timeOfDay: string):
   return recommendations;
 }
 
-export default {
+const routeSafetyScorer = {
   calculateRouteSafetyScore,
-}; 
+};
+
+export default routeSafetyScorer; 
