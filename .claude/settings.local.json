@@ -25,7 +25,8 @@
       "WebFetch(domain:github.com)",
       "Bash(gh repo view:*)",
       "Bash(find:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(DISABLE_ESLINT_PLUGIN=true npm run build)"
     ],
     "deny": []
   }
