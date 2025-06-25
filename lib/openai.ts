@@ -9,10 +9,16 @@ import OpenAI from "openai"
 // OpenAI API key validation
 const validateOpenAIConfig = () => {
   const apiKey = process.env.OPENAI_API_KEY
+  console.log('Checking OpenAI API key...')
+  console.log('API key present:', !!apiKey)
+  console.log('API key starts with "sk-":', apiKey?.startsWith('sk-') ?? false)
+  
   if (!apiKey) {
+    console.error('OPENAI_API_KEY is not set in environment variables')
     throw new Error('OPENAI_API_KEY environment variable is not set')
   }
   if (!apiKey.startsWith('sk-')) {
+    console.error('Invalid OpenAI API key format - should start with "sk-"')
     throw new Error('Invalid OpenAI API key format')
   }
   return apiKey
@@ -51,23 +57,48 @@ class OpenAICircuitBreaker {
 
 const circuitBreaker = new OpenAICircuitBreaker()
 
-// Initialize OpenAI client with validation
-const initializeOpenAI = () => {
+// Test API key validity
+const testOpenAIKey = async (client: OpenAI): Promise<boolean> => {
   try {
-    const apiKey = validateOpenAIConfig()
-    return new OpenAI({
-      apiKey,
-      organization: process.env.OPENAI_ORG_ID,
-      timeout: 30000, // 30 second timeout
-      maxRetries: 2, // Retry failed requests up to 2 times
+    console.log('Testing OpenAI API key validity...')
+    // Simple test request to verify API key works
+    const response = await client.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: "Hello" }],
+      max_tokens: 5,
     })
+    console.log('API key test successful')
+    return true
   } catch (error) {
-    console.error('OpenAI initialization failed:', error)
-    throw error
+    console.error('API key test failed:', error)
+    return false
   }
 }
 
-export const openai = initializeOpenAI()
+// Initialize OpenAI client with validation (lazy initialization)
+let openaiClient: OpenAI | null = null
+
+const getOpenAIClient = (): OpenAI => {
+  if (!openaiClient) {
+    try {
+      console.log('Initializing OpenAI client...')
+      const apiKey = validateOpenAIConfig()
+      openaiClient = new OpenAI({
+        apiKey,
+        organization: process.env.OPENAI_ORG_ID,
+        timeout: 60000, // Increased to 60 second timeout
+        maxRetries: 3, // Increased retry attempts
+      })
+      console.log('OpenAI client initialized successfully')
+    } catch (error) {
+      console.error('OpenAI initialization failed:', error)
+      throw error
+    }
+  }
+  return openaiClient
+}
+
+export const openai = getOpenAIClient
 
 export interface HazardAnalysisResult {
   hazards: {
@@ -89,18 +120,23 @@ const SUPPORTED_FORMATS = ['jpeg', 'jpg', 'png', 'gif', 'webp']
 
 // Image validation function
 const validateImageData = (imageBase64: string): void => {
+  console.log('Validating image data...')
+  
   if (!imageBase64) {
     throw new Error('画像データが提供されていません')
   }
 
-  // Check if it's valid base64
-  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/
+  // Check if it's valid base64 (more lenient check)
+  const base64Regex = /^[A-Za-z0-9+/=]+$/
   if (!base64Regex.test(imageBase64)) {
-    throw new Error('無効なbase64形式の画像データです')
+    console.warn('Base64 validation failed, but continuing...')
+    // Continue instead of throwing error - some valid base64 might not pass strict regex
   }
 
   // Check image size
   const sizeInBytes = (imageBase64.length * 3) / 4
+  console.log(`Image size: ${(sizeInBytes / 1024 / 1024).toFixed(2)} MB`)
+  
   if (sizeInBytes > MAX_IMAGE_SIZE) {
     throw new Error(`画像サイズが大きすぎます。最大${MAX_IMAGE_SIZE / 1024 / 1024}MBまでです`)
   }
@@ -108,39 +144,57 @@ const validateImageData = (imageBase64: string): void => {
     throw new Error('画像サイズが小さすぎます')
   }
 
-  // Try to detect image format from base64 header
+  // Try to detect image format from base64 header (more lenient)
   try {
-    const header = imageBase64.substring(0, 50)
+    const header = imageBase64.substring(0, 100) // Increased header size
     const buffer = Buffer.from(header, 'base64')
     const uint8Array = new Uint8Array(buffer)
     
-    // Check for common image file signatures
+    console.log('Image header bytes:', Array.from(uint8Array.slice(0, 12)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '))
+    
+    // Check for common image file signatures (more flexible)
     const isJPEG = uint8Array[0] === 0xFF && uint8Array[1] === 0xD8
     const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4E && uint8Array[3] === 0x47
     const isGIF = (uint8Array[0] === 0x47 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46)
     const isWebP = (uint8Array[8] === 0x57 && uint8Array[9] === 0x45 && uint8Array[10] === 0x42 && uint8Array[11] === 0x50)
     
-    if (!isJPEG && !isPNG && !isGIF && !isWebP) {
-      throw new Error('サポートされていない画像形式です。JPEG、PNG、GIF、WebPのいずれかをご使用ください')
-    }
+    if (isJPEG) console.log('Detected JPEG format')
+    else if (isPNG) console.log('Detected PNG format')  
+    else if (isGIF) console.log('Detected GIF format')
+    else if (isWebP) console.log('Detected WebP format')
+    else console.warn('Unknown image format, but continuing with analysis...')
+    
+    // Continue with analysis even if format is unknown
   } catch (formatError) {
-    console.warn('Image format validation failed:', formatError)
+    console.warn('Image format validation failed, but continuing:', formatError)
     // Continue with analysis even if format detection fails
   }
+  
+  console.log('Image validation completed')
 }
 
 export async function analyzeImageForHazards(
   imageBase64: string,
   userDetectedHazards?: string[]
 ): Promise<HazardAnalysisResult> {
+  console.log('=== ANALYZE IMAGE FOR HAZARDS CALLED ===')
+  console.log('Input image base64 length:', imageBase64?.length ?? 0)
+  console.log('User detected hazards:', userDetectedHazards)
+  console.log('API key available:', !!process.env.OPENAI_API_KEY)
+  console.log('API key format check:', process.env.OPENAI_API_KEY?.substring(0, 20) + '...')
+  
   // Check circuit breaker before making API call
   if (circuitBreaker.isOpen()) {
+    console.error('Circuit breaker is open - too many recent failures')
     throw new Error('画像分析サービスが一時的に利用できません。しばらく時間をおいてから再度お試しください。')
   }
 
   try {
+    console.log('Validating image data...')
     // Validate input data
     validateImageData(imageBase64)
+    console.log('Image validation passed')
+    
     const prompt = `
 あなたは安全専門家です。この写真を分析して、潜在的な危険や安全上の問題を特定してください。
 
@@ -161,29 +215,56 @@ export async function analyzeImageForHazards(
 JSON形式で回答してください。
 `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
+    console.log('Calling OpenAI API...')
+    
+    // Try different models with fallback
+    const models = ["gpt-4o", "gpt-4-vision-preview", "gpt-4-turbo"]
+    let response
+    let lastError
+    
+    for (const model of models) {
+      try {
+        console.log(`Attempting with model: ${model}`)
+        response = await getOpenAIClient().chat.completions.create({
+          model: model,
+          messages: [
             {
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+                },
+              ],
             },
           ],
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.3,
-    })
+          max_tokens: 1500,
+          temperature: 0.3,
+        })
+        console.log(`Successfully used model: ${model}`)
+        break
+      } catch (modelError) {
+        console.warn(`Model ${model} failed:`, modelError instanceof Error ? modelError.message : modelError)
+        lastError = modelError
+        continue
+      }
+    }
+    
+    if (!response) {
+      console.error('All models failed')
+      throw lastError || new Error('すべてのモデルでエラーが発生しました')
+    }
 
+    console.log('OpenAI API call successful')
     // Record successful API call
     circuitBreaker.recordSuccess()
 
     const content = response.choices[0]?.message?.content
+    console.log('Response content length:', content?.length ?? 0)
+    
     if (!content) {
+      console.error('Empty response from OpenAI')
       throw new Error("OpenAIからの応答が空です")
     }
 

@@ -58,14 +58,14 @@ export default async function LeaderboardPage() {
                 }
               >
                 <td className="py-2 px-4">{idx + 1}</td>
-                <td className="py-2 px-4">{row.profiles?.display_name ?? "匿名"}</td>
+                <td className="py-2 px-4">{(row.profiles as any)?.display_name ?? "匿名"}</td>
                 <td className="py-2 px-4 text-right">{row.points}pt</td>
               </tr>
             ))}
             {myRow && (
               <tr className="bg-yellow-50 font-semibold border-t">
                 <td className="py-2 px-4">-</td>
-                <td className="py-2 px-4">{myRow.profiles?.display_name ?? "あなた"}</td>
+                <td className="py-2 px-4">{(myRow.profiles as any)?.display_name ?? "あなた"}</td>
                 <td className="py-2 px-4 text-right">{myRow.points}pt</td>
               </tr>
             )}

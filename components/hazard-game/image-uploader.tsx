@@ -14,12 +14,31 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [fileInfo, setFileInfo] = useState<{
+    name: string
+    size: number
+    type: string
+  } | null>(null)
 
   const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith("image/")) {
+      // ファイルサイズチェック（20MB制限）
+      const maxSizeInBytes = 20 * 1024 * 1024
+      if (file.size > maxSizeInBytes) {
+        alert(`画像サイズが大きすぎます。最大20MBまでアップロード可能です。\n現在のファイルサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+        return
+      }
+
       const imageUrl = URL.createObjectURL(file)
       setSelectedImage(imageUrl)
+      setFileInfo({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
       onImageSelect(file)
+    } else {
+      alert("画像ファイルを選択してください。対応形式: JPEG、PNG、GIF、WebP")
     }
   }
 
@@ -64,6 +83,7 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
 
   const clearImage = () => {
     setSelectedImage(null)
+    setFileInfo(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -149,6 +169,13 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
             <p className="text-sm text-gray-600 mt-2 text-center">
               画像が選択されました。分析を開始できます。
             </p>
+            {fileInfo && (
+              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                <p>ファイル名: {fileInfo.name}</p>
+                <p>サイズ: {(fileInfo.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p>形式: {fileInfo.type}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
