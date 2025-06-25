@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     console.log('Testing OpenAI API key...')
     
     // Test API key with a simple request
-    const response = await openai.chat.completions.create({
+    const response = await openai().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: "Hello, respond with 'API key works'" }],
       max_tokens: 10,

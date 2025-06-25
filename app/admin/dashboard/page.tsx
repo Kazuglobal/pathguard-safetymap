@@ -1,6 +1,6 @@
 "use client"; // Supabaseクライアントや状態管理のためクライアントコンポーネントに
 
-import { useState, useEffect } from "react"; // useEffect, useState をインポート
+import { useState, useEffect, useCallback } from "react"; // useEffect, useState, useCallback をインポート
 import {
   Table,
   TableBody,
@@ -27,7 +27,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Supabaseからレポートデータを取得する関数
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     if (!supabase) return;
     setIsLoading(true);
     setError(null);
@@ -51,13 +51,13 @@ export default function AdminDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     if (supabase) { // supabase クライアントが利用可能になってから fetchReports を呼び出す
       fetchReports();
     }
-  }, [supabase]);
+  }, [supabase, fetchReports]);
 
   // 加工画像アップロード完了時の処理
   const handleImageUploadComplete = async (processedImageUrl: string, reportId: string) => {
