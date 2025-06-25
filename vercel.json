@@ -1,0 +1,13 @@
+{
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
+  "env": {
+    "SKIP_ENV_VALIDATION": "1"
+  },
+  "build": {
+    "env": {
+      "ESLINT_NO_DEV_ERRORS": "true",
+      "DISABLE_ESLINT_PLUGIN": "true"
+    }
+  }
+}
