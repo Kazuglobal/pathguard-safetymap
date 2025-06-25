@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { Button } from "@/components/ui/button"
@@ -55,7 +55,7 @@ export default function DashboardContent() {
    *  フェッチ処理
    * --------------------------
    */
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setIsLoading(true)
     try {
       /* 審査待ち */
@@ -112,11 +112,11 @@ export default function DashboardContent() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase, toast])
 
   useEffect(() => {
     fetchReports()
-  }, [supabase, toast])
+  }, [fetchReports])
 
   // 報告詳細が更新されたときに最新データを取得するための処理
   const handleReportUpdate = async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MapGL, { Source, Layer, Popup, NavigationControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,7 @@ const SchoolTrafficViewer = ({
   });
 
   // 交通量データを取得する関数
-  const fetchSchoolTrafficData = async () => {
+  const fetchSchoolTrafficData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
@@ -117,12 +117,12 @@ const SchoolTrafficViewer = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [schoolLocation]);
 
   // 初回マウント時にデータを取得
   useEffect(() => {
     fetchSchoolTrafficData();
-  }, [schoolLocation]);
+  }, [fetchSchoolTrafficData]);
 
   // 交通量に基づいて色を決定
   const getTrafficColor = (volume: number) => {
