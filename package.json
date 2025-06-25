@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "DISABLE_ESLINT_PLUGIN=true next build",
+    "build": "cross-env DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
@@ -83,6 +83,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.3.4",
     "postcss": "^8",
