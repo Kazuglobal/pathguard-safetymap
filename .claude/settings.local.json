@@ -19,7 +19,9 @@
       "Bash(git push:*)",
       "Bash(gh auth:*)",
       "Bash(sed:*)",
-      "Bash(dos2unix:*)"
+      "Bash(dos2unix:*)",
+      "Bash(cp:*)",
+      "Bash(git remote get-url:*)"
     ],
     "deny": []
   }
