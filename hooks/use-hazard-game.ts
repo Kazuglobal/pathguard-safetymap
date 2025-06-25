@@ -88,6 +88,15 @@ export function useHazardGame() {
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('API Error Response:', errorData)
+        console.error('Response status:', response.status)
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()))
+        
+        // Show more detailed error information in development
+        if (process.env.NODE_ENV === 'development' && errorData.debugInfo) {
+          console.error('Debug info:', errorData.debugInfo)
+        }
+        
         throw new Error(errorData.error || "画像の分析に失敗しました")
       }
 
