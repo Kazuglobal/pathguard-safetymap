@@ -21,7 +21,11 @@
       "Bash(sed:*)",
       "Bash(dos2unix:*)",
       "Bash(cp:*)",
-      "Bash(git remote get-url:*)"
+      "Bash(git remote get-url:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo view:*)",
+      "Bash(find:*)",
+      "Bash(git remote:*)"
     ],
     "deny": []
   }
