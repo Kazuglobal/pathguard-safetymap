@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef, useState } from "react"
+import Image from "next/image"
 import { Camera, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -150,11 +151,14 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
         <Card>
           <CardContent className="p-4">
             <div className="relative">
-              <img
-                src={selectedImage}
-                alt="Selected"
-                className="w-full h-64 object-cover rounded-lg"
-              />
+              <div className="relative w-full h-64 rounded-lg overflow-hidden">
+                <Image
+                  src={selectedImage}
+                  alt="Selected"
+                  fill
+                  className="object-cover"
+                />
+              </div>
               <Button
                 type="button"
                 variant="destructive"

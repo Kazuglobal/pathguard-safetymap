@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -91,10 +92,11 @@ export default function SubmittedReportPreview({
               <TabsContent value="original" className="mt-2">
                 {originalImage && !originalError ? (
                   <div className="relative w-full h-80 bg-gray-50 rounded-md overflow-hidden">
-                    <img
+                    <Image
                       src={addCacheBuster(originalSrc) || "/placeholder.svg"}
                       alt="報告の元画像"
-                      className="w-full h-full object-contain"
+                      fill
+                      className="object-contain"
                       onError={() => setOriginalError(true)}
                     />
                   </div>
@@ -133,18 +135,21 @@ export default function SubmittedReportPreview({
                         className="relative border rounded-md overflow-hidden min-w-[150px]"
                       >
                         {!procErrors[idx] ? (
-                          <img
-                            src={addCacheBuster(url) || "/placeholder.svg"}
-                            alt={`加工画像 ${idx + 1}`}
-                            className="w-full h-32 md:h-80 object-contain"
-                            onError={() =>
-                              setProcErrors((errs) => {
-                                const copy = [...errs]
-                                copy[idx] = true
-                                return copy
-                              })
-                            }
-                          />
+                          <div className="relative w-full h-32 md:h-80">
+                            <Image
+                              src={addCacheBuster(url) || "/placeholder.svg"}
+                              alt={`加工画像 ${idx + 1}`}
+                              fill
+                              className="object-contain"
+                              onError={() =>
+                                setProcErrors((errs) => {
+                                  const copy = [...errs]
+                                  copy[idx] = true
+                                  return copy
+                                })
+                              }
+                            />
+                          </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center h-32 md:h-80 bg-gray-100">
                             <ImageIcon className="h-8 w-8 text-gray-400" />
