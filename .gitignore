@@ -42,4 +42,5 @@ next-env.d.ts
 # ★ 追加した除外ディレクトリ
 # -----------------------------------------
 node_modules/        # 念押しで明示
+node_modules_old/    # 破損したnode_modulesのバックアップを除外
 schoolsafetymap/     # リポジトリに含めないコピーを除外
