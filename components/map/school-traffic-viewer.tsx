@@ -119,7 +119,7 @@ const SchoolTrafficViewer = ({
     }
   }, [schoolLocation]);
 
-  // 初回マウント時にデータを取得
+  // 初回マウント時とfetchSchoolTrafficData関数が変更された時にデータを取得
   useEffect(() => {
     fetchSchoolTrafficData();
   }, [fetchSchoolTrafficData]);
