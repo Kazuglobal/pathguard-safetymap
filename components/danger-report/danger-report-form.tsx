@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -396,12 +397,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
 
                 {originalImagePreview ? (
                   <div className="relative mt-2 border rounded-md overflow-hidden">
-                    <img
-                      src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
-                      alt="選択された元画像"
-                      className="w-full h-32 object-cover cursor-pointer"
-                      onClick={() => handleShowPreview(originalImagePreview)}
-                    />
+                    <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(originalImagePreview)}>
+                      <Image
+                        src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
+                        alt="選択された元画像"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                     <Button
                       type="button"
                       variant="destructive"
@@ -468,22 +471,21 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                   <div className="flex gap-2 overflow-x-auto mt-2">
                     {processedImagePreviews.map((preview, idx) => (
                       <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px]">
-                        <img
-                          src={preview}
-                          alt={`加工画像 ${idx + 1}`}
-                          className="w-full h-32 object-cover cursor-pointer"
-                          onClick={() => handleShowPreview(preview)}
-                          // ★ ここを追加: 読み込み失敗時にエラートースト＆プレースホルダー表示
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;  // ループ防止
-                            e.currentTarget.src = "/placeholder.svg?height=200&width=400";
-                            toast({
-                              title: "エラー",
-                              description: "加工画像の読み込みに失敗しました",
-                              variant: "destructive",
-                            });
-                          }}
-                        />
+                        <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(preview)}>
+                          <Image
+                            src={preview}
+                            alt={`加工画像 ${idx + 1}`}
+                            fill
+                            className="object-cover"
+                            onError={() => {
+                              toast({
+                                title: "エラー",
+                                description: "加工画像の読み込みに失敗しました",
+                                variant: "destructive",
+                              });
+                            }}
+                          />
+                        </div>
                         <Button
                           type="button"
                           variant="destructive"
