@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -382,10 +383,11 @@ export default function DangerReportDetailModal({
                     <TabsContent value="original" className="mt-4">
                       {originalImageSrc && !originalImageError ? (
                         <div className="relative w-full h-64 md:h-80 bg-gray-50 rounded-md overflow-hidden">
-                          <img
+                          <Image
                             src={addCacheBuster(originalImageSrc) || "/placeholder.svg"}
                             alt="危険箇所の元画像"
-                            className="w-full h-full object-contain"
+                            fill
+                            className="object-contain"
                             onError={() => setOriginalImageError(true)}
                           />
                         </div>
@@ -417,16 +419,20 @@ export default function DangerReportDetailModal({
                           {currentProcessedUrls.map((url, idx) => (
                              <div key={url} className="relative group border rounded-md p-2">
                                 {!processedImageErrors[idx] ? (
-                                  <img
-                                    src={addCacheBuster(url) || "/placeholder.svg"}
-                                    alt={`加工画像 ${idx + 1}`}
-                                    className="w-full h-auto max-h-80 object-contain rounded"
-                                    onError={() => setProcessedImageErrors(prev => {
-                                        const next = [...prev];
-                                        next[idx] = true;
-                                        return next;
-                                    })}
-                                  />
+                                  <div className="relative w-full max-h-80">
+                                    <Image
+                                      src={addCacheBuster(url) || "/placeholder.svg"}
+                                      alt={`加工画像 ${idx + 1}`}
+                                      width={800}
+                                      height={320}
+                                      className="w-full h-auto max-h-80 object-contain rounded"
+                                      onError={() => setProcessedImageErrors(prev => {
+                                          const next = [...prev];
+                                          next[idx] = true;
+                                          return next;
+                                      })}
+                                    />
+                                  </div>
                                 ) : (
                                   <div className="flex flex-col items-center justify-center h-40 bg-gray-100 rounded">
                                      <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -460,11 +466,15 @@ export default function DangerReportDetailModal({
                            {/* 新規追加プレビュー */}
                            {newProcessedImagePreview && (
                               <div className="relative group border border-dashed border-blue-500 rounded-md p-2">
-                                <img
-                                  src={newProcessedImagePreview}
-                                  alt="新規加工画像プレビュー"
-                                  className="w-full h-auto max-h-80 object-contain rounded"
-                                />
+                                <div className="relative w-full max-h-80">
+                                  <Image
+                                    src={newProcessedImagePreview}
+                                    alt="新規加工画像プレビュー"
+                                    width={800}
+                                    height={320}
+                                    className="w-full h-auto max-h-80 object-contain rounded"
+                                  />
+                                </div>
                                 <p className="text-xs text-center text-blue-600 mt-1">新規追加プレビュー</p>
                                 <Button
                                    variant="ghost"

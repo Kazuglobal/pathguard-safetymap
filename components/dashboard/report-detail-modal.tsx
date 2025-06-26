@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -276,13 +277,13 @@ export default function ReportDetailModal({
                     <TabsContent value="original" className="mt-2">
                       {report.image_url ? (
                         <div className="relative w-full h-64 md:h-96">
-                          <img
+                          <Image
                             src={report.image_url}
                             alt="危険箇所の元画像"
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null
-                              e.currentTarget.src = "/placeholder.svg"
+                            fill
+                            className="object-contain"
+                            onError={() => {
+                              console.error("Failed to load image:", report.image_url)
                             }}
                           />
                         </div>
@@ -342,15 +343,17 @@ export default function ReportDetailModal({
                               key={idx}
                               className="relative border rounded-md overflow-hidden min-w-[150px]"
                             >
-                              <img
-                                src={url}
-                                alt={`加工画像 ${idx + 1}`}
-                                className="w-full h-32 md:h-96 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null
-                                  e.currentTarget.src = "/placeholder.svg"
-                                }}
-                              />
+                              <div className="relative w-full h-32 md:h-96">
+                                <Image
+                                  src={url}
+                                  alt={`加工画像 ${idx + 1}`}
+                                  fill
+                                  className="object-contain"
+                                  onError={() => {
+                                    console.error("Failed to load processed image:", url)
+                                  }}
+                                />
+                              </div>
                             </div>
                           ))}
                         </div>
