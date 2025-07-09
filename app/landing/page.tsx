@@ -11,7 +11,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50">
       {/* ヘッダー */}
       <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center flex-wrap gap-2">
           <div className="flex items-center space-x-2">
             <ShieldCheckIcon className="h-8 w-8 text-sky-600" />
             <h1 className="text-2xl font-bold">
@@ -23,12 +23,12 @@ export default function LandingPage() {
             <a href="#how-it-works" className="text-gray-600 hover:text-sky-600 transition-colors">使い方</a>
             <a href="#safety" className="text-gray-600 hover:text-sky-600 transition-colors">安全性</a>
           </nav>
-          <div className="flex space-x-4">
+          <div className="flex space-x-2 flex-shrink-0 mt-2 sm:mt-0">
             <Link href="/login">
-              <Button variant="outline">ログイン</Button>
+              <Button variant="outline" size="sm" className="flex-shrink-0">ログイン</Button>
             </Link>
             <Link href="/register">
-              <Button className="bg-sky-600 hover:bg-sky-700">新規登録</Button>
+              <Button className="bg-sky-600 hover:bg-sky-700 flex-shrink-0" size="sm">新規登録</Button>
             </Link>
           </div>
         </div>
@@ -297,7 +297,7 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link href="/map">
-              <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 text-lg px-8 py-6">
+              <Button size="lg" variant="outline" className="bg-transparent text-white border-white hover:bg-white/10 text-lg px-8 py-6">
                 デモを見る
               </Button>
             </Link>
@@ -344,7 +344,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
-            <p>&copy; 2024 PathGuardian. All rights reserved.</p>
+            <p>&copy; 2025 PathGuardian. All rights reserved.</p>
           </div>
         </div>
       </footer>
