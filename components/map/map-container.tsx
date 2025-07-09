@@ -883,7 +883,7 @@ export default function MapContainer() {
           )}
           {/* Report Form */}
           {isReportFormOpen && (
-            <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white rounded-lg shadow-lg z-10 max-h-[calc(100vh-10rem)] overflow-y-auto">
+            <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white rounded-lg shadow-lg z-60 max-h-[calc(100vh-10rem)] overflow-y-auto">
               <DangerReportForm
                 onSubmit={handleReportSubmit}
                 onCancel={() => setIsReportFormOpen(false)} // Reset location handled by useEffect
