@@ -35,7 +35,7 @@ export default function LandingPage() {
       </header>
 
       {/* ヒーローセクション */}
-      <section className="pt-24 pb-12 px-4">
+      <section className="pt-32 sm:pt-24 pb-12 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
