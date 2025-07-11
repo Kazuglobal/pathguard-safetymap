@@ -26,7 +26,10 @@
       "Bash(gh repo view:*)",
       "Bash(find:*)",
       "Bash(git remote:*)",
-      "Bash(DISABLE_ESLINT_PLUGIN=true npm run build)"
+      "Bash(DISABLE_ESLINT_PLUGIN=true npm run build)",
+      "Bash(mkdir:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npm run test:responsive:mobile:*)"
     ],
     "deny": []
   }

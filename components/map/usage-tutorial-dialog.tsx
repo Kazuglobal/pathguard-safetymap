@@ -7,10 +7,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Camera, MapPin, AlertTriangle, Users, Star, ChevronLeft, ChevronRight } from "lucide-react"
+import { Camera, MapPin, AlertTriangle, Users, Star, ChevronLeft, ChevronRight, X } from "lucide-react"
 
 interface UsageTutorialDialogProps {
   open: boolean
@@ -48,7 +49,7 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
       icon: <Camera className="w-8 h-8 text-blue-500" />,
       content: (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="text-2xl mb-2">✅</div>
               <p className="text-sm font-medium text-green-700">撮影すべき場所</p>
@@ -197,6 +198,39 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
     }
   ]
 
+  // キーボードナビゲーション
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return
+      
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault()
+          if (currentStep > 0) {
+            setCurrentStep(currentStep - 1)
+          }
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          if (currentStep < tutorialSteps.length - 1) {
+            setCurrentStep(currentStep + 1)
+          }
+          break
+        case 'Home':
+          e.preventDefault()
+          setCurrentStep(0)
+          break
+        case 'End':
+          e.preventDefault()
+          setCurrentStep(tutorialSteps.length - 1)
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, currentStep, tutorialSteps.length])
+
   const nextStep = () => {
     if (currentStep < tutorialSteps.length - 1) {
       setCurrentStep(currentStep + 1)
@@ -220,8 +254,14 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md sm:max-w-lg">
-        <DialogHeader className="text-center">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* カスタム×ボタン */}
+        <DialogClose className="absolute right-4 top-4 rounded-full bg-gray-100 hover:bg-gray-200 p-1.5 transition-colors z-10 min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <X className="h-5 w-5 text-gray-600" />
+          <span className="sr-only">閉じる</span>
+        </DialogClose>
+        
+        <DialogHeader className="text-center flex-shrink-0 pr-12">
           <div className="flex justify-center mb-4">
             {currentStepData.icon}
           </div>
@@ -231,49 +271,68 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
           <DialogDescription className="text-sm text-gray-600">
             {currentStepData.description}
           </DialogDescription>
+          {/* スクリーンリーダー向けステップ情報 */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            ステップ {currentStep + 1} / {tutorialSteps.length}: {currentStepData.title}
+          </div>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 overflow-y-auto flex-1" role="tabpanel" aria-labelledby={`step-${currentStep}`}>
           {currentStepData.content}
         </div>
 
         {/* ステップインジケーター */}
-        <div className="flex justify-center gap-2 mb-4">
-          {tutorialSteps.map((_, index) => (
-            <div
+        <div className="flex justify-center gap-2 mb-4 flex-shrink-0" role="tablist" aria-label="チュートリアルステップ">
+          {tutorialSteps.map((step, index) => (
+            <button
               key={index}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === currentStep ? 'bg-sky-600' : 'bg-gray-300'
+              onClick={() => setCurrentStep(index)}
+              role="tab"
+              aria-selected={index === currentStep}
+              aria-label={`ステップ ${index + 1}: ${step.title}`}
+              className={`w-3 h-3 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${
+                index === currentStep ? 'bg-sky-600' : 'bg-gray-300 hover:bg-gray-400'
               }`}
             />
           ))}
         </div>
 
         {/* ナビゲーションボタン */}
-        <div className="flex justify-between gap-3">
+        <div className="flex justify-between gap-3 flex-shrink-0">
           <Button
             variant="outline"
             onClick={prevStep}
             disabled={currentStep === 0}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 min-h-[44px] min-w-[80px]"
+            aria-label="前のステップへ"
           >
             <ChevronLeft className="w-4 h-4" />
             前へ
           </Button>
 
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={handleClose}>
+            <Button 
+              variant="ghost" 
+              onClick={handleClose}
+              className="min-h-[44px] min-w-[80px]"
+              aria-label="チュートリアルをスキップ"
+            >
               スキップ
             </Button>
             
             {currentStep === tutorialSteps.length - 1 ? (
-              <Button onClick={handleClose} className="bg-sky-600 hover:bg-sky-700">
+              <Button 
+                onClick={handleClose} 
+                className="bg-sky-600 hover:bg-sky-700 min-h-[44px] min-w-[80px]"
+                aria-label="チュートリアルを完了してアプリを始める"
+              >
                 始める
               </Button>
             ) : (
               <Button
                 onClick={nextStep}
-                className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700"
+                className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 min-h-[44px] min-w-[80px]"
+                aria-label="次のステップへ"
               >
                 次へ
                 <ChevronRight className="w-4 h-4" />
