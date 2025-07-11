@@ -32,7 +32,10 @@
       "Bash(npm run test:responsive:mobile:*)",
       "Bash(npm run validate-env:*)",
       "WebFetch(domain:docs.mapbox.com)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm run test-mcp:*)",
+      "Bash(npx:*)",
+      "Bash(npm run test-mapbox:*)"
     ],
     "deny": []
   }

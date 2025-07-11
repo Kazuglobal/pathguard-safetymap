@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "MapboxServer": {
+      "command": "npx",
+      "args": [ "-y", "@mapbox/mcp-server"],
+      "env": {
+        "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoia2F6dTE5ODgiLCJhIjoiY21jeWk4NXRxMGw3cDJtc2FpdzFhMHgxMSJ9.4K43teNcQ1dcDqncY6FckA"
+      }
+    }
+  }
+}

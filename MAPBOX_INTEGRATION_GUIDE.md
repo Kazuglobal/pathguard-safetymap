@@ -9,12 +9,16 @@ This guide provides comprehensive information about the Mapbox integration in th
 ```bash
 # Required for all Mapbox functionality
 NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1Ijo...
+
+# Required for MCP server integration
+MAPBOX_ACCESS_TOKEN=pk.eyJ1Ijo...
 ```
 
 ### Token Requirements
 - Must start with `pk.` (public token)
 - Must have access to Mapbox Styles API
 - Required scopes: `styles:read`
+- Same token used for both client-side and MCP server
 
 ## 🏗️ Architecture
 
@@ -71,6 +75,12 @@ npm run validate-env
 
 # Test Mapbox integration
 npm run test-mapbox
+
+# Test MCP server configuration
+npm run test-mcp
+
+# Start MCP server manually
+npm run mcp-server
 
 # Run type checking
 npm run typecheck
@@ -146,12 +156,38 @@ npm run typecheck
 - [ ] Performance metrics are acceptable
 - [ ] HTTPS is working correctly
 
+## 🤖 MCP Server Integration
+
+### Overview
+This project includes Mapbox MCP (Model Context Protocol) server integration, allowing Claude to directly interact with Mapbox APIs.
+
+### Configuration Files
+- `claude_desktop_config.json` - Global MCP configuration
+- `.clauderc` - Project-specific MCP configuration
+- `MCP_SETUP_GUIDE.md` - Detailed MCP setup instructions
+
+### Available Features
+- Direct geocoding through Claude
+- Route planning and directions
+- Static map generation
+- Places search and discovery
+
+### Setup Steps
+1. Configuration files are already created
+2. Environment variables are set
+3. Restart Claude Desktop to load MCP server
+4. Use `npm run test-mcp` to verify setup
+
+For detailed MCP setup instructions, see `MCP_SETUP_GUIDE.md`.
+
 ## 🔗 Useful Links
 
 - [Mapbox Documentation](https://docs.mapbox.com/)
 - [Token Troubleshooting](https://docs.mapbox.com/help/troubleshooting/access-token-troubleshooting/)
 - [API Rate Limits](https://docs.mapbox.com/api/overview/#rate-limits)
 - [Mapbox Dashboard](https://account.mapbox.com/)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/)
+- [Claude Desktop MCP Configuration](https://docs.anthropic.com/claude/docs/mcp)
 
 ## 📝 Support
 
