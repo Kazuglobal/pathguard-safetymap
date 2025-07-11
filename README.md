@@ -10,6 +10,36 @@
 This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
 Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
 
+### 🗺️ Mapbox Integration
+
+This project includes comprehensive Mapbox integration with:
+- **Client-side mapping** with MapboxGL
+- **MCP (Model Context Protocol) server** for Claude integration
+- **Advanced error handling** and monitoring
+- **Rate limiting** and token validation
+
+#### Quick Start
+```bash
+# Install dependencies
+npm install
+
+# Set up environment variables (see .env.example)
+cp .env.example .env.local
+
+# Test Mapbox integration
+npm run test-mapbox
+
+# Test MCP server setup
+npm run test-mcp
+
+# Start development server
+npm run dev
+```
+
+#### Documentation
+- 📖 [MAPBOX_INTEGRATION_GUIDE.md](./MAPBOX_INTEGRATION_GUIDE.md) - Complete Mapbox integration guide
+- 🤖 [MCP_SETUP_GUIDE.md](./MCP_SETUP_GUIDE.md) - MCP server setup instructions
+
 ## Deployment
 
 Your project is live at:

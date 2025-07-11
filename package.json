@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "validate-env": "node scripts/validate-env.js",
     "test-mapbox": "node scripts/test-mapbox-integration.js",
+    "mcp-server": "npx -y @mapbox/mcp-server",
+    "test-mcp": "node scripts/test-mcp-server.js",
     "test:responsive": "playwright test tests/responsive",
     "test:responsive:headed": "playwright test tests/responsive --headed",
     "test:responsive:mobile": "playwright test tests/responsive --project='Mobile Chrome - iPhone 12'",
