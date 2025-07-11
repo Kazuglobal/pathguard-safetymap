@@ -29,7 +29,10 @@
       "Bash(DISABLE_ESLINT_PLUGIN=true npm run build)",
       "Bash(mkdir:*)",
       "Bash(npx playwright:*)",
-      "Bash(npm run test:responsive:mobile:*)"
+      "Bash(npm run test:responsive:mobile:*)",
+      "Bash(npm run validate-env:*)",
+      "WebFetch(domain:docs.mapbox.com)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

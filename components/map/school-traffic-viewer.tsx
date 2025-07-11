@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon, AlertTriangle } from "lucide-react";
+import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config";
 
 interface SchoolLocation {
   lat: number;
@@ -48,7 +49,7 @@ interface TrafficData {
 
 interface SchoolTrafficViewerProps {
   schoolLocation: SchoolLocation;
-  mapboxToken?: string;
+  mapboxToken?: string | null;
 }
 
 /**
@@ -57,12 +58,13 @@ interface SchoolTrafficViewerProps {
  */
 const SchoolTrafficViewer = ({ 
   schoolLocation, 
-  mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN 
+  mapboxToken = getMapboxToken() 
 }: SchoolTrafficViewerProps) => {
   const [trafficData, setTrafficData] = useState<TrafficData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [popupInfo, setPopupInfo] = useState<any | null>(null);
+
   const [viewport, setViewport] = useState({
     latitude: schoolLocation.lat,
     longitude: schoolLocation.lng,
@@ -70,6 +72,15 @@ const SchoolTrafficViewer = ({
     bearing: 0,
     pitch: 0
   });
+
+  // Mapboxトークンの検証
+  useEffect(() => {
+    const validation = validateMapboxToken()
+    if (!validation.isValid) {
+      setError(`Mapboxトークンエラー: ${validation.error}`);
+      console.error('Mapbox token validation failed:', validation.error);
+    }
+  }, [mapboxToken]);
 
   // 交通量データを取得する関数
   const fetchSchoolTrafficData = useCallback(async () => {
@@ -231,7 +242,7 @@ const SchoolTrafficViewer = ({
       <div className="map-container h-[500px] relative rounded-lg overflow-hidden border">
         <MapGL
           {...viewport}
-          mapboxAccessToken={mapboxToken}
+          mapboxAccessToken={mapboxToken || undefined}
           style={{ width: '100%', height: '100%' }}
           mapStyle="mapbox://styles/mapbox/streets-v11"
           onMove={evt => setViewport(evt.viewState)}
