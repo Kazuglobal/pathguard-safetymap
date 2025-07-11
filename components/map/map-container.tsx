@@ -20,14 +20,16 @@ import { createRoot } from "react-dom/client"
 import { addPoints } from "@/lib/gamification"
 import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 
 // Mapboxのアクセストークンを設定
-const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-if (!mapboxToken) {
-  console.error(
-    "Mapbox access token is missing. Please add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to your environment variables.",
-  )
+const mapboxToken = getMapboxToken()
+const tokenValidation = validateMapboxToken()
+
+if (!tokenValidation.isValid) {
+  console.error("Mapbox token validation failed:", tokenValidation.error)
 }
+
 mapboxgl.accessToken = mapboxToken || ""
 
 // --- 型定義 ---
