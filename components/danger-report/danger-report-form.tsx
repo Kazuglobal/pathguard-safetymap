@@ -45,6 +45,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [isCameraLoading, setIsCameraLoading] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
 
   const [riskAnalysis, setRiskAnalysis] = useState<any[] | null>(null)
 
@@ -86,6 +88,44 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   }, [originalImageFile])
   */
 
+  // カメラアクセスハンドラー
+  const handleCameraAccess = async (inputRef: React.RefObject<HTMLInputElement | null>, type: 'original' | 'processed') => {
+    setIsCameraLoading(true)
+    setCameraError(null)
+    
+    try {
+      // カメラアクセス許可をチェック
+      if ('mediaDevices' in navigator) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        stream.getTracks().forEach(track => track.stop()) // ストリームを停止
+        
+        // カメラアクセスが成功した場合、ファイル入力を開く
+        if (inputRef.current) {
+          inputRef.current.setAttribute('capture', 'environment')
+          inputRef.current.click()
+        }
+      } else {
+        throw new Error('カメラはサポートされていません')
+      }
+    } catch (error) {
+      console.error('Camera access error:', error)
+      setCameraError('カメラへのアクセスが拒否されました')
+      toast({
+        title: "カメラエラー",
+        description: "カメラへのアクセスが拒否されました。設定からカメラ権限を許可してください。",
+        variant: "destructive",
+      })
+      
+      // フォールバック：ファイル選択を開く
+      if (inputRef.current) {
+        inputRef.current.removeAttribute('capture')
+        inputRef.current.click()
+      }
+    } finally {
+      setIsCameraLoading(false)
+    }
+  }
+
   // 画像選択ハンドラー（元画像）
   const handleOriginalImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -112,6 +152,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     }
 
     setOriginalImageFile(file)
+    setCameraError(null) // エラーをクリア
 
     // プレビュー用のURLを作成
     const reader = new FileReader()
@@ -124,13 +165,37 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   // 画像選択ハンドラー（加工画像）
   const handleProcessedImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
+    if (files.length === 0) return
+
+    // ファイルサイズとタイプの検証
+    const validFiles = files.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "エラー",
+          description: `${file.name}のサイズが10MBを超えています。`,
+          variant: "destructive",
+        })
+        return false
+      }
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "エラー",
+          description: `${file.name}は画像ファイルではありません。`,
+          variant: "destructive",
+        })
+        return false
+      }
+      return true
+    })
+
+    if (validFiles.length > 0) {
       // プレビューURLを生成して配列に追加
-      const newPreviews = files.map((file) => URL.createObjectURL(file))
-      setProcessedImageFiles((prev) => [...prev, ...files])
+      const newPreviews = validFiles.map((file) => URL.createObjectURL(file))
+      setProcessedImageFiles((prev) => [...prev, ...validFiles])
       setProcessedImagePreviews((prev) => [...prev, ...newPreviews])
       // 手動選択時も自動で「加工画像」タブへ切り替え
       setActiveImageTab("processed")
+      setCameraError(null) // エラーをクリア
     }
   }
 
@@ -367,7 +432,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                         originalFileInputRef.current.click();
                       }
                     }}
-                    className="flex-1"
+                    className="flex-1 min-h-[48px] touch-manipulation"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     ギャラリー
@@ -375,15 +440,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                   <Button 
                     type="button" 
                     variant="default" 
-                    onClick={() => {
-                      if (originalFileInputRef.current) {
-                        originalFileInputRef.current.setAttribute('capture', 'environment');
-                        originalFileInputRef.current.click();
-                      }
-                    }} 
-                    className="flex-1"
+                    onClick={() => handleCameraAccess(originalFileInputRef, 'original')}
+                    disabled={isCameraLoading}
+                    className="flex-1 min-h-[48px] touch-manipulation"
                   >
-                    <Camera className="h-4 w-4 mr-2" />
+                    {isCameraLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4 mr-2" />
+                    )}
                     📸 カメラ撮影
                   </Button>
                   <input
@@ -394,6 +459,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                     ref={originalFileInputRef}
                   />
                 </div>
+
+                {cameraError && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600">{cameraError}</p>
+                    <p className="text-xs text-red-500 mt-1">ファイルから選択することもできます</p>
+                  </div>
+                )}
 
                 {originalImagePreview ? (
                   <div className="relative mt-2 border rounded-md overflow-hidden">
@@ -438,7 +510,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                         processedFileInputRef.current.click();
                       }
                     }}
-                    className="flex-1"
+                    className="flex-1 min-h-[48px] touch-manipulation"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     ギャラリー
@@ -446,15 +518,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                   <Button 
                     type="button" 
                     variant="default" 
-                    onClick={() => {
-                      if (processedFileInputRef.current) {
-                        processedFileInputRef.current.setAttribute('capture', 'environment');
-                        processedFileInputRef.current.click();
-                      }
-                    }} 
-                    className="flex-1"
+                    onClick={() => handleCameraAccess(processedFileInputRef, 'processed')}
+                    disabled={isCameraLoading}
+                    className="flex-1 min-h-[48px] touch-manipulation"
                   >
-                    <Camera className="h-4 w-4 mr-2" />
+                    {isCameraLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4 mr-2" />
+                    )}
                     📸 カメラ撮影
                   </Button>
                   <input
@@ -466,6 +538,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                     multiple
                   />
                 </div>
+
+                {cameraError && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600">{cameraError}</p>
+                    <p className="text-xs text-red-500 mt-1">ファイルから選択することもできます</p>
+                  </div>
+                )}
 
                 {processedImagePreviews.length > 0 ? (
                   <div className="flex gap-2 overflow-x-auto mt-2">
