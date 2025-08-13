@@ -87,17 +87,23 @@ export function useHazardGame() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error('API Error Response:', errorData)
+        let errorData: any = {}
+        try {
+          errorData = await response.json()
+        } catch (e) {
+          console.error('Failed to parse error response:', e)
+        }
+        
+        console.error('API Error Response:', JSON.stringify(errorData, null, 2))
         console.error('Response status:', response.status)
-        console.error('Response headers:', Object.fromEntries(response.headers.entries()))
+        console.error('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2))
         
         // Show more detailed error information in development
         if (process.env.NODE_ENV === 'development' && errorData.debugInfo) {
-          console.error('Debug info:', errorData.debugInfo)
+          console.error('Debug info:', JSON.stringify(errorData.debugInfo, null, 2))
         }
         
-        throw new Error(errorData.error || "画像の分析に失敗しました")
+        throw new Error(errorData.error || errorData.message || `画像の分析に失敗しました (Status: ${response.status})`)
       }
 
       const result = await response.json()

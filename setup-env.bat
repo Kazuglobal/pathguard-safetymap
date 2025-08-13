@@ -1,0 +1,5 @@
+@echo off
+set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1Ijoia2F6dTE5ODgiLCJhIjoiY21jeWk4NXRxMGw3cDJtc2FpdzFhMHgxMSJ9.4K43teNcQ1dcDqncY6FckA
+set MAPBOX_ACCESS_TOKEN=pk.eyJ1Ijoia2F6dTE5ODgiLCJhIjoiY21jeWk4NXRxMGw3cDJtc2FpdzFhMHgxMSJ9.4K43teNcQ1dcDqncY6FckA
+echo Environment variables set successfully
+npm run test-mcp

@@ -316,7 +316,11 @@ export default function MapContainer() {
         attributionControl: true,
       });
 
-      map.current.on("error", (e) => { console.error("Mapbox error:", e); setMapError(`マップエラー: ${e.error?.message || "不明"}`); });
+      map.current.on("error", (e) => { 
+        console.error("Mapbox error:", e.error || e); 
+        const errorMessage = e.error?.message || e.message || "不明なエラー";
+        setMapError(`マップエラー: ${errorMessage}`); 
+      });
 
       map.current.on("load", () => {
         mapInitialized.current = true;
