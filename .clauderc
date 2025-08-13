@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "MapboxServer": {
+    "mapbox": {
       "command": "npx",
-      "args": [ "-y", "@mapbox/mcp-server"],
+      "args": ["-y", "@mapbox/mcp-server"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "REDACTED_MAPBOX_TOKEN"
       }

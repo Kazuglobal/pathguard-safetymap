@@ -35,7 +35,17 @@
       "Bash(node:*)",
       "Bash(npm run test-mcp:*)",
       "Bash(npx:*)",
-      "Bash(npm run test-mapbox:*)"
+      "Bash(npm run test-mapbox:*)",
+      "Bash(set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=REDACTED_MAPBOX_TOKEN)",
+      "Bash(set MAPBOX_ACCESS_TOKEN=REDACTED_MAPBOX_TOKEN)",
+      "Bash(cmd /c:*)",
+      "Bash(setup-env.bat)",
+      "Bash(copy claude_desktop_config.json \"C:\\Users\\s1598\\AppData\\Roaming\\Claude\\claude_desktop_config.json\" /Y)",
+      "Bash(dir:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(del test-openai.js)",
+      "Bash(ls:*)",
+      "Bash(pgrep:*)"
     ],
     "deny": []
   }
