@@ -92,6 +92,38 @@ export async function POST(request: NextRequest) {
         console.error('Error message:', analysisError.message)
         console.error('Error stack:', analysisError.stack)
         
+        // Check for API key errors
+        if (analysisError.message.includes('APIキー') || analysisError.message.includes('API key')) {
+          return NextResponse.json(
+            {
+              error: 'OpenAI APIキーが無効です。管理者に連絡して、.env.localファイルのOPENAI_API_KEYを更新してもらってください。',
+              debugInfo: {
+                errorName: analysisError.name,
+                originalError: analysisError.message,
+                helpUrl: 'https://platform.openai.com/api-keys',
+                timestamp: new Date().toISOString()
+              }
+            },
+            { status: 401 }
+          )
+        }
+        
+        // Check for quota errors
+        if (analysisError.message.includes('利用枠') || analysisError.message.includes('quota') || analysisError.message.includes('クレジット')) {
+          return NextResponse.json(
+            {
+              error: 'OpenAI APIの利用枠を超過しています。管理者に連絡して、クレジットの追加またはプランのアップグレードを依頼してください。',
+              debugInfo: {
+                errorName: 'QuotaExceeded',
+                originalError: analysisError.message,
+                helpUrl: 'https://platform.openai.com/account/billing',
+                timestamp: new Date().toISOString()
+              }
+            },
+            { status: 429 }
+          )
+        }
+        
         // Log any additional error properties
         const errorObj = analysisError as any
         if (errorObj.status) console.error('HTTP status:', errorObj.status)
@@ -136,9 +168,23 @@ export async function POST(request: NextRequest) {
       
       console.error('Returning error response:', { errorMessage, debugInfo })
       
+      // Map message patterns to more appropriate HTTP status codes
+      let status = 422
+      if (errorMessage.includes('認証') || errorMessage.includes('APIキー') || errorMessage.toLowerCase().includes('api key')) {
+        status = 401
+      } else if (errorMessage.includes('レート制限') || errorMessage.includes('rate limit') || errorMessage.includes('利用枠') || errorMessage.includes('quota')) {
+        status = 429
+      } else if (errorMessage.includes('サイズ') || errorMessage.includes('大きすぎ') || errorMessage.includes('20MB') || errorMessage.includes('413')) {
+        status = 413
+      } else if (errorMessage.includes('サポートされていない') || errorMessage.includes('415')) {
+        status = 415
+      } else if (errorMessage.includes('形式') || errorMessage.includes('Bad Request') || errorMessage.includes('400')) {
+        status = 400
+      }
+
       return NextResponse.json(
         { error: errorMessage, debugInfo },
-        { status: 422 } // Unprocessable Entity for analysis failures
+        { status }
       )
     }
 
