@@ -78,11 +78,25 @@ const testOpenAIKey = async (client: OpenAI): Promise<boolean> => {
 // Initialize OpenAI client with validation (lazy initialization)
 let openaiClient: OpenAI | null = null
 
+// Force client recreation when API key changes
+let lastApiKey: string | null = null
+
 const getOpenAIClient = (): OpenAI => {
+  const currentApiKey = process.env.OPENAI_API_KEY
+  
+  // Recreate client if API key changed
+  if (openaiClient && lastApiKey !== currentApiKey) {
+    console.log('API key changed, recreating OpenAI client...')
+    openaiClient = null
+  }
+  
   if (!openaiClient) {
     try {
       console.log('Initializing OpenAI client...')
       const apiKey = validateOpenAIConfig()
+      console.log('API key length:', apiKey.length)
+      console.log('API key prefix:', apiKey.substring(0, 20) + '...')
+      
       openaiClient = new OpenAI({
         apiKey,
         organization: process.env.OPENAI_ORG_ID,
@@ -90,8 +104,19 @@ const getOpenAIClient = (): OpenAI => {
         maxRetries: 3, // Increased retry attempts
       })
       console.log('OpenAI client initialized successfully')
+      console.log('Organization ID:', process.env.OPENAI_ORG_ID || 'Not set')
+      
+      // Store the API key used
+      lastApiKey = apiKey
     } catch (error) {
       console.error('OpenAI initialization failed:', error)
+      if (error instanceof Error) {
+        console.error('Init error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack?.split('\n').slice(0, 3)
+        })
+      }
       throw error
     }
   }
@@ -146,6 +171,15 @@ const validateImageData = (imageBase64: string): void => {
 
   // Try to detect image format from base64 header (more lenient)
   try {
+    // First check the full buffer to validate size
+    const fullBuffer = Buffer.from(imageBase64, 'base64')
+    console.log('Full image buffer size:', fullBuffer.length, 'bytes')
+    
+    if (fullBuffer.length < 100) {
+      console.error('Image buffer too small:', fullBuffer.length, 'bytes')
+      throw new Error('画像データが小さすぎます。有効な画像ファイルを選択してください。')
+    }
+    
     const header = imageBase64.substring(0, 100) // Increased header size
     const buffer = Buffer.from(header, 'base64')
     const uint8Array = new Uint8Array(buffer)
@@ -157,6 +191,14 @@ const validateImageData = (imageBase64: string): void => {
     const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4E && uint8Array[3] === 0x47
     const isGIF = (uint8Array[0] === 0x47 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46)
     const isWebP = (uint8Array[8] === 0x57 && uint8Array[9] === 0x45 && uint8Array[10] === 0x42 && uint8Array[11] === 0x50)
+    
+    console.log('Image format detection:', {
+      isJPEG,
+      isPNG,
+      isGIF,
+      isWebP,
+      firstBytes: Array.from(uint8Array.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+    })
     
     if (isJPEG) console.log('Detected JPEG format')
     else if (isPNG) console.log('Detected PNG format')  
@@ -182,6 +224,7 @@ export async function analyzeImageForHazards(
   console.log('User detected hazards:', userDetectedHazards)
   console.log('API key available:', !!process.env.OPENAI_API_KEY)
   console.log('API key format check:', process.env.OPENAI_API_KEY?.substring(0, 20) + '...')
+  console.log('Current timestamp:', new Date().toISOString())
   
   // Check circuit breaker before making API call
   if (circuitBreaker.isOpen()) {
@@ -190,6 +233,7 @@ export async function analyzeImageForHazards(
   }
 
   try {
+    console.log('Starting try block...')
     console.log('Validating image data...')
     // Validate input data
     validateImageData(imageBase64)
@@ -217,8 +261,34 @@ JSON形式で回答してください。
 
     console.log('Calling OpenAI API...')
     
+    // First, do a simple health check
+    try {
+      console.log('Performing API health check...')
+      const healthCheck = await getOpenAIClient().chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: "test" }],
+        max_tokens: 5,
+      })
+      console.log('API health check passed')
+    } catch (healthError) {
+      console.error('API health check failed:', healthError)
+      if (healthError instanceof Error) {
+        console.error('Health check error details:', healthError.message)
+        
+        // Check for common authentication errors
+        if (healthError.message.includes('401') || healthError.message.includes('Incorrect API key')) {
+          throw new Error('APIキーが無効です。環境変数を確認してください。')
+        }
+        if (healthError.message.includes('429')) {
+          throw new Error('APIのレート制限に達しました。しばらく待ってから再試行してください。')
+        }
+      }
+      throw healthError
+    }
+    
     // Try different models with fallback
-    const models = ["gpt-4o", "gpt-4-vision-preview", "gpt-4-turbo"]
+    // Updated to current OpenAI vision models as of 2024/2025
+    const models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4-turbo-2024-04-09", "gpt-4-1106-vision-preview"]
     let response
     let lastError
     
@@ -234,7 +304,10 @@ JSON形式で回答してください。
                 { type: "text", text: prompt },
                 {
                   type: "image_url",
-                  image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+                  image_url: { 
+                    url: `data:image/jpeg;base64,${imageBase64}`,
+                    detail: "high" // Add detail parameter for better analysis
+                  },
                 },
               ],
             },
@@ -245,15 +318,59 @@ JSON形式で回答してください。
         console.log(`Successfully used model: ${model}`)
         break
       } catch (modelError) {
-        console.warn(`Model ${model} failed:`, modelError instanceof Error ? modelError.message : modelError)
+        console.error(`=== Model ${model} failed ===`)
+        console.error('Error details:', modelError)
+        if (modelError instanceof Error) {
+          console.error('Error message:', modelError.message)
+          console.error('Error name:', modelError.name)
+          const errorObj = modelError as any
+          if (errorObj.status) console.error('HTTP status:', errorObj.status)
+          if (errorObj.code) console.error('Error code:', errorObj.code)
+          if (errorObj.response?.data) console.error('Response data:', errorObj.response.data)
+          
+          // Check for specific OpenAI error types
+          if (modelError.message.includes('400')) {
+            console.error('Bad Request - possibly invalid image format or parameters')
+          }
+          if (modelError.message.includes('413')) {
+            console.error('Payload Too Large - image might be too big')
+          }
+          if (modelError.message.includes('415')) {
+            console.error('Unsupported Media Type - image format issue')
+          }
+        }
+        console.error(`=== End ${model} error ===`)
         lastError = modelError
         continue
       }
     }
     
     if (!response) {
-      console.error('All models failed')
-      throw lastError || new Error('すべてのモデルでエラーが発生しました')
+      console.error('All vision models failed')
+      
+      // Last resort: Try with base64 image description (non-vision fallback)
+      try {
+        console.log('Attempting non-vision fallback with gpt-3.5-turbo...')
+        response = await getOpenAIClient().chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are analyzing an image that has been provided. Since you cannot see the image directly, provide a generic safety analysis response."
+            },
+            {
+              role: "user",
+              content: prompt + "\n\n注意: 画像を直接分析できないため、一般的な安全性のアドバイスを提供してください。"
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.3,
+        })
+        console.log('Non-vision fallback successful')
+      } catch (fallbackError) {
+        console.error('Non-vision fallback also failed:', fallbackError)
+        throw lastError || new Error('すべてのモデルでエラーが発生しました')
+      }
     }
 
     console.log('OpenAI API call successful')
@@ -327,7 +444,21 @@ JSON形式で回答してください。
       score,
     }
   } catch (error) {
+    console.error("=== DETAILED ERROR IN analyzeImageForHazards ===")
     console.error("Error analyzing image:", error)
+    
+    if (error instanceof Error) {
+      console.error("Error name:", error.name)
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
+      
+      // Log any additional error properties
+      const errorObj = error as any
+      if (errorObj.status) console.error("Error status:", errorObj.status)
+      if (errorObj.code) console.error("Error code:", errorObj.code)
+      if (errorObj.response) console.error("Error response:", errorObj.response)
+    }
+    console.error("=== END DETAILED ERROR ===")
     
     // Record failure for circuit breaker (only for actual API failures, not validation errors)
     if (error instanceof Error) {
@@ -351,14 +482,23 @@ JSON形式で回答してください。
       if (error.message.includes('insufficient_quota') || error.message.includes('quota')) {
         throw new Error('一時的にサービスが利用できません。しばらく時間をおいてから再度お試しください。')
       }
-      if (error.message.includes('invalid_api_key')) {
+      if (error.message.includes('invalid_api_key') || error.message.includes('Incorrect API key')) {
         throw new Error('サービスの設定に問題があります。管理者にお問い合わせください。')
       }
-      if (error.message.includes('model_not_found') || error.message.includes('model')) {
+      if (error.message.includes('model_not_found') || error.message.includes('does not exist')) {
         throw new Error('画像分析機能が一時的に利用できません。しばらく時間をおいてから再度お試しください。')
       }
       if (error.message.includes('timeout')) {
         throw new Error('処理に時間がかかりすぎました。画像サイズを小さくするか、しばらく時間をおいてから再度お試しください。')
+      }
+      if (error.message.includes('400') || error.message.includes('Bad Request')) {
+        throw new Error('画像形式が正しくありません。JPEG、PNG、GIF、WebP形式の画像をお使いください。')
+      }
+      if (error.message.includes('413') || error.message.includes('too large')) {
+        throw new Error('画像ファイルが大きすぎます。20MB以下の画像をお使いください。')
+      }
+      if (error.message.includes('415')) {
+        throw new Error('サポートされていない画像形式です。JPEG、PNG、GIF、WebP形式の画像をお使いください。')
       }
       
       // Re-throw validation errors as-is (they're already user-friendly)
@@ -375,6 +515,18 @@ JSON形式で回答してください。
         throw error
       }
     }
+    
+    // Log the actual error before throwing generic message
+    console.error('=== UNHANDLED ERROR TYPE ===')
+    console.error('Full error object:', error)
+    console.error('Error type:', typeof error)
+    console.error('Error constructor:', error instanceof Error ? error.constructor.name : 'Not an Error instance')
+    if (error instanceof Error) {
+      console.error('Error toString():', error.toString())
+      console.error('All error properties:', Object.getOwnPropertyNames(error))
+      console.error('Error JSON:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+    }
+    console.error('=== END UNHANDLED ERROR ===')
     
     // Generic fallback error
     throw new Error("画像の分析に失敗しました。画像形式やサイズを確認の上、もう一度お試しください。")

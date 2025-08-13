@@ -92,6 +92,15 @@ export async function POST(request: NextRequest) {
         console.error('Error message:', analysisError.message)
         console.error('Error stack:', analysisError.stack)
         
+        // Log any additional error properties
+        const errorObj = analysisError as any
+        if (errorObj.status) console.error('HTTP status:', errorObj.status)
+        if (errorObj.code) console.error('Error code:', errorObj.code)
+        if (errorObj.response) {
+          console.error('Error response data:', JSON.stringify(errorObj.response?.data, null, 2))
+          console.error('Error response status:', errorObj.response?.status)
+        }
+        
         // Log specific error patterns for debugging
         if (analysisError.message.includes('rate limit')) {
           console.error('RATE LIMIT ERROR detected')
@@ -105,6 +114,9 @@ export async function POST(request: NextRequest) {
         if (analysisError.message.includes('model')) {
           console.error('MODEL ERROR detected')
         }
+        if (analysisError.message.includes('401')) {
+          console.error('AUTHENTICATION ERROR detected - check API key')
+        }
       }
       
       console.error("=== END ERROR DETAILS ===")
@@ -114,11 +126,18 @@ export async function POST(request: NextRequest) {
         ? analysisError.message 
         : "画像の分析中にエラーが発生しました"
       
+      // Always include detailed debug info for now to diagnose the issue
+      const debugInfo = {
+        errorName: analysisError instanceof Error ? analysisError.name : 'Unknown',
+        originalError: analysisError instanceof Error ? analysisError.message : 'Unknown',
+        errorStack: analysisError instanceof Error ? analysisError.stack?.split('\n').slice(0, 5) : undefined,
+        timestamp: new Date().toISOString()
+      }
+      
+      console.error('Returning error response:', { errorMessage, debugInfo })
+      
       return NextResponse.json(
-        { error: errorMessage, debugInfo: process.env.NODE_ENV === 'development' ? {
-          errorName: analysisError instanceof Error ? analysisError.name : 'Unknown',
-          originalError: analysisError instanceof Error ? analysisError.message : 'Unknown'
-        } : undefined },
+        { error: errorMessage, debugInfo },
         { status: 422 } // Unprocessable Entity for analysis failures
       )
     }

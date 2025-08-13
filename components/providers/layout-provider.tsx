@@ -8,15 +8,31 @@ interface LayoutProviderProps {
 }
 
 export async function LayoutProvider({ children }: LayoutProviderProps) {
-  const supabase = await createServerClient()
-  
-  // ユーザー情報を取得（エラーハンドリング付き）
   let user = null
+  
   try {
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-    user = currentUser
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn("Supabase環境変数が設定されていません")
+    } else {
+      const supabase = await createServerClient()
+      const { data: { user: currentUser }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        if (error.message?.includes('fetch failed')) {
+          console.warn("Supabaseサーバーに接続できません。オフラインモードで実行中です。")
+        } else {
+          console.error("ユーザー情報の取得エラー:", error.message)
+        }
+      } else {
+        user = currentUser
+      }
+    }
   } catch (error) {
-    console.error("ユーザー情報の取得に失敗しました:", error)
+    if ((error as Error).message?.includes('fetch failed')) {
+      console.warn("Supabaseサーバーに接続できません。オフラインモードで実行中です。")
+    } else {
+      console.error("Supabase接続エラー:", (error as Error).message || error)
+    }
   }
 
   const handleLogout = async () => {

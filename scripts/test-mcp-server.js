@@ -18,9 +18,9 @@ function loadEnvFile(envPath) {
       const trimmed = line.trim()
       if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
         const [key, ...valueParts] = trimmed.split('=')
-        const value = valueParts.join('=')
-        if (key && value && !process.env[key]) {
-          process.env[key] = value
+        const value = valueParts.join('=').trim()
+        if (key && value) {
+          process.env[key.trim()] = value
         }
       }
     })
@@ -28,6 +28,7 @@ function loadEnvFile(envPath) {
 }
 
 loadEnvFile(path.join(process.cwd(), '.env.local'))
+loadEnvFile(path.join(process.cwd(), '.env'))
 
 async function testMCPServer() {
   console.log('🧪 Testing MCP Server Configuration...\n')
@@ -50,10 +51,11 @@ async function testMCPServer() {
       // Validate configuration structure
       try {
         const config = JSON.parse(fs.readFileSync(filePath, 'utf8'))
-        if (config.mcpServers && config.mcpServers.MapboxServer) {
+        if (config.mcpServers && (config.mcpServers.MapboxServer || config.mcpServers.mapbox)) {
+          const serverConfig = config.mcpServers.MapboxServer || config.mcpServers.mapbox
           console.log('✅ Valid MCP configuration structure')
-          console.log(`   Command: ${config.mcpServers.MapboxServer.command}`)
-          console.log(`   Package: ${config.mcpServers.MapboxServer.args.join(' ')}`)
+          console.log(`   Command: ${serverConfig.command}`)
+          console.log(`   Package: ${serverConfig.args.join(' ')}`)
         } else {
           console.log('❌ Invalid MCP configuration structure')
         }
@@ -97,7 +99,12 @@ async function testMCPServer() {
   
   try {
     const result = await new Promise((resolve, reject) => {
-      const child = spawn('npx', ['-y', '@mapbox/mcp-server', '--help'], {
+      // Use 'cmd' on Windows to properly execute npx
+      const isWindows = process.platform === 'win32'
+      const command = isWindows ? 'cmd' : 'npx'
+      const args = isWindows ? ['/c', 'npx', '-y', '@mapbox/mcp-server', '--help'] : ['-y', '@mapbox/mcp-server', '--help']
+      
+      const child = spawn(command, args, {
         stdio: 'pipe',
         env: { ...process.env, MAPBOX_ACCESS_TOKEN: process.env.MAPBOX_ACCESS_TOKEN }
       })
