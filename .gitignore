@@ -46,3 +46,5 @@ node_modules_old/    # 破損したnode_modulesのバックアップを除外
 schoolsafetymap/     # リポジトリに含めないコピーを除外
 
 .vercel
+
+.vercel
