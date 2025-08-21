@@ -35,12 +35,13 @@ const requiredEnvVars = [
   'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'OPENAI_API_KEY',
 ]
 
 const optionalEnvVars = [
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
+  // OpenAI is optional at build time. Related features will be disabled if absent.
+  'OPENAI_API_KEY',
 ]
 
 function validateEnvironmentVariables() {
@@ -71,11 +72,7 @@ function validateEnvironmentVariables() {
       }
     }
     
-    if (envVar === 'OPENAI_API_KEY') {
-      if (!value.startsWith('sk-')) {
-        invalid.push(`${envVar} must start with 'sk-'`)
-      }
-    }
+    // (OPENAI_API_KEY is optional and validated below only if present)
   }
   
   // Report results
@@ -103,6 +100,12 @@ function validateEnvironmentVariables() {
       missingOptional.forEach(envVar => {
         console.log(`   - ${envVar}`)
       })
+    }
+
+    // Validate optional OpenAI key format if provided
+    const maybeOpenAIKey = process.env.OPENAI_API_KEY
+    if (maybeOpenAIKey && !maybeOpenAIKey.startsWith('sk-')) {
+      console.warn("⚠️  OPENAI_API_KEY is set but doesn't start with 'sk-'. OpenAI features may fail.")
     }
     
     return true
