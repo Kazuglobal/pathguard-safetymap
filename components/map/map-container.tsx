@@ -511,73 +511,73 @@ export default function MapContainer() {
     return `danger-marker-${dangerType}` || 'danger-marker-other'; // Simplified
   };
 
-  useEffect(() => {
-    if (!map.current || !mapInitialized.current) return;
+    useEffect(() => {
+      if (!map.current || !mapInitialized.current) return;
 
-    // Remove existing markers before adding new ones
-    document.querySelectorAll('.danger-marker, .pending-marker').forEach(marker => marker.remove());
+      // Remove existing markers before adding new ones
+      document.querySelectorAll('.danger-marker, .pending-marker').forEach(marker => marker.remove());
 
-    const addMarker = (report: DangerReport, isPending: boolean) => {
-      const markerElement = document.createElement("div");
-      const typeClass = getDangerTypeMarkerClass(report.danger_type);
-      markerElement.className = `${isPending ? 'pending-marker' : 'danger-marker'} danger-level-${report.danger_level} ${typeClass}`; // クラス名は残す
-      markerElement.style.cursor = 'pointer';
+      const addMarker = (report: DangerReport, isPending: boolean) => {
+        const markerElement = document.createElement("div");
+        const typeClass = getDangerTypeMarkerClass(report.danger_type);
+        markerElement.className = `${isPending ? 'pending-marker' : 'danger-marker'} danger-level-${report.danger_level} ${typeClass}`; // クラス名は残す
+        markerElement.style.cursor = 'pointer';
 
-      // --- ▼▼▼ 背景色を直接設定 ▼▼▼ ---
-      let backgroundColor = '#6b7280'; // Default: gray-500 (other)
-      switch (report.danger_type) {
-        case "traffic":
-          backgroundColor = '#3b82f6'; // blue-500
-          break;
-        case "crime":
-          backgroundColor = '#ef4444'; // red-500
-          break;
-        case "disaster":
-          backgroundColor = '#facc15'; // yellow-400
-          break;
-      }
-      markerElement.style.backgroundColor = backgroundColor;
-      // --- ▲▲▲ 背景色を直接設定 ▲▲▲ ---
-
-      // Render icon inside marker
-      const root = createRoot(markerElement);
-      let IconComponent: React.ElementType = HelpCircle; // Default icon
-      if (report.danger_type === "traffic") IconComponent = Car;
-      else if (report.danger_type === "crime") IconComponent = Shield;
-      else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
-      root.render(<IconComponent className="h-5 w-5 text-white" />); // Adjusted size
-
-      new mapboxgl.Marker(markerElement)
-        .setLngLat([report.longitude, report.latitude])
-        .addTo(map.current!); // Add to map
-
-      markerElement.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        setSelectedReport(report); // Set selected report for modal
-        setIsDetailModalOpen(true);
-
-        // Add gamification points (consider moving this logic)
-        if (supabase && report.user_id) { // Check if supabase and user_id exist
-          try { await addPoints(supabase, report.user_id, 5); }
-          catch (err) { console.error("Error adding points on marker click:", err); }
+        // --- ▼▼▼ 背景色を直接設定 ▼▼▼ ---
+        let backgroundColor = '#6b7280'; // Default: gray-500 (other)
+        switch (report.danger_type) {
+          case "traffic":
+            backgroundColor = '#3b82f6'; // blue-500
+            break;
+          case "crime":
+            backgroundColor = '#ef4444'; // red-500
+            break;
+          case "disaster":
+            backgroundColor = '#facc15'; // yellow-400
+            break;
         }
-      });
-    };
+        markerElement.style.backgroundColor = backgroundColor;
+        // --- ▲▲▲ 背景色を直接設定 ▲▲▲ ---
 
-    try {
-      // Add markers for approved reports
-      dangerReports.forEach(report => addMarker(report, false));
+        // Render icon inside marker
+        const root = createRoot(markerElement);
+        let IconComponent: React.ElementType = HelpCircle; // Default icon
+        if (report.danger_type === "traffic") IconComponent = Car;
+        else if (report.danger_type === "crime") IconComponent = Shield;
+        else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
+        root.render(<IconComponent className="h-5 w-5 text-white" />); // Adjusted size
 
-      // Add markers for pending reports if filter is enabled
-      if (filterOptions.showPending) {
-        pendingReports.forEach(report => addMarker(report, true));
+        new mapboxgl.Marker(markerElement)
+          .setLngLat([report.longitude, report.latitude])
+          .addTo(map.current!); // Add to map
+
+        markerElement.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          setSelectedReport(report); // Set selected report for modal
+          setIsDetailModalOpen(true);
+
+          // Add gamification points (consider moving this logic)
+          if (supabase && report.user_id) { // Check if supabase and user_id exist
+            try { await addPoints(supabase, report.user_id, 5); }
+            catch (err) { console.error("Error adding points on marker click:", err); }
+          }
+        });
+      };
+
+      try {
+        // Add markers for approved reports
+        dangerReports.forEach(report => addMarker(report, false));
+
+        // Add markers for pending reports if filter is enabled
+        if (filterOptions.showPending) {
+          pendingReports.forEach(report => addMarker(report, true));
+        }
+      } catch (error) {
+        console.error("Error adding markers:", error);
       }
-    } catch (error) {
-      console.error("Error adding markers:", error);
-    }
-  // Re-evaluate dependencies: mapStyle might not be needed if markers don't change with style
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dangerReports, pendingReports, filterOptions.showPending, mapInitialized.current]); // Removed mapStyle, is3DEnabled, selectedLocation
+    // Re-evaluate dependencies: mapStyle might not be needed if markers don't change with style
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dangerReports, pendingReports, filterOptions.showPending, mapInitialized.current]); // Removed mapStyle, is3DEnabled, selectedLocation
 
   // --- Helper Labels/Colors (Consider moving to utils) ---
   const getDangerTypeLabel = (type: string) => {
