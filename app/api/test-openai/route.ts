@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     console.log('API test response:', content)
     
     // Test vision models - updated to current models
-    const visionModels = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4-turbo-2024-04-09", "gpt-4-1106-vision-preview"]
+    const visionModels = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
     const modelAvailability: Record<string, boolean> = {}
     
     for (const model of visionModels) {
