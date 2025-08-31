@@ -168,11 +168,19 @@ const validateImageData = (imageBase64: string): void => {
     throw new Error('画像データが提供されていません')
   }
 
-  // Check if it's valid base64 (more lenient check)
-  const base64Regex = /^[A-Za-z0-9+/=]+$/
-  if (!base64Regex.test(imageBase64)) {
-    console.warn('Base64 validation failed, but continuing...')
-    // Continue instead of throwing error - some valid base64 might not pass strict regex
+  // Check if it's valid base64 (lenient). Avoid catastrophic regex on huge strings.
+  try {
+    if (imageBase64.length < 200000) { // ~200 KB base64 string length threshold
+      const base64Regex = /^[A-Za-z0-9+/=]+$/
+      if (!base64Regex.test(imageBase64)) {
+        console.warn('Base64 validation failed, but continuing...')
+      }
+    } else {
+      // For very large inputs, skip regex and rely on Buffer decoding below
+      console.log('Skipping regex base64 validation for large input')
+    }
+  } catch (e) {
+    console.warn('Base64 validation check skipped due to error:', e)
   }
 
   // Check image size
