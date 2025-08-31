@@ -185,6 +185,7 @@ export default function HazardGamePage() {
         <AnalysisResults
           result={analysisResult}
           onPlayAgain={handlePlayAgain}
+          sourceImageFile={selectedFile || undefined}
         />
       )}
     </div>
