@@ -4,6 +4,7 @@ type Hazard = {
   severity: number
   location: string
   confidence: number
+  bbox?: { x: number; y: number; width: number; height: number }
 }
 
 export type HazardAnalysisResult = {
@@ -59,7 +60,7 @@ export async function analyzeImageForHazardsGemini(
   const prompt = `以下の日本の街路・歩道の写真を分析し、JSONだけを出力してください。説明文や前置きは不要。フィールドは厳密に一致させてください。
 {
   "hazards": [
-    { "type": "string", "description": "string", "severity": 1, "location": "string", "confidence": 0.0 }
+    { "type": "string", "description": "string", "severity": 1, "location": "string", "confidence": 0.0, "bbox": { "x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0 } }
   ],
   "overallSafety": 1,
   "educationalTips": ["string"],
@@ -73,6 +74,7 @@ export async function analyzeImageForHazardsGemini(
 - overallSafety: 1(非常に危険)〜5(非常に安全)。
 - educationalTips: 現場で実行可能な具体的対策を日本語で簡潔に。
 - score: 0〜100。
+- 可能であれば各hazardに bbox を付与: 画像左上を(0,0)、右下を(1,1)とした正規化座標で、{x,y,width,height}。不明なら省略可。
 ${userDetectedHazards?.length ? `ユーザー指摘: ${userDetectedHazards.join(', ')}` : ''}
 必ずJSONのみを出力。`;
 
@@ -110,6 +112,14 @@ ${userDetectedHazards?.length ? `ユーザー指摘: ${userDetectedHazards.join(
     severity: Math.max(1, Math.min(5, Number(h?.severity ?? 3))),
     location: String(h?.location ?? ""),
     confidence: Math.max(0, Math.min(1, Number(h?.confidence ?? 0.5))),
+    bbox: h?.bbox && typeof h.bbox === 'object'
+      ? {
+          x: Math.max(0, Math.min(1, Number(h.bbox.x ?? 0))),
+          y: Math.max(0, Math.min(1, Number(h.bbox.y ?? 0))),
+          width: Math.max(0, Math.min(1, Number(h.bbox.width ?? 0))),
+          height: Math.max(0, Math.min(1, Number(h.bbox.height ?? 0))),
+        }
+      : undefined,
   })) : []
 
   const overallSafety = Math.max(1, Math.min(5, Number(parsed?.overallSafety ?? 3)))
