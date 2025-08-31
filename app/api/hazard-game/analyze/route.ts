@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+
+export const runtime = "nodejs"
 import { createServerClient } from "@/lib/supabase-server"
-import { analyzeImageForHazards } from "@/lib/openai"
+import { analyzeImageForHazardsGemini } from "@/lib/gemini-hazard"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
@@ -67,15 +69,15 @@ export async function POST(request: NextRequest) {
     let sessionId = null
 
     try {
-      console.log('Starting OpenAI analysis...')
+      console.log('Starting Gemini analysis...')
       console.log('User ID:', user.id)
       console.log('Image base64 length:', imageBase64.length)
       console.log('User detected hazards:', userDetectedHazards)
-      console.log('Environment check - OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY)
-      console.log('Environment check - OPENAI_API_KEY starts with sk-:', process.env.OPENAI_API_KEY?.startsWith('sk-'))
-      
-      // Analyze image with OpenAI
-      analysisResult = await analyzeImageForHazards(
+      console.log('Env - GOOGLE_API_KEY present:', !!process.env.GOOGLE_API_KEY)
+      console.log('Env - GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY)
+
+      // Always use Gemini for hazard analysis
+      analysisResult = await analyzeImageForHazardsGemini(
         imageBase64,
         userDetectedHazards
       )
@@ -92,15 +94,35 @@ export async function POST(request: NextRequest) {
         console.error('Error message:', analysisError.message)
         console.error('Error stack:', analysisError.stack)
         
+        // Prefer Gemini-specific auth errors if Gemini is configured
+        {
+          // Treat only 401/403/unauthorized as auth issues; avoid mislabeling 404 as auth
+          const msg = analysisError.message || ''
+          if (/\b401\b|\b403\b/i.test(msg) || /unauthorized|forbidden|api\s*key/i.test(msg)) {
+            return NextResponse.json(
+              {
+                error: 'Gemini APIキーが無効または権限不足です。.env.localのGOOGLE_API_KEYまたはGEMINI_API_KEYを確認してください。',
+                debugInfo: {
+                  errorName: analysisError.name,
+                  originalError: analysisError.message,
+                  helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
+                  timestamp: new Date().toISOString()
+                }
+              },
+              { status: 401 }
+            )
+          }
+        }
+        
         // Check for API key errors
         if (analysisError.message.includes('APIキー') || analysisError.message.includes('API key')) {
           return NextResponse.json(
             {
-              error: 'OpenAI APIキーが無効です。管理者に連絡して、.env.localファイルのOPENAI_API_KEYを更新してもらってください。',
+              error: 'Gemini APIキーが無効です。管理者に連絡して、.env.localのGOOGLE_API_KEYまたはGEMINI_API_KEYを更新してください。',
               debugInfo: {
                 errorName: analysisError.name,
                 originalError: analysisError.message,
-                helpUrl: 'https://platform.openai.com/api-keys',
+                helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
                 timestamp: new Date().toISOString()
               }
             },
@@ -112,11 +134,11 @@ export async function POST(request: NextRequest) {
         if (analysisError.message.includes('利用枠') || analysisError.message.includes('quota') || analysisError.message.includes('クレジット')) {
           return NextResponse.json(
             {
-              error: 'OpenAI APIの利用枠を超過しています。管理者に連絡して、クレジットの追加またはプランのアップグレードを依頼してください。',
+              error: 'Gemini APIの利用枠を超過しています。Google Cloud Console でクォータ/請求設定をご確認ください。',
               debugInfo: {
                 errorName: 'QuotaExceeded',
                 originalError: analysisError.message,
-                helpUrl: 'https://platform.openai.com/account/billing',
+                helpUrl: 'https://ai.google.dev/pricing',
                 timestamp: new Date().toISOString()
               }
             },
@@ -153,7 +175,7 @@ export async function POST(request: NextRequest) {
       
       console.error("=== END ERROR DETAILS ===")
       
-      // Return specific error message from OpenAI analysis
+      // Return specific error message from analysis
       const errorMessage = analysisError instanceof Error 
         ? analysisError.message 
         : "画像の分析中にエラーが発生しました"
