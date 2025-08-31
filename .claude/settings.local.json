@@ -45,7 +45,8 @@
       "WebFetch(domain:platform.openai.com)",
       "Bash(del test-openai.js)",
       "Bash(ls:*)",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "Bash(del /f /s /q .next*)"
     ],
     "deny": []
   }

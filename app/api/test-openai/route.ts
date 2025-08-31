@@ -3,6 +3,16 @@ import { openai } from "@/lib/openai"
 
 export async function GET(request: NextRequest) {
   try {
+    // If OpenAI is not configured, gracefully return a 200 response
+    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      return NextResponse.json({
+        success: false,
+        message: 'OpenAI is not configured. Using Gemini instead for image tasks.',
+        provider: 'gemini',
+        timestamp: new Date().toISOString(),
+      })
+    }
+
     console.log('Testing OpenAI API key...')
     console.log('API key exists:', !!process.env.OPENAI_API_KEY)
     console.log('API key format:', process.env.OPENAI_API_KEY?.startsWith('sk-') ? 'Valid (sk-)' : 'Invalid format')
