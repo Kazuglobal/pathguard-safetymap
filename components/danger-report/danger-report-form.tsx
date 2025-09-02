@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import Image from "next/image"
+import NextImage from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,6 +49,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const [cameraError, setCameraError] = useState<string | null>(null)
 
   const [riskAnalysis, setRiskAnalysis] = useState<any[] | null>(null)
+  const [autoGenLoading, setAutoGenLoading] = useState(false)
+  const [autoGenError, setAutoGenError] = useState<string | null>(null)
+  const lastAutoGenKey = useRef<string | null>(null)
 
   // 元画像が選択されたら自動で処理 API を呼び出す -> ★★★ 削除またはコメントアウト ★★★
   /*
@@ -161,6 +164,252 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     }
     reader.readAsDataURL(file)
   }
+
+  // Utilities for auto-generation
+  const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
+    return new File([blob], filename, { type: blob.type || 'image/png' })
+  }
+
+  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => {
+      const result = String(fr.result || '')
+      const base64 = result.startsWith('data:') ? result.split(',')[1] : result
+      resolve(base64)
+    }
+    fr.onerror = reject
+    fr.readAsDataURL(file)
+  })
+
+  const drawOverlayFromHazards = async (imageFile: File, hazards: any[]): Promise<string> => {
+    const imgUrl = URL.createObjectURL(imageFile)
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image()
+        i.onload = () => resolve(i)
+        i.onerror = reject
+        i.src = imgUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+
+      const colorFor = (t: string) => {
+        const s = (t || '').toLowerCase()
+        if (s.includes('冠水') || s.includes('flood')) return 'rgba(37, 99, 235, 0.28)'
+        if (s.includes('延焼') || s.includes('fire') || s.includes('炎')) return 'rgba(234, 88, 12, 0.28)'
+        if (s.includes('電柱') || s.includes('pole') || s.includes('倒壊') || s.includes('fence')) return 'rgba(220, 38, 38, 0.28)'
+        return 'rgba(234, 179, 8, 0.25)'
+      }
+      const pad = Math.max(8, Math.round(Math.min(canvas.width, canvas.height) * 0.01))
+      const fontSize = Math.max(14, Math.round(Math.min(canvas.width, canvas.height) * 0.022))
+      ctx.font = `${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI`
+      ctx.textBaseline = 'top'
+      let idx = 0
+      const rows = Math.max(1, Math.ceil(hazards.length / 2))
+      for (const h of hazards) {
+        const anyH: any = h
+        let x = 0.05, y = 0.05, w = 0.4, hh = 0.25
+        if (anyH?.bbox && typeof anyH.bbox === 'object') {
+          x = Math.max(0, Math.min(1, Number(anyH.bbox.x ?? 0)))
+          y = Math.max(0, Math.min(1, Number(anyH.bbox.y ?? 0)))
+          w = Math.max(0.05, Math.min(1, Number(anyH.bbox.width ?? 0.3)))
+          hh = Math.max(0.05, Math.min(1, Number(anyH.bbox.height ?? 0.2)))
+        } else {
+          const col = idx % 2
+          const row = Math.floor(idx / 2)
+          const cellW = 0.45
+          const cellH = 1 / (rows + 1)
+          x = 0.05 + col * (cellW + 0.05)
+          y = 0.05 + row * (cellH)
+          w = cellW
+          hh = cellH * 0.8
+        }
+        idx++
+        const rx = Math.round(x * canvas.width)
+        const ry = Math.round(y * canvas.height)
+        const rw = Math.round(w * canvas.width)
+        const rh = Math.round(hh * canvas.height)
+        ctx.fillStyle = colorFor(anyH.type)
+        ctx.fillRect(rx, ry, rw, rh)
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'
+        ctx.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.004))
+        ctx.strokeRect(rx, ry, rw, rh)
+        const label = `${anyH.type || '危険'} / ${Math.round((anyH.confidence ?? 0.5) * 100)}%`
+        const textW = ctx.measureText(label).width
+        const lbPadX = Math.round(fontSize * 0.5)
+        const lbPadY = Math.round(fontSize * 0.35)
+        const lbW = Math.round(textW + lbPadX * 2)
+        const lbH = Math.round(fontSize + lbPadY * 2)
+        const lbX = rx + pad
+        const lbY = Math.max(pad, ry + pad)
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'
+        ctx.fillRect(lbX, lbY, lbW, lbH)
+        ctx.fillStyle = 'white'
+        ctx.fillText(label, lbX + lbPadX, lbY + lbPadY)
+      }
+      return canvas.toDataURL('image/png')
+    } finally {
+      URL.revokeObjectURL(imgUrl)
+    }
+  }
+
+  const simulateVariant = async (imageFile: File, kind: 'flood' | 'fire' | 'typhoon' | 'earthquake'): Promise<string> => {
+    const imgUrl = URL.createObjectURL(imageFile)
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image()
+        i.onload = () => resolve(i)
+        i.onerror = reject
+        i.src = imgUrl
+      })
+      const c = document.createElement('canvas')
+      c.width = img.width
+      c.height = img.height
+      const ctx = c.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+
+      if (kind === 'flood') {
+        const waterH = Math.round(c.height * 0.2)
+        const y = c.height - waterH
+        const grad = ctx.createLinearGradient(0, y, 0, c.height)
+        grad.addColorStop(0, 'rgba(59,130,246,0.25)')
+        grad.addColorStop(1, 'rgba(37,99,235,0.45)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, y, c.width, waterH)
+      } else if (kind === 'fire') {
+        const grad = ctx.createRadialGradient(c.width*0.7, c.height*0.7, 10, c.width*0.7, c.height*0.7, c.height*0.7)
+        grad.addColorStop(0, 'rgba(234,88,12,0.45)')
+        grad.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0,0,c.width,c.height)
+        // light smoke
+        ctx.fillStyle = 'rgba(55,65,81,0.18)'
+        for(let i=0;i<6;i++){
+          const rx=Math.random()*c.width, ry=Math.random()*c.height
+          const rw=80+Math.random()*200, rh=40+Math.random()*120
+          ctx.beginPath(); ctx.ellipse(rx,ry,rw,rh,0,0,Math.PI*2); ctx.fill()
+        }
+      } else if (kind === 'typhoon') {
+        // wind streaks
+        ctx.strokeStyle='rgba(99,102,241,0.35)'
+        ctx.lineWidth = Math.max(2, Math.round(Math.min(c.width,c.height)*0.004))
+        for(let y=20;y<c.height;y+=Math.round(c.height/12)){
+          ctx.beginPath(); ctx.moveTo(10,y); ctx.quadraticCurveTo(c.width*0.4,y-10,c.width-10,y+5); ctx.stroke()
+        }
+      } else if (kind === 'earthquake') {
+        // cracks
+        ctx.strokeStyle='rgba(0,0,0,0.5)'
+        ctx.lineWidth = Math.max(2, Math.round(Math.min(c.width,c.height)*0.005))
+        const cx=c.width*0.5, cy=c.height*0.7
+        for(let i=0;i<6;i++){
+          const angle = (Math.PI*2*i)/6
+          const len = Math.min(c.width,c.height)*0.35
+          ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(angle)*len, cy+Math.sin(angle)*len); ctx.stroke()
+        }
+      }
+      return c.toDataURL('image/png')
+    } finally {
+      URL.revokeObjectURL(imgUrl)
+    }
+  }
+
+  // Auto-generate processed images when original image selected
+  useEffect(() => {
+    const run = async () => {
+      if (!originalImageFile) return
+      const key = `${originalImageFile.name}:${originalImageFile.size}:${originalImageFile.lastModified}`
+      if (lastAutoGenKey.current === key) return
+      lastAutoGenKey.current = key
+      setAutoGenError(null)
+      setAutoGenLoading(true)
+      try {
+        // 1) analyze via API (Gemini) to get hazards (and optional bbox)
+        const base64 = await fileToBase64(originalImageFile)
+        const res = await fetch('/api/hazard-game/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 })
+        })
+        let hazards: any[] = []
+        if (res.ok) {
+          const data = await res.json()
+          hazards = Array.isArray(data.hazards) ? data.hazards : []
+        } else {
+          console.warn('hazard analysis failed, proceeding with heuristics')
+        }
+
+        // 2) visualization overlay
+        const overlayUrl = await drawOverlayFromHazards(originalImageFile, hazards)
+        const overlayFile = await dataUrlToFile(overlayUrl, 'overlay.png')
+        setProcessedImageFiles(prev => [...prev, overlayFile])
+        setProcessedImagePreviews(prev => [...prev, overlayUrl])
+
+        // 3) simple local simulations (flood/fire/typhoon/earthquake)
+        const [floodUrl, fireUrl, typhoonUrl, quakeUrl] = await Promise.all([
+          simulateVariant(originalImageFile, 'flood'),
+          simulateVariant(originalImageFile, 'fire'),
+          simulateVariant(originalImageFile, 'typhoon'),
+          simulateVariant(originalImageFile, 'earthquake'),
+        ])
+        const toFiles = await Promise.all([
+          dataUrlToFile(floodUrl, 'flood.png'),
+          dataUrlToFile(fireUrl, 'fire.png'),
+          dataUrlToFile(typhoonUrl, 'typhoon.png'),
+          dataUrlToFile(quakeUrl, 'earthquake.png'),
+        ])
+        setProcessedImageFiles(prev => [...prev, ...toFiles])
+        setProcessedImagePreviews(prev => [...prev, floodUrl, fireUrl, typhoonUrl, quakeUrl])
+
+        // 4) NanoBanana (Gemini 2.5 Flash) image-to-image generation as additional candidates
+        try {
+          const fd = new FormData()
+          fd.append('image', originalImageFile)
+          const englishPrompt = [
+            'Generate a single photorealistic 2K infographic based on the uploaded street photo.',
+            'Maintain the exact viewpoint and daylight. Overlay semi-transparent hazard markings and Japanese labels.',
+            "Collapsed fence: red translucent shading with exclamation icons, label 'フェンス倒壊'.",
+            "Fallen utility pole: red circle + arrow, label '電柱倒壊'.",
+            "Flooding: blue translucent shading with droplet icon, label '冠水'.",
+            "Fire spread: orange flame icon, label '延焼'.",
+            'No people, no watermarks, do not mention model names. Japanese suburban street aesthetics.',
+          ].join(' ')
+          fd.append('prompt', englishPrompt)
+          const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+          if (genRes.ok) {
+            const gen = await genRes.json()
+            const imgs = Array.isArray(gen.images) ? gen.images : []
+            if (imgs.length > 0) {
+              const files = await Promise.all(
+                imgs.slice(0, 2).map(async (im: any, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`))
+              )
+              setProcessedImageFiles(prev => [...prev, ...files])
+              setProcessedImagePreviews(prev => [...prev, ...imgs.slice(0, 2).map((im: any) => im.dataUrl)])
+            }
+          } else {
+            const t = await genRes.text()
+            console.warn('gemini generate-image failed', genRes.status, t)
+          }
+        } catch (e) {
+          console.warn('nanobanana generation skipped due to error', e)
+        }
+
+        // Switch to processed tab for user to pick
+        setActiveImageTab('processed')
+      } catch (e) {
+        console.error('auto-generation failed', e)
+        setAutoGenError(e instanceof Error ? e.message : '不明なエラー')
+      } finally {
+        setAutoGenLoading(false)
+      }
+    }
+    run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originalImageFile])
 
   // 画像選択ハンドラー（加工画像）
   const handleProcessedImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -470,7 +719,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                 {originalImagePreview ? (
                   <div className="relative mt-2 border rounded-md overflow-hidden">
                     <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(originalImagePreview)}>
-                      <Image
+                      <NextImage
                         src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
                         alt="選択された元画像"
                         fill
@@ -546,12 +795,24 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                   </div>
                 )}
 
+                {autoGenLoading && (
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+                    解析と可視化候補を生成中...
+                  </div>
+                )}
+
+                {autoGenError && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                    自動生成エラー: {autoGenError}
+                  </div>
+                )}
+
                 {processedImagePreviews.length > 0 ? (
                   <div className="flex gap-2 overflow-x-auto mt-2">
                     {processedImagePreviews.map((preview, idx) => (
                       <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px]">
                         <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(preview)}>
-                          <Image
+                          <NextImage
                             src={preview}
                             alt={`加工画像 ${idx + 1}`}
                             fill
@@ -631,3 +892,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     </div>
   )
 }
+
+
+
+
+
+

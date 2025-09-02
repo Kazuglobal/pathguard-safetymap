@@ -33,18 +33,17 @@ export async function generateImageWithGemini({
   }
   parts.push({ text: prompt || "Create an image using the provided reference." })
 
-  const body = {
+  const body: any = {
     contents: [
       {
         role: "user",
         parts,
       },
     ],
-    tools: [
-      {
-        image_generation: {},
-      },
-    ],
+    // Ask model to return an image directly in inline_data
+    generationConfig: {
+      response_mime_type: "image/png",
+    },
   }
 
   const res = await fetch(
