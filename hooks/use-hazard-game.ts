@@ -38,7 +38,7 @@ export function useHazardGame() {
   const { data: gameHistory, error: historyError, mutate } = useSWR<GameHistoryResponse>(
     "hazard-game-history",
     async () => {
-      const response = await fetch("/api/hazard-game/analyze")
+      const response = await fetch("/api/hazard-game/analyze", { headers: { Accept: 'application/json' } })
       if (!response.ok) {
         throw new Error("Failed to fetch game history")
       }
@@ -48,6 +48,51 @@ export function useHazardGame() {
       refreshInterval: 30000, // Refresh every 30 seconds
     }
   )
+
+  // Compress large images on the client to avoid 413 from Vercel
+  const compressImage = async (
+    file: File,
+    maxDimension: number = 1600,
+    quality: number = 0.8,
+  ): Promise<File> => {
+    try {
+      const objectUrl = URL.createObjectURL(file)
+      const img: HTMLImageElement = await new Promise((resolve, reject) => {
+        const i = new Image()
+        i.onload = () => resolve(i)
+        i.onerror = reject
+        i.src = objectUrl
+      })
+      URL.revokeObjectURL(objectUrl)
+
+      const { width, height } = img
+      const scale = Math.min(1, maxDimension / Math.max(width, height))
+      const targetW = Math.max(1, Math.round(width * scale))
+      const targetH = Math.max(1, Math.round(height * scale))
+
+      if (scale === 1 && file.size <= 1.5 * 1024 * 1024) {
+        return file
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = targetW
+      canvas.height = targetH
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, targetW, targetH)
+
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          b => (b ? resolve(b) : reject(new Error('Failed to create blob from canvas'))),
+          'image/jpeg',
+          quality,
+        )
+      })
+
+      return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}-compressed.jpg`, { type: 'image/jpeg', lastModified: Date.now() })
+    } catch {
+      return file
+    }
+  }
 
   // Convert image file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -71,20 +116,54 @@ export function useHazardGame() {
     setAnalysisResult(null)
 
     try {
-      // Convert image to base64
-      const imageBase64 = await fileToBase64(imageFile)
+      // Compress large images, then convert to base64
+      const compressed = await compressImage(imageFile)
+      const imageBase64 = await fileToBase64(compressed)
 
       // Call API
       const response = await fetch("/api/hazard-game/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify({
           imageBase64,
           userDetectedHazards,
         }),
       })
+
+      // Robust error handling that doesn’t assume JSON error bodies
+      if (!response.ok) {
+        const ct = response.headers.get('content-type') || ''
+        let friendlyMessage = `画像の解析に失敗しました (Status: ${response.status})`
+        let errorData: any = {}
+
+        if (ct.includes('application/json')) {
+          try {
+            errorData = await response.json()
+            friendlyMessage = errorData.error || errorData.message || friendlyMessage
+          } catch (e) {
+            console.error('Failed to parse error response:', e)
+          }
+        } else {
+          const text = await response.text()
+          if (response.status === 413 || /Too Large|FUNCTION_PAYLOAD_TOO_LARGE/i.test(text)) {
+            friendlyMessage = '画像が大きすぎます。5MB超の場合は縮小してから再試行してください。'
+          } else if (response.status === 406) {
+            friendlyMessage = '要求の形式が受け入れられません (406)。Accept や Content-Type をご確認ください。'
+          }
+          console.error('Non-JSON error body:', text)
+        }
+
+        console.error('Response status:', response.status)
+        console.error('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2))
+        if (process.env.NODE_ENV === 'development' && (errorData as any).debugInfo) {
+          console.error('Debug info:', JSON.stringify((errorData as any).debugInfo, null, 2))
+        }
+
+        throw new Error(friendlyMessage)
+      }
 
       if (!response.ok) {
         let errorData: any = {}
@@ -171,5 +250,6 @@ export function useHazardGame() {
     getUserRank,
     getAchievementLevel,
     fileToBase64,
+    compressImage,
   }
 }
