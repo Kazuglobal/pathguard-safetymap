@@ -52,6 +52,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const [autoGenLoading, setAutoGenLoading] = useState(false)
   const [autoGenError, setAutoGenError] = useState<string | null>(null)
   const lastAutoGenKey = useRef<string | null>(null)
+  const [generatedPrompts, setGeneratedPrompts] = useState<{
+    vizPrompt?: string
+    simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+    riskObservationTable?: string
+  } | null>(null)
+  const [lastHazards, setLastHazards] = useState<any[]>([])
+  type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
+  const [situation, setSituation] = useState<Situation>('viz')
+  const [regenLoading, setRegenLoading] = useState(false)
 
   // 元画像が選択されたら自動で処理 API を呼び出す -> ★★★ 削除またはコメントアウト ★★★
   /*
@@ -172,6 +181,51 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     return new File([blob], filename, { type: blob.type || 'image/png' })
   }
 
+  // Compress large images client-side to avoid 413 from server
+  const compressImage = async (
+    file: File,
+    maxDimension: number = 1600,
+    quality: number = 0.8,
+  ): Promise<File> => {
+    try {
+      const objectUrl = URL.createObjectURL(file)
+      const img: HTMLImageElement = await new Promise((resolve, reject) => {
+        const i = new Image()
+        i.onload = () => resolve(i)
+        i.onerror = reject
+        i.src = objectUrl
+      })
+      URL.revokeObjectURL(objectUrl)
+
+      const { width, height } = img
+      const scale = Math.min(1, maxDimension / Math.max(width, height))
+      const targetW = Math.max(1, Math.round(width * scale))
+      const targetH = Math.max(1, Math.round(height * scale))
+
+      if (scale === 1 && file.size <= 1.5 * 1024 * 1024) {
+        return file
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = targetW
+      canvas.height = targetH
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, targetW, targetH)
+
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          b => (b ? resolve(b) : reject(new Error('Failed to create blob from canvas'))),
+          'image/jpeg',
+          quality,
+        )
+      })
+
+      return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}-compressed.jpg`, { type: 'image/jpeg', lastModified: Date.now() })
+    } catch {
+      return file
+    }
+  }
+
   const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
     const fr = new FileReader()
     fr.onload = () => {
@@ -182,6 +236,25 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     fr.onerror = reject
     fr.readAsDataURL(file)
   })
+
+  const buildRegionConstraints = (hazards: any[]): string => {
+    if (!Array.isArray(hazards) || hazards.length === 0) return ''
+    const lines: string[] = []
+    lines.push('Region constraints (normalized coordinates 0-1):')
+    hazards.forEach((h, i) => {
+      const b = h?.bbox
+      if (b && typeof b === 'object') {
+        const x = Number(b.x ?? 0).toFixed(3)
+        const y = Number(b.y ?? 0).toFixed(3)
+        const w = Number(b.width ?? 0.25).toFixed(3)
+        const hgt = Number(b.height ?? 0.2).toFixed(3)
+        lines.push(`${i + 1}) bbox=[${x}, ${y}, ${w}, ${hgt}] label='${h?.type ?? 'hazard'}'`)
+      }
+    })
+    if (lines.length <= 1) return ''
+    lines.push('Place overlays/icons near these boxes while keeping the scene photorealistic and consistent.')
+    return lines.join(' ')
+  }
 
   const drawOverlayFromHazards = async (imageFile: File, hazards: any[]): Promise<string> => {
     const imgUrl = URL.createObjectURL(imageFile)
@@ -329,27 +402,54 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
       setAutoGenLoading(true)
       try {
         // 1) analyze via API (Gemini) to get hazards (and optional bbox)
-        const base64 = await fileToBase64(originalImageFile)
+        const base64 = await fileToBase64(await compressImage(originalImageFile))
         const res = await fetch('/api/hazard-game/analyze', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({ imageBase64: base64 })
         })
         let hazards: any[] = []
         if (res.ok) {
           const data = await res.json()
           hazards = Array.isArray(data.hazards) ? data.hazards : []
+          setLastHazards(hazards)
         } else {
           console.warn('hazard analysis failed, proceeding with heuristics')
         }
 
-        // 2) visualization overlay
+        // 2) generate prompts (risk observation + viz + simulations)
+        let prLocal: { vizPrompt?: string; simulationPrompts?: any; riskObservation?: any } | null = null
+        try {
+          const pRes = await fetch('/api/gemini/generate-prompts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64 })
+          })
+          if (pRes.ok) {
+            const pjson = await pRes.json()
+            const pr = pjson?.prompts
+            if (pr) {
+              setGeneratedPrompts({
+                vizPrompt: pr.vizPrompt,
+                simulationPrompts: pr.simulationPrompts,
+                riskObservationTable: pr.riskObservation?.tableMarkdown,
+              })
+              prLocal = pr
+            }
+          } else {
+            console.warn('generate-prompts failed', await pRes.text())
+          }
+        } catch (e) {
+          console.warn('generate-prompts error', e)
+        }
+
+        // 3) visualization overlay (local fallback always available)
         const overlayUrl = await drawOverlayFromHazards(originalImageFile, hazards)
         const overlayFile = await dataUrlToFile(overlayUrl, 'overlay.png')
         setProcessedImageFiles(prev => [...prev, overlayFile])
         setProcessedImagePreviews(prev => [...prev, overlayUrl])
 
-        // 3) simple local simulations (flood/fire/typhoon/earthquake)
+        // 4) simple local simulations (flood/fire/typhoon/earthquake)
         const [floodUrl, fireUrl, typhoonUrl, quakeUrl] = await Promise.all([
           simulateVariant(originalImageFile, 'flood'),
           simulateVariant(originalImageFile, 'fire'),
@@ -365,19 +465,12 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
         setProcessedImageFiles(prev => [...prev, ...toFiles])
         setProcessedImagePreviews(prev => [...prev, floodUrl, fireUrl, typhoonUrl, quakeUrl])
 
-        // 4) NanoBanana (Gemini 2.5 Flash) image-to-image generation as additional candidates
+        // 5) NanoBanana (Gemini 2.5 Flash) image-to-image generation using generated prompts
         try {
           const fd = new FormData()
           fd.append('image', originalImageFile)
-          const englishPrompt = [
-            'Generate a single photorealistic 2K infographic based on the uploaded street photo.',
-            'Maintain the exact viewpoint and daylight. Overlay semi-transparent hazard markings and Japanese labels.',
-            "Collapsed fence: red translucent shading with exclamation icons, label 'フェンス倒壊'.",
-            "Fallen utility pole: red circle + arrow, label '電柱倒壊'.",
-            "Flooding: blue translucent shading with droplet icon, label '冠水'.",
-            "Fire spread: orange flame icon, label '延焼'.",
-            'No people, no watermarks, do not mention model names. Japanese suburban street aesthetics.',
-          ].join(' ')
+          const baseViz = prLocal?.vizPrompt || generatedPrompts?.vizPrompt || "Photorealistic 2K infographic from the exact same viewpoint and daylight as the uploaded Japanese suburban street photo. Overlay semi-transparent hazard markings and Japanese labels: collapsed fence (red shade + exclamation icons, label 'フェンス倒壊'), fallen utility pole (red circle + arrow, label '電柱倒壊'), flooding (blue shade + droplet icon, label '冠水'), fire spread (orange flame icon, label '延焼'). Preserve original composition and camera height. No people, no vehicles, no text, no watermarks, do not mention any model names."
+          const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
           const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
           if (genRes.ok) {
@@ -398,6 +491,39 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
           console.warn('nanobanana generation skipped due to error', e)
         }
 
+        // 6) Post-disaster simulation prompts → AI images
+        const simsLocal = prLocal?.simulationPrompts || generatedPrompts?.simulationPrompts
+        if (simsLocal) {
+          try {
+            const make = async (prompt: string, suffix: string) => {
+              const fd = new FormData()
+              fd.append('image', originalImageFile)
+              fd.append('prompt', prompt)
+              const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+              if (!r.ok) return null
+              const j = await r.json()
+              const im = Array.isArray(j.images) && j.images[0] ? j.images[0] : null
+              if (!im) return null
+              const f = await dataUrlToFile(im.dataUrl, `nanobanana-${suffix}.png`)
+              return { file: f, url: im.dataUrl }
+            }
+            const sims = simsLocal
+            const results = await Promise.all([
+              make(sims.earthquake, 'earthquake'),
+              make(sims.typhoon, 'typhoon'),
+              make(sims.flood, 'flood'),
+              make(sims.fire, 'fire'),
+            ])
+            const ok = results.filter(Boolean) as { file: File; url: string }[]
+            if (ok.length) {
+              setProcessedImageFiles(prev => [...prev, ...ok.map(o => o.file)])
+              setProcessedImagePreviews(prev => [...prev, ...ok.map(o => o.url)])
+            }
+          } catch (e) {
+            console.warn('simulation AI generation error', e)
+          }
+        }
+      
         // Switch to processed tab for user to pick
         setActiveImageTab('processed')
       } catch (e) {
@@ -410,6 +536,67 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
     run()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originalImageFile])
+
+  // On-demand regenerate using selected situation
+  const regenerateSituation = async () => {
+    if (!originalImageFile) return
+    try {
+      setRegenLoading(true)
+      let prompt = ''
+      let pr: any = generatedPrompts
+      if (!pr) {
+        // lazily fetch prompts
+        const base64 = await fileToBase64(await compressImage(originalImageFile))
+        const pRes = await fetch('/api/gemini/generate-prompts', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ imageBase64: base64 })
+        })
+        if (pRes.ok) {
+          const pjson = await pRes.json()
+          pr = pjson?.prompts
+          if (pr) {
+            setGeneratedPrompts({
+              vizPrompt: pr.vizPrompt,
+              simulationPrompts: pr.simulationPrompts,
+              riskObservationTable: pr.riskObservation?.tableMarkdown,
+            })
+          }
+        }
+      }
+      if (situation === 'viz') prompt = pr?.vizPrompt || ''
+      else if (situation === 'earthquake') prompt = pr?.simulationPrompts?.earthquake || ''
+      else if (situation === 'typhoon') prompt = pr?.simulationPrompts?.typhoon || ''
+      else if (situation === 'flood') prompt = pr?.simulationPrompts?.flood || ''
+      else if (situation === 'fire') prompt = pr?.simulationPrompts?.fire || ''
+
+      if (!prompt) {
+        setAutoGenError('プロンプト生成に失敗しました。再度お試しください。')
+        return
+      }
+
+      const fd = new FormData()
+      fd.append('image', originalImageFile)
+      const withRegions = situation === 'viz' ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
+      fd.append('prompt', withRegions)
+      const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const t = await res.text()
+        throw new Error(`再生成に失敗しました: ${res.status} ${res.statusText} - ${t}`)
+      }
+      const j = await res.json()
+      const imgs = Array.isArray(j.images) ? j.images : []
+      const ok = imgs.slice(0, 2)
+      if (ok.length) {
+        const files = await Promise.all(ok.map((im: any, idx: number) => dataUrlToFile(im.dataUrl, `regen-${situation}-${idx}.png`)))
+        setProcessedImageFiles(prev => [...prev, ...files])
+        setProcessedImagePreviews(prev => [...prev, ...ok.map((im: any) => im.dataUrl)])
+      }
+      setActiveImageTab('processed')
+    } catch (e) {
+      setAutoGenError(e instanceof Error ? e.message : '不明なエラー')
+    } finally {
+      setRegenLoading(false)
+    }
+  }
 
   // 画像選択ハンドラー（加工画像）
   const handleProcessedImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -794,6 +981,25 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                     <p className="text-xs text-red-500 mt-1">ファイルから選択することもできます</p>
                   </div>
                 )}
+
+                {/* Situation control */}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <label className="text-sm text-gray-700">シチュエーション:</label>
+                  <select
+                    className="border rounded px-2 py-1 text-sm"
+                    value={situation}
+                    onChange={(e) => setSituation(e.target.value as any)}
+                  >
+                    <option value="viz">ハザード可視化</option>
+                    <option value="earthquake">地震後</option>
+                    <option value="typhoon">台風後（強風）</option>
+                    <option value="flood">冠水</option>
+                    <option value="fire">火災後</option>
+                  </select>
+                  <Button type="button" variant="outline" size="sm" onClick={regenerateSituation} disabled={regenLoading || !originalImageFile}>
+                    {regenLoading ? '再生成中...' : 'この条件で再生成'}
+                  </Button>
+                </div>
 
                 {autoGenLoading && (
                   <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ images })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
-    return NextResponse.json({ error: message }, { status: 500 })
+    // Graceful degrade: return empty result with warning so UI doesn't break
+    return NextResponse.json({ images: [], warning: message }, { status: 200 })
   }
 }
-
