@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { X, MapPin, Calendar, AlertTriangle, ExternalLink, ImageIcon, Upload, Camera, Loader2, Car, Shield, HelpCircle, Trash2 } from "lucide-react"
+import { X, MapPin, Calendar, AlertTriangle, ExternalLink, ImageIcon, Upload, Camera, Loader2, Car, Shield, HelpCircle, Trash2, Eye } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { useSupabase } from "@/components/providers/supabase-provider"
@@ -20,6 +20,7 @@ interface DangerReportDetailModalProps {
   onClose: () => void
   report: DangerReport | null
   isAdmin?: boolean
+  onShowImage?: (url: string, coords?: [number, number]) => void
 }
 
 export default function DangerReportDetailModal({
@@ -27,6 +28,7 @@ export default function DangerReportDetailModal({
   onClose,
   report,
   isAdmin = false,
+  onShowImage,
 }: DangerReportDetailModalProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -450,6 +452,21 @@ export default function DangerReportDetailModal({
                                   </div>
                                 )}
                                 {/* 管理者用の削除ボタン */}
+                                <div className="absolute top-1 right-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      if (onShowImage && report) {
+                                        onShowImage(url, [report.longitude, report.latitude])
+                                      }
+                                    }}
+                                    title="地図で表示"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </div>
                                 {isAdmin && (
                                     <Button
                                        variant="destructive"

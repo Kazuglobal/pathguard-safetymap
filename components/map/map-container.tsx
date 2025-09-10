@@ -1126,6 +1126,16 @@ export default function MapContainer() {
         onClose={() => setIsDetailModalOpen(false)}
         report={selectedReport}
         isAdmin={isAdmin}
+        onShowImage={(url, coords) => {
+          try {
+            if (coords) {
+              flyToLocation(coords[0], coords[1], 16)
+            }
+            setPreviewImage(url)
+          } catch (e) {
+            console.error('Failed to show image on map:', e)
+          }
+        }}
       />
       <SubmittedReportPreview
         isOpen={isSubmittedPreviewOpen}
