@@ -839,7 +839,7 @@ export default function MapContainer() {
           <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
         </div>
         {/* 3D Toggle */}
-        <div className="absolute top-24 right-4 z-20">
+        <div className="absolute top-24 right-4 z-20 hidden sm:block">
           <Map3DToggle is3DEnabled={is3DEnabled} onToggle={toggle3DMode} />
         </div>
         {/* Sidebar */}
