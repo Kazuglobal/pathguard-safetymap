@@ -5,6 +5,7 @@ import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle } fr
 
 // Import the MapStyleSelector component
 import MapStyleSelector from "./map-style-selector"
+import Map3DToggle from "./map-3d-toggle"
 
 // Gamification hooks
 import { useGamification } from "@/hooks/use-gamification"
@@ -57,14 +58,25 @@ export default function MapHeader({
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex w-full sm:w-auto flex-wrap sm:flex-nowrap items-center justify-center sm:justify-end gap-2">
         {/* Replace the map style dropdown we added earlier with the MapStyleSelector component */}
         <MapStyleSelector currentStyle={mapStyle} onChange={setMapStyle} />
+
+        {/* Mobile-only 3D toggle to avoid overlapping map controls */}
+        <div className="sm:hidden w-full">
+          <Map3DToggle
+            is3DEnabled={is3DEnabled}
+            onToggle={toggle3DMode}
+            size="default"
+            className="w-full justify-center"
+          />
+        </div>
 
         <Button
           onClick={onAddReport}
           variant={isReportFormOpen || isSelectingLocation ? "secondary" : "default"}
           size="sm"
+          className="w-full sm:w-auto"
         >
           {isSelectingLocation ? (
             <>
@@ -82,12 +94,13 @@ export default function MapHeader({
         </Button>
 
         {/* 現在ポイント表示 */}
-        <div className="flex items-center space-x-1 mr-2">
+        <div className="flex items-center space-x-1 sm:ml-2">
           <Trophy className="h-5 w-5 text-yellow-500" />
           <span className="text-sm font-medium">{points}pt</span>
         </div>
 
       </div>
+
     </header>
   )
 }
