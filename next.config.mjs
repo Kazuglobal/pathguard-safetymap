@@ -15,14 +15,19 @@ const nextConfig = {
   
   // Next.js の Image コンポーネントで外部ホストを許可（新しい形式）
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'ykodiivanzutyivkguza.supabase.co',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+    remotePatterns: (() => {
+      try {
+        const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const host = envUrl ? new URL(envUrl).hostname : 'ykodiivanzutyivkguza.supabase.co'
+        return [
+          { protocol: 'https', hostname: host, port: '', pathname: '/**' },
+        ]
+      } catch {
+        return [
+          { protocol: 'https', hostname: 'ykodiivanzutyivkguza.supabase.co', port: '', pathname: '/**' },
+        ]
+      }
+    })(),
   },
   
   transpilePackages: ['mapbox-gl', 'react-map-gl'],

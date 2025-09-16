@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { MapIcon, ShieldCheckIcon, AlertTriangleIcon, UsersIcon, ChartBarIcon, GamepadIcon } from "lucide-react"
+import { MapIcon, ShieldCheckIcon, AlertTriangleIcon, UsersIcon, ChartBarIcon, GamepadIcon, CalendarDays, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -22,6 +22,7 @@ export default function LandingPage() {
             <a href="#features" className="text-gray-600 hover:text-sky-600 transition-colors">機能</a>
             <a href="#how-it-works" className="text-gray-600 hover:text-sky-600 transition-colors">使い方</a>
             <a href="#safety" className="text-gray-600 hover:text-sky-600 transition-colors">安全性</a>
+            <a href="#news" className="text-gray-600 hover:text-sky-600 transition-colors">お知らせ</a>
           </nav>
           <div className="flex space-x-2 flex-shrink-0 mt-2 sm:mt-0">
             <Link href="/login">
@@ -83,6 +84,36 @@ export default function LandingPage() {
       </section>
 
       {/* 機能紹介セクション */}
+      {/* お知らせセクション */}
+      <section id="news" className="py-16 px-4 bg-white/60">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-10">
+            <h3 className="text-4xl font-bold text-gray-900 mb-4">最新のお知らせ</h3>
+            <p className="text-lg text-gray-600">PathGuardianの活動情報をお届けします。</p>
+          </div>
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl">ワークショップ開催のお知らせ</CardTitle>
+              <CardDescription className="flex flex-col gap-1 text-gray-600">
+                <span className="inline-flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-sky-600" />
+                  2025年9月11日・12日
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-sky-600" />
+                  青森県八戸市立白鷗小学校（対象：1年生・4年生）
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 leading-relaxed">
+                2025年9月11日、12日 青森県八戸市立白鷗小学校の1年生と4年生でワークショップを開催。
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       <section id="features" className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
