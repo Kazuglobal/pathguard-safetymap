@@ -41,6 +41,9 @@ export default function DangerReportDetailModal({
   const [newProcessedImageFile, setNewProcessedImageFile] = useState<File | null>(null)
   const [newProcessedImagePreview, setNewProcessedImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 差し替え用の入力
+  const replaceInputRef = useRef<HTMLInputElement>(null)
+  const [replaceTargetIndex, setReplaceTargetIndex] = useState<number | null>(null)
 
   // report.processed_image_urls を直接利用するヘルパー
   const currentProcessedUrls = report?.processed_image_urls || []
@@ -378,7 +381,7 @@ export default function DangerReportDetailModal({
                       <TabsTrigger value="original" disabled={!report.image_url}>
                         元画像
                       </TabsTrigger>
-                      <TabsTrigger value="processed" disabled={currentProcessedUrls.length === 0 && !newProcessedImagePreview}>
+                      <TabsTrigger value="processed" disabled={!isAdmin && currentProcessedUrls.length === 0 && !newProcessedImagePreview}>
                         加工画像 {currentProcessedUrls.length > 0 && `(${currentProcessedUrls.length})`}
                       </TabsTrigger>
                     </TabsList>
@@ -452,7 +455,7 @@ export default function DangerReportDetailModal({
                                   </div>
                                 )}
                                 {/* 管理者用の削除ボタン */}
-                                <div className="absolute top-1 right-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                <div className="absolute top-1 right-16 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                   <Button
                                     variant="secondary"
                                     size="icon"
@@ -467,6 +470,20 @@ export default function DangerReportDetailModal({
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 </div>
+                                {isAdmin && (
+                                  <div className="absolute top-1 right-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => setReplaceTargetIndex(idx) || replaceInputRef.current?.click()}
+                                      disabled={isUploading}
+                                      title="画像を差し替え"
+                                    >
+                                      <Upload className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
                                 {isAdmin && (
                                     <Button
                                        variant="destructive"
@@ -541,6 +558,58 @@ export default function DangerReportDetailModal({
                               capture="environment" // モバイルで背面カメラを優先
                               ref={fileInputRef}
                               onChange={handleImageSelect}
+                              className="hidden"
+                            />
+                            {/* 差し替え用の隠しinput */}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              ref={replaceInputRef}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file && replaceTargetIndex !== null) {
+                                  ;(async () => {
+                                    if (!report || !supabase || !isAdmin) return
+                                    if (file.size > 10 * 1024 * 1024) { toast({ title: "エラー", description: "画像サイズは10MB以下にしてください。", variant: "destructive" }); return }
+                                    if (!file.type.startsWith("image/")) { toast({ title: "エラー", description: "画像ファイルを選択してください。", variant: "destructive" }); return }
+                                    setIsUploading(true)
+                                    try {
+                                      const ts = Date.now()
+                                      const ext = file.name.split('.').pop()
+                                      const name = `${report.id}-${ts}-${Math.random().toString(36).substring(2,15)}-processed.${ext}`
+                                      const path = `danger-reports/${name}`
+                                      const { error: upErr } = await supabase.storage.from('danger-reports').upload(path, file, { cacheControl: '3600', upsert: false })
+                                      if (upErr) throw upErr
+                                      const { data: pub } = supabase.storage.from('danger-reports').getPublicUrl(path)
+                                      const newUrl = pub?.publicUrl
+                                      if (!newUrl) throw new Error('公開URLの取得に失敗しました')
+                                      const current = report.processed_image_urls || []
+                                      const oldUrl = current[replaceTargetIndex]
+                                      const next = [...current]; next[replaceTargetIndex] = newUrl
+                                      const { error: dbErr } = await supabase.from('danger_reports').update({ processed_image_urls: next, updated_at: new Date().toISOString() }).eq('id', report.id)
+                                      if (dbErr) throw dbErr
+                                      try {
+                                        const u = new URL(oldUrl)
+                                        const sp = decodeURIComponent(u.pathname.substring(1))
+                                        const seg = sp.split('/')
+                                        if (seg.length > 4 && seg[3] === 'public') {
+                                          const bucket = seg[4]
+                                          const oldPath = seg.slice(5).join('/')
+                                          if (bucket === 'danger-reports' && oldPath) { await supabase.storage.from(bucket).remove([oldPath]) }
+                                        }
+                                      } catch {}
+                                      toast({ title: '差し替え完了', description: '画像を変更しました。' })
+                                    } catch (err: any) {
+                                      console.error('replace error:', err)
+                                      toast({ title: '差し替えエラー', description: err?.message || '画像の差し替えに失敗しました', variant: 'destructive' })
+                                    } finally {
+                                      setIsUploading(false)
+                                      setReplaceTargetIndex(null)
+                                      if (replaceInputRef.current) replaceInputRef.current.value = ''
+                                    }
+                                  })()
+                                }
+                              }}
                               className="hidden"
                             />
                             {newProcessedImageFile && (

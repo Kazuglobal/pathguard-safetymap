@@ -48,7 +48,10 @@
       "Bash(pgrep:*)",
       "Bash(del /f /s /q .next*)",
       "Bash(del test-gemini.js)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)"
     ],
     "deny": []
   }
