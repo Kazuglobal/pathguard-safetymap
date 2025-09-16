@@ -1,0 +1,51 @@
+import React from "react"
+import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
+import { createServerClient } from "@/lib/supabase-server"
+import { SupabaseProvider } from "@/components/providers/supabase-provider"
+
+interface LayoutProviderProps {
+  children: React.ReactNode
+}
+
+export async function LayoutProvider({ children }: LayoutProviderProps) {
+  let user = null
+  
+  try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn("Supabase環境変数が設定されていません")
+    } else {
+      const supabase = await createServerClient()
+      const { data: { user: currentUser }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        if (error.message?.includes('fetch failed')) {
+          console.warn("Supabaseサーバーに接続できません。オフラインモードで実行中です。")
+        } else {
+          console.error("ユーザー情報の取得エラー:", error.message)
+        }
+      } else {
+        user = currentUser
+      }
+    }
+  } catch (error) {
+    if ((error as Error).message?.includes('fetch failed')) {
+      console.warn("Supabaseサーバーに接続できません。オフラインモードで実行中です。")
+    } else {
+      console.error("Supabase接続エラー:", (error as Error).message || error)
+    }
+  }
+
+  const handleLogout = async () => {
+    "use server"
+    const supabase = await createServerClient()
+    await supabase.auth.signOut()
+  }
+
+  return (
+    <SupabaseProvider>
+      <NavigationWrapper user={user} onLogout={handleLogout}>
+        {children}
+      </NavigationWrapper>
+    </SupabaseProvider>
+  )
+}
