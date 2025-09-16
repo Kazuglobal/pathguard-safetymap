@@ -8,7 +8,7 @@ import MapHeader from "./map-header"
 import MapSidebar from "./map-sidebar"
 import DangerReportForm from "../danger-report/danger-report-form"
 import type { DangerReport } from "@/lib/types"
-import { AlertTriangle, Car, Shield, HelpCircle, Trash2 } from "lucide-react"
+import { AlertTriangle, Car, Shield, HelpCircle, Trash2, MapPin } from "lucide-react"
 import Map3DToggle from "./map-3d-toggle"
 import { Button } from "@/components/ui/button"
 import MapSearch from "./map-search"
@@ -114,7 +114,22 @@ export default function MapContainer() {
   // ヘルプの表示状態管理
   const [isHelpVisible, setIsHelpVisible] = useState(true);
   const [isHelpDismissed, setIsHelpDismissed] = useState(false);
+  const [showMobileMapHint, setShowMobileMapHint] = useState(false);
   // --- ▲▲▲ --- 
+
+  useEffect(() => {
+    if (!isMobile) {
+      setShowMobileMapHint(false);
+      return;
+    }
+    setShowMobileMapHint(true);
+    const timer = window.setTimeout(() => setShowMobileMapHint(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, [isMobile]);
+
+  const mapMinHeight = isMobile ? 420 : 500;
+  const mapAreaClassName = `flex-1 relative w-full${isMobile ? " rounded-3xl border border-blue-100/70 bg-gradient-to-b from-blue-50/80 via-white to-white shadow-[0_18px_40px_-25px_rgba(30,64,175,0.45)]" : ""}`;
+  const mapCanvasClassName = `absolute inset-0${isMobile ? " rounded-3xl overflow-hidden ring-1 ring-blue-100/60" : ""}`;
 
   // --- Mapbox GL JS Helper Functions ---
   const layerExists = (mapInstance: mapboxgl.Map, layerId: string): boolean => {
@@ -857,8 +872,33 @@ export default function MapContainer() {
           />
         </div>
         {/* Map Area */}
-        <div className="flex-1 relative w-full">
-          <div ref={mapContainer} className="absolute inset-0" style={{ width: "100%", height: "100%", minHeight: "500px" }} />
+        <div
+          className={mapAreaClassName}
+          onPointerDownCapture={() => {
+            if (showMobileMapHint) setShowMobileMapHint(false);
+          }}
+        >
+          <div
+            ref={mapContainer}
+            className={mapCanvasClassName}
+            style={{ width: "100%", height: "100%", minHeight: mapMinHeight }}
+          />
+          {showMobileMapHint && (
+            <div className="absolute top-3 left-6 z-10 sm:hidden pointer-events-none">
+              <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
+                <MapPin className="h-4 w-4 text-blue-500" />
+                <span>ここが地図エリアです</span>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileMapHint(false)}
+                  className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
+                  aria-label="地図エリアのヒントを閉じる"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
           {/* Map Overlays: Selection Info, Error, Loading */}
           {isReportFormOpen && (
             <div className="absolute top-20 left-0 right-0 z-10 px-4 py-2 flex justify-center pointer-events-none">
@@ -907,17 +947,32 @@ export default function MapContainer() {
                       <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
                       <p className="text-sm font-medium text-blue-800">地点選択モード</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setAwaitingLocationSelection(false);
-                        toast({ title: "地点選択をキャンセルしました" });
-                      }}
-                      className="text-blue-600 hover:text-blue-800 h-6 px-2"
-                    >
-                      ×
-                    </Button>
+                    <div className="flex items-center space-x-1">
+                      {isHelpVisible && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsHelpVisible(false)}
+                          className="text-blue-600 hover:text-blue-800 h-6 w-6 p-0"
+                          aria-label="使い方を閉じる"
+                        >
+                          ×
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setAwaitingLocationSelection(false);
+                          toast({ title: "地点選択をキャンセルしました" });
+                        }}
+                        className="text-blue-600 hover:text-blue-800 h-6 px-2"
+                      >
+                        キャンセル
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 {isHelpVisible && (
