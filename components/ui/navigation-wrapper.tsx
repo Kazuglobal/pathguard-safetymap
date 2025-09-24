@@ -4,6 +4,7 @@ import React from "react"
 import { usePathname } from "next/navigation"
 import { Navigation } from "@/components/ui/navigation"
 import type { User } from "@supabase/supabase-js"
+import { cn } from "@/lib/utils"
 
 interface NavigationWrapperProps {
   user: User | null
@@ -18,18 +19,20 @@ export function NavigationWrapper({ user, onLogout, children }: NavigationWrappe
   const noNavPages = ['/login', '/register', '/landing']
   const showNavigation = !noNavPages.some(page => pathname.startsWith(page))
 
+  const mainPaddingClass = showNavigation ? "pb-24 md:pb-0" : undefined
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* ナビゲーション */}
       {showNavigation && (
-        <Navigation 
-          user={user} 
+        <Navigation
+          user={user}
           onLogout={onLogout}
         />
       )}
       
       {/* メインコンテンツ */}
-      <main>
+      <main className={cn("flex-1", mainPaddingClass)}>
         {children}
       </main>
     </div>
