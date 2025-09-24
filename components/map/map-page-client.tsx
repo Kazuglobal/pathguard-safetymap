@@ -28,16 +28,17 @@ export default function MapPageClient() {
       <MapContainer />
       
       {/* ヘルプボタン / トグル */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-2">
+      <div className="fixed right-4 top-24 z-50 flex flex-col items-end space-y-2 sm:top-auto sm:right-6 sm:bottom-24 md:bottom-6">
         {showHelpButton ? (
           <div className="relative group">
             <Button
               onClick={() => setShowTutorial(true)}
-              size="lg"
+              size="default"
               className="bg-sky-600 hover:bg-sky-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
             >
               <HelpCircle className="w-5 h-5 mr-2" />
               使い方
+
             </Button>
             {/* 閉じるアイコン */}
             <button
