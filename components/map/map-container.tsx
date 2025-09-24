@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import Image from "next/image"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
@@ -34,12 +35,69 @@ mapboxgl.accessToken = mapboxToken || ""
 
 // --- 型定義 ---
 // 送信済みレポートの状態用
-interface SubmittedReportState {
-  location: [number, number];
-  originalImage: string | null;
-  processedImages: string[]; // 複数画像に対応
+interface MapImagePopupContentProps {
+  url: string
+  hasError: boolean
+  onPreview: () => void
+  onRetry: () => void
+  onImageError: () => void
 }
 
+function MapImagePopupContent({
+  url,
+  hasError,
+  onPreview,
+  onRetry,
+  onImageError,
+}: MapImagePopupContentProps) {
+  if (hasError) {
+    return (
+      <div className="w-28 sm:w-36 rounded-xl border border-blue-100 bg-white/90 px-3 py-2 shadow-md">
+        <p className="mb-2 text-center text-xs text-slate-500">画像を読み込めませんでした</p>
+        <Button type="button" variant="outline" size="sm" className="h-8 w-full" onClick={onRetry}>
+          再試行
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className="relative block w-28 sm:w-36 overflow-hidden rounded-xl shadow-md"
+      onClick={onPreview}
+    >
+      <div className="relative aspect-[4/3] w-full">
+        <Image
+          src={url}
+          alt="加工画像プレビュー"
+          fill
+          sizes="(max-width: 640px) 112px, 144px"
+          className="object-cover"
+          onError={onImageError}
+          priority
+        />
+      </div>
+    </button>
+  )
+}
+
+interface SubmittedReportState {
+  location: [number, number]
+  originalImage: string | null
+  processedImages: string[] // 複数画像に対応
+}
+
+interface MapImageOverlayEntry {
+  id: string
+  url: string
+  reportId?: string
+  reportTitle?: string | null
+  type?: "original" | "processed"
+  index?: number
+  coordinates: [number, number]
+  hasError?: boolean
+}
 // MapContainer コンポーネント
 export default function MapContainer() {
   const { supabase } = useSupabase()
@@ -63,10 +121,28 @@ export default function MapContainer() {
   const mapInitialized = useRef(false)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [mapImageOverlays, setMapImageOverlays] = useState<MapImageOverlayEntry[]>([])
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false) // ReportDetailModal 用
   const clickListenerAdded = useRef(false)
   const styleChangeInProgress = useRef(false)
   const mapClickHandler = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null)
+  const mapImagePopupRefs = useRef<Map<string, mapboxgl.Popup>>(new Map())
+  const mapImagePopupRootRefs = useRef<Map<string, ReturnType<typeof createRoot>>>(new Map())
+
+  const destroyAllMapImagePopups = useCallback(() => {
+    const popupRefs = mapImagePopupRefs.current
+    const rootRefs = mapImagePopupRootRefs.current
+
+    rootRefs.forEach((root) => {
+      Promise.resolve().then(() => root.unmount())
+    })
+    rootRefs.clear()
+
+    popupRefs.forEach((popup) => {
+      popup.remove()
+    })
+    popupRefs.clear()
+  }, [])
 
   // 送信された報告の情報を保持する状態 (型を更新)
   const [submittedReport, setSubmittedReport] = useState<SubmittedReportState | null>(null)
@@ -130,6 +206,95 @@ export default function MapContainer() {
   const mapMinHeight = isMobile ? 420 : 500;
   const mapAreaClassName = `flex-1 relative w-full${isMobile ? " rounded-3xl border border-blue-100/70 bg-gradient-to-b from-blue-50/80 via-white to-white shadow-[0_18px_40px_-25px_rgba(30,64,175,0.45)]" : ""}`;
   const mapCanvasClassName = `absolute inset-0${isMobile ? " rounded-3xl overflow-hidden ring-1 ring-blue-100/60" : ""}`;
+
+  const combinedReports = useMemo(() => [...dangerReports, ...pendingReports], [dangerReports, pendingReports]);
+
+  useEffect(() => {
+    setMapImageOverlays((prev) => {
+      if (prev.length === 0) return prev
+
+      const validReportIds = new Set(combinedReports.map((report) => report.id))
+      const filtered = prev.filter((overlay) => !overlay.reportId || validReportIds.has(overlay.reportId))
+      return filtered.length === prev.length ? prev : filtered
+    })
+  }, [combinedReports])
+
+  useEffect(() => {
+    if (!map.current) return
+
+    const mapInstance = map.current
+    const popupRefs = mapImagePopupRefs.current
+    const rootRefs = mapImagePopupRootRefs.current
+    const activeOverlayIds = new Set(mapImageOverlays.map((overlay) => overlay.id))
+
+    popupRefs.forEach((popup, id) => {
+      if (!activeOverlayIds.has(id)) {
+        popup.remove()
+        popupRefs.delete(id)
+
+        const root = rootRefs.get(id)
+        if (root) {
+          Promise.resolve().then(() => root.unmount())
+          rootRefs.delete(id)
+        }
+      }
+    })
+
+    mapImageOverlays.forEach((overlay) => {
+      if (!overlay.coordinates) return
+
+      let popup = popupRefs.get(overlay.id)
+      if (!popup) {
+        popup = new mapboxgl.Popup({
+          closeButton: true,
+          closeOnClick: false,
+          anchor: "top",
+          offset: [0, -18],
+          className: "map-image-popup",
+        }).addTo(mapInstance)
+
+        popup.on("close", () => {
+          setMapImageOverlays((prev) => prev.filter((entry) => entry.id !== overlay.id))
+        })
+
+        popupRefs.set(overlay.id, popup)
+      }
+
+      popup.setLngLat(overlay.coordinates)
+
+      let root = rootRefs.get(overlay.id)
+      if (!root) {
+        const container = document.createElement("div")
+        popup.setDOMContent(container)
+        root = createRoot(container)
+        rootRefs.set(overlay.id, root)
+      }
+
+      root.render(
+        <MapImagePopupContent
+          url={overlay.url}
+          hasError={overlay.hasError ?? false}
+          onPreview={() => setPreviewImage(overlay.url)}
+          onRetry={() =>
+            setMapImageOverlays((prev) =>
+              prev.map((entry) =>
+                entry.id === overlay.id ? { ...entry, hasError: false } : entry
+              )
+            )
+          }
+          onImageError={() =>
+            setMapImageOverlays((prev) =>
+              prev.map((entry) =>
+                entry.id === overlay.id ? { ...entry, hasError: true } : entry
+              )
+            )
+          }
+        />
+      )
+    })
+  }, [mapImageOverlays, setPreviewImage])
+
+  useEffect(() => destroyAllMapImagePopups, [destroyAllMapImagePopups])
 
   // --- Mapbox GL JS Helper Functions ---
   const layerExists = (mapInstance: mapboxgl.Map, layerId: string): boolean => {
@@ -1181,12 +1346,63 @@ export default function MapContainer() {
         onClose={() => setIsDetailModalOpen(false)}
         report={selectedReport}
         isAdmin={isAdmin}
-        onShowImage={(url, coords) => {
+        onShowImage={(url, coords, options) => {
           try {
-            if (coords) {
-              flyToLocation(coords[0], coords[1], 16)
+            const targetReport = options?.reportId
+              ? combinedReports.find((report) => report.id === options.reportId) ?? selectedReport ?? null
+              : selectedReport
+
+            const overlayCoords =
+              coords ??
+              (targetReport ? ([targetReport.longitude, targetReport.latitude] as [number, number]) : undefined)
+
+            if (overlayCoords) {
+              flyToLocation(overlayCoords[0], overlayCoords[1], 16)
+            } else {
+              console.warn("Unable to display image overlay because coordinates are missing.")
+              return
             }
-            setPreviewImage(url)
+
+            const inferredType =
+              options?.type ?? (targetReport?.processed_image_urls?.includes(url) ? "processed" : "original")
+            const derivedIndex =
+              inferredType === "processed"
+                ? typeof options?.index === "number"
+                  ? options.index
+                  : targetReport?.processed_image_urls?.findIndex((imageUrl) => imageUrl === url)
+                : undefined
+
+            const overlayIdParts = [
+              options?.reportId ?? targetReport?.id ?? "overlay",
+              inferredType ?? "image",
+              typeof derivedIndex === "number" && derivedIndex >= 0 ? `${derivedIndex}` : "original",
+              url,
+            ]
+            const overlayId = overlayIdParts.filter(Boolean).join(":")
+
+            setMapImageOverlays((prev) => {
+              const nextEntry: MapImageOverlayEntry = {
+                id: overlayId,
+                url,
+                reportId: options?.reportId ?? targetReport?.id ?? undefined,
+                reportTitle: options?.reportTitle ?? targetReport?.title ?? null,
+                type: inferredType,
+                index: typeof derivedIndex === "number" && derivedIndex >= 0 ? derivedIndex : undefined,
+                coordinates: overlayCoords,
+                hasError: false,
+              }
+
+              const existingIndex = prev.findIndex((entry) => entry.id === overlayId)
+              if (existingIndex !== -1) {
+                const next = [...prev]
+                next[existingIndex] = nextEntry
+                return next
+              }
+
+              return [...prev, nextEntry]
+            })
+
+            setPreviewImage(null)
           } catch (e) {
             console.error('Failed to show image on map:', e)
           }
