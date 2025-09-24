@@ -15,12 +15,19 @@ import { formatDate } from "@/lib/utils"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 
+interface ShowImageOptions {
+  reportId?: string
+  reportTitle?: string | null
+  type?: "original" | "processed"
+  index?: number
+}
+
 interface DangerReportDetailModalProps {
   isOpen: boolean
   onClose: () => void
   report: DangerReport | null
   isAdmin?: boolean
-  onShowImage?: (url: string, coords?: [number, number]) => void
+  onShowImage?: (url: string, coords?: [number, number], options?: ShowImageOptions) => void
 }
 
 export default function DangerReportDetailModal({
@@ -462,7 +469,12 @@ export default function DangerReportDetailModal({
                                     className="h-6 w-6"
                                     onClick={() => {
                                       if (onShowImage && report) {
-                                        onShowImage(url, [report.longitude, report.latitude])
+                                        onShowImage(url, [report.longitude, report.latitude], {
+                                          reportId: report.id,
+                                          reportTitle: report.title ?? null,
+                                          type: "processed",
+                                          index: idx,
+                                        })
                                       }
                                     }}
                                     title="地図で表示"
