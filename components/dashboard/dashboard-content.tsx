@@ -458,58 +458,108 @@ export default function DashboardContent() {
                   承認済みの報告はありません
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>タイトル</TableHead>
-                      <TableHead>危険タイプ</TableHead>
-                      <TableHead>危険度</TableHead>
-                      <TableHead>報告日</TableHead>
-                      <TableHead>画像</TableHead>
-                      <TableHead>アクション</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>タイトル</TableHead>
+                          <TableHead>危険タイプ</TableHead>
+                          <TableHead>危険度</TableHead>
+                          <TableHead>報告日</TableHead>
+                          <TableHead>画像</TableHead>
+                          <TableHead>アクション</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {approvedReports.map((report) => (
+                          <TableRow key={report.id}>
+                            <TableCell className="font-medium">
+                              {report.title}
+                            </TableCell>
+                            <TableCell>
+                              {getDangerTypeLabel(report.danger_type)}
+                            </TableCell>
+                            <TableCell>{report.danger_level}</TableCell>
+                            <TableCell>{formatDate(report.created_at)}</TableCell>
+                            <TableCell>
+                              {hasImages(report) ? (
+                                <ImageIcon className="h-4 w-4 text-blue-500" />
+                              ) : (
+                                <span className="text-gray-400">なし</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewDetails(report)}
+                                >
+                                  <Eye className="mr-1 h-4 w-4" />
+                                  詳細
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleResolve(report.id)}
+                                >
+                                  解決済み
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-4 md:hidden">
                     {approvedReports.map((report) => (
-                      <TableRow key={report.id}>
-                        <TableCell className="font-medium">
-                          {report.title}
-                        </TableCell>
-                        <TableCell>
-                          {getDangerTypeLabel(report.danger_type)}
-                        </TableCell>
-                        <TableCell>{report.danger_level}</TableCell>
-                        <TableCell>{formatDate(report.created_at)}</TableCell>
-                        <TableCell>
-                          {hasImages(report) ? (
-                            <ImageIcon className="h-4 w-4 text-blue-500" />
-                          ) : (
-                            <span className="text-gray-400">なし</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleViewDetails(report)}
-                            >
-                              <Eye className="mr-1 h-4 w-4" />
-                              詳細
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleResolve(report.id)}
-                            >
-                              解決済み
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <div
+                        key={report.id}
+                        className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground">タイトル</p>
+                          <p className="text-base font-bold leading-snug">{report.title}</p>
+                        </div>
+                        <dl className="mt-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-sm">
+                          <dt className="text-muted-foreground">危険タイプ</dt>
+                          <dd>{getDangerTypeLabel(report.danger_type)}</dd>
+                          <dt className="text-muted-foreground">危険度</dt>
+                          <dd>{report.danger_level}</dd>
+                          <dt className="text-muted-foreground">報告日</dt>
+                          <dd>{formatDate(report.created_at)}</dd>
+                          <dt className="text-muted-foreground">画像</dt>
+                          <dd className="flex items-center">
+                            {hasImages(report) ? (
+                              <ImageIcon className="h-4 w-4 text-blue-500" />
+                            ) : (
+                              <span className="text-gray-400">なし</span>
+                            )}
+                          </dd>
+                        </dl>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewDetails(report)}
+                          >
+                            <Eye className="mr-1 h-4 w-4" />
+                            詳細
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleResolve(report.id)}
+                          >
+                            解決済み
+                          </Button>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
