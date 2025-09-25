@@ -36,34 +36,34 @@ export default function LandingPage() {
       </header>
 
       {/* ヒーローセクション */}
-      <section className="pt-32 sm:pt-24 pb-12 px-4">
+      <section className="pt-28 sm:pt-24 md:pt-32 pb-12 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-5xl font-bold text-gray-900 mb-6">
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <div className="flex flex-col items-center text-center gap-6 lg:items-start lg:text-left">
+              <h2 className="text-4xl font-bold leading-tight text-gray-900 sm:text-5xl">
                 子どもたちの
-                <span className="text-sky-600">安全な通学路</span>を
-                <br />AIがサポート
+                <span className="block text-sky-600 sm:inline">安全な通学路</span>
+                <span className="block">をAIがサポート</span>
               </h2>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="max-w-xl text-base text-gray-600 sm:text-xl sm:leading-relaxed">
                 PathGuardianは、AIと地域の力で子どもたちの通学路を守る次世代の安全マップサービスです。
                 危険箇所の可視化、安全ルートの提案、コミュニティでの情報共有を通じて、
                 すべての子どもが安心して通学できる環境を実現します。
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/map">
-                  <Button size="lg" className="bg-sky-600 hover:bg-sky-700 text-lg px-8 py-6">
-                    安全マップを見る
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-start">
+                <Link href="/map" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full bg-sky-600 hover:bg-sky-700 text-lg py-6 sm:px-8">
+                    安全マップを確認
                   </Button>
                 </Link>
-                <Link href="/register">
-                  <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                    無料で始める
+                <Link href="/register" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full text-lg py-6 sm:px-8">
+                    今すぐはじめる
                   </Button>
                 </Link>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative max-w-md mx-auto lg:max-w-none">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                 <Image
                   src="/landing/map-preview.png"
@@ -75,7 +75,7 @@ export default function LandingPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
               </div>
-              <div className="absolute -top-4 -right-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full font-semibold shadow-lg transform rotate-12">
+              <div className="absolute -top-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full font-semibold shadow-lg transform sm:rotate-12">
                 AI搭載
               </div>
             </div>
