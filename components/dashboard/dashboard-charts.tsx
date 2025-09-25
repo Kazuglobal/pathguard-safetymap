@@ -135,16 +135,14 @@ export default function DashboardCharts({
                 color: "hsl(var(--chart-1))",
               },
             }}
-            className="h-80"
+            className="aspect-auto h-[260px] sm:h-[320px]"
           >
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={dangerLevelData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart data={dangerLevelData}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ChartContainer>
         </CardContent>
       </Card>
