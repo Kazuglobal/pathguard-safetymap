@@ -64,8 +64,8 @@ export function Navigation({ user, onLogout }: NavigationProps) {
     },
     {
       key: "dashboard",
-      href: "/dashboard",
-      label: "速報",
+      href: "/report",
+      label: "報告",
       icon: BarChart3,
       description: "最新レポートと統計",
     },
