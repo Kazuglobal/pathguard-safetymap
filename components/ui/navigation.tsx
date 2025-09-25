@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -12,8 +11,6 @@ import {
   Map,
   User,
   Award,
-  Menu,
-  X,
   Trophy,
   LogOut,
   BarChart3,
@@ -21,7 +18,7 @@ import {
   Gamepad2,
   Home,
 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 
 interface NavigationProps {
   user?: any
@@ -39,8 +36,6 @@ type NavItem = {
 
 export function Navigation({ user, onLogout }: NavigationProps) {
   const pathname = usePathname()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-
   // 管理者チェック（暫定実装）
   const isAdmin = user?.email?.includes("admin") || user?.role === "admin"
 
@@ -201,119 +196,10 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                 </div>
               )}
 
-              {/* モバイルメニュー切替 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                aria-label="メニューを開閉"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </Button>
             </div>
           </div>
         </div>
 
-        {/* モバイルメニュー */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="lg:hidden bg-white border-t border-gray-200"
-            >
-              <div className="px-4 py-4 space-y-3">
-                {[...desktopNavItems].map((item) => {
-                  const Icon = item.icon
-                  const active = isActivePath(item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "flex items-center space-x-3 p-3 rounded-xl transition-colors",
-                        active ? "bg-sky-100 text-sky-700" : "hover:bg-gray-100",
-                        item.key === "admin-dashboard" &&
-                          "bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200"
-                      )}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <p className={cn("font-medium", item.emphasize && "text-lg font-semibold")}>{item.label}</p>
-                          {item.key === "admin-dashboard" && (
-                            <UserCheck className="w-4 h-4 ml-2 text-purple-600" />
-                          )}
-                        </div>
-                        {item.description && (
-                          <p className="text-sm text-gray-500">{item.description}</p>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
-
-                {/* モバイルユーザーセクション */}
-                {user ? (
-                  <div className="border-t border-gray-200 pt-4 mt-4">
-                    <div className="flex items-center space-x-3 p-3">
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold",
-                          isAdmin
-                            ? "bg-gradient-to-br from-purple-500 to-pink-600"
-                            : "bg-gradient-to-br from-blue-500 to-purple-600"
-                        )}
-                      >
-                        {user?.email ? user.email.charAt(0).toUpperCase() : "U"}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {user.email?.split("@")[0] || "ユーザー"}
-                          {isAdmin && (
-                            <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                              管理者
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-sm text-gray-500">レベル 5 / ポイント確認可</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        onLogout?.()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start mt-2"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      ログアウト
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
-                    <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full justify-start">
-                        ログイン
-                      </Button>
-                    </Link>
-                    <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="gradient" size="sm" className="w-full justify-start">
-                        新規登録
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </nav>
 
       {/* モバイルボトムナビ */}
