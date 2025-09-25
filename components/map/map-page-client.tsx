@@ -1,14 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { HelpCircle, X } from "lucide-react"
 import MapContainer from "@/components/map/map-container"
 import UsageTutorialDialog from "@/components/map/usage-tutorial-dialog"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export default function MapPageClient() {
+  const isMobile = useIsMobile()
   const [showTutorial, setShowTutorial] = useState(false)
   const [showHelpButton, setShowHelpButton] = useState(true)
+  const manualHelpToggleRef = useRef(false)
+
+  useEffect(() => {
+    if (typeof isMobile !== "boolean") return
+    if (!manualHelpToggleRef.current) {
+      setShowHelpButton(!isMobile)
+    }
+  }, [isMobile])
 
   useEffect(() => {
     // 初回訪問かチェック
@@ -29,20 +39,53 @@ export default function MapPageClient() {
       
       {/* ヘルプボタン / トグル */}
       <div className="fixed right-4 top-24 z-50 flex flex-col items-end space-y-2 sm:top-auto sm:right-6 sm:bottom-24 md:bottom-6">
-        {showHelpButton ? (
+        {isMobile ? (
+          <Button
+            onClick={() => {
+              manualHelpToggleRef.current = true
+              setShowHelpButton((prev) => {
+                const next = !prev
+                if (!prev) {
+                  setShowTutorial(true)
+                }
+                return next
+              })
+            }}
+            size="sm"
+            className={`flex items-center gap-2 rounded-full px-4 py-2 shadow-lg transition-all duration-200 ${showHelpButton ? 'bg-white text-sky-600 hover:bg-gray-100' : 'bg-sky-600 text-white hover:bg-sky-700'}`}
+            aria-label={showHelpButton ? "使い方を閉じる" : "使い方を見る"}
+          >
+            {showHelpButton ? (
+              <>
+                <X className="h-4 w-4" />
+                <span>閉じる</span>
+              </>
+            ) : (
+              <>
+                <HelpCircle className="h-4 w-4" />
+                <span>使い方</span>
+              </>
+            )}
+          </Button>
+        ) : showHelpButton ? (
           <div className="relative group">
             <Button
-              onClick={() => setShowTutorial(true)}
+              onClick={() => {
+                manualHelpToggleRef.current = true
+                setShowHelpButton(true)
+                setShowTutorial(true)
+              }}
               size="default"
               className="bg-sky-600 hover:bg-sky-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
             >
               <HelpCircle className="w-5 h-5 mr-2" />
               使い方
-
             </Button>
-            {/* 閉じるアイコン */}
             <button
-              onClick={() => setShowHelpButton(false)}
+              onClick={() => {
+                manualHelpToggleRef.current = true
+                setShowHelpButton(false)
+              }}
               className="absolute -top-2 -right-2 bg-white border border-gray-300 rounded-full p-0.5 text-gray-500 hover:text-gray-700 shadow group-hover:opacity-100 opacity-0 transition-opacity duration-200"
               aria-label="ヘルプを隠す"
             >
@@ -51,7 +94,10 @@ export default function MapPageClient() {
           </div>
         ) : (
           <Button
-            onClick={() => setShowHelpButton(true)}
+            onClick={() => {
+              manualHelpToggleRef.current = true
+              setShowHelpButton(true)
+            }}
             size="icon"
             variant="outline"
             className="bg-white hover:bg-gray-50 shadow"
