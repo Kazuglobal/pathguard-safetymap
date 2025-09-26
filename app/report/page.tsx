@@ -9,28 +9,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AlertTriangle, Bookmark, Heart, Images, MapPin, MessageCircle } from "lucide-react"
 
-interface PublicReport
-  extends Pick<
-    DangerReport,
-    | "id"
-    | "title"
-    | "description"
-    | "danger_type"
-    | "danger_level"
-    | "latitude"
-    | "longitude"
-    | "status"
-    | "image_url"
-    | "processed_image_urls"
-    | "created_at"
-  > {}
+interface PublicReport extends Pick<
+  DangerReport,
+  "id" | "title" | "description" | "danger_type" | "danger_level" | "latitude" | "longitude" | "status" | "image_url" | "processed_image_urls" | "created_at"
+> {}
 
 const DANGER_TYPE_META: Record<string, { label: string; accent: string; badge: string }> = {
   traffic: {
     label: "交通危険",
-    accent: "from-orange-400 via-red-500 to-red-600",
+    accent: "from-orange-400 via-red-500 to-rose-500",
     badge: "bg-orange-500/90 text-white",
   },
   crime: {
@@ -51,7 +41,6 @@ const DANGER_TYPE_META: Record<string, { label: string; accent: string; badge: s
 }
 
 const DEFAULT_DANGER_META = DANGER_TYPE_META.other
-
 const APPROVED_STATUSES = ["approved", "published", "resolved"]
 
 type ShareActionState = {
@@ -60,6 +49,14 @@ type ShareActionState = {
   saved: boolean
   caution: boolean
   comments: number
+}
+
+type ShareFeedEntry = {
+  report: PublicReport
+  cover: string | null
+  meta: { label: string; accent: string; badge: string }
+  tags: string[]
+  coordinates: string | null
 }
 
 const extractHashTags = (description: string | null) =>
@@ -89,6 +86,8 @@ export default function ReportHubPage() {
   const [reports, setReports] = useState<PublicReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [shareStats, setShareStats] = useState<Record<string, ShareActionState>>({})
+  const [selectedCategoryType, setSelectedCategoryType] = useState<string | null>(null)
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -161,7 +160,15 @@ export default function ReportHubPage() {
       }))
     }
 
-    const groups: Record<string, { type: string; label: string; accent: string; badge: string; count: number; cover: string | null; lastReportedAt: string | null }> = {}
+    const groups: Record<string, {
+      type: string
+      label: string
+      accent: string
+      badge: string
+      count: number
+      cover: string | null
+      lastReportedAt: string | null
+    }> = {}
 
     reports.forEach((report) => {
       const typeKey = report.danger_type ?? "other"
@@ -193,7 +200,7 @@ export default function ReportHubPage() {
     return Object.values(groups).sort((a, b) => b.count - a.count)
   }, [reports])
 
-  const shareFeed = useMemo(() => {
+  const shareFeed = useMemo<ShareFeedEntry[]>(() => {
     if (!reports.length) {
       return []
     }
@@ -215,6 +222,33 @@ export default function ReportHubPage() {
       }
     })
   }, [reports])
+
+  const shareFeedByCategory = useMemo<Record<string, ShareFeedEntry[]>>(() => {
+    const map: Record<string, ShareFeedEntry[]> = {}
+    shareFeed.forEach((entry) => {
+      const key = entry.report.danger_type ?? "other"
+      if (!map[key]) {
+        map[key] = []
+      }
+      map[key].push(entry)
+    })
+    return map
+  }, [shareFeed])
+
+  const selectedCategoryEntries = useMemo(() => {
+    if (!selectedCategoryType) return []
+    return shareFeedByCategory[selectedCategoryType] ?? []
+  }, [shareFeedByCategory, selectedCategoryType])
+
+  const selectedCategoryMeta = useMemo(() => {
+    if (!selectedCategoryType) return null
+    return DANGER_TYPE_META[selectedCategoryType] ?? DEFAULT_DANGER_META
+  }, [selectedCategoryType])
+
+  const handleCategoryOpen = (type: string) => {
+    setSelectedCategoryType(type)
+    setIsCategorySheetOpen(true)
+  }
 
   const handleShareAction = (reportId: string, action: "like" | "save" | "caution") => {
     setShareStats((prev) => {
@@ -252,6 +286,85 @@ export default function ReportHubPage() {
       const updated: ShareActionState = { ...current, comments: current.comments + 1 }
       return { ...prev, [reportId]: updated }
     })
+  }
+
+  const renderShareCard = ({ report, cover, meta, tags, coordinates }: ShareFeedEntry) => {
+    const stats =
+      shareStats[report.id] ?? ({ liked: false, likes: 0, saved: false, caution: false, comments: 0 } as ShareActionState)
+
+    return (
+      <div key={report.id} className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{report.title || "タイトル未設定"}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span>{formatDate(report.created_at)}</span>
+              {coordinates && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {coordinates}
+                </span>
+              )}
+            </div>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+        </div>
+        {cover ? (
+          <div className="mt-3 overflow-hidden rounded-xl">
+            <img src={cover} alt={`${meta.label}の共有画像`} loading="lazy" className="h-40 w-full object-cover" />
+          </div>
+        ) : (
+          <div className={`mt-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br ${meta.accent}`}>
+            <Images className="h-10 w-10 text-white/90" />
+          </div>
+        )}
+        {report.description && (
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">{report.description}</p>
+        )}
+        {tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <Badge key={`${report.id}-${tag}`} variant="secondary" className="bg-sky-50 text-sky-600">
+                #{tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={stats.liked ? "default" : "ghost"}
+            className={stats.liked ? "bg-rose-500 text-white hover:bg-rose-500/90" : ""}
+            onClick={() => handleShareAction(report.id, "like")}
+          >
+            <Heart className={`mr-1 h-4 w-4 ${stats.liked ? "fill-current" : ""}`} />
+            いいね {stats.likes}
+          </Button>
+          <Button
+            size="sm"
+            variant={stats.saved ? "default" : "ghost"}
+            className={stats.saved ? "bg-emerald-500 text-white hover:bg-emerald-500/90" : ""}
+            onClick={() => handleShareAction(report.id, "save")}
+          >
+            <Bookmark className={`mr-1 h-4 w-4 ${stats.saved ? "fill-current" : ""}`} />
+            保存
+          </Button>
+          <Button
+            size="sm"
+            variant={stats.caution ? "default" : "ghost"}
+            className={stats.caution ? "bg-amber-500 text-white hover:bg-amber-500/90" : ""}
+            onClick={() => handleShareAction(report.id, "caution")}
+          >
+            <AlertTriangle className="mr-1 h-4 w-4" />
+            気をつけよう
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => handleCommentAction(report.id)}>
+            <MessageCircle className="mr-1 h-4 w-4" />
+            コメント {stats.comments}
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -311,7 +424,13 @@ export default function ReportHubPage() {
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {hazardCategories.map((category) => (
-                      <div key={category.type} className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                      <button
+                        key={category.type}
+                        type="button"
+                        onClick={() => handleCategoryOpen(category.type)}
+                        className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                        aria-label={`${category.label}の投稿を表示`}
+                      >
                         {category.cover ? (
                           <img src={category.cover} alt={`${category.label}の危険報告`} loading="lazy" className="h-32 w-full object-cover" />
                         ) : (
@@ -327,7 +446,7 @@ export default function ReportHubPage() {
                             <p className="mt-1 text-[10px] text-white/70">最終更新 {formatDate(category.lastReportedAt)}</p>
                           )}
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -354,83 +473,7 @@ export default function ReportHubPage() {
                   </div>
                 ) : shareFeed.length ? (
                   <div className="space-y-4">
-                    {shareFeed.map(({ report, cover, meta, tags, coordinates }) => {
-                      const stats =
-                        shareStats[report.id] ?? ({ liked: false, likes: 0, saved: false, caution: false, comments: 0 } as ShareActionState)
-                      return (
-                        <div key={report.id} className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">{report.title || "タイトル未設定"}</p>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                <span>{formatDate(report.created_at)}</span>
-                                {coordinates && (
-                                  <span className="flex items-center gap-1">
-                                    <MapPin className="h-3.5 w-3.5" />
-                                    {coordinates}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
-                          </div>
-                          {cover ? (
-                            <div className="mt-3 overflow-hidden rounded-xl">
-                              <img src={cover} alt={`${meta.label}の共有画像`} loading="lazy" className="h-40 w-full object-cover" />
-                            </div>
-                          ) : (
-                            <div className={`mt-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br ${meta.accent}`}>
-                              <Images className="h-10 w-10 text-white/90" />
-                            </div>
-                          )}
-                          {report.description && (
-                            <p className="mt-3 text-sm leading-relaxed text-slate-600">{report.description}</p>
-                          )}
-                          {tags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {tags.map((tag) => (
-                                <Badge key={`${report.id}-${tag}`} variant="secondary" className="bg-sky-50 text-sky-600">
-                                  #{tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          <div className="mt-4 flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant={stats.liked ? "default" : "ghost"}
-                              className={stats.liked ? "bg-rose-500 text-white hover:bg-rose-500/90" : ""}
-                              onClick={() => handleShareAction(report.id, "like")}
-                            >
-                              <Heart className={`mr-1 h-4 w-4 ${stats.liked ? "fill-current" : ""}`} />
-                              いいね {stats.likes}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={stats.saved ? "default" : "ghost"}
-                              className={stats.saved ? "bg-emerald-500 text-white hover:bg-emerald-500/90" : ""}
-                              onClick={() => handleShareAction(report.id, "save")}
-                            >
-                              <Bookmark className={`mr-1 h-4 w-4 ${stats.saved ? "fill-current" : ""}`} />
-                              保存
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={stats.caution ? "default" : "ghost"}
-                              className={stats.caution ? "bg-amber-500 text-white hover:bg-amber-500/90" : ""}
-                              onClick={() => handleShareAction(report.id, "caution")}
-                            >
-                              <AlertTriangle className="mr-1 h-4 w-4" />
-                              気をつけよう
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleCommentAction(report.id)}>
-                              <MessageCircle className="mr-1 h-4 w-4" />
-                              コメント {stats.comments}
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
+                    {shareFeed.map(renderShareCard)}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">まだ共有はありません。危険箇所を写真と一緒に投稿してみましょう。</p>
@@ -439,6 +482,34 @@ export default function ReportHubPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <Sheet
+          open={isCategorySheetOpen && !!selectedCategoryType}
+          onOpenChange={(open) => {
+            setIsCategorySheetOpen(open)
+            if (!open) {
+              setSelectedCategoryType(null)
+            }
+          }}
+        >
+          <SheetContent side="bottom" className="h-[75vh] w-full overflow-y-auto sm:mx-auto sm:max-w-3xl">
+            <SheetHeader>
+              <SheetTitle>{selectedCategoryMeta?.label ?? "危険報告"}</SheetTitle>
+              <SheetDescription>
+                {selectedCategoryEntries.length
+                  ? `${selectedCategoryEntries.length} 件の投稿`
+                  : "このカテゴリの投稿はまだありません。"}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-4 space-y-4">
+              {selectedCategoryEntries.length ? (
+                selectedCategoryEntries.map(renderShareCard)
+              ) : (
+                <p className="text-sm text-slate-500">危険箇所が投稿されるとここに表示されます。</p>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   )
