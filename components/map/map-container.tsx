@@ -33,6 +33,62 @@ if (!tokenValidation.isValid) {
 
 mapboxgl.accessToken = mapboxToken || ""
 
+async function reverseGeocodeLocation(latitude: number, longitude: number) {
+  const token = getMapboxToken()
+  if (!token) {
+    console.warn("Mapbox token is missing; skip reverse geocoding.")
+    return { prefecture: null as string | null, city: null as string | null }
+  }
+
+  try {
+    const params = new URLSearchParams({
+      access_token: token,
+      language: "ja",
+      types: "region,place,locality,district",
+      limit: "5",
+    })
+
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?${params.toString()}`,
+    )
+
+    if (!response.ok) {
+      console.warn("Reverse geocoding request failed", response.status)
+      return { prefecture: null, city: null }
+    }
+
+    const data = await response.json()
+    const features: any[] = Array.isArray(data?.features) ? data.features : []
+
+    let prefecture: string | null = null
+    let city: string | null = null
+
+    const processFeature = (feature: any) => {
+      if (!feature) return
+      const types: string[] = feature.place_type ?? []
+      if (!prefecture && types.includes("region")) {
+        prefecture = feature.text ?? feature.place_name ?? null
+      }
+      if (
+        !city &&
+        (types.includes("place") || types.includes("locality") || types.includes("district"))
+      ) {
+        city = feature.text ?? feature.place_name ?? null
+      }
+      if (Array.isArray(feature.context)) {
+        feature.context.forEach(processFeature)
+      }
+    }
+
+    features.forEach(processFeature)
+
+    return { prefecture, city }
+  } catch (error) {
+    console.warn("Reverse geocoding lookup failed", error)
+    return { prefecture: null, city: null }
+  }
+}
+
 // --- 型定義 ---
 // 送信済みレポートの状態用
 interface MapImagePopupContentProps {
@@ -799,6 +855,11 @@ export default function MapContainer() {
 
       // 1. 基本情報をまず INSERT (processed_image_urls は含めないか NULL)
       console.log("Inserting basic report data...");
+
+      const locationDetails = selectedLocation
+        ? await reverseGeocodeLocation(selectedLocation[1], selectedLocation[0])
+        : { prefecture: null as string | null, city: null as string | null };
+
       const { data: insertedData, error: insertError } = await supabase
       .from("danger_reports")
       .insert({
@@ -806,6 +867,8 @@ export default function MapContainer() {
         user_id: user.id,
         latitude: selectedLocation[1],
         longitude: selectedLocation[0],
+        prefecture: locationDetails.prefecture,
+        city: locationDetails.city,
         status: 'pending',
         title: reportDataToInsert.title || '無題の報告',
         danger_type: reportDataToInsert.danger_type || 'other',
