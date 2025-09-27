@@ -9,6 +9,77 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      address_municipalities: {
+        Row: {
+          municipality_code: string
+          prefecture_code: number
+          name_ja: string
+          name_kana: string | null
+          name_en: string
+          is_designated_city: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          municipality_code: string
+          prefecture_code: number
+          name_ja: string
+          name_kana?: string | null
+          name_en: string
+          is_designated_city?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          municipality_code?: string
+          prefecture_code?: number
+          name_ja?: string
+          name_kana?: string | null
+          name_en?: string
+          is_designated_city?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "address_municipalities_prefecture_code_fkey"
+            columns: ["prefecture_code"]
+            isOneToOne: false
+            referencedRelation: "address_prefectures"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      address_prefectures: {
+        Row: {
+          code: number
+          name_ja: string
+          name_kana: string
+          name_en: string
+          region: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          code: number
+          name_ja: string
+          name_kana: string
+          name_en: string
+          region: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: number
+          name_ja?: string
+          name_kana?: string
+          name_en?: string
+          region?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_recommendations: {
         Row: {
           context_id: string | null
@@ -275,54 +346,99 @@ export type Database = {
       }
       danger_reports: {
         Row: {
+          address_hash: string | null
+          city: string | null
           created_at: string | null
           danger_level: number
           danger_type: string
           description: string | null
+          geocode_confidence: number | null
+          geocode_source: Database["public"]["Enums"]["geocode_provider"] | null
+          geocoded_at: string | null
           id: string
           image_url: string | null
           latitude: number
           longitude: number
+          municipality_code: string | null
+          postal_code: string | null
+          prefecture: string | null
+          prefecture_code: number | null
           processed_image_url: string | null
           processed_image_urls: string[] | null
           status: string
           title: string
+          town: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          address_hash?: string | null
+          city?: string | null
           created_at?: string | null
           danger_level: number
           danger_type: string
           description?: string | null
+          geocode_confidence?: number | null
+          geocode_source?: Database["public"]["Enums"]["geocode_provider"] | null
+          geocoded_at?: string | null
           id?: string
           image_url?: string | null
           latitude: number
           longitude: number
+          municipality_code?: string | null
+          postal_code?: string | null
+          prefecture?: string | null
+          prefecture_code?: number | null
           processed_image_url?: string | null
           processed_image_urls?: string[] | null
           status?: string
           title: string
+          town?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          address_hash?: string | null
+          city?: string | null
           created_at?: string | null
           danger_level?: number
           danger_type?: string
           description?: string | null
+          geocode_confidence?: number | null
+          geocode_source?: Database["public"]["Enums"]["geocode_provider"] | null
+          geocoded_at?: string | null
           id?: string
           image_url?: string | null
           latitude?: number
           longitude?: number
+          municipality_code?: string | null
+          postal_code?: string | null
+          prefecture?: string | null
+          prefecture_code?: number | null
           processed_image_url?: string | null
           processed_image_urls?: string[] | null
           status?: string
           title?: string
+          town?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "danger_reports_municipality_code_fkey"
+            columns: ["municipality_code"]
+            isOneToOne: false
+            referencedRelation: "address_municipalities"
+            referencedColumns: ["municipality_code"]
+          },
+          {
+            foreignKeyName: "danger_reports_prefecture_code_fkey"
+            columns: ["prefecture_code"]
+            isOneToOne: false
+            referencedRelation: "address_prefectures"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       danger_spots: {
         Row: {
@@ -2663,7 +2779,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      geocode_provider: "mapbox" | "gsi" | "osm" | "manual" | "batch"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -2786,7 +2902,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      geocode_provider: ["mapbox", "gsi", "osm", "manual", "batch"],
+    },
   },
 } as const
 
