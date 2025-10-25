@@ -1,23 +1,59 @@
+import fs from 'fs'
+import path from 'path'
+
+const defaultsPath = path.join(process.cwd(), 'env.defaults.json')
+let envDefaults = {}
+
+try {
+  if (fs.existsSync(defaultsPath)) {
+    const rawDefaults = fs.readFileSync(defaultsPath, 'utf8')
+    envDefaults = JSON.parse(rawDefaults)
+  }
+} catch (error) {
+  const reason = error instanceof Error ? error.message : String(error)
+  console.warn('[next.config] Failed to read env.defaults.json:', reason)
+  envDefaults = {}
+}
+
+const resolveEnv = (key, fallback = '') => {
+  const value = process.env[key]
+  if (value && value.length > 0) {
+    return value
+  }
+  const defaultValue = envDefaults[key]
+  if (defaultValue && defaultValue.length > 0) {
+    return defaultValue
+  }
+  return fallback
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // React 19互換性設定
+  // React 19 strict mode
   reactStrictMode: true,
   
-  // ESLint設定（ビルド時のエラーを防ぐ）
+  // Ignore ESLint errors during build
   eslint: {
     ignoreDuringBuilds: true,
   },
   
-  // TypeScript設定（ビルド時のエラーを防ぐ）
+  // Ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Provide fallback environment values for public configuration
+  env: {
+    NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: resolveEnv('NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN', ''),
+    NEXT_PUBLIC_SUPABASE_URL: resolveEnv('NEXT_PUBLIC_SUPABASE_URL', 'REDACTED_SUPABASE_URL'),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: resolveEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', ''),
+  },
   
-  // Next.js の Image コンポーネントで外部ホストを許可（新しい形式）
+  // Allow remote Supabase storage images
   images: {
     remotePatterns: (() => {
       try {
-        const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const envUrl = resolveEnv('NEXT_PUBLIC_SUPABASE_URL')
         const host = envUrl ? new URL(envUrl).hostname : 'ykodiivanzutyivkguza.supabase.co'
         return [
           { protocol: 'https', hostname: host, port: '', pathname: '/**' },
@@ -32,22 +68,22 @@ const nextConfig = {
   
   transpilePackages: ['mapbox-gl', 'react-map-gl'],
   
-  // Webpack設定の更新
+  // Custom webpack configuration
   webpack: (config, { isServer }) => {
-    // pnpm/npmの互換性問題を解決
+    // Prevent fs polyfill from being bundled client-side
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
-    };
+    }
     
-    // React 19対応 - JSX runtime aliases removed to prevent webpack conflicts
+    // React 19 - JSX runtime aliases removed to prevent webpack conflicts
     
-    return config;
+    return config
   },
   
-  // 実験的機能（React 19対応）
+  // React 19 experimental options
   experimental: {
-    // サーバーアクションの設定
+    // Server action request size limit
     serverActions: {
       bodySizeLimit: '2mb',
     },

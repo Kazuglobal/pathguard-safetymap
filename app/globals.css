@@ -375,4 +375,18 @@
   .mobile-button {
     @apply px-4 py-2 text-sm;
   }
+  
+  /* モバイルマップエリアの強調 */
+  .mobile-map-area {
+    animation: glow-border 3s ease-in-out infinite;
+  }
+  
+  @keyframes glow-border {
+    0%, 100% {
+      box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 8px 40px rgba(59, 130, 246, 0.5);
+    }
+  }
 }

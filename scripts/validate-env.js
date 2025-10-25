@@ -2,29 +2,43 @@
 
 /**
  * Environment variable validation script
- * Run this during build to ensure all required environment variables are set
+ * Run this during build to ensure all required environment variables are set.
  */
 
-// Load environment variables from .env.local if it exists
 const fs = require('fs')
 const path = require('path')
 
-function loadEnvFile(envPath) {
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8')
-    const lines = envContent.split('\n')
-    
-    lines.forEach(line => {
-      const trimmed = line.trim()
-      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-        const [key, ...valueParts] = trimmed.split('=')
-        const value = valueParts.join('=')
-        if (key && value && !process.env[key]) {
-          process.env[key] = value
-        }
-      }
-    })
+const defaultsPath = path.join(process.cwd(), 'env.defaults.json')
+let envDefaults = {}
+
+try {
+  if (fs.existsSync(defaultsPath)) {
+    const rawDefaults = fs.readFileSync(defaultsPath, 'utf8')
+    envDefaults = JSON.parse(rawDefaults)
   }
+} catch (error) {
+  const reason = error instanceof Error ? error.message : String(error)
+  console.warn('[env] Failed to read env.defaults.json:', reason)
+  envDefaults = {}
+}
+
+// Load environment variables from .env.local/.env if they exist
+function loadEnvFile(envPath) {
+  if (!fs.existsSync(envPath)) return
+
+  const envContent = fs.readFileSync(envPath, 'utf8')
+  const lines = envContent.split('\n')
+
+  lines.forEach((line) => {
+    const trimmed = line.trim()
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [key, ...valueParts] = trimmed.split('=')
+      const value = valueParts.join('=')
+      if (key && value && !process.env[key]) {
+        process.env[key] = value
+      }
+    }
+  })
 }
 
 // Load .env.local first, then .env
@@ -45,59 +59,68 @@ const optionalEnvVars = [
 ]
 
 function validateEnvironmentVariables() {
-  console.log('🔍 Validating environment variables...')
-  
+  console.log('[env] Validating environment variables...')
+
   const missing = []
   const invalid = []
-  
+  const usedFallbacks = []
+
   // Check required variables
   for (const envVar of requiredEnvVars) {
-    const value = process.env[envVar]
-    
+    const rawValue = process.env[envVar]
+    const fallbackValue = envDefaults[envVar]
+    const value = rawValue || fallbackValue
+    const isUsingFallback = !rawValue && !!fallbackValue
+
     if (!value) {
       missing.push(envVar)
       continue
     }
-    
-    // Validate specific formats
-    if (envVar === 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN') {
-      if (!value.startsWith('pk.')) {
-        invalid.push(`${envVar} must start with 'pk.' (public token)`)
-      }
+
+    if (isUsingFallback) {
+      usedFallbacks.push(envVar)
+      process.env[envVar] = value
     }
-    
+
+    // Validate specific formats
+    if (envVar === 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN' && !value.startsWith('pk.')) {
+      invalid.push(`${envVar} must start with 'pk.' (public token)`)
+    }
+
     if (envVar.includes('SUPABASE_URL')) {
       if (!value.startsWith('https://') || !value.includes('.supabase.co')) {
         invalid.push(`${envVar} must be a valid Supabase URL`)
       }
     }
-    
-    // (OPENAI_API_KEY is optional and validated below only if present)
   }
-  
+
   // Report results
   if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:')
-    missing.forEach(envVar => {
+    console.error('[env] Missing required environment variables:')
+    missing.forEach((envVar) => {
       console.error(`   - ${envVar}`)
     })
   }
-  
+
   if (invalid.length > 0) {
-    console.error('❌ Invalid environment variables:')
-    invalid.forEach(error => {
+    console.error('[env] Invalid environment variables:')
+    invalid.forEach((error) => {
       console.error(`   - ${error}`)
     })
   }
-  
+
   if (missing.length === 0 && invalid.length === 0) {
-    console.log('✅ All required environment variables are properly set!')
-    
+    console.log('[env] All required environment variables are available.')
+
     // Check optional variables
-    const missingOptional = optionalEnvVars.filter(envVar => !process.env[envVar])
+    const missingOptional = optionalEnvVars.filter((envVar) => {
+      const raw = process.env[envVar]
+      const fallback = envDefaults[envVar]
+      return !(raw || fallback)
+    })
     if (missingOptional.length > 0) {
-      console.log('ℹ️  Optional environment variables not set:')
-      missingOptional.forEach(envVar => {
+      console.log('[env] Optional environment variables not set:')
+      missingOptional.forEach((envVar) => {
         console.log(`   - ${envVar}`)
       })
     }
@@ -105,16 +128,24 @@ function validateEnvironmentVariables() {
     // Validate optional OpenAI key format if provided
     const maybeOpenAIKey = process.env.OPENAI_API_KEY
     if (maybeOpenAIKey && !maybeOpenAIKey.startsWith('sk-')) {
-      console.warn("⚠️  OPENAI_API_KEY is set but doesn't start with 'sk-'. OpenAI features may fail.")
+      console.warn("[env] OPENAI_API_KEY is set but doesn't start with 'sk-'. OpenAI features may fail.")
     }
-    
+
+    if (usedFallbacks.length > 0) {
+      console.warn('[env] Using fallback values from env.defaults.json for:')
+      usedFallbacks.forEach((envVar) => {
+        console.warn(`   - ${envVar}`)
+      })
+      console.warn('[env] Define these variables in your deployment environment to use project-specific credentials.')
+    }
+
     return true
   }
-  
-  console.error('❌ Environment validation failed!')
+
+  console.error('[env] Environment validation failed!')
   console.error('Please check your .env.local file and ensure all required variables are set.')
-  console.error('See .env.example for reference.')
-  
+  console.error('See env.defaults.json or your deployment settings for reference.')
+
   return false
 }
 
