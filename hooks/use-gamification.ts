@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { useSupabase } from "@/components/providers/supabase-provider";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/lib/database.types";
 
 interface UserPointsRow {
@@ -12,6 +13,8 @@ interface UserPointsRow {
 
 export function useGamification() {
   const { supabase } = useSupabase();
+  const { toast } = useToast();
+  
   const fetcher = async (): Promise<UserPointsRow | null> => {
     const {
       data: { user },
@@ -31,11 +34,31 @@ export function useGamification() {
     refreshInterval: 60_000, // 1分ごとに再取得
   });
 
+  // ポイント獲得通知
+  const showPointsNotification = (pointsEarned: number, reason: string) => {
+    toast({
+      title: `+${pointsEarned}ポイント獲得！`,
+      description: reason,
+      duration: 3000,
+    });
+  };
+
+  // レベルアップ通知
+  const showLevelUpNotification = (newLevel: number) => {
+    toast({
+      title: `レベルアップ！`,
+      description: `レベル${newLevel}に到達しました！`,
+      duration: 5000,
+    });
+  };
+
   return {
     points: data?.points ?? 0,
     level: data?.level ?? 1,
     isLoading,
     error,
     mutate,
+    showPointsNotification,
+    showLevelUpNotification,
   };
 } 

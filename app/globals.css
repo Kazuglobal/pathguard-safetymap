@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* モバイル地図表示最適化 */
+@media (max-width: 768px) {
+  .mobile-map-container {
+    height: calc(100vh - 120px); /* ヘッダー分を差し引く */
+    min-height: 500px;
+  }
+  
+  .mobile-header-compact {
+    padding: 0.5rem 1rem;
+  }
+  
+  .mobile-button-compact {
+    height: 1.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  
+  /* ボタンの重なりを防ぐ */
+  .mobile-header-buttons {
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  
+  .mobile-header-buttons button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-width: auto;
+  }
+  
+  /* ヘッダーの高さ制限 */
+  .mobile-header-compact {
+    max-height: 80px;
+    overflow: hidden;
+  }
+}
+
 @layer base {
   :root {
     /* ユーザーフレンドリーなカラーパレット */
