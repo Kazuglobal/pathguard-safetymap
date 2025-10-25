@@ -22,6 +22,7 @@ import { addPoints } from "@/lib/gamification"
 import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
+import { X } from "lucide-react"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -247,6 +248,9 @@ export default function MapContainer() {
   const [isHelpVisible, setIsHelpVisible] = useState(true);
   const [isHelpDismissed, setIsHelpDismissed] = useState(false);
   const [showMobileMapHint, setShowMobileMapHint] = useState(false);
+  
+  // モバイルサイドバードロワーの状態
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   // --- ▲▲▲ --- 
 
   useEffect(() => {
@@ -255,13 +259,20 @@ export default function MapContainer() {
       return;
     }
     setShowMobileMapHint(true);
-    const timer = window.setTimeout(() => setShowMobileMapHint(false), 6000);
+    const timer = window.setTimeout(() => setShowMobileMapHint(false), 10000); // 10秒に延長
     return () => window.clearTimeout(timer);
   }, [isMobile]);
 
-  const mapMinHeight = isMobile ? 420 : 500;
-  const mapAreaClassName = `flex-1 relative w-full${isMobile ? " rounded-3xl border border-blue-100/70 bg-gradient-to-b from-blue-50/80 via-white to-white shadow-[0_18px_40px_-25px_rgba(30,64,175,0.45)]" : ""}`;
-  const mapCanvasClassName = `absolute inset-0${isMobile ? " rounded-3xl overflow-hidden ring-1 ring-blue-100/60" : ""}`;
+  const mapMinHeight = isMobile ? 400 : 500;
+  
+  // モバイル用のスタイリング：青い枠線を完全に表示するため、マージンを調整
+  const mapAreaClassName = isMobile 
+    ? "flex-1 relative mt-2 mb-2 ml-2 mr-2 rounded-xl border-[3px] border-blue-500 shadow-lg bg-blue-50/30"
+    : "flex-1 relative w-full";
+    
+  const mapCanvasClassName = isMobile
+    ? "absolute inset-0 w-full h-full rounded-lg overflow-hidden"
+    : "absolute inset-0 w-full h-full";
 
   const combinedReports = useMemo(() => [...dangerReports, ...pendingReports], [dangerReports, pendingReports]);
 
@@ -554,7 +565,7 @@ export default function MapContainer() {
 
       map.current.on("error", (e) => { 
         console.error("Mapbox error:", e.error || e); 
-        const errorMessage = e.error?.message || e.message || "不明なエラー";
+        const errorMessage = e.error?.message || "不明なエラー";
         setMapError(`マップエラー: ${errorMessage}`); 
       });
 
@@ -1073,20 +1084,80 @@ export default function MapContainer() {
         // ▼ モバイルでの地点選択モードの状態を渡す (ボタンの表示切替などに利用)
         isSelectingLocation={isMobile && awaitingLocationSelection}
       />
-      <div className="relative flex flex-col md:flex-row flex-1 overflow-hidden pt-12 sm:pt-0 px-4 md:px-0">
+      <div className="relative flex flex-col md:flex-row flex-1 overflow-x-hidden md:overflow-hidden py-2 md:py-0 px-2 md:px-0">
         {/* Search components */}
-        <div className="absolute top-0 inset-x-4 z-10 py-2 flex justify-center sm:hidden">
+        <div className="absolute top-4 inset-x-4 z-20 py-2 flex justify-center sm:hidden">
           <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
         </div>
-        <div className="hidden sm:absolute sm:top-12 sm:left-8 sm:z-10 sm:flex sm:items-center sm:max-w-md sm:w-auto">
+        <div className="hidden sm:absolute sm:top-4 sm:left-8 sm:z-20 sm:flex sm:items-center sm:max-w-md sm:w-auto">
           <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
         </div>
         {/* 3D Toggle */}
         <div className="absolute top-24 right-4 z-20 hidden sm:block">
           <Map3DToggle is3DEnabled={is3DEnabled} onToggle={toggle3DMode} />
         </div>
-        {/* Sidebar */}
-        <div className="block w-full md:block md:w-auto">
+        
+        {/* モバイル用: 危険箇所リスト表示ボタン */}
+        {isMobile && (
+          <div className="fixed bottom-20 right-4 z-50 md:hidden">
+            <Button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="relative rounded-full w-16 h-16 shadow-lg bg-blue-600 hover:bg-blue-700"
+              size="icon"
+            >
+              <AlertTriangle className="h-7 w-7" />
+              {dangerReports.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white">
+                  {dangerReports.length > 99 ? '99+' : dangerReports.length}
+                </span>
+              )}
+            </Button>
+          </div>
+        )}
+        
+        {/* モバイル用: サイドバードロワー */}
+        {isMobile && isMobileSidebarOpen && (
+          <>
+            {/* オーバーレイ背景 */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-[100]"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+            {/* ドロワー */}
+            <div className="fixed inset-y-0 left-0 w-[85vw] max-w-sm bg-white shadow-2xl z-[101] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b bg-blue-50">
+                <h2 className="text-lg font-bold text-blue-900">危険箇所リスト</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="hover:bg-blue-100"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <MapSidebar
+                  dangerReports={dangerReports}
+                  pendingReports={pendingReports}
+                  isLoading={isLoading}
+                  selectedReport={selectedReport}
+                  onFilterChange={handleFilterChange}
+                  filterOptions={filterOptions}
+                  onReportSelect={(report) => {
+                    handleSidebarReportSelect(report);
+                    setIsMobileSidebarOpen(false); // リスト項目選択時にドロワーを閉じる
+                  }}
+                  isAdmin={isAdmin}
+                  onDeleteReport={handleDeleteReport}
+                />
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Sidebar - モバイルでは非表示、md以上で表示 */}
+        <div className="hidden md:block md:w-auto">
           <MapSidebar
             dangerReports={dangerReports}
             pendingReports={pendingReports}
@@ -1106,21 +1177,24 @@ export default function MapContainer() {
             if (showMobileMapHint) setShowMobileMapHint(false);
           }}
         >
+          {/* 地図エリアラベルは削除 - 青い枠線で十分に識別可能 */}
           <div
             ref={mapContainer}
             className={mapCanvasClassName}
-            style={{ width: "100%", height: "100%", minHeight: mapMinHeight }}
+            style={{ minHeight: mapMinHeight }}
           />
           {showMobileMapHint && (
-            <div className="absolute top-3 left-6 z-10 sm:hidden pointer-events-none">
-              <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
-                <MapPin className="h-4 w-4 text-blue-500" />
-                <span>ここが地図エリアです</span>
+            <div className="absolute top-2 left-2 right-2 z-10 sm:hidden pointer-events-none">
+              <div className="bg-blue-500 px-3 py-2 rounded-lg shadow-lg text-white text-xs font-medium pointer-events-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <span>ピンチで拡大・スワイプで移動</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowMobileMapHint(false)}
-                  className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
-                  aria-label="地図エリアのヒントを閉じる"
+                  className="flex-shrink-0 w-5 h-5 hover:bg-blue-600 rounded-full flex items-center justify-center font-bold transition-colors ml-2"
+                  aria-label="閉じる"
                 >
                   ×
                 </button>

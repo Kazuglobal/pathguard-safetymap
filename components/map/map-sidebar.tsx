@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface MapSidebarProps {
   dangerReports: DangerReport[]
@@ -41,6 +42,7 @@ export default function MapSidebar({
   onDeleteReport,
 }: MapSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   const getDangerTypeLabel = (type: string) => {
     switch (type) {
@@ -80,14 +82,17 @@ export default function MapSidebar({
         isCollapsed ? "w-12" : "w-80"
       } flex flex-col h-full`}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute -right-4 top-2 z-10 h-8 w-8 rounded-full border border-gray-200 bg-white shadow-sm"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </Button>
+      {/* 折りたたみボタン（デスクトップのみ） */}
+      {!isMobile && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute -right-4 top-2 z-10 h-8 w-8 rounded-full border border-gray-200 bg-white shadow-sm"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
+      )}
 
       {!isCollapsed && (
         <div className="flex-1 overflow-hidden flex flex-col">
