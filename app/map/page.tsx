@@ -19,7 +19,7 @@ export default async function MapPage() {
   const hasMapboxToken = !!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="flex min-h-screen flex-col overflow-x-hidden">
       {!hasMapboxToken && (
         <Alert variant="destructive" className="m-4">
           <AlertTriangle className="h-4 w-4" />
