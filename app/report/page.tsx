@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AlertTriangle, Bookmark, Heart, Images, MapPin, MessageCircle } from "lucide-react"
+import ImagePreviewDialog from "@/components/danger-report/image-preview-dialog"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -88,6 +89,7 @@ export default function ReportHubPage() {
   const [shareStats, setShareStats] = useState<Record<string, ShareActionState>>({})
   const [selectedCategoryType, setSelectedCategoryType] = useState<string | null>(null)
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -307,14 +309,25 @@ export default function ReportHubPage() {
               )}
             </div>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${meta.badge}`}>{meta.label}</span>
         </div>
         {cover ? (
-          <div className="mt-3 overflow-hidden rounded-xl">
-            <img src={cover} alt={`${meta.label}の共有画像`} loading="lazy" className="h-40 w-full object-cover" />
-          </div>
+          <button
+            type="button"
+            className="mt-3 block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+            onClick={() => setPreviewImage(cover)}
+            aria-label="画像を拡大表示"
+          >
+            <img
+              src={cover}
+              alt={`${meta.label}の共有画像`}
+              loading="lazy"
+              decoding="async"
+              className="h-44 sm:h-56 md:h-64 lg:h-72 w-full object-cover object-center cursor-zoom-in"
+            />
+          </button>
         ) : (
-          <div className={`mt-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br ${meta.accent}`}>
+          <div className={`mt-3 flex h-44 sm:h-56 md:h-64 lg:h-72 items-center justify-center rounded-xl bg-gradient-to-br ${meta.accent}`}>
             <Images className="h-10 w-10 text-white/90" />
           </div>
         )}
@@ -372,20 +385,20 @@ export default function ReportHubPage() {
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-10">
         <Card variant="gradient" className="border-none bg-gradient-to-br from-sky-500 via-sky-400 to-sky-600 text-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-3xl font-bold">みんなの危険報告</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold leading-tight">みんなの危険報告</CardTitle>
             <CardDescription className="text-sky-100">
               最新の危険箇所を確認して、通学路の安全をみんなで守りましょう。
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-sky-100">
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:gap-4">
+            <div className="text-sm text-sky-100 sm:flex-1 min-w-0">
               {reports.length > 0 ? `${reports.length} 件の危険報告が共有されています。` : "まだ危険報告はありません。"}
             </div>
-            <div className="flex w-full gap-3 sm:w-auto">
-              <Button asChild variant="secondary" className="w-full sm:w-auto">
+            <div className="flex w-full gap-3 flex-col sm:flex-row sm:w-auto sm:flex-wrap sm:justify-start">
+              <Button asChild variant="secondary" className="w-full sm:w-auto whitespace-normal break-keep">
                 <Link href="/map">危険箇所をマップで見る</Link>
               </Button>
-              <Button asChild className="w-full bg-white text-sky-600 hover:bg-white/90 sm:w-auto">
+              <Button asChild className="w-full bg-white text-sky-600 hover:bg-white/90 sm:w-auto whitespace-normal break-keep">
                 <Link href="/hazard-game">投稿方法を学ぶ</Link>
               </Button>
             </div>
@@ -418,7 +431,7 @@ export default function ReportHubPage() {
                 {isLoading ? (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, index) => (
-                      <Skeleton key={index} className="h-28 w-full rounded-2xl" />
+                      <Skeleton key={index} className="h-32 sm:h-40 md:h-44 lg:h-52 w-full rounded-2xl" />
                     ))}
                   </div>
                 ) : (
@@ -432,9 +445,9 @@ export default function ReportHubPage() {
                         aria-label={`${category.label}の投稿を表示`}
                       >
                         {category.cover ? (
-                          <img src={category.cover} alt={`${category.label}の危険報告`} loading="lazy" className="h-32 w-full object-cover" />
+                          <img src={category.cover} alt={`${category.label}の危険報告`} loading="lazy" className="h-32 sm:h-40 md:h-44 lg:h-52 w-full object-cover object-center" />
                         ) : (
-                          <div className={`flex h-32 w-full items-center justify-center rounded-2xl bg-gradient-to-br ${category.accent}`}>
+                          <div className={`flex h-32 sm:h-40 md:h-44 lg:h-52 w-full items-center justify-center rounded-2xl bg-gradient-to-br ${category.accent}`}>
                             <AlertTriangle className="h-8 w-8 text-white" />
                           </div>
                         )}
@@ -511,6 +524,8 @@ export default function ReportHubPage() {
           </SheetContent>
         </Sheet>
       </div>
+      {/* 画像プレビュー（拡大表示） */}
+      <ImagePreviewDialog isOpen={!!previewImage} imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   )
 }
