@@ -38,6 +38,58 @@
   }
 }
 
+/* デスクトップレイアウト最適化 */
+@media (min-width: 768px) {
+  /* デスクトップヘッダーの高さを最適化 */
+  .desktop-header {
+    min-height: 60px;
+    max-height: 60px;
+  }
+  
+  /* デスクトップでの地図コンテナの高さ調整 */
+  .desktop-map-container {
+    height: calc(100vh - 60px); /* デスクトップヘッダー分を差し引く */
+  }
+  
+  /* デスクトップでのフィルター要素のスタイル */
+  .desktop-filter-item {
+    transition: all 0.2s ease-in-out;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+  }
+  
+  .desktop-filter-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  /* デスクトップでのボタンサイズ最適化 */
+  .desktop-button {
+    min-height: 36px;
+    padding: 0.5rem 1rem;
+  }
+  
+  /* デスクトップでのユーザー情報表示の最適化 */
+  .desktop-user-info {
+    background-color: rgba(0, 0, 0, 0.02);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  /* デスクトップでの報告ボタンの強調 */
+  .desktop-report-button {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .desktop-report-button:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+  }
+}
+
 @layer base {
   :root {
     /* ユーザーフレンドリーなカラーパレット */

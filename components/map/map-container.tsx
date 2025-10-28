@@ -1142,7 +1142,7 @@ export default function MapContainer() {
         )}
         {/* Map Area */}
         <div
-          className={`${mapAreaClassName} ${isMobile && isSidebarOpen ? "hidden" : ""} ${isMobile ? "mobile-map-container" : ""}`}
+          className={`${mapAreaClassName} ${isMobile && isSidebarOpen ? "hidden" : ""} ${isMobile ? "mobile-map-container" : "desktop-map-container"}`}
           onPointerDownCapture={() => {
             if (showMobileMapHint) setShowMobileMapHint(false);
           }}
