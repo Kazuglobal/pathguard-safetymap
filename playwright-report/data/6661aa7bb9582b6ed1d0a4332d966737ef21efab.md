@@ -1,0 +1,105 @@
+# Page snapshot
+
+```yaml
+- navigation:
+  - link "PathGuardian":
+    - /url: /landing
+    - img
+    - text: PathGuardian
+- navigation:
+  - link "ホーム":
+    - /url: /landing
+    - img
+    - text: ホーム
+  - link "マップ":
+    - /url: /map
+    - img
+    - text: マップ
+  - link "発見":
+    - /url: /hazard-game
+    - img
+    - text: 発見
+  - link "報告":
+    - /url: /report
+    - img
+    - text: 報告
+  - link "マイページ":
+    - /url: /mypage
+    - img
+    - text: マイページ
+- main:
+  - heading "xROAD 道路データ統合" [level=3]
+  - paragraph: 国土交通省道路データプラットフォーム（xROAD）の機能を統合した学校安全マップシステム
+  - paragraph: このページでは、学校安全マップの機能と国土交通省の道路データを組み合わせた様々な機能を体験することができます。 下記のデモから各機能を試してみてください。
+  - heading "道路データ表示" [level=3]
+  - img
+  - paragraph: xROADから取得した道路データをマップ上に表示します。
+  - link "表示する":
+    - /url: "#map"
+    - button "表示する"
+  - heading "安全ルート検索" [level=3]
+  - img
+  - paragraph: 交通量データを考慮した安全な通学路を検索します。
+  - link "表示する":
+    - /url: "#map"
+    - button "表示する"
+  - heading "通学路の安全度評価" [level=3]
+  - img
+  - paragraph: 交通量と危険報告を統合した安全性評価を表示します。
+  - link "表示する":
+    - /url: "#map"
+    - button "表示する"
+  - heading "規制情報アラート" [level=3]
+  - img
+  - paragraph: 通学路周辺の道路規制情報をリアルタイムで確認できます。
+  - link "表示する":
+    - /url: "#map"
+    - button "表示する"
+  - heading "学校周辺交通状況" [level=3]
+  - img
+  - paragraph: 学校周辺の交通量データをダッシュボードで表示します。
+  - link "表示する":
+    - /url: "#map"
+    - button "表示する"
+  - heading "小学校周辺の交通量表示" [level=3]
+  - img
+  - paragraph: 小学校周辺の交通量データを地図上に可視化します。
+  - link "詳細を見る":
+    - /url: /xroad/example-page
+    - button "詳細を見る":
+      - text: 詳細を見る
+      - img
+  - tablist:
+    - tab "マップ表示" [selected]
+    - tab "レイヤー設定"
+    - tab "使い方"
+  - tabpanel "マップ表示":
+    - region "Map"
+    - button "Toggle attribution"
+    - link "Mapbox":
+      - /url: https://www.mapbox.com/about/maps/
+      - text: © Mapbox
+    - link "OpenStreetMap":
+      - /url: https://www.openstreetmap.org/copyright/
+      - text: © OpenStreetMap
+    - link "Improve this map":
+      - /url: https://apps.mapbox.com/feedback/?owner=mapbox&id=streets-v12&access_token=pk.eyJ1Ijoia2F6dTE5ODgiLCJhIjoiY21jeWk4NXRxMGw3cDJtc2FpdzFhMHgxMSJ9.4K43teNcQ1dcDqncY6FckA#/139.753/35.6844/12
+    - link "Mapbox homepage":
+      - /url: https://www.mapbox.com/
+    - heading "安全ルート検索" [level=3]
+    - text: "出発地点:"
+    - button "地図上で選択"
+    - text: "目的地:"
+    - button "地図上で選択"
+    - paragraph: "交通情報エラー:"
+    - paragraph: "リクエストが無効です: xROAD API エラー: Bad Request パラメータを確認してください。"
+    - paragraph: 時間をおいて再試行するか、管理者に連絡してください。
+    - checkbox "交通量データを考慮する" [checked]
+    - text: 交通量データを考慮する
+- button "Open Next.js Dev Tools":
+  - img
+- button "Open issues overlay": 3 Issue
+- button "Collapse issues badge":
+  - img
+- alert
+```

@@ -51,7 +51,11 @@
       "WebFetch(domain:ai.google.dev)",
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(npm run test:db-migration:*)",
+      "Bash(bash:*)",
+      "Bash(npm run test:gallery-api:*)",
+      "Bash(npm run insert-dummy-data:*)"
     ],
     "deny": []
   }
