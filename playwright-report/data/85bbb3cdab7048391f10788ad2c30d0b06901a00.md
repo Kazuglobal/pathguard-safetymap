@@ -1,0 +1,125 @@
+# Page snapshot
+
+```yaml
+- main:
+  - img
+  - heading "PathGuardian" [level=1]
+  - link "ログイン":
+    - /url: /login
+    - button "ログイン"
+  - link "新規登録":
+    - /url: /register
+    - button "新規登録"
+  - heading "子どもたちの 安全な通学路 をAIがサポート" [level=2]
+  - paragraph: PathGuardianは、AIと地域の力で子どもたちの通学路を守る次世代の安全マップサービスです。 危険箇所の可視化、安全ルートの提案、コミュニティでの情報共有を通じて、 すべての子どもが安心して通学できる環境を実現します。
+  - link "安全マップを確認":
+    - /url: /map
+    - button "安全マップを確認"
+  - link "今すぐはじめる":
+    - /url: /register
+    - button "今すぐはじめる"
+  - img "PathGuardian マッププレビュー"
+  - text: AI搭載
+  - heading "最新のお知らせ" [level=3]
+  - paragraph: PathGuardianの活動情報をお届けします。
+  - heading "ワークショップ開催のお知らせ" [level=3]
+  - paragraph:
+    - img
+    - text: 2025年9月11日・12日
+    - img
+    - text: 青森県八戸市立白鷗小学校（対象：1年生・4年生）
+  - paragraph: 2025年9月11日、12日 青森県八戸市立白鷗小学校の1年生と4年生でワークショップを開催。
+  - heading "PathGuardianの主な機能" [level=3]
+  - paragraph: 最新のAI技術と地域の知恵を組み合わせた、革新的な安全対策ツール
+  - img
+  - heading "AIリアルタイムマップ" [level=3]
+  - paragraph: AIが交通量データと事故履歴を分析し、危険度をリアルタイムで可視化。 時間帯や天候に応じた安全ルートを自動提案します。
+  - img
+  - heading "危険箇所レポート" [level=3]
+  - paragraph: 保護者や地域住民が発見した危険箇所を簡単に報告・共有。 写真付きレポートで具体的な状況を把握できます。
+  - img
+  - heading "コミュニティ連携" [level=3]
+  - paragraph: 学校、PTA、自治体が連携して情報を共有。 地域全体で子どもたちの安全を見守る仕組みを構築します。
+  - img
+  - heading "安全度スコアリング" [level=3]
+  - paragraph: 各通学路の安全度をAIが数値化。 改善が必要な箇所を優先順位付けして対策を支援します。
+  - img
+  - heading "ゲーミフィケーション" [level=3]
+  - paragraph: 危険予測ゲームやクイズで楽しく交通安全を学習。 ポイントやバッジで継続的な参加を促進します。
+  - img
+  - heading "24時間監視システム" [level=3]
+  - paragraph: AIが24時間体制で危険パターンを検知。 緊急時には関係者へ即座にアラートを送信します。
+  - heading "簡単3ステップで始める" [level=3]
+  - paragraph: 今すぐ無料で、子どもたちの安全を守る活動に参加しましょう
+  - text: "1"
+  - heading "アカウント登録" [level=4]
+  - paragraph: メールアドレスだけで簡単登録。保護者、教育関係者、地域住民、どなたでも無料で利用できます。
+  - text: "2"
+  - heading "地域を設定" [level=4]
+  - paragraph: お住まいの地域や学校を設定すると、周辺の安全情報が自動的に表示されます。
+  - text: "3"
+  - heading "情報を共有・活用" [level=4]
+  - paragraph: 危険箇所の報告、安全ルートの確認、コミュニティでの情報交換など、様々な機能を活用できます。
+  - link "無料で始める":
+    - /url: /register
+    - button "無料で始める"
+  - img "安全パターン分析"
+  - heading "データに基づく確かな安全性" [level=3]
+  - heading "交通事故データの分析" [level=4]
+  - paragraph: 過去10年分の交通事故データをAIが分析し、危険パターンを特定します。
+  - heading "リアルタイム交通量監視" [level=4]
+  - paragraph: 時間帯別の交通量を常時モニタリングし、混雑時間帯を避けるルートを提案します。
+  - heading "地域の声を反映" [level=4]
+  - paragraph: 実際に通学路を利用する保護者や子どもたちの声を集約し、現場の実情を反映します。
+  - heading "今すぐPathGuardianを始めましょう" [level=3]
+  - paragraph: 子どもたちの安全な通学路づくりに、あなたの力を貸してください
+  - link "無料アカウント作成":
+    - /url: /register
+    - button "無料アカウント作成"
+  - link "デモを見る":
+    - /url: /map
+    - button "デモを見る"
+  - img
+  - heading "PathGuardian" [level=4]
+  - paragraph: AIと地域の力で、子どもたちの安全を守る
+  - heading "サービス" [level=5]
+  - list:
+    - listitem:
+      - link "安全マップ":
+        - /url: /map
+    - listitem:
+      - link "危険予測ゲーム":
+        - /url: /hazard-game
+    - listitem:
+      - link "ダッシュボード":
+        - /url: /dashboard
+  - heading "サポート" [level=5]
+  - list:
+    - listitem:
+      - link "ヘルプセンター":
+        - /url: "#"
+    - listitem:
+      - link "お問い合わせ":
+        - /url: "#"
+    - listitem:
+      - link "プライバシーポリシー":
+        - /url: "#"
+  - heading "コミュニティ" [level=5]
+  - list:
+    - listitem:
+      - link "ブログ":
+        - /url: "#"
+    - listitem:
+      - link "イベント":
+        - /url: "#"
+    - listitem:
+      - link "パートナー":
+        - /url: "#"
+  - paragraph: © 2025 PathGuardian. All rights reserved.
+- button "Open Next.js Dev Tools":
+  - img
+- button "Open issues overlay": 1 Issue
+- button "Collapse issues badge":
+  - img
+- alert
+```
