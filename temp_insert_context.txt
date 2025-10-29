@@ -1,0 +1,96 @@
+  return;
+    }
+
+    // 画像ファイルを取り出す (プロパティ名は要確認)
+    const imageFile = reportData.imageFile;
+    // insert するデータから imageFile を除外
+    const { imageFile: _removed, ...reportDataToInsert } = reportData;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+      
+ed_image_urls は含めないか NULL)
+      console.log("Inserting basic report data...");
+      const { data: insertedData, error: insertError } = await supabase
+      .from("danger_reports")
+      .insert({
+        ...reportDataToInsert, // imageFile を除外したデータ
+        user_id: user.id,
+        latitude: selec
+NULL)
+      console.log("Inserting basic report data...");
+      const { data: insertedData, error: insertError } = await supabase
+      .from("danger_reports")
+      .insert({
+        ...reportDataToInsert, // imageFile を除外したデータ
+        user_id: user.id,
+        latitude: selectedLocation[1],
+     
+st { data: insertedData, error: insertError } = await supabase
+      .from("danger_reports")
+      .insert({
+        ...reportDataToInsert, // imageFile を除外したデータ
+        user_id: user.id,
+        latitude: selectedLocation[1],
+        longitude: selectedLocation[0],
+        status: 'pending',
+      
+)
+        // processed_image_urls: [], // ← 削除
+      })
+      .select()
+      .single();
+
+      if (insertError) throw insertError;
+      if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
+
+      const newReportId = insertedData.id;
+      console.log(`Report inserted successfully with ID
+sed_image_urls: [], // ← 削除
+      })
+      .select()
+      .single();
+
+      if (insertError) throw insertError;
+      if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
+
+      const newReportId = insertedData.id;
+      console.log(`Report inserted successfully with ID: ${newReportId}`);
+ 削除
+      })
+      .select()
+      .single();
+
+      if (insertError) throw insertError;
+      if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
+
+      const newReportId = insertedData.id;
+      console.log(`Report inserted successfully with ID: ${newReportId}`);
+
+      // 2. 画像ファイルがあれば
+or;
+      if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
+
+      const newReportId = insertedData.id;
+      console.log(`Report inserted successfully with ID: ${newReportId}`);
+
+      // 2. 画像ファイルがあれば、画像処理 API を呼び出す
+      let finalReportData = insertedData as DangerReport; // 型アサーション
+
+r("挿入されたレポートデータの取得に失敗しました。");
+
+      const newReportId = insertedData.id;
+      console.log(`Report inserted successfully with ID: ${newReportId}`);
+
+      // 2. 画像ファイルがあれば、画像処理 API を呼び出す
+      let finalReportData = insertedData as DangerReport; // 型アサーション
+      if (imageFile && newReportId) {
+     
+fully with ID: ${newReportId}`);
+
+      // 2. 画像ファイルがあれば、画像処理 API を呼び出す
+      let finalReportData = insertedData as DangerReport; // 型アサーション
+      if (imageFile && newReportId) {
+        console.log(`Image file found, calling /api/image/process for report ID: ${newReportId}`);
+        const formData

@@ -1,0 +1,9 @@
+       report={selectedReport}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onResolve={handleResolve}
+        onReportUpdate={handleReportUpdate}
+      />
+    </div>
+  )
+}

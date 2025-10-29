@@ -243,7 +243,7 @@ export default function MyPage() {
                 <p className="text-sm font-semibold text-slate-900">{report.title || "タイトル未設定"}</p>
                 <p className="text-xs text-slate-500 mt-1">{formatDate(report.created_at)}</p>
               </div>
-              <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+              <Badge variant={statusInfo.variant} className="whitespace-nowrap">{statusInfo.label}</Badge>
             </div>
           )
         })}

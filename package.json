@@ -21,7 +21,11 @@
     "test:responsive:headed": "playwright test tests/responsive --headed",
     "test:responsive:mobile": "playwright test tests/responsive --project='Mobile Chrome - iPhone 12'",
     "test:responsive:tablet": "playwright test tests/responsive --project='Tablet - iPad'",
-    "test:responsive:desktop": "playwright test tests/responsive --project='Desktop - Chrome 1920x1080'"
+    "test:responsive:desktop": "playwright test tests/responsive --project='Desktop - Chrome 1920x1080'",
+    "test:db-migration": "tsx test-report-gallery-migration.ts",
+    "test:gallery-api": "tsx test-gallery-api.ts",
+    "apply-migration": "tsx apply-migration.ts",
+    "insert-dummy-data": "tsx insert-dummy-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -96,12 +100,14 @@
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "cross-env": "^7.0.3",
+    "dotenv": "^17.2.3",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.3.4",
     "playwright": "^1.54.0",
     "postcss": "^8",
     "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }
