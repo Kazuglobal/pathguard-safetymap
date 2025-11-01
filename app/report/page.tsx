@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AlertTriangle, Bookmark, Heart, Images, MapPin, MessageCircle } from "lucide-react"
 import ImagePreviewDialog from "@/components/danger-report/image-preview-dialog"
+import SharedGallery3D from "@/components/report/shared-gallery-3d"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -411,9 +412,10 @@ export default function ReportHubPage() {
               <h2 className="text-xl font-semibold text-slate-900">危険報告と共有</h2>
               <p className="text-sm text-slate-500">カテゴリ別に危険箇所を探したり、写真付きの共有をチェックできます。</p>
             </div>
-            <TabsList className="grid h-11 w-full grid-cols-2 sm:w-auto">
+            <TabsList className="grid h-11 w-full grid-cols-3 sm:w-auto">
               <TabsTrigger value="gallery">危険報告</TabsTrigger>
               <TabsTrigger value="share">共有フィード</TabsTrigger>
+              <TabsTrigger value="3d-gallery">3Dギャラリー</TabsTrigger>
             </TabsList>
           </div>
 
@@ -493,6 +495,10 @@ export default function ReportHubPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="3d-gallery" className="mt-6">
+            <SharedGallery3D />
           </TabsContent>
         </Tabs>
 
