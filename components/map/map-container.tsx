@@ -1095,8 +1095,14 @@ export default function MapContainer() {
         isSelectingLocation={isMobile && awaitingLocationSelection}
       />
       <div className="relative flex flex-col md:flex-row flex-1 overflow-hidden pt-0 px-2 md:px-0">
-        {/* モバイル用検索バーは削除（地図エリアを拡大） */}
-        {/* 検索バー（モバイルでは非表示、デスクトップのみ） */}
+        {/* 検索バー（モバイル用） */}
+        {isMobile && (
+          <div className="absolute top-2 left-2 z-20 w-[calc(100%-80px)]">
+            <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+          </div>
+        )}
+        
+        {/* 検索バー（デスクトップ用） */}
         <div className="hidden sm:absolute sm:top-12 sm:left-8 sm:z-10 sm:flex sm:items-center sm:max-w-md sm:w-auto">
           <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
         </div>
