@@ -12,6 +12,17 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 
+const OFFLINE_MESSAGE = "Supabaseに接続できません。ネットワーク接続を確認してから再試行してください。"
+
+const resolveErrorMessage = (error: unknown, fallback: string) => {
+  const message =
+    typeof error === "object" && error !== null && "message" in error ? String((error as any).message) : ""
+  if (message.includes("network_error") || message.includes("Failed to fetch") || message.includes("fetch failed")) {
+    return OFFLINE_MESSAGE
+  }
+  return message || fallback
+}
+
 export default function RegisterForm() {
   const router = useRouter()
   const { supabase } = useSupabase()
@@ -30,26 +41,22 @@ export default function RegisterForm() {
         email,
         password,
         options: {
-          data: {
-            full_name: fullName,
-          },
+          data: { full_name: fullName },
         },
       })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       toast({
-        title: "登録成功",
-        description: "アカウントが作成されました。確認メールを確認してください。",
+        title: "登録が完了しました",
+        description: "確認メールをご確認ください。",
       })
 
       router.push("/login")
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "エラー",
-        description: error.message || "登録中にエラーが発生しました。",
+        description: resolveErrorMessage(error, "登録に失敗しました。"),
         variant: "destructive",
       })
     } finally {
@@ -61,7 +68,7 @@ export default function RegisterForm() {
     <Card>
       <CardHeader>
         <CardTitle>アカウント登録</CardTitle>
-        <CardDescription>新しいアカウントを作成してください</CardDescription>
+        <CardDescription>必要事項を入力して新しいアカウントを作成してください。</CardDescription>
       </CardHeader>
       <form onSubmit={handleRegister}>
         <CardContent className="space-y-4">
@@ -96,19 +103,19 @@ export default function RegisterForm() {
               required
               minLength={8}
             />
-            <p className="text-xs text-gray-500">パスワードは8文字以上にしてください</p>
+            <p className="text-xs text-gray-500">パスワードは8文字以上で設定してください。</p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "登録中..." : "登録"}
+            {isLoading ? "登録中..." : "登録する"}
           </Button>
           <div className="text-center text-sm mt-2">
-            すでにアカウントをお持ちの場合は{" "}
+            すでにアカウントをお持ちの方は{" "}
             <Link href="/login" className="text-primary hover:underline">
               ログイン
             </Link>
-            してください
+            してください。
           </div>
         </CardFooter>
       </form>

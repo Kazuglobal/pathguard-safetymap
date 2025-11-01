@@ -38,7 +38,7 @@ export async function generateDisasterPrompts(
   }
 
   const apiKey = getSanitizedGeminiApiKey()
-  const model = getSanitizedGeminiModel("gemini-2.5-flash")
+  const model = getSanitizedGeminiModel("gemini-2.5-flash-image-preview")
 
   let mimeType = "image/jpeg"
   let dataBase64 = imageBase64OrDataUrl
@@ -52,14 +52,24 @@ export async function generateDisasterPrompts(
   const hazardList = (opts?.customHazards && opts.customHazards.length > 0)
     ? opts.customHazards.join(", ")
     : "earthquake, typhoon (strong wind), heavy rain (flooding), fire"
+  const tableHeader = opts?.language === "en"
+    ? "| Hazard | Expected Risks (examples) | Immediate Countermeasures (examples) |"
+    : "| ハザード | 想定リスク (例) | その場でできる対策 (例) |"
+  const languageInstruction = opts?.language === "en"
+    ? "Respond in natural, professional English."
+    : "Respond in natural, professional Japanese."
+  const countermeasureLanguage = opts?.language === "en" ? "in English" : "in Japanese"
+  const uploadMessage = opts?.language === "en" ? "Please upload an image." : "画像をアップロードしてください。"
 
-  const instruction = `You are a bilingual (Japanese and English) disaster-risk visualization assistant called "防災イメージアシスタントGPT". Always respond in Japanese unless specified otherwise. Do not include any addresses or personal information.
+  const instruction = `You are a bilingual (Japanese and English) disaster-risk visualization assistant called "ドクイメージアシスタントGPT". ${languageInstruction} Do not include any addresses or personal information.
+
+If the input image is missing or blank, respond only with "${uploadMessage}".
 
 Analyze the uploaded photo and return only JSON with this exact shape:
 {
   "riskObservation": {
     "elements": ["..."],
-    "tableMarkdown": "| ハザード | リスク | 対策 |\n|---|---|---|\n..."
+    "tableMarkdown": "${tableHeader}\n|---|---|---|\n..."
   },
   "vizPrompt": "<English prompt for a single infographic with semi-transparent overlays and warning icons>",
   "simulationPrompts": {
@@ -73,17 +83,17 @@ Analyze the uploaded photo and return only JSON with this exact shape:
 Rules:
 - Step 1 (Risk Observation):
   - List visually identifiable elements (fences, utility poles, buildings, trees, drainage, tactile paving, etc.).
-  - For each of these four hazards: ${hazardList}
-    - Provide 2–3 expected risks.
-    - Provide simple, specific on-the-spot countermeasures.
-  - Summarize in a compact Markdown table in Japanese.
+  - For each hazard in this list (include custom wording exactly as provided): ${hazardList}
+    - Describe 2-3 expected risks.
+    - Suggest simple, specific on-the-spot countermeasures ${countermeasureLanguage}.
+  - Summarize in a compact Markdown table using the header shown above.
 - Step 2 (Hazard Visualization Prompt):
   - Output in English a prompt to generate one infographic overlay image based on the uploaded photo.
-  - Use semi-transparent shading + warning icons. Example styles: collapsed fence (red shade + exclamation icons, label "フェンス倒壊"), fallen utility pole (red circle + arrow, label "電柱倒壊"), flooding (blue shade + droplet icon, label "冠水"), fire spread (orange flame icon, label "延焼").
-  - Specify photorealistic, 2K quality, and do not mention any model names.
+  - Use semi-transparent shading with warning icons. Example styles: collapsed fence (red shade + exclamation icons, label "フェンス倒壊"), fallen utility pole (red circle + arrow, label "電柱倒壊"), flooding (blue shade + droplet icon, label "冠水"), fire spread (orange flame icon, label "延焼").
+  - Specify photorealistic, 2K quality, and explicitly state not to mention any generation model names (e.g., DALLE, SD).
 - Step 3 (Post-Disaster Simulation Prompts):
-  - Output in English four prompts keeping the same viewpoint and daylight: earthquake aftermath (fallen fence & utility pole, debris), typhoon-class wind (bent fence, scattered branches, wet surface), flash flood (20 cm water, reflections, floating rubbish), post-fire aftermath (burnt car beyond fence, warped wire, smoke). Photorealistic, 2K, Japanese suburban street, no people.
-- If no image is present, ask to upload; not applicable here since image is provided.
+  - Output in English four prompts keeping the same viewpoint and daylight: earthquake aftermath (fallen fence & utility pole with debris), typhoon-class wind (bent fence, scattered branches, wet surface), flash flood (20 cm water with reflections and floating rubbish), post-fire aftermath (burnt car beyond the fence, warped wire mesh, drifting smoke). Ensure photorealistic 2K quality for a Japanese suburban street and no people are present.
+- Acknowledge language switching or hazard customization requests if they differ from the defaults.
 Return only JSON. No explanations.`
 
   const parts: any[] = [
@@ -113,12 +123,27 @@ Return only JSON. No explanations.`
       elements: Array.isArray(parsed?.riskObservation?.elements) ? parsed.riskObservation.elements.map((e: any) => String(e)) : [],
       tableMarkdown: String(parsed?.riskObservation?.tableMarkdown || ""),
     },
-    vizPrompt: String(parsed?.vizPrompt || "Generate a 2K photorealistic infographic overlay of hazards with Japanese labels."),
+    vizPrompt: String(
+      parsed?.vizPrompt
+        || "Photorealistic 2K infographic from the same viewpoint as the uploaded Japanese suburban street photo with semi-transparent hazard shading, warning icons, and Japanese labels (フェンス倒壊, 電柱倒壊, 冠水, 延焼). No people, no vehicles, no watermarks, and do not mention any model names."
+    ),
     simulationPrompts: {
-      earthquake: String(parsed?.simulationPrompts?.earthquake || "Photorealistic 2K, earthquake aftermath."),
-      typhoon: String(parsed?.simulationPrompts?.typhoon || "Photorealistic 2K, after typhoon-class wind."),
-      flood: String(parsed?.simulationPrompts?.flood || "Photorealistic 2K, flash flood 20cm."),
-      fire: String(parsed?.simulationPrompts?.fire || "Photorealistic 2K, post-fire aftermath."),
+      earthquake: String(
+        parsed?.simulationPrompts?.earthquake
+          || "Photorealistic 2K render from the same viewpoint and daylight showing a major earthquake aftermath with a collapsed fence, fallen utility pole, scattered debris, and light dust. No people, no vehicles, no watermarks, no model names."
+      ),
+      typhoon: String(
+        parsed?.simulationPrompts?.typhoon
+          || "Photorealistic 2K render from the same viewpoint and daylight right after typhoon-class strong wind with a bent fence, scattered branches and leaves, and wet pavement with shallow puddles. No people, no vehicles, no watermarks, no model names."
+      ),
+      flood: String(
+        parsed?.simulationPrompts?.flood
+          || "Photorealistic 2K render from the same viewpoint and daylight during a flash flood with about 20 cm of water, reflections, ripples, and floating rubbish. No people, no vehicles, no watermarks, no model names."
+      ),
+      fire: String(
+        parsed?.simulationPrompts?.fire
+          || "Photorealistic 2K render from the same viewpoint and daylight after a nearby fire with a burnt car beyond the fence, warped wire mesh, lingering smoke, and soot on surfaces. No people, no vehicles, no watermarks, no model names."
+      ),
     },
   }
 }

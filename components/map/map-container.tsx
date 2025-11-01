@@ -602,6 +602,25 @@ export default function MapContainer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReportFormOpen, submittedReport]); // submittedReport dependency added
 
+  // --- Location Selection Mode: Ensure click listener is active ---
+  useEffect(() => {
+    if (awaitingLocationSelection && map.current && mapInitialized.current) {
+      // 地点選択モードの時は、クリックリスナーが確実に有効になるようにする
+      if (!clickListenerAdded.current || !mapClickHandler.current) {
+        addClickListener();
+      } else {
+        // 既にリスナーが追加されている場合でも、最新のhandleMapClickを確実に使用する
+        if (mapClickHandler.current) {
+          map.current.off("click", mapClickHandler.current);
+        }
+        mapClickHandler.current = handleMapClick;
+        map.current.on("click", mapClickHandler.current);
+      }
+      console.log("Location selection mode: Click listener ensured to be active");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingLocationSelection]);
+
   useEffect(() => {
     if (selectedLocation && isReportFormOpen) {
       updateSelectionMarker(selectedLocation);
