@@ -31,16 +31,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const [dangerType, setDangerType] = useState<string>("traffic")
   const [dangerLevel, setDangerLevel] = useState<number>(3)
   // ���摜�֘A�̏��
-  const [originalImageFiles, setOriginalImageFiles] = useState<File[]>([])
-  const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>([])
-  const originalLibraryInputRef = useRef<HTMLInputElement>(null)
-  const originalCameraInputRef = useRef<HTMLInputElement>(null)
+  const [originalImageFile, setOriginalImageFile] = useState<File | null>(null)
+  const [originalImagePreview, setOriginalImagePreview] = useState<string | null>(null)
+  const originalFileInputRef = useRef<HTMLInputElement>(null)
 
   // ���H�摜�֘A�̏��
   const [processedImageFiles, setProcessedImageFiles] = useState<File[]>([])
   const [processedImagePreviews, setProcessedImagePreviews] = useState<string[]>([])
-  const processedLibraryInputRef = useRef<HTMLInputElement>(null)
-  const processedCameraInputRef = useRef<HTMLInputElement>(null)
+  const processedFileInputRef = useRef<HTMLInputElement>(null)
 
   const [activeImageTab, setActiveImageTab] = useState<string>("original")
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -63,8 +61,6 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const [situation, setSituation] = useState<Situation>('viz')
   const [regenLoading, setRegenLoading] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
-  const primaryOriginalImage = useMemo(() => originalImageFiles[0] ?? null, [originalImageFiles])
-
   // 元画像が選択されたら自動で処理 API を呼び出す -> ★★★ 削除またはコメントアウト ★★★
   /*
   useEffect(() => {
