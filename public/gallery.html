@@ -302,7 +302,7 @@
 
   <div id="hud">
     <h1>3D GALLERY</h1>
-    <div class="subtitle">Shared Photos</div>
+    <div class="subtitle">BTTF Meetup Photos</div>
     <div class="instructions">
       <span><strong>WASD / Arrow Keys</strong> - Move</span>
       <span><strong>Mouse Drag</strong> - Rotate Camera</span>
@@ -312,6 +312,7 @@
   </div>
 
   <button id="login-button" onclick="window.signInWithGoogle && window.signInWithGoogle()">Login with Google</button>
+  <button id="diagnose-button" style="position: fixed; top: 80px; right: 24px; padding: 8px 16px; border-radius: 8px; background: rgba(0, 255, 255, 0.2); border: 1px solid rgba(0, 255, 255, 0.4); color: #00ffff; font-family: 'Orbitron', monospace; font-size: 12px; cursor: pointer; z-index: 10; backdrop-filter: blur(10px);">🔍 Diagnose Storage</button>
 
   <div id="upload-dialog">
     <div class="dialog-title">Upload Image</div>
@@ -363,14 +364,24 @@
 
   <script type="module">
     import * as THREE from 'three';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
     import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
     import { createClient } from '@supabase/supabase-js';
 
     // Supabase credentials
     const SUPABASE_URL = 'https://uoxwancavcazzyqcmhlv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVveHdhbmNhdmNhenp5cWNtaGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5NjY0NzIsImV4cCI6MjA3NzU0MjQ3Mn0.lY88TD_7oyeWDrOXhFqtvn10DiTNh7FEISHRb-BAPEk';
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Supabaseクライアントを作成
+    // 注意: Storageエンドポイントは自動的に解決されます
+    // 通常、カスタムエンドポイント（storage.supabase.co）を指定する必要はありません
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      // 必要に応じてカスタム設定を追加できます
+      // storage: {
+      //   // カスタムストレージエンドポイントが必要な場合のみ
+      //   // endpoint: 'https://uoxwancavcazzyqcmhlv.storage.supabase.co'
+      // }
+    });
 
     // Auth state
     let currentUser = null;
@@ -389,16 +400,29 @@
     // Login function
     async function signInWithGoogle() {
       try {
-        const { error } = await supabase.auth.signInWithOAuth({
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
+            // Supabaseが自動的に正しいリダイレクトURIを使用する
+            // 明示的に指定する場合は、SupabaseのリダイレクトURIと完全一致させる必要がある
             redirectTo: `${window.location.origin}${window.location.pathname}`
           }
         });
         if (error) throw error;
       } catch (error) {
-        showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
+        const errorMessage = error.message || 'Unknown error';
+        showToast('Login failed: ' + errorMessage, 'error');
         console.error('Login error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        // redirect_uri_mismatchエラーの場合は詳細を表示
+        if (errorMessage.includes('redirect_uri_mismatch') || errorMessage.includes('redirect_uri')) {
+          console.error('🔴 redirect_uri_mismatch エラーの解決方法:');
+          console.error('1. Google Cloud Consoleで「Authorized redirect URIs」を確認');
+          console.error('2. 以下のURIが正確に入力されているか確認:');
+          console.error(`   https://${SUPABASE_URL.replace('https://', '')}/auth/v1/callback`);
+          console.error('3. 末尾にスラッシュ(/)がないことを確認');
+        }
       }
     }
 
@@ -412,6 +436,7 @@
         showToast('Logged out', 'success');
       } catch (error) {
         showToast('Logout failed: ' + error.message, 'error');
+        console.error('Logout error:', error);
       }
     }
 
@@ -429,16 +454,27 @@
       }
     }
 
+    // Make functions available globally for onclick handlers
     window.signInWithGoogle = signInWithGoogle;
+    window.diagnoseStorage = diagnoseStorageConnection;
+
+    // Diagnose button
+    const diagnoseButton = document.getElementById('diagnose-button');
+    if (diagnoseButton) {
+      diagnoseButton.addEventListener('click', () => {
+        diagnoseStorageConnection();
+        showToast('Diagnosis complete. Check console (F12)', 'success');
+      });
+    }
 
     // Toast notification
     function showToast(message, type = 'info') {
       const toast = document.getElementById('toast');
       if (!toast) return;
-
+      
       toast.textContent = message;
       toast.className = `show ${type}`;
-
+      
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
@@ -465,6 +501,7 @@
       }, 450);
     }
 
+    // 初期ローディング表示
     updateLoading(0.1, 'Initializing 3D environment...');
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -482,7 +519,7 @@
     document.body.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000011);
+    scene.background = new THREE.Color(0x000011); // Deep space blue
     scene.fog = new THREE.Fog(0x000011, 15, 50);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -505,6 +542,14 @@
     const mainLight = new THREE.DirectionalLight(0x00ffff, 1.5);
     mainLight.position.set(5, 10, 5);
     mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 50;
+    mainLight.shadow.camera.left = -20;
+    mainLight.shadow.camera.right = 20;
+    mainLight.shadow.camera.top = 20;
+    mainLight.shadow.camera.bottom = -20;
     scene.add(mainLight);
 
     const accentLight1 = new THREE.PointLight(0xff00ff, 0.8, 30);
@@ -515,46 +560,339 @@
     accentLight2.position.set(10, 5, 5);
     scene.add(accentLight2);
 
+    // Character state
+    const characterState = {
+      group: null,
+      mixer: null,
+      actions: {},
+      currentAction: 'idle',
+      velocity: new THREE.Vector3()
+    };
+
+    const movement = {
+      walkForward: 0,
+      walkRight: 0
+    };
+
+    const keyState = new Set();
+    const CHARACTER_BASE_Y = 0;
+    const CHARACTER_TOP_SPEED = 2.5;
+    const CHARACTER_ACCEL = 10;
+    const CHARACTER_DECEL = 12;
+    const CHARACTER_ROTATE_SPEED = 8;
+
     // Gallery state
     const galleryState = {
       frames: [],
       images: new Map(),
       currentFrame: null,
-      deleteButtons: new Map()
+      deleteButtons: new Map() // フレームごとの削除ボタン
     };
 
     const clock = new THREE.Clock();
+    const introState = {
+      active: true,
+      elapsed: 0,
+      duration: 4.5
+    };
+    const tempCenterTarget = new THREE.Vector3();
+    const galleryMotion = {
+      angle: 0,
+      speed: -THREE.MathUtils.degToRad(8)
+    };
+    const tempBasePosition = new THREE.Vector3();
+    const tempPosition = new THREE.Vector3();
+    const tempCenterDir = new THREE.Vector3();
+    const tempTangentDir = new THREE.Vector3();
+    const tempLookQuaternion = new THREE.Quaternion();
+    const tempWobbleEuler = new THREE.Euler();
+    const tempWobbleQuaternion = new THREE.Quaternion();
+    const tempLookObject = new THREE.Object3D();
+    const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
-    // Create cyberpunk floor
-    function createFloor() {
-      const floorGeometry = new THREE.CircleGeometry(30, 64);
-      const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x001122,
-        roughness: 0.8,
-        metalness: 0.2,
-        emissive: 0x001133,
-        emissiveIntensity: 0.3
+    // Setup input
+    function setupInput() {
+      const moveKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+
+      window.addEventListener('keydown', (event) => {
+        if (event.repeat) return;
+        const key = event.key.toLowerCase();
+        if (moveKeys.has(key)) event.preventDefault();
+        keyState.add(key);
+        recomputeMovement();
       });
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.rotation.x = -Math.PI * 0.5;
-      floor.receiveShadow = true;
-      scene.add(floor);
 
-      const gridHelper = new THREE.GridHelper(30, 30, 0x00ffff, 0x001133);
-      gridHelper.material.opacity = 0.3;
-      gridHelper.material.transparent = true;
-      scene.add(gridHelper);
+      window.addEventListener('keyup', (event) => {
+        const key = event.key.toLowerCase();
+        keyState.delete(key);
+        recomputeMovement();
+      });
     }
 
-    createFloor();
+    function recomputeMovement() {
+      let walkForward = 0;
+      if (keyState.has('w') || keyState.has('arrowup')) walkForward += 1;
+      if (keyState.has('s') || keyState.has('arrowdown')) walkForward -= 1;
+
+      let walkRight = 0;
+      if (keyState.has('d') || keyState.has('arrowright')) walkRight -= 1;
+      if (keyState.has('a') || keyState.has('arrowleft')) walkRight += 1;
+
+      if (walkForward !== 0 && walkRight !== 0) {
+        const inv = 1 / Math.sqrt(2);
+        walkForward *= inv;
+        walkRight *= inv;
+      }
+
+      movement.walkForward = walkForward;
+      movement.walkRight = walkRight;
+    }
+
+    function updateCharacter(delta) {
+      if (!characterState.group) return;
+
+      const hasInput = movement.walkForward !== 0 || movement.walkRight !== 0;
+      const targetSpeed = hasInput ? CHARACTER_TOP_SPEED : 0;
+
+      const camForwardFlat = new THREE.Vector3();
+      const camRightFlat = new THREE.Vector3();
+      const desiredVelocity = new THREE.Vector3();
+
+      if (hasInput) {
+        camForwardFlat.copy(characterState.group.position).sub(camera.position);
+        camForwardFlat.y = 0;
+        if (camForwardFlat.lengthSq() < 1e-6) camForwardFlat.set(0, 0, -1);
+        else camForwardFlat.normalize();
+
+        camRightFlat.set(camForwardFlat.z, 0, -camForwardFlat.x);
+        camRightFlat.normalize();
+
+        desiredVelocity.copy(camForwardFlat).multiplyScalar(movement.walkForward);
+        desiredVelocity.addScaledVector(camRightFlat, movement.walkRight);
+
+        if (desiredVelocity.lengthSq() > 0) {
+          desiredVelocity.normalize().multiplyScalar(targetSpeed);
+          const accel = 1 - Math.exp(-CHARACTER_ACCEL * delta);
+          characterState.velocity.lerp(desiredVelocity, accel);
+        }
+      } else {
+        characterState.velocity.multiplyScalar(Math.exp(-CHARACTER_DECEL * delta));
+        if (characterState.velocity.lengthSq() < 1e-4) {
+          characterState.velocity.setScalar(0);
+        }
+      }
+
+      characterState.group.position.addScaledVector(characterState.velocity, delta);
+      characterState.group.position.y = CHARACTER_BASE_Y;
+
+      const speed = characterState.velocity.length();
+      if (speed > 0.02) {
+        const targetYaw = Math.atan2(characterState.velocity.x, characterState.velocity.z);
+        let deltaYaw = targetYaw - characterState.group.rotation.y;
+        deltaYaw = Math.atan2(Math.sin(deltaYaw), Math.cos(deltaYaw));
+        characterState.group.rotation.y += deltaYaw * Math.min(1, CHARACTER_ROTATE_SPEED * delta);
+      }
+
+      // Update camera to follow character
+      if (characterState.group) {
+        const cameraTarget = characterState.group.position.clone();
+        cameraTarget.y += 1.5;
+        const followFactor = 1 - Math.exp(-6 * delta);
+        controls.target.lerp(cameraTarget, followFactor);
+      }
+    }
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function updateIntroAnimation(delta) {
+      if (!introState.active) return;
+
+      introState.elapsed += delta;
+      let allComplete = true;
+
+      galleryState.frames.forEach(frameGroup => {
+        const intro = frameGroup.userData.intro;
+        if (!intro) return;
+
+        const rawProgress = (introState.elapsed - intro.delay) / introState.duration;
+        const clampedProgress = THREE.MathUtils.clamp(rawProgress, 0, 1);
+        const eased = easeOutCubic(clampedProgress);
+
+        frameGroup.position.lerpVectors(intro.startPosition, intro.targetPosition, eased);
+        frameGroup.quaternion.slerpQuaternions(intro.startQuaternion, intro.targetQuaternion, eased);
+        const scaleValue = THREE.MathUtils.lerp(intro.startScale, intro.targetScale, eased);
+        frameGroup.scale.setScalar(scaleValue);
+
+        if (clampedProgress >= 1) {
+          if (!intro.completed) {
+            frameGroup.position.copy(intro.targetPosition);
+            frameGroup.quaternion.copy(intro.targetQuaternion);
+            frameGroup.scale.setScalar(intro.targetScale);
+            intro.completed = true;
+          }
+        } else {
+          allComplete = false;
+        }
+      });
+
+      if (allComplete) {
+        introState.active = false;
+        galleryState.frames.forEach(frameGroup => {
+          const intro = frameGroup.userData.intro;
+          if (!intro) return;
+          frameGroup.position.copy(intro.targetPosition);
+          frameGroup.quaternion.copy(intro.targetQuaternion);
+          frameGroup.scale.setScalar(intro.targetScale);
+        });
+      }
+    }
+
+    function enableFloatingEffect(frameGroup) {
+      if (!frameGroup) return;
+
+      const finalPosition = frameGroup.userData.finalPosition || frameGroup.position;
+      const finalQuaternion = frameGroup.userData.finalQuaternion || frameGroup.quaternion;
+
+      if (!frameGroup.userData.basePosition) {
+        frameGroup.userData.basePosition = finalPosition.clone();
+      } else {
+        frameGroup.userData.basePosition.copy(finalPosition);
+      }
+      if (!frameGroup.userData.baseRotation) {
+        frameGroup.userData.baseRotation = new THREE.Euler().setFromQuaternion(finalQuaternion.clone());
+      } else {
+        frameGroup.userData.baseRotation.setFromQuaternion(finalQuaternion);
+      }
+
+      frameGroup.userData.floatData = {
+        basePosition: frameGroup.userData.basePosition.clone(),
+        amplitudeY: 0.25 + Math.random() * 0.2,
+        horizontalAmplitude: 0.18 + Math.random() * 0.15,
+        speedY: 0.3 + Math.random() * 0.2,
+        speedHorizontal: 0.18 + Math.random() * 0.15,
+        rotationAmplitude: THREE.MathUtils.degToRad(1.5 + Math.random() * 1.5),
+        rotationSpeed: 0.18 + Math.random() * 0.12,
+        phase: Math.random() * Math.PI * 2
+      };
+    }
+
+    function disableFloatingEffect(frameGroup) {
+      if (!frameGroup) return;
+
+      if (frameGroup.userData.basePosition) {
+        frameGroup.position.copy(frameGroup.userData.basePosition);
+      }
+      if (frameGroup.userData.baseRotation) {
+        frameGroup.rotation.copy(frameGroup.userData.baseRotation);
+      }
+
+      frameGroup.userData.floatData = null;
+    }
+
+    function updateFloatingImages(elapsed, delta) {
+      if (introState.active) return;
+
+      galleryMotion.angle = (galleryMotion.angle + galleryMotion.speed * delta) % (Math.PI * 2);
+      const currentAngle = galleryMotion.angle;
+
+      galleryState.frames.forEach(frameGroup => {
+        const finalPosition = frameGroup.userData.finalPosition;
+        if (!finalPosition) return;
+
+        tempBasePosition.copy(finalPosition).applyAxisAngle(Y_AXIS, currentAngle);
+
+        tempCenterDir.copy(tempBasePosition);
+        tempCenterDir.y = 0;
+        if (tempCenterDir.lengthSq() < 1e-6) tempCenterDir.set(0, 0, 1);
+        else tempCenterDir.normalize();
+
+        tempTangentDir.set(-tempCenterDir.z, 0, tempCenterDir.x);
+
+        let verticalOffset = 0;
+        let radialOffset = 0;
+        let tangentOffset = 0;
+        let rotationAmplitude = 0;
+        let rotationSpeed = 0;
+        let phase = 0;
+
+        const floatData = frameGroup.userData.floatData;
+        if (frameGroup.userData.hasImage && floatData) {
+          verticalOffset = Math.sin(elapsed * floatData.speedY + floatData.phase) * floatData.amplitudeY;
+          radialOffset = Math.cos(elapsed * floatData.speedHorizontal + floatData.phase) * floatData.horizontalAmplitude;
+          tangentOffset = Math.sin(elapsed * floatData.speedHorizontal * 1.3 + floatData.phase * 0.5) * (floatData.horizontalAmplitude * 0.6);
+          rotationAmplitude = floatData.rotationAmplitude;
+          rotationSpeed = floatData.rotationSpeed;
+          phase = floatData.phase;
+        }
+
+        tempPosition.copy(tempBasePosition);
+        tempPosition.addScaledVector(tempCenterDir, radialOffset);
+        tempPosition.addScaledVector(tempTangentDir, tangentOffset);
+        tempPosition.y += verticalOffset;
+        frameGroup.position.copy(tempPosition);
+
+        tempLookObject.position.copy(tempPosition);
+        tempCenterTarget.set(0, tempPosition.y, 0);
+        tempLookObject.lookAt(tempCenterTarget);
+        tempLookObject.rotateY(Math.PI);
+        tempLookQuaternion.copy(tempLookObject.quaternion);
+
+        if (rotationAmplitude > 0) {
+          const wobblePitchPhase = elapsed * rotationSpeed * 0.6 + phase;
+          const wobbleYawPhase = elapsed * rotationSpeed + phase;
+          const wobbleRollPhase = elapsed * rotationSpeed * 0.5 + phase;
+
+          tempWobbleEuler.set(
+            Math.sin(wobblePitchPhase) * rotationAmplitude * 0.5,
+            Math.sin(wobbleYawPhase) * rotationAmplitude * 0.3,
+            Math.cos(wobbleRollPhase) * rotationAmplitude * 0.6,
+            'XYZ'
+          );
+          tempWobbleQuaternion.setFromEuler(tempWobbleEuler);
+          frameGroup.quaternion.copy(tempLookQuaternion);
+          frameGroup.quaternion.multiply(tempWobbleQuaternion);
+        } else {
+          frameGroup.quaternion.copy(tempLookQuaternion);
+        }
+      });
+    }
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(0.1, clock.getDelta());
+      const elapsed = clock.elapsedTime;
+
+      if (characterState.mixer) {
+        characterState.mixer.update(delta);
+      }
+      updateCharacter(delta);
+      updateIntroAnimation(delta);
+      updateFloatingImages(elapsed, delta);
+      controls.update();
+
+      renderer.render(scene, camera);
+    }
+
+    setupInput();
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
     // Gallery layout configuration
     const GALLERY_CONFIG = {
-      numLevels: 4,
-      framesPerLevel: 8,
-      baseRadius: 4,
-      radiusIncrement: 2,
-      heightIncrement: 3,
+      numLevels: 4, // Number of spiral levels
+      framesPerLevel: 8, // Frames per level
+      baseRadius: 4, // Starting radius
+      radiusIncrement: 2, // Radius increase per level
+      baseHeight: 2.2, // Vertical offset for the lowest level
+      heightIncrement: 3, // Vertical spacing between levels
       frameWidth: 2.5,
       frameHeight: 1.5,
       frameDepth: 0.1
@@ -562,33 +900,92 @@
 
     // Create spiral gallery layout
     function createGalleryLayout() {
+      introState.active = true;
+      introState.elapsed = 0;
+      galleryMotion.angle = 0;
       galleryState.frames = [];
+      const totalFrames = GALLERY_CONFIG.numLevels * GALLERY_CONFIG.framesPerLevel;
+
       for (let level = 0; level < GALLERY_CONFIG.numLevels; level++) {
         const radius = GALLERY_CONFIG.baseRadius + level * GALLERY_CONFIG.radiusIncrement;
-        const yPos = level * GALLERY_CONFIG.heightIncrement;
+        const yPos = GALLERY_CONFIG.baseHeight + level * GALLERY_CONFIG.heightIncrement;
         const angleStep = (Math.PI * 2) / GALLERY_CONFIG.framesPerLevel;
 
         for (let i = 0; i < GALLERY_CONFIG.framesPerLevel; i++) {
-          const angle = i * angleStep + (level * Math.PI / GALLERY_CONFIG.numLevels);
+          const angle = i * angleStep + (level * Math.PI / GALLERY_CONFIG.numLevels); // Spiral offset
           const x = Math.cos(angle) * radius;
           const z = Math.sin(angle) * radius;
-
+          
           const frameIndex = level * GALLERY_CONFIG.framesPerLevel + i;
-          createImageFrame(x, yPos, z, frameIndex);
+          createImageFrame(x, yPos, z, frameIndex, level, i);
         }
       }
+
+      console.log(`Created ${totalFrames} gallery frames`);
     }
 
-    // Create a single image frame
-    function createImageFrame(x, y, z, index) {
+    // Create a single image frame with holographic effect
+    function createImageFrame(x, y, z, index, level, orderInLevel) {
       const frameGroup = new THREE.Group();
-      frameGroup.position.set(x, y, z);
-      const target = new THREE.Vector3(0, y, 0);
-      frameGroup.lookAt(target);
-      frameGroup.rotateY(Math.PI);
+      const finalPosition = new THREE.Vector3(x, y, z);
+      const finalTarget = new THREE.Vector3(0, y, 0);
+      frameGroup.position.copy(finalPosition);
+      frameGroup.lookAt(finalTarget);
+      frameGroup.rotateY(Math.PI); // Ensure the frame faces the center while keeping the front side visible
+      const finalQuaternion = frameGroup.quaternion.clone();
+
       frameGroup.userData.frameIndex = index;
       frameGroup.userData.hasImage = false;
+      const centerDirection = new THREE.Vector3(finalPosition.x, 0, finalPosition.z);
+      if (centerDirection.lengthSq() < 1e-6) {
+        centerDirection.set(0, 0, 1);
+      } else {
+        centerDirection.normalize();
+      }
+      const tangentDirection = new THREE.Vector3(-centerDirection.z, 0, centerDirection.x);
+      if (tangentDirection.lengthSq() < 1e-6) {
+        tangentDirection.set(1, 0, 0);
+      } else {
+        tangentDirection.normalize();
+      }
+      frameGroup.userData.centerDirection = centerDirection;
+      frameGroup.userData.tangentDirection = tangentDirection;
+      frameGroup.userData.finalPosition = finalPosition.clone();
+      frameGroup.userData.finalQuaternion = finalQuaternion.clone();
+      frameGroup.userData.basePosition = finalPosition.clone();
+      frameGroup.userData.baseRotation = frameGroup.rotation.clone();
+      frameGroup.userData.floatData = null;
 
+      const introStartRadius = Math.max(6, finalPosition.length() + 6 + Math.random() * 4);
+      const introAngle = Math.random() * Math.PI * 2;
+      const introHeight = y + 8 + Math.random() * 4;
+      const introStartPosition = new THREE.Vector3(
+        Math.cos(introAngle) * introStartRadius,
+        introHeight,
+        Math.sin(introAngle) * introStartRadius
+      );
+      const introStartQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        THREE.MathUtils.degToRad(-50 + Math.random() * 100),
+        THREE.MathUtils.degToRad(Math.random() * 360),
+        THREE.MathUtils.degToRad(-50 + Math.random() * 100)
+      ));
+
+      frameGroup.position.copy(introStartPosition);
+      frameGroup.quaternion.copy(introStartQuaternion);
+      frameGroup.scale.setScalar(0.12);
+
+      frameGroup.userData.intro = {
+        startPosition: introStartPosition.clone(),
+        targetPosition: finalPosition.clone(),
+        startQuaternion: introStartQuaternion.clone(),
+        targetQuaternion: finalQuaternion.clone(),
+        startScale: 0.12,
+        targetScale: 1,
+        delay: level * 0.6 + orderInLevel * 0.08 + Math.random() * 0.4,
+        completed: false
+      };
+
+      // Frame border (holographic style)
       const frameMaterial = new THREE.MeshStandardMaterial({
         color: 0x00ffff,
         emissive: 0x00ffff,
@@ -599,6 +996,7 @@
         opacity: 0.9
       });
 
+      // Outer frame
       const outerFrame = new THREE.Mesh(
         new THREE.BoxGeometry(
           GALLERY_CONFIG.frameWidth + 0.2,
@@ -608,9 +1006,10 @@
         frameMaterial.clone()
       );
       outerFrame.material.emissiveIntensity = 0.5;
-      outerFrame.renderOrder = 10;
+      outerFrame.renderOrder = 10; // 画像より後ろに表示
       frameGroup.add(outerFrame);
 
+      // Inner frame (thinner)
       const innerFrame = new THREE.Mesh(
         new THREE.BoxGeometry(
           GALLERY_CONFIG.frameWidth,
@@ -620,14 +1019,16 @@
         frameMaterial.clone()
       );
       innerFrame.position.z = 0.03;
-      innerFrame.renderOrder = 10;
+      innerFrame.renderOrder = 10; // 画像より後ろに表示
       frameGroup.add(innerFrame);
 
+      // Image plane (placeholder or actual image)
       const imageGeometry = new THREE.PlaneGeometry(
         GALLERY_CONFIG.frameWidth - 0.2,
         GALLERY_CONFIG.frameHeight - 0.2
       );
-
+      
+      // Placeholder material for empty frames
       const placeholderMaterial = new THREE.MeshStandardMaterial({
         color: 0x001122,
         emissive: 0x003344,
@@ -637,43 +1038,49 @@
         side: THREE.DoubleSide
       });
 
+      // Create placeholder texture with "Upload" text
       const canvas = document.createElement('canvas');
       canvas.width = 512;
       canvas.height = 512;
       const ctx = canvas.getContext('2d');
-
+      
+      // Gradient background
       const gradient = ctx.createLinearGradient(0, 0, 512, 512);
       gradient.addColorStop(0, '#001122');
       gradient.addColorStop(1, '#003344');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 512, 512);
-
+      
+      // Border
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 4;
       ctx.strokeRect(10, 10, 492, 492);
-
+      
+      // Text
       ctx.fillStyle = '#00ffff';
       ctx.font = 'bold 60px Orbitron, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('UPLOAD', 256, 220);
-
+      
       ctx.font = '32px Orbitron, monospace';
       ctx.fillText('Click to add image', 256, 300);
-
+      
       const placeholderTexture = new THREE.CanvasTexture(canvas);
       placeholderTexture.colorSpace = THREE.SRGBColorSpace;
       placeholderMaterial.map = placeholderTexture;
       placeholderMaterial.needsUpdate = true;
 
       const imagePlane = new THREE.Mesh(imageGeometry, placeholderMaterial);
-      imagePlane.position.z = 0.2;
-      imagePlane.renderOrder = 100;
+      // 画像プレーンをフレームの前面に配置（Z位置を大きくする）
+      imagePlane.position.z = 0.2; // フレームより大きく前面に
+      imagePlane.renderOrder = 100; // 高いrenderOrderで前面に表示
       imagePlane.userData.isPlaceholder = true;
       imagePlane.userData.frameIndex = index;
       frameGroup.add(imagePlane);
       frameGroup.userData.imagePlane = imagePlane;
 
+      // Glow effect
       const glowGeometry = new THREE.PlaneGeometry(
         GALLERY_CONFIG.frameWidth + 0.4,
         GALLERY_CONFIG.frameHeight + 0.4
@@ -689,22 +1096,34 @@
       frameGroup.add(glow);
       frameGroup.userData.glow = glow;
 
+      // Make frame clickable
       imagePlane.userData.clickable = true;
-
+      
+      // Add raycaster for clicking
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
 
       renderer.domElement.addEventListener('click', (event) => {
-        if (galleryState.currentFrame !== null) return;
+        if (galleryState.currentFrame !== null) return; // Dialog open
 
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
+        // クリック可能なオブジェクトをすべて集める（imagePlaneと削除ボタン）
         const clickableObjects = [];
         galleryState.frames.forEach(frame => {
           if (frame.userData.imagePlane) {
             clickableObjects.push(frame.userData.imagePlane);
+          }
+          // 削除ボタンも追加
+          const deleteButton = galleryState.deleteButtons.get(frame.userData.frameIndex);
+          if (deleteButton) {
+            deleteButton.traverse((child) => {
+              if (child.isMesh) {
+                clickableObjects.push(child);
+              }
+            });
           }
         });
 
@@ -713,14 +1132,17 @@
         if (intersects.length > 0) {
           const clickedObject = intersects[0].object;
           const userData = clickedObject.userData;
-
+          
+          // フレームがクリックされた場合
           const frameIndex = userData.frameIndex;
           const frameGroup = galleryState.frames[frameIndex];
-
+          
           if (frameGroup) {
             if (frameGroup.userData.hasImage) {
+              // 画像がある場合は拡大表示
               showImagePreview(frameIndex);
             } else {
+              // 画像がない場合はアップロードダイアログ
               galleryState.currentFrame = frameIndex;
               showUploadDialog();
             }
@@ -732,12 +1154,13 @@
       galleryState.frames.push(frameGroup);
     }
 
+    // Show upload dialog
     function showUploadDialog() {
       if (!currentUser) {
         showToast('Please login to upload images', 'error');
         return;
       }
-
+      
       const dialog = document.getElementById('upload-dialog');
       if (dialog) {
         dialog.classList.add('visible');
@@ -752,6 +1175,143 @@
       galleryState.currentFrame = null;
     }
 
+    // Show delete dialog
+    function showDeleteDialog(frameIndex) {
+      if (!currentUser) {
+        showToast('Please login to delete images', 'error');
+        return;
+      }
+
+      const frameGroup = galleryState.frames[frameIndex];
+      const imageUserId = frameGroup?.userData?.imageUserId;
+
+      // 自分の画像のみ削除可能
+      if (!imageUserId || imageUserId !== currentUser.id) {
+        showToast('You can only delete your own images', 'error');
+        return;
+      }
+
+      galleryState.currentFrame = frameIndex;
+      const dialog = document.getElementById('delete-dialog');
+      if (dialog) {
+        dialog.style.display = 'block';
+      }
+    }
+
+    function hideDeleteDialog() {
+      const dialog = document.getElementById('delete-dialog');
+      if (dialog) {
+        dialog.style.display = 'none';
+      }
+      galleryState.currentFrame = null;
+    }
+
+    // Setup delete dialog
+    const deleteDialog = document.getElementById('delete-dialog');
+    const btnDeleteConfirm = document.getElementById('btn-delete-confirm');
+    const btnDeleteCancel = document.getElementById('btn-delete-cancel');
+
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async () => {
+        if (galleryState.currentFrame !== null) {
+          await deleteImage(galleryState.currentFrame);
+          hideDeleteDialog();
+          hideImagePreview(); // プレビューも閉じる
+        }
+      });
+    }
+
+    if (btnDeleteCancel) {
+      btnDeleteCancel.addEventListener('click', () => {
+        hideDeleteDialog();
+      });
+    }
+
+    // Delete image from Supabase and clear frame
+    async function deleteImage(frameIndex) {
+      try {
+        if (!currentUser) {
+          showToast('Please login to delete images', 'error');
+          return;
+        }
+
+        const frameGroup = galleryState.frames[frameIndex];
+        const imageUrl = frameGroup?.userData?.imageUrl;
+        const imageUserId = frameGroup?.userData?.imageUserId;
+
+        if (!imageUrl) {
+          showToast('No image to delete', 'error');
+          return;
+        }
+
+        // 権限チェック
+        if (imageUserId !== currentUser.id) {
+          showToast('You can only delete your own images', 'error');
+          return;
+        }
+
+        console.log('🗑️ Deleting image from frame', frameIndex);
+
+        // データベースから削除
+        const { error: dbError } = await supabase
+          .from('gallery_images')
+          .delete()
+          .eq('position', frameIndex)
+          .eq('user_id', currentUser.id); // 念のため再確認
+
+        if (dbError) {
+          console.error('Database delete error:', dbError);
+          throw dbError;
+        }
+
+        console.log('✅ Image deleted from database');
+
+        // Storageから削除（オプション - URLからファイル名を抽出）
+        try {
+          const urlParts = imageUrl.split('/');
+          const fileName = urlParts[urlParts.length - 1];
+          
+          if (fileName) {
+            const { error: storageError } = await supabase.storage
+              .from('gallery-images')
+              .remove([fileName]);
+
+            if (storageError) {
+              console.warn('Storage delete warning:', storageError);
+              // ストレージの削除に失敗してもエラーにしない
+            } else {
+              console.log('✅ Image deleted from storage');
+            }
+          }
+        } catch (err) {
+          console.warn('Could not delete from storage:', err);
+        }
+
+        // フレームをクリア
+        clearFrame(frameIndex);
+        
+        showToast('Image deleted successfully', 'success');
+      } catch (error) {
+        console.error('Delete error:', error);
+        showToast('Failed to delete image: ' + error.message, 'error');
+      }
+    }
+
+    // Show image preview modal (no longer need delete button in 3D)
+    function updateDeleteButton(frameIndex) {
+      // 削除ボタンは不要（画像プレビューの設定から削除）
+      const frameGroup = galleryState.frames[frameIndex];
+      if (!frameGroup) return;
+
+      // 既存の削除ボタンを削除
+      const existingButton = galleryState.deleteButtons.get(frameIndex);
+      if (existingButton) {
+        frameGroup.remove(existingButton);
+        galleryState.deleteButtons.delete(frameIndex);
+      }
+    }
+
+    // Show image preview modal
     function showImagePreview(frameIndex) {
       const frameGroup = galleryState.frames[frameIndex];
       if (!frameGroup || !frameGroup.userData.hasImage) return;
@@ -769,6 +1329,7 @@
         previewImage.src = imageUrl;
         modal.style.display = 'block';
 
+        // 自分の画像の場合のみ設定ボタンを表示
         if (settingsButton) {
           if (currentUser && imageUserId === currentUser.id) {
             settingsButton.style.display = 'flex';
@@ -791,6 +1352,7 @@
       galleryState.currentFrame = null;
     }
 
+    // Setup image preview modal
     const closePreviewBtn = document.getElementById('close-preview');
     const settingsPreviewBtn = document.getElementById('settings-preview');
     const settingsMenu = document.getElementById('settings-menu');
@@ -822,6 +1384,7 @@
       });
     }
 
+    // Close preview when clicking outside
     const imagePreviewModal = document.getElementById('image-preview-modal');
     if (imagePreviewModal) {
       imagePreviewModal.addEventListener('click', (e) => {
@@ -831,6 +1394,7 @@
       });
     }
 
+    // Setup upload dialog
     const uploadDialog = document.getElementById('upload-dialog');
     const imageInput = document.getElementById('image-input');
     const btnUploadSelect = document.getElementById('btn-upload-select');
@@ -872,11 +1436,13 @@
           return;
         }
 
+        // Validate file type
         if (!file.type.startsWith('image/')) {
           showToast('Please select an image file', 'error');
           return;
         }
 
+        // Validate file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           showToast('File size must be less than 10MB', 'error');
           return;
@@ -886,8 +1452,64 @@
       });
     }
 
+    // Storage接続を診断する関数
+    async function diagnoseStorageConnection() {
+      console.log('🔍 === Storage Connection Diagnosis ===');
+      console.log('1. Supabase URL:', SUPABASE_URL);
+      console.log('2. API Key set:', SUPABASE_ANON_KEY ? 'Yes (length: ' + SUPABASE_ANON_KEY.length + ')' : 'No');
+      console.log('3. Current user:', currentUser ? `Yes (${currentUser.email || currentUser.id})` : 'No (Not logged in)');
+      
+      // Storage APIのテスト
+      try {
+        console.log('4. Testing Storage API access...');
+        const { data, error } = await supabase.storage.listBuckets();
+        
+        if (error) {
+          console.error('   ❌ Error:', error.message);
+          console.error('   Status:', error.statusCode);
+          
+          if (error.statusCode === 401 || error.statusCode === 403) {
+            console.error('   → Permission issue. Check:');
+            console.error('      - Are you logged in?');
+            console.error('      - Check Storage RLS policies');
+          }
+        } else {
+          console.log('   ✅ Storage API accessible');
+          console.log('   📦 Buckets:', data?.map(b => `${b.name} (public: ${b.public})`) || []);
+          
+          const targetBucket = data?.find(b => b.name === 'gallery-images');
+          if (targetBucket) {
+            console.log('   ✅ Target bucket "gallery-images" found');
+            console.log('   Public:', targetBucket.public);
+          } else {
+            console.error('   ❌ Target bucket "gallery-images" NOT found');
+            console.error('   Available buckets:', data?.map(b => b.name) || []);
+          }
+        }
+      } catch (err) {
+        console.error('   ❌ Storage test failed:', err);
+      }
+      
+      // 認証状態の確認
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('5. Auth session:', session ? 'Active' : 'None');
+      
+      console.log('=== End Diagnosis ===');
+    }
+
+    // Upload image to Supabase
     async function uploadImage(file, frameIndex) {
       try {
+        // Supabaseが設定されていない場合はスキップ
+        if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+          showToast('Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in gallery.html', 'error');
+          return;
+        }
+
+        // 診断を実行
+        await diagnoseStorageConnection();
+
+        // Show progress
         if (uploadProgress) {
           uploadProgress.classList.add('visible');
         }
@@ -895,14 +1517,57 @@
           uploadProgressBar.style.width = '0%';
         }
 
+        // バケットチェック（オプション - 権限エラーでも続行）
+        if (uploadProgressBar) {
+          uploadProgressBar.style.width = '5%';
+        }
+
+        console.log('🔍 Checking Storage connection...');
+        console.log('Supabase URL:', SUPABASE_URL);
+        console.log('Current user:', currentUser?.id || 'Not logged in');
+
+        // バケットリストを試す（失敗しても続行）
+        try {
+          const { data: buckets, error: bucketListError } = await supabase.storage.listBuckets();
+          
+          if (bucketListError) {
+            console.warn('⚠️ Cannot list buckets (this is OK if RLS policies restrict it):', bucketListError.message);
+            console.log('ℹ️ Will attempt direct upload anyway...');
+          } else {
+            console.log('✅ Storage connection OK');
+            console.log('📦 Available buckets:', buckets?.map(b => b.name) || []);
+            
+            const bucketExists = buckets && buckets.some(bucket => bucket.name === 'gallery-images');
+            
+            if (bucketExists) {
+              console.log('✅ Bucket "gallery-images" confirmed');
+            } else {
+              const availableNames = buckets?.map(b => `"${b.name}"`).join(', ') || 'none';
+              console.warn(`⚠️ Bucket "gallery-images" not in list. Available: ${availableNames}`);
+              console.warn('⚠️ Will try to upload anyway (bucket might exist but not visible)...');
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Bucket check failed, continuing anyway:', err.message);
+        }
+
+        // Generate unique filename
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const filePath = `${fileName}`; // バケットのルートに保存
 
+        // Upload to Supabase Storage
         if (uploadProgressBar) {
           uploadProgressBar.style.width = '20%';
         }
 
+        console.log('📤 Attempting upload to bucket "gallery-images"...');
+        console.log('  File name:', file.name);
+        console.log('  File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+        console.log('  Target path:', filePath);
+        console.log('  Bucket: gallery-images');
+
+        // まず、バケットに直接アクセスを試みる
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('gallery-images')
           .upload(filePath, file, {
@@ -911,23 +1576,83 @@
           });
 
         if (uploadError) {
+          console.error('❌ Storage upload failed!');
+          console.error('Error object:', uploadError);
+          console.error('Error message:', uploadError.message);
+          console.error('Error status:', uploadError.statusCode || uploadError.status);
+          console.error('Full error:', JSON.stringify(uploadError, null, 2));
+          
+          // 詳細なエラー分析
+          const errorMsg = uploadError.message || '';
+          const errorStatus = uploadError.statusCode || uploadError.status || '';
+          
+          let userFriendlyMessage = 'Upload failed: ';
+          
+          if (errorStatus === 404 || errorMsg.includes('not found') || errorMsg.includes('Bucket not found')) {
+            userFriendlyMessage = `Bucket "gallery-images" not found.
+
+🔧 Please check:
+1. Supabase Dashboard → Storage
+2. Bucket name is exactly: gallery-images
+3. Bucket is set as Public
+4. Try deleting and recreating the bucket
+5. Wait 20-30 seconds after creating`;
+
+            console.error('🔴 ' + userFriendlyMessage);
+            showToast('Bucket not found. Check console for details.', 'error');
+            throw new Error('Bucket "gallery-images" not found (404).');
+            
+          } else if (errorStatus === 401 || errorStatus === 403 || errorMsg.includes('permission') || errorMsg.includes('JWT')) {
+            userFriendlyMessage = `Permission denied.
+
+🔧 Please check:
+1. You are logged in
+2. Storage RLS policies are set correctly
+3. Try logging out and back in`;
+
+            console.error('🔴 ' + userFriendlyMessage);
+            showToast('Permission denied. Check console.', 'error');
+            throw new Error('Storage permission denied. Check RLS policies.');
+            
+          } else if (errorStatus === 413 || errorMsg.includes('too large')) {
+            userFriendlyMessage = 'File is too large. Maximum size: 10MB';
+            console.error('🔴 ' + userFriendlyMessage);
+            showToast(userFriendlyMessage, 'error');
+            throw new Error('File too large');
+            
+          } else {
+            userFriendlyMessage += errorMsg || `Status: ${errorStatus}`;
+            console.error('🔴 Unknown error:', userFriendlyMessage);
+            console.error('Please check:');
+            console.error('1. Supabase Dashboard → Storage → gallery-images bucket exists');
+            console.error('2. Bucket is Public');
+            console.error('3. Storage RLS policies are configured (see SUPABASE_SETUP.md)');
+            console.error('4. You are logged in');
+            showToast('Upload failed. Check console for details.', 'error');
+          }
+          
           throw uploadError;
         }
+
+        console.log('✅ File uploaded successfully:', uploadData);
 
         if (uploadProgressBar) {
           uploadProgressBar.style.width = '60%';
         }
 
+        // Get public URL
         const { data: urlData } = supabase.storage
           .from('gallery-images')
-          .getPublicUrl(filePath);
+          .getPublicUrl(filePath); // filePathにはバケット名を含めない
 
         const imageUrl = urlData.publicUrl;
+        console.log('📸 Image URL:', imageUrl);
 
         if (uploadProgressBar) {
           uploadProgressBar.style.width = '70%';
         }
 
+        // Check if position already has an image
         const { data: existingData } = await supabase
           .from('gallery_images')
           .select('id')
@@ -935,6 +1660,7 @@
           .single();
 
         if (existingData) {
+          // Update existing record
           const { error: updateError } = await supabase
             .from('gallery_images')
             .update({
@@ -944,7 +1670,9 @@
             .eq('position', frameIndex);
 
           if (updateError) throw updateError;
+          console.log('✅ Database record updated');
         } else {
+          // Insert new record
           const { error: insertError } = await supabase
             .from('gallery_images')
             .insert({
@@ -954,18 +1682,22 @@
             });
 
           if (insertError) throw insertError;
+          console.log('✅ Database record inserted');
         }
 
         if (uploadProgressBar) {
           uploadProgressBar.style.width = '90%';
         }
 
+        // 即座に3Dフレームに画像を表示（リアルタイム更新を待たない）
+        console.log('🖼️ Loading image into 3D frame...');
         loadImageIntoFrame(frameIndex, imageUrl, currentUser.id);
 
         if (uploadProgressBar) {
           uploadProgressBar.style.width = '100%';
         }
 
+        // UI更新
         setTimeout(() => {
           if (uploadProgress) {
             uploadProgress.classList.remove('visible');
@@ -974,8 +1706,9 @@
             uploadProgressBar.style.width = '0%';
           }
           hideUploadDialog();
-          showToast('Image uploaded successfully!', 'success');
-
+          showToast('Image uploaded and displayed!', 'success');
+          
+          // Reset file input
           if (imageInput) {
             imageInput.value = '';
           }
@@ -983,23 +1716,50 @@
 
       } catch (error) {
         console.error('Upload error:', error);
-        showToast('Upload failed: ' + (error.message || 'Unknown error'), 'error');
-
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        let errorMessage = 'Upload failed: ' + (error.message || 'Unknown error');
+        
+        // より詳細なエラーメッセージ
+        if (error.message && error.message.includes('Bucket not found')) {
+          errorMessage = 'Storage bucket not found. Please create "gallery-images" bucket in Supabase Dashboard.';
+          console.error('🔴 Solution:');
+          console.error('1. Go to Supabase Dashboard → Storage');
+          console.error('2. Click "Create a new bucket"');
+          console.error('3. Name: gallery-images (exactly)');
+          console.error('4. Set as Public bucket');
+          console.error('5. Create the bucket');
+        } else if (error.message && error.message.includes('new row violates row-level security')) {
+          errorMessage = 'Permission denied. Please check RLS policies in Supabase.';
+          console.error('🔴 Solution: Check RLS policies for gallery_images table and storage.objects');
+        } else if (error.message && error.message.includes('JWT')) {
+          errorMessage = 'Authentication error. Please login again.';
+        }
+        
+        showToast(errorMessage, 'error');
+        
         if (uploadProgress) {
           uploadProgress.classList.remove('visible');
         }
         if (uploadProgressBar) {
           uploadProgressBar.style.width = '0%';
         }
-
+        
         if (imageInput) {
           imageInput.value = '';
         }
       }
     }
 
+    // Load gallery images from Supabase
     async function loadGalleryImages() {
       try {
+        // Supabaseが設定されていない場合はスキップ
+        if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+          console.warn('Supabase not configured. Skipping image load.');
+          return;
+        }
+
         const { data, error } = await supabase
           .from('gallery_images')
           .select('*')
@@ -1007,23 +1767,31 @@
 
         if (error) {
           console.error('Supabase query error:', error);
+          // エラーでも続行（テーブルが存在しない場合など）
           return;
         }
 
+        console.log('📦 Loaded gallery images:', data?.length || 0);
+        
         if (data && data.length > 0) {
           data.forEach(imageData => {
             const frameIndex = imageData.position;
+            console.log(`  Frame ${frameIndex}: ${imageData.image_url}`);
             if (frameIndex >= 0 && frameIndex < galleryState.frames.length) {
               loadImageIntoFrame(frameIndex, imageData.image_url, imageData.user_id);
             }
           });
+        } else {
+          console.log('No images in gallery yet');
         }
 
+        // Subscribe to real-time changes
         supabase
           .channel('gallery_images_changes')
-          .on('postgres_changes',
+          .on('postgres_changes', 
             { event: '*', schema: 'public', table: 'gallery_images' },
             (payload) => {
+              console.log('Gallery image changed:', payload);
               if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                 const frameIndex = payload.new.position;
                 const imageUrl = payload.new.image_url;
@@ -1042,66 +1810,115 @@
           .subscribe();
       } catch (error) {
         console.error('Error loading gallery images:', error);
+        // エラーでも続行（Supabase未設定など）
       }
     }
 
+    // Load image into a specific frame with user_id for delete permission
     function loadImageIntoFrame(frameIndex, imageUrl, userId = null) {
       const frameGroup = galleryState.frames[frameIndex];
-      if (!frameGroup) return;
+      if (!frameGroup) {
+        console.error(`Frame ${frameIndex} not found`);
+        return;
+      }
+
+      console.log(`🖼️ Loading image into frame ${frameIndex}:`, imageUrl);
+      console.log(`   User ID: ${userId || 'unknown'}`);
 
       const textureLoader = new THREE.TextureLoader();
+      // CORS対応のためcrossOriginを設定
       textureLoader.crossOrigin = 'anonymous';
-
+      
       textureLoader.load(
         imageUrl,
         (texture) => {
+          console.log('✅ Image texture loaded for frame', frameIndex);
+          
           texture.colorSpace = THREE.SRGBColorSpace;
           texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
           const imagePlane = frameGroup.userData.imagePlane;
           if (imagePlane) {
+            disableFloatingEffect(frameGroup);
+            // 新しいマテリアルを作成（ホログラム風エフェクト付き）
             const imageMaterial = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
               side: THREE.DoubleSide
             });
             imageMaterial.toneMapped = false;
-
+            
+            // 古いマテリアルを置き換え
             if (imagePlane.material.map) {
-              imagePlane.material.map.dispose();
+              imagePlane.material.map.dispose(); // テクスチャも解放
             }
-            imagePlane.material.dispose();
+            imagePlane.material.dispose(); // メモリリーク防止
             imagePlane.material = imageMaterial;
             imagePlane.material.needsUpdate = true;
             imagePlane.userData.isPlaceholder = false;
-
-            imagePlane.position.z = 0.2;
-            imagePlane.renderOrder = 100;
+            
+            // 画像を前面に表示（Z位置とrenderOrderを確実に設定）
+            imagePlane.position.z = 0.2; // フレームより大きく前面に
+            imagePlane.renderOrder = 100; // フレームより前面に表示
+            enableFloatingEffect(frameGroup);
+            
+            console.log('✅ Image material updated for frame', frameIndex);
+            console.log('   Material map:', imageMaterial.map ? 'Set' : 'Not set');
+            console.log('   Position Z:', imagePlane.position.z);
+            console.log('   Render order:', imagePlane.renderOrder);
           }
 
+          // ユーザー情報を保存
           frameGroup.userData.hasImage = true;
           frameGroup.userData.imageUrl = imageUrl;
           frameGroup.userData.imageUserId = userId;
           galleryState.images.set(frameIndex, texture);
 
+          // グローエフェクトを強化
           const glow = frameGroup.userData.glow;
           if (glow) {
             glow.material.opacity = 0.2;
           }
+
+          // 削除ボタンの表示・非表示を更新
+          updateDeleteButton(frameIndex);
+
+          console.log('✅ Frame', frameIndex, 'now displays image');
         },
-        undefined,
+        (progress) => {
+          // ローディング進捗（オプション）
+          if (progress.total > 0) {
+            const percent = (progress.loaded / progress.total) * 100;
+            console.log(`Loading image: ${percent.toFixed(1)}%`);
+          }
+        },
         (error) => {
-          console.error('Error loading image texture:', error);
+          console.error('❌ Error loading image texture:', error);
+          console.error('Image URL:', imageUrl);
+          console.error('This might be a CORS issue. Check Supabase Storage bucket configuration.');
+          showToast('Failed to load image. Check console for details.', 'error');
         }
       );
     }
 
+    // Clear a frame (remove image)
     function clearFrame(frameIndex) {
       const frameGroup = galleryState.frames[frameIndex];
       if (!frameGroup) return;
 
+      console.log('🧹 Clearing frame', frameIndex);
+
+      // 削除ボタンを削除
+      const deleteButton = galleryState.deleteButtons.get(frameIndex);
+      if (deleteButton) {
+        frameGroup.remove(deleteButton);
+        galleryState.deleteButtons.delete(frameIndex);
+      }
+
       const imagePlane = frameGroup.userData.imagePlane;
       if (imagePlane) {
+        disableFloatingEffect(frameGroup);
+        // Restore placeholder
         const placeholderMaterial = new THREE.MeshStandardMaterial({
           color: 0x001122,
           emissive: 0x003344,
@@ -1115,36 +1932,37 @@
         canvas.width = 512;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
-
+        
         const gradient = ctx.createLinearGradient(0, 0, 512, 512);
         gradient.addColorStop(0, '#001122');
         gradient.addColorStop(1, '#003344');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 512, 512);
-
+        
         ctx.strokeStyle = '#00ffff';
         ctx.lineWidth = 4;
         ctx.strokeRect(10, 10, 492, 492);
-
+        
         ctx.fillStyle = '#00ffff';
         ctx.font = 'bold 60px Orbitron, monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('UPLOAD', 256, 220);
-
+        
         ctx.font = '32px Orbitron, monospace';
         ctx.fillText('Click to add image', 256, 300);
-
+        
         const placeholderTexture = new THREE.CanvasTexture(canvas);
         placeholderTexture.colorSpace = THREE.SRGBColorSpace;
         placeholderMaterial.map = placeholderTexture;
         placeholderMaterial.needsUpdate = true;
 
+        // 古いマテリアルを解放
         if (imagePlane.material.map) {
           imagePlane.material.map.dispose();
         }
         imagePlane.material.dispose();
-
+        
         imagePlane.material = placeholderMaterial;
         imagePlane.userData.isPlaceholder = true;
       }
@@ -1153,130 +1971,22 @@
       frameGroup.userData.imageUrl = null;
       frameGroup.userData.imageUserId = null;
       galleryState.images.delete(frameIndex);
+
+      console.log('✅ Frame', frameIndex, 'cleared');
     }
 
-    function showDeleteDialog(frameIndex) {
-      if (!currentUser) {
-        showToast('Please login to delete images', 'error');
-        return;
-      }
-
-      const frameGroup = galleryState.frames[frameIndex];
-      const imageUserId = frameGroup?.userData?.imageUserId;
-
-      if (!imageUserId || imageUserId !== currentUser.id) {
-        showToast('You can only delete your own images', 'error');
-        return;
-      }
-
-      galleryState.currentFrame = frameIndex;
-      const dialog = document.getElementById('delete-dialog');
-      if (dialog) {
-        dialog.style.display = 'block';
-      }
-    }
-
-    function hideDeleteDialog() {
-      const dialog = document.getElementById('delete-dialog');
-      if (dialog) {
-        dialog.style.display = 'none';
-      }
-      galleryState.currentFrame = null;
-    }
-
-    const deleteDialog = document.getElementById('delete-dialog');
-    const btnDeleteConfirm = document.getElementById('btn-delete-confirm');
-    const btnDeleteCancel = document.getElementById('btn-delete-cancel');
-
-    if (btnDeleteConfirm) {
-      btnDeleteConfirm.addEventListener('click', async () => {
-        if (galleryState.currentFrame !== null) {
-          await deleteImage(galleryState.currentFrame);
-          hideDeleteDialog();
-          hideImagePreview();
-        }
-      });
-    }
-
-    if (btnDeleteCancel) {
-      btnDeleteCancel.addEventListener('click', () => {
-        hideDeleteDialog();
-      });
-    }
-
-    async function deleteImage(frameIndex) {
-      try {
-        if (!currentUser) {
-          showToast('Please login to delete images', 'error');
-          return;
-        }
-
-        const frameGroup = galleryState.frames[frameIndex];
-        const imageUrl = frameGroup?.userData?.imageUrl;
-        const imageUserId = frameGroup?.userData?.imageUserId;
-
-        if (!imageUrl) {
-          showToast('No image to delete', 'error');
-          return;
-        }
-
-        if (imageUserId !== currentUser.id) {
-          showToast('You can only delete your own images', 'error');
-          return;
-        }
-
-        const { error: dbError } = await supabase
-          .from('gallery_images')
-          .delete()
-          .eq('position', frameIndex)
-          .eq('user_id', currentUser.id);
-
-        if (dbError) {
-          throw dbError;
-        }
-
-        try {
-          const urlParts = imageUrl.split('/');
-          const fileName = urlParts[urlParts.length - 1];
-
-          if (fileName) {
-            await supabase.storage
-              .from('gallery-images')
-              .remove([fileName]);
-          }
-        } catch (err) {
-          console.warn('Could not delete from storage:', err);
-        }
-
-        clearFrame(frameIndex);
-
-        showToast('Image deleted successfully', 'success');
-      } catch (error) {
-        console.error('Delete error:', error);
-        showToast('Failed to delete image: ' + error.message, 'error');
-      }
-    }
-
+    // Initialize gallery layout
     updateLoading(0.5, 'Creating gallery layout...');
+    
+    // ギャラリーレイアウト作成後、少し待ってから画像を読み込む
     createGalleryLayout();
-
+    
     updateLoading(0.7, 'Loading gallery images...');
+    
+    // 画像読み込み（非同期なので、ローディングは別途管理）
     loadGalleryImages().finally(() => {
+      // 初期化完了
       hideLoadingScreen();
-    });
-
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    animate();
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
     });
   </script>
 </body>
