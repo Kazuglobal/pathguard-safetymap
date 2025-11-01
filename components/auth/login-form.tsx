@@ -12,6 +12,17 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 
+const OFFLINE_MESSAGE = "Supabaseに接続できません。ネットワーク接続を確認してから再試行してください。"
+
+const resolveErrorMessage = (error: unknown, fallback: string) => {
+  const message =
+    typeof error === "object" && error !== null && "message" in error ? String((error as any).message) : ""
+  if (message.includes("network_error") || message.includes("Failed to fetch") || message.includes("fetch failed")) {
+    return OFFLINE_MESSAGE
+  }
+  return message || fallback
+}
+
 export default function LoginForm() {
   const router = useRouter()
   const { supabase } = useSupabase()
@@ -30,21 +41,19 @@ export default function LoginForm() {
         password,
       })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       toast({
-        title: "ログイン成功",
+        title: "ログインに成功しました",
         description: "アプリケーションにログインしました。",
       })
 
       router.push("/map")
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "エラー",
-        description: error.message || "ログイン中にエラーが発生しました。",
+        description: resolveErrorMessage(error, "ログインに失敗しました。"),
         variant: "destructive",
       })
     } finally {
@@ -61,21 +70,19 @@ export default function LoginForm() {
         password: "demopassword",
       })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       toast({
-        title: "デモログイン成功",
-        description: "デモユーザーとしてログインしました。",
+        title: "デモユーザーでログインしました",
+        description: "デモアカウントにログインしました。",
       })
 
       router.push("/map")
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "エラー",
-        description: "デモログイン中にエラーが発生しました。デモアカウントが設定されているか確認してください。",
+        description: resolveErrorMessage(error, "デモログインに失敗しました。"),
         variant: "destructive",
       })
     } finally {
@@ -87,7 +94,7 @@ export default function LoginForm() {
     <Card>
       <CardHeader>
         <CardTitle>ログイン</CardTitle>
-        <CardDescription>アカウント情報を入力してログインしてください</CardDescription>
+        <CardDescription>アカウント情報を入力してログインしてください。</CardDescription>
       </CardHeader>
       <form onSubmit={handleLogin}>
         <CardContent className="space-y-4">
@@ -118,14 +125,14 @@ export default function LoginForm() {
             {isLoading ? "ログイン中..." : "ログイン"}
           </Button>
           <Button type="button" variant="outline" className="w-full" onClick={handleDemoLogin} disabled={isLoading}>
-            デモユーザーでログイン
+            デモユーザーで試す
           </Button>
           <div className="text-center text-sm mt-2">
-            アカウントをお持ちでない場合は{" "}
+            アカウントをお持ちでない方は{" "}
             <Link href="/register" className="text-primary hover:underline">
-              登録
+              新規登録
             </Link>
-            してください
+            をご利用ください。
           </div>
         </CardFooter>
       </form>
