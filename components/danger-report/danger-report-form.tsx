@@ -30,16 +30,17 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const [description, setDescription] = useState("")
   const [dangerType, setDangerType] = useState<string>("traffic")
   const [dangerLevel, setDangerLevel] = useState<number>(3)
+  // ���摜�֘A�̏��
+  const [originalImageFiles, setOriginalImageFiles] = useState<File[]>([])
+  const [originalImagePreviews, setOriginalImagePreviews] = useState<string[]>([])
+  const originalLibraryInputRef = useRef<HTMLInputElement>(null)
+  const originalCameraInputRef = useRef<HTMLInputElement>(null)
 
-  // 元画像関連の状態
-  const [originalImageFile, setOriginalImageFile] = useState<File | null>(null)
-  const [originalImagePreview, setOriginalImagePreview] = useState<string | null>(null)
-  const originalFileInputRef = useRef<HTMLInputElement>(null)
-
-  // 加工画像関連の状態
+  // ���H�摜�֘A�̏��
   const [processedImageFiles, setProcessedImageFiles] = useState<File[]>([])
   const [processedImagePreviews, setProcessedImagePreviews] = useState<string[]>([])
-  const processedFileInputRef = useRef<HTMLInputElement>(null)
+  const processedLibraryInputRef = useRef<HTMLInputElement>(null)
+  const processedCameraInputRef = useRef<HTMLInputElement>(null)
 
   const [activeImageTab, setActiveImageTab] = useState<string>("original")
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -61,6 +62,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
   const [situation, setSituation] = useState<Situation>('viz')
   const [regenLoading, setRegenLoading] = useState(false)
+  const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
+  const primaryOriginalImage = useMemo(() => originalImageFiles[0] ?? null, [originalImageFiles])
 
   // 元画像が選択されたら自動で処理 API を呼び出す -> ★★★ 削除またはコメントアウト ★★★
   /*
@@ -185,7 +188,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   const compressImage = async (
     file: File,
     maxDimension: number = 1600,
-    quality: number = 0.8,
+    jpegQuality: number = 0.8,
   ): Promise<File> => {
     try {
       const objectUrl = URL.createObjectURL(file)
@@ -206,22 +209,33 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
         return file
       }
 
-      const canvas = document.createElement('canvas')
+      const canvas = document.createElement("canvas")
       canvas.width = targetW
       canvas.height = targetH
-      const ctx = canvas.getContext('2d')!
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        return file
+      }
       ctx.drawImage(img, 0, 0, targetW, targetH)
+
+      const supportsWebp = canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
 
       const blob: Blob = await new Promise((resolve, reject) => {
         canvas.toBlob(
-          b => (b ? resolve(b) : reject(new Error('Failed to create blob from canvas'))),
-          'image/jpeg',
-          quality,
+          (b) => (b ? resolve(b) : reject(new Error("Failed to create blob from canvas"))),
+          supportsWebp ? "image/webp" : "image/jpeg",
+          jpegQuality,
         )
       })
 
-      return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}-compressed.jpg`, { type: 'image/jpeg', lastModified: Date.now() })
-    } catch {
+      const extension = supportsWebp ? "webp" : "jpg"
+      const mime = supportsWebp ? "image/webp" : "image/jpeg"
+      return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-compressed.${extension}`, {
+        type: mime,
+        lastModified: Date.now(),
+      })
+    } catch (error) {
+      console.error("compressImage error:", error)
       return file
     }
   }
