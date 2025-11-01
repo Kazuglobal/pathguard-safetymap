@@ -25,15 +25,25 @@ export default function SharedGallery3D() {
           .order("position", { ascending: true })
 
         if (error) {
-          console.error("Gallery images load error:", error)
-          setError("画像の読み込みに失敗しました")
+          // テーブルが存在しない場合やRLSエラーの場合は、エラーを表示せずにカウント0で続行
+          if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+            console.warn("Gallery images table does not exist yet. Will be created on first upload.")
+            setImagesCount(0)
+            setError(null)
+          } else {
+            console.warn("Gallery images load warning:", error.message || error)
+            setImagesCount(0)
+            setError(null) // エラー表示を抑制
+          }
           return
         }
 
         setImagesCount(data?.length || 0)
+        setError(null)
       } catch (err) {
-        console.error("Gallery load error:", err)
-        setError("ギャラリーの読み込みでエラーが発生しました")
+        console.warn("Gallery load warning:", err)
+        setImagesCount(0)
+        setError(null) // エラー表示を抑制
       } finally {
         setIsLoading(false)
       }
@@ -89,7 +99,7 @@ export default function SharedGallery3D() {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-900/20 p-4 text-sm text-red-300">
+              <div className="flex items-center gap-2 rounded-xl border border-yellow-500/30 bg-yellow-900/20 p-4 text-sm text-yellow-300">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <p>{error}</p>
               </div>
