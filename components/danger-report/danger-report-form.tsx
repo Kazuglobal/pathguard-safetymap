@@ -479,23 +479,30 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
         try {
           const fd = new FormData()
           fd.append('image', originalImageFile)
-          const baseViz = prLocal?.vizPrompt || generatedPrompts?.vizPrompt || "Photorealistic 2K infographic from the exact same viewpoint and daylight as the uploaded Japanese suburban street photo. Overlay semi-transparent hazard markings and Japanese labels: collapsed fence (red shade + exclamation icons, label 'フェンス倒壊'), fallen utility pole (red circle + arrow, label '電柱倒壊'), flooding (blue shade + droplet icon, label '冠水'), fire spread (orange flame icon, label '延焼'). Preserve original composition and camera height. No people, no vehicles, no text, no watermarks, do not mention any model names."
+          const baseViz =
+            prLocal?.vizPrompt ||
+            generatedPrompts?.vizPrompt ||
+            "Photorealistic 2048x2048 infographic from the same viewpoint, camera height, and daylight as the uploaded Japanese suburban street photo. Maintain identical composition and lens characteristics. Overlay semi-transparent hazard shading with warning icons and Japanese labels: collapsed fence (red shade + exclamation icons, label \"フェンス倒壊\"), fallen utility pole (red circle + arrow, label \"電柱倒壊\"), flooding (blue haze + droplet icons, label \"冠水\"), fire spread (orange glow + flame icons, label \"延焼\"). High dynamic range, sharp focus, natural daylight, no extra people, vehicles, text, watermarks, or model names."
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
           const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
           if (genRes.ok) {
             const gen = await genRes.json()
             const imgs = Array.isArray(gen.images) ? gen.images : []
-            if (imgs.length > 0) {
-              const files = await Promise.all(
-                imgs.slice(0, 2).map(async (im: any, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`))
-              )
+            const ok = imgs.slice(0, 2)
+            if (ok.length > 0) {
+              const files = await Promise.all(ok.map(async (im: any, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`)))
               setProcessedImageFiles(prev => [...prev, ...files])
-              setProcessedImagePreviews(prev => [...prev, ...imgs.slice(0, 2).map((im: any) => im.dataUrl)])
+              setProcessedImagePreviews(prev => [...prev, ...ok.map((im: any) => im.dataUrl)])
+            } else if (gen.warning) {
+              setAutoGenError(gen.warning)
+            } else {
+              setAutoGenError('画像生成に失敗しました。')
             }
           } else {
             const t = await genRes.text()
             console.warn('gemini generate-image failed', genRes.status, t)
+            setAutoGenError(`AI画像生成に失敗しました: ${genRes.status} ${genRes.statusText}`)
           }
         } catch (e) {
           console.warn('nanobanana generation skipped due to error', e)
@@ -510,10 +517,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
               fd.append('image', originalImageFile)
               fd.append('prompt', prompt)
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
-              if (!r.ok) return null
+              if (!r.ok) {
+                const txt = await r.text()
+                throw new Error(`image generation failed: ${r.status} ${r.statusText} - ${txt}`)
+              }
               const j = await r.json()
               const im = Array.isArray(j.images) && j.images[0] ? j.images[0] : null
-              if (!im) return null
+              if (!im) {
+                if (j.warning) setAutoGenError(j.warning)
+                return null
+              }
               const f = await dataUrlToFile(im.dataUrl, `nanobanana-${suffix}.png`)
               return { file: f, url: im.dataUrl }
             }
@@ -526,19 +539,18 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
             ])
             const ok = results.filter(Boolean) as { file: File; url: string }[]
             if (ok.length) {
-              setProcessedImageFiles(prev => [...prev, ...ok.map(o => o.file)])
-              setProcessedImagePreviews(prev => [...prev, ...ok.map(o => o.url)])
+              setProcessedImageFiles(prev => [...prev, ...ok.map(item => item.file)])
+              setProcessedImagePreviews(prev => [...prev, ...ok.map(item => item.url)])
             }
+            setActiveImageTab('processed')
           } catch (e) {
-            console.warn('simulation AI generation error', e)
+            console.error('auto-generation failed', e)
+            setAutoGenError(e instanceof Error ? e.message : 'Unknown error occurred.')
           }
         }
-      
-        // Switch to processed tab for user to pick
-        setActiveImageTab('processed')
-      } catch (e) {
-        console.error('auto-generation failed', e)
-        setAutoGenError(e instanceof Error ? e.message : '不明なエラー')
+      } catch (error) {
+        console.error('Error in auto-generation:', error)
+        setAutoGenError(error instanceof Error ? error.message : 'Unknown error occurred.')
       } finally {
         setAutoGenLoading(false)
       }
@@ -550,15 +562,19 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   // On-demand regenerate using selected situation
   const regenerateSituation = async () => {
     if (!originalImageFile) return
+
     try {
       setRegenLoading(true)
+
       let prompt = ''
-      let pr: any = generatedPrompts
+      let pr = generatedPrompts
+
       if (!pr) {
-        // lazily fetch prompts
         const base64 = await fileToBase64(await compressImage(originalImageFile))
         const pRes = await fetch('/api/gemini/generate-prompts', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ imageBase64: base64 })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 }),
         })
         if (pRes.ok) {
           const pjson = await pRes.json()
@@ -572,6 +588,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
           }
         }
       }
+
       if (situation === 'viz') prompt = pr?.vizPrompt || ''
       else if (situation === 'earthquake') prompt = pr?.simulationPrompts?.earthquake || ''
       else if (situation === 'typhoon') prompt = pr?.simulationPrompts?.typhoon || ''
@@ -579,7 +596,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
       else if (situation === 'fire') prompt = pr?.simulationPrompts?.fire || ''
 
       if (!prompt) {
-        setAutoGenError('プロンプト生成に失敗しました。再度お試しください。')
+        setAutoGenError('Failed to retrieve prompt. Please try again later.')
         return
       }
 
@@ -589,26 +606,31 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
       fd.append('prompt', withRegions)
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
-        const t = await res.text()
-        throw new Error(`再生成に失敗しました: ${res.status} ${res.statusText} - ${t}`)
+        const text = await res.text()
+        throw new Error(`Image generation failed: ${res.status} ${res.statusText} - ${text}`)
       }
-      const j = await res.json()
-      const imgs = Array.isArray(j.images) ? j.images : []
+
+      const json = await res.json()
+      const imgs = Array.isArray(json.images) ? json.images : []
       const ok = imgs.slice(0, 2)
+
       if (ok.length) {
-        const files = await Promise.all(ok.map((im: any, idx: number) => dataUrlToFile(im.dataUrl, `regen-${situation}-${idx}.png`)))
+        const files = await Promise.all(
+          ok.map((im: any, idx: number) => dataUrlToFile(im.dataUrl, `regen-${situation}-${idx}.png`)),
+        )
         setProcessedImageFiles(prev => [...prev, ...files])
         setProcessedImagePreviews(prev => [...prev, ...ok.map((im: any) => im.dataUrl)])
+      } else {
+        setAutoGenError(json.warning || 'Image generation failed.')
       }
+
       setActiveImageTab('processed')
-    } catch (e) {
-      setAutoGenError(e instanceof Error ? e.message : '不明なエラー')
+    } catch (error) {
+      setAutoGenError(error instanceof Error ? error.message : 'Unknown error occurred.')
     } finally {
       setRegenLoading(false)
     }
   }
-
-  // 画像選択ハンドラー（加工画像）
   const handleProcessedImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
@@ -746,6 +768,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
         if (imageUrl) {
           reportData.image_url = imageUrl
         }
+
       }
 
       // 親コンポーネントの送信ハンドラーを呼び出し

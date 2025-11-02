@@ -13,18 +13,26 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 import { getSanitizedGeminiApiKey, getSanitizedGeminiModel } from "./gemini-util"
 
 async function tryImagesGenerate(apiKey: string, model: string, prompt: string, imageBase64?: string, imageMimeType?: string) {
-  // Prefer the new Images API
+  // Use Imagen API with correct format
   const body: any = {
-    model: `models/${model}`,
-    prompt: { text: prompt },
+    instances: [{ prompt }],
+    parameters: { sampleCount: imageBase64 ? 2 : 4 }
   }
+
+  // Note: For image-to-image, we may need a different approach
+  // The standard Imagen API is primarily text-to-image
   if (imageBase64 && imageMimeType) {
-    body.image = { mimeType: imageMimeType, data: imageBase64 }
+    // Add reference image if the model supports it
+    body.instances[0].referenceImage = { mimeType: imageMimeType, data: imageBase64 }
   }
-  const url = `${GEMINI_API_URL}/images:generate?key=${encodeURIComponent(apiKey)}`
+
+  const url = `${GEMINI_API_URL}/models/${model}:predict`
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
     body: JSON.stringify(body),
   })
   return res
@@ -54,8 +62,30 @@ async function downloadToBase64(uri: string, apiKey: string): Promise<{ mimeType
 async function extractImagesFromAny(data: any, apiKey: string): Promise<GeneratedImage[]> {
   const images: GeneratedImage[] = []
   const fileUris: { uri: string; mimeType?: string }[] = []
+
+  // Handle Imagen API response format (generatedImages with imageBytes)
+  if (data.predictions && Array.isArray(data.predictions)) {
+    for (const pred of data.predictions) {
+      if (pred.bytesBase64Encoded) {
+        const mt = pred.mimeType || 'image/png'
+        images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${pred.bytesBase64Encoded}` })
+      }
+    }
+  }
+
   const visit = (node: any) => {
     if (!node || typeof node !== 'object') return
+
+    // Imagen format: imageBytes or bytesBase64Encoded
+    if (typeof node.imageBytes === 'string' && node.imageBytes.length > 100) {
+      const mt = node.mimeType || 'image/png'
+      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.imageBytes}` })
+    }
+    if (typeof node.bytesBase64Encoded === 'string' && node.bytesBase64Encoded.length > 100) {
+      const mt = node.mimeType || 'image/png'
+      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.bytesBase64Encoded}` })
+    }
+
     // direct inline
     if (typeof node.data === 'string' && node.data.length > 100) {
       const mt = node.mime_type || node.mimeType || 'image/png'
@@ -111,12 +141,29 @@ export async function generateImageWithGemini({
 }: GenerateImageParams): Promise<GeneratedImage[]> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Use the image generation capable model
-  const model = getSanitizedGeminiModel("gemini-2.5-flash-image-preview")
+  // Use the Imagen 4 model for image generation
+  const model = getSanitizedGeminiModel("imagen-4.0-generate-001")
 
   const text = prompt || "Create an image using the provided reference."
 
-  // Build request body for generateContent API
+  // First attempt: dedicated images:generate endpoint (preferred per Gemini docs)
+  try {
+    const primary = await tryImagesGenerate(apiKey, model, text, imageBase64, imageMimeType)
+    if (primary.ok) {
+      const payload = await primary.json()
+      const primaryImages = await extractImagesFromAny(payload, apiKey)
+      if (primaryImages.length > 0) {
+        return primaryImages
+      }
+    } else {
+      // If the endpoint rejects (e.g., unsupported model), fall through to generateContent
+      await primary.text() // consume body for debugging; ignore content
+    }
+  } catch (error) {
+    console.warn("[Gemini] images:generate fallback triggered", error)
+  }
+
+  // Fallback: generateContent without response_mime_type (text-based response)
   const requestBody: any = {
     contents: [
       {
@@ -130,26 +177,26 @@ export async function generateImageWithGemini({
       },
     ],
     generation_config: {
-      response_mime_type: "application/json"
-    }
+      temperature: 0.4,
+      top_p: 0.9,
+    },
   }
 
   const res = await fetch(
     `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(requestBody) 
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     }
   )
 
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Gemini image generation failed: ${res.status} ${res.statusText} - ${text}`)
+    const responseText = await res.text()
+    throw new Error(`Gemini image generation failed: ${res.status} ${res.statusText} - ${responseText}`)
   }
 
   const data = await res.json()
-  // Try to extract images from any shape; also download file URIs when present
   const images = await extractImagesFromAny(data, apiKey)
 
   if (images.length === 0) {
