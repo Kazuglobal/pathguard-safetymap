@@ -55,7 +55,8 @@
       "Bash(npm run test:db-migration:*)",
       "Bash(bash:*)",
       "Bash(npm run test:gallery-api:*)",
-      "Bash(npm run insert-dummy-data:*)"
+      "Bash(npm run insert-dummy-data:*)",
+      "Bash(copy \"c:\\Users\\s1598\\Downloads\\gallery.html\" \"C:\\Users\\s1598\\mapsefe\\20250615\\public\\gallery.html\" /Y)"
     ],
     "deny": []
   }

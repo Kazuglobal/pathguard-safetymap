@@ -787,19 +787,31 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
 
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
-    setOriginalImageFile(null)
-    setOriginalImagePreview(null)
-    if (originalFileInputRef.current) {
-      originalFileInputRef.current.value = ""
+    if (window.confirm("この画像を削除してもよろしいですか？")) {
+      setOriginalImageFile(null)
+      setOriginalImagePreview(null)
+      if (originalFileInputRef.current) {
+        originalFileInputRef.current.value = ""
+      }
+      toast({
+        title: "画像を削除しました",
+        description: "元画像が削除されました。",
+      })
     }
   }
 
   // 画像削除ハンドラー（加工画像）
   const handleRemoveProcessedImage = (index: number) => {
-    setProcessedImageFiles((prev) => prev.filter((_, i) => i !== index))
-    setProcessedImagePreviews((prev) => prev.filter((_, i) => i !== index))
-    if (processedFileInputRef.current) {
-      processedFileInputRef.current.value = ""
+    if (window.confirm("この加工画像を削除してもよろしいですか？")) {
+      setProcessedImageFiles((prev) => prev.filter((_, i) => i !== index))
+      setProcessedImagePreviews((prev) => prev.filter((_, i) => i !== index))
+      if (processedFileInputRef.current) {
+        processedFileInputRef.current.value = ""
+      }
+      toast({
+        title: "画像を削除しました",
+        description: "加工画像が削除されました。",
+      })
     }
   }
 
@@ -937,7 +949,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                 )}
 
                 {originalImagePreview ? (
-                  <div className="relative mt-2 border rounded-md overflow-hidden">
+                  <div className="relative mt-2 border rounded-md overflow-hidden group">
                     <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(originalImagePreview)}>
                       <NextImage
                         src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
@@ -950,10 +962,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                       type="button"
                       variant="destructive"
                       size="icon"
-                      className="absolute top-2 right-2 h-6 w-6 rounded-full"
-                      onClick={handleRemoveOriginalImage}
+                      className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-90 hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveOriginalImage()
+                      }}
+                      title="画像を削除"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : (
@@ -1049,7 +1065,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                 {processedImagePreviews.length > 0 ? (
                   <div className="flex gap-2 overflow-x-auto mt-2">
                     {processedImagePreviews.map((preview, idx) => (
-                      <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px]">
+                      <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px] group">
                         <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(preview)}>
                           <NextImage
                             src={preview}
@@ -1069,10 +1085,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="absolute top-2 right-2 h-6 w-6 rounded-full"
-                          onClick={() => handleRemoveProcessedImage(idx)}
+                          className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-90 hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveProcessedImage(idx)
+                          }}
+                          title="画像を削除"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
