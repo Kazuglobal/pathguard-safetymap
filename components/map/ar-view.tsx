@@ -39,6 +39,10 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   useEffect(() => {
     const initCamera = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("カメラAPIが利用できません。")
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment", // 背面カメラを使用
@@ -54,19 +58,37 @@ export default function ARView({ reports, onClose }: ARViewProps) {
           setError(null)
         }
       } catch (err) {
-        console.error("カメラアクセスエラー:", err)
-        setError("カメラへのアクセスが拒否されました。設定を確認してください。")
+        // エラーを適切に処理
+        const errorMessage = err instanceof Error ? err.message : String(err)
+        console.warn("カメラアクセスエラー:", errorMessage)
+        
+        if (errorMessage.includes("Permission denied") || errorMessage.includes("NotAllowedError")) {
+          setError("カメラへのアクセスが拒否されました。設定を確認してください。")
+        } else if (errorMessage.includes("NotFoundError") || errorMessage.includes("DevicesNotFoundError")) {
+          setError("カメラが見つかりませんでした。")
+        } else {
+          setError("カメラの初期化に失敗しました。")
+        }
         setIsCameraActive(false)
       } finally {
         setIsLoading(false)
       }
     }
 
-    initCamera()
+    initCamera().catch((err) => {
+      // Promise rejectionをキャッチ
+      console.error("カメラ初期化の未処理エラー:", err)
+      setIsLoading(false)
+      setIsCameraActive(false)
+    })
 
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
+        try {
+          streamRef.current.getTracks().forEach((track) => track.stop())
+        } catch (err) {
+          console.warn("ストリームのクリーンアップエラー:", err)
+        }
         streamRef.current = null
       }
       if (animationFrameRef.current) {
@@ -84,15 +106,33 @@ export default function ARView({ reports, onClose }: ARViewProps) {
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        })
-        setError(null)
+        try {
+          if (position?.coords?.latitude && position?.coords?.longitude) {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+            })
+            setError(null)
+          }
+        } catch (err) {
+          console.warn("位置情報の処理エラー:", err)
+        }
       },
-      (err) => {
-        console.error("位置情報エラー:", err)
-        setError("位置情報の取得に失敗しました。")
+      (err: GeolocationPositionError) => {
+        // GeolocationPositionErrorオブジェクトを適切に処理
+        const errorMessage = err?.message || "位置情報の取得に失敗しました。"
+        console.warn("位置情報エラー:", errorMessage, err.code)
+        
+        // エラーの種類に応じたメッセージを設定
+        if (err.code === GeolocationPositionError.PERMISSION_DENIED) {
+          setError("位置情報の使用が許可されていません。設定を確認してください。")
+        } else if (err.code === GeolocationPositionError.POSITION_UNAVAILABLE) {
+          setError("位置情報を取得できませんでした。")
+        } else if (err.code === GeolocationPositionError.TIMEOUT) {
+          setError("位置情報の取得がタイムアウトしました。")
+        } else {
+          setError("位置情報の取得に失敗しました。")
+        }
       },
       {
         enableHighAccuracy: true,
@@ -102,7 +142,12 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     )
 
     return () => {
-      navigator.geolocation.clearWatch(watchId)
+      try {
+        navigator.geolocation.clearWatch(watchId)
+      } catch (err) {
+        // クリーンアップ時のエラーを無視
+        console.warn("位置情報ウォッチのクリーンアップエラー:", err)
+      }
     }
   }, [])
 
@@ -119,9 +164,14 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     }
 
     const handleOrientation = (event: DeviceOrientationEvent) => {
-      if (event.alpha !== null) {
-        // alpha: 0-360度（Z軸周りの回転、コンパス方向）
-        setUserHeading(event.alpha)
+      try {
+        if (event.alpha !== null && !isNaN(event.alpha)) {
+          // alpha: 0-360度（Z軸周りの回転、コンパス方向）
+          setUserHeading(event.alpha)
+        }
+      } catch (err) {
+        // イベント処理中のエラーを無視
+        console.warn("デバイス向きイベントの処理エラー:", err)
       }
     }
 
@@ -130,6 +180,8 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       requestPermission?: () => Promise<PermissionState>
     }
     
+    let isMounted = true
+    
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEventWithPermission.requestPermission === "function"
@@ -137,19 +189,30 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       DeviceOrientationEventWithPermission
         .requestPermission()
         .then((response: PermissionState) => {
-          if (response === "granted") {
-            window.addEventListener("deviceorientation", handleOrientation)
+          if (isMounted && response === "granted") {
+            window.addEventListener("deviceorientation", handleOrientation, { passive: true })
           }
         })
-        .catch((err: Error) => {
-          console.error("デバイス向きの許可エラー:", err)
+        .catch((err: unknown) => {
+          // エラーを適切に処理
+          const errorMessage = err instanceof Error ? err.message : String(err)
+          console.warn("デバイス向きの許可エラー:", errorMessage)
         })
     } else {
-      window.addEventListener("deviceorientation", handleOrientation)
+      try {
+        window.addEventListener("deviceorientation", handleOrientation, { passive: true })
+      } catch (err) {
+        console.warn("デバイス向きイベントリスナーの追加エラー:", err)
+      }
     }
 
     return () => {
-      window.removeEventListener("deviceorientation", handleOrientation)
+      isMounted = false
+      try {
+        window.removeEventListener("deviceorientation", handleOrientation)
+      } catch (err) {
+        // クリーンアップ時のエラーを無視
+      }
     }
   }, [])
 
@@ -184,41 +247,68 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     if (!ctx) return
 
     const draw = () => {
-      // キャンバスサイズをビデオサイズに合わせる
-      canvas.width = video.videoWidth || 1280
-      canvas.height = video.videoHeight || 720
-
-      // ビデオフレームを描画
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-      // AR危険個所を描画
-      arHazards.forEach((hazard) => {
-        // 画面中央を原点として、相対角度に基づいて位置を計算
-        const centerX = canvas.width / 2
-        const centerY = canvas.height / 2
-
-        // 視野角を考慮して、画面内の位置を計算
-        const fov = 60 // 視野角（度）
-        const screenX =
-          centerX +
-          (hazard.relativeAngle / fov) * canvas.width * 0.8 // 画面幅の80%を視野角に使用
-        const screenY = centerY - hazard.distance * 0.5 // 距離に応じてY位置を調整
-
-        // 画面外の場合は描画しない
-        if (
-          screenX < 0 ||
-          screenX > canvas.width ||
-          screenY < 0 ||
-          screenY > canvas.height
-        ) {
+      try {
+        // ビデオの準備状態を確認
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          animationFrameRef.current = requestAnimationFrame(draw)
           return
         }
 
-        // 危険個所のアイコンと情報を描画
-        drawHazardMarker(ctx, screenX, screenY, hazard)
-      })
+        // キャンバスサイズをビデオサイズに合わせる
+        const videoWidth = video.videoWidth || 1280
+        const videoHeight = video.videoHeight || 720
+        
+        if (videoWidth === 0 || videoHeight === 0) {
+          animationFrameRef.current = requestAnimationFrame(draw)
+          return
+        }
 
-      animationFrameRef.current = requestAnimationFrame(draw)
+        canvas.width = videoWidth
+        canvas.height = videoHeight
+
+        // ビデオフレームを描画
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+        // AR危険個所を描画
+        if (Array.isArray(arHazards)) {
+          arHazards.forEach((hazard) => {
+            try {
+              // 画面中央を原点として、相対角度に基づいて位置を計算
+              const centerX = canvas.width / 2
+              const centerY = canvas.height / 2
+
+              // 視野角を考慮して、画面内の位置を計算
+              const fov = 60 // 視野角（度）
+              const screenX =
+                centerX +
+                (hazard.relativeAngle / fov) * canvas.width * 0.8 // 画面幅の80%を視野角に使用
+              const screenY = centerY - hazard.distance * 0.5 // 距離に応じてY位置を調整
+
+              // 画面外の場合は描画しない
+              if (
+                screenX < 0 ||
+                screenX > canvas.width ||
+                screenY < 0 ||
+                screenY > canvas.height
+              ) {
+                return
+              }
+
+              // 危険個所のアイコンと情報を描画
+              drawHazardMarker(ctx, screenX, screenY, hazard)
+            } catch (err) {
+              // 個別の危険個所の描画エラーを無視
+              console.warn("危険個所の描画エラー:", err)
+            }
+          })
+        }
+
+        animationFrameRef.current = requestAnimationFrame(draw)
+      } catch (err) {
+        // 描画エラーをログに記録して続行
+        console.warn("キャンバス描画エラー:", err)
+        animationFrameRef.current = requestAnimationFrame(draw)
+      }
     }
 
     draw()
@@ -226,6 +316,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
       }
     }
   }, [isCameraActive, arHazards])
@@ -237,49 +328,64 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     y: number,
     hazard: ARHazardData
   ) => {
-    const { report, distance } = hazard
+    try {
+      const { report, distance } = hazard
 
-    // アイコンのサイズ（距離に応じて調整）
-    const iconSize = Math.max(30, 60 - distance / 10)
-    const iconRadius = iconSize / 2
+      // 値の検証
+      if (!report || typeof distance !== "number" || isNaN(distance)) {
+        return
+      }
 
-    // 危険レベルに応じた色
-    const colors = {
-      1: "#3b82f6", // 低危険度: 青
-      2: "#f59e0b", // 中危険度: オレンジ
-      3: "#ef4444", // 高危険度: 赤
+      // アイコンのサイズ（距離に応じて調整）
+      const iconSize = Math.max(30, 60 - distance / 10)
+      const iconRadius = iconSize / 2
+
+      // 危険レベルに応じた色
+      const colors = {
+        1: "#3b82f6", // 低危険度: 青
+        2: "#f59e0b", // 中危険度: オレンジ
+        3: "#ef4444", // 高危険度: 赤
+      }
+      const color = colors[report.danger_level as keyof typeof colors] || colors[1]
+
+      // 背景円を描画
+      ctx.beginPath()
+      ctx.arc(x, y, iconRadius, 0, Math.PI * 2)
+      ctx.fillStyle = color + "80" // 透明度50%
+      ctx.fill()
+      ctx.strokeStyle = color
+      ctx.lineWidth = 3
+      ctx.stroke()
+
+      // アイコンを描画（簡易版: 三角形）
+      ctx.beginPath()
+      ctx.moveTo(x, y - iconRadius * 0.6)
+      ctx.lineTo(x - iconRadius * 0.5, y + iconRadius * 0.4)
+      ctx.lineTo(x + iconRadius * 0.5, y + iconRadius * 0.4)
+      ctx.closePath()
+      ctx.fillStyle = "#ffffff"
+      ctx.fill()
+
+      // 距離テキストを描画
+      const distanceText = formatDistance(distance)
+      if (distanceText) {
+        ctx.fillStyle = "#ffffff"
+        ctx.font = "bold 14px sans-serif"
+        ctx.textAlign = "center"
+        ctx.textBaseline = "top"
+        ctx.fillText(distanceText, x, y + iconRadius + 5)
+      }
+
+      // タイトルを描画（短縮版）
+      if (report.title) {
+        const title = report.title.length > 15 ? report.title.substring(0, 15) + "..." : report.title
+        ctx.font = "12px sans-serif"
+        ctx.fillText(title, x, y + iconRadius + 25)
+      }
+    } catch (err) {
+      // 描画エラーを無視
+      console.warn("マーカー描画エラー:", err)
     }
-    const color = colors[report.danger_level as keyof typeof colors] || colors[1]
-
-    // 背景円を描画
-    ctx.beginPath()
-    ctx.arc(x, y, iconRadius, 0, Math.PI * 2)
-    ctx.fillStyle = color + "80" // 透明度50%
-    ctx.fill()
-    ctx.strokeStyle = color
-    ctx.lineWidth = 3
-    ctx.stroke()
-
-    // アイコンを描画（簡易版: 三角形）
-    ctx.beginPath()
-    ctx.moveTo(x, y - iconRadius * 0.6)
-    ctx.lineTo(x - iconRadius * 0.5, y + iconRadius * 0.4)
-    ctx.lineTo(x + iconRadius * 0.5, y + iconRadius * 0.4)
-    ctx.closePath()
-    ctx.fillStyle = "#ffffff"
-    ctx.fill()
-
-    // 距離テキストを描画
-    ctx.fillStyle = "#ffffff"
-    ctx.font = "bold 14px sans-serif"
-    ctx.textAlign = "center"
-    ctx.textBaseline = "top"
-    ctx.fillText(formatDistance(distance), x, y + iconRadius + 5)
-
-    // タイトルを描画（短縮版）
-    const title = report.title.length > 15 ? report.title.substring(0, 15) + "..." : report.title
-    ctx.font = "12px sans-serif"
-    ctx.fillText(title, x, y + iconRadius + 25)
   }
 
   const handleClose = useCallback(() => {
