@@ -49,7 +49,7 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: resolveEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', ''),
   },
   
-  // Allow remote Supabase storage images
+  // Allow remote images (Supabase storage + Unsplash)
   images: {
     remotePatterns: (() => {
       try {
@@ -57,10 +57,12 @@ const nextConfig = {
         const host = envUrl ? new URL(envUrl).hostname : 'ykodiivanzutyivkguza.supabase.co'
         return [
           { protocol: 'https', hostname: host, port: '', pathname: '/**' },
+          { protocol: 'https', hostname: 'images.unsplash.com', port: '', pathname: '/**' },
         ]
       } catch {
         return [
           { protocol: 'https', hostname: 'ykodiivanzutyivkguza.supabase.co', port: '', pathname: '/**' },
+          { protocol: 'https', hostname: 'images.unsplash.com', port: '', pathname: '/**' },
         ]
       }
     })(),

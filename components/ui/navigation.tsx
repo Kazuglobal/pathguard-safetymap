@@ -23,6 +23,7 @@ import { motion } from "framer-motion"
 interface NavigationProps {
   user?: any
   onLogout?: () => void
+  hideTopNavMobile?: boolean
 }
 
 type NavItem = {
@@ -34,7 +35,7 @@ type NavItem = {
   emphasize?: boolean
 }
 
-export function Navigation({ user, onLogout }: NavigationProps) {
+export function Navigation({ user, onLogout, hideTopNavMobile = false }: NavigationProps) {
   const pathname = usePathname()
   // 管理者チェック（暫定実装）
   const isAdmin = user?.email?.includes("admin") || user?.role === "admin"
@@ -117,9 +118,14 @@ export function Navigation({ user, onLogout }: NavigationProps) {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
 
+  const topNavClass = cn(
+    "bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50",
+    hideTopNavMobile && "hidden md:block"
+  )
+
   return (
     <>
-      <nav className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+      <nav className={topNavClass}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* ブランド */}

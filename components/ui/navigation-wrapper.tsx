@@ -15,9 +15,12 @@ interface NavigationWrapperProps {
 export function NavigationWrapper({ user, onLogout, children }: NavigationWrapperProps) {
   const pathname = usePathname()
   
-  // ナビゲーションを表示しないページ
-  const noNavPages = ['/login', '/register', '/landing']
+  // ナビゲーションを表示しないページ（ランディングは表示対象）
+  const noNavPages = ['/login', '/register']
   const showNavigation = !noNavPages.some(page => pathname.startsWith(page))
+  
+  // ランディングページか判定（トップナビはモバイルで非表示、デスクトップで表示）
+  const isLandingPage = pathname === '/landing'
 
   const mainPaddingClass = showNavigation ? "pb-24 md:pb-0" : undefined
 
@@ -28,6 +31,7 @@ export function NavigationWrapper({ user, onLogout, children }: NavigationWrappe
         <Navigation
           user={user}
           onLogout={onLogout}
+          hideTopNavMobile={isLandingPage}
         />
       )}
       

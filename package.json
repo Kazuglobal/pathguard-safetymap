@@ -68,6 +68,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "^3.6.0",
+    "embla-carousel-autoplay": "^8.5.1",
     "embla-carousel-react": "8.5.1",
     "framer-motion": "^12.9.2",
     "input-otp": "1.4.1",

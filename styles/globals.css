@@ -10,6 +10,15 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* スクロールバー非表示ユーティリティ */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
   /* 地図マーカー共通スタイル */
   .danger-marker, .pending-marker {
     display: flex;
