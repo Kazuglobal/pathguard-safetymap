@@ -1,23 +1,27 @@
 "use client"
 
 import React, { useState } from "react"
-import { Gamepad2, Info, History, ArrowLeft } from "lucide-react"
+import { Gamepad2, Info, History, ArrowLeft, GraduationCap, Users, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import { ImageUploader } from "@/components/hazard-game/image-uploader"
 import { AnalysisResults } from "@/components/hazard-game/analysis-results"
 import { GameStats } from "@/components/hazard-game/game-stats"
 import { LoadingAnimation } from "@/components/hazard-game/loading-animation"
 import { useHazardGame } from "@/hooks/use-hazard-game"
 import Link from "next/link"
+import type { PromptType } from "@/lib/gemini-hazard"
 
 type GameState = "intro" | "upload" | "analyzing" | "results"
 
 export default function HazardGamePage() {
   const [gameState, setGameState] = useState<GameState>("intro")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [promptType, setPromptType] = useState<PromptType>("default")
 
   const {
     isAnalyzing,
@@ -46,7 +50,7 @@ export default function HazardGamePage() {
 
     setGameState("analyzing")
     try {
-      await analyzeImage(selectedFile)
+      await analyzeImage(selectedFile, undefined, promptType)
       setGameState("results")
     } catch (err) {
       setGameState("upload")
@@ -126,6 +130,60 @@ export default function HazardGamePage() {
           分析したい写真を選択してください
         </p>
       </div>
+
+      {/* プロンプトタイプ選択 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center">
+            <Sparkles className="h-5 w-5 mr-2 text-blue-500" />
+            分析モードを選択
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={promptType} onValueChange={(value) => setPromptType(value as PromptType)}>
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                <RadioGroupItem value="default" id="default" className="mt-1" />
+                <Label htmlFor="default" className="flex-1 cursor-pointer">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    <span className="font-medium">標準モード</span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    バランスの取れた分析。潜在的な危険や複合的なリスクも検出します。
+                  </p>
+                </Label>
+              </div>
+              
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                <RadioGroupItem value="expert" id="expert" className="mt-1" />
+                <Label htmlFor="expert" className="flex-1 cursor-pointer">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <GraduationCap className="h-4 w-4 text-purple-500" />
+                    <span className="font-medium">専門家モード</span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    詳細な分析。土砂災害、水害、建物倒壊、交通事故、防災設備など多角的にリスクを評価します。
+                  </p>
+                </Label>
+              </div>
+              
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                <RadioGroupItem value="child" id="child" className="mt-1" />
+                <Label htmlFor="child" className="flex-1 cursor-pointer">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Users className="h-4 w-4 text-green-500" />
+                    <span className="font-medium">子ども向けモード</span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    やさしい言葉で説明。小学生でも理解できるように、わかりやすく楽しく学べる内容です。
+                  </p>
+                </Label>
+              </div>
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
 
       <ImageUploader 
         onImageSelect={handleImageSelect}

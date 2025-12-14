@@ -23,6 +23,7 @@ import { addPoints } from "@/lib/gamification"
 import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
+import ARView from "./ar-view"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -175,6 +176,7 @@ export default function MapContainer() {
   const [mapError, setMapError] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [is3DEnabled, setIs3DEnabled] = useState(false)
+  const [isARMode, setIsARMode] = useState(false)
   const mapInitialized = useRef(false)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -1112,6 +1114,8 @@ export default function MapContainer() {
         toggle3DMode={toggle3DMode}
         // ▼ モバイルでの地点選択モードの状態を渡す (ボタンの表示切替などに利用)
         isSelectingLocation={isMobile && awaitingLocationSelection}
+        onToggleAR={() => setIsARMode(!isARMode)}
+        isARMode={isARMode}
       />
       <div className="relative flex flex-col md:flex-row flex-1 overflow-hidden pt-0 px-2 md:px-0">
         {/* 検索バー（モバイル用） */}
@@ -1545,6 +1549,13 @@ export default function MapContainer() {
         originalImage={submittedReport?.originalImage ?? null}
         processedImages={submittedReport?.processedImages ?? []}
       />
+      {/* ARビュー */}
+      {isARMode && (
+        <ARView
+          reports={combinedReports}
+          onClose={() => setIsARMode(false)}
+        />
+      )}
     </div>
   )
 }

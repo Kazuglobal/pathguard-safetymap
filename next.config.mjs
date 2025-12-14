@@ -66,7 +66,7 @@ const nextConfig = {
     })(),
   },
   
-  transpilePackages: ['mapbox-gl', 'react-map-gl'],
+  transpilePackages: ['mapbox-gl', 'react-map-gl', '@supabase/ssr'],
   
   // Custom webpack configuration
   webpack: (config, { isServer }) => {
@@ -74,6 +74,12 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
+    }
+    
+    // Ensure @supabase/ssr is properly resolved
+    if (isServer) {
+      config.externals = config.externals || []
+      // Don't externalize @supabase/ssr - it needs to be bundled
     }
     
     // React 19 - JSX runtime aliases removed to prevent webpack conflicts

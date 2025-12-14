@@ -110,7 +110,11 @@ export function useHazardGame() {
   }
 
   // Analyze image for hazards
-  const analyzeImage = async (imageFile: File, userDetectedHazards?: string[]) => {
+  const analyzeImage = async (
+    imageFile: File, 
+    userDetectedHazards?: string[],
+    promptType: "default" | "expert" | "child" = "default"
+  ) => {
     setIsAnalyzing(true)
     setError(null)
     setAnalysisResult(null)
@@ -130,6 +134,7 @@ export function useHazardGame() {
         body: JSON.stringify({
           imageBase64,
           userDetectedHazards,
+          promptType,
         }),
       })
 

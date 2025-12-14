@@ -46,7 +46,7 @@ export async function generateDisasterPrompts(
   }
 
   const apiKey = getSanitizedGeminiApiKey()
-  const model = getSanitizedGeminiModel("gemini-2.5-flash-image-preview")
+  const model = getSanitizedGeminiModel("gemini-3-pro-preview")
 
   let mimeType = "image/jpeg"
   let dataBase64 = imageBase64OrDataUrl
@@ -96,7 +96,7 @@ Step 1 – Risk Observation
 - Keep entries concise and actionable while avoiding private information.
 
 Step 2 – Hazard Visualization Prompt
-- Provide a single English prompt suited for the Gemini Image Generation API (Gemini 2.5 Flash Image) that creates one photorealistic 2048×2048 infographic.
+- Provide a single English prompt suited for the Gemini Image Generation API (Imagen 3 / Gemini 3) that creates one photorealistic 2048×2048 infographic.
 - Requirements: retain the same camera position, lens, perspective, and daylight as the uploaded photo; natural color grading; crisp focus; high dynamic range; Japanese suburban street context; do not introduce new people or vehicles.
 - Describe semi-transparent overlays and warning icons for each hazard, with the specified Japanese labels: collapsed fence (red shade + exclamation icons, label "フェンス倒壊"), fallen utility pole (red circle + arrow, label "電柱倒壊"), flooding (blue haze + droplet icons, label "冠水"), fire spread (orange glow + flame icons, label "延焼"). Explicitly request “no extra text or watermarks” and forbid mentioning model names.
 

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { imageBase64, userDetectedHazards } = body
+    const { imageBase64, userDetectedHazards, promptType } = body
 
     if (!imageBase64) {
       console.error('No image data provided')
@@ -79,7 +79,8 @@ export async function POST(request: NextRequest) {
       // Always use Gemini for hazard analysis
       analysisResult = await analyzeImageForHazardsGemini(
         imageBase64,
-        userDetectedHazards
+        userDetectedHazards,
+        promptType || "default"
       )
       
       console.log(`Analysis completed for user ${user.id}: ${analysisResult.hazards.length} hazards detected, score: ${analysisResult.score}`)

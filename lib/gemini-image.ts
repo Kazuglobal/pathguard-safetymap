@@ -141,8 +141,8 @@ export async function generateImageWithGemini({
 }: GenerateImageParams): Promise<GeneratedImage[]> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Use the Imagen 4 model for image generation
-  const model = getSanitizedGeminiModel("imagen-4.0-generate-001")
+  // Use the Gemini 3 Pro Image Preview model for image generation
+  const model = getSanitizedGeminiModel("gemini-3-pro-image-preview")
 
   const text = prompt || "Create an image using the provided reference."
 
