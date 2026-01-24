@@ -20,6 +20,9 @@ const resolveErrorMessage = (error: unknown, fallback: string) => {
   if (message.includes("network_error") || message.includes("Failed to fetch") || message.includes("fetch failed")) {
     return OFFLINE_MESSAGE
   }
+  if (message.includes("Invalid login credentials")) {
+    return "メールアドレスまたはパスワードが正しくありません。"
+  }
   return message || fallback
 }
 
