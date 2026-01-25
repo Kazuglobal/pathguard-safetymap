@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle } from "lucide-react"
+import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Navigation } from "lucide-react"
 
 // Import the MapStyleSelector component
 import MapStyleSelector from "./map-style-selector"
@@ -20,6 +20,8 @@ interface MapHeaderProps {
   is3DEnabled: boolean
   toggle3DMode: () => void
   isSelectingLocation?: boolean
+  onToggleAR?: () => void
+  isARMode?: boolean
 }
 
 // Update the function signature to use the new props
@@ -31,6 +33,8 @@ export default function MapHeader({
   is3DEnabled,
   toggle3DMode,
   isSelectingLocation,
+  onToggleAR,
+  isARMode = false,
 }: MapHeaderProps) {
   const { points, level } = useGamification()
 
@@ -96,6 +100,19 @@ export default function MapHeader({
               size="sm"
               className="flex-shrink-0"
             />
+            {/* ARビューボタン */}
+            {onToggleAR && (
+              <Button
+                onClick={onToggleAR}
+                variant={isARMode ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                aria-label="ARビューを開く"
+              >
+                <Navigation className="h-3 w-3 mr-1" />
+                AR
+              </Button>
+            )}
 
             {/* 報告ボタン */}
             <Button
@@ -163,6 +180,19 @@ export default function MapHeader({
                 size="sm"
                 className="flex-shrink-0"
               />
+              {/* ARビューボタン */}
+              {onToggleAR && (
+                <Button
+                  onClick={onToggleAR}
+                  variant={isARMode ? "default" : "outline"}
+                  size="sm"
+                  className="flex-shrink-0"
+                  aria-label="ARビューを開く"
+                >
+                  <Navigation className="h-4 w-4 mr-2" />
+                  ARビュー
+                </Button>
+              )}
             </div>
 
             {/* 報告ボタン */}

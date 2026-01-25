@@ -21,10 +21,10 @@ export function BadgeCard({ badge, className }: BadgeCardProps) {
   const { id, name, icon, threshold, isOwned, acquiredAt } = badge;
 
   // 取得日時のフォーマット
-  const formatDate = (dateStr: string | null) => {
+  const formatDateUtc = (dateStr: string | null) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
-    return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+    return `${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/${String(date.getUTCDate()).padStart(2, "0")}`;
   };
 
   return (
@@ -87,7 +87,7 @@ export function BadgeCard({ badge, className }: BadgeCardProps) {
         className="acquired-date text-xs text-muted-foreground mt-2 text-center"
       >
         {isOwned && acquiredAt ? (
-          <span>{formatDate(acquiredAt)} 取得</span>
+          <span>{formatDateUtc(acquiredAt)} 取得</span>
         ) : (
           <span className="text-gray-400">未取得</span>
         )}

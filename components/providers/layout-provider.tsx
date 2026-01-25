@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
 import { SupabaseProvider, useSupabase } from "@/components/providers/supabase-provider"
+import { Toaster } from "@/components/ui/toaster"
 import type { User } from "@supabase/supabase-js"
 
 interface LayoutProviderInnerProps {
@@ -24,6 +25,11 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
         }
         const { data, error } = await supabase.auth.getUser()
         if (error) {
+          // "Auth session missing" is expected when user is not logged in - not an error
+          if (error.message?.includes("Auth session missing")) {
+            // User not logged in - this is normal, no logging needed
+            return
+          }
           if (error.message?.includes("fetch failed")) {
             console.warn("Supabaseサーバーに接続できません。オフラインモードで続行します。")
           } else {
@@ -63,9 +69,12 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
   }, [supabase])
 
   return (
-    <NavigationWrapper user={user} onLogout={handleLogout}>
-      {children}
-    </NavigationWrapper>
+    <>
+      <NavigationWrapper user={user} onLogout={handleLogout}>
+        {children}
+      </NavigationWrapper>
+      <Toaster />
+    </>
   )
 }
 
