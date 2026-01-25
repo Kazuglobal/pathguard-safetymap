@@ -22,6 +22,7 @@
     "test:responsive:mobile": "playwright test tests/responsive --project='Mobile Chrome - iPhone 12'",
     "test:responsive:tablet": "playwright test tests/responsive --project='Tablet - iPad'",
     "test:responsive:desktop": "playwright test tests/responsive --project='Desktop - Chrome 1920x1080'",
+    "test:api": "playwright test --config=playwright.api.config.ts",
     "test:db-migration": "tsx test-report-gallery-migration.ts",
     "test:gallery-api": "tsx test-gallery-api.ts",
     "apply-migration": "tsx apply-migration.ts",

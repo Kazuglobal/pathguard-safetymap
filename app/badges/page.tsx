@@ -39,6 +39,7 @@ export default async function BadgePage() {
 
   // 4) ユーザー取得済みバッジを取得（ログイン時のみ）
   let userBadges: { badge_id: number; acquired_at: string | null }[] = [];
+  let userBadgesFetchFailed = false;
   if (isLoggedIn && userId) {
     const { data, error: userBadgesError } = await supabase
       .from("user_badges")
@@ -47,6 +48,7 @@ export default async function BadgePage() {
 
     if (userBadgesError) {
       console.error("Failed to fetch user badges:", userBadgesError);
+      userBadgesFetchFailed = true;
     } else {
       userBadges = data ?? [];
     }
@@ -85,6 +87,15 @@ export default async function BadgePage() {
         <div className="bg-muted/50 rounded-lg p-4 mb-6">
           <p className="text-muted-foreground text-center">
             ログインすると取得状況が表示されます
+          </p>
+        </div>
+      )}
+
+      {/* 取得状況取得失敗メッセージ（ログイン時のみ） */}
+      {isLoggedIn && userBadgesFetchFailed && (
+        <div className="bg-destructive/10 text-destructive rounded-lg p-4 mb-6">
+          <p className="text-sm text-center">
+            取得状況の取得に失敗しました。表示内容が正確でない可能性があります。時間をおいて再読み込みしてください。
           </p>
         </div>
       )}
