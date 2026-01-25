@@ -480,11 +480,11 @@
 }
 
 /* Toast animations for radix-ui/react-toast */
-[data-state="open"] {
+.radix-toast[data-state="open"] {
   animation: toast-enter 0.2s ease-out;
 }
 
-[data-state="closed"] {
+.radix-toast[data-state="closed"] {
   animation: toast-exit 0.2s ease-in forwards;
 }
 
