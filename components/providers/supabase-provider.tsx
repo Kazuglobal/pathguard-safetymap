@@ -43,7 +43,7 @@ const buildSupabaseClient = (): SupabaseClient<Database> => {
   return createBrowserClient<Database>(url, anonKey, {
     auth: {
       persistSession: true,
-      autoRefreshToken: false,
+      autoRefreshToken: true,
     },
     global: {
       fetch: safeFetch,

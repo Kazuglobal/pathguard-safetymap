@@ -218,29 +218,42 @@ export default function MapContainer() {
 
   // ユーザー情報を取得して isAdmin 状態を更新する useEffect
   useEffect(() => {
+    let isMounted = true
+    let retryCount = 0
+    const maxRetries = 3
+
     const checkAdminStatus = async () => {
       if (!supabase) return;
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
+          // "Auth session missing"はセッション同期待ち、リトライする
+          if (error.message?.includes("Auth session missing")) {
+            if (retryCount < maxRetries && isMounted) {
+              retryCount++
+              setTimeout(checkAdminStatus, 500 * retryCount)
+              return
+            }
+            // リトライ後も失敗 = 未ログイン（正常）
+            if (isMounted) setIsAdmin(false)
+            return
+          }
           console.error("Error fetching user:", error);
           return;
         }
         // user.app_metadata.role === 'admin' で判定 (実際のロール管理方法に合わせて変更)
-        // console.log("User object for admin check:", user); // デバッグ用にユーザーオブジェクト全体を出力
         if (user?.app_metadata?.role === 'admin') {
-          console.log("Admin user detected, setting isAdmin to true.");
-          setIsAdmin(true);
+          if (isMounted) setIsAdmin(true);
         } else {
-          console.log("User is not admin, setting isAdmin to false.");
-          setIsAdmin(false);
+          if (isMounted) setIsAdmin(false);
         }
       } catch (err) {
         console.error("Error in checkAdminStatus:", err);
-        setIsAdmin(false); // エラー時は念のため false に
+        if (isMounted) setIsAdmin(false); // エラー時は念のため false に
       }
     };
     checkAdminStatus();
+    return () => { isMounted = false }
   }, [supabase]); // supabase クライアントが変わった時にも再チェック
 
   // --- ▼▼▼ モバイル判定と地点選択待ち state を追加 ▼▼▼ ---

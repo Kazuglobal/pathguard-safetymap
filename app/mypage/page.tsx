@@ -67,7 +67,10 @@ export default function MyPage() {
         } = await supabase.auth.getUser()
 
         if (userError) {
-          console.error("ユーザー情報の取得に失敗しました", userError)
+          // "Auth session missing"は未ログインなのでエラーログ不要
+          if (!userError.message?.includes("Auth session missing")) {
+            console.error("ユーザー情報の取得に失敗しました", userError)
+          }
         }
 
         if (!user) {

@@ -16,18 +16,30 @@ export function useGamification() {
   const { toast } = useToast();
   
   const fetcher = async (): Promise<UserPointsRow | null> => {
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
-    if (userErr || !user) return null;
+    try {
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
+      if (userErr) {
+        // "Auth session missing"は未ログイン状態なのでエラーではない
+        if (!userErr.message?.includes("Auth session missing")) {
+          console.error("useGamification: getUser error", userErr)
+        }
+        return null
+      }
+      if (!user) return null;
 
-    const { data } = await supabase
-      .from("user_points")
-      .select("points, level")
-      .eq("user_id", user.id)
-      .single();
-    return data as UserPointsRow | null;
+      const { data } = await supabase
+        .from("user_points")
+        .select("points, level")
+        .eq("user_id", user.id)
+        .single();
+      return data as UserPointsRow | null;
+    } catch (e) {
+      console.error("useGamification: unexpected error", e)
+      return null
+    }
   };
 
   const { data, error, mutate, isLoading } = useSWR("user_points", fetcher, {
