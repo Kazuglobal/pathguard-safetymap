@@ -46,13 +46,28 @@ export default function LoginForm() {
 
       if (error) throw error
 
+      // セッションが確立されるのを待つ
+      await new Promise<void>((resolve) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            subscription.unsubscribe()
+            resolve()
+          }
+        })
+        // タイムアウト（3秒）
+        setTimeout(() => {
+          subscription.unsubscribe()
+          resolve()
+        }, 3000)
+      })
+
       toast({
         title: "ログインに成功しました",
         description: "アプリケーションにログインしました。",
       })
 
-      router.push("/map")
       router.refresh()
+      router.push("/map")
     } catch (error) {
       toast({
         title: "エラー",
@@ -75,13 +90,28 @@ export default function LoginForm() {
 
       if (error) throw error
 
+      // セッションが確立されるのを待つ
+      await new Promise<void>((resolve) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            subscription.unsubscribe()
+            resolve()
+          }
+        })
+        // タイムアウト（3秒）
+        setTimeout(() => {
+          subscription.unsubscribe()
+          resolve()
+        }, 3000)
+      })
+
       toast({
         title: "デモユーザーでログインしました",
         description: "デモアカウントにログインしました。",
       })
 
-      router.push("/map")
       router.refresh()
+      router.push("/map")
     } catch (error) {
       toast({
         title: "エラー",
