@@ -100,10 +100,23 @@ export default function LoginForm() {
   const handleDemoLogin = async () => {
     setIsLoading(true)
 
+    const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL || "demo@example.com"
+    const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD
+
+    if (!demoPassword) {
+      toast({
+        title: "エラー",
+        description: "デモアカウントが設定されていません。",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: "demo@example.com",
-        password: "demopassword",
+        email: demoEmail,
+        password: demoPassword,
       })
 
       if (error) throw error
