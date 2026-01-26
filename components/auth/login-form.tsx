@@ -34,32 +34,50 @@ export default function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
+  const waitForSession = async () =>
+    new Promise<void>((resolve) => {
+      let settled = false
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+      let subscription: { unsubscribe: () => void } | null = null
+      const finalize = () => {
+        if (settled) return
+        settled = true
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+        subscription?.unsubscribe()
+        resolve()
+      }
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
+          finalize()
+        }
+      })
+      subscription = data.subscription
+      if (settled) {
+        subscription.unsubscribe()
+        return
+      }
+      timeoutId = setTimeout(finalize, 3000)
+    })
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) throw error
 
-      // セッションが確立されるのを待つ
-      await new Promise<void>((resolve) => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            subscription.unsubscribe()
-            resolve()
-          }
-        })
-        // タイムアウト（3秒）
-        setTimeout(() => {
-          subscription.unsubscribe()
-          resolve()
-        }, 3000)
-      })
+      // signInWithPassword が返した session を優先して使う
+      if (!data.session) {
+        // セッションが確立されるのを待つ
+        await waitForSession()
+      }
 
       toast({
         title: "ログインに成功しました",
@@ -83,27 +101,18 @@ export default function LoginForm() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: "demo@example.com",
         password: "demopassword",
       })
 
       if (error) throw error
 
-      // セッションが確立されるのを待つ
-      await new Promise<void>((resolve) => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            subscription.unsubscribe()
-            resolve()
-          }
-        })
-        // タイムアウト（3秒）
-        setTimeout(() => {
-          subscription.unsubscribe()
-          resolve()
-        }, 3000)
-      })
+      // signInWithPassword が返した session を優先して使う
+      if (!data.session) {
+        // セッションが確立されるのを待つ
+        await waitForSession()
+      }
 
       toast({
         title: "デモユーザーでログインしました",
