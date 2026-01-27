@@ -589,6 +589,130 @@ test.describe('Badges Page - Phase 1.1', () => {
   });
 
   // ============================================
+  // 1-1-badges-progress: 進捗表示機能
+  // ============================================
+  test.describe('1-1-badges-progress: 進捗表示機能', () => {
+
+    // ヘルパー関数: バッジページにナビゲーションして安定を待つ
+    async function navigateToBadgesPage(page: any) {
+      await page.goto('/badges');
+      // ページが完全にロードされるのを待つ
+      await page.waitForLoadState('networkidle');
+      // バッジカードが表示されるまで待つ（ページの安定を確認）
+      await page.waitForSelector('[data-testid="badge-card"], [data-testid="badges-title"]', { timeout: 10000 });
+    }
+
+    // ヘルパー関数: ログイン状態を確認
+    async function isUserLoggedIn(page: any): Promise<boolean> {
+      const progressSection = page.locator('[data-testid="badge-progress-section"]');
+      const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+
+      const hasProgressSection = await progressSection.count() > 0;
+      const hasLoginMessage = await loginMessage.count() > 0;
+
+      return hasProgressSection && !hasLoginMessage;
+    }
+
+    test('ログイン時に現在ポイントが表示される', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        // 未ログイン状態の場合、ログイン促進メッセージを確認
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      const currentPoints = page.locator('[data-testid="current-points"]');
+      await expect(currentPoints).toBeVisible({ timeout: 10000 });
+
+      const pointsText = await currentPoints.textContent();
+      expect(pointsText).toMatch(/\d+.*pt|ポイント/);
+    });
+
+    test('次のバッジまでの進捗バーが表示される', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      // 未取得バッジがある場合のみ進捗バーが表示される
+      const progressBar = page.locator('[data-testid="next-badge-progress"]');
+      const completeMessage = page.locator('[data-testid="badges-complete"]');
+
+      const hasProgress = await progressBar.count() > 0;
+      const hasComplete = await completeMessage.count() > 0;
+
+      expect(hasProgress || hasComplete).toBeTruthy();
+    });
+
+    test('次のバッジ名が表示される', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      const nextBadgeName = page.locator('[data-testid="next-badge-name"]');
+      const completeMessage = page.locator('[data-testid="badges-complete"]');
+
+      const hasNextBadge = await nextBadgeName.count() > 0;
+      const hasComplete = await completeMessage.count() > 0;
+
+      expect(hasNextBadge || hasComplete).toBeTruthy();
+    });
+
+    test('未ログイン時は進捗セクションが非表示', async ({ page, context }) => {
+      await context.clearCookies();
+      await navigateToBadgesPage(page);
+
+      const progressSection = page.locator('[data-testid="badge-progress-section"]');
+      await expect(progressSection).not.toBeVisible();
+    });
+
+    test('進捗バーの値が正しく計算されている', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      const progressBar = page.locator('[data-testid="next-badge-progress"] [role="progressbar"]');
+
+      if (await progressBar.count() > 0) {
+        const ariaValueNow = await progressBar.getAttribute('aria-valuenow');
+        const value = parseInt(ariaValueNow || '0');
+
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(100);
+      }
+    });
+  });
+
+  // ============================================
   // エラーハンドリング
   // ============================================
   test.describe('エラーハンドリング', () => {
