@@ -55,7 +55,11 @@
       "Bash(npm run test:db-migration:*)",
       "Bash(bash:*)",
       "Bash(npm run test:gallery-api:*)",
-      "Bash(npm run insert-dummy-data:*)"
+      "Bash(npm run insert-dummy-data:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr view:*)"
     ],
     "deny": []
   }
