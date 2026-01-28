@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { AlertTriangle, Bookmark, Heart, Images, MapPin, MessageCircle } from "lucide-react"
 import ImagePreviewDialog from "@/components/danger-report/image-preview-dialog"
 import SharedGallery3D from "@/components/report/shared-gallery-3d"
+import { CommentSection } from "@/components/comments/comment-section"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -91,6 +92,9 @@ export default function ReportHubPage() {
   const [selectedCategoryType, setSelectedCategoryType] = useState<string | null>(null)
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [selectedReport, setSelectedReport] = useState<PublicReport | null>(null)
+  const [isReportDetailOpen, setIsReportDetailOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -131,8 +135,24 @@ export default function ReportHubPage() {
 
     fetchReports()
 
+    // Check login status
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (isMounted) {
+        setIsLoggedIn(!!user)
+      }
+    }
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (isMounted) {
+        setIsLoggedIn(!!session?.user)
+      }
+    })
+
     return () => {
       isMounted = false
+      subscription.unsubscribe()
     }
   }, [supabase])
 
@@ -291,12 +311,22 @@ export default function ReportHubPage() {
     })
   }
 
+  const handleReportClick = (report: PublicReport) => {
+    setSelectedReport(report)
+    setIsReportDetailOpen(true)
+  }
+
   const renderShareCard = ({ report, cover, meta, tags, coordinates }: ShareFeedEntry) => {
     const stats =
       shareStats[report.id] ?? ({ liked: false, likes: 0, saved: false, caution: false, comments: 0 } as ShareActionState)
 
     return (
-      <div key={report.id} className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+      <div
+        key={report.id}
+        className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+        data-testid="report-item"
+        onClick={() => handleReportClick(report)}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">{report.title || "タイトル未設定"}</p>
@@ -316,7 +346,7 @@ export default function ReportHubPage() {
           <button
             type="button"
             className="mt-3 block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-            onClick={() => setPreviewImage(cover)}
+            onClick={(e) => { e.stopPropagation(); setPreviewImage(cover) }}
             aria-label="画像を拡大表示"
           >
             <img
@@ -344,12 +374,12 @@ export default function ReportHubPage() {
             ))}
           </div>
         )}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant={stats.liked ? "default" : "ghost"}
             className={stats.liked ? "bg-rose-500 text-white hover:bg-rose-500/90" : ""}
-            onClick={() => handleShareAction(report.id, "like")}
+            onClick={(e) => { e.stopPropagation(); handleShareAction(report.id, "like") }}
           >
             <Heart className={`mr-1 h-4 w-4 ${stats.liked ? "fill-current" : ""}`} />
             いいね {stats.likes}
@@ -358,7 +388,7 @@ export default function ReportHubPage() {
             size="sm"
             variant={stats.saved ? "default" : "ghost"}
             className={stats.saved ? "bg-emerald-500 text-white hover:bg-emerald-500/90" : ""}
-            onClick={() => handleShareAction(report.id, "save")}
+            onClick={(e) => { e.stopPropagation(); handleShareAction(report.id, "save") }}
           >
             <Bookmark className={`mr-1 h-4 w-4 ${stats.saved ? "fill-current" : ""}`} />
             保存
@@ -367,12 +397,12 @@ export default function ReportHubPage() {
             size="sm"
             variant={stats.caution ? "default" : "ghost"}
             className={stats.caution ? "bg-amber-500 text-white hover:bg-amber-500/90" : ""}
-            onClick={() => handleShareAction(report.id, "caution")}
+            onClick={(e) => { e.stopPropagation(); handleShareAction(report.id, "caution") }}
           >
             <AlertTriangle className="mr-1 h-4 w-4" />
             気をつけよう
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => handleCommentAction(report.id)}>
+          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleCommentAction(report.id) }}>
             <MessageCircle className="mr-1 h-4 w-4" />
             コメント {stats.comments}
           </Button>
@@ -527,6 +557,77 @@ export default function ReportHubPage() {
                 <p className="text-sm text-slate-500">危険箇所が投稿されるとここに表示されます。</p>
               )}
             </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* レポート詳細シート（コメント付き） */}
+        <Sheet
+          open={isReportDetailOpen && !!selectedReport}
+          onOpenChange={(open) => {
+            setIsReportDetailOpen(open)
+            if (!open) {
+              setSelectedReport(null)
+            }
+          }}
+        >
+          <SheetContent side="bottom" className="h-[85vh] w-full overflow-y-auto sm:mx-auto sm:max-w-3xl">
+            {selectedReport && (
+              <>
+                <SheetHeader>
+                  <SheetTitle>{selectedReport.title || "タイトル未設定"}</SheetTitle>
+                  <SheetDescription>
+                    {formatDate(selectedReport.created_at)}
+                    {selectedReport.latitude && selectedReport.longitude && (
+                      <span className="ml-2">
+                        <MapPin className="inline-block h-3.5 w-3.5 mr-1" />
+                        {selectedReport.latitude.toFixed(3)}, {selectedReport.longitude.toFixed(3)}
+                      </span>
+                    )}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-4 space-y-6">
+                  {/* レポート画像 */}
+                  {getCoverImage(selectedReport) && (
+                    <button
+                      type="button"
+                      className="w-full overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPreviewImage(getCoverImage(selectedReport))
+                      }}
+                    >
+                      <img
+                        src={getCoverImage(selectedReport)!}
+                        alt="危険報告の画像"
+                        className="h-48 w-full object-cover object-center"
+                      />
+                    </button>
+                  )}
+
+                  {/* レポート詳細 */}
+                  {selectedReport.description && (
+                    <p className="text-sm leading-relaxed text-slate-600">{selectedReport.description}</p>
+                  )}
+
+                  {/* 危険タイプとレベル */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className={(DANGER_TYPE_META[selectedReport.danger_type ?? "other"] ?? DEFAULT_DANGER_META).badge}>
+                      {(DANGER_TYPE_META[selectedReport.danger_type ?? "other"] ?? DEFAULT_DANGER_META).label}
+                    </Badge>
+                    <Badge variant="outline">危険度 {selectedReport.danger_level ?? "?"}</Badge>
+                  </div>
+
+                  {/* コメントセクション */}
+                  <div className="border-t pt-6">
+                    <CommentSection
+                      spotId={selectedReport.id}
+                      isLoggedIn={isLoggedIn}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </SheetContent>
         </Sheet>
       </div>
