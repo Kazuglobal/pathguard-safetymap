@@ -16,7 +16,7 @@ export function NavigationWrapper({ user, onLogout, children }: NavigationWrappe
   const pathname = usePathname()
   
   // ナビゲーションを表示しないページ（ランディングは表示対象）
-  const noNavPages = ['/login', '/register']
+  const noNavPages = ['/login', '/register', '/forgot-password', '/reset-password']
   const showNavigation = !noNavPages.some(page => pathname.startsWith(page))
   
   // ランディングページか判定（トップナビはモバイルで非表示、デスクトップで表示）
