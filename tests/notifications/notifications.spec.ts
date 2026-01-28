@@ -534,29 +534,54 @@ test.describe('Notifications - Phase 1.4', () => {
   // ============================================
   test.describe('1-4-notification-nav: ナビゲーション統合', () => {
 
-    test('デスクトップナビゲーションに通知ベルが表示される', async ({ page }, testInfo) => {
-      // モバイルプロジェクトではデスクトップテストをスキップ
-      if (testInfo.project.name.includes('Mobile')) {
-        test.skip();
-        return;
-      }
+    test.describe('desktop layout', () => {
+      test.use({
+        viewport: { width: 1920, height: 1080 },
+        isMobile: false,
+        hasTouch: false,
+        userAgent:
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      });
 
-      const loggedIn = await tryLogin(page);
+      test('デスクトップナビゲーションに通知ベルが表示される', async ({ page }) => {
+        const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - not authenticated');
-        return;
-      }
+        if (!loggedIn) {
+          console.log('Skipping test - not authenticated');
+          return;
+        }
 
-      // デスクトップサイズ
-      await page.setViewportSize({ width: 1920, height: 1080 });
-      await gotoMapAndDismissTutorial(page);
+        await gotoMapAndDismissTutorial(page);
 
-      // トップナビゲーション内の通知ベル
-      const topNav = page.locator('nav').first();
-      const notificationBell = topNav.locator('[data-testid="notification-bell"], .notification-bell');
+        // トップナビゲーション内の通知ベル
+        const topNav = page.locator('nav').first();
+        const notificationBell = topNav.locator('[data-testid="notification-bell"], .notification-bell');
 
-      await expect(notificationBell).toBeVisible({ timeout: 10000 });
+        await expect(notificationBell).toBeVisible({ timeout: 10000 });
+      });
+
+      test('通知ベルはユーザー情報の近くに配置される', async ({ page }) => {
+        const loggedIn = await tryLogin(page);
+
+        if (!loggedIn) {
+          console.log('Skipping test - not authenticated');
+          return;
+        }
+
+        await gotoMapAndDismissTutorial(page);
+
+        const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
+        const userInfo = page.locator('[data-testid="user-info"], .user-info, .user-menu');
+
+        const bellBox = await notificationBell.boundingBox();
+        const userBox = await userInfo.first().boundingBox();
+
+        if (bellBox && userBox) {
+          // 通知ベルとユーザー情報は近くに配置される（300px以内）
+          const distance = Math.abs(bellBox.x - userBox.x);
+          expect(distance).toBeLessThan(300);
+        }
+      });
     });
 
     test('モバイルナビゲーションに通知ベルが表示される', async ({ page }) => {
@@ -575,36 +600,6 @@ test.describe('Notifications - Phase 1.4', () => {
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
 
       await expect(notificationBell).toBeVisible({ timeout: 10000 });
-    });
-
-    test('通知ベルはユーザー情報の近くに配置される', async ({ page }, testInfo) => {
-      // モバイルプロジェクトではデスクトップレイアウトテストをスキップ
-      if (testInfo.project.name.includes('Mobile')) {
-        test.skip();
-        return;
-      }
-
-      const loggedIn = await tryLogin(page);
-
-      if (!loggedIn) {
-        console.log('Skipping test - not authenticated');
-        return;
-      }
-
-      await page.setViewportSize({ width: 1920, height: 1080 });
-      await gotoMapAndDismissTutorial(page);
-
-      const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
-      const userInfo = page.locator('[data-testid="user-info"], .user-info, .user-menu');
-
-      const bellBox = await notificationBell.boundingBox();
-      const userBox = await userInfo.first().boundingBox();
-
-      if (bellBox && userBox) {
-        // 通知ベルとユーザー情報は近くに配置される（300px以内）
-        const distance = Math.abs(bellBox.x - userBox.x);
-        expect(distance).toBeLessThan(300);
-      }
     });
 
     test('ページ遷移後も通知ベルの状態が維持される', async ({ page }) => {
