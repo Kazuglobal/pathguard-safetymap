@@ -27,7 +27,7 @@
     "test:gallery-api": "tsx test-gallery-api.ts",
     "apply-migration": "tsx apply-migration.ts",
     "insert-dummy-data": "tsx insert-dummy-data.ts",
-    "create-test-users": "npx tsx scripts/create-test-users.ts"
+    "create-test-users": "tsx scripts/create-test-users.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

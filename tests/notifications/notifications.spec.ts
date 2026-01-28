@@ -63,8 +63,8 @@ async function dismissTutorial(page: any): Promise<void> {
 
 // /map に遷移してチュートリアルを閉じる
 async function gotoMapAndDismissTutorial(page: any): Promise<void> {
-  await page.goto('/map');
-  await page.waitForLoadState('networkidle');
+  await page.goto('/map', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   await dismissTutorial(page);
 }
 
@@ -276,6 +276,11 @@ test.describe('Notifications - Phase 1.4', () => {
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
 
+      const notificationDropdown = page.locator(
+        '[data-testid="notification-dropdown"], .notification-dropdown'
+      );
+      await expect(notificationDropdown).toBeVisible({ timeout: 10000 });
+
       // 通知アイテムまたは空状態メッセージ
       const notificationItems = page.locator(
         '[data-testid="notification-item"], ' +
@@ -283,10 +288,7 @@ test.describe('Notifications - Phase 1.4', () => {
       );
       const emptyState = page.locator('[data-testid="notification-empty"], .notification-empty');
 
-      const hasItems = await notificationItems.count() > 0;
-      const hasEmptyState = await emptyState.count() > 0;
-
-      expect(hasItems || hasEmptyState).toBeTruthy();
+      await expect(notificationItems.or(emptyState)).toBeVisible();
     });
 
     test('通知アイテムにタイトルが表示される', async ({ page }) => {
@@ -535,12 +537,11 @@ test.describe('Notifications - Phase 1.4', () => {
   test.describe('1-4-notification-nav: ナビゲーション統合', () => {
 
     test.describe('desktop layout', () => {
-      test.use({
-        viewport: { width: 1920, height: 1080 },
-        isMobile: false,
-        hasTouch: false,
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      test.beforeEach(({}, testInfo) => {
+        test.skip(
+          !testInfo.project.name.startsWith('Desktop - Chrome'),
+          'Desktop Chromium projects only'
+        );
       });
 
       test('デスクトップナビゲーションに通知ベルが表示される', async ({ page }) => {
