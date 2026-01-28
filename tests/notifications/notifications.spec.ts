@@ -17,12 +17,66 @@ import { AuthHelper, TEST_USERS } from '../utils/auth-helpers';
  * - ナビゲーションへの統合
  */
 
+// チュートリアルダイアログを閉じる
+async function dismissTutorial(page: any): Promise<void> {
+  // 複数回試行（ダイアログが表示されるまで少し待つ）
+  for (let i = 0; i < 3; i++) {
+    try {
+      await page.waitForTimeout(500);
+
+      // スキップボタンを探す（複数のセレクタを試す）
+      const skipSelectors = [
+        'button:has-text("スキップ")',
+        'button:has-text("チュートリアルをスキップ")',
+        '[role="dialog"] button:has-text("スキップ")',
+      ];
+
+      for (const selector of skipSelectors) {
+        const button = page.locator(selector).first();
+        if (await button.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await button.click();
+          await page.waitForTimeout(500);
+          return;
+        }
+      }
+
+      // 閉じるボタンを試す
+      const closeSelectors = [
+        'button:has-text("閉じる")',
+        'button:has-text("Close")',
+        '[role="dialog"] button[aria-label="Close"]',
+      ];
+
+      for (const selector of closeSelectors) {
+        const button = page.locator(selector).first();
+        if (await button.isVisible({ timeout: 500 }).catch(() => false)) {
+          await button.click();
+          await page.waitForTimeout(500);
+          return;
+        }
+      }
+    } catch {
+      // エラーは無視
+    }
+  }
+}
+
+// /map に遷移してチュートリアルを閉じる
+async function gotoMapAndDismissTutorial(page: any): Promise<void> {
+  await page.goto('/map');
+  await page.waitForLoadState('networkidle');
+  await dismissTutorial(page);
+}
+
 // 認証を試みる（失敗しても続行）
-async function tryLogin(page: any) {
+async function tryLogin(page: any): Promise<boolean> {
   const authHelper = new AuthHelper(page);
   try {
-    await authHelper.login(TEST_USERS.regular);
-    return true;
+    const success = await authHelper.login(TEST_USERS.regular);
+    if (success) {
+      await dismissTutorial(page);
+    }
+    return success;
   } catch {
     console.warn('Login failed, continuing without authentication');
     return false;
@@ -45,8 +99,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await expect(notificationBell).toBeVisible({ timeout: 10000 });
@@ -60,8 +113,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const bellIcon = page.locator('[data-testid="notification-bell"] svg, .notification-bell svg');
       await expect(bellIcon).toBeVisible({ timeout: 10000 });
@@ -75,8 +127,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       // 未読バッジ（存在する場合のみ）
       const unreadBadge = page.locator(
@@ -114,8 +165,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
 
@@ -144,8 +194,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -201,8 +250,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -223,8 +271,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -234,10 +281,7 @@ test.describe('Notifications - Phase 1.4', () => {
         '[data-testid="notification-item"], ' +
         '.notification-item'
       );
-      const emptyState = page.locator(
-        '[data-testid="notification-empty"], ' +
-        'text=/通知.*ありません|no notifications/i'
-      );
+      const emptyState = page.locator('[data-testid="notification-empty"], .notification-empty');
 
       const hasItems = await notificationItems.count() > 0;
       const hasEmptyState = await emptyState.count() > 0;
@@ -253,8 +297,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -279,8 +322,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -309,8 +351,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -345,8 +386,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -355,10 +395,7 @@ test.describe('Notifications - Phase 1.4', () => {
       const notificationItems = page.locator('[data-testid="notification-item"], .notification-item');
 
       if (await notificationItems.count() === 0) {
-        const emptyState = page.locator(
-          '[data-testid="notification-empty"], ' +
-          'text=/通知.*ありません|no notifications|新しい通知はありません/i'
-        );
+        const emptyState = page.locator('[data-testid="notification-empty"], .notification-empty');
 
         await expect(emptyState).toBeVisible();
       }
@@ -372,8 +409,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -418,8 +454,7 @@ test.describe('Notifications - Phase 1.4', () => {
         }
       });
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       // 通知ベルをクリックしてフェッチをトリガー
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
@@ -440,8 +475,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -469,8 +503,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       await notificationBell.click();
@@ -501,7 +534,13 @@ test.describe('Notifications - Phase 1.4', () => {
   // ============================================
   test.describe('1-4-notification-nav: ナビゲーション統合', () => {
 
-    test('デスクトップナビゲーションに通知ベルが表示される', async ({ page }) => {
+    test('デスクトップナビゲーションに通知ベルが表示される', async ({ page }, testInfo) => {
+      // モバイルプロジェクトではデスクトップテストをスキップ
+      if (testInfo.project.name.includes('Mobile')) {
+        test.skip();
+        return;
+      }
+
       const loggedIn = await tryLogin(page);
 
       if (!loggedIn) {
@@ -511,8 +550,7 @@ test.describe('Notifications - Phase 1.4', () => {
 
       // デスクトップサイズ
       await page.setViewportSize({ width: 1920, height: 1080 });
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       // トップナビゲーション内の通知ベル
       const topNav = page.locator('nav').first();
@@ -531,8 +569,7 @@ test.describe('Notifications - Phase 1.4', () => {
 
       // モバイルサイズ
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       // モバイルでは上部またはボトムナビに通知ベル
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
@@ -540,7 +577,13 @@ test.describe('Notifications - Phase 1.4', () => {
       await expect(notificationBell).toBeVisible({ timeout: 10000 });
     });
 
-    test('通知ベルはユーザー情報の近くに配置される', async ({ page }) => {
+    test('通知ベルはユーザー情報の近くに配置される', async ({ page }, testInfo) => {
+      // モバイルプロジェクトではデスクトップレイアウトテストをスキップ
+      if (testInfo.project.name.includes('Mobile')) {
+        test.skip();
+        return;
+      }
+
       const loggedIn = await tryLogin(page);
 
       if (!loggedIn) {
@@ -549,8 +592,7 @@ test.describe('Notifications - Phase 1.4', () => {
       }
 
       await page.setViewportSize({ width: 1920, height: 1080 });
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       const userInfo = page.locator('[data-testid="user-info"], .user-info, .user-menu');
@@ -573,8 +615,7 @@ test.describe('Notifications - Phase 1.4', () => {
         return;
       }
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       // 初期状態の未読数を取得
       const unreadBadge = page.locator('[data-testid="notification-badge"], .notification-badge');
@@ -648,8 +689,7 @@ test.describe('Notifications - Phase 1.4', () => {
       // 通知APIをブロック
       await page.route('**/notifications**', route => route.abort());
 
-      await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await gotoMapAndDismissTutorial(page);
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
       if (await notificationBell.count() > 0) {

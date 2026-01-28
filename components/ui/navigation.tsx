@@ -19,6 +19,7 @@ import {
   Home,
 } from "lucide-react"
 import { motion } from "framer-motion"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 interface NavigationProps {
   user?: any
@@ -180,8 +181,9 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false }: Navigat
 
             {/* 右側アクション */}
             <div className="flex items-center space-x-3">
+              {user && <NotificationBell isLoggedIn={!!user} />}
               {user ? (
-                <div className="hidden sm:flex flex-col items-end text-sm leading-tight">
+                <div className="hidden sm:flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
                   <span className="font-semibold text-gray-900">
                     {user.email?.split("@")[0] || "ユーザー"}
                   </span>
