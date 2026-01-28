@@ -85,6 +85,9 @@ test.describe('Password Reset - Phase 1.3', () => {
       const submitButton = page.locator('button[type="submit"], [data-testid="forgot-password-submit"]');
       await submitButton.click();
 
+      // Wait for either success message or error response
+      await page.waitForTimeout(3000);
+
       // 成功メッセージの確認（トースト、アラート、または画面上のテキスト）
       const successIndicators = [
         page.locator('[data-testid="forgot-password-success"]'),
@@ -118,11 +121,11 @@ test.describe('Password Reset - Phase 1.3', () => {
       await page.goto('/forgot-password');
       await page.waitForLoadState('networkidle');
 
-      const loginLink = page.locator('a[href="/login"], a[href*="login"], [data-testid="back-to-login"]');
+      const loginLink = page.locator('[data-testid="back-to-login"]');
+      await expect(loginLink).toBeVisible({ timeout: 5000 });
       await loginLink.click();
 
-      await page.waitForLoadState('networkidle');
-      await expect(page).toHaveURL(/\/login/);
+      await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
     });
   });
 
@@ -185,68 +188,42 @@ test.describe('Password Reset - Phase 1.3', () => {
       await page.goto('/reset-password');
       await page.waitForLoadState('networkidle');
 
-      const passwordInput = page.locator('input[type="password"]').first();
+      const passwordInput = page.locator('[data-testid="new-password"]');
+      await expect(passwordInput).toBeVisible({ timeout: 5000 });
+      await passwordInput.click();
       await passwordInput.fill('short');
 
-      const confirmPasswordInput = page.locator('input[type="password"]').nth(1);
-      if (await confirmPasswordInput.count() > 0) {
-        await confirmPasswordInput.fill('short');
-      }
+      const confirmPasswordInput = page.locator('[data-testid="confirm-password"]');
+      await confirmPasswordInput.click();
+      await confirmPasswordInput.fill('short');
 
-      const submitButton = page.locator('button[type="submit"], [data-testid="reset-password-submit"]');
+      const submitButton = page.locator('[data-testid="reset-password-submit"]');
       await submitButton.click();
 
-      // バリデーションエラーメッセージ
-      const errorIndicators = [
-        page.locator('[data-testid="password-error"]'),
-        page.locator('text=/8文字|最低8|8 characters|minimum 8/i'),
-        page.locator('.error'),
-        page.locator('[role="alert"]'),
-      ];
-
-      let errorFound = false;
-      for (const indicator of errorIndicators) {
-        if (await indicator.count() > 0) {
-          errorFound = true;
-          break;
-        }
-      }
-
-      expect(errorFound).toBeTruthy();
+      // Wait for validation error to appear
+      const passwordError = page.locator('[data-testid="password-error"]');
+      await expect(passwordError).toBeVisible({ timeout: 5000 });
     });
 
     test('パスワードが一致しない場合にエラーが表示される', async ({ page }) => {
       await page.goto('/reset-password');
       await page.waitForLoadState('networkidle');
 
-      const passwordInputs = page.locator('input[type="password"]');
-      const inputCount = await passwordInputs.count();
+      const passwordInput = page.locator('[data-testid="new-password"]');
+      await expect(passwordInput).toBeVisible({ timeout: 5000 });
+      await passwordInput.click();
+      await passwordInput.fill('password123');
 
-      if (inputCount >= 2) {
-        await passwordInputs.nth(0).fill('password123');
-        await passwordInputs.nth(1).fill('differentpassword');
+      const confirmPasswordInput = page.locator('[data-testid="confirm-password"]');
+      await confirmPasswordInput.click();
+      await confirmPasswordInput.fill('differentpassword');
 
-        const submitButton = page.locator('button[type="submit"], [data-testid="reset-password-submit"]');
-        await submitButton.click();
+      const submitButton = page.locator('[data-testid="reset-password-submit"]');
+      await submitButton.click();
 
-        // 不一致エラーメッセージ
-        const errorIndicators = [
-          page.locator('[data-testid="confirm-password-error"]'),
-          page.locator('text=/一致|match|同じ|確認/i'),
-          page.locator('.error'),
-          page.locator('[role="alert"]'),
-        ];
-
-        let errorFound = false;
-        for (const indicator of errorIndicators) {
-          if (await indicator.count() > 0) {
-            errorFound = true;
-            break;
-          }
-        }
-
-        expect(errorFound).toBeTruthy();
-      }
+      // Wait for validation error to appear
+      const confirmError = page.locator('[data-testid="confirm-password-error"]');
+      await expect(confirmError).toBeVisible({ timeout: 5000 });
     });
 
     test('トークンなしでアクセスした場合にエラーメッセージが表示される', async ({ page }) => {
@@ -294,8 +271,7 @@ test.describe('Password Reset - Phase 1.3', () => {
       const forgotPasswordLink = page.locator(
         'a[href="/forgot-password"], ' +
         'a[href*="forgot"], ' +
-        '[data-testid="forgot-password-link"], ' +
-        'text=/パスワード.*忘れ|Forgot.*password/i'
+        '[data-testid="forgot-password-link"]'
       );
 
       await expect(forgotPasswordLink).toBeVisible({ timeout: 10000 });
@@ -321,16 +297,11 @@ test.describe('Password Reset - Phase 1.3', () => {
       await page.goto('/login');
       await page.waitForLoadState('networkidle');
 
-      const forgotPasswordLink = page.locator(
-        'a[href="/forgot-password"], ' +
-        'a[href*="forgot"], ' +
-        '[data-testid="forgot-password-link"]'
-      );
+      const forgotPasswordLink = page.locator('[data-testid="forgot-password-link"]');
+      await expect(forgotPasswordLink).toBeVisible({ timeout: 5000 });
+      await forgotPasswordLink.click();
 
-      await forgotPasswordLink.first().click();
-      await page.waitForLoadState('networkidle');
-
-      await expect(page).toHaveURL(/\/forgot-password/);
+      await expect(page).toHaveURL(/\/forgot-password/, { timeout: 10000 });
     });
 
     test('リンクはパスワード入力欄の近くに配置されている', async ({ page }) => {
