@@ -1,6 +1,6 @@
 "use client"
 
-import { SupabaseClient } from "@supabase/auth-helpers-nextjs";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
 /** Supabase RPC 名 */
