@@ -52,6 +52,7 @@ export function NotificationList({
       className="absolute right-0 top-full mt-2 w-80 rounded-lg border bg-white shadow-lg z-50 notification-dropdown"
       data-testid="notification-dropdown"
       role="menu"
+      aria-label="通知一覧"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -74,6 +75,7 @@ export function NotificationList({
             size="icon"
             className="h-6 w-6"
             onClick={onClose}
+            aria-label="閉じる"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -99,9 +101,11 @@ export function NotificationList({
           </div>
         ) : (
           notifications.map((notification) => (
-            <div
+            <button
               key={notification.id}
-              className={`cursor-pointer border-b px-4 py-3 transition-colors hover:bg-gray-50 notification-item ${
+              type="button"
+              role="menuitem"
+              className={`w-full text-left border-b px-4 py-3 transition-colors hover:bg-gray-50 notification-item ${
                 !notification.is_read ? "bg-blue-50 unread" : "read"
               }`}
               onClick={() => handleItemClick(notification)}
@@ -132,7 +136,7 @@ export function NotificationList({
               >
                 {formatTimestamp(notification.created_at)}
               </p>
-            </div>
+            </button>
           ))
         )}
       </div>

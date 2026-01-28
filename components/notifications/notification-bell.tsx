@@ -14,7 +14,7 @@ export function NotificationBell({ isLoggedIn = false }: NotificationBellProps) 
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { unreadCount, notifications, markAsRead, markAllAsRead, isLoading } =
-    useNotifications()
+    useNotifications({ enabled: isLoggedIn })
 
   // Close dropdown when clicking outside
   useEffect(() => {
