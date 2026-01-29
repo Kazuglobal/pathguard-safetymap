@@ -1,6 +1,6 @@
 # SafeRoute 機能強化 Todoリスト
 
-> **最終更新日**: 2026-01-27
+> **最終更新日**: 2026-01-29
 > **プロジェクト**: SafeRoute (通学路安全マップ)
 > **フレームワーク**: Next.js 15 + React 19 + Supabase
 
@@ -10,12 +10,12 @@
 
 | Phase | 完了 | 進行中 | 未着手 | 合計 |
 |-------|------|--------|--------|------|
-| Phase 1 | 3 | 0 | 18 | 21 |
+| Phase 1 | 11 | 0 | 8 | 19 |
 | Phase 2 | 0 | 0 | 5 | 5 |
-| Phase 3 | 0 | 0 | 2 | 2 |
-| **合計** | **3** | **0** | **25** | **28** |
+| Phase 3 | 1 | 0 | 1 | 2 |
+| **合計** | **12** | **0** | **14** | **26** |
 
-**全体進捗**: 11% (3/28)
+**全体進捗**: 46% (12/26)
 
 ---
 
@@ -108,7 +108,7 @@
 
 #### タスク一覧
 
-- [ ] **1-3-forgot-page**: パスワードリセット: forgot-password ページ作成
+- [x] **1-3-forgot-page**: パスワードリセット: forgot-password ページ作成 ✅
   - **ファイル**: `app/forgot-password/page.tsx` (新規)
   - **詳細**:
     - `/app/forgot-password/page.tsx` 作成
@@ -119,7 +119,7 @@
   - **依存**: なし
   - **工数**: 1h
 
-- [ ] **1-3-reset-page**: パスワードリセット: reset-password ページ作成
+- [x] **1-3-reset-page**: パスワードリセット: reset-password ページ作成 ✅
   - **ファイル**: `app/reset-password/page.tsx` (新規)
   - **詳細**:
     - `/app/reset-password/page.tsx` 作成
@@ -130,7 +130,7 @@
   - **依存**: 1-3-forgot-page
   - **工数**: 1h
 
-- [ ] **1-3-login-link**: パスワードリセット: ログインページにリンク追加
+- [x] **1-3-login-link**: パスワードリセット: ログインページにリンク追加 ✅
   - **ファイル**: `components/auth/login-form.tsx`
   - **詳細**:
     - `components/auth/login-form.tsx` に「パスワードを忘れた」リンク追加
@@ -149,7 +149,7 @@
 
 #### タスク一覧
 
-- [ ] **1-4-notification-hook**: 通知機能: use-notifications フック作成
+- [x] **1-4-notification-hook**: 通知機能: use-notifications フック作成 ✅
   - **ファイル**: `hooks/use-notifications.ts` (新規)
   - **詳細**:
     - `hooks/use-notifications.ts` 作成
@@ -160,7 +160,7 @@
   - **依存**: なし
   - **工数**: 1h
 
-- [ ] **1-4-notification-bell**: 通知機能: NotificationBell コンポーネント作成
+- [x] **1-4-notification-bell**: 通知機能: NotificationBell コンポーネント作成 ✅
   - **ファイル**: `components/notifications/notification-bell.tsx` (新規)
   - **詳細**:
     - `components/notifications/notification-bell.tsx` 作成
@@ -171,7 +171,7 @@
   - **依存**: 1-4-notification-hook
   - **工数**: 1.5h
 
-- [ ] **1-4-notification-list**: 通知機能: 通知一覧コンポーネント作成
+- [x] **1-4-notification-list**: 通知機能: 通知一覧コンポーネント作成 ✅
   - **ファイル**: `components/notifications/notification-list.tsx` (新規)
   - **詳細**:
     - `components/notifications/notification-list.tsx` 作成
@@ -182,7 +182,7 @@
   - **依存**: 1-4-notification-hook
   - **工数**: 1h
 
-- [ ] **1-4-notification-nav**: 通知機能: ナビゲーションへの統合
+- [x] **1-4-notification-nav**: 通知機能: ナビゲーションへの統合 ✅
   - **ファイル**: `components/ui/navigation.tsx`
   - **詳細**:
     - `components/ui/navigation.tsx` に NotificationBell 追加
@@ -269,7 +269,7 @@
 
 #### タスク一覧
 
-- [ ] **1-6-comment-components**: コメント機能: コメントセクション/アイテムコンポーネント作成
+- [x] **1-6-comment-components**: コメント機能: コメントセクション/アイテムコンポーネント作成 ✅
   - **ファイル**:
     - `components/comments/comment-section.tsx` (新規)
     - `components/comments/comment-item.tsx` (新規)
@@ -402,7 +402,7 @@
 
 ### 3.2 エラーハンドリングの統一
 
-- [ ] **3-2-error-handling**: エラーハンドリング: 共通ユーティリティ作成
+- [x] **3-2-error-handling**: エラーハンドリング: 共通ユーティリティ作成 ✅
   - **ファイル**: `lib/error-handler.ts` (新規)
   - **詳細**:
     - `lib/error-handler.ts` 作成
@@ -510,15 +510,15 @@ Phase 1.2: プロフィール編集
 [ ] 1-2-profile-integration
 
 Phase 1.3: パスワードリセット
-[ ] 1-3-forgot-page
-[ ] 1-3-reset-page
-[ ] 1-3-login-link
+[x] 1-3-forgot-page
+[x] 1-3-reset-page
+[x] 1-3-login-link
 
 Phase 1.4: 通知機能
-[ ] 1-4-notification-hook
-[ ] 1-4-notification-bell
-[ ] 1-4-notification-list
-[ ] 1-4-notification-nav
+[x] 1-4-notification-hook
+[x] 1-4-notification-bell
+[x] 1-4-notification-list
+[x] 1-4-notification-nav
 
 Phase 1.5: いいね/保存
 [ ] 1-5-likes-migration
@@ -527,7 +527,7 @@ Phase 1.5: いいね/保存
 [ ] 1-5-report-integration
 
 Phase 1.6: コメント機能
-[ ] 1-6-comment-components
+[x] 1-6-comment-components
 [ ] 1-6-comment-integration
 
 Phase 2.1: 通学路管理
@@ -541,5 +541,5 @@ Phase 2.2: フィルタリング
 
 Phase 3: 技術改善
 [ ] 3-1-debug-cleanup
-[ ] 3-2-error-handling
+[x] 3-2-error-handling
 ```
