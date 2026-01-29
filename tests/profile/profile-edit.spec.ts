@@ -38,10 +38,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('プロフィール編集フォームが表示される', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -70,10 +67,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('display_name入力フィールドが存在する', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -102,10 +96,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('full_name入力フィールドが存在する', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -134,10 +125,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('現在の値がフォームにプリフィルされる', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -158,20 +146,15 @@ test.describe('Profile Edit - Phase 1.2', () => {
         'input[data-testid="display-name-input"]'
       );
 
-      if (await displayNameInput.count() > 0) {
-        const value = await displayNameInput.inputValue();
-        // 何らかの値がプリフィルされている（空でない、または空文字列でも正常）
-        expect(value !== undefined).toBeTruthy();
-      }
+      await expect(displayNameInput).toBeVisible({ timeout: 10000 });
+      const value = (await displayNameInput.inputValue()).trim();
+      expect(value, 'display_name should be prefilled').not.toEqual('');
     });
 
     test('空のdisplay_nameでバリデーションエラー', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -197,30 +180,28 @@ test.describe('Profile Edit - Phase 1.2', () => {
         'button[type="submit"]'
       );
 
-      if (await displayNameInput.count() > 0 && await submitButton.count() > 0) {
-        // 空の値をセット
-        await displayNameInput.clear();
-        await submitButton.click();
+      await expect(displayNameInput).toBeVisible({ timeout: 10000 });
+      await expect(submitButton).toBeVisible({ timeout: 10000 });
 
-        // バリデーションエラーが表示される
-        const errorMessage = page.locator(
-          '[data-testid="display-name-error"], ' +
-          '.error-message, ' +
-          '[role="alert"], ' +
-          'text=/必須|required|入力してください/i'
-        );
+      // 空の値をセット
+      await displayNameInput.clear();
+      await submitButton.click();
 
-        await expect(errorMessage).toBeVisible({ timeout: 5000 });
-      }
+      // バリデーションエラーが表示される
+      const errorMessage = page.locator(
+        '[data-testid="display-name-error"], ' +
+        '.error-message, ' +
+        '[role="alert"], ' +
+        'text=/必須|required|入力してください/i'
+      );
+
+      await expect(errorMessage).toBeVisible({ timeout: 5000 });
     });
 
     test('保存ボタンクリックでSupabase更新', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -269,10 +250,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('保存成功でトースト通知', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -318,10 +296,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('保存失敗でエラー表示', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       // API をブロックしてエラーをシミュレート
       await page.route('**/profiles**', route => route.abort());
@@ -375,10 +350,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('アバターアップロードエリアが表示される', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -408,10 +380,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('現在のアバターが表示される', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -431,10 +400,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('画像選択でプレビュー表示', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -479,10 +445,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('無効なファイル形式でエラー', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -526,10 +489,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('大きすぎるファイルでエラー (5MB制限)', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -575,10 +535,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('画像保存でStorage更新', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -632,10 +589,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('保存後にavatar_url更新', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -695,10 +649,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('マイページに編集ボタンが表示される', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -716,10 +667,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('編集ボタンクリックでフォーム表示', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -747,10 +695,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('更新後にマイページの表示が更新される', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -797,10 +742,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('キャンセルボタンで編集モーダルが閉じる', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -839,10 +781,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('編集中に変更がない場合は保存ボタンが無効化される', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -867,8 +806,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
           // 変更なしの場合、保存ボタンが無効化されている（オプション）
           const isDisabled = await submitButton.isDisabled();
 
-          // この挙動は実装によるため、両方許容
-          expect(true).toBeTruthy();
+          expect(isDisabled, 'save button should be disabled when no changes').toBeTruthy();
         }
       }
     });
@@ -882,10 +820,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('フォームフィールドにラベルが関連付けられている', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -923,10 +858,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('モーダルにフォーカストラップが設定されている', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -960,10 +892,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
     test('エラーメッセージがスクリーンリーダーで読み上げられる', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
-      if (!loggedIn) {
-        console.log('Skipping test - requires authentication');
-        return;
-      }
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
       await page.waitForLoadState('networkidle');
@@ -1003,8 +932,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
 
           const hasAriaLive = await errorWithAriaLive.count() > 0;
 
-          // 実装によってはフォームの native validation を使用
-          expect(true).toBeTruthy();
+          expect(hasAriaLive, 'error should be announced with aria-live or role="alert"').toBeTruthy();
         }
       }
     });
