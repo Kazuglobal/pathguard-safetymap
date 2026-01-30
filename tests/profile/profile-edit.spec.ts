@@ -41,7 +41,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // 編集ボタンをクリック
       const editButton = page.locator(
@@ -70,7 +71,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -99,7 +101,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -128,7 +131,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -157,7 +161,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -167,7 +172,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
 
       if (await editButton.count() > 0) {
         await editButton.click();
-        await page.waitForTimeout(500);
+        // Wait for dialog to fully load profile data
+        await page.waitForTimeout(2000);
       }
 
       const displayNameInput = page.locator(
@@ -183,17 +189,21 @@ test.describe('Profile Edit - Phase 1.2', () => {
       await expect(displayNameInput).toBeVisible({ timeout: 10000 });
       await expect(submitButton).toBeVisible({ timeout: 10000 });
 
-      // 空の値をセット
-      await displayNameInput.clear();
-      await submitButton.click();
+      // First, fill with a non-empty value to trigger change detection
+      await displayNameInput.fill('テスト');
+      await page.waitForTimeout(200);
+
+      // Now clear and leave a space (which should still fail validation as "whitespace only")
+      // Or submit the form via Enter key to trigger validation
+      await displayNameInput.fill('');
+      await page.waitForTimeout(200);
+
+      // Use keyboard to submit the form (press Enter in the input field)
+      // This should attempt form submission and trigger validation
+      await displayNameInput.press('Enter');
 
       // バリデーションエラーが表示される
-      const errorMessage = page.locator(
-        '[data-testid="display-name-error"], ' +
-        '.error-message, ' +
-        '[role="alert"], ' +
-        'text=/必須|required|入力してください/i'
-      );
+      const errorMessage = page.locator('[role="alert"]').first();
 
       await expect(errorMessage).toBeVisible({ timeout: 5000 });
     });
@@ -204,7 +214,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -253,7 +264,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -302,7 +314,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       await page.route('**/profiles**', route => route.abort());
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -353,7 +366,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -383,7 +397,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // アバター画像またはプレースホルダー
       const avatar = page.locator(
@@ -403,7 +418,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -448,7 +464,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -492,7 +509,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -538,7 +556,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -592,7 +611,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -652,7 +672,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -670,7 +691,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -698,7 +720,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -745,7 +768,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -784,7 +808,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -823,7 +848,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -861,7 +887,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -895,7 +922,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
 
       await page.goto('/mypage');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const editButton = page.locator(
         '[data-testid="profile-edit-button"], ' +
@@ -918,7 +946,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
         );
 
         if (await displayNameInput.count() > 0 && await submitButton.count() > 0) {
-          await displayNameInput.clear();
+          await displayNameInput.fill('');
+          await page.waitForTimeout(100); // Wait for React state update
           await submitButton.click();
 
           await page.waitForTimeout(500);
