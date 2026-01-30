@@ -215,7 +215,8 @@ test.describe('Notifications - Phase 1.4', () => {
       await context.clearCookies();
 
       await page.goto('/landing');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // ログアウト状態を確保
       await page.evaluate(() => {
@@ -228,7 +229,8 @@ test.describe('Notifications - Phase 1.4', () => {
       });
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const notificationBell = page.locator('[data-testid="notification-bell"], .notification-bell');
 
@@ -423,7 +425,8 @@ test.describe('Notifications - Phase 1.4', () => {
         const initialUrl = page.url();
 
         await firstItem.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
         // URL が変わるか、ドロップダウンが閉じるか
         const newUrl = page.url();
@@ -621,8 +624,8 @@ test.describe('Notifications - Phase 1.4', () => {
       }
 
       // 別のページに遷移
-      await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.goto('/badges', { timeout: 15000 });
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // 未読数が維持されている
       const unreadBadgeAfter = page.locator('[data-testid="notification-badge"], .notification-badge');

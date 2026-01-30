@@ -38,7 +38,8 @@ test.describe('Comments - Phase 1.6', () => {
       const loggedIn = await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // 報告一覧から1件を選択（報告詳細モーダルまたはページ）
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
@@ -62,7 +63,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -89,7 +91,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -117,7 +120,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -141,7 +145,8 @@ test.describe('Comments - Phase 1.6', () => {
       await context.clearCookies();
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       await page.evaluate(() => {
         try {
@@ -153,7 +158,8 @@ test.describe('Comments - Phase 1.6', () => {
       });
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -185,7 +191,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -230,7 +237,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -266,7 +274,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -292,7 +301,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -322,7 +332,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -350,7 +361,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -380,7 +392,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -408,7 +421,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -439,7 +453,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -465,7 +480,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -495,7 +511,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -534,7 +551,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -570,7 +588,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -621,7 +640,8 @@ test.describe('Comments - Phase 1.6', () => {
       });
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -661,7 +681,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -709,7 +730,8 @@ test.describe('Comments - Phase 1.6', () => {
       }
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 
@@ -738,7 +760,8 @@ test.describe('Comments - Phase 1.6', () => {
       await tryLogin(page);
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       const reportItem = page.locator('[data-testid="report-item"], .report-item, .report-card').first();
 

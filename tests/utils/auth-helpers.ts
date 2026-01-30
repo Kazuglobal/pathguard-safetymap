@@ -35,7 +35,8 @@ export class AuthHelper {
     }
 
     await this.page.goto('/login');
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
     // Wait for form to be available
     const emailInput = this.page.locator('input#email, input[type="email"]');

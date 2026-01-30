@@ -121,7 +121,8 @@ test.describe('Technical Improvements - Phase 3.1, 3.2', () => {
 
     test('マップページがブラウザで正常にレンダリングされる', async ({ page }) => {
       await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // ページが表示される
       await expect(page).toHaveURL(/\/map/);
@@ -154,7 +155,8 @@ test.describe('Technical Improvements - Phase 3.1, 3.2', () => {
       });
 
       await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       await page.waitForTimeout(3000);
 
       // デバッグ関連のログが出力されていない
@@ -352,7 +354,8 @@ test.describe('Technical Improvements - Phase 3.1, 3.2', () => {
       });
 
       await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       await page.waitForTimeout(2000);
 
       // エラーメッセージが表示される（トースト、アラート、またはUI上のテキスト）
@@ -376,7 +379,8 @@ test.describe('Technical Improvements - Phase 3.1, 3.2', () => {
 
     test('ネットワーク切断時に適切なフィードバックが表示される', async ({ page }) => {
       await page.goto('/map');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // ネットワークをオフラインにする
       await page.context().setOffline(true);
@@ -400,7 +404,8 @@ test.describe('Technical Improvements - Phase 3.1, 3.2', () => {
       // 例：報告フォーム、コメントフォームなど
 
       await page.goto('/report');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
       // フォーム送信をエラーに置き換え
       await page.route('**/rest/v1/**', route => {

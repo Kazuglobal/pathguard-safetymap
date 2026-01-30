@@ -281,14 +281,16 @@ test.describe('Special Pages Responsive Tests', () => {
   test('Special pages handle authentication properly', async ({ page }) => {
     // Test X-Road page (should be accessible without auth)
     await page.goto('/xroad');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Should not redirect to login
     expect(page.url()).toContain('/xroad');
     
     // Test admin page (should require auth)
     await page.goto('/admin/dashboard');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Should redirect to login or show access denied
     const currentUrl = page.url();
@@ -303,7 +305,8 @@ test.describe('Special Pages Responsive Tests', () => {
     
     // Test 404 page if it exists
     await page.goto('/non-existent-page');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     const errorMessage = page.locator('h1:has-text("404"), text=見つかりません, text=Not Found, text=Page not found');
     if (await errorMessage.isVisible()) {

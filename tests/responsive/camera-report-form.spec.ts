@@ -13,7 +13,8 @@ test.describe('Camera Report Form Tests', () => {
     
     // Navigate to map page where report form is accessible
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Click on map to open report form (assuming this is how it works)
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
@@ -75,7 +76,8 @@ test.describe('Camera Report Form Tests', () => {
     await page.context().grantPermissions([], { origin: page.url() });
     
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
@@ -109,7 +111,8 @@ test.describe('Camera Report Form Tests', () => {
     await page.setViewportSize({ width: VIEWPORTS.mobile_12.width, height: VIEWPORTS.mobile_12.height });
     
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
@@ -144,7 +147,8 @@ test.describe('Camera Report Form Tests', () => {
     await page.setViewportSize({ width: VIEWPORTS.tablet_ipad.width, height: VIEWPORTS.tablet_ipad.height });
     
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
@@ -181,7 +185,8 @@ test.describe('Camera Report Form Tests', () => {
     await page.setViewportSize({ width: VIEWPORTS.mobile_12.width, height: VIEWPORTS.mobile_12.height });
     
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
@@ -220,7 +225,8 @@ test.describe('Camera Report Form Tests', () => {
     await page.setViewportSize({ width: VIEWPORTS.mobile_12.height, height: VIEWPORTS.mobile_12.width });
     
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
@@ -253,7 +259,8 @@ test.describe('Camera Report Form Tests', () => {
     await page.setViewportSize({ width: VIEWPORTS.mobile_12.width, height: VIEWPORTS.mobile_12.height });
     
     await page.goto('/map');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
