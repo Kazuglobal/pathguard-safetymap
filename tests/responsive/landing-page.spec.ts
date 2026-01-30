@@ -97,7 +97,8 @@ test.describe('Landing Page Responsive Tests', () => {
   test('should handle different viewport transitions smoothly', async ({ page }) => {
     await page.goto('/landing');
     const helper = new ResponsiveTestHelper(page);
-    
+    await helper.hideDevToolsOverlay();
+
     // Start with desktop
     await helper.setViewport(VIEWPORTS.desktop_hd);
     await helper.waitForPageLoad();
