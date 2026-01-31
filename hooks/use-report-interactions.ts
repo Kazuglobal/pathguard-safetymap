@@ -137,17 +137,27 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
       return
     }
 
-    const wasLiked = userInteraction?.liked ?? false
-    const currentLikeCount = stats?.likes_count ?? 0
+    const baseUserInteraction: UserInteraction = userInteraction ?? {
+      report_id: reportId,
+      liked: false,
+      saved: false,
+    }
+    const baseStats: ReportStats = stats ?? {
+      report_id: reportId,
+      likes_count: 0,
+      bookmarks_count: 0,
+    }
+    const wasLiked = baseUserInteraction.liked
+    const currentLikeCount = baseStats.likes_count
 
     // Optimistic update
     mutateUserInteraction(
-      { ...userInteraction!, liked: !wasLiked },
+      { ...baseUserInteraction, liked: !wasLiked },
       false
     )
     globalMutate(
       `report-stats-${reportId}`,
-      { ...stats!, likes_count: wasLiked ? currentLikeCount - 1 : currentLikeCount + 1 },
+      { ...baseStats, likes_count: wasLiked ? currentLikeCount - 1 : currentLikeCount + 1 },
       false
     )
 
@@ -187,17 +197,27 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
       return
     }
 
-    const wasSaved = userInteraction?.saved ?? false
-    const currentSaveCount = stats?.bookmarks_count ?? 0
+    const baseUserInteraction: UserInteraction = userInteraction ?? {
+      report_id: reportId,
+      liked: false,
+      saved: false,
+    }
+    const baseStats: ReportStats = stats ?? {
+      report_id: reportId,
+      likes_count: 0,
+      bookmarks_count: 0,
+    }
+    const wasSaved = baseUserInteraction.saved
+    const currentSaveCount = baseStats.bookmarks_count
 
     // Optimistic update
     mutateUserInteraction(
-      { ...userInteraction!, saved: !wasSaved },
+      { ...baseUserInteraction, saved: !wasSaved },
       false
     )
     globalMutate(
       `report-stats-${reportId}`,
-      { ...stats!, bookmarks_count: wasSaved ? currentSaveCount - 1 : currentSaveCount + 1 },
+      { ...baseStats, bookmarks_count: wasSaved ? currentSaveCount - 1 : currentSaveCount + 1 },
       false
     )
 
@@ -333,7 +353,7 @@ export function useReportInteractionsBatch(reportIds: string[]): {
   }, [supabase, reportIds])
 
   const cacheKey = useMemo(() =>
-    reportIds.length > 0 ? `report-interactions-batch-${reportIds.sort().join(",")}` : null,
+    reportIds.length > 0 ? `report-interactions-batch-${reportIds.slice().sort().join(",")}` : null,
     [reportIds]
   )
 
