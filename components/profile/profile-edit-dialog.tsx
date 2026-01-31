@@ -139,7 +139,7 @@ export function ProfileEditDialog({
 
     const fileExt = file.name.split(".").pop()
     const fileName = `${userId}-${Date.now()}.${fileExt}`
-    const filePath = `avatars/${fileName}`
+    const filePath = fileName  // バケット名が "avatars" なのでプレフィックス不要
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")

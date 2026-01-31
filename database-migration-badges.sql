@@ -91,6 +91,11 @@ DROP POLICY IF EXISTS "user_points_update_own" ON public.user_points;
 CREATE POLICY "user_points_update_own" ON public.user_points
     FOR UPDATE USING (auth.uid() = user_id);
 
+-- user_points: 自分のポイントレコードを作成可能
+DROP POLICY IF EXISTS "user_points_insert_own" ON public.user_points;
+CREATE POLICY "user_points_insert_own" ON public.user_points
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 -- ============================================================================
 -- Step 6: Insert sample badges (サンプルバッジデータ)
 -- ============================================================================
