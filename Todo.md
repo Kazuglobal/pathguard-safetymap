@@ -1,6 +1,6 @@
 # SafeRoute 機能強化 Todoリスト
 
-> **最終更新日**: 2026-01-29
+> **最終更新日**: 2026-02-01
 > **プロジェクト**: SafeRoute (通学路安全マップ)
 > **フレームワーク**: Next.js 15 + React 19 + Supabase
 
@@ -10,12 +10,12 @@
 
 | Phase | 完了 | 進行中 | 未着手 | 合計 |
 |-------|------|--------|--------|------|
-| Phase 1 | 18 | 0 | 1 | 19 |
+| Phase 1 | 19 | 0 | 0 | 19 |
 | Phase 2 | 0 | 0 | 5 | 5 |
 | Phase 3 | 1 | 0 | 1 | 2 |
-| **合計** | **19** | **0** | **7** | **26** |
+| **合計** | **20** | **0** | **6** | **26** |
 
-**全体進捗**: 73% (19/26)
+**全体進捗**: 77% (20/26)
 
 ---
 
@@ -277,15 +277,16 @@
   - **依存**: なし
   - **工数**: 2h
 
-- [ ] **1-6-comment-integration**: コメント機能: 報告詳細への統合
+- [x] **1-6-comment-integration**: コメント機能: 報告詳細への統合 ✅
   - **ファイル**:
     - `components/dashboard/report-detail-modal.tsx`
-    - または `app/report/[id]/page.tsx` (新規)
+    - `components/comments/report-comment-section.tsx`
   - **詳細**:
-    - 報告詳細モーダルにコメントセクション追加
-    - または `/report/[id]` ページ作成
-    - コメント投稿機能
-    - コメント一覧表示
+    - 報告詳細モーダルにコメントセクション追加 ✅
+    - `ReportCommentSection` コンポーネント作成 ✅
+    - コメント投稿機能 ✅
+    - コメント一覧表示 ✅
+    - ログイン状態チェック ✅
   - **依存**: 1-6-comment-components
   - **工数**: 1h
 
@@ -519,7 +520,7 @@ Phase 1.5: いいね/保存
 
 Phase 1.6: コメント機能
 [x] 1-6-comment-components
-[ ] 1-6-comment-integration
+[x] 1-6-comment-integration
 
 Phase 2.1: 通学路管理
 [ ] 2-1-routes-migration
