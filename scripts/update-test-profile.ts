@@ -16,9 +16,28 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false }
   })
 
-  // Get user ID for user@test.com
-  const { data: authData } = await supabase.auth.admin.listUsers()
-  const testUser = authData?.users?.find(u => u.email === 'user@test.com')
+  // Get user ID for user@test.com (paginate to avoid missing users beyond first page)
+  const perPage = 200
+  let page = 1
+  let testUser: { id: string; email: string | null } | undefined
+
+  while (!testUser) {
+    const { data: authData, error } = await supabase.auth.admin.listUsers({ page, perPage })
+
+    if (error) {
+      console.error('Failed to list users:', error)
+      return
+    }
+
+    const users = authData?.users ?? []
+    testUser = users.find(u => u.email === 'user@test.com')
+
+    if (users.length < perPage) {
+      break
+    }
+
+    page += 1
+  }
 
   if (!testUser) {
     console.log('Test user not found')
