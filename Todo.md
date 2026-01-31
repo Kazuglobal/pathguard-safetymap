@@ -10,12 +10,12 @@
 
 | Phase | 完了 | 進行中 | 未着手 | 合計 |
 |-------|------|--------|--------|------|
-| Phase 1 | 14 | 0 | 5 | 19 |
+| Phase 1 | 18 | 0 | 1 | 19 |
 | Phase 2 | 0 | 0 | 5 | 5 |
 | Phase 3 | 1 | 0 | 1 | 2 |
-| **合計** | **15** | **0** | **11** | **26** |
+| **合計** | **19** | **0** | **7** | **26** |
 
-**全体進捗**: 58% (15/26)
+**全体進捗**: 73% (19/26)
 
 ---
 
@@ -201,58 +201,49 @@
 
 #### タスク一覧
 
-- [ ] **1-5-likes-migration**: いいね/保存: report_likes テーブルのマイグレーション
-  - **ファイル**: `database-migrations/add-report-likes.sql` (新規)
+- [x] **1-5-likes-migration**: いいね/保存: report_likes テーブルのマイグレーション ✅
+  - **ファイル**: Supabaseで直接作成済み
   - **詳細**:
-    - `database-migrations/add-report-likes.sql` 作成
-    - `report_likes` テーブル作成
+    - `report_likes` テーブル作成済み
       - `id` (uuid, primary key)
       - `user_id` (uuid, foreign key → profiles.id)
       - `report_id` (uuid, foreign key → danger_reports.id)
       - `created_at` (timestamp)
-    - RLSポリシー設定（ユーザーは自分のいいねのみ閲覧/削除可能）
-    - インデックス追加（`user_id`, `report_id`）
-    - ユニーク制約（`user_id`, `report_id`）
+    - RLSポリシー設定済み
+    - `toggle_report_like` RPC関数作成済み
   - **依存**: なし
   - **工数**: 0.5h
 
-- [ ] **1-5-saves-migration**: いいね/保存: report_saves テーブルのマイグレーション
-  - **ファイル**: `database-migrations/add-report-saves.sql` (新規)
+- [x] **1-5-saves-migration**: いいね/保存: report_bookmarks テーブルのマイグレーション ✅
+  - **ファイル**: Supabaseで直接作成済み
   - **詳細**:
-    - `database-migrations/add-report-saves.sql` 作成
-    - `report_saves` テーブル作成
+    - `report_bookmarks` テーブル作成済み
       - `id` (uuid, primary key)
       - `user_id` (uuid, foreign key → profiles.id)
       - `report_id` (uuid, foreign key → danger_reports.id)
       - `created_at` (timestamp)
-    - RLSポリシー設定（ユーザーは自分の保存のみ閲覧/削除可能）
-    - インデックス追加（`user_id`, `report_id`）
-    - ユニーク制約（`user_id`, `report_id`）
+    - RLSポリシー設定済み
+    - `toggle_report_bookmark` RPC関数作成済み
   - **依存**: なし
   - **工数**: 0.5h
 
-- [ ] **1-5-interactions-hook**: いいね/保存: use-report-interactions フック作成
-  - **ファイル**: `hooks/use-report-interactions.ts` (新規)
+- [x] **1-5-interactions-hook**: いいね/保存: use-report-interactions フック作成 ✅
+  - **ファイル**: `hooks/use-report-interactions.ts`
   - **詳細**:
-    - `hooks/use-report-interactions.ts` 作成
-    - `useLike(reportId)` - いいね状態管理
-      - いいね状態取得
-      - いいね追加/削除
-      - いいね数取得
-    - `useSave(reportId)` - 保存状態管理
-      - 保存状態取得
-      - 保存追加/削除
+    - `useReportInteractions(reportId)` - 単一レポートのいいね/保存管理
+    - `useReportInteractionsBatch(reportIds)` - 複数レポート一括取得
     - 楽観的UI更新（即座にUI反映、その後DB同期）
-    - エラーハンドリング
+    - SWRによるキャッシュとリフレッシュ
+    - エラーハンドリングとトースト通知
   - **依存**: 1-5-likes-migration, 1-5-saves-migration
   - **工数**: 2h
 
-- [ ] **1-5-report-integration**: いいね/保存: report ページへの統合
+- [x] **1-5-report-integration**: いいね/保存: report ページへの統合 ✅
   - **ファイル**: `app/report/page.tsx`
   - **詳細**:
-    - `app/report/page.tsx` のローカルstateをフック使用に変更
-    - `ShareActionState` をデータベースから取得
-    - データベースとの同期
+    - `useReportInteractions` フック使用に変更
+    - データベースとの同期完了
+    - 楽観的UI更新対応
     - ローディング状態表示
   - **依存**: 1-5-interactions-hook
   - **工数**: 1h
@@ -521,10 +512,10 @@ Phase 1.4: 通知機能
 [x] 1-4-notification-nav
 
 Phase 1.5: いいね/保存
-[ ] 1-5-likes-migration
-[ ] 1-5-saves-migration
-[ ] 1-5-interactions-hook
-[ ] 1-5-report-integration
+[x] 1-5-likes-migration
+[x] 1-5-saves-migration
+[x] 1-5-interactions-hook
+[x] 1-5-report-integration
 
 Phase 1.6: コメント機能
 [x] 1-6-comment-components
