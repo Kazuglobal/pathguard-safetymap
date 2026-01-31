@@ -17,6 +17,10 @@
     "test-mcp": "node scripts/test-mcp-server.js",
     "deploy": "npx vercel --prod",
     "deploy:preview": "npx vercel",
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:components": "vitest run tests/components",
+    "test:coverage": "vitest run --coverage",
     "test:responsive": "playwright test tests/responsive",
     "test:responsive:headed": "playwright test tests/responsive --headed",
     "test:responsive:mobile": "playwright test tests/responsive --project='Mobile Chrome - iPhone 12'",
@@ -97,6 +101,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.54.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/geojson": "^7946.0.16",
     "@types/lodash.shuffle": "^4.2.7",
     "@types/mapbox-gl": "^3.4.1",
@@ -105,15 +112,18 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.181.0",
     "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^5.1.2",
     "cross-env": "^7.0.3",
     "dotenv": "^17.2.3",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.3.4",
+    "jsdom": "^27.4.0",
     "playwright": "^1.54.0",
     "postcss": "^8",
     "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

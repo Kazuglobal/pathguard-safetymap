@@ -27,6 +27,7 @@ import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { pgTextArrayToJs } from "@/lib/arrayLiteral"
 import { useToast } from "@/components/ui/use-toast"
+import { ReportCommentSection } from "@/components/comments/report-comment-section"
 
 interface ReportDetailModalProps {
   isOpen: boolean
@@ -400,6 +401,13 @@ export default function ReportDetailModal({
                 解決済みにする
               </Button>
             )}
+
+            {/* コメントセクション */}
+            <Card>
+              <CardContent className="p-4">
+                <ReportCommentSection reportId={report.id} />
+              </CardContent>
+            </Card>
           </div>
 
           {/* サイドバー */}
