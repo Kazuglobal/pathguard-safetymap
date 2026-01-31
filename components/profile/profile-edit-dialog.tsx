@@ -73,7 +73,7 @@ export function ProfileEditDialog({
         .from("profiles")
         .select("display_name, full_name, avatar_url")
         .eq("id", user.id)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
 
@@ -172,16 +172,17 @@ export function ProfileEditDialog({
         avatarUrl = await uploadAvatar(selectedFile, user.id)
       }
 
-      // Update profile
+      // Upsert profile (create if not exists, update if exists)
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
+          email: user.email ?? "",
           display_name: profile.display_name.trim(),
           full_name: profile.full_name.trim(),
           avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", user.id)
 
       if (error) throw error
 

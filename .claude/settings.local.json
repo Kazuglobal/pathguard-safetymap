@@ -59,7 +59,25 @@
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
       "Bash(gh pr list:*)",
       "Bash(gh pr checks:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)",
+      "Bash(gh pr create:*)",
+      "mcp__claude_ai_Vercel__get_deployment_build_logs",
+      "Bash(PWDEBUG=0 npx playwright test:*)",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__search_vercel_documentation",
+      "Bash(vercel --version:*)",
+      "Bash(vercel env:*)",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "Bash(vercel deploy)",
+      "Bash(vercel inspect:*)",
+      "mcp__claude_ai_Vercel__get_access_to_vercel_url",
+      "WebFetch(domain:path-guardian-ex1djgfzd-globalbunny77-gmailcoms-projects.vercel.app)",
+      "mcp__claude_ai_Vercel__web_fetch_vercel_url",
+      "Bash(vercel:*)",
+      "WebFetch(domain:path-guardian-k40y61jnt-globalbunny77-gmailcoms-projects.vercel.app)",
+      "Bash(git status:*)",
+      "Skill(commit-commands:commit)"
     ],
     "deny": []
   }

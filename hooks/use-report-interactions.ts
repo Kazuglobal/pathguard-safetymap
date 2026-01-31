@@ -142,6 +142,7 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
       liked: false,
       saved: false,
     }
+    const hasStats = stats !== undefined && stats !== null
     const baseStats: ReportStats = stats ?? {
       report_id: reportId,
       likes_count: 0,
@@ -155,11 +156,14 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
       { ...baseUserInteraction, liked: !wasLiked },
       false
     )
-    globalMutate(
-      `report-stats-${reportId}`,
-      { ...baseStats, likes_count: wasLiked ? currentLikeCount - 1 : currentLikeCount + 1 },
-      false
-    )
+    if (hasStats) {
+      const nextLikeCount = Math.max(0, currentLikeCount + (wasLiked ? -1 : 1))
+      globalMutate(
+        `report-stats-${reportId}`,
+        { ...baseStats, likes_count: nextLikeCount },
+        false
+      )
+    }
 
     try {
       const { data, error } = await supabase.rpc("toggle_report_like", {
@@ -202,6 +206,7 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
       liked: false,
       saved: false,
     }
+    const hasStats = stats !== undefined && stats !== null
     const baseStats: ReportStats = stats ?? {
       report_id: reportId,
       likes_count: 0,
@@ -215,11 +220,14 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
       { ...baseUserInteraction, saved: !wasSaved },
       false
     )
-    globalMutate(
-      `report-stats-${reportId}`,
-      { ...baseStats, bookmarks_count: wasSaved ? currentSaveCount - 1 : currentSaveCount + 1 },
-      false
-    )
+    if (hasStats) {
+      const nextSaveCount = Math.max(0, currentSaveCount + (wasSaved ? -1 : 1))
+      globalMutate(
+        `report-stats-${reportId}`,
+        { ...baseStats, bookmarks_count: nextSaveCount },
+        false
+      )
+    }
 
     try {
       const { data, error } = await supabase.rpc("toggle_report_bookmark", {

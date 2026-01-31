@@ -10,12 +10,12 @@
 
 | Phase | 完了 | 進行中 | 未着手 | 合計 |
 |-------|------|--------|--------|------|
-| Phase 1 | 11 | 0 | 8 | 19 |
+| Phase 1 | 14 | 0 | 5 | 19 |
 | Phase 2 | 0 | 0 | 5 | 5 |
 | Phase 3 | 1 | 0 | 1 | 2 |
-| **合計** | **12** | **0** | **14** | **26** |
+| **合計** | **15** | **0** | **11** | **26** |
 
-**全体進捗**: 46% (12/26)
+**全体進捗**: 58% (15/26)
 
 ---
 
@@ -66,8 +66,8 @@
 
 #### タスク一覧
 
-- [ ] **1-2-profile-form**: プロフィール編集: 編集フォームコンポーネント作成
-  - **ファイル**: `components/profile/profile-edit-form.tsx` (新規)
+- [x] **1-2-profile-form**: プロフィール編集: 編集フォームコンポーネント作成 ✅
+  - **ファイル**: `components/profile/profile-edit-dialog.tsx`
   - **詳細**:
     - 表示名（`display_name`）入力フィールド
     - フルネーム（`full_name`）入力フィールド
@@ -76,8 +76,8 @@
   - **依存**: なし
   - **工数**: 1h
 
-- [ ] **1-2-profile-avatar**: プロフィール編集: アバター画像アップロード機能
-  - **ファイル**: `components/profile/profile-edit-form.tsx`
+- [x] **1-2-profile-avatar**: プロフィール編集: アバター画像アップロード機能 ✅
+  - **ファイル**: `components/profile/profile-edit-dialog.tsx`
   - **詳細**:
     - 画像アップロードUI（ドラッグ&ドロップ対応）
     - Supabase Storageへのアップロード（`avatars` バケット）
@@ -87,7 +87,7 @@
   - **依存**: 1-2-profile-form
   - **工数**: 1.5h
 
-- [ ] **1-2-profile-integration**: プロフィール編集: マイページへの統合
+- [x] **1-2-profile-integration**: プロフィール編集: マイページへの統合 ✅
   - **ファイル**: `app/mypage/page.tsx`
   - **詳細**:
     - マイページに編集セクション追加
@@ -505,9 +505,9 @@ Phase 1.1: バッジページ
 [x] 1-1-badges-progress
 
 Phase 1.2: プロフィール編集
-[ ] 1-2-profile-form
-[ ] 1-2-profile-avatar
-[ ] 1-2-profile-integration
+[x] 1-2-profile-form
+[x] 1-2-profile-avatar
+[x] 1-2-profile-integration
 
 Phase 1.3: パスワードリセット
 [x] 1-3-forgot-page

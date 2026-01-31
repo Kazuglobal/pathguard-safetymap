@@ -92,7 +92,7 @@ export default function MyPage() {
           .from("profiles")
           .select("display_name")
           .eq("id", user.id)
-          .single()
+          .maybeSingle()
 
         if (profileError) {
           console.warn("プロフィール名の取得に失敗しました", profileError.message)
@@ -480,7 +480,7 @@ export default function MyPage() {
                   .from("profiles")
                   .select("display_name")
                   .eq("id", user.id)
-                  .single()
+                  .maybeSingle()
                   .then(({ data }) => {
                     if (data?.display_name) {
                       setUserName(data.display_name)
