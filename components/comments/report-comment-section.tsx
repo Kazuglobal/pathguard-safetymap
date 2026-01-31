@@ -5,10 +5,10 @@ import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { MessageCircle, Send, Loader2, ShieldCheck } from "lucide-react"
+import { MessageCircle, Send, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useReportComments, type ReportComment } from "@/hooks/use-report-comments"
+import { formatRelativeTimestamp, getAuthorDisplayName } from "@/lib/comment-utils"
 
 interface ReportCommentSectionProps {
   reportId: string
@@ -17,31 +17,6 @@ interface ReportCommentSectionProps {
 const MAX_COMMENT_LENGTH = 1000
 
 function ReportCommentItem({ comment }: { comment: ReportComment }) {
-  const formatTimestamp = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / (1000 * 60))
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-    if (diffMins < 1) return "たった今"
-    if (diffMins < 60) return `${diffMins}分前`
-    if (diffHours < 24) return `${diffHours}時間前`
-    if (diffDays < 7) return `${diffDays}日前`
-    return date.toLocaleDateString("ja-JP")
-  }
-
-  const getAuthorName = () => {
-    if (comment.profiles?.display_name) {
-      return comment.profiles.display_name
-    }
-    if (comment.profiles?.email) {
-      return comment.profiles.email.split("@")[0]
-    }
-    return "匿名ユーザー"
-  }
-
   return (
     <div
       className="rounded-lg border border-gray-200 bg-white p-4"
@@ -53,7 +28,7 @@ function ReportCommentItem({ comment }: { comment: ReportComment }) {
             className="text-sm font-medium text-gray-900"
             data-testid="comment-author"
           >
-            {getAuthorName()}
+            {getAuthorDisplayName(comment.profiles)}
           </span>
           {comment.is_edited && (
             <span className="text-xs text-gray-400">(編集済み)</span>
@@ -63,7 +38,7 @@ function ReportCommentItem({ comment }: { comment: ReportComment }) {
           className="text-xs text-gray-500"
           data-testid="comment-timestamp"
         >
-          {formatTimestamp(comment.created_at)}
+          {formatRelativeTimestamp(comment.created_at)}
         </span>
       </div>
       <p

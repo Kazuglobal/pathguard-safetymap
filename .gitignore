@@ -68,3 +68,42 @@ nul
 # -----------------------------------------
 claude_desktop_config.json
 env.defaults.json
+
+# -----------------------------------------
+# AI/IDE設定ディレクトリ
+# -----------------------------------------
+.agent/
+.agents/
+.cline/
+.codebuddy/
+.codex/
+.commandcode/
+.continue/
+.crush/
+.factory/
+.gemini/
+.github/
+.goose/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.opencode/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.windsurf/
+.zencoder/
+skills/
+
+# -----------------------------------------
+# 参照用リポジトリ
+# -----------------------------------------
+everything-claude-code/
