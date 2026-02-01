@@ -66,10 +66,14 @@ describe('useUserRoutes Hook', () => {
       expect(result.current.routes).toEqual([])
     })
 
-    it('returns loading state initially', () => {
+    it('returns loading state initially', async () => {
       const { result } = renderHook(() => useUserRoutes())
 
       expect(result.current.isLoading).toBe(true)
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
     it('does not fetch routes when user is not authenticated', async () => {
@@ -472,6 +476,10 @@ describe('useUserRoutes Hook', () => {
       expect(result.current).toHaveProperty('deleteRoute')
       expect(result.current).toHaveProperty('setPrimaryRoute')
       expect(result.current).toHaveProperty('refreshRoutes')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
     it('all mutation functions are callable', async () => {
@@ -482,6 +490,10 @@ describe('useUserRoutes Hook', () => {
       expect(typeof result.current.deleteRoute).toBe('function')
       expect(typeof result.current.setPrimaryRoute).toBe('function')
       expect(typeof result.current.refreshRoutes).toBe('function')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
   })
 

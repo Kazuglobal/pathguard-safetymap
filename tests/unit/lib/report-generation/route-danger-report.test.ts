@@ -48,6 +48,23 @@ describe('route-danger-report', () => {
       expect(url).toContain('path')
     })
 
+    it('separates path coordinates with semicolons', () => {
+      const url = generateOverviewMapUrl(
+        mockRoute.route_geometry!,
+        mockDangerReportsNearRoute,
+        mockMapboxToken
+      )
+
+      const match = url.match(/path-[^(]*\(([^)]+)\)/)
+      expect(match).toBeTruthy()
+      const encodedPath = match ? match[1] : ''
+      const decodedPath = decodeURIComponent(encodedPath)
+
+      const segments = decodedPath.split(';')
+      expect(segments.length).toBe(mockRoute.route_geometry!.coordinates.length)
+      expect(segments.every((segment) => segment.includes(','))).toBe(true)
+    })
+
     it('includes danger markers in the URL', () => {
       const url = generateOverviewMapUrl(
         mockRoute.route_geometry!,
@@ -90,6 +107,18 @@ describe('route-danger-report', () => {
       )
 
       expect(url).toContain('800x600')
+    })
+
+    it('omits @2x when requested size would exceed Mapbox limits', () => {
+      const url = generateOverviewMapUrl(
+        mockRoute.route_geometry!,
+        mockDangerReportsNearRoute,
+        mockMapboxToken,
+        { width: 750, height: 400 }
+      )
+
+      expect(url).toContain('750x400')
+      expect(url).not.toContain('@2x')
     })
   })
 

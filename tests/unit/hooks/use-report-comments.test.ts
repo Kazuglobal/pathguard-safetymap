@@ -85,10 +85,14 @@ describe('useReportComments Hook', () => {
       expect(result.current.comments).toEqual([])
     })
 
-    it('returns loading state initially', () => {
+    it('returns loading state initially', async () => {
       const { result } = renderHook(() => useReportComments('report-1'))
 
       expect(result.current.isLoading).toBe(true)
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
   })
 
@@ -264,18 +268,30 @@ describe('useReportComments Hook', () => {
       expect(result.current).toHaveProperty('error')
       expect(result.current).toHaveProperty('addComment')
       expect(result.current).toHaveProperty('refreshComments')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
     it('addComment is a function', async () => {
       const { result } = renderHook(() => useReportComments('report-1'))
 
       expect(typeof result.current.addComment).toBe('function')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
     it('refreshComments is a function', async () => {
       const { result } = renderHook(() => useReportComments('report-1'))
 
       expect(typeof result.current.refreshComments).toBe('function')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
   })
 

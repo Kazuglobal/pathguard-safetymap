@@ -42,16 +42,24 @@ describe('useRouteDangers Hook', () => {
   })
 
   describe('Initial State', () => {
-    it('returns loading state initially', () => {
+    it('returns loading state initially', async () => {
       const { result } = renderHook(() => useRouteDangers('route-1'))
 
       expect(result.current.isLoading).toBe(true)
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
-    it('returns empty dangers array initially', () => {
+    it('returns empty dangers array initially', async () => {
       const { result } = renderHook(() => useRouteDangers('route-1'))
 
       expect(result.current.dangers).toEqual([])
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
   })
 
@@ -292,10 +300,14 @@ describe('useRouteDangers Hook', () => {
   })
 
   describe('Refetch Functionality', () => {
-    it('provides refetch function', () => {
+    it('provides refetch function', async () => {
       const { result } = renderHook(() => useRouteDangers('route-1'))
 
       expect(typeof result.current.refetch).toBe('function')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
     it('refetches data when called', async () => {
@@ -341,13 +353,17 @@ describe('useRouteDangers Hook', () => {
   })
 
   describe('Hook Return Values', () => {
-    it('returns expected shape', () => {
+    it('returns expected shape', async () => {
       const { result } = renderHook(() => useRouteDangers('route-1'))
 
       expect(result.current).toHaveProperty('dangers')
       expect(result.current).toHaveProperty('isLoading')
       expect(result.current).toHaveProperty('error')
       expect(result.current).toHaveProperty('refetch')
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
     })
 
     it('dangers is always an array', async () => {
