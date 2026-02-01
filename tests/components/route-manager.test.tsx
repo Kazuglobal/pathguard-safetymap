@@ -457,6 +457,21 @@ describe('RouteManager Component', () => {
   })
 
   describe('Map Integration', () => {
+    beforeEach(async () => {
+      const { useUserRoutes } = await import('@/hooks/use-user-routes')
+      vi.mocked(useUserRoutes).mockReturnValue({
+        routes: [],
+        primaryRoute: null,
+        isLoading: false,
+        error: null,
+        addRoute: vi.fn(),
+        updateRoute: vi.fn(),
+        deleteRoute: vi.fn(),
+        setPrimaryRoute: vi.fn(),
+        refreshRoutes: vi.fn(),
+      })
+    })
+
     it('renders map container', async () => {
       render(<RouteManager />)
 
@@ -473,17 +488,62 @@ describe('RouteManager Component', () => {
   })
 
   describe('Validation', () => {
+    beforeEach(async () => {
+      const { useUserRoutes } = await import('@/hooks/use-user-routes')
+      vi.mocked(useUserRoutes).mockReturnValue({
+        routes: [],
+        primaryRoute: null,
+        isLoading: false,
+        error: null,
+        addRoute: vi.fn(),
+        updateRoute: vi.fn(),
+        deleteRoute: vi.fn(),
+        setPrimaryRoute: vi.fn(),
+        refreshRoutes: vi.fn(),
+      })
+    })
+
     it('shows validation error when route name is empty', async () => {
       render(<RouteManager />)
 
-      await userEvent.click(screen.getByTestId('add-route-button'))
+      // Click add route button to enter creation mode
+      const addButton = screen.getByTestId('add-route-button')
+      await userEvent.click(addButton)
+
+      // Wait for creation panel to appear
+      await waitFor(() => {
+        expect(screen.getByTestId('route-creation-panel')).toBeInTheDocument()
+      })
+
+      // Click save with empty name
       await userEvent.click(screen.getByTestId('save-route-button'))
 
-      expect(screen.getByText(/名前を入力|必須/i)).toBeInTheDocument()
+      // Check for validation error
+      await waitFor(() => {
+        expect(screen.getByText(/ルート名を入力/i)).toBeInTheDocument()
+      })
     })
 
-    it('shows validation error when route has insufficient points', async () => {
-      render(<RouteManager />)
+    it('shows error from hook when addRoute fails', async () => {
+      let hookError: string | null = null
+      const mockAddRoute = vi.fn().mockImplementation(async () => {
+        hookError = 'ルートには2つ以上のポイントが必要です'
+        return false
+      })
+      const { useUserRoutes } = await import('@/hooks/use-user-routes')
+      vi.mocked(useUserRoutes).mockImplementation(() => ({
+        routes: [],
+        primaryRoute: null,
+        isLoading: false,
+        error: hookError,
+        addRoute: mockAddRoute,
+        updateRoute: vi.fn(),
+        deleteRoute: vi.fn(),
+        setPrimaryRoute: vi.fn(),
+        refreshRoutes: vi.fn(),
+      }))
+
+      const { rerender } = render(<RouteManager />)
 
       await userEvent.click(screen.getByTestId('add-route-button'))
 
@@ -492,7 +552,10 @@ describe('RouteManager Component', () => {
 
       await userEvent.click(screen.getByTestId('save-route-button'))
 
-      // Should show error about needing at least 2 points
+      // Rerender to reflect the updated error state
+      rerender(<RouteManager />)
+
+      // Error from hook should be displayed
       expect(screen.getByText(/ポイント|地点/i)).toBeInTheDocument()
     })
   })
