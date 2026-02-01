@@ -4,7 +4,7 @@ import * as React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Pencil, Trash2, Star, Clock, MapPin } from "lucide-react"
+import { Pencil, Trash2, Star, Clock, MapPin, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { UserRoute } from "@/lib/types"
 
@@ -15,6 +15,7 @@ export interface RouteCardProps {
   onEdit: (route: UserRoute) => void
   onDelete: (route: UserRoute) => void
   onSetPrimary: (route: UserRoute) => void
+  onGenerateReport?: (route: UserRoute) => void
 }
 
 function formatDistance(meters: number | null): string {
@@ -41,6 +42,7 @@ export function RouteCard({
   onEdit,
   onDelete,
   onSetPrimary,
+  onGenerateReport,
 }: RouteCardProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -62,6 +64,11 @@ export function RouteCard({
   const handleSetPrimaryClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onSetPrimary(route)
+  }
+
+  const handleGenerateReportClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onGenerateReport?.(route)
   }
 
   return (
@@ -134,6 +141,18 @@ export function RouteCard({
                 aria-label="お気に入りに設定"
               >
                 <Star className="w-4 h-4" />
+              </Button>
+            )}
+            {onGenerateReport && route.route_geometry && (
+              <Button
+                data-testid="generate-report-button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleGenerateReportClick}
+                aria-label="危険箇所レポートを生成"
+              >
+                <FileText className="w-4 h-4" />
               </Button>
             )}
             <Button

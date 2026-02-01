@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -224,6 +225,9 @@ export default function ReportDetailModal({
               }`}
             />
             <DialogTitle className="text-xl">{report.title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              危険箇所レポートの詳細とコメント
+            </DialogDescription>
             {getStatusBadge(report.status)}
           </div>
           <DialogClose asChild>

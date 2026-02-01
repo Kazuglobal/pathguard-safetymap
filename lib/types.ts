@@ -78,3 +78,22 @@ export interface UpdateRouteInput {
   route_geometry?: GeoJSON.LineString
   is_favorite?: boolean
 }
+
+/**
+ * Route Danger Report Types
+ */
+export interface RouteDangerReport {
+  route: UserRoute
+  dangers: DangerReport[]
+  bufferMeters: number
+  generatedAt: string
+  summary: RouteDangerSummary
+}
+
+export interface RouteDangerSummary {
+  totalDangers: number
+  byType: Record<string, number>
+  byLevel: Record<number, number>
+}
+
+export type ReportExportFormat = 'pdf' | 'png' | 'jpeg'
