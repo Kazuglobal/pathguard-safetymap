@@ -41,9 +41,10 @@ const nextConfig = {
   turbopack: {},
 
   // Provide fallback environment values for public configuration
+  // NOTE: Empty fallbacks will trigger offline/demo mode in supabase-provider.tsx
   env: {
     NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: resolveEnv('NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN', ''),
-    NEXT_PUBLIC_SUPABASE_URL: resolveEnv('NEXT_PUBLIC_SUPABASE_URL', 'REDACTED_SUPABASE_URL'),
+    NEXT_PUBLIC_SUPABASE_URL: resolveEnv('NEXT_PUBLIC_SUPABASE_URL', ''),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: resolveEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', ''),
   },
   

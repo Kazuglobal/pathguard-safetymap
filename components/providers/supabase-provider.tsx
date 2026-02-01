@@ -11,6 +11,19 @@ type SupabaseContext = {
 
 const Context = createContext<SupabaseContext | undefined>(undefined)
 
+const isValidSupabaseUrl = (url: string | undefined): boolean => {
+  if (!url) return false
+  // Check for placeholder/redacted values
+  if (url === 'REDACTED_SUPABASE_URL' || url.includes('REDACTED')) return false
+  // Check for valid Supabase URL format
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && parsed.hostname.includes('supabase')
+  } catch {
+    return false
+  }
+}
+
 const buildSupabaseClient = (): SupabaseClient<Database> => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -27,8 +40,8 @@ const buildSupabaseClient = (): SupabaseClient<Database> => {
     }
   }
 
-  if (!url || !anonKey) {
-    console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定です。ダミークライアントを返します。')
+  if (!isValidSupabaseUrl(url) || !anonKey) {
+    console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定または無効です。ダミークライアントを返します。')
     return createBrowserClient<Database>('https://example.supabase.co', 'public-anon-key', {
       auth: {
         persistSession: false,
