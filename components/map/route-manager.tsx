@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { RouteCard } from "@/components/routes/route-card"
+import { RouteDangerReportDialog } from "@/components/routes/route-danger-report-dialog"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 import {
   Plus,
@@ -130,6 +131,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const [editingRoute, setEditingRoute] = useState<UserRoute | null>(null)
   const [routeToDelete, setRouteToDelete] = useState<UserRoute | null>(null)
+  const [routeForReport, setRouteForReport] = useState<UserRoute | null>(null)
 
   // Form state
   const [routeName, setRouteName] = useState("")
@@ -205,6 +207,14 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
 
   const handleDeleteClick = useCallback((route: UserRoute) => {
     setRouteToDelete(route)
+  }, [])
+
+  const handleGenerateReportClick = useCallback((route: UserRoute) => {
+    setRouteForReport(route)
+  }, [])
+
+  const handleCloseReportDialog = useCallback(() => {
+    setRouteForReport(null)
   }, [])
 
   const handleSetPrimaryClick = useCallback(
@@ -532,6 +542,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   onEdit={handleEditClick}
                   onDelete={handleDeleteClick}
                   onSetPrimary={handleSetPrimaryClick}
+                  onGenerateReport={handleGenerateReportClick}
                 />
               ))}
             </div>
@@ -628,6 +639,15 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Danger Report Dialog */}
+      {routeForReport && (
+        <RouteDangerReportDialog
+          open={routeForReport !== null}
+          onClose={handleCloseReportDialog}
+          route={routeForReport}
+        />
+      )}
     </div>
   )
 }
