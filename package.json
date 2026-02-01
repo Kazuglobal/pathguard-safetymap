@@ -2,6 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": "20.x"
   },
@@ -35,6 +36,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@mapbox/polyline": "^1.2.1",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-aspect-ratio": "^1.1.1",
@@ -109,6 +111,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/lodash.shuffle": "^4.2.7",
     "@types/mapbox-gl": "^3.4.1",
+    "@types/mapbox__polyline": "^1.0.5",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
