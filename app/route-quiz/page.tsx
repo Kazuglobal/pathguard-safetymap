@@ -1,10 +1,9 @@
-/// <reference types="@turf/turf" />
 "use client"
 
 import { useState, useEffect, useRef } from "react"
 import mapboxgl, { LngLatLike } from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-// import * as turf from "@turf/turf" // 型問題回避のため個別 import に分割
+import * as turf from "@turf/turf"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -12,10 +11,6 @@ import { AlertTriangle, Car, HelpCircle, Shield } from "lucide-react"
 import shuffle from "lodash.shuffle"
 import { addPoints } from "@/lib/gamification"
 import type { DangerReport } from "@/lib/types"
-import bbox from "@turf/bbox"
-import bufferTurf from "@turf/buffer"
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
-import { point as turfPoint } from "@turf/helpers"
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 mapboxgl.accessToken = MAPBOX_TOKEN
@@ -189,7 +184,7 @@ export default function RouteQuizPage() {
     })
 
     // ルートに合わせてズーム
-    const [minX, minY, maxX, maxY] = bbox(routeLine)
+    const [minX, minY, maxX, maxY] = turf.bbox(routeLine)
     map.current.fitBounds(
       [
         [minX, minY],
@@ -199,9 +194,9 @@ export default function RouteQuizPage() {
     )
 
     // 50 m バッファで近くの危険箇所抽出
-    const buffered = bufferTurf(routeLine, 0.05, { units: "kilometers" })
+    const buffered = turf.buffer(routeLine, 0.05, { units: "kilometers" })
     const near = hazards.filter((h) =>
-      booleanPointInPolygon(turfPoint([h.longitude, h.latitude]), buffered),
+      turf.booleanPointInPolygon(turf.point([h.longitude, h.latitude]), buffered!),
     )
     setQuizList(shuffle(near))
   }, [routeLine, hazards])
