@@ -24,6 +24,8 @@ const DEFAULT_MAP_DIMENSIONS: MapDimensions = {
 
 const MAX_STATIC_IMAGE_DIMENSION = 1280
 const HI_DPI_SCALE = 2
+const HTML2CANVAS_SCALE = 2
+const IMAGE_TIMEOUT_MS = 15000
 
 /**
  * Generates a Mapbox Static Images API URL for the route overview map.
@@ -48,7 +50,7 @@ export function generateOverviewMapUrl(
   const coordinates = routeGeometry.coordinates
   const latLngCoords = coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
   const encodedPolyline = polyline.encode(latLngCoords)
-  const pathOverlay = `path-4+3b82f6-0.7(${encodeURIComponent(encodedPolyline)})`
+  const pathOverlay = `path-4+3b82f6-0.7(polyline(${encodeURIComponent(encodedPolyline)}))`
 
   // Create markers for dangers
   const markerOverlays = dangers
@@ -143,61 +145,41 @@ export async function generatePDFReport(
 
   // Dynamic imports to avoid SSR issues
   const { jsPDF } = await import('jspdf')
-  const html2canvas = (await import('html2canvas')).default
+  const canvas = await renderReportToCanvas(report, mapboxToken)
 
-  // Create HTML container for the report
-  const container = createReportHtmlContainer(report, mapboxToken)
+  // Create PDF from canvas
+  const imgData = canvas.toDataURL('image/png')
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  })
 
-  // Temporarily add to DOM for rendering
-  document.body.appendChild(container)
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 10
 
-  // Wait for all images to load before capturing
-  await waitForImages(container)
+  // Calculate image dimensions to fit on page
+  const imgWidth = pageWidth - margin * 2
+  const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-  try {
-    const canvas = await html2canvas(container, {
-      scale: 2, // Reduced from 3 for better memory efficiency
-      useCORS: true,
-      logging: false,
-      imageTimeout: 15000, // 15 second timeout for images
-    })
+  // Add pages as needed for long content
+  let heightLeft = imgHeight
+  let position = margin
 
-    // Create PDF from canvas
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    })
+  // First page
+  pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight)
+  heightLeft -= pageHeight - margin * 2
 
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const margin = 10
-
-    // Calculate image dimensions to fit on page
-    const imgWidth = pageWidth - margin * 2
-    const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-    // Add pages as needed for long content
-    let heightLeft = imgHeight
-    let position = margin
-
-    // First page
+  // Add more pages if needed
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight + margin
+    pdf.addPage()
     pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight)
     heightLeft -= pageHeight - margin * 2
-
-    // Add more pages if needed
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight + margin
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight - margin * 2
-    }
-
-    return pdf.output('blob')
-  } finally {
-    document.body.removeChild(container)
   }
+
+  return pdf.output('blob')
 }
 
 /**
@@ -245,11 +227,13 @@ function createReportHtmlContainer(
   summarySection.appendChild(summaryTitle)
 
   const summaryContent = document.createElement('div')
-  summaryContent.innerHTML = `
-    <p style="margin: 4px 0;">ルート距離: ${formatDistance(report.route.distance_meters)}</p>
-    <p style="margin: 4px 0;">バッファ距離: ${report.bufferMeters}m</p>
-    <p style="margin: 4px 0; font-weight: bold;">危険箇所数: ${report.summary.totalDangers}件</p>
-  `
+  summaryContent.appendChild(
+    createSummaryRow(`ルート距離: ${formatDistance(report.route.distance_meters)}`)
+  )
+  summaryContent.appendChild(createSummaryRow(`バッファ距離: ${report.bufferMeters}m`))
+  summaryContent.appendChild(
+    createSummaryRow(`危険箇所数: ${report.summary.totalDangers}件`, true)
+  )
   summarySection.appendChild(summaryContent)
   container.appendChild(summarySection)
 
@@ -372,60 +356,17 @@ function createReportHtmlContainer(
 
       // Original image (if exists)
       if (danger.image_url) {
-        const originalImageSection = document.createElement('div')
-        originalImageSection.style.marginTop = '12px'
-
-        const originalImageLabel = document.createElement('div')
-        originalImageLabel.style.fontSize = '12px'
-        originalImageLabel.style.color = '#6b7280'
-        originalImageLabel.style.marginBottom = '4px'
-        originalImageLabel.textContent = '報告画像:'
-        originalImageSection.appendChild(originalImageLabel)
-
-        const originalImg = document.createElement('img')
-        originalImg.crossOrigin = 'anonymous' // Enable CORS for html2canvas
-        originalImg.src = danger.image_url
-        originalImg.style.width = '100%'
-        originalImg.style.maxHeight = '400px'
-        originalImg.style.objectFit = 'contain'
-        originalImg.style.borderRadius = '4px'
-        originalImg.style.backgroundColor = '#f3f4f6'
-        originalImageSection.appendChild(originalImg)
-
-        dangerItem.appendChild(originalImageSection)
+        appendImageSection(dangerItem, '報告画像:', [danger.image_url], 400)
       }
 
       // Processed images (if exist)
-      if (danger.processed_image_urls && danger.processed_image_urls.length > 0) {
-        const processedImageSection = document.createElement('div')
-        processedImageSection.style.marginTop = '12px'
-
-        const processedImageLabel = document.createElement('div')
-        processedImageLabel.style.fontSize = '12px'
-        processedImageLabel.style.color = '#6b7280'
-        processedImageLabel.style.marginBottom = '4px'
-        processedImageLabel.textContent = '処理済み画像:'
-        processedImageSection.appendChild(processedImageLabel)
-
-        const imageContainer = document.createElement('div')
-        imageContainer.style.display = 'flex'
-        imageContainer.style.flexDirection = 'column'
-        imageContainer.style.gap = '8px'
-
-        for (const imageUrl of danger.processed_image_urls) {
-          const processedImg = document.createElement('img')
-          processedImg.crossOrigin = 'anonymous' // Enable CORS for html2canvas
-          processedImg.src = imageUrl
-          processedImg.style.width = '100%'
-          processedImg.style.maxHeight = '300px'
-          processedImg.style.objectFit = 'contain'
-          processedImg.style.borderRadius = '4px'
-          processedImg.style.backgroundColor = '#f3f4f6'
-          imageContainer.appendChild(processedImg)
-        }
-
-        processedImageSection.appendChild(imageContainer)
-        dangerItem.appendChild(processedImageSection)
+      if (danger.processed_image_urls?.length) {
+        appendImageSection(
+          dangerItem,
+          '処理済み画像:',
+          danger.processed_image_urls,
+          300
+        )
       }
 
       dangerListSection.appendChild(dangerItem)
@@ -442,6 +383,57 @@ function createReportHtmlContainer(
   return container
 }
 
+function createSummaryRow(text: string, isBold = false): HTMLParagraphElement {
+  const row = document.createElement('p')
+  row.style.margin = '4px 0'
+  row.textContent = text
+  if (isBold) {
+    row.style.fontWeight = 'bold'
+  }
+  return row
+}
+
+function appendImageSection(
+  parent: HTMLElement,
+  label: string,
+  imageUrls: string[],
+  maxHeightPx: number
+): void {
+  if (imageUrls.length === 0) {
+    return
+  }
+
+  const section = document.createElement('div')
+  section.style.marginTop = '12px'
+
+  const labelEl = document.createElement('div')
+  labelEl.style.fontSize = '12px'
+  labelEl.style.color = '#6b7280'
+  labelEl.style.marginBottom = '4px'
+  labelEl.textContent = label
+  section.appendChild(labelEl)
+
+  const imageContainer = document.createElement('div')
+  imageContainer.style.display = 'flex'
+  imageContainer.style.flexDirection = 'column'
+  imageContainer.style.gap = '8px'
+
+  for (const imageUrl of imageUrls) {
+    const img = document.createElement('img')
+    img.crossOrigin = 'anonymous' // Enable CORS for html2canvas
+    img.src = imageUrl
+    img.style.width = '100%'
+    img.style.maxHeight = `${maxHeightPx}px`
+    img.style.objectFit = 'contain'
+    img.style.borderRadius = '4px'
+    img.style.backgroundColor = '#f3f4f6'
+    imageContainer.appendChild(img)
+  }
+
+  section.appendChild(imageContainer)
+  parent.appendChild(section)
+}
+
 /**
  * Waits for all images in the container to finish loading.
  * This ensures html2canvas captures images correctly.
@@ -451,7 +443,7 @@ function createReportHtmlContainer(
  */
 async function waitForImages(
   container: HTMLElement,
-  timeoutMs = 15000
+  timeoutMs = IMAGE_TIMEOUT_MS
 ): Promise<void> {
   const images = container.querySelectorAll('img')
   const promises = Array.from(images).map((img) => {
@@ -471,6 +463,31 @@ async function waitForImages(
     })
   })
   await Promise.all(promises)
+}
+
+async function renderReportToCanvas(
+  report: RouteDangerReport,
+  mapboxToken: string
+): Promise<HTMLCanvasElement> {
+  const html2canvas = (await import('html2canvas')).default
+  const container = createReportHtmlContainer(report, mapboxToken)
+
+  // Temporarily add to DOM for rendering
+  document.body.appendChild(container)
+
+  // Wait for all images to load before capturing
+  await waitForImages(container)
+
+  try {
+    return await html2canvas(container, {
+      scale: HTML2CANVAS_SCALE, // Reduced from 3 for better memory efficiency
+      useCORS: true,
+      logging: false,
+      imageTimeout: IMAGE_TIMEOUT_MS,
+    })
+  } finally {
+    document.body.removeChild(container)
+  }
 }
 
 /**
@@ -523,40 +540,21 @@ export async function generateImageReport(
     return new Blob(['placeholder'], { type: mimeType })
   }
 
-  // Create HTML container using shared function
-  const container = createReportHtmlContainer(report, mapboxToken)
+  const canvas = await renderReportToCanvas(report, mapboxToken)
 
-  // Temporarily add to DOM for rendering
-  document.body.appendChild(container)
-
-  // Wait for all images to load before capturing
-  await waitForImages(container)
-
-  try {
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(container, {
-      scale: 2, // Reduced from 3 for better memory efficiency
-      useCORS: true,
-      logging: false,
-      imageTimeout: 15000, // 15 second timeout for images
-    })
-
-    return new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob)
-          } else {
-            reject(new Error('Failed to generate image blob'))
-          }
-        },
-        mimeType,
-        0.95
-      )
-    })
-  } finally {
-    document.body.removeChild(container)
-  }
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob)
+        } else {
+          reject(new Error('Failed to generate image blob'))
+        }
+      },
+      mimeType,
+      0.95
+    )
+  })
 }
 
 function getDangerLevelBorderColor(level: number): string {
