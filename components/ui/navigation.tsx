@@ -17,6 +17,7 @@ import {
   UserCheck,
   Gamepad2,
   Home,
+  Route,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
@@ -55,6 +56,13 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false }: Navigat
       label: "マップ",
       icon: Map,
       description: "危険箇所を地図で確認",
+    },
+    {
+      key: "routes",
+      href: "/routes",
+      label: "通学路",
+      icon: Route,
+      description: "通学路を管理",
     },
     {
       key: "hazard-game",
