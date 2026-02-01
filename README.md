@@ -10,6 +10,15 @@
 This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
 Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
 
+### 🛣️ 通学路管理（Routes）
+
+通学路の登録・編集・削除・お気に入り設定ができます。
+
+- 画面: `/routes`（未ログイン時は `/login` へリダイレクト）
+- 作成: 「ルート追加」→ ルート名入力 → 地図クリック or 座標入力でポイント追加 → 保存
+- 表示: ルート一覧、距離/時間、選択状態、マップ上のポイント/線
+- 必要な環境変数: `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`
+
 ### 🗺️ Mapbox Integration
 
 This project includes comprehensive Mapbox integration with:
