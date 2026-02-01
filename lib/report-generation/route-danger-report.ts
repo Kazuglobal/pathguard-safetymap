@@ -21,6 +21,9 @@ const DEFAULT_MAP_DIMENSIONS: MapDimensions = {
   height: 400,
 }
 
+const MAX_STATIC_IMAGE_DIMENSION = 1280
+const HI_DPI_SCALE = 2
+
 /**
  * Generates a Mapbox Static Images API URL for the route overview map.
  *
@@ -43,7 +46,7 @@ export function generateOverviewMapUrl(
   const coordinates = routeGeometry.coordinates
   const pathCoords = coordinates
     .map(([lng, lat]) => `${lng},${lat}`)
-    .join(',')
+    .join(';')
   const pathOverlay = `path-4+3b82f6-0.7(${encodeURIComponent(pathCoords)})`
 
   // Create markers for dangers
@@ -61,7 +64,13 @@ export function generateOverviewMapUrl(
     : pathOverlay
 
   // Calculate auto center and zoom
-  const url = `https://api.mapbox.com/styles/v1/${style}/static/${overlays}/auto/${width}x${height}@2x?access_token=${mapboxToken}`
+  const safeWidth = Math.min(width, MAX_STATIC_IMAGE_DIMENSION)
+  const safeHeight = Math.min(height, MAX_STATIC_IMAGE_DIMENSION)
+  const canUseHiDpi =
+    safeWidth * HI_DPI_SCALE <= MAX_STATIC_IMAGE_DIMENSION &&
+    safeHeight * HI_DPI_SCALE <= MAX_STATIC_IMAGE_DIMENSION
+  const pixelRatio = canUseHiDpi ? '@2x' : ''
+  const url = `https://api.mapbox.com/styles/v1/${style}/static/${overlays}/auto/${safeWidth}x${safeHeight}${pixelRatio}?access_token=${mapboxToken}`
 
   return url
 }
