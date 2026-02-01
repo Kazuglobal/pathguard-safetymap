@@ -31,3 +31,50 @@ export interface FilterOptions {
   dangerLevel: string
   dateRange: string
 }
+
+/**
+ * User Route Types - Phase 2.1: School Route Management
+ */
+export interface UserRoute {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  start_lat: number
+  start_lng: number
+  end_lat: number
+  end_lng: number
+  start_address: string
+  end_address: string
+  route_geometry: GeoJSON.LineString | null
+  distance_meters: number | null
+  estimated_time_minutes: number | null
+  is_favorite: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateRouteInput {
+  name: string
+  description?: string
+  start_lat: number
+  start_lng: number
+  end_lat: number
+  end_lng: number
+  start_address: string
+  end_address: string
+  route_geometry?: GeoJSON.LineString
+}
+
+export interface UpdateRouteInput {
+  name?: string
+  description?: string
+  start_lat?: number
+  start_lng?: number
+  end_lat?: number
+  end_lng?: number
+  start_address?: string
+  end_address?: string
+  route_geometry?: GeoJSON.LineString
+  is_favorite?: boolean
+}
