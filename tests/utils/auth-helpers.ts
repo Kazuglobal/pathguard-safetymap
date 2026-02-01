@@ -28,40 +28,43 @@ export const TEST_USERS: Record<string, TestUser> = {
 export class AuthHelper {
   constructor(private page: Page) {}
 
-  async login(user: TestUser, skipIfLoggedIn: boolean = true) {
+  async login(user: TestUser, skipIfLoggedIn: boolean = true): Promise<boolean> {
     // Check if already logged in
     if (skipIfLoggedIn && await this.isLoggedIn()) {
-      return;
+      return true;
     }
 
     await this.page.goto('/login');
-    await this.page.waitForLoadState('networkidle');
-    
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+
     // Wait for form to be available
     const emailInput = this.page.locator('input#email, input[type="email"]');
     const passwordInput = this.page.locator('input#password, input[type="password"]');
-    
+
     try {
       await emailInput.waitFor({ state: 'visible', timeout: 5000 });
     } catch {
       // Form not found, might already be logged in or page issue
-      return;
+      return await this.isLoggedIn();
     }
-    
+
     // Fill form fields
     await emailInput.fill(user.email);
     await passwordInput.fill(user.password);
-    
+
     // Submit form
     const submitButton = this.page.locator('button[type="submit"]');
     await submitButton.click();
-    
+
     // Wait for navigation to /map after successful login
     try {
       await this.page.waitForURL(/\/(map|dashboard|landing)/, { timeout: 15000 });
+      return true;
     } catch {
-      // Login might have failed, continue anyway
+      // Login might have failed
       console.warn('Login redirect timeout - user may not be authenticated');
+      return false;
     }
   }
 

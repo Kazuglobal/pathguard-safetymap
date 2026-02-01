@@ -1,15 +1,22 @@
 import { test, expect, devices } from '@playwright/test';
 
-// iPhone 12でのテスト設定
+// iPhone 12でのテスト設定 - skip on desktop browsers that don't support camera
 test.use({
   ...devices['iPhone 12'],
-  permissions: ['camera'],
 });
 
 test.describe('モバイルカメラ機能テスト', () => {
+  // Skip all tests in this describe block when running on desktop project
+  test.beforeEach(async ({}, testInfo) => {
+    const projectName = testInfo.project.name;
+    if (projectName.toLowerCase().includes('desktop')) {
+      test.skip(true, 'Camera tests require mobile browser or emulation');
+    }
+  });
+
   test('危険箇所撮影とアップロード機能の確認', async ({ page }) => {
     // アプリケーションにアクセス
-    await page.goto('http://localhost:3001');
+    await page.goto('/');
     
     // ログインページが表示される場合はデモユーザーでログイン
     const demoLoginButton = page.locator('button:has-text("デモユーザーでログイン")');
@@ -19,8 +26,9 @@ test.describe('モバイルカメラ機能テスト', () => {
     }
     
     // マップページに遷移
-    await page.goto('http://localhost:3001/map');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/map');
+    await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // 地図が読み込まれるまで待機
     const mapContainer = page.locator('.mapboxgl-map, #map, [data-testid="map-container"]');
@@ -94,18 +102,18 @@ test.describe('モバイルカメラ機能テスト', () => {
   test('横画面（ランドスケープ）でのレスポンシブ確認', async ({ page }) => {
     // 横画面に設定
     await page.setViewportSize({ width: 844, height: 390 }); // iPhone 12横向き
-    
-    await page.goto('http://localhost:3001');
-    
+
+    await page.goto('/');
+
     // デモユーザーでログイン
     const demoLoginButton = page.locator('button:has-text("デモユーザーでログイン")');
     if (await demoLoginButton.isVisible({ timeout: 3000 })) {
       await demoLoginButton.click();
       await page.waitForURL('**/map', { timeout: 10000 });
     }
-    
-    await page.goto('http://localhost:3001/map');
-    await page.waitForLoadState('networkidle');
+
+    await page.goto('/map');
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     
     // 地図をクリック
     const mapContainer = page.locator('.mapboxgl-map, #map');

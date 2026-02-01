@@ -17,8 +17,10 @@ import {
   UserCheck,
   Gamepad2,
   Home,
+  Route,
 } from "lucide-react"
 import { motion } from "framer-motion"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 interface NavigationProps {
   user?: any
@@ -54,6 +56,13 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false }: Navigat
       label: "マップ",
       icon: Map,
       description: "危険箇所を地図で確認",
+    },
+    {
+      key: "routes",
+      href: "/routes",
+      label: "通学路",
+      icon: Route,
+      description: "通学路を管理",
     },
     {
       key: "hazard-game",
@@ -180,8 +189,9 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false }: Navigat
 
             {/* 右側アクション */}
             <div className="flex items-center space-x-3">
+              {user && <NotificationBell isLoggedIn={!!user} />}
               {user ? (
-                <div className="hidden sm:flex flex-col items-end text-sm leading-tight">
+                <div className="hidden sm:flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
                   <span className="font-semibold text-gray-900">
                     {user.email?.split("@")[0] || "ユーザー"}
                   </span>

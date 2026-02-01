@@ -25,8 +25,8 @@ import {
 } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
-import { pgTextArrayToJs } from "@/lib/arrayLiteral"
 import { useToast } from "@/components/ui/use-toast"
+import { ReportCommentSection } from "@/components/comments/report-comment-section"
 
 interface ReportDetailModalProps {
   isOpen: boolean
@@ -105,7 +105,6 @@ export default function ReportDetailModal({
         onReportUpdate()
       }
     } catch (error) {
-      console.error('画像アップロードエラー:', error)
       toast({
         title: "エラー",
         description: error instanceof Error ? error.message : "画像のアップロードに失敗しました",
@@ -283,7 +282,7 @@ export default function ReportDetailModal({
                             fill
                             className="object-contain"
                             onError={() => {
-                              console.error("Failed to load image:", report.image_url)
+                              // サイレント失敗 - ユーザーには画像が表示されないことで認識される
                             }}
                           />
                         </div>
@@ -350,7 +349,7 @@ export default function ReportDetailModal({
                                   fill
                                   className="object-contain"
                                   onError={() => {
-                                    console.error("Failed to load processed image:", url)
+                                    // サイレント失敗 - ユーザーには画像が表示されないことで認識される
                                   }}
                                 />
                               </div>
@@ -400,6 +399,13 @@ export default function ReportDetailModal({
                 解決済みにする
               </Button>
             )}
+
+            {/* コメントセクション */}
+            <Card>
+              <CardContent className="p-4">
+                <ReportCommentSection reportId={report.id} />
+              </CardContent>
+            </Card>
           </div>
 
           {/* サイドバー */}

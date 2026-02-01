@@ -34,7 +34,7 @@ export function useGamification() {
         .from("user_points")
         .select("points, level")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       return data as UserPointsRow | null;
     } catch (e) {
       console.error("useGamification: unexpected error", e)

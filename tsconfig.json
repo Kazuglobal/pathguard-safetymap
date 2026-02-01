@@ -26,7 +26,7 @@
     "incremental": true,
     /* === JS / JSX サポート === */
     "allowJs": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "jsxImportSource": "react",
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -48,7 +48,8 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

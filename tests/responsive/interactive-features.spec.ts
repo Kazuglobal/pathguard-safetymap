@@ -252,7 +252,8 @@ test.describe('Interactive Features Responsive Tests', () => {
     
     for (const url of pages) {
       await page.goto(url);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // Check that content adapts to landscape
       const mainContent = page.locator('main, [data-testid="main-content"], .main-content');

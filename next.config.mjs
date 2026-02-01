@@ -31,16 +31,14 @@ const resolveEnv = (key, fallback = '') => {
 const nextConfig = {
   // React 19 strict mode
   reactStrictMode: true,
-  
-  // Ignore ESLint errors during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
+
   // Ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Turbopack configuration (Next.js 16 default)
+  turbopack: {},
 
   // Provide fallback environment values for public configuration
   env: {

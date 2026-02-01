@@ -11,6 +11,10 @@ const Progress = React.forwardRef<
 >(({ className, value, ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
+    role="progressbar"
+    aria-valuenow={value ?? 0}
+    aria-valuemin={0}
+    aria-valuemax={100}
     className={cn(
       "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
       className

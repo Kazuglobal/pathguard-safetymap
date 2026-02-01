@@ -1,5 +1,16 @@
 import { Page, expect } from '@playwright/test';
 
+/**
+ * Safely wait for network idle with a timeout fallback.
+ * This prevents test failures when networkidle takes too long.
+ */
+export async function safeWaitForNetworkIdle(page: Page, timeout = 10000) {
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle', { timeout }).catch(() => {
+    // networkidle timeout is acceptable - proceed with tests
+  });
+}
+
 export interface ViewportConfig {
   name: string;
   width: number;
@@ -30,15 +41,27 @@ export class ResponsiveTestHelper {
 
   async takeFullPageScreenshot(name: string, viewport: ViewportConfig) {
     const fileName = `${name}-${viewport.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-    await expect(this.page).toHaveScreenshot(fileName, { 
+
+    // Locate the Next.js Dev Tools button to mask it
+    const devToolsButton = this.page.locator('button:has-text("Next.js"), button:has-text("Compiling")');
+    const masks: import('@playwright/test').Locator[] = [];
+    if (await devToolsButton.count() > 0) {
+      masks.push(devToolsButton);
+    }
+
+    await expect(this.page).toHaveScreenshot(fileName, {
       fullPage: true,
-      animations: 'disabled'
+      animations: 'disabled',
+      mask: masks.length > 0 ? masks : undefined
     });
   }
 
   async waitForPageLoad() {
-    await this.page.waitForLoadState('networkidle');
+    // Use a fallback approach for networkidle which can timeout on slow connections
     await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+      // networkidle timeout is acceptable - proceed with tests
+    });
   }
 
   async dismissCookieBanners() {
@@ -145,6 +168,24 @@ export class ResponsiveTestHelper {
     }
   }
 
+  async hideDevToolsOverlay() {
+    // Hide Next.js Dev Tools indicator using CSS injection
+    await this.page.addStyleTag({
+      content: `
+        /* Hide Next.js Dev Tools button (appears in development mode) */
+        button[aria-label*="Next.js"],
+        [data-nextjs-dialog-overlay],
+        [data-nextjs-toast],
+        nextjs-portal,
+        /* Fixed position bottom button (Next.js Dev Tools) */
+        body > div:last-of-type > button {
+          display: none !important;
+          visibility: hidden !important;
+        }
+      `
+    });
+  }
+
   async testInteractiveElements(viewport: ViewportConfig) {
     if (viewport.isMobile) {
       // Check that buttons and links have adequate touch targets (44x44px minimum)
@@ -186,7 +227,8 @@ export async function testPageResponsiveness(
     await helper.waitForPageLoad();
     await helper.dismissCookieBanners();
     await helper.hideLoadingElements();
-    
+    await helper.hideDevToolsOverlay();
+
     if (options.customChecks) {
       await options.customChecks(helper, viewport);
     }

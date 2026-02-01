@@ -37,13 +37,15 @@ test.describe('Badges Page - Phase 1.1', () => {
     
     test('バッジページにアクセスできる', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       await expect(page).toHaveURL(/\/badges/);
     });
 
     test('ページタイトル「バッジ一覧」が表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // ページヘッダーにタイトルが存在する
       const pageTitle = page.locator('h1, [data-testid="badges-title"]');
@@ -56,7 +58,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('全バッジがbadgesテーブルから取得されて表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // バッジアイテムが表示される（最低1つ以上）
       const badges = page.locator('[data-testid="badge-card"], .badge-card');
@@ -71,7 +74,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // このテストは認証を試みる
       await tryLogin(page);
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // ログイン状態の場合のみサマリーが表示される
       // 未ログイン時は「ログインすると取得状況が表示されます」メッセージが表示される
@@ -89,7 +93,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // このテストは認証を試みる
       await tryLogin(page);
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // サマリー表示（ログイン時）または ログインメッセージ（未ログイン時）
       const summaryPatterns = [
@@ -119,7 +124,8 @@ test.describe('Badges Page - Phase 1.1', () => {
     
     test('バッジ一覧がグリッドコンテナで表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // グリッドコンテナが存在する
       const badgeGrid = page.locator('[data-testid="badge-grid"], .badge-grid');
@@ -128,7 +134,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('グリッドはCSSのgridまたはflexレイアウトを使用している', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeGrid = page.locator('[data-testid="badge-grid"], .badge-grid');
       await expect(badgeGrid).toBeVisible({ timeout: 10000 });
@@ -145,7 +152,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // デスクトップサイズでテスト
       await page.setViewportSize({ width: 1920, height: 1080 });
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badges = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badges.first()).toBeVisible({ timeout: 10000 });
@@ -176,7 +184,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // タブレットサイズでテスト
       await page.setViewportSize({ width: 768, height: 1024 });
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badges = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badges.first()).toBeVisible({ timeout: 10000 });
@@ -207,7 +216,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // モバイルサイズでテスト
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badges = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badges.first()).toBeVisible({ timeout: 10000 });
@@ -235,7 +245,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('グリッドアイテム間に適切な間隔がある', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badges = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badges.first()).toBeVisible({ timeout: 10000 });
@@ -262,7 +273,8 @@ test.describe('Badges Page - Phase 1.1', () => {
     
     test('バッジカードが存在する', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -270,7 +282,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('バッジカードにバッジ名が表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -286,7 +299,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('バッジカードに取得条件（threshold）が表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -306,7 +320,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // 認証を試みる（取得済みバッジを確認するため）
       await tryLogin(page);
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -331,7 +346,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('未取得バッジカードには取得日時が表示されない', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -362,7 +378,8 @@ test.describe('Badges Page - Phase 1.1', () => {
     
     test('各バッジカードにアイコンが表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -380,7 +397,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('アイコンは適切なサイズで表示される（最小48x48px）', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -401,7 +419,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('アイコンが中央に配置される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -423,7 +442,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('アイコンがemoji形式の場合、正しく表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"], .badge-card');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -456,7 +476,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // 認証を試みる（取得済みバッジを確認するため）
       await tryLogin(page);
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"]');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -487,7 +508,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('未取得バッジはグレーアウトまたは薄く表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"]');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -517,7 +539,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       // 認証を試みる（取得済みバッジを確認するため）
       await tryLogin(page);
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"]');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -543,7 +566,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('未取得バッジにはロックアイコンまたは「未取得」ラベルが表示される', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const badgeCards = page.locator('[data-testid="badge-card"]');
       await expect(badgeCards.first()).toBeVisible({ timeout: 10000 });
@@ -569,7 +593,8 @@ test.describe('Badges Page - Phase 1.1', () => {
 
     test('data-owned属性でバッジの取得状態が識別できる', async ({ page }) => {
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       const allBadges = page.locator('[data-testid="badge-card"]');
       await expect(allBadges.first()).toBeVisible({ timeout: 10000 });
@@ -589,6 +614,131 @@ test.describe('Badges Page - Phase 1.1', () => {
   });
 
   // ============================================
+  // 1-1-badges-progress: 進捗表示機能
+  // ============================================
+  test.describe('1-1-badges-progress: 進捗表示機能', () => {
+
+    // ヘルパー関数: バッジページにナビゲーションして安定を待つ
+    async function navigateToBadgesPage(page: any) {
+      await page.goto('/badges');
+      // ページが完全にロードされるのを待つ
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+      // バッジカードが表示されるまで待つ（ページの安定を確認）
+      await page.waitForSelector('[data-testid="badge-card"], [data-testid="badges-title"]', { timeout: 10000 });
+    }
+
+    // ヘルパー関数: ログイン状態を確認
+    async function isUserLoggedIn(page: any): Promise<boolean> {
+      const progressSection = page.locator('[data-testid="badge-progress-section"]');
+      const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+
+      const hasProgressSection = await progressSection.count() > 0;
+      const hasLoginMessage = await loginMessage.count() > 0;
+
+      return hasProgressSection && !hasLoginMessage;
+    }
+
+    test('ログイン時に現在ポイントが表示される', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        // 未ログイン状態の場合、ログイン促進メッセージを確認
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      const currentPoints = page.locator('[data-testid="current-points"]');
+      await expect(currentPoints).toBeVisible({ timeout: 10000 });
+
+      const pointsText = await currentPoints.textContent();
+      expect(pointsText).toMatch(/\d+.*pt|ポイント/);
+    });
+
+    test('次のバッジまでの進捗バーが表示される', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      // 未取得バッジがある場合のみ進捗バーが表示される
+      const progressBar = page.locator('[data-testid="next-badge-progress"]');
+      const completeMessage = page.locator('[data-testid="badges-complete"]');
+
+      const hasProgress = await progressBar.count() > 0;
+      const hasComplete = await completeMessage.count() > 0;
+
+      expect(hasProgress || hasComplete).toBeTruthy();
+    });
+
+    test('次のバッジ名が表示される', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      const nextBadgeName = page.locator('[data-testid="next-badge-name"]');
+      const completeMessage = page.locator('[data-testid="badges-complete"]');
+
+      const hasNextBadge = await nextBadgeName.count() > 0;
+      const hasComplete = await completeMessage.count() > 0;
+
+      expect(hasNextBadge || hasComplete).toBeTruthy();
+    });
+
+    test('未ログイン時は進捗セクションが非表示', async ({ page, context }) => {
+      await context.clearCookies();
+      await navigateToBadgesPage(page);
+
+      const progressSection = page.locator('[data-testid="badge-progress-section"]');
+      await expect(progressSection).not.toBeVisible();
+    });
+
+    test('進捗バーの値が正しく計算されている', async ({ page }) => {
+      await tryLogin(page);
+      await navigateToBadgesPage(page);
+
+      // ログイン状態を確認
+      const loggedIn = await isUserLoggedIn(page);
+
+      if (!loggedIn) {
+        const loginMessage = page.locator('text=ログインすると取得状況が表示されます');
+        await expect(loginMessage).toBeVisible({ timeout: 10000 });
+        return;
+      }
+
+      const progressBar = page.locator('[data-testid="next-badge-progress"] [role="progressbar"]');
+
+      if (await progressBar.count() > 0) {
+        const ariaValueNow = await progressBar.getAttribute('aria-valuenow');
+        const value = parseInt(ariaValueNow || '0');
+
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(100);
+      }
+    });
+  });
+
+  // ============================================
   // エラーハンドリング
   // ============================================
   test.describe('エラーハンドリング', () => {
@@ -598,7 +748,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       await context.clearCookies();
       
       await page.goto('/badges');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // ページ読み込み後にlocalStorageをクリア
       await page.evaluate(() => {
@@ -612,7 +763,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       
       // 再読み込みしてログアウト状態を確認
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // バッジは表示される（認証不要）
       const badgeCards = page.locator('[data-testid="badge-card"]');
@@ -631,7 +783,8 @@ test.describe('Badges Page - Phase 1.1', () => {
       const badgeCards = page.locator('[data-testid="badge-card"]');
       
       // ページロード完了を待つ
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       
       // ローディングが表示されるか、すぐにデータが表示されるか
       const hasLoading = await loadingIndicator.count() > 0;

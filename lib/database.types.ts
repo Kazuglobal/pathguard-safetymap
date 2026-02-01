@@ -701,6 +701,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           display_name: string | null
           email: string
@@ -710,6 +711,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
           email: string
@@ -719,6 +721,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
           email?: string
@@ -728,6 +731,97 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      report_bookmarks: {
+        Row: {
+          id: string
+          user_id: string
+          report_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          report_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_bookmarks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_bookmarks_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_comments: {
+        Row: {
+          id: string
+          user_id: string
+          report_id: string
+          content: string
+          parent_comment_id: string | null
+          is_edited: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          report_id: string
+          content: string
+          parent_comment_id?: string | null
+          is_edited?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_id?: string
+          content?: string
+          parent_comment_id?: string | null
+          is_edited?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_comments_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "report_comments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_images: {
         Row: {
@@ -760,6 +854,133 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "report_images_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_likes: {
+        Row: {
+          id: string
+          user_id: string
+          report_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          report_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_likes_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_notifications: {
+        Row: {
+          id: string
+          user_id: string
+          report_id: string
+          notification_type: string
+          actor_user_id: string | null
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          report_id: string
+          notification_type: string
+          actor_user_id?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          report_id?: string
+          notification_type?: string
+          actor_user_id?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_notifications_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_notifications_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_shares: {
+        Row: {
+          id: string
+          user_id: string | null
+          report_id: string
+          platform: Database["public"]["Enums"]["share_platform"]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          report_id: string
+          platform: Database["public"]["Enums"]["share_platform"]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          report_id?: string
+          platform?: Database["public"]["Enums"]["share_platform"]
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_shares_report_id_fkey"
             columns: ["report_id"]
             isOneToOne: false
             referencedRelation: "danger_reports"
@@ -1480,6 +1701,18 @@ export type Database = {
       gidx_out: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      get_report_comments: {
+        Args: { p_report_id: string }
+        Returns: Json[]
+      }
+      get_trending_reports: {
+        Args: { p_limit?: number; p_days?: number }
+        Returns: Json[]
+      }
+      get_user_bookmarked_reports: {
+        Args: { p_user_id: string }
+        Returns: Json[]
       }
       increment_user_points: {
         Args: { p_user_id: string; p_delta: number }
@@ -2763,6 +2996,14 @@ export type Database = {
         Args: { "": unknown }
         Returns: string
       }
+      toggle_report_bookmark: {
+        Args: { p_user_id: string; p_report_id: string }
+        Returns: boolean
+      }
+      toggle_report_like: {
+        Args: { p_user_id: string; p_report_id: string }
+        Returns: boolean
+      }
       unlockrows: {
         Args: { "": string }
         Returns: number
@@ -2780,6 +3021,7 @@ export type Database = {
     }
     Enums: {
       geocode_provider: "mapbox" | "gsi" | "osm" | "manual" | "batch"
+      share_platform: "twitter" | "facebook" | "line" | "clipboard" | "other"
     }
     CompositeTypes: {
       geometry_dump: {

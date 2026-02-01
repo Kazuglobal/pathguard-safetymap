@@ -2,9 +2,9 @@
 import { createServerClient } from "@/lib/supabase-server";
 import { Database } from "@/lib/database.types";
 import { BadgeCard, BadgeData } from "@/components/badges/badge-card";
+import { Progress } from "@/components/ui/progress";
 
 type BadgeRow = Database["public"]["Tables"]["badges"]["Row"];
-type UserBadgeRow = Database["public"]["Tables"]["user_badges"]["Row"];
 
 export default async function BadgePage() {
   // 1) Supabase クライアント生成
@@ -40,6 +40,8 @@ export default async function BadgePage() {
   // 4) ユーザー取得済みバッジを取得（ログイン時のみ）
   let userBadges: { badge_id: number; acquired_at: string | null }[] = [];
   let userBadgesFetchFailed = false;
+  let currentPoints = 0;
+
   if (isLoggedIn && userId) {
     const { data, error: userBadgesError } = await supabase
       .from("user_badges")
@@ -52,6 +54,15 @@ export default async function BadgePage() {
     } else {
       userBadges = data ?? [];
     }
+
+    // ユーザーポイントを取得
+    const { data: userPointsData } = await supabase
+      .from("user_points")
+      .select("points")
+      .eq("user_id", userId as any)
+      .single();
+
+    currentPoints = userPointsData?.points ?? 0;
   }
 
   // 5) 取得済みバッジをマップに変換
@@ -74,7 +85,15 @@ export default async function BadgePage() {
   const totalBadges = badges.length;
   const ownedBadges = badges.filter((b) => b.isOwned).length;
 
-  // 8) 画面描画
+  // 8) 次のバッジまでの進捗計算
+  const nextBadge = badges.find(
+    (b) => !b.isOwned && b.threshold !== null && b.threshold > currentPoints
+  );
+  const progressPercent = nextBadge?.threshold
+    ? Math.min(100, Math.round((currentPoints / nextBadge.threshold) * 100))
+    : 100;
+
+  // 9) 画面描画
   return (
     <div className="container mx-auto px-4 py-8">
       {/* ページタイトル */}
@@ -100,12 +119,50 @@ export default async function BadgePage() {
         </div>
       )}
 
-      {/* バッジ取得サマリー（ログイン時のみ） */}
+      {/* バッジ進捗セクション（ログイン時のみ） */}
       {isLoggedIn && (
-        <div data-testid="badge-summary" className="badge-summary mb-6">
-          <p 
-            data-testid="owned-badge-count" 
-            className="owned-count text-muted-foreground"
+        <div
+          data-testid="badge-progress-section"
+          className="bg-card rounded-lg p-6 mb-6 shadow-sm border"
+        >
+          {/* 現在ポイント */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-muted-foreground">現在のポイント</span>
+            <span data-testid="current-points" className="text-2xl font-bold">
+              {currentPoints}pt
+            </span>
+          </div>
+
+          {/* 次のバッジまでの進捗 */}
+          {nextBadge ? (
+            <div data-testid="next-badge-progress">
+              <div className="flex justify-between text-sm mb-2">
+                <span data-testid="next-badge-name">
+                  次のバッジ: {nextBadge.name}
+                </span>
+                <span>
+                  {currentPoints}/{nextBadge.threshold}pt
+                </span>
+              </div>
+              <Progress
+                value={progressPercent}
+                aria-valuenow={progressPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+          ) : (
+            <div data-testid="badges-complete" className="text-center py-2">
+              <span className="text-primary font-medium">
+                🎉 すべてのバッジを取得しました！
+              </span>
+            </div>
+          )}
+
+          {/* バッジ取得数 */}
+          <p
+            data-testid="owned-badge-count"
+            className="owned-count text-muted-foreground mt-4"
           >
             {totalBadges}個中{ownedBadges}個取得
           </p>

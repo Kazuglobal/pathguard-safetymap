@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { ProfileEditDialog } from "@/components/profile/profile-edit-dialog"
 import {
   ShieldCheck,
   Target,
@@ -28,6 +29,7 @@ import {
   Images,
   ArrowRight,
   Clock,
+  Edit,
 } from "lucide-react"
 
 interface ReportSummary extends Pick<
@@ -52,6 +54,8 @@ export default function MyPage() {
   const [reports, setReports] = useState<ReportSummary[]>([])
   const [userName, setUserName] = useState("ゲスト")
   const [isReportsLoading, setIsReportsLoading] = useState(true)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [profileKey, setProfileKey] = useState(0)
 
   useEffect(() => {
     let isMounted = true
@@ -88,7 +92,7 @@ export default function MyPage() {
           .from("profiles")
           .select("display_name")
           .eq("id", user.id)
-          .single()
+          .maybeSingle()
 
         if (profileError) {
           console.warn("プロフィール名の取得に失敗しました", profileError.message)
@@ -300,7 +304,19 @@ export default function MyPage() {
                     次のレベルまであと {pointsToNextLevel} pt
                   </CardDescription>
                 </div>
-                <CardIcon icon={<ShieldCheck className="h-6 w-6" />} color="info" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20"
+                    onClick={() => setIsEditDialogOpen(true)}
+                    data-testid="profile-edit-button"
+                    aria-label="プロフィール編集"
+                  >
+                    <Edit className="h-5 w-5" />
+                  </Button>
+                  <CardIcon icon={<ShieldCheck className="h-6 w-6" />} color="info" />
+                </div>
               </div>
             </CardHeader>
             <CardContent className="relative space-y-6">
@@ -450,6 +466,31 @@ export default function MyPage() {
           </Card>
         </section>
       </div>
+
+      <ProfileEditDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onProfileUpdated={() => {
+          setProfileKey((k) => k + 1)
+          // Reload profile data
+          if (supabase) {
+            supabase.auth.getUser().then(({ data: { user } }) => {
+              if (user) {
+                supabase
+                  .from("profiles")
+                  .select("display_name")
+                  .eq("id", user.id)
+                  .maybeSingle()
+                  .then(({ data }) => {
+                    if (data?.display_name) {
+                      setUserName(data.display_name)
+                    }
+                  })
+              }
+            })
+          }
+        }}
+      />
     </div>
   )
 }
