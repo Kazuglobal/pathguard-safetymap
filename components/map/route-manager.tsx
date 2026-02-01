@@ -1,7 +1,9 @@
 "use client"
 
-import * as React from "react"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
+import Map, { Layer, Source } from "react-map-gl/mapbox"
+import type { MapLayerMouseEvent } from "react-map-gl"
+import "mapbox-gl/dist/mapbox-gl.css"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -26,11 +28,88 @@ import {
   Route as RouteIcon,
 } from "lucide-react"
 import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
+import { DEFAULT_MAPBOX_STYLE, getMapboxToken } from "@/lib/mapbox-config"
+
+const DEFAULT_VIEW_STATE = {
+  longitude: 139.753,
+  latitude: 35.6844,
+  zoom: 12,
+}
 
 type ViewMode = "list" | "creation" | "edit"
 
 interface RouteManagerProps {
   onRouteSelect?: (route: UserRoute) => void
+}
+
+interface RouteFormFieldsProps {
+  routeName: string
+  routeDescription: string
+  validationError: string | null
+  error: string | null
+  onRouteNameChange: (value: string) => void
+  onRouteDescriptionChange: (value: string) => void
+}
+
+function RouteFormFields({
+  routeName,
+  routeDescription,
+  validationError,
+  error,
+  onRouteNameChange,
+  onRouteDescriptionChange,
+}: RouteFormFieldsProps) {
+  return (
+    <>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">ルート名 *</label>
+        <Input
+          data-testid="route-name-input"
+          value={routeName}
+          onChange={(e) => onRouteNameChange(e.target.value)}
+          placeholder="例：通学路A"
+          maxLength={100}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">説明（任意）</label>
+        <Textarea
+          data-testid="route-description-input"
+          value={routeDescription}
+          onChange={(e) => onRouteDescriptionChange(e.target.value)}
+          placeholder="ルートの説明を入力"
+          rows={2}
+        />
+      </div>
+
+      {(validationError || error) && (
+        <p className="text-sm text-destructive">{validationError || error}</p>
+      )}
+    </>
+  )
+}
+
+interface RouteFormActionsProps {
+  onCancel: () => void
+  onSave: () => void
+}
+
+function RouteFormActions({ onCancel, onSave }: RouteFormActionsProps) {
+  return (
+    <div className="flex justify-end gap-2">
+      <Button
+        data-testid="cancel-route-button"
+        variant="outline"
+        onClick={onCancel}
+      >
+        キャンセル
+      </Button>
+      <Button data-testid="save-route-button" onClick={onSave}>
+        保存
+      </Button>
+    </div>
+  )
 }
 
 export function RouteManager({ onRouteSelect }: RouteManagerProps) {
@@ -45,6 +124,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     refreshRoutes,
   } = useUserRoutes()
 
+  const mapToken = useMemo(() => getMapboxToken(), [])
+
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const [editingRoute, setEditingRoute] = useState<UserRoute | null>(null)
@@ -55,6 +136,41 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const [routeDescription, setRouteDescription] = useState("")
   const [creationPoints, setCreationPoints] = useState<[number, number][]>([])
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [pointLat, setPointLat] = useState("")
+  const [pointLng, setPointLng] = useState("")
+
+  const pointsGeoJson = useMemo(() => {
+    return {
+      type: "FeatureCollection",
+      features: creationPoints.map((coordinate, index) => ({
+        type: "Feature",
+        properties: { index },
+        geometry: {
+          type: "Point",
+          coordinates: coordinate,
+        },
+      })),
+    }
+  }, [creationPoints])
+
+  const lineGeoJson = useMemo(() => {
+    return {
+      type: "FeatureCollection",
+      features:
+        creationPoints.length >= 2
+          ? [
+              {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "LineString",
+                  coordinates: creationPoints,
+                },
+              },
+            ]
+          : [],
+    }
+  }, [creationPoints])
 
   const resetFormState = useCallback(() => {
     setRouteName("")
@@ -62,6 +178,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setCreationPoints([])
     setValidationError(null)
     setEditingRoute(null)
+    setPointLat("")
+    setPointLng("")
   }, [])
 
   const handleRouteClick = useCallback(
@@ -105,6 +223,42 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setCreationPoints((prev) => prev.slice(0, -1))
   }, [])
 
+  const appendPoint = useCallback((lng: number, lat: number, clearInputs: boolean) => {
+    setCreationPoints((prev) => [...prev, [lng, lat]])
+    if (clearInputs) {
+      setPointLat("")
+      setPointLng("")
+    }
+    setValidationError(null)
+  }, [])
+
+  const handleAddPoint = useCallback(() => {
+    const lat = Number.parseFloat(pointLat)
+    const lng = Number.parseFloat(pointLng)
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      setValidationError("緯度・経度を数値で入力してください")
+      return
+    }
+
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setValidationError("緯度・経度の範囲が正しくありません")
+      return
+    }
+
+    appendPoint(lng, lat, true)
+  }, [appendPoint, pointLat, pointLng])
+
+  const handleMapClick = useCallback(
+    (event: MapLayerMouseEvent) => {
+      if (viewMode !== "creation") {
+        return
+      }
+      appendPoint(event.lngLat.lng, event.lngLat.lat, false)
+    },
+    [appendPoint, viewMode]
+  )
+
   const validateForm = useCallback((): boolean => {
     if (!routeName.trim()) {
       setValidationError("ルート名を入力してください")
@@ -114,9 +268,13 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       setValidationError("ルート名は100文字以内で入力してください")
       return false
     }
+    if (viewMode === "creation" && creationPoints.length < 2) {
+      setValidationError("ルートには2つ以上のポイントが必要です")
+      return false
+    }
     setValidationError(null)
     return true
-  }, [routeName])
+  }, [routeName, viewMode, creationPoints])
 
   const handleSaveRoute = useCallback(async () => {
     if (!validateForm()) {
@@ -124,13 +282,15 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     }
 
     if (viewMode === "creation") {
+      const [startLng, startLat] = creationPoints[0]!
+      const [endLng, endLat] = creationPoints[creationPoints.length - 1]!
       const input: CreateRouteInput = {
         name: routeName.trim(),
         description: routeDescription.trim() || undefined,
-        start_lat: creationPoints[0]?.[1] || 0,
-        start_lng: creationPoints[0]?.[0] || 0,
-        end_lat: creationPoints[creationPoints.length - 1]?.[1] || 0,
-        end_lng: creationPoints[creationPoints.length - 1]?.[0] || 0,
+        start_lat: startLat,
+        start_lng: startLng,
+        end_lat: endLat,
+        end_lng: endLng,
         start_address: "起点",
         end_address: "終点",
         route_geometry:
@@ -173,8 +333,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
 
   const handleConfirmDelete = useCallback(async () => {
     if (routeToDelete) {
-      await deleteRoute(routeToDelete.id)
-      setRouteToDelete(null)
+      const success = await deleteRoute(routeToDelete.id)
+      if (success) {
+        setRouteToDelete(null)
+      }
     }
   }, [routeToDelete, deleteRoute])
 
@@ -237,6 +399,15 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
         </Button>
       </div>
 
+      {viewMode === "list" && error && routes.length > 0 && (
+        <div
+          data-testid="route-manager-inline-error"
+          className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          {error}
+        </div>
+      )}
+
       {/* Creation Panel */}
       {viewMode === "creation" && (
         <Card data-testid="route-creation-panel">
@@ -245,34 +416,46 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              地図をクリックしてルートのポイントを追加してください
+              地図をクリック（または座標入力）してルートのポイントを追加してください
             </p>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">ルート名 *</label>
-              <Input
-                data-testid="route-name-input"
-                value={routeName}
-                onChange={(e) => setRouteName(e.target.value)}
-                placeholder="例：通学路A"
-                maxLength={100}
-              />
-            </div>
+            <RouteFormFields
+              routeName={routeName}
+              routeDescription={routeDescription}
+              validationError={validationError}
+              error={error}
+              onRouteNameChange={setRouteName}
+              onRouteDescriptionChange={setRouteDescription}
+            />
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">説明（任意）</label>
-              <Textarea
-                data-testid="route-description-input"
-                value={routeDescription}
-                onChange={(e) => setRouteDescription(e.target.value)}
-                placeholder="ルートの説明を入力"
-                rows={2}
-              />
+              <label className="text-sm font-medium">ポイント追加</label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  data-testid="route-point-lat-input"
+                  value={pointLat}
+                  onChange={(e) => setPointLat(e.target.value)}
+                  placeholder="緯度"
+                />
+                <Input
+                  data-testid="route-point-lng-input"
+                  value={pointLng}
+                  onChange={(e) => setPointLng(e.target.value)}
+                  placeholder="経度"
+                />
+                <Button
+                  data-testid="add-point-button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddPoint}
+                >
+                  追加
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                例: 35.6895, 139.6917
+              </p>
             </div>
-
-            {(validationError || error) && (
-              <p className="text-sm text-destructive">{validationError || error}</p>
-            )}
 
             <div className="flex items-center gap-2">
               <Button
@@ -290,21 +473,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               </span>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                data-testid="cancel-route-button"
-                variant="outline"
-                onClick={handleCancelClick}
-              >
-                キャンセル
-              </Button>
-              <Button
-                data-testid="save-route-button"
-                onClick={handleSaveRoute}
-              >
-                保存
-              </Button>
-            </div>
+            <RouteFormActions
+              onCancel={handleCancelClick}
+              onSave={handleSaveRoute}
+            />
           </CardContent>
         </Card>
       )}
@@ -316,47 +488,19 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             <CardTitle className="text-base">ルートを編集</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">ルート名 *</label>
-              <Input
-                data-testid="route-name-input"
-                value={routeName}
-                onChange={(e) => setRouteName(e.target.value)}
-                placeholder="例：通学路A"
-                maxLength={100}
-              />
-            </div>
+            <RouteFormFields
+              routeName={routeName}
+              routeDescription={routeDescription}
+              validationError={validationError}
+              error={error}
+              onRouteNameChange={setRouteName}
+              onRouteDescriptionChange={setRouteDescription}
+            />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">説明（任意）</label>
-              <Textarea
-                data-testid="route-description-input"
-                value={routeDescription}
-                onChange={(e) => setRouteDescription(e.target.value)}
-                placeholder="ルートの説明を入力"
-                rows={2}
-              />
-            </div>
-
-            {(validationError || error) && (
-              <p className="text-sm text-destructive">{validationError || error}</p>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-                data-testid="cancel-route-button"
-                variant="outline"
-                onClick={handleCancelClick}
-              >
-                キャンセル
-              </Button>
-              <Button
-                data-testid="save-route-button"
-                onClick={handleSaveRoute}
-              >
-                保存
-              </Button>
-            </div>
+            <RouteFormActions
+              onCancel={handleCancelClick}
+              onSave={handleSaveRoute}
+            />
           </CardContent>
         </Card>
       )}
@@ -398,12 +542,54 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       {/* Map Container */}
       <div
         data-testid="route-map-container"
-        className="h-64 bg-muted rounded-lg flex items-center justify-center"
+        className="h-64 bg-muted rounded-lg overflow-hidden relative"
       >
-        <div className="text-muted-foreground text-sm flex items-center gap-2">
-          <MapIcon className="h-5 w-5" />
-          マップ表示エリア
-        </div>
+        {mapToken ? (
+          <Map
+            mapboxAccessToken={mapToken}
+            mapStyle={DEFAULT_MAPBOX_STYLE}
+            initialViewState={DEFAULT_VIEW_STATE}
+            onClick={viewMode === "creation" ? handleMapClick : undefined}
+            cursor={viewMode === "creation" ? "crosshair" : "grab"}
+            attributionControl={false}
+            style={{ width: "100%", height: "100%" }}
+          >
+            {creationPoints.length > 1 && (
+              <Source id="route-line-source" type="geojson" data={lineGeoJson}>
+                <Layer
+                  id="route-line-layer"
+                  type="line"
+                  layout={{ "line-join": "round", "line-cap": "round" }}
+                  paint={{ "line-color": "#2563eb", "line-width": 4 }}
+                />
+              </Source>
+            )}
+            {creationPoints.length > 0 && (
+              <Source id="route-points-source" type="geojson" data={pointsGeoJson}>
+                <Layer
+                  id="route-points-layer"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 6,
+                    "circle-color": "#2563eb",
+                    "circle-stroke-width": 2,
+                    "circle-stroke-color": "#ffffff",
+                  }}
+                />
+              </Source>
+            )}
+          </Map>
+        ) : (
+          <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+            <MapIcon className="h-5 w-5 mr-2" />
+            マップを表示するにはトークンが必要です
+          </div>
+        )}
+        {mapToken && viewMode === "creation" && (
+          <div className="absolute left-3 top-3 rounded-md bg-white/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+            クリックでポイント追加
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -419,6 +605,11 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               この操作は取り消せません。
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <p className="text-sm text-destructive" data-testid="delete-error">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <Button
               data-testid="cancel-delete-button"

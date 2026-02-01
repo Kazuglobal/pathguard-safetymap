@@ -207,7 +207,7 @@ export function useUserRoutes() {
         const { error: updateError } = await supabase
           .from("user_routes")
           .update(updateData)
-          .eq("id", id)
+          .match({ id, user_id: user.id })
 
         if (updateError) {
           setError(updateError.message)
@@ -248,7 +248,7 @@ export function useUserRoutes() {
         const { error: deleteError } = await supabase
           .from("user_routes")
           .delete()
-          .eq("id", id)
+          .match({ id, user_id: user.id })
 
         if (deleteError) {
           setError(deleteError.message)
@@ -278,21 +278,32 @@ export function useUserRoutes() {
       }
 
       try {
-        // First, set all routes to non-primary - use ref to get current routes
         const currentRoutes = routesRef.current
         const currentPrimary = currentRoutes.find((r) => r.is_favorite)
-        if (currentPrimary && currentPrimary.id !== id) {
-          await supabase
-            .from("user_routes")
-            .update({ is_favorite: false })
-            .eq("id", currentPrimary.id)
+        if (currentPrimary?.id === id) {
+          return
+        }
+
+        const { error: clearError } = await supabase
+          .from("user_routes")
+          .update({ is_favorite: false })
+          .eq("user_id", user.id)
+
+        if (clearError) {
+          setError(clearError.message)
+          return
         }
 
         // Then set the new primary
-        await supabase
+        const { error: setErrorResult } = await supabase
           .from("user_routes")
           .update({ is_favorite: true })
-          .eq("id", id)
+          .match({ id, user_id: user.id })
+
+        if (setErrorResult) {
+          setError(setErrorResult.message)
+          return
+        }
 
         await fetchRoutes()
       } catch (err) {

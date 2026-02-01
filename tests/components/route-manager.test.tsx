@@ -253,6 +253,18 @@ describe('RouteManager Component', () => {
       const nameInput = screen.getByTestId('route-name-input')
       await userEvent.type(nameInput, 'テスト通学路')
 
+      const latInput = screen.getByTestId('route-point-lat-input')
+      const lngInput = screen.getByTestId('route-point-lng-input')
+      const addPointButton = screen.getByTestId('add-point-button')
+
+      await userEvent.type(latInput, '35.6895')
+      await userEvent.type(lngInput, '139.6917')
+      await userEvent.click(addPointButton)
+
+      await userEvent.type(latInput, '35.6900')
+      await userEvent.type(lngInput, '139.7000')
+      await userEvent.click(addPointButton)
+
       await userEvent.click(screen.getByTestId('save-route-button'))
 
       await waitFor(() => {
@@ -549,6 +561,18 @@ describe('RouteManager Component', () => {
 
       const nameInput = screen.getByTestId('route-name-input')
       await userEvent.type(nameInput, 'テスト')
+
+      const latInput = screen.getByTestId('route-point-lat-input')
+      const lngInput = screen.getByTestId('route-point-lng-input')
+      const addPointButton = screen.getByTestId('add-point-button')
+
+      await userEvent.type(latInput, '35.6895')
+      await userEvent.type(lngInput, '139.6917')
+      await userEvent.click(addPointButton)
+
+      await userEvent.type(latInput, '35.6900')
+      await userEvent.type(lngInput, '139.7000')
+      await userEvent.click(addPointButton)
 
       await userEvent.click(screen.getByTestId('save-route-button'))
 

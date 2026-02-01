@@ -33,9 +33,11 @@ vi.mock('@supabase/ssr', () => ({
       insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
       update: vi.fn(() => ({
         eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
       })),
       delete: vi.fn(() => ({
         eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
       })),
     })),
     auth: {
@@ -313,6 +315,7 @@ describe('useUserRoutes Hook', () => {
     it('updateRoute modifies existing route', async () => {
       const mockUpdate = vi.fn(() => ({
         eq: vi.fn(() => Promise.resolve({ data: { id: 'route-1' }, error: null })),
+        match: vi.fn(() => Promise.resolve({ data: { id: 'route-1' }, error: null })),
       }))
 
       const mockSupabase = {
@@ -348,6 +351,7 @@ describe('useUserRoutes Hook', () => {
     it('setPrimaryRoute updates primary flag', async () => {
       const mockUpdate = vi.fn(() => ({
         eq: vi.fn(() => Promise.resolve({ data: { id: 'route-2' }, error: null })),
+        match: vi.fn(() => Promise.resolve({ data: { id: 'route-2' }, error: null })),
       }))
 
       const mockSupabase = {
@@ -385,6 +389,7 @@ describe('useUserRoutes Hook', () => {
     it('deleteRoute removes route', async () => {
       const mockDelete = vi.fn(() => ({
         eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
       }))
 
       const mockSupabase = {
@@ -429,6 +434,7 @@ describe('useUserRoutes Hook', () => {
           })),
           delete: vi.fn(() => ({
             eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            match: vi.fn(() => Promise.resolve({ data: null, error: null })),
           })),
         })),
         auth: {
