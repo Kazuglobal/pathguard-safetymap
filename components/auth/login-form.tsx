@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/components/ui/use-toast"
 
 const OFFLINE_MESSAGE = "Supabaseに接続できません。ネットワーク接続を確認してから再試行してください。"
+const API_CONFIG_MESSAGE = "API設定エラーが発生しました。環境変数が正しく設定されているか確認してください。"
 
 const resolveErrorMessage = (error: unknown, fallback: string) => {
   const message =
@@ -22,6 +23,9 @@ const resolveErrorMessage = (error: unknown, fallback: string) => {
   }
   if (message.includes("Invalid login credentials")) {
     return "メールアドレスまたはパスワードが正しくありません。"
+  }
+  if (message.includes("Invalid API") || message.includes("invalid api") || message.includes("Invalid URL") || message.includes("example.supabase.co")) {
+    return API_CONFIG_MESSAGE
   }
   return message || fallback
 }
