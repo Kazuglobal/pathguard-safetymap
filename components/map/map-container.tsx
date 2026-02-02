@@ -1357,9 +1357,9 @@ export default function MapContainer() {
                 </div>
               </div>
 
-              {/* 下部の確認バー */}
-              <div className="absolute bottom-4 left-4 right-4 z-50 mobile-bottom-bar">
-                <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden safe-area-bottom">
+              {/* 下部の確認バー - ナビゲーションバーの上に表示 */}
+              <div className="absolute bottom-20 left-3 right-3 z-50 mobile-bottom-bar">
+                <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
                   {selectedLocation ? (
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-3">
