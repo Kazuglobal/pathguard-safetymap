@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useRef, useEffect } from "react"
 import Map, { Layer, Source } from "react-map-gl/mapbox"
-import type { MapLayerMouseEvent } from "react-map-gl"
+import type { MapRef, MapMouseEvent, MapTouchEvent } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
+import * as turf from "@turf/turf"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,9 +28,16 @@ import {
   MapIcon,
   AlertCircle,
   Route as RouteIcon,
+  MousePointerClick,
+  Pencil,
+  Navigation,
+  MapPin,
+  Loader2,
 } from "lucide-react"
 import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
 import { DEFAULT_MAPBOX_STYLE, getMapboxToken } from "@/lib/mapbox-config"
+
+type InputMode = "click" | "draw" | "route"
 
 const DEFAULT_VIEW_STATE = {
   longitude: 139.753,
@@ -141,31 +149,45 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const [pointLat, setPointLat] = useState("")
   const [pointLng, setPointLng] = useState("")
 
-  const pointsGeoJson = useMemo(() => {
+  // Drawing mode state
+  const [inputMode, setInputMode] = useState<InputMode>("route")
+  const [isDrawing, setIsDrawing] = useState(false)
+  const mapRef = useRef<MapRef | null>(null)
+  const lastPointRef = useRef<[number, number] | null>(null)
+
+  // Route search mode state
+  const [startPoint, setStartPoint] = useState<[number, number] | null>(null)
+  const [endPoint, setEndPoint] = useState<[number, number] | null>(null)
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false)
+
+  // Minimum distance between points during drawing (in meters)
+  const MIN_POINT_DISTANCE = 10
+
+  const pointsGeoJson = useMemo((): GeoJSON.FeatureCollection => {
     return {
-      type: "FeatureCollection",
+      type: "FeatureCollection" as const,
       features: creationPoints.map((coordinate, index) => ({
-        type: "Feature",
+        type: "Feature" as const,
         properties: { index },
         geometry: {
-          type: "Point",
+          type: "Point" as const,
           coordinates: coordinate,
         },
       })),
     }
   }, [creationPoints])
 
-  const lineGeoJson = useMemo(() => {
+  const lineGeoJson = useMemo((): GeoJSON.FeatureCollection => {
     return {
-      type: "FeatureCollection",
+      type: "FeatureCollection" as const,
       features:
         creationPoints.length >= 2
           ? [
               {
-                type: "Feature",
+                type: "Feature" as const,
                 properties: {},
                 geometry: {
-                  type: "LineString",
+                  type: "LineString" as const,
                   coordinates: creationPoints,
                 },
               },
@@ -182,6 +204,11 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setEditingRoute(null)
     setPointLat("")
     setPointLng("")
+    setIsDrawing(false)
+    lastPointRef.current = null
+    setStartPoint(null)
+    setEndPoint(null)
+    setIsLoadingRoute(false)
   }, [])
 
   const handleRouteClick = useCallback(
@@ -259,15 +286,268 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     appendPoint(lng, lat, true)
   }, [appendPoint, pointLat, pointLng])
 
-  const handleMapClick = useCallback(
-    (event: MapLayerMouseEvent) => {
-      if (viewMode !== "creation") {
+  // Fetch route from Mapbox Directions API
+  const fetchRouteFromAPI = useCallback(
+    async (start: [number, number], end: [number, number]) => {
+      setIsLoadingRoute(true)
+      setValidationError(null)
+
+      try {
+        const response = await fetch("/api/mapbox/directions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "getRoute",
+            waypoints: [
+              { coordinates: start },
+              { coordinates: end },
+            ],
+            profile: "walking",
+            geometries: "geojson",
+            overview: "full",
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error("ルートの取得に失敗しました")
+        }
+
+        const data = await response.json()
+
+        if (data.routes && data.routes.length > 0) {
+          const routeCoordinates = data.routes[0].geometry
+            .coordinates as [number, number][]
+          setCreationPoints(routeCoordinates)
+        } else {
+          setValidationError("ルートが見つかりませんでした")
+        }
+      } catch (err) {
+        setValidationError(
+          err instanceof Error ? err.message : "ルートの取得に失敗しました"
+        )
+      } finally {
+        setIsLoadingRoute(false)
+      }
+    },
+    []
+  )
+
+  // Handle map click for route mode (set start/end points)
+  const handleRoutePointClick = useCallback(
+    (event: MapMouseEvent) => {
+      if (viewMode !== "creation" || inputMode !== "route") {
         return
       }
-      appendPoint(event.lngLat.lng, event.lngLat.lat, false)
+
+      const clickedPoint: [number, number] = [event.lngLat.lng, event.lngLat.lat]
+
+      if (!startPoint) {
+        setStartPoint(clickedPoint)
+        setCreationPoints([clickedPoint])
+        setValidationError(null)
+      } else if (!endPoint) {
+        setEndPoint(clickedPoint)
+        // Fetch route when both points are set
+        fetchRouteFromAPI(startPoint, clickedPoint)
+      }
     },
-    [appendPoint, viewMode]
+    [viewMode, inputMode, startPoint, endPoint, fetchRouteFromAPI]
   )
+
+  // Reset route points
+  const handleResetRoutePoints = useCallback(() => {
+    setStartPoint(null)
+    setEndPoint(null)
+    setCreationPoints([])
+    setValidationError(null)
+  }, [])
+
+  const handleMapClick = useCallback(
+    (event: MapMouseEvent) => {
+      if (viewMode !== "creation") return
+
+      if (inputMode === "click") {
+        appendPoint(event.lngLat.lng, event.lngLat.lat, false)
+      } else if (inputMode === "route") {
+        handleRoutePointClick(event)
+      }
+    },
+    [appendPoint, viewMode, inputMode, handleRoutePointClick]
+  )
+
+  // Calculate distance between two points in meters
+  const getDistanceMeters = useCallback(
+    (point1: [number, number], point2: [number, number]): number => {
+      const from = turf.point(point1)
+      const to = turf.point(point2)
+      // @ts-expect-error - turf types are not fully compatible
+      return turf.distance(from, to, { units: "meters" })
+    },
+    []
+  )
+
+  // Simplify the drawn route to reduce point count
+  const simplifyRoute = useCallback(
+    (points: [number, number][]): [number, number][] => {
+      if (points.length < 3) return points
+
+      // @ts-expect-error - turf types are not fully compatible
+      const line = turf.lineString(points)
+      // Tolerance in kilometers (about 5 meters)
+      // @ts-expect-error - turf types are not fully compatible
+      const simplified = turf.simplify(line, {
+        tolerance: 0.005,
+        highQuality: true,
+      })
+
+      return simplified.geometry.coordinates as [number, number][]
+    },
+    []
+  )
+
+  // Handle drawing start (mouse down or touch start)
+  const handleDrawStart = useCallback(
+    (event: MapMouseEvent) => {
+      if (viewMode !== "creation" || inputMode !== "draw") {
+        return
+      }
+
+      event.preventDefault()
+      setIsDrawing(true)
+      const point: [number, number] = [event.lngLat.lng, event.lngLat.lat]
+      setCreationPoints([point])
+      lastPointRef.current = point
+      setValidationError(null)
+
+      // Disable map panning during drawing
+      if (mapRef.current) {
+        mapRef.current.getMap().dragPan.disable()
+      }
+    },
+    [viewMode, inputMode]
+  )
+
+  // Handle drawing move (mouse move or touch move)
+  const handleDrawMove = useCallback(
+    (event: MapMouseEvent) => {
+      if (!isDrawing || viewMode !== "creation" || inputMode !== "draw") {
+        return
+      }
+
+      const newPoint: [number, number] = [event.lngLat.lng, event.lngLat.lat]
+
+      // Only add point if it's far enough from the last point
+      if (lastPointRef.current) {
+        const distance = getDistanceMeters(lastPointRef.current, newPoint)
+        if (distance >= MIN_POINT_DISTANCE) {
+          setCreationPoints((prev) => [...prev, newPoint])
+          lastPointRef.current = newPoint
+        }
+      }
+    },
+    [isDrawing, viewMode, inputMode, getDistanceMeters, MIN_POINT_DISTANCE]
+  )
+
+  // Touch event handlers
+  const handleTouchDrawStart = useCallback(
+    (event: MapTouchEvent) => {
+      if (viewMode !== "creation" || inputMode !== "draw") {
+        return
+      }
+
+      event.preventDefault()
+      setIsDrawing(true)
+      const point: [number, number] = [event.lngLat.lng, event.lngLat.lat]
+      setCreationPoints([point])
+      lastPointRef.current = point
+      setValidationError(null)
+
+      if (mapRef.current) {
+        mapRef.current.getMap().dragPan.disable()
+      }
+    },
+    [viewMode, inputMode]
+  )
+
+  const handleTouchDrawMove = useCallback(
+    (event: MapTouchEvent) => {
+      if (!isDrawing || viewMode !== "creation" || inputMode !== "draw") {
+        return
+      }
+
+      const newPoint: [number, number] = [event.lngLat.lng, event.lngLat.lat]
+
+      if (lastPointRef.current) {
+        const distance = getDistanceMeters(lastPointRef.current, newPoint)
+        if (distance >= MIN_POINT_DISTANCE) {
+          setCreationPoints((prev) => [...prev, newPoint])
+          lastPointRef.current = newPoint
+        }
+      }
+    },
+    [isDrawing, viewMode, inputMode, getDistanceMeters, MIN_POINT_DISTANCE]
+  )
+
+  // Handle mode toggle
+  const handleModeToggle = useCallback((mode: InputMode) => {
+    setInputMode(mode)
+    setIsDrawing(false)
+    lastPointRef.current = null
+    // Reset route mode state when switching modes
+    setStartPoint(null)
+    setEndPoint(null)
+    setCreationPoints([])
+    setValidationError(null)
+  }, [])
+
+  // Handle drawing end when touch/mouse leaves the map or ends outside
+  const finishDrawing = useCallback(() => {
+    if (!isDrawing) return
+
+    setIsDrawing(false)
+    lastPointRef.current = null
+
+    if (mapRef.current) {
+      mapRef.current.getMap().dragPan.enable()
+    }
+
+    setCreationPoints((prev) => {
+      if (prev.length < 2) {
+        setValidationError("もう少し長くなぞってください")
+        return prev
+      }
+      return simplifyRoute(prev)
+    })
+  }, [isDrawing, simplifyRoute])
+
+  // Listen for touch/mouse end events at document level to handle
+  // cases where the user's finger leaves the map area
+  useEffect(() => {
+    if (!isDrawing) return
+
+    const handleGlobalEnd = () => {
+      finishDrawing()
+    }
+
+    // Prevent page scroll while drawing
+    const preventScroll = (e: TouchEvent) => {
+      if (isDrawing) {
+        e.preventDefault()
+      }
+    }
+
+    document.addEventListener("mouseup", handleGlobalEnd)
+    document.addEventListener("touchend", handleGlobalEnd)
+    document.addEventListener("touchcancel", handleGlobalEnd)
+    document.addEventListener("touchmove", preventScroll, { passive: false })
+
+    return () => {
+      document.removeEventListener("mouseup", handleGlobalEnd)
+      document.removeEventListener("touchend", handleGlobalEnd)
+      document.removeEventListener("touchcancel", handleGlobalEnd)
+      document.removeEventListener("touchmove", preventScroll)
+    }
+  }, [isDrawing, finishDrawing])
 
   const validateForm = useCallback((): boolean => {
     if (!routeName.trim()) {
@@ -425,9 +705,93 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             <CardTitle className="text-base">新しいルートを作成</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Input Mode Toggle */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">入力方法</label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  data-testid="route-mode-button"
+                  variant={inputMode === "route" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleModeToggle("route")}
+                  className="flex-1"
+                >
+                  <Navigation className="h-4 w-4 mr-2" />
+                  自動ルート
+                </Button>
+                <Button
+                  data-testid="draw-mode-button"
+                  variant={inputMode === "draw" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleModeToggle("draw")}
+                  className="flex-1"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  なぞって描画
+                </Button>
+                <Button
+                  data-testid="click-mode-button"
+                  variant={inputMode === "click" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleModeToggle("click")}
+                  className="flex-1"
+                >
+                  <MousePointerClick className="h-4 w-4 mr-2" />
+                  クリック追加
+                </Button>
+              </div>
+            </div>
+
             <p className="text-sm text-muted-foreground">
-              地図をクリック（または座標入力）してルートのポイントを追加してください
+              {inputMode === "route"
+                ? "開始地点と終了地点をタップすると、道路に沿ったルートを自動生成します"
+                : inputMode === "draw"
+                  ? "地図上で通学路をなぞって描画してください"
+                  : "地図をクリック（または座標入力）してポイントを追加してください"}
             </p>
+
+            {/* Route mode: show start/end points status */}
+            {inputMode === "route" && (
+              <div className="space-y-2 rounded-md border p-3 bg-muted/50">
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-green-600" />
+                  <span>開始地点：</span>
+                  {startPoint ? (
+                    <span className="text-green-600">設定済み</span>
+                  ) : (
+                    <span className="text-muted-foreground">地図をタップ</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-red-600" />
+                  <span>終了地点：</span>
+                  {endPoint ? (
+                    <span className="text-red-600">設定済み</span>
+                  ) : startPoint ? (
+                    <span className="text-muted-foreground">地図をタップ</span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </div>
+                {isLoadingRoute && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    ルートを検索中...
+                  </div>
+                )}
+                {(startPoint || endPoint) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetRoutePoints}
+                    className="mt-2"
+                  >
+                    <Undo2 className="h-4 w-4 mr-2" />
+                    地点をリセット
+                  </Button>
+                )}
+              </div>
+            )}
 
             <RouteFormFields
               routeName={routeName}
@@ -438,34 +802,36 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               onRouteDescriptionChange={setRouteDescription}
             />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">ポイント追加</label>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  data-testid="route-point-lat-input"
-                  value={pointLat}
-                  onChange={(e) => setPointLat(e.target.value)}
-                  placeholder="緯度"
-                />
-                <Input
-                  data-testid="route-point-lng-input"
-                  value={pointLng}
-                  onChange={(e) => setPointLng(e.target.value)}
-                  placeholder="経度"
-                />
-                <Button
-                  data-testid="add-point-button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddPoint}
-                >
-                  追加
-                </Button>
+            {inputMode === "click" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">ポイント追加</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    data-testid="route-point-lat-input"
+                    value={pointLat}
+                    onChange={(e) => setPointLat(e.target.value)}
+                    placeholder="緯度"
+                  />
+                  <Input
+                    data-testid="route-point-lng-input"
+                    value={pointLng}
+                    onChange={(e) => setPointLng(e.target.value)}
+                    placeholder="経度"
+                  />
+                  <Button
+                    data-testid="add-point-button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddPoint}
+                  >
+                    追加
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  例: 35.6895, 139.6917
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                例: 35.6895, 139.6917
-              </p>
-            </div>
+            )}
 
             <div className="flex items-center gap-2">
               <Button
@@ -554,14 +920,61 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       <div
         data-testid="route-map-container"
         className="h-64 bg-muted rounded-lg overflow-hidden relative"
+        style={{
+          // Only disable touch actions while actively drawing
+          touchAction: isDrawing ? "none" : "auto",
+        }}
       >
         {mapToken ? (
           <Map
+            ref={mapRef}
             mapboxAccessToken={mapToken}
             mapStyle={DEFAULT_MAPBOX_STYLE}
             initialViewState={DEFAULT_VIEW_STATE}
-            onClick={viewMode === "creation" ? handleMapClick : undefined}
-            cursor={viewMode === "creation" ? "crosshair" : "grab"}
+            onClick={
+              viewMode === "creation" && (inputMode === "click" || inputMode === "route")
+                ? handleMapClick
+                : undefined
+            }
+            onMouseDown={
+              viewMode === "creation" && inputMode === "draw"
+                ? handleDrawStart
+                : undefined
+            }
+            onMouseMove={
+              viewMode === "creation" && inputMode === "draw"
+                ? handleDrawMove
+                : undefined
+            }
+            onMouseUp={
+              viewMode === "creation" && inputMode === "draw"
+                ? finishDrawing
+                : undefined
+            }
+            onTouchStart={
+              viewMode === "creation" && inputMode === "draw"
+                ? handleTouchDrawStart
+                : undefined
+            }
+            onTouchMove={
+              viewMode === "creation" && inputMode === "draw"
+                ? handleTouchDrawMove
+                : undefined
+            }
+            onTouchEnd={
+              viewMode === "creation" && inputMode === "draw"
+                ? finishDrawing
+                : undefined
+            }
+            cursor={
+              viewMode === "creation"
+                ? inputMode === "draw"
+                  ? isDrawing
+                    ? "grabbing"
+                    : "crosshair"
+                  : "crosshair"
+                : "grab"
+            }
             attributionControl={false}
             style={{ width: "100%", height: "100%" }}
           >
@@ -571,19 +984,84 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   id="route-line-layer"
                   type="line"
                   layout={{ "line-join": "round", "line-cap": "round" }}
-                  paint={{ "line-color": "#2563eb", "line-width": 4 }}
+                  paint={{
+                    "line-color": isDrawing ? "#60a5fa" : "#2563eb",
+                    "line-width": 4,
+                  }}
                 />
               </Source>
             )}
-            {creationPoints.length > 0 && (
+            {creationPoints.length > 0 && inputMode !== "route" && (
               <Source id="route-points-source" type="geojson" data={pointsGeoJson}>
                 <Layer
                   id="route-points-layer"
                   type="circle"
                   paint={{
-                    "circle-radius": 6,
+                    "circle-radius": inputMode === "draw" ? 4 : 6,
                     "circle-color": "#2563eb",
                     "circle-stroke-width": 2,
+                    "circle-stroke-color": "#ffffff",
+                  }}
+                />
+              </Source>
+            )}
+            {/* Start point marker */}
+            {startPoint && inputMode === "route" && (
+              <Source
+                id="start-point-source"
+                type="geojson"
+                data={{
+                  type: "FeatureCollection" as const,
+                  features: [
+                    {
+                      type: "Feature" as const,
+                      properties: {},
+                      geometry: {
+                        type: "Point" as const,
+                        coordinates: startPoint,
+                      },
+                    },
+                  ],
+                }}
+              >
+                <Layer
+                  id="start-point-layer"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 10,
+                    "circle-color": "#22c55e",
+                    "circle-stroke-width": 3,
+                    "circle-stroke-color": "#ffffff",
+                  }}
+                />
+              </Source>
+            )}
+            {/* End point marker */}
+            {endPoint && inputMode === "route" && (
+              <Source
+                id="end-point-source"
+                type="geojson"
+                data={{
+                  type: "FeatureCollection" as const,
+                  features: [
+                    {
+                      type: "Feature" as const,
+                      properties: {},
+                      geometry: {
+                        type: "Point" as const,
+                        coordinates: endPoint,
+                      },
+                    },
+                  ],
+                }}
+              >
+                <Layer
+                  id="end-point-layer"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 10,
+                    "circle-color": "#ef4444",
+                    "circle-stroke-width": 3,
                     "circle-stroke-color": "#ffffff",
                   }}
                 />
@@ -598,7 +1076,19 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
         )}
         {mapToken && viewMode === "creation" && (
           <div className="absolute left-3 top-3 rounded-md bg-white/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            クリックでポイント追加
+            {inputMode === "route"
+              ? isLoadingRoute
+                ? "ルート検索中..."
+                : !startPoint
+                  ? "開始地点をタップ"
+                  : !endPoint
+                    ? "終了地点をタップ"
+                    : "ルート生成完了"
+              : inputMode === "draw"
+                ? isDrawing
+                  ? "描画中..."
+                  : "地図をなぞって通学路を描画"
+                : "クリックでポイント追加"}
           </div>
         )}
       </div>
