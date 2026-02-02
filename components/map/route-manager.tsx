@@ -30,11 +30,14 @@ import {
   Route as RouteIcon,
   MousePointerClick,
   Pencil,
+  Navigation,
+  MapPin,
+  Loader2,
 } from "lucide-react"
 import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
 import { DEFAULT_MAPBOX_STYLE, getMapboxToken } from "@/lib/mapbox-config"
 
-type InputMode = "click" | "draw"
+type InputMode = "click" | "draw" | "route"
 
 const DEFAULT_VIEW_STATE = {
   longitude: 139.753,
@@ -147,10 +150,15 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const [pointLng, setPointLng] = useState("")
 
   // Drawing mode state
-  const [inputMode, setInputMode] = useState<InputMode>("draw")
+  const [inputMode, setInputMode] = useState<InputMode>("route")
   const [isDrawing, setIsDrawing] = useState(false)
   const mapRef = useRef<MapRef | null>(null)
   const lastPointRef = useRef<[number, number] | null>(null)
+
+  // Route search mode state
+  const [startPoint, setStartPoint] = useState<[number, number] | null>(null)
+  const [endPoint, setEndPoint] = useState<[number, number] | null>(null)
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false)
 
   // Minimum distance between points during drawing (in meters)
   const MIN_POINT_DISTANCE = 10
@@ -198,6 +206,9 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setPointLng("")
     setIsDrawing(false)
     lastPointRef.current = null
+    setStartPoint(null)
+    setEndPoint(null)
+    setIsLoadingRoute(false)
   }, [])
 
   const handleRouteClick = useCallback(
@@ -275,14 +286,93 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     appendPoint(lng, lat, true)
   }, [appendPoint, pointLat, pointLng])
 
-  const handleMapClick = useCallback(
+  // Fetch route from Mapbox Directions API
+  const fetchRouteFromAPI = useCallback(
+    async (start: [number, number], end: [number, number]) => {
+      setIsLoadingRoute(true)
+      setValidationError(null)
+
+      try {
+        const response = await fetch("/api/mapbox/directions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "getRoute",
+            waypoints: [
+              { coordinates: start },
+              { coordinates: end },
+            ],
+            profile: "walking",
+            geometries: "geojson",
+            overview: "full",
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error("ルートの取得に失敗しました")
+        }
+
+        const data = await response.json()
+
+        if (data.routes && data.routes.length > 0) {
+          const routeCoordinates = data.routes[0].geometry
+            .coordinates as [number, number][]
+          setCreationPoints(routeCoordinates)
+        } else {
+          setValidationError("ルートが見つかりませんでした")
+        }
+      } catch (err) {
+        setValidationError(
+          err instanceof Error ? err.message : "ルートの取得に失敗しました"
+        )
+      } finally {
+        setIsLoadingRoute(false)
+      }
+    },
+    []
+  )
+
+  // Handle map click for route mode (set start/end points)
+  const handleRoutePointClick = useCallback(
     (event: MapMouseEvent) => {
-      if (viewMode !== "creation" || inputMode !== "click") {
+      if (viewMode !== "creation" || inputMode !== "route") {
         return
       }
-      appendPoint(event.lngLat.lng, event.lngLat.lat, false)
+
+      const clickedPoint: [number, number] = [event.lngLat.lng, event.lngLat.lat]
+
+      if (!startPoint) {
+        setStartPoint(clickedPoint)
+        setCreationPoints([clickedPoint])
+        setValidationError(null)
+      } else if (!endPoint) {
+        setEndPoint(clickedPoint)
+        // Fetch route when both points are set
+        fetchRouteFromAPI(startPoint, clickedPoint)
+      }
     },
-    [appendPoint, viewMode, inputMode]
+    [viewMode, inputMode, startPoint, endPoint, fetchRouteFromAPI]
+  )
+
+  // Reset route points
+  const handleResetRoutePoints = useCallback(() => {
+    setStartPoint(null)
+    setEndPoint(null)
+    setCreationPoints([])
+    setValidationError(null)
+  }, [])
+
+  const handleMapClick = useCallback(
+    (event: MapMouseEvent) => {
+      if (viewMode !== "creation") return
+
+      if (inputMode === "click") {
+        appendPoint(event.lngLat.lng, event.lngLat.lat, false)
+      } else if (inputMode === "route") {
+        handleRoutePointClick(event)
+      }
+    },
+    [appendPoint, viewMode, inputMode, handleRoutePointClick]
   )
 
   // Calculate distance between two points in meters
@@ -403,6 +493,11 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setInputMode(mode)
     setIsDrawing(false)
     lastPointRef.current = null
+    // Reset route mode state when switching modes
+    setStartPoint(null)
+    setEndPoint(null)
+    setCreationPoints([])
+    setValidationError(null)
   }, [])
 
   // Handle drawing end when touch/mouse leaves the map or ends outside
@@ -613,7 +708,17 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             {/* Input Mode Toggle */}
             <div className="space-y-2">
               <label className="text-sm font-medium">入力方法</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  data-testid="route-mode-button"
+                  variant={inputMode === "route" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleModeToggle("route")}
+                  className="flex-1"
+                >
+                  <Navigation className="h-4 w-4 mr-2" />
+                  自動ルート
+                </Button>
                 <Button
                   data-testid="draw-mode-button"
                   variant={inputMode === "draw" ? "default" : "outline"}
@@ -632,16 +737,61 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   className="flex-1"
                 >
                   <MousePointerClick className="h-4 w-4 mr-2" />
-                  クリックで追加
+                  クリック追加
                 </Button>
               </div>
             </div>
 
             <p className="text-sm text-muted-foreground">
-              {inputMode === "draw"
-                ? "地図上で通学路をなぞって描画してください"
-                : "地図をクリック（または座標入力）してポイントを追加してください"}
+              {inputMode === "route"
+                ? "開始地点と終了地点をタップすると、道路に沿ったルートを自動生成します"
+                : inputMode === "draw"
+                  ? "地図上で通学路をなぞって描画してください"
+                  : "地図をクリック（または座標入力）してポイントを追加してください"}
             </p>
+
+            {/* Route mode: show start/end points status */}
+            {inputMode === "route" && (
+              <div className="space-y-2 rounded-md border p-3 bg-muted/50">
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-green-600" />
+                  <span>開始地点：</span>
+                  {startPoint ? (
+                    <span className="text-green-600">設定済み</span>
+                  ) : (
+                    <span className="text-muted-foreground">地図をタップ</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-red-600" />
+                  <span>終了地点：</span>
+                  {endPoint ? (
+                    <span className="text-red-600">設定済み</span>
+                  ) : startPoint ? (
+                    <span className="text-muted-foreground">地図をタップ</span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </div>
+                {isLoadingRoute && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    ルートを検索中...
+                  </div>
+                )}
+                {(startPoint || endPoint) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetRoutePoints}
+                    className="mt-2"
+                  >
+                    <Undo2 className="h-4 w-4 mr-2" />
+                    地点をリセット
+                  </Button>
+                )}
+              </div>
+            )}
 
             <RouteFormFields
               routeName={routeName}
@@ -771,8 +921,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
         data-testid="route-map-container"
         className="h-64 bg-muted rounded-lg overflow-hidden relative"
         style={{
-          touchAction:
-            viewMode === "creation" && inputMode === "draw" ? "none" : "auto",
+          // Only disable touch actions while actively drawing
+          touchAction: isDrawing ? "none" : "auto",
         }}
       >
         {mapToken ? (
@@ -782,7 +932,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             mapStyle={DEFAULT_MAPBOX_STYLE}
             initialViewState={DEFAULT_VIEW_STATE}
             onClick={
-              viewMode === "creation" && inputMode === "click"
+              viewMode === "creation" && (inputMode === "click" || inputMode === "route")
                 ? handleMapClick
                 : undefined
             }
@@ -841,7 +991,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                 />
               </Source>
             )}
-            {creationPoints.length > 0 && (
+            {creationPoints.length > 0 && inputMode !== "route" && (
               <Source id="route-points-source" type="geojson" data={pointsGeoJson}>
                 <Layer
                   id="route-points-layer"
@@ -850,6 +1000,68 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                     "circle-radius": inputMode === "draw" ? 4 : 6,
                     "circle-color": "#2563eb",
                     "circle-stroke-width": 2,
+                    "circle-stroke-color": "#ffffff",
+                  }}
+                />
+              </Source>
+            )}
+            {/* Start point marker */}
+            {startPoint && inputMode === "route" && (
+              <Source
+                id="start-point-source"
+                type="geojson"
+                data={{
+                  type: "FeatureCollection" as const,
+                  features: [
+                    {
+                      type: "Feature" as const,
+                      properties: {},
+                      geometry: {
+                        type: "Point" as const,
+                        coordinates: startPoint,
+                      },
+                    },
+                  ],
+                }}
+              >
+                <Layer
+                  id="start-point-layer"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 10,
+                    "circle-color": "#22c55e",
+                    "circle-stroke-width": 3,
+                    "circle-stroke-color": "#ffffff",
+                  }}
+                />
+              </Source>
+            )}
+            {/* End point marker */}
+            {endPoint && inputMode === "route" && (
+              <Source
+                id="end-point-source"
+                type="geojson"
+                data={{
+                  type: "FeatureCollection" as const,
+                  features: [
+                    {
+                      type: "Feature" as const,
+                      properties: {},
+                      geometry: {
+                        type: "Point" as const,
+                        coordinates: endPoint,
+                      },
+                    },
+                  ],
+                }}
+              >
+                <Layer
+                  id="end-point-layer"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 10,
+                    "circle-color": "#ef4444",
+                    "circle-stroke-width": 3,
                     "circle-stroke-color": "#ffffff",
                   }}
                 />
@@ -864,11 +1076,19 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
         )}
         {mapToken && viewMode === "creation" && (
           <div className="absolute left-3 top-3 rounded-md bg-white/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            {inputMode === "draw"
-              ? isDrawing
-                ? "描画中..."
-                : "地図をなぞって通学路を描画"
-              : "クリックでポイント追加"}
+            {inputMode === "route"
+              ? isLoadingRoute
+                ? "ルート検索中..."
+                : !startPoint
+                  ? "開始地点をタップ"
+                  : !endPoint
+                    ? "終了地点をタップ"
+                    : "ルート生成完了"
+              : inputMode === "draw"
+                ? isDrawing
+                  ? "描画中..."
+                  : "地図をなぞって通学路を描画"
+                : "クリックでポイント追加"}
           </div>
         )}
       </div>
