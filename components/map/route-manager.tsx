@@ -33,6 +33,7 @@ import {
   Navigation,
   MapPin,
   Loader2,
+  Search,
 } from "lucide-react"
 import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
 import { DEFAULT_MAPBOX_STYLE, getMapboxToken } from "@/lib/mapbox-config"
@@ -160,8 +161,78 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const [endPoint, setEndPoint] = useState<[number, number] | null>(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
 
+  // Location search state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<
+    { id: string; place_name: string; center: [number, number] }[]
+  >([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
   // Minimum distance between points during drawing (in meters)
   const MIN_POINT_DISTANCE = 10
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  // Location search function
+  const handleLocationSearch = useCallback(async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+
+    if (!searchQuery.trim()) return
+
+    setIsSearching(true)
+    setShowSearchResults(true)
+
+    try {
+      const response = await fetch(
+        `/api/mapbox/geocode?query=${encodeURIComponent(searchQuery)}&country=jp&language=ja`
+      )
+      const data = await response.json()
+
+      if (Array.isArray(data) && data.length > 0) {
+        setSearchResults(
+          data.map((feature: { id: string; place_name: string; center: [number, number] }) => ({
+            id: feature.id,
+            place_name: feature.place_name,
+            center: feature.center,
+          }))
+        )
+      } else {
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error("住所検索エラー:", error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [searchQuery])
+
+  // Handle search result click - move map to location
+  const handleSearchResultClick = useCallback((result: { center: [number, number]; place_name: string }) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: result.center,
+        zoom: 14,
+        duration: 1500,
+      })
+    }
+    setShowSearchResults(false)
+    setSearchQuery(result.place_name)
+  }, [])
 
   const pointsGeoJson = useMemo((): GeoJSON.FeatureCollection => {
     return {
@@ -1089,6 +1160,59 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   ? "描画中..."
                   : "地図をなぞって通学路を描画"
                 : "クリックでポイント追加"}
+          </div>
+        )}
+        {/* Location Search Box */}
+        {mapToken && (
+          <div
+            ref={searchRef}
+            className="absolute right-3 top-3 z-10"
+          >
+            <form onSubmit={handleLocationSearch} className="relative">
+              <Input
+                type="text"
+                placeholder="市町村を検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-40 sm:w-48 pr-8 bg-white/95 text-sm h-8 shadow-sm"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                variant="ghost"
+                className="absolute right-0 top-0 h-8 w-8"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Search className="h-3 w-3" />
+                )}
+              </Button>
+            </form>
+            {showSearchResults && searchResults.length > 0 && (
+              <Card className="absolute right-0 w-64 mt-1 max-h-48 overflow-auto shadow-lg">
+                <ul className="py-1">
+                  {searchResults.map((result) => (
+                    <li
+                      key={result.id}
+                      className="px-3 py-2 hover:bg-muted cursor-pointer flex items-start text-sm"
+                      onClick={() => handleSearchResultClick(result)}
+                    >
+                      <MapPin className="h-3 w-3 mr-2 mt-0.5 shrink-0 text-muted-foreground" />
+                      <span className="line-clamp-2">{result.place_name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+            {showSearchResults && searchResults.length === 0 && !isSearching && searchQuery && (
+              <Card className="absolute right-0 w-64 mt-1 shadow-lg">
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  検索結果が見つかりませんでした
+                </div>
+              </Card>
+            )}
           </div>
         )}
       </div>
