@@ -1348,7 +1348,7 @@ export default function MapContainer() {
           {isMobile && awaitingLocationSelection && (
             <>
               {/* 上部のコンパクトなガイド */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
                 <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-blue-200 px-4 py-2">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
@@ -1358,8 +1358,8 @@ export default function MapContainer() {
               </div>
 
               {/* 下部の確認バー */}
-              <div className="absolute bottom-4 left-4 right-4 z-10 mobile-bottom-bar">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden safe-area-bottom">
+              <div className="absolute bottom-4 left-4 right-4 z-50 mobile-bottom-bar">
+                <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden safe-area-bottom">
                   {selectedLocation ? (
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-3">
