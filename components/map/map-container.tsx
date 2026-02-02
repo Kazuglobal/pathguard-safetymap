@@ -1375,9 +1375,9 @@ export default function MapContainer() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-3">
+                      <div className="flex space-x-2">
                         <Button
-                          size="lg"
+                          size="default"
                           variant="outline"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
@@ -1388,19 +1388,19 @@ export default function MapContainer() {
                             }
                             toast({ title: "地点選択をキャンセルしました" });
                           }}
-                          className="flex-1 h-12 text-base"
+                          className="flex-1 h-11 text-sm"
                         >
                           キャンセル
                         </Button>
                         <Button
-                          size="lg"
+                          size="default"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             setIsReportFormOpen(true);
                           }}
-                          className="flex-1 h-12 text-base bg-blue-600 hover:bg-blue-700"
+                          className="flex-[1.5] h-11 text-sm bg-blue-600 hover:bg-blue-700"
                         >
-                          この地点で報告する
+                          報告する
                         </Button>
                       </div>
                     </div>
