@@ -100,7 +100,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   */
 
   // カメラアクセスハンドラー - モバイルではcapture属性でカメラを直接起動
-  const handleCameraAccess = (inputRef: React.RefObject<HTMLInputElement | null>, type: 'original' | 'processed') => {
+  const handleCameraAccess = (inputRef: React.RefObject<HTMLInputElement | null>) => {
     setCameraError(null)
 
     if (!inputRef.current) return
@@ -898,7 +898,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                   <Button
                     type="button"
                     variant="default"
-                    onClick={() => handleCameraAccess(originalFileInputRef, 'original')}
+                    onClick={() => handleCameraAccess(originalFileInputRef)}
                     className="flex-1 min-h-[48px] touch-manipulation"
                   >
                     <Camera className="h-4 w-4 mr-2" />
@@ -975,7 +975,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                   <Button
                     type="button"
                     variant="default"
-                    onClick={() => handleCameraAccess(processedFileInputRef, 'processed')}
+                    onClick={() => handleCameraAccess(processedFileInputRef)}
                     className="flex-1 min-h-[48px] touch-manipulation"
                   >
                     <Camera className="h-4 w-4 mr-2" />
