@@ -45,7 +45,6 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [isCameraLoading, setIsCameraLoading] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
 
   const [riskAnalysis, setRiskAnalysis] = useState<any[] | null>(null)
@@ -100,42 +99,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   }, [originalImageFile])
   */
 
-  // カメラアクセスハンドラー
-  const handleCameraAccess = async (inputRef: React.RefObject<HTMLInputElement | null>, type: 'original' | 'processed') => {
-    setIsCameraLoading(true)
+  // カメラアクセスハンドラー - モバイルではcapture属性でカメラを直接起動
+  const handleCameraAccess = (inputRef: React.RefObject<HTMLInputElement | null>, type: 'original' | 'processed') => {
     setCameraError(null)
-    
-    try {
-      // カメラアクセス許可をチェック
-      if ('mediaDevices' in navigator) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        stream.getTracks().forEach(track => track.stop()) // ストリームを停止
-        
-        // カメラアクセスが成功した場合、ファイル入力を開く
-        if (inputRef.current) {
-          inputRef.current.setAttribute('capture', 'environment')
-          inputRef.current.click()
-        }
-      } else {
-        throw new Error('カメラはサポートされていません')
-      }
-    } catch (error) {
-      console.error('Camera access error:', error)
-      setCameraError('カメラへのアクセスが拒否されました')
-      toast({
-        title: "カメラエラー",
-        description: "カメラへのアクセスが拒否されました。設定からカメラ権限を許可してください。",
-        variant: "destructive",
-      })
-      
-      // フォールバック：ファイル選択を開く
-      if (inputRef.current) {
-        inputRef.current.removeAttribute('capture')
-        inputRef.current.click()
-      }
-    } finally {
-      setIsCameraLoading(false)
-    }
+
+    if (!inputRef.current) return
+
+    // capture属性を設定してカメラを起動
+    // モバイルブラウザでは capture="environment" で背面カメラが起動する
+    inputRef.current.setAttribute('capture', 'environment')
+    inputRef.current.click()
   }
 
   // 画像選択ハンドラー（元画像）
@@ -922,18 +895,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                     <Upload className="h-4 w-4 mr-2" />
                     ギャラリー
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="default" 
+                  <Button
+                    type="button"
+                    variant="default"
                     onClick={() => handleCameraAccess(originalFileInputRef, 'original')}
-                    disabled={isCameraLoading}
                     className="flex-1 min-h-[48px] touch-manipulation"
                   >
-                    {isCameraLoading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Camera className="h-4 w-4 mr-2" />
-                    )}
+                    <Camera className="h-4 w-4 mr-2" />
                     📸 カメラ撮影
                   </Button>
                   <input
@@ -1004,18 +972,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                     <Upload className="h-4 w-4 mr-2" />
                     ギャラリー
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="default" 
+                  <Button
+                    type="button"
+                    variant="default"
                     onClick={() => handleCameraAccess(processedFileInputRef, 'processed')}
-                    disabled={isCameraLoading}
                     className="flex-1 min-h-[48px] touch-manipulation"
                   >
-                    {isCameraLoading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Camera className="h-4 w-4 mr-2" />
-                    )}
+                    <Camera className="h-4 w-4 mr-2" />
                     📸 カメラ撮影
                   </Button>
                   <input
