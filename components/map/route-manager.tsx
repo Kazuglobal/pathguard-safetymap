@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useRef } from "react"
+import { useState, useCallback, useMemo, useRef, useEffect } from "react"
 import Map, { Layer, Source } from "react-map-gl/mapbox"
 import type { MapRef, MapMouseEvent, MapTouchEvent } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
@@ -358,30 +358,6 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     [isDrawing, viewMode, inputMode, getDistanceMeters, MIN_POINT_DISTANCE]
   )
 
-  // Handle drawing end (mouse up or touch end)
-  const handleDrawEnd = useCallback(() => {
-    if (!isDrawing) {
-      return
-    }
-
-    setIsDrawing(false)
-    lastPointRef.current = null
-
-    // Re-enable map panning
-    if (mapRef.current) {
-      mapRef.current.getMap().dragPan.enable()
-    }
-
-    // Simplify the route to reduce point count
-    setCreationPoints((prev) => {
-      if (prev.length < 2) {
-        setValidationError("もう少し長くなぞってください")
-        return prev
-      }
-      return simplifyRoute(prev)
-    })
-  }, [isDrawing, simplifyRoute])
-
   // Touch event handlers
   const handleTouchDrawStart = useCallback(
     (event: MapTouchEvent) => {
@@ -428,6 +404,55 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setIsDrawing(false)
     lastPointRef.current = null
   }, [])
+
+  // Handle drawing end when touch/mouse leaves the map or ends outside
+  const finishDrawing = useCallback(() => {
+    if (!isDrawing) return
+
+    setIsDrawing(false)
+    lastPointRef.current = null
+
+    if (mapRef.current) {
+      mapRef.current.getMap().dragPan.enable()
+    }
+
+    setCreationPoints((prev) => {
+      if (prev.length < 2) {
+        setValidationError("もう少し長くなぞってください")
+        return prev
+      }
+      return simplifyRoute(prev)
+    })
+  }, [isDrawing, simplifyRoute])
+
+  // Listen for touch/mouse end events at document level to handle
+  // cases where the user's finger leaves the map area
+  useEffect(() => {
+    if (!isDrawing) return
+
+    const handleGlobalEnd = () => {
+      finishDrawing()
+    }
+
+    // Prevent page scroll while drawing
+    const preventScroll = (e: TouchEvent) => {
+      if (isDrawing) {
+        e.preventDefault()
+      }
+    }
+
+    document.addEventListener("mouseup", handleGlobalEnd)
+    document.addEventListener("touchend", handleGlobalEnd)
+    document.addEventListener("touchcancel", handleGlobalEnd)
+    document.addEventListener("touchmove", preventScroll, { passive: false })
+
+    return () => {
+      document.removeEventListener("mouseup", handleGlobalEnd)
+      document.removeEventListener("touchend", handleGlobalEnd)
+      document.removeEventListener("touchcancel", handleGlobalEnd)
+      document.removeEventListener("touchmove", preventScroll)
+    }
+  }, [isDrawing, finishDrawing])
 
   const validateForm = useCallback((): boolean => {
     if (!routeName.trim()) {
@@ -745,6 +770,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       <div
         data-testid="route-map-container"
         className="h-64 bg-muted rounded-lg overflow-hidden relative"
+        style={{
+          touchAction:
+            viewMode === "creation" && inputMode === "draw" ? "none" : "auto",
+        }}
       >
         {mapToken ? (
           <Map
@@ -769,7 +798,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             }
             onMouseUp={
               viewMode === "creation" && inputMode === "draw"
-                ? handleDrawEnd
+                ? finishDrawing
                 : undefined
             }
             onTouchStart={
@@ -784,7 +813,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             }
             onTouchEnd={
               viewMode === "creation" && inputMode === "draw"
-                ? handleDrawEnd
+                ? finishDrawing
                 : undefined
             }
             cursor={
