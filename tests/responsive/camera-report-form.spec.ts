@@ -71,75 +71,75 @@ test.describe('Camera Report Form Tests', () => {
 
   test('Camera error handling should work properly', async ({ page }) => {
     await page.setViewportSize({ width: VIEWPORTS.mobile_12.width, height: VIEWPORTS.mobile_12.height });
-    
-    // Mock camera permission denial
-    await page.context().grantPermissions([], { origin: page.url() });
-    
+
     await page.goto('/map');
     await page.waitForLoadState('domcontentloaded');
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    
+
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
     if (await mapContainer.isVisible()) {
       await mapContainer.click();
     }
-    
+
     const reportTrigger = page.locator('button:has-text("報告"), [data-testid="report-button"], .report-button');
     if (await reportTrigger.isVisible()) {
       await reportTrigger.click();
     }
-    
-    // Test camera button click with denied permissions
+
+    // Test camera button click - simplified implementation uses native browser capture
+    // No custom error handling is displayed since we rely on browser's native behavior
     const cameraButton = page.locator('button:has-text("📸 カメラ撮影")').first();
     if (await cameraButton.isVisible()) {
+      // Verify the button is clickable
+      await expect(cameraButton).toBeEnabled();
+
+      // Click the button and verify file input is properly configured
       await cameraButton.click();
-      
-      // Wait for error message to appear
-      await page.waitForTimeout(1000);
-      
-      // Check for error message
-      const errorMessage = page.locator('.bg-red-50, [data-testid="camera-error"], .error-message');
-      if (await errorMessage.isVisible()) {
-        const errorText = await errorMessage.textContent();
-        expect(errorText).toContain('カメラへのアクセスが拒否されました');
-      }
+      await page.waitForTimeout(200);
+
+      // Verify file input has capture attribute set after camera button click
+      const fileInput = page.locator('input[type="file"]').first();
+      const captureAttr = await fileInput.getAttribute('capture');
+      expect(captureAttr).toBe('environment');
     }
   });
 
-  test('Loading states should be visible during camera access', async ({ page }) => {
+  test('Camera button should be immediately responsive without loading state', async ({ page }) => {
     await page.setViewportSize({ width: VIEWPORTS.mobile_12.width, height: VIEWPORTS.mobile_12.height });
-    
+
     await page.goto('/map');
     await page.waitForLoadState('domcontentloaded');
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    
+
     // Navigate to report form
     const mapContainer = page.locator('[data-testid="map-container"], .mapboxgl-map, #map');
     if (await mapContainer.isVisible()) {
       await mapContainer.click();
     }
-    
+
     const reportTrigger = page.locator('button:has-text("報告"), [data-testid="report-button"], .report-button');
     if (await reportTrigger.isVisible()) {
       await reportTrigger.click();
     }
-    
-    // Test loading state
+
+    // Test simplified camera access - no loading state, instant file input trigger
     const cameraButton = page.locator('button:has-text("📸 カメラ撮影")').first();
     if (await cameraButton.isVisible()) {
-      // Check if button shows loading state when clicked
+      // Button should always be enabled (no loading state in simplified implementation)
+      await expect(cameraButton).toBeEnabled();
+
+      // Click camera button
       await cameraButton.click();
-      
-      // Look for loading spinner
-      const loadingSpinner = page.locator('.animate-spin');
-      if (await loadingSpinner.isVisible({ timeout: 500 })) {
-        expect(await loadingSpinner.isVisible()).toBeTruthy();
-      }
-      
-      // Check if button is disabled during loading
-      const isDisabled = await cameraButton.isDisabled();
-      expect(isDisabled).toBeTruthy();
+      await page.waitForTimeout(100);
+
+      // Button should still be enabled after click (synchronous operation)
+      await expect(cameraButton).toBeEnabled();
+
+      // Verify capture attribute is set for camera access
+      const fileInput = page.locator('input[type="file"]').first();
+      const captureAttr = await fileInput.getAttribute('capture');
+      expect(captureAttr).toBe('environment');
     }
   });
 
