@@ -1142,8 +1142,8 @@ export default function MapContainer() {
         isARMode={isARMode}
       />
       <div className="relative flex flex-col md:flex-row flex-1 overflow-hidden pt-0 px-2 md:px-0">
-        {/* 検索バー（モバイル用） */}
-        {isMobile && (
+        {/* 検索バー（モバイル用） - 地点選択モード中は非表示 */}
+        {isMobile && !awaitingLocationSelection && (
           <div className="absolute top-2 left-2 z-20 w-[calc(100%-80px)]">
             <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
           </div>
@@ -1154,8 +1154,8 @@ export default function MapContainer() {
           <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
         </div>
         
-        {/* モバイル用サイドバートグルボタン */}
-        {isMobile && (
+        {/* モバイル用サイドバートグルボタン - 地点選択モード中は非表示 */}
+        {isMobile && !awaitingLocationSelection && (
           <div className="absolute top-2 right-2 z-20">
             <Button
               onClick={toggleSidebar}
