@@ -517,22 +517,32 @@ export default function MapContainer() {
     console.log(`Map clicked at: ${coordinates}. isMobile=${isMobile}, awaitingLocationSelection=${awaitingLocationSelection}, isReportFormOpen=${isReportFormOpen}`);
 
     if (awaitingLocationSelection) {
-      // 地点選択モード：位置を選択してフォームを開く
-      console.log("Location selection mode: Setting location and opening form");
+      // 地点選択モード：位置を選択
+      console.log("Location selection mode: Setting location");
       setSelectedLocation(coordinates);
-      setIsReportFormOpen(true);
-      setAwaitingLocationSelection(false);
-      toast({ 
-        title: "地点を選択しました", 
-        description: "選択した地点で危険箇所を報告できます" 
-      });
-    } else if (isReportFormOpen) { 
+
+      if (isMobile) {
+        // モバイル：地点を選択するだけ（フォームはボトムバーの「この地点で報告する」ボタンで開く）
+        toast({
+          title: "地点を選択しました",
+          description: "「この地点で報告する」をタップして続行"
+        });
+      } else {
+        // デスクトップ：地点選択後すぐにフォームを開く
+        setIsReportFormOpen(true);
+        setAwaitingLocationSelection(false);
+        toast({
+          title: "地点を選択しました",
+          description: "選択した地点で危険箇所を報告できます"
+        });
+      }
+    } else if (isReportFormOpen) {
       // フォームが開いている場合：モバイル・デスクトップ関係なく位置を更新
       console.log("Form is open: Updating location");
       setSelectedLocation(coordinates);
-      toast({ 
-        title: "地点を変更しました", 
-        description: "新しい位置に報告地点を変更しました" 
+      toast({
+        title: "地点を変更しました",
+        description: "新しい位置に報告地点を変更しました"
       });
     } else {
       // その他の場合：何もしない（通常の地図操作）
@@ -637,11 +647,12 @@ export default function MapContainer() {
   }, [awaitingLocationSelection]);
 
   useEffect(() => {
-    if (selectedLocation && isReportFormOpen) {
+    // 地点選択モード中またはフォームが開いている時にマーカーを表示
+    if (selectedLocation && (isReportFormOpen || awaitingLocationSelection)) {
       updateSelectionMarker(selectedLocation);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocation, isReportFormOpen]);
+  }, [selectedLocation, isReportFormOpen, awaitingLocationSelection]);
 
   useEffect(() => {
     if (submittedReport) {
@@ -1240,150 +1251,182 @@ export default function MapContainer() {
               </div>
             </div>
           )}
-          {/* Report Form */}
-          {isReportFormOpen && (
-            <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white rounded-lg shadow-lg z-60 max-h-[calc(100vh-10rem)] overflow-y-auto">
+          {/* Report Form - デスクトップ用（サイドパネル形式） */}
+          {isReportFormOpen && !isMobile && (
+            <div className="absolute bottom-4 right-4 w-96 bg-white rounded-lg shadow-lg z-60 max-h-[calc(100vh-10rem)] overflow-y-auto">
               <DangerReportForm
                 onSubmit={handleReportSubmit}
-                onCancel={() => setIsReportFormOpen(false)} // Reset location handled by useEffect
+                onCancel={() => setIsReportFormOpen(false)}
                 selectedLocation={selectedLocation}
               />
             </div>
           )}
-          {/* --- ▼▼▼ 地点選択待ちメッセージとキャンセルボタンを追加 ▼▼▼ --- */}
-          {isMobile && awaitingLocationSelection && !isHelpDismissed && (
-            <div className="absolute top-16 left-4 right-4 z-10">
-              <div className="bg-white rounded-lg shadow-lg border border-blue-200">
-                <div className="px-4 py-3 bg-blue-50 rounded-t-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                      <p className="text-sm font-medium text-blue-800">地点選択モード</p>
+
+          {/* Report Form - モバイル用（フルスクリーンモーダル） */}
+          {isReportFormOpen && isMobile && (
+            <div className="fixed inset-0 z-50 flex flex-col bg-white mobile-fullscreen-form">
+              {/* モバイルフォームヘッダー */}
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white safe-area-top">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsReportFormOpen(false);
+                    // 地点選択モードに戻す
+                    setAwaitingLocationSelection(true);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>地点を変更</span>
+                </Button>
+                <h2 className="text-lg font-bold text-gray-800">危険箇所の報告</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsReportFormOpen(false);
+                    setSelectedLocation(null);
+                    if (selectionMarker.current) {
+                      selectionMarker.current.remove();
+                      selectionMarker.current = null;
+                    }
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  閉じる
+                </Button>
+              </div>
+
+              {/* 選択地点の表示 */}
+              {selectedLocation && (
+                <div className="flex-shrink-0 px-4 py-2 bg-blue-50 border-b border-blue-100">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <MapPin className="w-3 h-3 text-white" />
                     </div>
-                    <div className="flex items-center space-x-1">
-                      {isHelpVisible && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setIsHelpVisible(false)}
-                          className="text-blue-600 hover:text-blue-800 h-6 w-6 p-0"
-                          aria-label="使い方を閉じる"
-                        >
-                          ×
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setAwaitingLocationSelection(false);
-                          toast({ title: "地点選択をキャンセルしました" });
-                        }}
-                        className="text-blue-600 hover:text-blue-800 h-6 px-2"
-                      >
-                        キャンセル
-                      </Button>
+                    <div className="flex-1">
+                      <p className="text-xs text-blue-600 font-medium">選択中の地点</p>
+                      <p className="text-xs text-blue-800">
+                        緯度: {selectedLocation[1].toFixed(6)}, 経度: {selectedLocation[0].toFixed(6)}
+                      </p>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsReportFormOpen(false);
+                        setAwaitingLocationSelection(true);
+                      }}
+                      className="text-xs h-7 px-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                    >
+                      変更
+                    </Button>
                   </div>
                 </div>
-                {isHelpVisible && (
-                  <div className="px-4 py-3">
-                    <p className="text-sm text-gray-700 mb-3">
-                      📍 危険箇所を報告したい場所を地図上でタップしてください
-                    </p>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setAwaitingLocationSelection(false);
-                          toast({ title: "地点選択をキャンセルしました" });
-                        }}
-                        className="flex-1"
-                      >
-                        キャンセル
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsHelpVisible(false)}
-                        className="px-2 text-gray-500"
-                      >
-                        隠す
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsHelpDismissed(true);
-                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
-                        }}
-                        className="px-2 text-gray-400 hover:text-red-600"
-                      >
-                        完全に消す
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {!isHelpVisible && (
-                  <div className="px-4 py-2">
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setAwaitingLocationSelection(false);
-                          toast({ title: "地点選択をキャンセルしました" });
-                        }}
-                        className="flex-1"
-                      >
-                        キャンセル
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsHelpVisible(true)}
-                        className="px-2 text-blue-600"
-                      >
-                        💡
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsHelpDismissed(true);
-                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
-                        }}
-                        className="px-2 text-gray-400 hover:text-red-600"
-                      >
-                        ×
-                      </Button>
-                    </div>
-                  </div>
-                )}
+              )}
+
+              {/* フォーム本体 */}
+              <div className="flex-1 overflow-y-auto">
+                <DangerReportForm
+                  onSubmit={handleReportSubmit}
+                  onCancel={() => {
+                    setIsReportFormOpen(false);
+                    setSelectedLocation(null);
+                    if (selectionMarker.current) {
+                      selectionMarker.current.remove();
+                      selectionMarker.current = null;
+                    }
+                  }}
+                  selectedLocation={selectedLocation}
+                  isMobileFullscreen={true}
+                />
               </div>
             </div>
           )}
-          
-          {/* --- ▼▼▼ ヘルプ再表示ボタン（モバイル） ▼▼▼ --- */}
-          {isMobile && awaitingLocationSelection && isHelpDismissed && (
-            <div className="absolute top-16 right-4 z-10">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setIsHelpDismissed(false);
-                  setIsHelpVisible(true);
-                }}
-                className="w-10 h-10 p-0 bg-white hover:bg-white border-blue-200 text-blue-600 shadow-lg rounded-full"
-              >
-                ？
-              </Button>
-            </div>
+          {/* --- ▼▼▼ モバイル用地点選択UI（コンパクトなボトムバー） ▼▼▼ --- */}
+          {isMobile && awaitingLocationSelection && (
+            <>
+              {/* 上部のコンパクトなガイド */}
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-blue-200 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <p className="text-sm font-medium text-blue-800">地図をタップして地点を選択</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 下部の確認バー */}
+              <div className="absolute bottom-4 left-4 right-4 z-10 mobile-bottom-bar">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden safe-area-bottom">
+                  {selectedLocation ? (
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <MapPin className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">地点を選択しました</p>
+                            <p className="text-xs text-gray-500">
+                              {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex space-x-3">
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={() => {
+                            setAwaitingLocationSelection(false);
+                            setSelectedLocation(null);
+                            if (selectionMarker.current) {
+                              selectionMarker.current.remove();
+                              selectionMarker.current = null;
+                            }
+                            toast({ title: "地点選択をキャンセルしました" });
+                          }}
+                          className="flex-1 h-12 text-base"
+                        >
+                          キャンセル
+                        </Button>
+                        <Button
+                          size="lg"
+                          onClick={() => {
+                            setAwaitingLocationSelection(false);
+                            setIsReportFormOpen(true);
+                          }}
+                          className="flex-1 h-12 text-base bg-blue-600 hover:bg-blue-700"
+                        >
+                          この地点で報告する
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600">地図をタップして地点を選んでください</p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setAwaitingLocationSelection(false);
+                            toast({ title: "地点選択をキャンセルしました" });
+                          }}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          キャンセル
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
-          {/* --- ▲▲▲ --- */}
+          {/* --- ▲▲▲ モバイル用地点選択UI ▲▲▲ --- */}
           
           {/* --- ▼▼▼ デスクトップ用地点選択ヘルプ ▼▼▼ --- */}
           {!isMobile && isReportFormOpen && !isHelpDismissed && (

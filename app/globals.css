@@ -479,6 +479,64 @@
   }
 }
 
+/* モバイル用 Safe Area サポート */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-all {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* モバイル用スライドアップアニメーション */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-in;
+}
+
+/* モバイル報告フォーム用スタイル */
+@media (max-width: 768px) {
+  .mobile-fullscreen-form {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .mobile-bottom-bar {
+    animation: fadeIn 0.2s ease-out;
+  }
+}
+
 /* Toast animations for radix-ui/react-toast */
 .radix-toast[data-state="open"] {
   animation: toast-enter 0.2s ease-out;

@@ -20,9 +20,10 @@ interface DangerReportFormProps {
   onSubmit: (data: Partial<DangerReport>) => void
   onCancel: () => void
   selectedLocation: [number, number] | null
+  isMobileFullscreen?: boolean
 }
 
-export default function DangerReportForm({ onSubmit, onCancel, selectedLocation }: DangerReportFormProps) {
+export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, isMobileFullscreen = false }: DangerReportFormProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -830,15 +831,18 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
   }
 
   return (
-    <div className="p-3">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-lg font-bold">危険箇所の報告</h2>
-        <Button variant="ghost" size="icon" onClick={onCancel}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+    <div className={isMobileFullscreen ? "px-4 py-2" : "p-3"}>
+      {/* ヘッダー - モバイルフルスクリーン時は親で表示するため非表示 */}
+      {!isMobileFullscreen && (
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-bold">危険箇所の報告</h2>
+          <Button variant="ghost" size="icon" onClick={onCancel}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
-      <form onSubmit={handleFormSubmit} className="space-y-3">
+      <form onSubmit={handleFormSubmit} className={isMobileFullscreen ? "space-y-4" : "space-y-3"}>
         <div className="space-y-2">
           <Label htmlFor="title">タイトル</Label>
           <Input
@@ -1110,12 +1114,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
           </Tabs>
         </div>
 
-        {selectedLocation ? (
-          <div className="text-sm text-blue-600">
-            選択位置: 緯度 {selectedLocation[1].toFixed(6)}, 経度 {selectedLocation[0].toFixed(6)}
-          </div>
-        ) : (
-          <div className="text-sm text-red-600">地図上で位置を選択してください</div>
+        {/* 選択位置の表示 - モバイルフルスクリーン時は親で表示するため非表示 */}
+        {!isMobileFullscreen && (
+          selectedLocation ? (
+            <div className="text-sm text-blue-600">
+              選択位置: 緯度 {selectedLocation[1].toFixed(6)}, 経度 {selectedLocation[0].toFixed(6)}
+            </div>
+          ) : (
+            <div className="text-sm text-red-600">地図上で位置を選択してください</div>
+          )
         )}
 
         {/* 解析結果表示 */}
@@ -1130,20 +1137,43 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation 
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            キャンセル
-          </Button>
-          <Button type="submit" disabled={isSubmitting || !selectedLocation} className="min-w-[100px]">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {uploadProgress > 0 && uploadProgress < 100 ? `${Math.round(uploadProgress)}%` : "送信中..."}
-              </>
-            ) : (
-              "報告を送信"
-            )}
-          </Button>
+        {/* 送信ボタン */}
+        <div className={isMobileFullscreen
+          ? "sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 -mx-4 mt-4 safe-area-bottom"
+          : "flex justify-end gap-2 pt-2"
+        }>
+          {isMobileFullscreen ? (
+            <Button
+              type="submit"
+              disabled={isSubmitting || !selectedLocation}
+              className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  {uploadProgress > 0 && uploadProgress < 100 ? `${Math.round(uploadProgress)}%` : "送信中..."}
+                </>
+              ) : (
+                "報告を送信"
+              )}
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={onCancel}>
+                キャンセル
+              </Button>
+              <Button type="submit" disabled={isSubmitting || !selectedLocation} className="min-w-[100px]">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {uploadProgress > 0 && uploadProgress < 100 ? `${Math.round(uploadProgress)}%` : "送信中..."}
+                  </>
+                ) : (
+                  "報告を送信"
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </form>
 
