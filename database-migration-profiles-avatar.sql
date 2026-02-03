@@ -17,10 +17,14 @@ COMMENT ON COLUMN public.profiles.avatar_url IS 'アバター画像のURL';
 -- Step 2: Ensure RLS policies exist for profiles table
 -- ============================================================================
 
--- SELECT ポリシー（自分のプロフィールを読み取り可能）
+-- SELECT ポリシー（全ユーザーがプロフィールを読み取り可能）
+-- 注意: 他のテーブル（report_comments, user_pointsなど）からJOINで
+-- プロフィール情報を取得するため、全員が読み取り可能にする必要がある
+-- 自分のプロフィールのみに制限すると "infinite recursion detected in policy" エラーが発生
 DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
-CREATE POLICY "profiles_select_own" ON public.profiles
-    FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
+CREATE POLICY "profiles_select_all" ON public.profiles
+    FOR SELECT USING (true);
 
 -- UPDATE ポリシー（自分のプロフィールを更新可能）
 DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
