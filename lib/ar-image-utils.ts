@@ -6,23 +6,93 @@
 import type { DangerReport } from "./types"
 
 /**
+ * 許可された画像ホストのリスト
+ * セキュリティのため、信頼できるソースからの画像のみを許可
+ */
+const ALLOWED_IMAGE_HOSTS = [
+  // Supabase Storage
+  "supabase.co",
+  "supabase.in",
+  // 開発環境
+  "localhost",
+  "127.0.0.1",
+]
+
+/**
+ * 画像URLが安全かどうかを検証する
+ * @param url 検証するURL
+ * @returns 安全なURLならtrue
+ */
+export function isValidImageUrl(url: string): boolean {
+  if (!url || typeof url !== "string") {
+    return false
+  }
+
+  const trimmedUrl = url.trim()
+  if (trimmedUrl === "") {
+    return false
+  }
+
+  // 危険なプロトコルを拒否
+  const lowerUrl = trimmedUrl.toLowerCase()
+  if (
+    lowerUrl.startsWith("javascript:") ||
+    lowerUrl.startsWith("data:text/html") ||
+    lowerUrl.startsWith("vbscript:") ||
+    lowerUrl.startsWith("file:")
+  ) {
+    return false
+  }
+
+  // HTTPSまたはHTTPのみ許可（data:image/は画像として許可）
+  if (
+    !lowerUrl.startsWith("https://") &&
+    !lowerUrl.startsWith("http://") &&
+    !lowerUrl.startsWith("data:image/")
+  ) {
+    return false
+  }
+
+  // data:image/の場合は許可（Base64画像）
+  if (lowerUrl.startsWith("data:image/")) {
+    return true
+  }
+
+  // URLをパースしてホストを確認
+  try {
+    const parsedUrl = new URL(trimmedUrl)
+    const hostname = parsedUrl.hostname.toLowerCase()
+
+    // 許可されたホストか確認
+    return ALLOWED_IMAGE_HOSTS.some(
+      (allowedHost) =>
+        hostname === allowedHost || hostname.endsWith(`.${allowedHost}`)
+    )
+  } catch {
+    // 無効なURL
+    return false
+  }
+}
+
+/**
  * レポートから全ての画像URLを取得する
  * image_url と processed_image_urls を結合し、重複と空文字列を除去する
+ * セキュリティ: 許可されたホストからの画像のみを返す
  * @param report 危険報告
- * @returns 画像URLの配列（重複なし）
+ * @returns 画像URLの配列（重複なし、検証済み）
  */
 export function getReportImages(report: DangerReport): string[] {
   const images: string[] = []
 
-  // image_url があれば追加
-  if (report.image_url && report.image_url.trim() !== "") {
+  // image_url があれば追加（検証付き）
+  if (report.image_url && isValidImageUrl(report.image_url)) {
     images.push(report.image_url)
   }
 
-  // processed_image_urls があれば追加
+  // processed_image_urls があれば追加（検証付き）
   if (report.processed_image_urls && Array.isArray(report.processed_image_urls)) {
     for (const url of report.processed_image_urls) {
-      if (url && url.trim() !== "") {
+      if (isValidImageUrl(url)) {
         images.push(url)
       }
     }
