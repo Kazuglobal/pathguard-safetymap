@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithGemini } from "@/lib/gemini-image"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const runtime = "nodejs"
 
 export async function POST(req: NextRequest) {
   try {
+    // 認証チェック - ログインユーザーのみ使用可能
+    const supabase = await createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "認証が必要です" },
+        { status: 401 }
+      )
+    }
+
     const contentType = req.headers.get("content-type") || ""
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json(

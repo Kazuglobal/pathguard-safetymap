@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { openai } from "@/lib/openai"
 
+// セキュリティ上の理由により、このエンドポイントは本番環境では無効化されています
+// APIキーの部分的な漏洩を防ぐため
+
 export async function GET(request: NextRequest) {
+  // 本番環境では常に403を返す
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "This endpoint is disabled in production" },
+      { status: 403 }
+    )
+  }
+
   try {
     // If OpenAI is not configured, gracefully return a 200 response
     if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
@@ -13,47 +24,40 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log('Testing OpenAI API key...')
-    console.log('API key exists:', !!process.env.OPENAI_API_KEY)
-    console.log('API key format:', process.env.OPENAI_API_KEY?.startsWith('sk-') ? 'Valid (sk-)' : 'Invalid format')
-    
     // Test API key with a simple request
     const response = await openai().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: "Hello, respond with 'API key works'" }],
       max_tokens: 10,
     })
-    
+
     const content = response.choices[0]?.message?.content
-    console.log('API test response:', content)
-    
+
     // Test vision models - updated to current models
     const visionModels = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
     const modelAvailability: Record<string, boolean> = {}
-    
+
     for (const model of visionModels) {
       try {
-        console.log(`Testing model ${model}...`)
         await openai().chat.completions.create({
           model,
           messages: [{ role: "user", content: "test" }],
           max_tokens: 5,
         })
         modelAvailability[model] = true
-        console.log(`✓ Model ${model} is available`)
-      } catch (modelError) {
+      } catch {
         modelAvailability[model] = false
-        console.log(`✗ Model ${model} is not available:`, modelError instanceof Error ? modelError.message : 'Unknown error')
       }
     }
-    
+
+    // APIキーの部分情報は返さない
     return NextResponse.json({
       success: true,
       message: "OpenAI API key is working",
       response: content,
       modelAvailability,
-      apiKeyPrefix: process.env.OPENAI_API_KEY?.substring(0, 10) + "...",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      warning: "Debug endpoint - API key details hidden for security"
     })
   } catch (error) {
     console.error('OpenAI API test failed:', error)
