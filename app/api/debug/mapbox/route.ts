@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server'
 import { validateMapboxTokenAsync, getMapboxToken } from '@/lib/mapbox-config'
 
+// セキュリティ上の理由により、このエンドポイントは本番環境では無効化されています
+// トークンの部分的な漏洩を防ぐため
+
 export async function GET() {
+  // 本番環境では常に403を返す
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "This endpoint is disabled in production" },
+      { status: 403 }
+    )
+  }
+
   try {
-    // Check if the token is available in the environment
     const token = getMapboxToken()
-    
+
     if (!token) {
       return NextResponse.json({
         error: 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is not set or invalid format',
@@ -17,52 +27,16 @@ export async function GET() {
 
     // Use enhanced token validation
     const validation = await validateMapboxTokenAsync()
-    
-    if (!validation.isValid) {
-      return NextResponse.json({
-        error: validation.error,
-        available: true,
-        tokenPrefix: token.substring(0, 10) + '...',
-        environment: process.env.NODE_ENV,
-        timestamp: new Date().toISOString(),
-      }, { status: 400 })
-    }
 
-    // Test specific API endpoints
-    const tests = {
-      tokenValidation: { status: 'success', message: 'Token is valid' },
-      styleAccess: { status: 'pending', message: 'Testing style access...' },
-      httpsCheck: { status: 'pending', message: 'Checking HTTPS requirement...' }
-    }
-
-    // Test style access
-    try {
-      const styleResponse = await fetch(`https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${token}`)
-      if (styleResponse.ok) {
-        tests.styleAccess = { status: 'success', message: 'Style access successful' }
-      } else {
-        tests.styleAccess = { status: 'error', message: `Style access failed: HTTP ${styleResponse.status}` }
-      }
-    } catch (error) {
-      tests.styleAccess = { status: 'error', message: `Style access error: ${error instanceof Error ? error.message : 'Unknown error'}` }
-    }
-
-    // HTTPS check
-    const headers = NextResponse.next().headers
-    const protocol = headers.get('x-forwarded-proto') || 'https'
-    tests.httpsCheck = { 
-      status: protocol === 'https' ? 'success' : 'warning', 
-      message: protocol === 'https' ? 'HTTPS detected' : 'HTTP detected - may cause issues in production' 
-    }
-
+    // トークンの部分情報は返さない
     return NextResponse.json({
-      success: true,
+      success: validation.isValid,
       available: true,
-      tokenPrefix: token.substring(0, 10) + '...',
-      tokenData: validation.details,
-      tests,
+      isValid: validation.isValid,
+      error: validation.error || null,
       environment: process.env.NODE_ENV,
       timestamp: new Date().toISOString(),
+      warning: "Debug endpoint - token details hidden for security"
     })
 
   } catch (error) {
