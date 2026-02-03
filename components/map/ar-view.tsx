@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import {
-  AlertTriangle,
   X,
   Navigation,
   MapPin,
@@ -12,8 +11,6 @@ import {
   Bookmark,
   Share2,
   TreePine,
-  Star,
-  ArrowRight,
   Settings,
   Compass,
   RefreshCw
@@ -30,6 +27,12 @@ import {
   type ARHazardData,
 } from "@/lib/ar-utils"
 import { getReportImages } from "@/lib/ar-image-utils"
+import {
+  translateDangerType,
+  getDangerLevelLabel,
+  getDangerLevelColor,
+  formatHeadingDisplay,
+} from "@/lib/ar-display-utils"
 import { ARImageGallery } from "./ar-image-gallery"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -79,7 +82,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     accuracy?: number
   } | null>(null)
   const [userHeading, setUserHeading] = useState<number>(0)
-  const [headingAccuracy, setHeadingAccuracy] = useState<number | null>(null)
   const [arError, setArError] = useState<ARError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadingStep, setLoadingStep] = useState<string>("カメラを初期化しています...")
@@ -303,11 +305,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         // alpha: 0-360度（Z軸周りの回転、コンパス方向）
         setUserHeading(event.alpha)
         lastHeadingUpdateRef.current = Date.now()
-
-        // 精度情報があれば更新
-        if ("webkitCompassAccuracy" in event) {
-          setHeadingAccuracy((event as DeviceOrientationEvent & { webkitCompassAccuracy?: number }).webkitCompassAccuracy ?? null)
-        }
       }
     }, 33)
 
@@ -543,26 +540,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     return Math.round(timeInHours * 60) // 分に変換
   }
 
-  // 危険度に応じた評価を計算（簡易版）
-  const getDangerRating = (level: number): number => {
-    // 危険度1-5を評価4.0-2.0に変換（逆相関）
-    return Math.max(2.0, 5.0 - level * 0.6)
-  }
-
-  // 混雑状況を取得（簡易版）
-  const getCrowdStatus = (distance: number): string => {
-    if (distance < 50) return "混雑"
-    if (distance < 200) return "やや混雑"
-    return "空いている"
-  }
-
-  // 危険度に応じた混雑状況の色を取得
-  const getCrowdStatusColor = (distance: number): string => {
-    if (distance < 50) return "text-red-600"
-    if (distance < 200) return "text-orange-600"
-    return "text-green-600"
-  }
-
   const handleClose = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
@@ -686,22 +663,13 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         </div>
       )}
 
-      {/* 精度インジケーター（左上） */}
+      {/* 方向インジケーター（左上） - 精度情報は非表示 */}
       {isCameraActive && userLocation && !arError && (
         <div className="absolute top-16 left-4 z-20">
           <div className="bg-black/60 backdrop-blur-sm rounded-lg p-2 text-white text-xs">
-            <div className="flex items-center gap-2 mb-1">
-              <Compass className="h-3 w-3" />
-              <span>方向: {Math.round(userHeading)}°</span>
-              {headingAccuracy !== null && (
-                <span className="text-gray-400">(±{Math.round(headingAccuracy)}°)</span>
-              )}
-            </div>
             <div className="flex items-center gap-2">
-              <MapPin className="h-3 w-3" />
-              <span>
-                GPS精度: {userLocation.accuracy ? `±${Math.round(userLocation.accuracy)}m` : "不明"}
-              </span>
+              <Compass className="h-3 w-3" />
+              <span>{formatHeadingDisplay(userHeading)}</span>
             </div>
           </div>
         </div>
@@ -788,26 +756,25 @@ export default function ARView({ reports, onClose }: ARViewProps) {
                     {primaryHazard.report.title}
                   </h3>
 
-                  {/* 評価とカテゴリ */}
+                  {/* 危険度とカテゴリ */}
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-semibold text-gray-900">
-                        {getDangerRating(primaryHazard.report.danger_level).toFixed(1)}
-                      </span>
-                      <span className="text-xs text-gray-500 ml-1">
-                        ({Math.floor(primaryHazard.distance / 10)})
-                      </span>
-                    </div>
+                    {/* 危険度バッジ（色付き） */}
+                    <Badge
+                      className="text-xs text-white"
+                      style={{ backgroundColor: getDangerLevelColor(primaryHazard.report.danger_level) }}
+                    >
+                      {getDangerLevelLabel(primaryHazard.report.danger_level)}
+                    </Badge>
                     <span className="text-xs text-gray-500">·</span>
+                    {/* カテゴリ（日本語） */}
                     <Badge variant="secondary" className="text-xs">
-                      {primaryHazard.report.danger_type || "危険箇所"}
+                      {translateDangerType(primaryHazard.report.danger_type)}
                     </Badge>
                   </div>
 
-                  {/* 混雑状況 */}
-                  <p className={`text-sm font-medium mb-3 ${getCrowdStatusColor(primaryHazard.distance)}`}>
-                    {getCrowdStatus(primaryHazard.distance)}
+                  {/* 距離表示 */}
+                  <p className="text-sm text-gray-600 mb-3">
+                    {formatDistance(primaryHazard.distance)}先
                   </p>
                 </div>
               </Card>
