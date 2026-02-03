@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import {
-  AlertTriangle,
   X,
   Navigation,
   MapPin,
@@ -12,7 +11,6 @@ import {
   Bookmark,
   Share2,
   TreePine,
-  ArrowRight,
   Settings,
   Compass,
   RefreshCw
@@ -84,7 +82,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     accuracy?: number
   } | null>(null)
   const [userHeading, setUserHeading] = useState<number>(0)
-  const [headingAccuracy, setHeadingAccuracy] = useState<number | null>(null)
   const [arError, setArError] = useState<ARError | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadingStep, setLoadingStep] = useState<string>("カメラを初期化しています...")
@@ -308,11 +305,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         // alpha: 0-360度（Z軸周りの回転、コンパス方向）
         setUserHeading(event.alpha)
         lastHeadingUpdateRef.current = Date.now()
-
-        // 精度情報があれば更新
-        if ("webkitCompassAccuracy" in event) {
-          setHeadingAccuracy((event as DeviceOrientationEvent & { webkitCompassAccuracy?: number }).webkitCompassAccuracy ?? null)
-        }
       }
     }, 33)
 
@@ -547,7 +539,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     const timeInHours = distance / 1000 / walkingSpeedKmh
     return Math.round(timeInHours * 60) // 分に変換
   }
-
 
   const handleClose = useCallback(() => {
     if (streamRef.current) {
