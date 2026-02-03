@@ -29,6 +29,8 @@ import {
   formatBearing,
   type ARHazardData,
 } from "@/lib/ar-utils"
+import { getReportImages } from "@/lib/ar-image-utils"
+import { ARImageGallery } from "./ar-image-gallery"
 import { useToast } from "@/components/ui/use-toast"
 
 interface ARViewProps {
@@ -774,20 +776,11 @@ export default function ARView({ reports, onClose }: ARViewProps) {
               }}
             >
               <Card className="bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto">
-                {/* 画像 */}
-                {primaryHazard.report.image_url ? (
-                  <div className="relative h-48 w-full overflow-hidden">
-                    <img
-                      src={primaryHazard.report.image_url}
-                      alt={primaryHazard.report.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="relative h-48 w-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                    <AlertTriangle className="h-16 w-16 text-gray-400" />
-                  </div>
-                )}
+                {/* 画像ギャラリー（登録された全ての画像を表示） */}
+                <ARImageGallery
+                  images={getReportImages(primaryHazard.report)}
+                  alt={primaryHazard.report.title}
+                />
 
                 <div className="p-4">
                   {/* タイトル */}
