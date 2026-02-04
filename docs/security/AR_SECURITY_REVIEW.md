@@ -67,7 +67,7 @@ if (authError || !user) {
 
 **評価**: 良好
 
-- 全APIエンドポイントでSupabase認証を要求
+- `hazard-game/analyze` でSupabase認証を要求
 - 適切なHTTPステータスコード（401）を返却
 
 ### 2.3 リクエストサイズ制限
@@ -121,7 +121,7 @@ const res = await fetch(
   `${GEMINI_API_URL}/models/${model}:generateContent?key=${apiKey}`,
 ```
 
-**リスク**: APIキーがURLパラメータに含まれており、ログファイルやリファラーヘッダーで漏洩する可能性
+**リスク**: APIキーがURLパラメータに含まれており、ログ/監視/プロキシ/URL収集などで漏洩する可能性
 
 **推奨対策**:
 ```typescript
@@ -169,7 +169,7 @@ if (!reportId) { /* エラー */ }
 // UUID形式の検証がない
 ```
 
-**リスク**: 不正なreportIdによるNoSQL注入や意図しないレコードへのアクセス
+**リスク**: 不正なreportIdによるIDOR（認可不備）や意図しないレコードへのアクセス
 
 **推奨対策**:
 ```typescript
@@ -280,7 +280,7 @@ return () => {
 
 **リスク**: Content-Security-Policyヘッダーが設定されていない可能性
 
-**推奨対策**: `next.config.js`でCSPを設定
+**推奨対策**: `next.config.js`でCSPを設定（本番では `unsafe-eval` / `unsafe-inline` は極力避ける）
 
 ```javascript
 const securityHeaders = [
@@ -289,8 +289,8 @@ const securityHeaders = [
     value: `
       default-src 'self';
       img-src 'self' *.supabase.co data:;
-      script-src 'self' 'unsafe-eval';
-      style-src 'self' 'unsafe-inline';
+      script-src 'self';
+      style-src 'self';
       connect-src 'self' *.supabase.co *.googleapis.com;
     `.replace(/\n/g, '')
   }
