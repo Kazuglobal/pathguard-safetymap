@@ -168,11 +168,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     return new File([blob], filename, { type: blob.type || 'image/png' })
   }
 
+  // Maximum file size for API requests (3MB to stay under Gemini limits after Base64 encoding)
+  const MAX_API_FILE_SIZE = 3 * 1024 * 1024
+
   // Compress large images client-side to avoid 413 from server
   const compressImage = async (
     file: File,
-    maxDimension: number = 1600,
-    jpegQuality: number = 0.8,
+    maxDimension: number = 1200,
+    jpegQuality: number = 0.7,
+    targetMaxSize: number = MAX_API_FILE_SIZE,
   ): Promise<File> => {
     try {
       const objectUrl = URL.createObjectURL(file)
@@ -185,39 +189,77 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       URL.revokeObjectURL(objectUrl)
 
       const { width, height } = img
-      const scale = Math.min(1, maxDimension / Math.max(width, height))
-      const targetW = Math.max(1, Math.round(width * scale))
-      const targetH = Math.max(1, Math.round(height * scale))
 
-      if (scale === 1 && file.size <= 1.5 * 1024 * 1024) {
+      // Helper function to create compressed file
+      const createCompressedFile = async (
+        targetW: number,
+        targetH: number,
+        quality: number
+      ): Promise<File> => {
+        const canvas = document.createElement("canvas")
+        canvas.width = targetW
+        canvas.height = targetH
+        const ctx = canvas.getContext("2d")
+        if (!ctx) throw new Error("Failed to get canvas context")
+        ctx.drawImage(img, 0, 0, targetW, targetH)
+
+        const supportsWebp = canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+
+        const blob: Blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("Failed to create blob from canvas"))),
+            supportsWebp ? "image/webp" : "image/jpeg",
+            quality,
+          )
+        })
+
+        const extension = supportsWebp ? "webp" : "jpg"
+        const mime = supportsWebp ? "image/webp" : "image/jpeg"
+        return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-compressed.${extension}`, {
+          type: mime,
+          lastModified: Date.now(),
+        })
+      }
+
+      // Initial compression with default settings
+      let scale = Math.min(1, maxDimension / Math.max(width, height))
+      let targetW = Math.max(1, Math.round(width * scale))
+      let targetH = Math.max(1, Math.round(height * scale))
+
+      // Skip compression for small files that don't need resizing
+      if (scale === 1 && file.size <= targetMaxSize * 0.8) {
         return file
       }
 
-      const canvas = document.createElement("canvas")
-      canvas.width = targetW
-      canvas.height = targetH
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        return file
+      let compressedFile = await createCompressedFile(targetW, targetH, jpegQuality)
+
+      // Progressive compression if still too large
+      let attempts = 0
+      const maxAttempts = 4
+      let currentQuality = jpegQuality
+      let currentMaxDim = maxDimension
+
+      while (compressedFile.size > targetMaxSize && attempts < maxAttempts) {
+        attempts++
+        // Reduce quality and dimension progressively
+        currentQuality = Math.max(0.4, currentQuality - 0.1)
+        currentMaxDim = Math.max(800, currentMaxDim - 200)
+
+        scale = Math.min(1, currentMaxDim / Math.max(width, height))
+        targetW = Math.max(1, Math.round(width * scale))
+        targetH = Math.max(1, Math.round(height * scale))
+
+        console.log(`[compressImage] Retry ${attempts}: dim=${currentMaxDim}, quality=${currentQuality.toFixed(2)}`)
+        compressedFile = await createCompressedFile(targetW, targetH, currentQuality)
       }
-      ctx.drawImage(img, 0, 0, targetW, targetH)
 
-      const supportsWebp = canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+      if (compressedFile.size > targetMaxSize) {
+        console.warn(`[compressImage] Could not compress below ${targetMaxSize / 1024 / 1024}MB, final size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
+      } else {
+        console.log(`[compressImage] Compressed to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
+      }
 
-      const blob: Blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error("Failed to create blob from canvas"))),
-          supportsWebp ? "image/webp" : "image/jpeg",
-          jpegQuality,
-        )
-      })
-
-      const extension = supportsWebp ? "webp" : "jpg"
-      const mime = supportsWebp ? "image/webp" : "image/jpeg"
-      return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-compressed.${extension}`, {
-        type: mime,
-        lastModified: Date.now(),
-      })
+      return compressedFile
     } catch (error) {
       console.error("compressImage error:", error)
       return file
