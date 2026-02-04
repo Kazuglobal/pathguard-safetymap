@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Upload, Loader2, Camera, ImageIcon, ChevronDown, ChevronUp } from "lucide-react"
+import { X, Upload, Loader2, Camera, ImageIcon, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
@@ -167,6 +167,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [selectedCategory, setSelectedCategory] = useState<TargetAudience>("children")
   const [selectedPromptId, setSelectedPromptId] = useState<string>("")
   const [showPromptDetails, setShowPromptDetails] = useState(false)
+  // 手動解析トリガー（自動解析を無効化し、ボタンクリックで開始）
+  const [manualAnalysisTriggered, setManualAnalysisTriggered] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
 
   const registerBlobUrl = (url: string) => {
@@ -456,12 +458,20 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     }
   }
 
-  // Auto-generate processed images when original image selected
+  // Generate processed images when user clicks the analysis button (manual trigger)
   useEffect(() => {
     if (!originalImageFile) return
+    // 手動トリガーが押されていない場合は実行しない
+    if (!manualAnalysisTriggered) return
     const key = `${originalImageFile.name}:${originalImageFile.size}:${originalImageFile.lastModified}`
-    if (lastAutoGenKey.current === key) return
+    if (lastAutoGenKey.current === key) {
+      // 同じ画像で既に解析済みの場合はトリガーをリセットしてスキップ
+      setManualAnalysisTriggered(false)
+      return
+    }
     lastAutoGenKey.current = key
+    // トリガーをリセット
+    setManualAnalysisTriggered(false)
 
     const abortController = new AbortController()
     const runId = ++autoGenRunIdRef.current
@@ -651,7 +661,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       setAutoGenLoading(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [originalImageFile])
+  }, [originalImageFile, manualAnalysisTriggered])
 
   // On-demand regenerate using selected situation or custom prompt
   const regenerateSituation = async () => {
@@ -1101,29 +1111,55 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                 )}
 
                 {originalImagePreview ? (
-                  <div className="relative mt-2 border rounded-md overflow-hidden group">
-                    <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(originalImagePreview)}>
-                      <NextImage
-                        src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
-                        alt="選択された元画像"
-                        fill
-                        className="object-cover"
-                      />
+                  <>
+                    <div className="relative mt-2 border rounded-md overflow-hidden group">
+                      <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(originalImagePreview)}>
+                        <NextImage
+                          src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
+                          alt="選択された元画像"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-90 hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveOriginalImage()
+                        }}
+                        title="画像を削除"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
+                    {/* 解析開始ボタン */}
                     <Button
                       type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-90 hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleRemoveOriginalImage()
+                      variant="default"
+                      className="mt-2 w-full min-h-[48px] touch-manipulation bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      onClick={() => {
+                        lastAutoGenKey.current = null // 再解析を許可するためにキーをリセット
+                        setManualAnalysisTriggered(true)
+                        setActiveImageTab('processed')
                       }}
-                      title="画像を削除"
+                      disabled={autoGenLoading}
                     >
-                      <X className="h-4 w-4" />
+                      {autoGenLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          解析中...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          画像を解析して可視化
+                        </>
+                      )}
                     </Button>
-                  </div>
+                  </>
                 ) : (
                   <div className="flex items-center justify-center h-32 bg-gray-100 rounded-md">
                     <div className="text-center">
