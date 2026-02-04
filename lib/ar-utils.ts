@@ -80,13 +80,28 @@ export interface ARHazardData {
   z: number // AR空間でのZ座標（距離に基づく）
 }
 
+export interface ARHazardOptions {
+  maxDistance?: number // 最大表示距離（メートル、デフォルト500m）
+  maxAngle?: number // 最大表示角度（度、デフォルト90度 = 前方のみ）
+  showBehind?: boolean // 後方の地点も表示するか（デフォルトfalse）
+}
+
 export function calculateARHazardData(
   userLat: number,
   userLon: number,
   userHeading: number,
   reports: DangerReport[],
-  maxDistance: number = 500
+  options: number | ARHazardOptions = 500
 ): ARHazardData[] {
+  // 後方互換性のため、数値が渡された場合はmaxDistanceとして扱う
+  const opts: ARHazardOptions = typeof options === 'number'
+    ? { maxDistance: options }
+    : options
+
+  const maxDistance = opts.maxDistance ?? 500
+  const maxAngle = opts.maxAngle ?? 90
+  const showBehind = opts.showBehind ?? false
+
   return reports
     .map((report) => {
       const distance = calculateDistance(
@@ -111,6 +126,11 @@ export function calculateARHazardData(
       let relativeAngle = bearing - userHeading
       if (relativeAngle > 180) relativeAngle -= 360
       if (relativeAngle < -180) relativeAngle += 360
+
+      // 後方の地点をフィルタリング（通過済みの地点を非表示）
+      if (!showBehind && Math.abs(relativeAngle) > maxAngle) {
+        return null
+      }
 
       // AR空間での座標を計算
       // 視野角を考慮して、-1〜1の範囲にマッピング
