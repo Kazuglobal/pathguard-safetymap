@@ -1147,7 +1147,10 @@ export default function MapContainer() {
 
         {/* 検索バー - 地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (
-          <div className="absolute top-16 left-3 z-10 w-[calc(100%-120px)] max-w-md">
+          <div
+            className="absolute left-1/2 z-10 w-[calc(100%-6rem)] max-w-md -translate-x-1/2"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 6.25rem)" }}
+          >
             <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
           </div>
         )}
@@ -1189,21 +1192,24 @@ export default function MapContainer() {
 
         {/* モバイルマップヒント */}
         {showMobileMapHint && (
-            <div className="absolute top-3 left-6 z-10 sm:hidden pointer-events-none">
-              <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
-                <MapPin className="h-4 w-4 text-blue-500" />
-                <span>ここが地図エリアです</span>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileMapHint(false)}
-                  className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
-                  aria-label="地図エリアのヒントを閉じる"
-                >
-                  ×
-                </button>
-              </div>
+          <div
+            className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 7.75rem)" }}
+          >
+            <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
+              <MapPin className="h-4 w-4 text-blue-500" />
+              <span>ここが地図エリアです</span>
+              <button
+                type="button"
+                onClick={() => setShowMobileMapHint(false)}
+                className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
+                aria-label="地図エリアのヒントを閉じる"
+              >
+                ×
+              </button>
             </div>
-          )}
+          </div>
+        )}
           {/* Map Overlays: Selection Info, Error, Loading */}
           {isReportFormOpen && (
             <div className="absolute top-20 left-0 right-0 z-10 px-4 py-2 flex justify-center pointer-events-none">
