@@ -1142,26 +1142,28 @@ export default function MapContainer() {
         isARMode={isARMode}
       />
       <div className="relative flex flex-col md:flex-row flex-1 overflow-hidden pt-0 px-2 md:px-0">
-        {/* 検索バー（モバイル用） - 地点選択モード中は非表示 */}
+        {/* 検索バー（モバイル用） - 地点選択モード中は非表示 - 一番上に配置して広げる */}
         {isMobile && !awaitingLocationSelection && (
-          <div className="absolute top-2 left-2 z-20 w-[calc(100%-80px)]">
+          <div className="absolute top-0 left-0 right-16 z-20 px-2 py-2">
             <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
           </div>
         )}
-        
-        {/* 検索バー（デスクトップ用） */}
-        <div className="hidden sm:absolute sm:top-12 sm:left-8 sm:z-10 sm:flex sm:items-center sm:max-w-md sm:w-auto">
-          <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+
+        {/* 検索バー（デスクトップ用） - 一番上に配置して広げる */}
+        <div className="hidden sm:absolute sm:top-0 sm:left-0 sm:right-0 sm:z-10 sm:flex sm:items-center sm:px-4 sm:py-2">
+          <div className="w-full max-w-2xl">
+            <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+          </div>
         </div>
         
-        {/* モバイル用サイドバートグルボタン - 地点選択モード中は非表示 */}
+        {/* モバイル用サイドバートグルボタン - 検索バーの右側に配置 */}
         {isMobile && !awaitingLocationSelection && (
-          <div className="absolute top-2 right-2 z-20">
+          <div className="absolute top-0 right-2 z-20 py-2">
             <Button
               onClick={toggleSidebar}
               variant="outline"
               size="sm"
-              className="bg-white/90 backdrop-blur-sm shadow-sm h-6 px-2 text-xs"
+              className="bg-white/90 backdrop-blur-sm shadow-sm h-9 px-2 text-xs"
             >
               <span className="mr-1">📋</span>
               一覧
