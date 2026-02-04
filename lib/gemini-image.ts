@@ -10,7 +10,23 @@ export type GenerateImageParams = {
 }
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
-import { getSanitizedGeminiApiKey, getSanitizedGeminiModel } from "./gemini-util"
+import { getSanitizedGeminiApiKey } from "./gemini-util"
+
+// Available image generation models (in order of preference)
+const IMAGE_GEN_MODELS = [
+  "gemini-3-pro-image-preview",                 // Gemini 3 Pro Image Preview (NanoBanana Pro)
+  "gemini-2.0-flash-exp-image-generation",      // Gemini 2.0 Flash Exp Image Generation
+  "gemini-2.0-flash-preview-image-generation",  // Gemini 2.0 Flash Preview
+  "imagen-3.0-generate-001",                    // Imagen 3 standard
+]
+
+function getImageModel(): string {
+  const envModel = process.env.GEMINI_IMAGE_MODEL?.trim()
+  if (envModel && envModel.length > 0) {
+    return envModel
+  }
+  return IMAGE_GEN_MODELS[0]
+}
 
 async function tryImagesGenerate(apiKey: string, model: string, prompt: string, imageBase64?: string, imageMimeType?: string) {
   // Use Imagen API with correct format
@@ -141,67 +157,85 @@ export async function generateImageWithGemini({
 }: GenerateImageParams): Promise<GeneratedImage[]> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Use the Gemini 3 Pro Image Preview model for image generation
-  const model = getSanitizedGeminiModel("gemini-3-pro-image-preview")
+  // Get the image generation model (user-specified or default)
+  const primaryModel = getImageModel()
+
+  // Build list of models to try (primary first, then fallbacks)
+  const modelsToTry = [primaryModel, ...IMAGE_GEN_MODELS.filter(m => m !== primaryModel)]
 
   const text = prompt || "Create an image using the provided reference."
+  let lastError: Error | null = null
 
-  // First attempt: dedicated images:generate endpoint (preferred per Gemini docs)
-  try {
-    const primary = await tryImagesGenerate(apiKey, model, text, imageBase64, imageMimeType)
-    if (primary.ok) {
-      const payload = await primary.json()
-      const primaryImages = await extractImagesFromAny(payload, apiKey)
-      if (primaryImages.length > 0) {
-        return primaryImages
+  for (const model of modelsToTry) {
+    console.log(`[Gemini] Trying model: ${model}`)
+
+    // First attempt: dedicated images:generate endpoint (preferred per Gemini docs)
+    try {
+      const primary = await tryImagesGenerate(apiKey, model, text, imageBase64, imageMimeType)
+      if (primary.ok) {
+        const payload = await primary.json()
+        const primaryImages = await extractImagesFromAny(payload, apiKey)
+        if (primaryImages.length > 0) {
+          console.log(`[Gemini] Success with model: ${model} via images:generate`)
+          return primaryImages
+        }
+      } else {
+        // If the endpoint rejects (e.g., unsupported model), fall through to generateContent
+        const errText = await primary.text()
+        console.warn(`[Gemini] images:generate failed for ${model}: ${errText}`)
       }
-    } else {
-      // If the endpoint rejects (e.g., unsupported model), fall through to generateContent
-      await primary.text() // consume body for debugging; ignore content
+    } catch (error) {
+      console.warn(`[Gemini] images:generate error for ${model}:`, error)
     }
-  } catch (error) {
-    console.warn("[Gemini] images:generate fallback triggered", error)
-  }
 
-  // Fallback: generateContent without response_mime_type (text-based response)
-  const requestBody: any = {
-    contents: [
-      {
-        role: "user",
-        parts: [
-          ...(imageBase64 && imageMimeType
-            ? [{ inline_data: { mime_type: imageMimeType, data: imageBase64 } }]
-            : []),
-          { text },
+    // Fallback: generateContent with response_modalities for native image generation
+    try {
+      const requestBody: any = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              ...(imageBase64 && imageMimeType
+                ? [{ inline_data: { mime_type: imageMimeType, data: imageBase64 } }]
+                : []),
+              { text },
+            ],
+          },
         ],
-      },
-    ],
-    generation_config: {
-      temperature: 0.4,
-      top_p: 0.9,
-    },
-  }
+        generation_config: {
+          temperature: 0.4,
+          top_p: 0.9,
+          response_modalities: ["IMAGE", "TEXT"],
+        },
+      }
 
-  const res = await fetch(
-    `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      const res = await fetch(
+        `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
+      )
+
+      if (res.ok) {
+        const data = await res.json()
+        const images = await extractImagesFromAny(data, apiKey)
+        if (images.length > 0) {
+          console.log(`[Gemini] Success with model: ${model} via generateContent`)
+          return images
+        }
+      } else {
+        const errText = await res.text()
+        lastError = new Error(`${model}: ${res.status} ${res.statusText} - ${errText}`)
+        console.warn(`[Gemini] generateContent failed for ${model}: ${errText}`)
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      console.warn(`[Gemini] generateContent error for ${model}:`, error)
     }
-  )
-
-  if (!res.ok) {
-    const responseText = await res.text()
-    throw new Error(`Gemini image generation failed: ${res.status} ${res.statusText} - ${responseText}`)
   }
 
-  const data = await res.json()
-  const images = await extractImagesFromAny(data, apiKey)
-
-  if (images.length === 0) {
-    throw new Error("No image data returned from Gemini. Response: " + JSON.stringify(data, null, 2))
-  }
-
-  return images
+  // All models failed
+  throw lastError || new Error("All image generation models failed. Please check your API key and model availability.")
 }
