@@ -5,7 +5,6 @@
  * Uses Mapbox Static Images API for map generation and jspdf for PDF output.
  */
 
-import polyline from '@mapbox/polyline'
 import type {
   DangerReport,
   RouteDangerReport,
@@ -45,12 +44,11 @@ export function generateOverviewMapUrl(
   const { width, height } = dimensions
   const style = 'mapbox/streets-v12'
 
-  // Encode route as polyline for Mapbox Static Images API
-  // Polyline encoding requires [lat, lng] format, but GeoJSON uses [lng, lat]
+  // Encode route as coordinate path for Mapbox Static Images API
+  // GeoJSON uses [lng, lat] which matches Mapbox static path format.
   const coordinates = routeGeometry.coordinates
-  const latLngCoords = coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-  const encodedPolyline = polyline.encode(latLngCoords)
-  const pathOverlay = `path-4+3b82f6-0.7(polyline(${encodeURIComponent(encodedPolyline)}))`
+  const coordinatePath = coordinates.map(([lng, lat]) => `${lng},${lat}`).join(';')
+  const pathOverlay = `path-4+3b82f6-0.7(${encodeURIComponent(coordinatePath)})`
 
   // Create markers for dangers
   const markerOverlays = dangers
