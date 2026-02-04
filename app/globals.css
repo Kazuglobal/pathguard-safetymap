@@ -2,35 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* モバイル地図表示最適化 */
+/* フルスクリーンマップコンテナ */
+.fullscreen-map-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ナビゲーションバー分の余白を考慮（下部にナビがある場合） */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .fullscreen-map-container {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* モバイル地図表示最適化（レガシー互換） */
 @media (max-width: 768px) {
   .mobile-map-container {
-    height: calc(100vh - 120px); /* ヘッダー分を差し引く */
-    min-height: 500px;
+    height: 100vh;
+    min-height: 100vh;
   }
-  
+
   .mobile-header-compact {
     padding: 0.5rem 1rem;
   }
-  
+
   .mobile-button-compact {
     height: 1.5rem;
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
   }
-  
+
   /* ボタンの重なりを防ぐ */
   .mobile-header-buttons {
     gap: 0.75rem;
     min-width: 0;
   }
-  
+
   .mobile-header-buttons button {
     flex-shrink: 0;
     white-space: nowrap;
     min-width: auto;
   }
-  
+
   /* ヘッダーの高さ制限 */
   .mobile-header-compact {
     max-height: 80px;
@@ -40,34 +59,34 @@
 
 /* デスクトップレイアウト最適化 */
 @media (min-width: 768px) {
-  /* デスクトップヘッダーの高さを最適化 */
+  /* デスクトップヘッダーの高さを最適化（レガシー互換） */
   .desktop-header {
     min-height: 60px;
     max-height: 60px;
   }
-  
-  /* デスクトップでの地図コンテナの高さ調整 */
+
+  /* デスクトップでの地図コンテナ（フルスクリーン） */
   .desktop-map-container {
-    height: calc(100vh - 60px); /* デスクトップヘッダー分を差し引く */
+    height: 100vh;
   }
-  
+
   /* デスクトップでのフィルター要素のスタイル */
   .desktop-filter-item {
     transition: all 0.2s ease-in-out;
     padding: 0.25rem 0.5rem;
     border-radius: 0.375rem;
   }
-  
+
   .desktop-filter-item:hover {
     background-color: rgba(0, 0, 0, 0.05);
   }
-  
+
   /* デスクトップでのボタンサイズ最適化 */
   .desktop-button {
     min-height: 36px;
     padding: 0.5rem 1rem;
   }
-  
+
   /* デスクトップでのユーザー情報表示の最適化 */
   .desktop-user-info {
     background-color: rgba(0, 0, 0, 0.02);
@@ -75,14 +94,14 @@
     border-radius: 0.5rem;
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
-  
+
   /* デスクトップでの報告ボタンの強調 */
   .desktop-report-button {
     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
     transition: all 0.2s ease-in-out;
   }
-  
+
   .desktop-report-button:hover {
     background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
     box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
