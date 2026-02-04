@@ -22,12 +22,27 @@ const ALLOWED_DOWNLOAD_HOSTS = [
 // Security: Allowed MIME types for images
 const ALLOWED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 
+// Security: Limits to prevent large payloads or excessive images
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024 // 8MB
+const MAX_IMAGE_COUNT = 8
+
 // Helper to validate and sanitize MIME type
 function sanitizeMimeType(mimeType: string | undefined | null): string {
   if (typeof mimeType === 'string' && ALLOWED_IMAGE_MIME_TYPES.includes(mimeType)) {
     return mimeType
   }
   return 'image/png'
+}
+
+function isAllowedDownloadUrl(url: URL): boolean {
+  return url.protocol === 'https:' && ALLOWED_DOWNLOAD_HOSTS.includes(url.hostname)
+}
+
+function estimateBase64Bytes(base64: string): number {
+  const len = base64.length
+  if (len === 0) return 0
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+  return Math.max(0, Math.floor((len * 3) / 4) - padding)
 }
 
 // Helper to validate model name (alphanumeric, dash, dot, underscore only)
@@ -91,21 +106,39 @@ async function downloadToBase64(uri: string, apiKey: string): Promise<{ mimeType
       return null
     }
 
-    if (!ALLOWED_DOWNLOAD_HOSTS.includes(parsed.hostname)) {
+    if (!isAllowedDownloadUrl(parsed)) {
       console.warn('[Gemini] Blocked download from untrusted host:', parsed.hostname)
       return null
     }
 
     let url = uri
-    if (!/\bkey=/.test(url)) {
-      url += (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(apiKey)
-    }
     if (!/\balt=media\b/.test(url)) {
-      url += '&alt=media'
+      url += (url.includes('?') ? '&' : '?') + 'alt=media'
     }
-    const r = await fetch(url, { headers: { 'X-Goog-Api-Key': apiKey } })
+    const r = await fetch(url, { headers: { 'X-Goog-Api-Key': apiKey }, redirect: 'manual' })
+    if (r.status >= 300 && r.status < 400) {
+      const location = r.headers.get('location')
+      if (!location) return null
+      const nextUrl = new URL(location, url)
+      if (!isAllowedDownloadUrl(nextUrl)) {
+        console.warn('[Gemini] Blocked redirect to untrusted host:', nextUrl.hostname)
+        return null
+      }
+      const redirected = await fetch(nextUrl.toString(), { headers: { 'X-Goog-Api-Key': apiKey }, redirect: 'manual' })
+      if (!redirected.ok) return null
+      const len = Number(redirected.headers.get('content-length') || '0')
+      if (len > MAX_IMAGE_BYTES) return null
+      const buf = Buffer.from(await redirected.arrayBuffer())
+      if (buf.length > MAX_IMAGE_BYTES) return null
+      const mt = sanitizeMimeType(redirected.headers.get('content-type'))
+      const b64 = buf.toString('base64')
+      return { mimeType: mt, dataUrl: `data:${mt};base64,${b64}` }
+    }
     if (!r.ok) return null
+    const len = Number(r.headers.get('content-length') || '0')
+    if (len > MAX_IMAGE_BYTES) return null
     const buf = Buffer.from(await r.arrayBuffer())
+    if (buf.length > MAX_IMAGE_BYTES) return null
     // Security: Validate and sanitize MIME type from header
     const mt = sanitizeMimeType(r.headers.get('content-type'))
     const b64 = buf.toString('base64')
@@ -119,12 +152,19 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
   const images: GeneratedImage[] = []
   const fileUris: { uri: string; mimeType?: string }[] = []
 
+  const tryPushImage = (mimeType: string | undefined | null, base64: string) => {
+    if (images.length >= MAX_IMAGE_COUNT) return
+    const bytes = estimateBase64Bytes(base64)
+    if (bytes > MAX_IMAGE_BYTES) return
+    const mt = sanitizeMimeType(mimeType)
+    images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${base64}` })
+  }
+
   // Handle Imagen API response format (generatedImages with imageBytes)
   if (data.predictions && Array.isArray(data.predictions)) {
     for (const pred of data.predictions) {
       if (pred.bytesBase64Encoded) {
-        const mt = sanitizeMimeType(pred.mimeType)
-        images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${pred.bytesBase64Encoded}` })
+        tryPushImage(pred.mimeType, pred.bytesBase64Encoded)
       }
     }
   }
@@ -134,30 +174,25 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
 
     // Imagen format: imageBytes or bytesBase64Encoded
     if (typeof node.imageBytes === 'string' && node.imageBytes.length > 100) {
-      const mt = sanitizeMimeType(node.mimeType)
-      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.imageBytes}` })
+      tryPushImage(node.mimeType, node.imageBytes)
     }
     if (typeof node.bytesBase64Encoded === 'string' && node.bytesBase64Encoded.length > 100) {
-      const mt = sanitizeMimeType(node.mimeType)
-      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.bytesBase64Encoded}` })
+      tryPushImage(node.mimeType, node.bytesBase64Encoded)
     }
 
     // direct inline
     if (typeof node.data === 'string' && node.data.length > 100) {
-      const mt = sanitizeMimeType(node.mime_type || node.mimeType)
-      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.data}` })
+      tryPushImage(node.mime_type || node.mimeType, node.data)
     }
     // nested image object
     if (node.image && typeof node.image === 'object' && typeof node.image.data === 'string') {
-      const mt = sanitizeMimeType(node.image.mimeType || node.image.mime_type)
-      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.image.data}` })
+      tryPushImage(node.image.mimeType || node.image.mime_type, node.image.data)
     }
     // inlineData / inline_data
     if (node.inlineData || node.inline_data) {
       const inline = node.inlineData || node.inline_data
       if (inline?.data) {
-        const mt = sanitizeMimeType(inline.mimeType || inline.mime_type)
-        images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${inline.data}` })
+        tryPushImage(inline.mimeType || inline.mime_type, inline.data)
       }
     }
     // fileData / file_data with URI
@@ -180,6 +215,7 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
   visit(data)
   // Download any referenced files
   for (const it of fileUris) {
+    if (images.length >= MAX_IMAGE_COUNT) break
     const mt = (it.mimeType as string | undefined) || 'image/png'
     if (!mt.startsWith('image/')) continue
     const downloaded = await downloadToBase64(it.uri, apiKey)
@@ -257,10 +293,10 @@ export async function generateImageWithGemini({
       }
 
       const res = await fetch(
-        `${GEMINI_API_URL}/models/${encodeURIComponent(safeModel)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        `${GEMINI_API_URL}/models/${encodeURIComponent(safeModel)}:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
           body: JSON.stringify(requestBody),
         }
       )
