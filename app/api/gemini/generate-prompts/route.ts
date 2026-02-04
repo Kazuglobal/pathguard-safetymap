@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateDisasterPrompts } from "@/lib/gemini-prompts"
+import { createServerClient } from "@/lib/supabase-server"
 
 export const runtime = "nodejs"
 
@@ -35,6 +36,17 @@ function fallbackPrompts() {
 
 export async function POST(req: NextRequest) {
   try {
+    const isDev = process.env.NODE_ENV !== "production"
+    const supabase = await createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "認証が必要です" },
+        { status: 401 }
+      )
+    }
+
     const contentType = req.headers.get("content-type") || ""
     let imageBase64: string | undefined
     let language: "ja" | "en" | undefined
@@ -75,10 +87,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, prompts })
     } catch (innerError) {
       const warning = innerError instanceof Error ? innerError.message : String(innerError)
-      return NextResponse.json({ success: false, prompts: fallbackPrompts(), warning })
+      const safeWarning = isDev ? warning : "プロンプトの生成に失敗しました。"
+      return NextResponse.json({ success: false, prompts: fallbackPrompts(), warning: safeWarning })
     }
   } catch (error) {
     const warning = error instanceof Error ? error.message : "Unknown error"
-    return NextResponse.json({ success: false, prompts: fallbackPrompts(), warning })
+    const safeWarning = process.env.NODE_ENV !== "production" ? warning : "内部エラーが発生しました。"
+    return NextResponse.json({ success: false, prompts: fallbackPrompts(), warning: safeWarning })
   }
 }

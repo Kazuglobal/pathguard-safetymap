@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import useSWR from "swr"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { HazardAnalysisResult } from "@/lib/openai"
+import { compressImage, fileToBase64 } from "@/lib/image-utils"
 
 interface GameSession {
   id: string
@@ -29,10 +29,10 @@ interface GameHistoryResponse {
 }
 
 export function useHazardGame() {
-  const { supabase } = useSupabase()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<HazardAnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const lastAnalyzeAtRef = useRef(0)
 
   // Fetch game history and stats
   const { data: gameHistory, error: historyError, mutate } = useSWR<GameHistoryResponse>(
@@ -49,123 +49,20 @@ export function useHazardGame() {
     }
   )
 
-  // Maximum file size for API requests (3MB to stay under Gemini limits after Base64 encoding)
-  const MAX_API_FILE_SIZE = 3 * 1024 * 1024
-
-  // Compress large images on the client to avoid 413 from Vercel/Gemini
-  const compressImage = async (
-    file: File,
-    maxDimension: number = 1200,
-    quality: number = 0.7,
-    targetMaxSize: number = MAX_API_FILE_SIZE,
-  ): Promise<File> => {
-    try {
-      const objectUrl = URL.createObjectURL(file)
-      const img: HTMLImageElement = await new Promise((resolve, reject) => {
-        const i = new Image()
-        i.onload = () => resolve(i)
-        i.onerror = reject
-        i.src = objectUrl
-      })
-      URL.revokeObjectURL(objectUrl)
-
-      const { width, height } = img
-
-      // Helper function to create compressed file
-      const createCompressedFile = async (
-        targetW: number,
-        targetH: number,
-        q: number
-      ): Promise<File> => {
-        const canvas = document.createElement('canvas')
-        canvas.width = targetW
-        canvas.height = targetH
-        const ctx = canvas.getContext('2d')
-        if (!ctx) throw new Error('Failed to get canvas context')
-        ctx.drawImage(img, 0, 0, targetW, targetH)
-
-        const supportsWebp = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0
-
-        const blob: Blob = await new Promise((resolve, reject) => {
-          canvas.toBlob(
-            b => (b ? resolve(b) : reject(new Error('Failed to create blob from canvas'))),
-            supportsWebp ? 'image/webp' : 'image/jpeg',
-            q,
-          )
-        })
-
-        const extension = supportsWebp ? 'webp' : 'jpg'
-        const mime = supportsWebp ? 'image/webp' : 'image/jpeg'
-        return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}-compressed.${extension}`, {
-          type: mime,
-          lastModified: Date.now(),
-        })
-      }
-
-      // Initial compression with default settings
-      let scale = Math.min(1, maxDimension / Math.max(width, height))
-      let targetW = Math.max(1, Math.round(width * scale))
-      let targetH = Math.max(1, Math.round(height * scale))
-
-      // Skip compression for small files that don't need resizing
-      if (scale === 1 && file.size <= targetMaxSize * 0.8) {
-        return file
-      }
-
-      let compressedFile = await createCompressedFile(targetW, targetH, quality)
-
-      // Progressive compression if still too large
-      let attempts = 0
-      const maxAttempts = 4
-      let currentQuality = quality
-      let currentMaxDim = maxDimension
-
-      while (compressedFile.size > targetMaxSize && attempts < maxAttempts) {
-        attempts++
-        currentQuality = Math.max(0.4, currentQuality - 0.1)
-        currentMaxDim = Math.max(800, currentMaxDim - 200)
-
-        scale = Math.min(1, currentMaxDim / Math.max(width, height))
-        targetW = Math.max(1, Math.round(width * scale))
-        targetH = Math.max(1, Math.round(height * scale))
-
-        console.log(`[compressImage] Retry ${attempts}: dim=${currentMaxDim}, quality=${currentQuality.toFixed(2)}`)
-        compressedFile = await createCompressedFile(targetW, targetH, currentQuality)
-      }
-
-      if (compressedFile.size > targetMaxSize) {
-        console.warn(`[compressImage] Could not compress below ${targetMaxSize / 1024 / 1024}MB, final size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
-      } else {
-        console.log(`[compressImage] Compressed to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
-      }
-
-      return compressedFile
-    } catch {
-      return file
-    }
-  }
-
-  // Convert image file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => {
-        const result = reader.result as string
-        // Remove data:image/...;base64, prefix
-        const base64 = result.split(",")[1]
-        resolve(base64)
-      }
-      reader.onerror = (error) => reject(error)
-    })
-  }
-
   // Analyze image for hazards
   const analyzeImage = async (
     imageFile: File, 
     userDetectedHazards?: string[],
     promptType: "default" | "expert" | "child" = "default"
   ) => {
+    const now = Date.now()
+    if (now - lastAnalyzeAtRef.current < 1500) {
+      const message = "連続リクエストは少し待ってからお試しください。"
+      setError(message)
+      throw new Error(message)
+    }
+    lastAnalyzeAtRef.current = now
+
     setIsAnalyzing(true)
     setError(null)
     setAnalysisResult(null)
@@ -219,26 +116,6 @@ export function useHazardGame() {
         }
 
         throw new Error(friendlyMessage)
-      }
-
-      if (!response.ok) {
-        let errorData: any = {}
-        try {
-          errorData = await response.json()
-        } catch (e) {
-          console.error('Failed to parse error response:', e)
-        }
-        
-        console.error('API Error Response:', JSON.stringify(errorData, null, 2))
-        console.error('Response status:', response.status)
-        console.error('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2))
-        
-        // Show more detailed error information in development
-        if (process.env.NODE_ENV === 'development' && errorData.debugInfo) {
-          console.error('Debug info:', JSON.stringify(errorData.debugInfo, null, 2))
-        }
-        
-        throw new Error(errorData.error || errorData.message || `画像の分析に失敗しました (Status: ${response.status})`)
       }
 
       const result = await response.json()
