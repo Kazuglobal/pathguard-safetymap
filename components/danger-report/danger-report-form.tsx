@@ -14,6 +14,7 @@ import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
 import type { DangerReport } from "@/lib/types"
+import { compressImage, fileToBase64 } from "@/lib/image-utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   promptCategories,
@@ -29,6 +30,95 @@ interface DangerReportFormProps {
   onCancel: () => void
   selectedLocation: [number, number] | null
   isMobileFullscreen?: boolean
+}
+
+type HazardBBox = {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+}
+
+type HazardItem = {
+  type?: string
+  confidence?: number
+  bbox?: HazardBBox
+}
+
+type RiskAnalysisItem = {
+  category: string
+  risk: string
+  measure: string
+}
+
+const AUTO_GEN_DEBOUNCE_MS = 350
+const REGEN_COOLDOWN_MS = 1500
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+])
+
+const readFileHeader = async (file: File, length: number) => {
+  const buffer = await file.slice(0, length).arrayBuffer()
+  return new Uint8Array(buffer)
+}
+
+const sniffImageMime = (bytes: Uint8Array): string | null => {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg"
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "image/png"
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "image/webp"
+  }
+  if (
+    bytes.length >= 6 &&
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61
+  ) {
+    return "image/gif"
+  }
+  return null
+}
+
+const validateImageFile = async (file: File) => {
+  const header = await readFileHeader(file, 12)
+  const sniffed = sniffImageMime(header)
+  if (!sniffed || !ALLOWED_IMAGE_MIME_TYPES.has(sniffed)) {
+    return {
+      ok: false,
+      reason: "対応していない画像形式です。JPEG/PNG/WebP/GIFのみ利用できます。",
+    }
+  }
+  return { ok: true, mime: sniffed }
 }
 
 export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, isMobileFullscreen = false }: DangerReportFormProps) {
@@ -55,7 +145,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [uploadProgress, setUploadProgress] = useState(0)
   const [cameraError, setCameraError] = useState<string | null>(null)
 
-  const [riskAnalysis, setRiskAnalysis] = useState<any[] | null>(null)
+  const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisItem[] | null>(null)
   const [autoGenLoading, setAutoGenLoading] = useState(false)
   const [autoGenError, setAutoGenError] = useState<string | null>(null)
   const lastAutoGenKey = useRef<string | null>(null)
@@ -64,10 +154,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
     riskObservationTable?: string
   } | null>(null)
-  const [lastHazards, setLastHazards] = useState<any[]>([])
+  const [lastHazards, setLastHazards] = useState<HazardItem[]>([])
   type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
   const [situation, setSituation] = useState<Situation>('viz')
   const [regenLoading, setRegenLoading] = useState(false)
+  const autoGenRunIdRef = useRef(0)
+  const lastRegenAtRef = useRef(0)
+  const blobUrlRegistryRef = useRef<Set<string>>(new Set())
 
   // 防災用カスタムプロンプト関連の状態
   const [useCustomPrompt, setUseCustomPrompt] = useState(false)
@@ -75,6 +168,27 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [selectedPromptId, setSelectedPromptId] = useState<string>("")
   const [showPromptDetails, setShowPromptDetails] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
+
+  const registerBlobUrl = (url: string) => {
+    if (url.startsWith("blob:")) {
+      blobUrlRegistryRef.current.add(url)
+    }
+  }
+
+  const revokeBlobUrl = (url: string | null | undefined) => {
+    if (!url || !url.startsWith("blob:")) return
+    if (blobUrlRegistryRef.current.has(url)) {
+      URL.revokeObjectURL(url)
+      blobUrlRegistryRef.current.delete(url)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      blobUrlRegistryRef.current.forEach((url) => URL.revokeObjectURL(url))
+      blobUrlRegistryRef.current.clear()
+    }
+  }, [])
   // 元画像が選択されたら自動で処理 API を呼び出す -> ★★★ 削除またはコメントアウト ★★★
   /*
   useEffect(() => {
@@ -126,7 +240,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   }
 
   // 画像選択ハンドラー（元画像）
-  const handleOriginalImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOriginalImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -137,16 +251,36 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         description: "画像サイズは10MB以下にしてください。",
         variant: "destructive",
       })
+      if (originalFileInputRef.current) {
+        originalFileInputRef.current.value = ""
+      }
       return
     }
 
-    // 画像タイプチェック
-    if (!file.type.startsWith("image/")) {
+    // 画像タイプチェック（MIMEスプーフィング対策）
+    let validation
+    try {
+      validation = await validateImageFile(file)
+    } catch {
       toast({
         title: "エラー",
-        description: "画像ファイルを選択してください。",
+        description: "画像の検証に失敗しました。別の画像をお試しください。",
         variant: "destructive",
       })
+      if (originalFileInputRef.current) {
+        originalFileInputRef.current.value = ""
+      }
+      return
+    }
+    if (!validation.ok) {
+      toast({
+        title: "エラー",
+        description: validation.reason || "画像ファイルを選択してください。",
+        variant: "destructive",
+      })
+      if (originalFileInputRef.current) {
+        originalFileInputRef.current.value = ""
+      }
       return
     }
 
@@ -162,122 +296,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   }
 
   // Utilities for auto-generation
-  const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
-    const res = await fetch(dataUrl)
+  const dataUrlToFile = async (dataUrl: string, filename: string, signal?: AbortSignal): Promise<File> => {
+    const res = await fetch(dataUrl, { signal })
     const blob = await res.blob()
     return new File([blob], filename, { type: blob.type || 'image/png' })
   }
 
-  // Maximum file size for API requests (3MB to stay under Gemini limits after Base64 encoding)
-  const MAX_API_FILE_SIZE = 3 * 1024 * 1024
-
-  // Compress large images client-side to avoid 413 from server
-  const compressImage = async (
-    file: File,
-    maxDimension: number = 1200,
-    jpegQuality: number = 0.7,
-    targetMaxSize: number = MAX_API_FILE_SIZE,
-  ): Promise<File> => {
-    try {
-      const objectUrl = URL.createObjectURL(file)
-      const img: HTMLImageElement = await new Promise((resolve, reject) => {
-        const i = new Image()
-        i.onload = () => resolve(i)
-        i.onerror = reject
-        i.src = objectUrl
-      })
-      URL.revokeObjectURL(objectUrl)
-
-      const { width, height } = img
-
-      // Helper function to create compressed file
-      const createCompressedFile = async (
-        targetW: number,
-        targetH: number,
-        quality: number
-      ): Promise<File> => {
-        const canvas = document.createElement("canvas")
-        canvas.width = targetW
-        canvas.height = targetH
-        const ctx = canvas.getContext("2d")
-        if (!ctx) throw new Error("Failed to get canvas context")
-        ctx.drawImage(img, 0, 0, targetW, targetH)
-
-        const supportsWebp = canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
-
-        const blob: Blob = await new Promise((resolve, reject) => {
-          canvas.toBlob(
-            (b) => (b ? resolve(b) : reject(new Error("Failed to create blob from canvas"))),
-            supportsWebp ? "image/webp" : "image/jpeg",
-            quality,
-          )
-        })
-
-        const extension = supportsWebp ? "webp" : "jpg"
-        const mime = supportsWebp ? "image/webp" : "image/jpeg"
-        return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-compressed.${extension}`, {
-          type: mime,
-          lastModified: Date.now(),
-        })
-      }
-
-      // Initial compression with default settings
-      let scale = Math.min(1, maxDimension / Math.max(width, height))
-      let targetW = Math.max(1, Math.round(width * scale))
-      let targetH = Math.max(1, Math.round(height * scale))
-
-      // Skip compression for small files that don't need resizing
-      if (scale === 1 && file.size <= targetMaxSize * 0.8) {
-        return file
-      }
-
-      let compressedFile = await createCompressedFile(targetW, targetH, jpegQuality)
-
-      // Progressive compression if still too large
-      let attempts = 0
-      const maxAttempts = 4
-      let currentQuality = jpegQuality
-      let currentMaxDim = maxDimension
-
-      while (compressedFile.size > targetMaxSize && attempts < maxAttempts) {
-        attempts++
-        // Reduce quality and dimension progressively
-        currentQuality = Math.max(0.4, currentQuality - 0.1)
-        currentMaxDim = Math.max(800, currentMaxDim - 200)
-
-        scale = Math.min(1, currentMaxDim / Math.max(width, height))
-        targetW = Math.max(1, Math.round(width * scale))
-        targetH = Math.max(1, Math.round(height * scale))
-
-        console.log(`[compressImage] Retry ${attempts}: dim=${currentMaxDim}, quality=${currentQuality.toFixed(2)}`)
-        compressedFile = await createCompressedFile(targetW, targetH, currentQuality)
-      }
-
-      if (compressedFile.size > targetMaxSize) {
-        console.warn(`[compressImage] Could not compress below ${targetMaxSize / 1024 / 1024}MB, final size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
-      } else {
-        console.log(`[compressImage] Compressed to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
-      }
-
-      return compressedFile
-    } catch (error) {
-      console.error("compressImage error:", error)
-      return file
-    }
-  }
-
-  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-    const fr = new FileReader()
-    fr.onload = () => {
-      const result = String(fr.result || '')
-      const base64 = result.startsWith('data:') ? result.split(',')[1] : result
-      resolve(base64)
-    }
-    fr.onerror = reject
-    fr.readAsDataURL(file)
-  })
-
-  const buildRegionConstraints = (hazards: any[]): string => {
+  const buildRegionConstraints = (hazards: HazardItem[]): string => {
     if (!Array.isArray(hazards) || hazards.length === 0) return ''
     const lines: string[] = []
     lines.push('Region constraints (normalized coordinates 0-1):')
@@ -296,7 +321,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     return lines.join(' ')
   }
 
-  const drawOverlayFromHazards = async (imageFile: File, hazards: any[]): Promise<string> => {
+  const drawOverlayFromHazards = async (imageFile: File, hazards: HazardItem[]): Promise<string> => {
     const imgUrl = URL.createObjectURL(imageFile)
     try {
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -325,7 +350,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       let idx = 0
       const rows = Math.max(1, Math.ceil(hazards.length / 2))
       for (const h of hazards) {
-        const anyH: any = h
+        const anyH = h
         let x = 0.05, y = 0.05, w = 0.4, hh = 0.25
         if (anyH?.bbox && typeof anyH.bbox === 'object') {
           x = Math.max(0, Math.min(1, Number(anyH.bbox.x ?? 0)))
@@ -433,42 +458,56 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
   // Auto-generate processed images when original image selected
   useEffect(() => {
+    if (!originalImageFile) return
+    const key = `${originalImageFile.name}:${originalImageFile.size}:${originalImageFile.lastModified}`
+    if (lastAutoGenKey.current === key) return
+    lastAutoGenKey.current = key
+
+    const abortController = new AbortController()
+    const runId = ++autoGenRunIdRef.current
+    const isActive = () => runId === autoGenRunIdRef.current && !abortController.signal.aborted
+
     const run = async () => {
-      if (!originalImageFile) return
-      const key = `${originalImageFile.name}:${originalImageFile.size}:${originalImageFile.lastModified}`
-      if (lastAutoGenKey.current === key) return
-      lastAutoGenKey.current = key
+      if (!isActive()) return
       setAutoGenError(null)
       setAutoGenLoading(true)
       try {
         // 1) analyze via API (Gemini) to get hazards (and optional bbox)
         const base64 = await fileToBase64(await compressImage(originalImageFile))
+        if (!isActive()) return
         const res = await fetch('/api/hazard-game/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64 })
+          body: JSON.stringify({ imageBase64: base64 }),
+          signal: abortController.signal,
         })
-        let hazards: any[] = []
+        let hazards: HazardItem[] = []
         if (res.ok) {
           const data = await res.json()
           hazards = Array.isArray(data.hazards) ? data.hazards : []
-          setLastHazards(hazards)
-        } else {
+          if (isActive()) setLastHazards(hazards)
+        } else if (isActive()) {
           console.warn('hazard analysis failed, proceeding with heuristics')
         }
+        if (!isActive()) return
 
         // 2) generate prompts (risk observation + viz + simulations)
-        let prLocal: { vizPrompt?: string; simulationPrompts?: any; riskObservation?: any } | null = null
+        let prLocal: {
+          vizPrompt?: string
+          simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+          riskObservation?: { tableMarkdown?: string }
+        } | null = null
         try {
           const pRes = await fetch('/api/gemini/generate-prompts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64 })
+            body: JSON.stringify({ imageBase64: base64 }),
+            signal: abortController.signal,
           })
           if (pRes.ok) {
             const pjson = await pRes.json()
             const pr = pjson?.prompts
-            if (pr) {
+            if (pr && isActive()) {
               setGeneratedPrompts({
                 vizPrompt: pr.vizPrompt,
                 simulationPrompts: pr.simulationPrompts,
@@ -476,18 +515,23 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               })
               prLocal = pr
             }
-          } else {
+          } else if (isActive()) {
             console.warn('generate-prompts failed', await pRes.text())
           }
         } catch (e) {
-          console.warn('generate-prompts error', e)
+          if (isActive()) console.warn('generate-prompts error', e)
         }
+        if (!isActive()) return
 
         // 3) visualization overlay (local fallback always available)
         const overlayUrl = await drawOverlayFromHazards(originalImageFile, hazards)
-        const overlayFile = await dataUrlToFile(overlayUrl, 'overlay.png')
-        setProcessedImageFiles(prev => [...prev, overlayFile])
-        setProcessedImagePreviews(prev => [...prev, overlayUrl])
+        if (!isActive()) return
+        const overlayFile = await dataUrlToFile(overlayUrl, 'overlay.png', abortController.signal)
+        if (isActive()) {
+          setProcessedImageFiles(prev => [...prev, overlayFile])
+          setProcessedImagePreviews(prev => [...prev, overlayUrl])
+        }
+        if (!isActive()) return
 
         // 4) simple local simulations (flood/fire/typhoon/earthquake)
         const [floodUrl, fireUrl, typhoonUrl, quakeUrl] = await Promise.all([
@@ -496,14 +540,18 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           simulateVariant(originalImageFile, 'typhoon'),
           simulateVariant(originalImageFile, 'earthquake'),
         ])
+        if (!isActive()) return
         const toFiles = await Promise.all([
-          dataUrlToFile(floodUrl, 'flood.png'),
-          dataUrlToFile(fireUrl, 'fire.png'),
-          dataUrlToFile(typhoonUrl, 'typhoon.png'),
-          dataUrlToFile(quakeUrl, 'earthquake.png'),
+          dataUrlToFile(floodUrl, 'flood.png', abortController.signal),
+          dataUrlToFile(fireUrl, 'fire.png', abortController.signal),
+          dataUrlToFile(typhoonUrl, 'typhoon.png', abortController.signal),
+          dataUrlToFile(quakeUrl, 'earthquake.png', abortController.signal),
         ])
-        setProcessedImageFiles(prev => [...prev, ...toFiles])
-        setProcessedImagePreviews(prev => [...prev, floodUrl, fireUrl, typhoonUrl, quakeUrl])
+        if (isActive()) {
+          setProcessedImageFiles(prev => [...prev, ...toFiles])
+          setProcessedImagePreviews(prev => [...prev, floodUrl, fireUrl, typhoonUrl, quakeUrl])
+        }
+        if (!isActive()) return
 
         // 5) NanoBanana (Gemini 2.5 Flash) image-to-image generation using generated prompts
         try {
@@ -515,28 +563,31 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             "Photorealistic 2048x2048 infographic from the same viewpoint, camera height, and daylight as the uploaded Japanese suburban street photo. Maintain identical composition and lens characteristics. Overlay semi-transparent hazard shading with warning icons and Japanese labels: collapsed fence (red shade + exclamation icons, label \"フェンス倒壊\"), fallen utility pole (red circle + arrow, label \"電柱倒壊\"), flooding (blue haze + droplet icons, label \"冠水\"), fire spread (orange glow + flame icons, label \"延焼\"). High dynamic range, sharp focus, natural daylight, no extra people, vehicles, text, watermarks, or model names."
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
-          const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+          const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
           if (genRes.ok) {
             const gen = await genRes.json()
             const imgs = Array.isArray(gen.images) ? gen.images : []
             const ok = imgs.slice(0, 2)
-            if (ok.length > 0) {
-              const files = await Promise.all(ok.map(async (im: any, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`)))
-              setProcessedImageFiles(prev => [...prev, ...files])
-              setProcessedImagePreviews(prev => [...prev, ...ok.map((im: any) => im.dataUrl)])
-            } else if (gen.warning) {
+            if (ok.length > 0 && isActive()) {
+              const files = await Promise.all(ok.map(async (im: { dataUrl: string }, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`, abortController.signal)))
+              if (isActive()) {
+                setProcessedImageFiles(prev => [...prev, ...files])
+                setProcessedImagePreviews(prev => [...prev, ...ok.map((im: { dataUrl: string }) => im.dataUrl)])
+              }
+            } else if (gen.warning && isActive()) {
               setAutoGenError(gen.warning)
-            } else {
+            } else if (isActive()) {
               setAutoGenError('画像生成に失敗しました。')
             }
-          } else {
+          } else if (isActive()) {
             const t = await genRes.text()
             console.warn('gemini generate-image failed', genRes.status, t)
             setAutoGenError(`AI画像生成に失敗しました: ${genRes.status} ${genRes.statusText}`)
           }
         } catch (e) {
-          console.warn('nanobanana generation skipped due to error', e)
+          if (isActive()) console.warn('nanobanana generation skipped due to error', e)
         }
+        if (!isActive()) return
 
         // 6) Post-disaster simulation prompts → AI images
         const simsLocal = prLocal?.simulationPrompts || generatedPrompts?.simulationPrompts
@@ -546,7 +597,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               const fd = new FormData()
               fd.append('image', originalImageFile)
               fd.append('prompt', prompt)
-              const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+              const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
                 const txt = await r.text()
                 throw new Error(`image generation failed: ${r.status} ${r.statusText} - ${txt}`)
@@ -554,10 +605,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               const j = await r.json()
               const im = Array.isArray(j.images) && j.images[0] ? j.images[0] : null
               if (!im) {
-                if (j.warning) setAutoGenError(j.warning)
+                if (j.warning && isActive()) setAutoGenError(j.warning)
                 return null
               }
-              const f = await dataUrlToFile(im.dataUrl, `nanobanana-${suffix}.png`)
+              const f = await dataUrlToFile(im.dataUrl, `nanobanana-${suffix}.png`, abortController.signal)
               return { file: f, url: im.dataUrl }
             }
             const sims = simsLocal
@@ -568,24 +619,37 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               make(sims.fire, 'fire'),
             ])
             const ok = results.filter(Boolean) as { file: File; url: string }[]
-            if (ok.length) {
+            if (ok.length && isActive()) {
               setProcessedImageFiles(prev => [...prev, ...ok.map(item => item.file)])
               setProcessedImagePreviews(prev => [...prev, ...ok.map(item => item.url)])
             }
-            setActiveImageTab('processed')
+            if (isActive()) setActiveImageTab('processed')
           } catch (e) {
-            console.error('auto-generation failed', e)
-            setAutoGenError(e instanceof Error ? e.message : 'Unknown error occurred.')
+            if (isActive()) {
+              console.error('auto-generation failed', e)
+              setAutoGenError(e instanceof Error ? e.message : 'Unknown error occurred.')
+            }
           }
         }
       } catch (error) {
-        console.error('Error in auto-generation:', error)
-        setAutoGenError(error instanceof Error ? error.message : 'Unknown error occurred.')
+        if (isActive()) {
+          console.error('Error in auto-generation:', error)
+          setAutoGenError(error instanceof Error ? error.message : 'Unknown error occurred.')
+        }
       } finally {
-        setAutoGenLoading(false)
+        if (isActive()) setAutoGenLoading(false)
       }
     }
-    run()
+
+    const timeoutId = window.setTimeout(() => {
+      void run()
+    }, AUTO_GEN_DEBOUNCE_MS)
+
+    return () => {
+      abortController.abort()
+      window.clearTimeout(timeoutId)
+      setAutoGenLoading(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originalImageFile])
 
@@ -594,6 +658,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     if (!originalImageFile) return
 
     try {
+      const now = Date.now()
+      if (now - lastRegenAtRef.current < REGEN_COOLDOWN_MS) {
+        toast({
+          title: "少し待ってください",
+          description: "連続生成を抑制しています。数秒後に再試行してください。",
+          variant: "destructive",
+        })
+        return
+      }
+      lastRegenAtRef.current = now
       setRegenLoading(true)
 
       let prompt = ''
@@ -654,16 +728,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       }
 
       const json = await res.json()
-      const imgs = Array.isArray(json.images) ? json.images : []
+      const imgs = Array.isArray(json.images) ? (json.images as { dataUrl: string }[]) : []
       const ok = imgs.slice(0, 2)
 
       if (ok.length) {
         const suffix = useCustomPrompt && selectedPromptId ? selectedPromptId : situation
         const files = await Promise.all(
-          ok.map((im: any, idx: number) => dataUrlToFile(im.dataUrl, `regen-${suffix}-${idx}.png`)),
+          ok.map((im, idx: number) => dataUrlToFile(im.dataUrl, `regen-${suffix}-${idx}.png`)),
         )
         setProcessedImageFiles(prev => [...prev, ...files])
-        setProcessedImagePreviews(prev => [...prev, ...ok.map((im: any) => im.dataUrl)])
+        setProcessedImagePreviews(prev => [...prev, ...ok.map((im) => im.dataUrl)])
       } else {
         setAutoGenError(json.warning || '画像生成に失敗しました。')
       }
@@ -687,34 +761,49 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     if (!selectedPromptId) return undefined
     return getPromptById(selectedPromptId)
   }
-  const handleProcessedImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProcessedImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
     // ファイルサイズとタイプの検証
-    const validFiles = files.filter(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "エラー",
-          description: `${file.name}のサイズが10MBを超えています。`,
-          variant: "destructive",
-        })
-        return false
-      }
-      if (!file.type.startsWith("image/")) {
-        toast({
-          title: "エラー",
-          description: `${file.name}は画像ファイルではありません。`,
-          variant: "destructive",
-        })
-        return false
-      }
-      return true
-    })
+    const validations = await Promise.all(
+      files.map(async (file) => {
+        if (file.size > 10 * 1024 * 1024) {
+          toast({
+            title: "エラー",
+            description: `${file.name}のサイズが10MBを超えています。`,
+            variant: "destructive",
+          })
+          return { ok: false, file }
+        }
+        let validation
+        try {
+          validation = await validateImageFile(file)
+        } catch {
+          toast({
+            title: "エラー",
+            description: "画像の検証に失敗しました。別の画像をお試しください。",
+            variant: "destructive",
+          })
+          return { ok: false, file }
+        }
+        if (!validation.ok) {
+          toast({
+            title: "エラー",
+            description: validation.reason || `${file.name}は画像ファイルではありません。`,
+            variant: "destructive",
+          })
+          return { ok: false, file }
+        }
+        return { ok: true, file }
+      })
+    )
+    const validFiles = validations.filter((entry) => entry.ok).map((entry) => entry.file)
 
     if (validFiles.length > 0) {
       // プレビューURLを生成して配列に追加
       const newPreviews = validFiles.map((file) => URL.createObjectURL(file))
+      newPreviews.forEach(registerBlobUrl)
       setProcessedImageFiles((prev) => [...prev, ...validFiles])
       setProcessedImagePreviews((prev) => [...prev, ...newPreviews])
       // 手動選択時も自動で「加工画像」タブへ切り替え
@@ -726,6 +815,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // 画像アップロード処理
   const uploadImage = async (file: File, type: "original" | "processed"): Promise<string | null> => {
     try {
+      if (!supabase?.storage) {
+        toast({
+          title: "画像アップロードエラー",
+          description: "ストレージクライアントを初期化できませんでした。",
+          variant: "destructive",
+        })
+        return null
+      }
       // ファイル名を一意にするために現在のタイムスタンプを追加
       const timestamp = Date.now()
       const fileExt = file.name.split(".").pop()
@@ -759,7 +856,6 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       // キャッシュバスターを追加
       const publicUrl = `${publicUrlData.publicUrl}?t=${timestamp}`
 
-      console.log(`${type} image uploaded successfully:`, publicUrl)
       return publicUrl
     } catch (error) {
       console.error(`Error in upload${type}Image:`, error)
@@ -859,6 +955,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // 画像削除ハンドラー（加工画像）
   const handleRemoveProcessedImage = (index: number) => {
     if (window.confirm("この加工画像を削除してもよろしいですか？")) {
+      const targetUrl = processedImagePreviews[index]
+      revokeBlobUrl(targetUrl)
       setProcessedImageFiles((prev) => prev.filter((_, i) => i !== index))
       setProcessedImagePreviews((prev) => prev.filter((_, i) => i !== index))
       if (processedFileInputRef.current) {

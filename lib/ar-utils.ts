@@ -5,6 +5,10 @@
 
 import type { DangerReport } from "./types"
 
+const isValidCoordinate = (lat: number, lon: number): boolean => {
+  return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
+}
+
 /**
  * 2点間の距離を計算（ハーバーサイン公式）
  * @param lat1 地点1の緯度
@@ -101,9 +105,17 @@ export function calculateARHazardData(
   const maxDistance = opts.maxDistance ?? 500
   const maxAngle = opts.maxAngle ?? 90
   const showBehind = opts.showBehind ?? false
+  const safeMaxDistance = maxDistance > 0 ? maxDistance : 1
+
+  if (!isValidCoordinate(userLat, userLon)) {
+    return []
+  }
 
   return reports
     .map((report) => {
+      if (!isValidCoordinate(report.latitude, report.longitude)) {
+        return null
+      }
       const distance = calculateDistance(
         userLat,
         userLon,
@@ -111,7 +123,7 @@ export function calculateARHazardData(
         report.longitude
       )
 
-      if (distance > maxDistance) {
+      if (distance > safeMaxDistance) {
         return null
       }
 
@@ -137,7 +149,7 @@ export function calculateARHazardData(
       const fov = 60 // 視野角（度）
       const x = Math.tan((relativeAngle * Math.PI) / 180) / Math.tan((fov / 2) * Math.PI / 180)
       const y = 0 // 水平面での表示を想定
-      const z = Math.min(distance / maxDistance, 1) // 正規化された距離
+      const z = Math.min(distance / safeMaxDistance, 1) // 正規化された距離
 
       return {
         report,

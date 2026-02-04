@@ -38,19 +38,55 @@ interface ARViewProps {
 }
 
 // パフォーマンス最適化: throttle関数
-function throttle<T extends (...args: never[]) => void>(
+type Throttled<T extends (...args: any[]) => void> = ((...args: Parameters<T>) => void) & {
+  cancel: () => void
+}
+
+function throttle<T extends (...args: any[]) => void>(
   func: T,
   limit: number
-): (...args: Parameters<T>) => void {
+): Throttled<T> {
   let inThrottle = false
-  return (...args: Parameters<T>) => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  const throttled = ((...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args)
       inThrottle = true
-      setTimeout(() => (inThrottle = false), limit)
+      timeoutId = setTimeout(() => {
+        inThrottle = false
+        timeoutId = null
+      }, limit)
     }
+  }) as Throttled<T>
+  throttled.cancel = () => {
+    if (timeoutId) clearTimeout(timeoutId)
+    timeoutId = null
+    inThrottle = false
   }
+  return throttled
 }
+
+const DEFAULT_MAX_DISTANCE = 500
+const DEFAULT_FOV = 60
+const CAMERA_IDEAL_WIDTH = 1280
+const CAMERA_IDEAL_HEIGHT = 720
+const DRAW_TARGET_FPS = 30
+const ORIENTATION_THROTTLE_MS = 33
+const LOCATION_MAX_AGE_MS = 2000
+const LOCATION_TIMEOUT_MS = 10000
+const SCREEN_X_SCALE = 0.7
+const SCREEN_Y_OFFSET = 0.3
+const SCREEN_Y_SCALE = 0.4
+const SCREEN_X_MARGIN = 50
+const ROAD_Y_RATIO = 0.85
+const MAX_ANGLE_DEGREES = 90
+const WALKING_SPEED_KMH = 4
+const DISTANCE_MIN = 100
+const DISTANCE_MAX = 1000
+const DISTANCE_STEP = 50
+const FOV_MIN = 40
+const FOV_MAX = 90
+const FOV_STEP = 5
 
 // エラータイプの定義
 type ARErrorType =
@@ -83,9 +119,9 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   const [loadingStep, setLoadingStep] = useState<string>("カメラを初期化しています...")
 
   // 設定関連のstate
-  const [maxDistance, setMaxDistance] = useState<number>(500)
+  const [maxDistance, setMaxDistance] = useState<number>(DEFAULT_MAX_DISTANCE)
   const [showSettings, setShowSettings] = useState(false)
-  const [fov, setFov] = useState<number>(60)
+  const [fov, setFov] = useState<number>(DEFAULT_FOV)
 
   // パーミッション状態
   const [permissions, setPermissions] = useState({
@@ -98,6 +134,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   const animationFrameRef = useRef<number | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const lastHeadingUpdateRef = useRef<number>(0)
+  const isDev = process.env.NODE_ENV === "development"
 
   // エラーヘルパー関数
   const setError = useCallback((type: ARErrorType, customMessage?: string) => {
@@ -163,8 +200,8 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment", // 背面カメラを使用
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            width: { ideal: CAMERA_IDEAL_WIDTH },
+            height: { ideal: CAMERA_IDEAL_HEIGHT },
           },
         })
 
@@ -187,13 +224,17 @@ export default function ARView({ reports, onClose }: ARViewProps) {
             }
           } catch {
             // 視野角取得に失敗してもデフォルト値を使用
-            console.log("カメラの視野角を取得できませんでした。デフォルト値(60°)を使用します。")
+            if (isDev) {
+              console.log(`カメラの視野角を取得できませんでした。デフォルト値(${DEFAULT_FOV}°)を使用します。`)
+            }
           }
 
           setArError(null)
         }
       } catch (err) {
-        console.error("カメラアクセスエラー:", err)
+        if (isDev) {
+          console.error("カメラアクセスエラー:", err)
+        }
         const error = err as Error & { name?: string }
 
         if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
@@ -247,7 +288,9 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         }
       },
       (err) => {
-        console.error("位置情報エラー:", err)
+        if (isDev) {
+          console.error("位置情報エラー:", err)
+        }
         switch (err.code) {
           case err.PERMISSION_DENIED:
             setError("location_denied")
@@ -269,8 +312,8 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 10000,
+        maximumAge: LOCATION_MAX_AGE_MS,
+        timeout: LOCATION_TIMEOUT_MS,
       }
     )
 
@@ -285,7 +328,9 @@ export default function ARView({ reports, onClose }: ARViewProps) {
 
     if (typeof window === "undefined" || !window.DeviceOrientationEvent) {
       // デバイス向きAPIが利用できない場合
-      console.warn("DeviceOrientationEvent is not supported")
+      if (isDev) {
+        console.warn("DeviceOrientationEvent is not supported")
+      }
       setPermissions((prev) => ({ ...prev, orientation: false }))
       // 致命的ではないのでエラーは設定しない（トーストで通知）
       toast({
@@ -302,7 +347,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         setUserHeading(event.alpha)
         lastHeadingUpdateRef.current = Date.now()
       }
-    }, 33)
+    }, ORIENTATION_THROTTLE_MS)
 
     // 許可を求める（iOS 13+）
     const DeviceOrientationEventWithPermission = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
@@ -332,7 +377,9 @@ export default function ARView({ reports, onClose }: ARViewProps) {
           }
         })
         .catch((err: Error) => {
-          console.error("デバイス向きの許可エラー:", err)
+          if (isDev) {
+            console.error("デバイス向きの許可エラー:", err)
+          }
           toast({
             title: "方向検出の設定に失敗しました",
             description: "危険個所は表示されますが、方向の精度が低くなります",
@@ -344,6 +391,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
 
     return () => {
       window.removeEventListener("deviceorientation", handleOrientation as EventListener)
+      handleOrientation.cancel()
     }
   }, [toast])
 
@@ -360,7 +408,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       reports,
       {
         maxDistance, // 設定可能な最大表示距離
-        maxAngle: 90, // 前方90度以内のみ表示（通過した地点は非表示）
+        maxAngle: MAX_ANGLE_DEGREES, // 前方90度以内のみ表示（通過した地点は非表示）
         showBehind: false,
       }
     )
@@ -374,16 +422,13 @@ export default function ARView({ reports, onClose }: ARViewProps) {
 
     const canvas = canvasRef.current
     const video = videoRef.current
-    const ctx = canvas.getContext("2d")
-
-    if (!ctx) return
-
     // 描画のフレームレート制御（30fpsに制限）
     let lastDrawTime = 0
-    const targetFps = 30
-    const frameInterval = 1000 / targetFps
+    const frameInterval = 1000 / DRAW_TARGET_FPS
+    let stopped = false
 
     const draw = (timestamp: number) => {
+      if (stopped) return
       // フレームレート制御
       if (timestamp - lastDrawTime < frameInterval) {
         animationFrameRef.current = requestAnimationFrame(draw)
@@ -391,16 +436,32 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       }
       lastDrawTime = timestamp
 
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        setError("unknown", "キャンバスの描画コンテキストが失われました。")
+        stopped = true
+        return
+      }
+
       // キャンバスサイズをビデオサイズに合わせる（変更時のみ）
-      const videoWidth = video.videoWidth || 1280
-      const videoHeight = video.videoHeight || 720
+      const videoWidth = video.videoWidth || CAMERA_IDEAL_WIDTH
+      const videoHeight = video.videoHeight || CAMERA_IDEAL_HEIGHT
       if (canvas.width !== videoWidth || canvas.height !== videoHeight) {
         canvas.width = videoWidth
         canvas.height = videoHeight
       }
 
       // ビデオフレームを描画
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      } catch (err) {
+        if (isDev) {
+          console.error("キャンバス描画中にエラーが発生しました:", err)
+        }
+        setError("unknown", "キャンバス描画に失敗しました。再読み込みしてください。")
+        stopped = true
+        return
+      }
 
       // AR危険個所を描画
       arHazards.forEach((hazard) => {
@@ -411,14 +472,15 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         // 視野角を考慮して、画面内の位置を計算（設定から取得）
         const screenX =
           centerX +
-          (hazard.relativeAngle / fov) * canvas.width * 0.7 // 画面幅の70%を視野角に使用
+          (hazard.relativeAngle / fov) * canvas.width * SCREEN_X_SCALE // 画面幅の70%を視野角に使用
 
         // Y位置は距離に応じて調整（遠いほど下に）
-        const normalizedDistance = Math.min(hazard.distance / maxDistance, 1)
-        const screenY = centerY + (normalizedDistance - 0.3) * canvas.height * 0.4
+        const safeMaxDistance = Math.max(1, maxDistance)
+        const normalizedDistance = Math.min(hazard.distance / safeMaxDistance, 1)
+        const screenY = centerY + (normalizedDistance - SCREEN_Y_OFFSET) * canvas.height * SCREEN_Y_SCALE
 
         // 画面外の場合は描画しない（X方向のみチェック、Yは道路まで表示）
-        if (screenX < -50 || screenX > canvas.width + 50) {
+        if (screenX < -SCREEN_X_MARGIN || screenX > canvas.width + SCREEN_X_MARGIN) {
           return
         }
 
@@ -436,7 +498,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isCameraActive, arHazards, fov, maxDistance])
+  }, [isCameraActive, arHazards, fov, maxDistance, setError])
 
   // 危険個所マーカーの描画（改善版）
   const drawHazardMarker = (
@@ -449,7 +511,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     const { report, distance } = hazard
 
     // 画面下部（道路の位置）を基準にマーカーを配置
-    const roadY = canvasHeight * 0.85 // 画面の85%の位置を道路と仮定
+    const roadY = canvasHeight * ROAD_Y_RATIO // 画面の85%の位置を道路と仮定
     const markerY = Math.min(y, roadY - 20) // マーカーは道路より少し上
 
     // アイコンのサイズ（距離に応じて調整）
@@ -535,7 +597,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
 
   // 推定移動時間を計算（歩行速度4km/hを想定）
   const calculateEstimatedTime = (distance: number): number => {
-    const walkingSpeedKmh = 4 // 時速4km
+    const walkingSpeedKmh = WALKING_SPEED_KMH // 時速4km
     const timeInHours = distance / 1000 / walkingSpeedKmh
     return Math.round(timeInHours * 60) // 分に変換
   }
@@ -604,14 +666,14 @@ export default function ARView({ reports, onClose }: ARViewProps) {
               <Slider
                 value={[maxDistance]}
                 onValueChange={(values) => setMaxDistance(values[0])}
-                min={100}
-                max={1000}
-                step={50}
+                min={DISTANCE_MIN}
+                max={DISTANCE_MAX}
+                step={DISTANCE_STEP}
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>100m</span>
-                <span>1000m</span>
+                <span>{DISTANCE_MIN}m</span>
+                <span>{DISTANCE_MAX}m</span>
               </div>
             </div>
 
@@ -624,14 +686,14 @@ export default function ARView({ reports, onClose }: ARViewProps) {
               <Slider
                 value={[fov]}
                 onValueChange={(values) => setFov(values[0])}
-                min={40}
-                max={90}
-                step={5}
+                min={FOV_MIN}
+                max={FOV_MAX}
+                step={FOV_STEP}
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>40°</span>
-                <span>90°</span>
+                <span>{FOV_MIN}°</span>
+                <span>{FOV_MAX}°</span>
               </div>
             </div>
 

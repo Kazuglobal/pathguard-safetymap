@@ -9,6 +9,7 @@ const MAX_REQUEST_SIZE = 25 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   try {
+    const includeDebug = process.env.NODE_ENV !== "production"
     console.log('Starting hazard game analysis request...')
     
     // Check request size before processing
@@ -100,15 +101,16 @@ export async function POST(request: NextRequest) {
           // Treat only 401/403/unauthorized as auth issues; avoid mislabeling 404 as auth
           const msg = analysisError.message || ''
           if (/\b401\b|\b403\b/i.test(msg) || /unauthorized|forbidden|api\s*key/i.test(msg)) {
+            const debugInfo = includeDebug ? {
+              errorName: analysisError.name,
+              originalError: analysisError.message,
+              helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
+              timestamp: new Date().toISOString()
+            } : undefined
             return NextResponse.json(
               {
                 error: 'Gemini APIキーが無効または権限不足です。.env.localのGOOGLE_API_KEYまたはGEMINI_API_KEYを確認してください。',
-                debugInfo: {
-                  errorName: analysisError.name,
-                  originalError: analysisError.message,
-                  helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
-                  timestamp: new Date().toISOString()
-                }
+                ...(debugInfo ? { debugInfo } : {})
               },
               { status: 401 }
             )
@@ -117,15 +119,16 @@ export async function POST(request: NextRequest) {
         
         // Check for API key errors
         if (analysisError.message.includes('APIキー') || analysisError.message.includes('API key')) {
+          const debugInfo = includeDebug ? {
+            errorName: analysisError.name,
+            originalError: analysisError.message,
+            helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
+            timestamp: new Date().toISOString()
+          } : undefined
           return NextResponse.json(
             {
               error: 'Gemini APIキーが無効です。管理者に連絡して、.env.localのGOOGLE_API_KEYまたはGEMINI_API_KEYを更新してください。',
-              debugInfo: {
-                errorName: analysisError.name,
-                originalError: analysisError.message,
-                helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
-                timestamp: new Date().toISOString()
-              }
+              ...(debugInfo ? { debugInfo } : {})
             },
             { status: 401 }
           )
@@ -133,15 +136,16 @@ export async function POST(request: NextRequest) {
         
         // Check for quota errors
         if (analysisError.message.includes('利用枠') || analysisError.message.includes('quota') || analysisError.message.includes('クレジット')) {
+          const debugInfo = includeDebug ? {
+            errorName: 'QuotaExceeded',
+            originalError: analysisError.message,
+            helpUrl: 'https://ai.google.dev/pricing',
+            timestamp: new Date().toISOString()
+          } : undefined
           return NextResponse.json(
             {
               error: 'Gemini APIの利用枠を超過しています。Google Cloud Console でクォータ/請求設定をご確認ください。',
-              debugInfo: {
-                errorName: 'QuotaExceeded',
-                originalError: analysisError.message,
-                helpUrl: 'https://ai.google.dev/pricing',
-                timestamp: new Date().toISOString()
-              }
+              ...(debugInfo ? { debugInfo } : {})
             },
             { status: 429 }
           )
@@ -181,15 +185,14 @@ export async function POST(request: NextRequest) {
         ? analysisError.message 
         : "画像の分析中にエラーが発生しました"
       
-      // Always include detailed debug info for now to diagnose the issue
-      const debugInfo = {
+      const debugInfo = includeDebug ? {
         errorName: analysisError instanceof Error ? analysisError.name : 'Unknown',
         originalError: analysisError instanceof Error ? analysisError.message : 'Unknown',
         errorStack: analysisError instanceof Error ? analysisError.stack?.split('\n').slice(0, 5) : undefined,
         timestamp: new Date().toISOString()
-      }
+      } : undefined
       
-      console.error('Returning error response:', { errorMessage, debugInfo })
+      console.error('Returning error response:', { errorMessage, ...(debugInfo ? { debugInfo } : {}) })
       
       // Map message patterns to more appropriate HTTP status codes
       let status = 422
@@ -205,8 +208,9 @@ export async function POST(request: NextRequest) {
         status = 400
       }
 
+      const clientMessage = includeDebug ? errorMessage : "画像の分析中にエラーが発生しました。"
       return NextResponse.json(
-        { error: errorMessage, debugInfo },
+        { error: clientMessage, ...(debugInfo ? { debugInfo } : {}) },
         { status }
       )
     }
