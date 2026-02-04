@@ -9,14 +9,28 @@ import type { DangerReport } from "./types"
  * 許可された画像ホストのリスト
  * セキュリティのため、信頼できるソースからの画像のみを許可
  */
-const ALLOWED_IMAGE_HOSTS = [
+const PRODUCTION_ALLOWED_HOSTS = [
   // Supabase Storage
   "supabase.co",
   "supabase.in",
-  // 開発環境
+]
+
+const DEV_ALLOWED_HOSTS = [
+  // 開発環境のみ
   "localhost",
   "127.0.0.1",
 ]
+
+// 本番環境かどうかを判定
+const isProduction = process.env.NODE_ENV === "production"
+
+// 環境に応じた許可ホストリスト
+const ALLOWED_IMAGE_HOSTS = isProduction
+  ? PRODUCTION_ALLOWED_HOSTS
+  : [...PRODUCTION_ALLOWED_HOSTS, ...DEV_ALLOWED_HOSTS]
+
+// Base64画像の最大サイズ（5MB）
+const MAX_DATA_URL_SIZE = 5 * 1024 * 1024
 
 /**
  * 画像URLが安全かどうかを検証する
@@ -53,8 +67,13 @@ export function isValidImageUrl(url: string): boolean {
     return false
   }
 
-  // data:image/の場合は許可（Base64画像）
+  // data:image/の場合はサイズ制限付きで許可（Base64画像）
   if (lowerUrl.startsWith("data:image/")) {
+    // サイズ制限チェック（5MB以下）
+    if (trimmedUrl.length > MAX_DATA_URL_SIZE) {
+      console.warn("Base64画像がサイズ制限を超えています")
+      return false
+    }
     return true
   }
 

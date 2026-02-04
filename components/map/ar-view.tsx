@@ -193,6 +193,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
           setArError(null)
         }
       } catch (err) {
+        // エラー詳細はコンソールのみに出力（本番環境では適切なログサービスへ）
         console.error("カメラアクセスエラー:", err)
         const error = err as Error & { name?: string }
 
@@ -203,7 +204,8 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
           setError("camera_unavailable")
         } else {
-          setError("unknown", `カメラエラー: ${error.message}`)
+          // セキュリティ: 内部エラーメッセージはユーザーに表示しない
+          setError("unknown")
         }
         setIsCameraActive(false)
       } finally {
