@@ -169,6 +169,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [showPromptDetails, setShowPromptDetails] = useState(false)
   // 手動解析トリガー（自動解析を無効化し、ボタンクリックで開始）
   const [manualAnalysisTriggered, setManualAnalysisTriggered] = useState(false)
+  const [analysisReady, setAnalysisReady] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
 
   const registerBlobUrl = (url: string) => {
@@ -182,6 +183,25 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     if (blobUrlRegistryRef.current.has(url)) {
       URL.revokeObjectURL(url)
       blobUrlRegistryRef.current.delete(url)
+    }
+  }
+
+  const resetAnalysisArtifacts = () => {
+    processedImagePreviews.forEach(revokeBlobUrl)
+    setProcessedImageFiles([])
+    setProcessedImagePreviews([])
+    setRiskAnalysis(null)
+    setGeneratedPrompts(null)
+    setLastHazards([])
+    setAutoGenError(null)
+    setAutoGenLoading(false)
+    setRegenLoading(false)
+    setAnalysisReady(false)
+    setManualAnalysisTriggered(false)
+    setActiveImageTab("original")
+    lastAutoGenKey.current = null
+    if (processedFileInputRef.current) {
+      processedFileInputRef.current.value = ""
     }
   }
 
@@ -286,6 +306,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       return
     }
 
+    resetAnalysisArtifacts()
     setOriginalImageFile(file)
     setCameraError(null) // エラーをクリア
 
@@ -460,7 +481,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
   // Generate processed images when user clicks the analysis button (manual trigger)
   useEffect(() => {
-    if (!originalImageFile) return
+    if (!originalImageFile) {
+      if (manualAnalysisTriggered) setManualAnalysisTriggered(false)
+      return
+    }
     // 手動トリガーが押されていない場合は実行しない
     if (!manualAnalysisTriggered) return
     const key = `${originalImageFile.name}:${originalImageFile.size}:${originalImageFile.lastModified}`
@@ -472,6 +496,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     lastAutoGenKey.current = key
     // トリガーをリセット
     setManualAnalysisTriggered(false)
+    setAnalysisReady(false)
 
     const abortController = new AbortController()
     const runId = ++autoGenRunIdRef.current
@@ -641,6 +666,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             }
           }
         }
+        if (isActive()) setAnalysisReady(true)
       } catch (error) {
         if (isActive()) {
           console.error('Error in auto-generation:', error)
@@ -666,6 +692,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // On-demand regenerate using selected situation or custom prompt
   const regenerateSituation = async () => {
     if (!originalImageFile) return
+    if (!analysisReady) {
+      toast({
+        title: "先に解析が必要です",
+        description: "「画像を解析して可視化」を実行してから再生成してください。",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       const now = Date.now()
@@ -950,6 +984,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
     if (window.confirm("この画像を削除してもよろしいですか？")) {
+      resetAnalysisArtifacts()
       setOriginalImageFile(null)
       setOriginalImagePreview(null)
       if (originalFileInputRef.current) {
@@ -1142,6 +1177,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                       className="mt-2 w-full min-h-[48px] touch-manipulation bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                       onClick={() => {
                         lastAutoGenKey.current = null // 再解析を許可するためにキーをリセット
+                        setAnalysisReady(false)
                         setManualAnalysisTriggered(true)
                         setActiveImageTab('processed')
                       }}
@@ -1331,7 +1367,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                     variant="default"
                     size="sm"
                     onClick={regenerateSituation}
-                    disabled={regenLoading || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
+                    disabled={regenLoading || autoGenLoading || !analysisReady || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
                     className="w-full"
                   >
                     {regenLoading ? (
