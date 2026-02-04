@@ -45,6 +45,12 @@ type HazardItem = {
   bbox?: HazardBBox
 }
 
+type RiskAnalysisItem = {
+  category: string
+  risk: string
+  measure: string
+}
+
 const AUTO_GEN_DEBOUNCE_MS = 350
 const REGEN_COOLDOWN_MS = 1500
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
@@ -139,7 +145,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [uploadProgress, setUploadProgress] = useState(0)
   const [cameraError, setCameraError] = useState<string | null>(null)
 
-  const [riskAnalysis, setRiskAnalysis] = useState<HazardItem[] | null>(null)
+  const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisItem[] | null>(null)
   const [autoGenLoading, setAutoGenLoading] = useState(false)
   const [autoGenError, setAutoGenError] = useState<string | null>(null)
   const lastAutoGenKey = useRef<string | null>(null)
