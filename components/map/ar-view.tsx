@@ -358,7 +358,11 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       userLocation.lon,
       userHeading,
       reports,
-      maxDistance // 設定可能な最大表示距離
+      {
+        maxDistance, // 設定可能な最大表示距離
+        maxAngle: 90, // 前方90度以内のみ表示（通過した地点は非表示）
+        showBehind: false,
+      }
     )
   }, [userLocation, userHeading, reports, maxDistance])
 
