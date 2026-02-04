@@ -49,14 +49,14 @@ export function useHazardGame() {
     }
   )
 
-  // Maximum file size for API requests (3MB to stay under Gemini limits after Base64 encoding)
-  const MAX_API_FILE_SIZE = 3 * 1024 * 1024
+  // Maximum file size for API requests (1.5MB to stay well under Gemini limits after Base64 encoding ~2MB)
+  const MAX_API_FILE_SIZE = 1.5 * 1024 * 1024
 
   // Compress large images on the client to avoid 413 from Vercel/Gemini
   const compressImage = async (
     file: File,
-    maxDimension: number = 1200,
-    quality: number = 0.7,
+    maxDimension: number = 1024,
+    quality: number = 0.65,
     targetMaxSize: number = MAX_API_FILE_SIZE,
   ): Promise<File> => {
     try {
