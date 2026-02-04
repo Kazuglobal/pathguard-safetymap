@@ -147,7 +147,12 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
     const downloaded = await downloadToBase64(it.uri, apiKey)
     if (downloaded) images.push(downloaded)
   }
-  return images
+
+  // Remove duplicates based on dataUrl (same image data may be extracted multiple times)
+  const uniqueImages = images.filter((img, index, self) =>
+    index === self.findIndex(t => t.dataUrl === img.dataUrl)
+  )
+  return uniqueImages
 }
 
 export async function generateImageWithGemini({
