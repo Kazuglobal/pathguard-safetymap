@@ -6,10 +6,6 @@ import {
   Navigation,
   MapPin,
   AlertCircle,
-  Phone,
-  Building2,
-  Bookmark,
-  Share2,
   TreePine,
   Settings,
   Compass,
@@ -820,54 +816,19 @@ export default function ARView({ reports, onClose }: ARViewProps) {
           </div>
         )}
 
-        {/* 下部の次の危険地点カード */}
+        {/* 下部の次の危険地点カード（シンプル版） */}
         {!arError && isCameraActive && userLocation && secondaryHazard && (
-          <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
-            <Card className="bg-white rounded-t-3xl shadow-2xl m-0 pointer-events-auto">
-              <div className="p-4">
-                <h4 className="text-base font-semibold text-gray-900 mb-3 truncate">
-                  {secondaryHazard.report.title}
-                </h4>
-
-                {/* アクションボタン */}
-                <div className="flex items-center justify-around gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 flex-col h-auto py-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    <Phone className="h-4 w-4 mb-1" />
-                    <span>通報</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 flex-col h-auto py-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    <Building2 className="h-4 w-4 mb-1" />
-                    <span>詳細</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 flex-col h-auto py-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    <Bookmark className="h-4 w-4 mb-1" />
-                    <span>保存</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 flex-col h-auto py-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    <Share2 className="h-4 w-4 mb-1" />
-                    <span>共有</span>
-                  </Button>
+          <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-none">
+            <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg pointer-events-auto">
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-900 truncate">
+                    {secondaryHazard.report.title}
+                  </h4>
                 </div>
-
-                {/* 距離情報 */}
-                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
-                  <span>{formatDistance(secondaryHazard.distance)}</span>
+                <div className="flex items-center gap-3 ml-3 text-xs text-gray-500">
+                  <span className="font-medium">{formatDistance(secondaryHazard.distance)}</span>
+                  <span>·</span>
                   <span>{formatBearing(secondaryHazard.bearing)}</span>
                 </div>
               </div>
