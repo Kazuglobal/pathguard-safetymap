@@ -84,6 +84,7 @@ export interface ARHazardOptions {
   maxDistance?: number // 最大表示距離（メートル、デフォルト500m）
   maxAngle?: number // 最大表示角度（度、デフォルト90度 = 前方のみ）
   showBehind?: boolean // 後方の地点も表示するか（デフォルトfalse）
+  nearbyThreshold?: number // この距離以内は角度に関係なく表示（メートル、デフォルト50m）
 }
 
 export function calculateARHazardData(
@@ -101,6 +102,7 @@ export function calculateARHazardData(
   const maxDistance = opts.maxDistance ?? 500
   const maxAngle = opts.maxAngle ?? 90
   const showBehind = opts.showBehind ?? false
+  const nearbyThreshold = opts.nearbyThreshold ?? 50 // 50m以内は常に表示
 
   return reports
     .map((report) => {
@@ -128,7 +130,9 @@ export function calculateARHazardData(
       if (relativeAngle < -180) relativeAngle += 360
 
       // 後方の地点をフィルタリング（通過済みの地点を非表示）
-      if (!showBehind && Math.abs(relativeAngle) > maxAngle) {
+      // ただし、近い地点（nearbyThreshold以内）は常に表示
+      const isNearby = distance <= nearbyThreshold
+      if (!showBehind && !isNearby && Math.abs(relativeAngle) > maxAngle) {
         return null
       }
 
