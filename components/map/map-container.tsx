@@ -1145,13 +1145,15 @@ export default function MapContainer() {
           isMobile={isMobile}
         />
 
-        {/* 検索バー - 地点選択モード中は非表示 */}
+        {/* 検索バー - 最上部に配置、地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (
           <div
-            className="absolute left-1/2 z-10 w-[calc(100%-6rem)] max-w-md -translate-x-1/2"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 6.25rem)" }}
+            className="absolute left-1/2 z-30 w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
           >
-            <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
+              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+            </div>
           </div>
         )}
         

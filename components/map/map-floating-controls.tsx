@@ -37,8 +37,9 @@ export default function MapFloatingControls({
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile || !isSelecting
-  const topInsetStyle = { top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }
-  const topSecondaryStyle = { top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)" }
+  // 検索バーが上部にあるため、コントロールは検索バーの下に配置
+  const topInsetStyle = { top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }
+  const topSecondaryStyle = { top: "calc(env(safe-area-inset-top, 0px) + 7.5rem)" }
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
