@@ -9,12 +9,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Upload, Loader2, Camera, ImageIcon } from "lucide-react"
+import { X, Upload, Loader2, Camera, ImageIcon, ChevronDown, ChevronUp } from "lucide-react"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
 import type { DangerReport } from "@/lib/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  promptCategories,
+  getPromptById,
+  type TargetAudience,
+  type DisasterPrompt,
+  defaultSituations,
+  type DefaultSituation,
+} from "@/lib/disaster-scenario-prompts"
 
 interface DangerReportFormProps {
   onSubmit: (data: Partial<DangerReport>) => void
@@ -60,6 +68,12 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
   const [situation, setSituation] = useState<Situation>('viz')
   const [regenLoading, setRegenLoading] = useState(false)
+
+  // 防災用カスタムプロンプト関連の状態
+  const [useCustomPrompt, setUseCustomPrompt] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<TargetAudience>("children")
+  const [selectedPromptId, setSelectedPromptId] = useState<string>("")
+  const [showPromptDetails, setShowPromptDetails] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
   // 元画像が選択されたら自動で処理 API を呼び出す -> ★★★ 削除またはコメントアウト ★★★
   /*
@@ -533,7 +547,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originalImageFile])
 
-  // On-demand regenerate using selected situation
+  // On-demand regenerate using selected situation or custom prompt
   const regenerateSituation = async () => {
     if (!originalImageFile) return
 
@@ -541,47 +555,60 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       setRegenLoading(true)
 
       let prompt = ''
-      let pr = generatedPrompts
 
-      if (!pr) {
-        const base64 = await fileToBase64(await compressImage(originalImageFile))
-        const pRes = await fetch('/api/gemini/generate-prompts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ imageBase64: base64 }),
-        })
-        if (pRes.ok) {
-          const pjson = await pRes.json()
-          pr = pjson?.prompts
-          if (pr) {
-            setGeneratedPrompts({
-              vizPrompt: pr.vizPrompt,
-              simulationPrompts: pr.simulationPrompts,
-              riskObservationTable: pr.riskObservation?.tableMarkdown,
-            })
+      // カスタムプロンプトが選択されている場合
+      if (useCustomPrompt && selectedPromptId) {
+        const customPrompt = getPromptById(selectedPromptId)
+        if (customPrompt) {
+          prompt = customPrompt.prompt
+        } else {
+          setAutoGenError('選択されたプロンプトが見つかりません。')
+          return
+        }
+      } else {
+        // 従来のシチュエーション選択
+        let pr = generatedPrompts
+
+        if (!pr) {
+          const base64 = await fileToBase64(await compressImage(originalImageFile))
+          const pRes = await fetch('/api/gemini/generate-prompts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ imageBase64: base64 }),
+          })
+          if (pRes.ok) {
+            const pjson = await pRes.json()
+            pr = pjson?.prompts
+            if (pr) {
+              setGeneratedPrompts({
+                vizPrompt: pr.vizPrompt,
+                simulationPrompts: pr.simulationPrompts,
+                riskObservationTable: pr.riskObservation?.tableMarkdown,
+              })
+            }
           }
         }
+
+        if (situation === 'viz') prompt = pr?.vizPrompt || ''
+        else if (situation === 'earthquake') prompt = pr?.simulationPrompts?.earthquake || ''
+        else if (situation === 'typhoon') prompt = pr?.simulationPrompts?.typhoon || ''
+        else if (situation === 'flood') prompt = pr?.simulationPrompts?.flood || ''
+        else if (situation === 'fire') prompt = pr?.simulationPrompts?.fire || ''
       }
 
-      if (situation === 'viz') prompt = pr?.vizPrompt || ''
-      else if (situation === 'earthquake') prompt = pr?.simulationPrompts?.earthquake || ''
-      else if (situation === 'typhoon') prompt = pr?.simulationPrompts?.typhoon || ''
-      else if (situation === 'flood') prompt = pr?.simulationPrompts?.flood || ''
-      else if (situation === 'fire') prompt = pr?.simulationPrompts?.fire || ''
-
       if (!prompt) {
-        setAutoGenError('Failed to retrieve prompt. Please try again later.')
+        setAutoGenError('プロンプトの取得に失敗しました。もう一度お試しください。')
         return
       }
 
       const fd = new FormData()
       fd.append('image', originalImageFile)
-      const withRegions = situation === 'viz' ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
+      const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
         const text = await res.text()
-        throw new Error(`Image generation failed: ${res.status} ${res.statusText} - ${text}`)
+        throw new Error(`画像生成に失敗しました: ${res.status} ${res.statusText} - ${text}`)
       }
 
       const json = await res.json()
@@ -589,21 +616,34 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const ok = imgs.slice(0, 2)
 
       if (ok.length) {
+        const suffix = useCustomPrompt && selectedPromptId ? selectedPromptId : situation
         const files = await Promise.all(
-          ok.map((im: any, idx: number) => dataUrlToFile(im.dataUrl, `regen-${situation}-${idx}.png`)),
+          ok.map((im: any, idx: number) => dataUrlToFile(im.dataUrl, `regen-${suffix}-${idx}.png`)),
         )
         setProcessedImageFiles(prev => [...prev, ...files])
         setProcessedImagePreviews(prev => [...prev, ...ok.map((im: any) => im.dataUrl)])
       } else {
-        setAutoGenError(json.warning || 'Image generation failed.')
+        setAutoGenError(json.warning || '画像生成に失敗しました。')
       }
 
       setActiveImageTab('processed')
     } catch (error) {
-      setAutoGenError(error instanceof Error ? error.message : 'Unknown error occurred.')
+      setAutoGenError(error instanceof Error ? error.message : '不明なエラーが発生しました。')
     } finally {
       setRegenLoading(false)
     }
+  }
+
+  // カテゴリ変更時にプロンプトIDをリセット
+  const handleCategoryChange = (category: TargetAudience) => {
+    setSelectedCategory(category)
+    setSelectedPromptId("")
+  }
+
+  // 選択されたプロンプトの情報を取得
+  const getSelectedPromptInfo = (): DisasterPrompt | undefined => {
+    if (!selectedPromptId) return undefined
+    return getPromptById(selectedPromptId)
   }
   const handleProcessedImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -999,21 +1039,135 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                 )}
 
                 {/* Situation control */}
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <label className="text-sm text-gray-700">シチュエーション:</label>
-                  <select
-                    className="border rounded px-2 py-1 text-sm"
-                    value={situation}
-                    onChange={(e) => setSituation(e.target.value as any)}
+                <div className="mt-3 p-3 border rounded-md bg-gray-50 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">生成モード:</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          !useCustomPrompt
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                        onClick={() => setUseCustomPrompt(false)}
+                      >
+                        標準シナリオ
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          useCustomPrompt
+                            ? 'bg-green-600 text-white border-green-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                        onClick={() => setUseCustomPrompt(true)}
+                      >
+                        防災用プロンプト
+                      </button>
+                    </div>
+                  </div>
+
+                  {!useCustomPrompt ? (
+                    // 従来のシチュエーション選択
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="text-sm text-gray-700">シチュエーション:</label>
+                      <select
+                        className="border rounded px-2 py-1 text-sm flex-1 min-w-[140px]"
+                        value={situation}
+                        onChange={(e) => setSituation(e.target.value as Situation)}
+                      >
+                        {defaultSituations.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    // 防災用カスタムプロンプト選択
+                    <div className="space-y-2">
+                      {/* カテゴリ選択 */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="text-sm text-gray-700">対象:</label>
+                        <div className="flex gap-1 flex-wrap">
+                          {promptCategories.map((category) => (
+                            <button
+                              key={category.id}
+                              type="button"
+                              className={`px-2 py-1 text-xs rounded border transition-colors ${
+                                selectedCategory === category.id
+                                  ? 'bg-green-100 text-green-800 border-green-400'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                              }`}
+                              onClick={() => handleCategoryChange(category.id)}
+                            >
+                              {category.icon} {category.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* プロンプト選択 */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="text-sm text-gray-700">プロンプト:</label>
+                        <select
+                          className="border rounded px-2 py-1 text-sm flex-1 min-w-[180px]"
+                          value={selectedPromptId}
+                          onChange={(e) => setSelectedPromptId(e.target.value)}
+                        >
+                          <option value="">-- 選択してください --</option>
+                          {promptCategories
+                            .find((c) => c.id === selectedCategory)
+                            ?.prompts.map((prompt) => (
+                              <option key={prompt.id} value={prompt.id}>
+                                {prompt.shortName}: {prompt.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {/* 選択されたプロンプトの詳細表示 */}
+                      {selectedPromptId && (
+                        <div className="bg-white border rounded p-2 text-xs">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-gray-600 hover:text-gray-800"
+                            onClick={() => setShowPromptDetails(!showPromptDetails)}
+                          >
+                            {showPromptDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            {getSelectedPromptInfo()?.description}
+                          </button>
+                          {showPromptDetails && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded max-h-32 overflow-y-auto text-gray-600 whitespace-pre-wrap">
+                              {getSelectedPromptInfo()?.prompt.slice(0, 500)}
+                              {(getSelectedPromptInfo()?.prompt.length || 0) > 500 && '...'}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 再生成ボタン */}
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={regenerateSituation}
+                    disabled={regenLoading || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
+                    className="w-full"
                   >
-                    <option value="viz">ハザード可視化</option>
-                    <option value="earthquake">地震後</option>
-                    <option value="typhoon">台風後（強風）</option>
-                    <option value="flood">冠水</option>
-                    <option value="fire">火災後</option>
-                  </select>
-                  <Button type="button" variant="outline" size="sm" onClick={regenerateSituation} disabled={regenLoading || !originalImageFile}>
-                    {regenLoading ? '再生成中...' : 'この条件で再生成'}
+                    {regenLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        {useCustomPrompt ? '選択したプロンプトで生成' : 'この条件で再生成'}
+                      </>
+                    )}
                   </Button>
                 </div>
 
