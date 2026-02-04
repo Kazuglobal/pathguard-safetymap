@@ -14,9 +14,10 @@ import { getSanitizedGeminiApiKey } from "./gemini-util"
 
 // Available image generation models (in order of preference)
 const IMAGE_GEN_MODELS = [
-  "gemini-2.0-flash-exp",           // Gemini with native image output (experimental)
-  "imagen-3.0-generate-001",         // Imagen 3 standard
-  "imagen-3.0-fast-generate-001",    // Imagen 3 fast
+  "gemini-2.0-flash-preview-image-generation", // Gemini 2.0 Flash with image generation
+  "gemini-2.0-flash-exp",                       // Gemini 2.0 Flash experimental
+  "imagen-3.0-generate-001",                    // Imagen 3 standard
+  "imagen-3.0-fast-generate-001",               // Imagen 3 fast
 ]
 
 function getImageModel(): string {
