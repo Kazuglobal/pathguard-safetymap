@@ -14,9 +14,9 @@ import { getSanitizedGeminiApiKey } from "./gemini-util"
 
 // Available image generation models (in order of preference)
 const IMAGE_GEN_MODELS = [
-  "gemini-2.0-flash-exp-image-generation",      // Gemini 2.0 Flash Exp Image Generation (NanoBanana Pro)
+  "gemini-3-pro-image-preview",                 // Gemini 3 Pro Image Preview (NanoBanana Pro)
+  "gemini-2.0-flash-exp-image-generation",      // Gemini 2.0 Flash Exp Image Generation
   "gemini-2.0-flash-preview-image-generation",  // Gemini 2.0 Flash Preview
-  "gemini-2.0-flash-exp",                       // Gemini 2.0 Flash experimental
   "imagen-3.0-generate-001",                    // Imagen 3 standard
 ]
 
