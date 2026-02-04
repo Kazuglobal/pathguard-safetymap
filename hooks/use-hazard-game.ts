@@ -49,11 +49,15 @@ export function useHazardGame() {
     }
   )
 
-  // Compress large images on the client to avoid 413 from Vercel
+  // Maximum file size for API requests (3MB to stay under Gemini limits after Base64 encoding)
+  const MAX_API_FILE_SIZE = 3 * 1024 * 1024
+
+  // Compress large images on the client to avoid 413 from Vercel/Gemini
   const compressImage = async (
     file: File,
-    maxDimension: number = 1600,
-    quality: number = 0.8,
+    maxDimension: number = 1200,
+    quality: number = 0.7,
+    targetMaxSize: number = MAX_API_FILE_SIZE,
   ): Promise<File> => {
     try {
       const objectUrl = URL.createObjectURL(file)
@@ -66,29 +70,76 @@ export function useHazardGame() {
       URL.revokeObjectURL(objectUrl)
 
       const { width, height } = img
-      const scale = Math.min(1, maxDimension / Math.max(width, height))
-      const targetW = Math.max(1, Math.round(width * scale))
-      const targetH = Math.max(1, Math.round(height * scale))
 
-      if (scale === 1 && file.size <= 1.5 * 1024 * 1024) {
+      // Helper function to create compressed file
+      const createCompressedFile = async (
+        targetW: number,
+        targetH: number,
+        q: number
+      ): Promise<File> => {
+        const canvas = document.createElement('canvas')
+        canvas.width = targetW
+        canvas.height = targetH
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Failed to get canvas context')
+        ctx.drawImage(img, 0, 0, targetW, targetH)
+
+        const supportsWebp = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0
+
+        const blob: Blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(
+            b => (b ? resolve(b) : reject(new Error('Failed to create blob from canvas'))),
+            supportsWebp ? 'image/webp' : 'image/jpeg',
+            q,
+          )
+        })
+
+        const extension = supportsWebp ? 'webp' : 'jpg'
+        const mime = supportsWebp ? 'image/webp' : 'image/jpeg'
+        return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}-compressed.${extension}`, {
+          type: mime,
+          lastModified: Date.now(),
+        })
+      }
+
+      // Initial compression with default settings
+      let scale = Math.min(1, maxDimension / Math.max(width, height))
+      let targetW = Math.max(1, Math.round(width * scale))
+      let targetH = Math.max(1, Math.round(height * scale))
+
+      // Skip compression for small files that don't need resizing
+      if (scale === 1 && file.size <= targetMaxSize * 0.8) {
         return file
       }
 
-      const canvas = document.createElement('canvas')
-      canvas.width = targetW
-      canvas.height = targetH
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, targetW, targetH)
+      let compressedFile = await createCompressedFile(targetW, targetH, quality)
 
-      const blob: Blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-          b => (b ? resolve(b) : reject(new Error('Failed to create blob from canvas'))),
-          'image/jpeg',
-          quality,
-        )
-      })
+      // Progressive compression if still too large
+      let attempts = 0
+      const maxAttempts = 4
+      let currentQuality = quality
+      let currentMaxDim = maxDimension
 
-      return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}-compressed.jpg`, { type: 'image/jpeg', lastModified: Date.now() })
+      while (compressedFile.size > targetMaxSize && attempts < maxAttempts) {
+        attempts++
+        currentQuality = Math.max(0.4, currentQuality - 0.1)
+        currentMaxDim = Math.max(800, currentMaxDim - 200)
+
+        scale = Math.min(1, currentMaxDim / Math.max(width, height))
+        targetW = Math.max(1, Math.round(width * scale))
+        targetH = Math.max(1, Math.round(height * scale))
+
+        console.log(`[compressImage] Retry ${attempts}: dim=${currentMaxDim}, quality=${currentQuality.toFixed(2)}`)
+        compressedFile = await createCompressedFile(targetW, targetH, currentQuality)
+      }
+
+      if (compressedFile.size > targetMaxSize) {
+        console.warn(`[compressImage] Could not compress below ${targetMaxSize / 1024 / 1024}MB, final size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
+      } else {
+        console.log(`[compressImage] Compressed to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`)
+      }
+
+      return compressedFile
     } catch {
       return file
     }

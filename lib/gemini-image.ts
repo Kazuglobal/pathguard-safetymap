@@ -12,6 +12,29 @@ export type GenerateImageParams = {
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 import { getSanitizedGeminiApiKey } from "./gemini-util"
 
+// Security: Allowed domains for file downloads (SSRF protection)
+const ALLOWED_DOWNLOAD_HOSTS = [
+  'generativelanguage.googleapis.com',
+  'storage.googleapis.com',
+  'lh3.googleusercontent.com',
+]
+
+// Security: Allowed MIME types for images
+const ALLOWED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+
+// Helper to validate and sanitize MIME type
+function sanitizeMimeType(mimeType: string | undefined | null): string {
+  if (typeof mimeType === 'string' && ALLOWED_IMAGE_MIME_TYPES.includes(mimeType)) {
+    return mimeType
+  }
+  return 'image/png'
+}
+
+// Helper to validate model name (alphanumeric, dash, dot, underscore only)
+function sanitizeModelName(model: string): string {
+  return model.replace(/[^a-zA-Z0-9._-]/g, '')
+}
+
 // Available image generation models (in order of preference)
 const IMAGE_GEN_MODELS = [
   "gemini-3-pro-image-preview",                 // Gemini 3 Pro Image Preview (NanoBanana Pro)
@@ -29,6 +52,9 @@ function getImageModel(): string {
 }
 
 async function tryImagesGenerate(apiKey: string, model: string, prompt: string, imageBase64?: string, imageMimeType?: string) {
+  // Security: Sanitize model name to prevent URL injection
+  const safeModel = sanitizeModelName(model)
+
   // Use Imagen API with correct format
   const body: any = {
     instances: [{ prompt }],
@@ -39,10 +65,10 @@ async function tryImagesGenerate(apiKey: string, model: string, prompt: string, 
   // The standard Imagen API is primarily text-to-image
   if (imageBase64 && imageMimeType) {
     // Add reference image if the model supports it
-    body.instances[0].referenceImage = { mimeType: imageMimeType, data: imageBase64 }
+    body.instances[0].referenceImage = { mimeType: sanitizeMimeType(imageMimeType), data: imageBase64 }
   }
 
-  const url = `${GEMINI_API_URL}/models/${model}:predict`
+  const url = `${GEMINI_API_URL}/models/${safeModel}:predict`
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -56,6 +82,20 @@ async function tryImagesGenerate(apiKey: string, model: string, prompt: string, 
 
 async function downloadToBase64(uri: string, apiKey: string): Promise<{ mimeType: string; dataUrl: string } | null> {
   try {
+    // Security: Validate URL host to prevent SSRF attacks
+    let parsed: URL
+    try {
+      parsed = new URL(uri)
+    } catch {
+      console.warn('[Gemini] Invalid URL for download:', uri)
+      return null
+    }
+
+    if (!ALLOWED_DOWNLOAD_HOSTS.includes(parsed.hostname)) {
+      console.warn('[Gemini] Blocked download from untrusted host:', parsed.hostname)
+      return null
+    }
+
     let url = uri
     if (!/\bkey=/.test(url)) {
       url += (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(apiKey)
@@ -66,8 +106,8 @@ async function downloadToBase64(uri: string, apiKey: string): Promise<{ mimeType
     const r = await fetch(url, { headers: { 'X-Goog-Api-Key': apiKey } })
     if (!r.ok) return null
     const buf = Buffer.from(await r.arrayBuffer())
-    // Try to read mime from header; fallback to png
-    const mt = r.headers.get('content-type') || 'image/png'
+    // Security: Validate and sanitize MIME type from header
+    const mt = sanitizeMimeType(r.headers.get('content-type'))
     const b64 = buf.toString('base64')
     return { mimeType: mt, dataUrl: `data:${mt};base64,${b64}` }
   } catch {
@@ -83,7 +123,7 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
   if (data.predictions && Array.isArray(data.predictions)) {
     for (const pred of data.predictions) {
       if (pred.bytesBase64Encoded) {
-        const mt = pred.mimeType || 'image/png'
+        const mt = sanitizeMimeType(pred.mimeType)
         images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${pred.bytesBase64Encoded}` })
       }
     }
@@ -94,31 +134,29 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
 
     // Imagen format: imageBytes or bytesBase64Encoded
     if (typeof node.imageBytes === 'string' && node.imageBytes.length > 100) {
-      const mt = node.mimeType || 'image/png'
+      const mt = sanitizeMimeType(node.mimeType)
       images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.imageBytes}` })
     }
     if (typeof node.bytesBase64Encoded === 'string' && node.bytesBase64Encoded.length > 100) {
-      const mt = node.mimeType || 'image/png'
+      const mt = sanitizeMimeType(node.mimeType)
       images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.bytesBase64Encoded}` })
     }
 
     // direct inline
     if (typeof node.data === 'string' && node.data.length > 100) {
-      const mt = node.mime_type || node.mimeType || 'image/png'
-      if (typeof mt === 'string' && mt.startsWith('image/')) {
-        images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.data}` })
-      }
+      const mt = sanitizeMimeType(node.mime_type || node.mimeType)
+      images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.data}` })
     }
     // nested image object
     if (node.image && typeof node.image === 'object' && typeof node.image.data === 'string') {
-      const mt = node.image.mimeType || node.image.mime_type || 'image/png'
+      const mt = sanitizeMimeType(node.image.mimeType || node.image.mime_type)
       images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${node.image.data}` })
     }
     // inlineData / inline_data
     if (node.inlineData || node.inline_data) {
       const inline = node.inlineData || node.inline_data
       if (inline?.data) {
-        const mt = inline.mimeType || inline.mime_type || 'image/png'
+        const mt = sanitizeMimeType(inline.mimeType || inline.mime_type)
         images.push({ mimeType: mt, dataUrl: `data:${mt};base64,${inline.data}` })
       }
     }
@@ -147,7 +185,12 @@ async function extractImagesFromAny(data: any, apiKey: string): Promise<Generate
     const downloaded = await downloadToBase64(it.uri, apiKey)
     if (downloaded) images.push(downloaded)
   }
-  return images
+
+  // Remove duplicates based on dataUrl (same image data may be extracted multiple times)
+  const uniqueImages = images.filter((img, index, self) =>
+    index === self.findIndex(t => t.dataUrl === img.dataUrl)
+  )
+  return uniqueImages
 }
 
 export async function generateImageWithGemini({
@@ -190,13 +233,17 @@ export async function generateImageWithGemini({
 
     // Fallback: generateContent with response_modalities for native image generation
     try {
+      // Security: Sanitize model name and MIME type
+      const safeModel = sanitizeModelName(model)
+      const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
+
       const requestBody: any = {
         contents: [
           {
             role: "user",
             parts: [
-              ...(imageBase64 && imageMimeType
-                ? [{ inline_data: { mime_type: imageMimeType, data: imageBase64 } }]
+              ...(imageBase64 && safeMimeType
+                ? [{ inline_data: { mime_type: safeMimeType, data: imageBase64 } }]
                 : []),
               { text },
             ],
@@ -210,7 +257,7 @@ export async function generateImageWithGemini({
       }
 
       const res = await fetch(
-        `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        `${GEMINI_API_URL}/models/${encodeURIComponent(safeModel)}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
