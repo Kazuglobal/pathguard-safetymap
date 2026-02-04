@@ -1145,10 +1145,10 @@ export default function MapContainer() {
           isMobile={isMobile}
         />
 
-        {/* 検索バー - 最上部に配置、地点選択モード中は非表示 */}
+        {/* 検索バー - 最上部に配置、横幅いっぱい、地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (
           <div
-            className="absolute left-1/2 z-30 w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2"
+            className="absolute left-3 right-3 z-30"
             style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
           >
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
