@@ -1145,11 +1145,10 @@ export default function MapContainer() {
           isMobile={isMobile}
         />
 
-        {/* 検索バー - 最上部に配置、右側にコントロール用の余白を確保、地点選択モード中は非表示 */}
+        {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (
           <div
-            className="absolute left-3 right-[200px] z-30"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+            className="absolute left-0 right-0 z-30 px-3 sm:px-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
           >
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
               <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
@@ -1195,8 +1194,7 @@ export default function MapContainer() {
         {/* モバイルマップヒント */}
         {showMobileMapHint && (
           <div
-            className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 7.75rem)" }}
+            className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+6.75rem)]"
           >
             <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
               <MapPin className="h-4 w-4 text-blue-500" />

@@ -129,9 +129,9 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
   }
 
   const topNavClass = cn(
-    "bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50",
-    hideTopNavMobile && "hidden md:block",
-    isOverlay && "hidden" // マップオーバーレイモードではトップナビを非表示
+    "bg-white/95 backdrop-blur-md border-b border-gray-200 z-50",
+    isOverlay ? "hidden md:block md:fixed md:top-0 md:inset-x-0" : "sticky top-0",
+    hideTopNavMobile && "hidden md:block"
   )
 
   return (

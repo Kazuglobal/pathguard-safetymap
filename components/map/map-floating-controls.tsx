@@ -37,11 +37,6 @@ export default function MapFloatingControls({
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile || !isSelecting
-  // 検索バーと同じ高さに右側コントロールを配置
-  const topInsetStyle = { top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }
-  // 左側コントロールは検索バーの下に配置
-  const topLeftControlsStyle = { top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }
-  const topSecondaryStyle = { top: "calc(env(safe-area-inset-top, 0px) + 7.5rem)" }
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -53,8 +48,7 @@ export default function MapFloatingControls({
     <>
       {/* 左上: 地図スタイル切り替えボタン群（検索バーの下） */}
       <div
-        className="absolute left-3 z-20 flex flex-col gap-2"
-        style={topLeftControlsStyle}
+        className="absolute left-3 z-20 flex flex-col gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
         {/* 地図スタイルセレクター */}
         <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
@@ -95,8 +89,7 @@ export default function MapFloatingControls({
 
       {/* 右上: ユーザー情報とヘルプ */}
       <div
-        className="absolute right-3 z-20 flex items-center gap-2"
-        style={topInsetStyle}
+        className="absolute right-3 z-20 flex items-center gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
         {/* ポイント・レベル表示 */}
         <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-full px-3 py-2 shadow-lg border border-gray-200/80">
@@ -122,7 +115,7 @@ export default function MapFloatingControls({
 
       {/* 右側: 一覧ボタン（モバイル用） */}
       {isMobile && onToggleSidebar && (
-        <div className="absolute right-3 z-20" style={topSecondaryStyle}>
+        <div className="absolute right-3 z-20 top-[calc(env(safe-area-inset-top,0px)+7.75rem)]">
           <Button
             onClick={onToggleSidebar}
             variant="outline"

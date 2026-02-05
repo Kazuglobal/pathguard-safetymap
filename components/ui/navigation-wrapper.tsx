@@ -33,6 +33,16 @@ export function NavigationWrapper({ user, onLogout, children }: NavigationWrappe
       "min-h-screen bg-background",
       isMapPage ? "relative" : "flex flex-col"
     )}>
+      {/* ナビゲーション（デスクトップヘッダーはmainより前に配置） */}
+      {showNavigation && (
+        <Navigation
+          user={user}
+          onLogout={onLogout}
+          hideTopNavMobile={isLandingPage || isMapPage}
+          isOverlay={isMapPage}
+        />
+      )}
+
       {/* メインコンテンツ（マップページは最背面） */}
       <main className={cn(
         isMapPage ? "fixed inset-0" : "flex-1",
@@ -40,16 +50,6 @@ export function NavigationWrapper({ user, onLogout, children }: NavigationWrappe
       )}>
         {children}
       </main>
-
-      {/* ナビゲーション（マップページではオーバーレイ） */}
-      {showNavigation && (
-        <Navigation
-          user={user}
-          onLogout={onLogout}
-          hideTopNavMobile={isLandingPage}
-          isOverlay={isMapPage}
-        />
-      )}
     </div>
   )
 }

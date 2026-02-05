@@ -94,7 +94,7 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
   }
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-[200px] sm:max-w-md">
+    <div ref={searchRef} className="relative w-full max-w-none">
       <form onSubmit={handleSearch} className="relative">
         <Input
           type="text"
