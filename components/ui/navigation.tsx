@@ -26,6 +26,7 @@ interface NavigationProps {
   user?: any
   onLogout?: () => void
   hideTopNavMobile?: boolean
+  isOverlay?: boolean
 }
 
 type NavItem = {
@@ -37,7 +38,7 @@ type NavItem = {
   emphasize?: boolean
 }
 
-export function Navigation({ user, onLogout, hideTopNavMobile = false }: NavigationProps) {
+export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay = false }: NavigationProps) {
   const pathname = usePathname()
   // 管理者チェック（暫定実装）
   const isAdmin = user?.email?.includes("admin") || user?.role === "admin"
@@ -128,7 +129,8 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false }: Navigat
   }
 
   const topNavClass = cn(
-    "bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50",
+    "bg-white/95 backdrop-blur-md border-b border-gray-200 z-50",
+    isOverlay ? "hidden md:block md:fixed md:top-0 md:inset-x-0" : "sticky top-0",
     hideTopNavMobile && "hidden md:block"
   )
 
@@ -219,7 +221,12 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false }: Navigat
       </nav>
 
       {/* モバイルボトムナビ */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur md:hidden shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+      <nav className={cn(
+        "fixed inset-x-0 bottom-0 z-50 border-t md:hidden",
+        isOverlay
+          ? "bg-white/90 backdrop-blur-lg border-gray-200/50 shadow-[0_-8px_30px_rgba(15,23,42,0.15)]"
+          : "bg-white/95 backdrop-blur border-gray-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]"
+      )}>
         <div
           className="mx-auto flex h-20 max-w-3xl items-center gap-1 px-4"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}

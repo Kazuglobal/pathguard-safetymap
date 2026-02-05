@@ -5,9 +5,8 @@ import Image from "next/image"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
-import MapHeader from "./map-header"
+import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
-import MapLegend from "./map-legend"
 import DangerReportForm from "../danger-report/danger-report-form"
 import type { DangerReport } from "@/lib/types"
 import { AlertTriangle, Car, Shield, HelpCircle, Trash2, MapPin } from "lucide-react"
@@ -1128,49 +1127,37 @@ export default function MapContainer() {
 
   // --- Render ---
   return (
-    <div className="flex flex-col h-screen">
-      <MapHeader
-        onAddReport={handleAddReportClick} // 作成したハンドラーを渡す
-        isReportFormOpen={isReportFormOpen}
-        mapStyle={mapStyle}
-        setMapStyle={setMapStyle}
-        is3DEnabled={is3DEnabled}
-        toggle3DMode={toggle3DMode}
-        // ▼ モバイルでの地点選択モードの状態を渡す (ボタンの表示切替などに利用)
-        isSelectingLocation={isMobile && awaitingLocationSelection}
-        onToggleAR={() => setIsARMode(!isARMode)}
-        isARMode={isARMode}
-      />
-      <div className="relative flex flex-col md:flex-row flex-1 overflow-hidden pt-0 px-2 md:px-0">
-        {/* 検索バー（モバイル用） - 地点選択モード中は非表示 */}
-        {isMobile && !awaitingLocationSelection && (
-          <div className="absolute top-2 left-2 z-20 w-[calc(100%-80px)]">
-            <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+    <div className="fullscreen-map-container">
+      {/* メインマップエリア */}
+      <div className="relative w-full h-full">
+        {/* フローティングコントロール */}
+        <MapFloatingControls
+          onAddReport={handleAddReportClick}
+          isReportFormOpen={isReportFormOpen}
+          mapStyle={mapStyle}
+          setMapStyle={setMapStyle}
+          is3DEnabled={is3DEnabled}
+          toggle3DMode={toggle3DMode}
+          isSelectingLocation={isMobile && awaitingLocationSelection}
+          onToggleAR={() => setIsARMode(!isARMode)}
+          isARMode={isARMode}
+          onToggleSidebar={toggleSidebar}
+          isMobile={isMobile}
+        />
+
+        {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
+        {!awaitingLocationSelection && (
+          <div
+            className="absolute left-0 right-0 z-30 px-3 sm:px-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
+          >
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
+              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+            </div>
           </div>
         )}
         
-        {/* 検索バー（デスクトップ用） */}
-        <div className="hidden sm:absolute sm:top-12 sm:left-8 sm:z-10 sm:flex sm:items-center sm:max-w-md sm:w-auto">
-          <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
-        </div>
-        
-        {/* モバイル用サイドバートグルボタン - 地点選択モード中は非表示 */}
-        {isMobile && !awaitingLocationSelection && (
-          <div className="absolute top-2 right-2 z-20">
-            <Button
-              onClick={toggleSidebar}
-              variant="outline"
-              size="sm"
-              className="bg-white/90 backdrop-blur-sm shadow-sm h-6 px-2 text-xs"
-            >
-              <span className="mr-1">📋</span>
-              一覧
-            </Button>
-          </div>
-        )}
-        
-        {/* Sidebar */}
-        <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-30 transform transition-transform duration-300' : 'block w-full md:block md:w-auto'} ${isMobile && !isSidebarOpen ? '-translate-x-full' : ''}`}>
+        {/* Sidebar (フローティング) */}
+        <div className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ${!isSidebarOpen ? '-translate-x-full' : ''}`}>
           <MapSidebar
             dangerReports={dangerReports}
             pendingReports={pendingReports}
@@ -1182,47 +1169,47 @@ export default function MapContainer() {
             isAdmin={isAdmin}
             onDeleteReport={handleDeleteReport}
             isMobile={isMobile}
-            onClose={isMobile ? () => setIsSidebarOpen(false) : undefined}
+            onClose={() => setIsSidebarOpen(false)}
           />
         </div>
-        
-        {/* モバイルでサイドバーが開いている時のオーバーレイ */}
-        {isMobile && isSidebarOpen && (
-          <div 
+
+        {/* サイドバーが開いている時のオーバーレイ */}
+        {isSidebarOpen && (
+          <div
             className="fixed inset-0 bg-black/50 z-20"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
-        {/* Map Area */}
+
+        {/* Map Canvas (フルスクリーン) */}
         <div
-          className={`${mapAreaClassName} ${isMobile && isSidebarOpen ? "hidden" : ""} ${isMobile ? "mobile-map-container" : "desktop-map-container"}`}
+          ref={mapContainer}
+          className="absolute inset-0 w-full h-full"
+          style={{ minHeight: mapMinHeight }}
           onPointerDownCapture={() => {
             if (showMobileMapHint) setShowMobileMapHint(false);
           }}
-        >
+        />
+
+        {/* モバイルマップヒント */}
+        {showMobileMapHint && (
           <div
-            ref={mapContainer}
-            className={mapCanvasClassName}
-            style={{ width: "100%", height: "100%", minHeight: mapMinHeight }}
-          />
-          {/* マップ凡例 */}
-          <MapLegend />
-          {showMobileMapHint && (
-            <div className="absolute top-3 left-6 z-10 sm:hidden pointer-events-none">
-              <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
-                <MapPin className="h-4 w-4 text-blue-500" />
-                <span>ここが地図エリアです</span>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileMapHint(false)}
-                  className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
-                  aria-label="地図エリアのヒントを閉じる"
-                >
-                  ×
-                </button>
-              </div>
+            className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+6.75rem)]"
+          >
+            <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
+              <MapPin className="h-4 w-4 text-blue-500" />
+              <span>ここが地図エリアです</span>
+              <button
+                type="button"
+                onClick={() => setShowMobileMapHint(false)}
+                className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
+                aria-label="地図エリアのヒントを閉じる"
+              >
+                ×
+              </button>
             </div>
-          )}
+          </div>
+        )}
           {/* Map Overlays: Selection Info, Error, Loading */}
           {isReportFormOpen && (
             <div className="absolute top-20 left-0 right-0 z-10 px-4 py-2 flex justify-center pointer-events-none">
@@ -1527,91 +1514,90 @@ export default function MapContainer() {
             </div>
           )}
           {/* --- ▲▲▲ --- */}
-        </div>
-      </div>
 
-      {/* Dialogs and Modals */}
-      <ImagePreviewDialog isOpen={!!previewImage} imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
-      <DangerReportDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        report={selectedReport}
-        isAdmin={isAdmin}
-        onShowImage={(url, coords, options) => {
-          try {
-            const targetReport = options?.reportId
-              ? combinedReports.find((report) => report.id === options.reportId) ?? selectedReport ?? null
-              : selectedReport
+        {/* Dialogs and Modals */}
+        <ImagePreviewDialog isOpen={!!previewImage} imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
+        <DangerReportDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          report={selectedReport}
+          isAdmin={isAdmin}
+          onShowImage={(url, coords, options) => {
+            try {
+              const targetReport = options?.reportId
+                ? combinedReports.find((report) => report.id === options.reportId) ?? selectedReport ?? null
+                : selectedReport
 
-            const overlayCoords =
-              coords ??
-              (targetReport ? ([targetReport.longitude, targetReport.latitude] as [number, number]) : undefined)
+              const overlayCoords =
+                coords ??
+                (targetReport ? ([targetReport.longitude, targetReport.latitude] as [number, number]) : undefined)
 
-            if (overlayCoords) {
-              flyToLocation(overlayCoords[0], overlayCoords[1], 16)
-            } else {
-              console.warn("Unable to display image overlay because coordinates are missing.")
-              return
-            }
+              if (overlayCoords) {
+                flyToLocation(overlayCoords[0], overlayCoords[1], 16)
+              } else {
+                console.warn("Unable to display image overlay because coordinates are missing.")
+                return
+              }
 
-            const inferredType =
-              options?.type ?? (targetReport?.processed_image_urls?.includes(url) ? "processed" : "original")
-            const derivedIndex =
-              inferredType === "processed"
-                ? typeof options?.index === "number"
-                  ? options.index
-                  : targetReport?.processed_image_urls?.findIndex((imageUrl) => imageUrl === url)
-                : undefined
+              const inferredType =
+                options?.type ?? (targetReport?.processed_image_urls?.includes(url) ? "processed" : "original")
+              const derivedIndex =
+                inferredType === "processed"
+                  ? typeof options?.index === "number"
+                    ? options.index
+                    : targetReport?.processed_image_urls?.findIndex((imageUrl) => imageUrl === url)
+                  : undefined
 
-            const overlayIdParts = [
-              options?.reportId ?? targetReport?.id ?? "overlay",
-              inferredType ?? "image",
-              typeof derivedIndex === "number" && derivedIndex >= 0 ? `${derivedIndex}` : "original",
-              url,
-            ]
-            const overlayId = overlayIdParts.filter(Boolean).join(":")
-
-            setMapImageOverlays((prev) => {
-              const nextEntry: MapImageOverlayEntry = {
-                id: overlayId,
+              const overlayIdParts = [
+                options?.reportId ?? targetReport?.id ?? "overlay",
+                inferredType ?? "image",
+                typeof derivedIndex === "number" && derivedIndex >= 0 ? `${derivedIndex}` : "original",
                 url,
-                reportId: options?.reportId ?? targetReport?.id ?? undefined,
-                reportTitle: options?.reportTitle ?? targetReport?.title ?? null,
-                type: inferredType,
-                index: typeof derivedIndex === "number" && derivedIndex >= 0 ? derivedIndex : undefined,
-                coordinates: overlayCoords,
-                hasError: false,
-              }
+              ]
+              const overlayId = overlayIdParts.filter(Boolean).join(":")
 
-              const existingIndex = prev.findIndex((entry) => entry.id === overlayId)
-              if (existingIndex !== -1) {
-                const next = [...prev]
-                next[existingIndex] = nextEntry
-                return next
-              }
+              setMapImageOverlays((prev) => {
+                const nextEntry: MapImageOverlayEntry = {
+                  id: overlayId,
+                  url,
+                  reportId: options?.reportId ?? targetReport?.id ?? undefined,
+                  reportTitle: options?.reportTitle ?? targetReport?.title ?? null,
+                  type: inferredType,
+                  index: typeof derivedIndex === "number" && derivedIndex >= 0 ? derivedIndex : undefined,
+                  coordinates: overlayCoords,
+                  hasError: false,
+                }
 
-              return [...prev, nextEntry]
-            })
+                const existingIndex = prev.findIndex((entry) => entry.id === overlayId)
+                if (existingIndex !== -1) {
+                  const next = [...prev]
+                  next[existingIndex] = nextEntry
+                  return next
+                }
 
-            setPreviewImage(null)
-          } catch (e) {
-            console.error('Failed to show image on map:', e)
-          }
-        }}
-      />
-      <SubmittedReportPreview
-        isOpen={isSubmittedPreviewOpen}
-        onClose={() => { setIsSubmittedPreviewOpen(false); setSubmittedReport(null); }} // Clear submitted report on close
-        originalImage={submittedReport?.originalImage ?? null}
-        processedImages={submittedReport?.processedImages ?? []}
-      />
-      {/* ARビュー */}
-      {isARMode && (
-        <ARView
-          reports={combinedReports}
-          onClose={() => setIsARMode(false)}
+                return [...prev, nextEntry]
+              })
+
+              setPreviewImage(null)
+            } catch (e) {
+              console.error('Failed to show image on map:', e)
+            }
+          }}
         />
-      )}
+        <SubmittedReportPreview
+          isOpen={isSubmittedPreviewOpen}
+          onClose={() => { setIsSubmittedPreviewOpen(false); setSubmittedReport(null); }}
+          originalImage={submittedReport?.originalImage ?? null}
+          processedImages={submittedReport?.processedImages ?? []}
+        />
+        {/* ARビュー */}
+        {isARMode && (
+          <ARView
+            reports={combinedReports}
+            onClose={() => setIsARMode(false)}
+          />
+        )}
+      </div>
     </div>
   )
 }

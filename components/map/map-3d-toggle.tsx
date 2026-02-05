@@ -17,15 +17,20 @@ export default function Map3DToggle({
   className,
   size = "sm",
 }: Map3DToggleProps) {
+  const isActive = is3DEnabled
+
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={isActive ? "default" : "outline"}
       size={size}
       onClick={onToggle}
       aria-pressed={is3DEnabled}
       className={cn(
-        "bg-white/90 backdrop-blur-sm shadow-sm hover:bg-white transition-colors text-blue-600 font-semibold",
+        "backdrop-blur-sm shadow-sm transition-colors font-semibold",
+        isActive
+          ? "bg-sky-600 text-white hover:bg-sky-700 border-sky-600"
+          : "bg-white/90 text-blue-600 hover:bg-white",
         className,
       )}
     >
