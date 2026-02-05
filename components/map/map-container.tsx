@@ -1148,7 +1148,7 @@ export default function MapContainer() {
         {/* 検索バー - 最上部に配置、右側にコントロール用の余白を確保、地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (
           <div
-            className="absolute left-3 right-[140px] z-30"
+            className="absolute left-3 right-[200px] z-30"
             style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
           >
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
