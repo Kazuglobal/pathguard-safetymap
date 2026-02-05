@@ -1150,7 +1150,7 @@ export default function MapContainer() {
           <div
             className="absolute left-0 right-0 z-30 px-3 sm:px-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
           >
-            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
               <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
             </div>
           </div>

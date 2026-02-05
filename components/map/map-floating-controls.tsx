@@ -36,7 +36,7 @@ export default function MapFloatingControls({
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
-  const showPrimaryCta = !isMobile || !isSelecting
+  const showPrimaryCta = !isMobile
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -48,21 +48,21 @@ export default function MapFloatingControls({
     <>
       {/* 左上: 地図スタイル切り替えボタン群（検索バーの下） */}
       <div
-        className="absolute left-3 z-20 flex flex-col gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
+        className="absolute left-3 z-20 flex flex-col gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
         {/* 地図スタイルセレクター */}
         <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
           <MapStyleSelector currentStyle={mapStyle} onChange={setMapStyle} />
         </div>
 
-        {/* 3Dとボタン */}
-        <div className="flex gap-2">
+        {/* 3DとARボタン - モバイルではコンパクト */}
+        <div className="flex gap-1.5 sm:gap-2">
           <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
             <Map3DToggle
               is3DEnabled={is3DEnabled}
               onToggle={toggle3DMode}
               size="sm"
-              className="h-10 px-4"
+              className="h-9 sm:h-10 px-3 sm:px-4"
             />
           </div>
 
@@ -73,7 +73,7 @@ export default function MapFloatingControls({
               variant={isARMode ? "default" : "outline"}
               size="sm"
               aria-pressed={isARMode}
-              className={`h-10 px-4 backdrop-blur-sm shadow-lg border ${
+              className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
                 isARMode
                   ? "bg-sky-600 text-white border-sky-600 hover:bg-sky-700"
                   : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
@@ -89,44 +89,75 @@ export default function MapFloatingControls({
 
       {/* 右上: ユーザー情報とヘルプ */}
       <div
-        className="absolute right-3 z-20 flex items-center gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
+        className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
-        {/* ポイント・レベル表示 */}
-        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-full px-3 py-2 shadow-lg border border-gray-200/80">
-          <Trophy className="h-4 w-4 text-yellow-500" />
-          <span className="text-sm font-medium text-gray-700">{points}pt</span>
-          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-xs font-bold text-blue-600">L{level}</span>
+        {/* ポイント・レベル表示 - モバイルではコンパクト表示 */}
+        <div className="flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1.5 sm:py-2 shadow-lg border border-gray-200/80">
+          <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-500" />
+          <span className="text-xs sm:text-sm font-medium text-gray-700">{points}<span className="hidden sm:inline">pt</span></span>
+          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-100 flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-bold text-blue-600">L{level}</span>
           </div>
         </div>
+
+        {/* 一覧ボタン（モバイル用）- テキストなしでアイコンのみ */}
+        {isMobile && onToggleSidebar && (
+          <Button
+            onClick={onToggleSidebar}
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 sm:h-10 sm:w-auto sm:px-3 p-0 sm:p-2 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
+            aria-label="危険箇所一覧を表示"
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">一覧</span>
+          </Button>
+        )}
 
         {/* ヘルプボタン */}
         <HelpDialog>
           <Button
             size="sm"
             variant="outline"
-            className="h-10 w-10 p-0 rounded-full bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
+            className="h-9 w-9 sm:h-10 sm:w-10 p-0 rounded-full bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
             aria-label="アプリの使い方を表示"
           >
             <HelpCircle className="h-4 w-4" />
           </Button>
         </HelpDialog>
-      </div>
 
-      {/* 右側: 一覧ボタン（モバイル用） */}
-      {isMobile && onToggleSidebar && (
-        <div className="absolute right-3 z-20 top-[calc(env(safe-area-inset-top,0px)+7.75rem)]">
+        {/* 報告ボタン（モバイル用） */}
+        {isMobile && (
           <Button
-            onClick={onToggleSidebar}
-            variant="outline"
+            onClick={onAddReport}
+            variant={isReportFormOpen || isSelecting ? "secondary" : "default"}
             size="sm"
-            className="h-10 px-3 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
+            className={`h-9 px-3 shadow-lg border ${
+              !isReportFormOpen && !isSelecting
+                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-transparent"
+                : "bg-white/95 backdrop-blur-sm border-gray-200/80"
+            }`}
+            aria-label="危険箇所を報告する"
           >
-            <List className="h-4 w-4 mr-1" />
-            一覧
+            {isSelecting ? (
+              <>
+                <MapPin className="mr-1.5 h-4 w-4 animate-pulse" />
+                選択中
+              </>
+            ) : isReportFormOpen ? (
+              <>
+                <MapPin className="mr-1.5 h-4 w-4" />
+                入力中
+              </>
+            ) : (
+              <>
+                <PlusCircle className="mr-1.5 h-4 w-4" />
+                報告
+              </>
+            )}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 下部中央: 報告ボタン（メインCTA） */}
       {showPrimaryCta && (
