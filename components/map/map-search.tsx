@@ -52,24 +52,44 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
 
     try {
       const accessToken = mapboxgl.accessToken
+      const params = new URLSearchParams({
+        access_token: accessToken,
+        country: "jp",
+        language: "ja",
+        autocomplete: "true",
+        limit: "8",
+        types: "address,place,locality,neighborhood,district,region,postcode",
+      })
+
+      if (map) {
+        const center = map.getCenter()
+        params.set("proximity", `${center.lng},${center.lat}`)
+      }
+
       const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         query,
-      )}.json?access_token=${accessToken}&country=jp&language=ja`
+      )}.json?${params.toString()}`
 
       const response = await fetch(endpoint)
+      if (!response.ok) {
+        throw new Error(`Search request failed: ${response.status}`)
+      }
       const data = await response.json()
 
       if (data.features) {
         setResults(
           data.features.map((feature: any) => ({
             id: feature.id,
-            place_name: feature.place_name,
+            place_name: feature.place_name ?? feature.text ?? "",
             center: feature.center,
           })),
         )
+      } else {
+        setResults([])
       }
     } catch (error) {
       console.error("住所検索エラー:", error)
+      setResults([])
     } finally {
       setIsSearching(false)
     }
