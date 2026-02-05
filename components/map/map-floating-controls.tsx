@@ -36,7 +36,7 @@ export default function MapFloatingControls({
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
-  const showPrimaryCta = !isMobile || !isSelecting
+  const showPrimaryCta = !isMobile
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -89,7 +89,7 @@ export default function MapFloatingControls({
 
       {/* 右上: ユーザー情報とヘルプ */}
       <div
-        className="absolute right-3 z-20 flex items-center gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
+        className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
         {/* ポイント・レベル表示 - モバイルではコンパクト表示 */}
         <div className="flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1.5 sm:py-2 shadow-lg border border-gray-200/80">
@@ -125,6 +125,38 @@ export default function MapFloatingControls({
             <HelpCircle className="h-4 w-4" />
           </Button>
         </HelpDialog>
+
+        {/* 報告ボタン（モバイル用） */}
+        {isMobile && (
+          <Button
+            onClick={onAddReport}
+            variant={isReportFormOpen || isSelecting ? "secondary" : "default"}
+            size="sm"
+            className={`h-9 px-3 shadow-lg border ${
+              !isReportFormOpen && !isSelecting
+                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-transparent"
+                : "bg-white/95 backdrop-blur-sm border-gray-200/80"
+            }`}
+            aria-label="危険箇所を報告する"
+          >
+            {isSelecting ? (
+              <>
+                <MapPin className="mr-1.5 h-4 w-4 animate-pulse" />
+                選択中
+              </>
+            ) : isReportFormOpen ? (
+              <>
+                <MapPin className="mr-1.5 h-4 w-4" />
+                入力中
+              </>
+            ) : (
+              <>
+                <PlusCircle className="mr-1.5 h-4 w-4" />
+                報告
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* 下部中央: 報告ボタン（メインCTA） */}
