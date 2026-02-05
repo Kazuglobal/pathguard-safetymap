@@ -510,7 +510,7 @@ export default function ReportHubPage() {
             }
           }}
         >
-          <SheetContent side="bottom" className="h-[75vh] w-full overflow-y-auto sm:mx-auto sm:max-w-3xl">
+          <SheetContent side="bottom" className="h-[75vh] w-full overflow-y-auto pb-24 sm:mx-auto sm:max-w-3xl sm:pb-6">
             <SheetHeader>
               <SheetTitle>{selectedCategoryMeta?.label ?? "危険報告"}</SheetTitle>
               <SheetDescription>
@@ -539,7 +539,7 @@ export default function ReportHubPage() {
             }
           }}
         >
-          <SheetContent side="bottom" className="h-[85vh] w-full overflow-y-auto sm:mx-auto sm:max-w-3xl">
+          <SheetContent side="bottom" className="h-[85vh] w-full overflow-y-auto pb-24 sm:mx-auto sm:max-w-3xl sm:pb-6">
             {selectedReport && (
               <>
                 <SheetHeader>
