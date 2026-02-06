@@ -1,0 +1,78 @@
+{
+  "verification_date": "2026-02-06",
+  "total_items": 8,
+  "approved": 6,
+  "needs_revision": 2,
+  "rejected": 0,
+  "results": [
+    {
+      "id": "news-001",
+      "status": "APPROVED",
+      "confidence": 0.95,
+      "notes": "複数の大手メディア（西日本新聞、NHK、KBC）で報道、詳細が正確"
+    },
+    {
+      "id": "news-002",
+      "status": "APPROVED",
+      "confidence": 0.98,
+      "notes": "警視庁公式統計、データ正確"
+    },
+    {
+      "id": "news-003",
+      "status": "APPROVED",
+      "confidence": 0.90,
+      "notes": "軽微な日付修正のみ（9月16日に統一）",
+      "corrections": [
+        {
+          "field": "published_date",
+          "original": "2025-09-01",
+          "corrected": "2025-09-16"
+        }
+      ]
+    },
+    {
+      "id": "news-004",
+      "status": "APPROVED",
+      "confidence": 0.98,
+      "notes": "国土交通省公式発表、数値正確"
+    },
+    {
+      "id": "news-005",
+      "status": "APPROVED",
+      "confidence": 0.90,
+      "notes": "複数ソース確認、文部科学省施策も正確"
+    },
+    {
+      "id": "news-006",
+      "status": "NEEDS_REVISION",
+      "confidence": 0.70,
+      "notes": "2026年度予測の根拠となるデータが2023年報告に基づく。最新データでの再検証が必要",
+      "corrections": [
+        {
+          "field": "summary",
+          "issue": "市場規模予測の根拠年が古い",
+          "recommendation": "2025年最新データで市場規模を再検証、またはソースの確度を明記"
+        }
+      ]
+    },
+    {
+      "id": "news-007",
+      "status": "APPROVED",
+      "confidence": 0.95,
+      "notes": "文部科学省公式施策、内容正確"
+    },
+    {
+      "id": "news-008",
+      "status": "NEEDS_REVISION",
+      "confidence": 0.60,
+      "notes": "「車道通行義務化」表現が不正確、青切符制度が正確",
+      "corrections": [
+        {
+          "field": "summary",
+          "original": "自転車の車道通行義務化",
+          "corrected": "自転車への青切符制度（交通反則通告制度）の導入"
+        }
+      ]
+    }
+  ]
+}
