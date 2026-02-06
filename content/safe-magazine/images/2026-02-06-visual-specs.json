@@ -1,0 +1,223 @@
+{
+  "created_date": "2026-02-06",
+  "articles": [
+    {
+      "article_id": "2026-02-06-chikushino-accident",
+      "article_title": "対策済み通学路でも事故発生 - 福岡・筑紫野市の教訓",
+      "category": "accident-news",
+      "thumbnail": {
+        "description": "通学路を歩く小学生のシルエットと、危険を示す注意マーク",
+        "dimensions": "1200x630",
+        "style": "photo-overlay",
+        "color_scheme": {
+          "primary": "#EF4444",
+          "secondary": "#FEE2E2",
+          "text": "#FFFFFF"
+        },
+        "text_overlay": {
+          "title": "対策済み通学路でも事故発生",
+          "subtitle": "福岡・筑紫野市の教訓",
+          "position": "bottom-left"
+        },
+        "suggested_stock_keywords": ["school route", "crosswalk", "children walking", "traffic safety"],
+        "icon": "AlertTriangle"
+      },
+      "infographics": [
+        {
+          "type": "comparison-chart",
+          "title": "ハード対策とソフト対策",
+          "data": {
+            "hard": ["歩道整備", "ガードレール", "カラー舗装", "信号機"],
+            "soft": ["見守り活動", "交通安全教育", "ドライバー啓発", "通行制限"]
+          },
+          "dimensions": "800x500"
+        }
+      ],
+      "ui_components": [
+        {
+          "type": "alert-banner",
+          "usage": "記事トップに表示",
+          "props": {
+            "variant": "warning",
+            "icon": "AlertTriangle",
+            "message": "対策済み箇所でも油断は禁物です"
+          }
+        }
+      ]
+    },
+    {
+      "article_id": "2026-02-06-school-route-safety-statistics",
+      "article_title": "通学路の安全対策91%完了、でも小1の事故リスクは6年生の2.9倍",
+      "category": "danger-ranking",
+      "thumbnail": {
+        "description": "グラフと小学1年生のランドセル姿",
+        "dimensions": "1200x630",
+        "style": "infographic",
+        "color_scheme": {
+          "primary": "#F97316",
+          "secondary": "#FED7AA",
+          "text": "#FFFFFF"
+        },
+        "text_overlay": {
+          "title": "小1の事故リスク",
+          "subtitle": "6年生の2.9倍",
+          "position": "center"
+        },
+        "suggested_stock_keywords": ["first grader", "school bag", "statistics", "chart"],
+        "icon": "BarChart2"
+      },
+      "infographics": [
+        {
+          "type": "bar-chart",
+          "title": "学年別事故リスク比較",
+          "data": {
+            "labels": ["1年生", "2年生", "3年生", "4年生", "5年生", "6年生"],
+            "values": [2.9, 2.3, 1.8, 1.4, 1.1, 1.0],
+            "unit": "倍（6年生比）"
+          },
+          "dimensions": "800x400"
+        },
+        {
+          "type": "progress-bar",
+          "title": "通学路安全対策の進捗",
+          "data": {
+            "completed": 66203,
+            "total": 72568,
+            "percentage": 91.2
+          },
+          "dimensions": "600x150"
+        },
+        {
+          "type": "timeline",
+          "title": "入学前後の安全対策チェックリスト",
+          "data": {
+            "before": ["通学路の下見", "登校練習", "「とまる・みる・まつ」練習"],
+            "after": ["付き添い登校", "帰宅後の振り返り", "見守り活動参加"]
+          },
+          "dimensions": "800x300"
+        }
+      ],
+      "ui_components": [
+        {
+          "type": "stat-card",
+          "usage": "キー数値の強調表示",
+          "props": {
+            "value": "2.9倍",
+            "label": "小1の事故リスク（6年生比）",
+            "color": "orange"
+          }
+        },
+        {
+          "type": "stat-card",
+          "usage": "対策完了率の表示",
+          "props": {
+            "value": "91%",
+            "label": "危険箇所の対策完了率",
+            "color": "green"
+          }
+        }
+      ]
+    },
+    {
+      "article_id": "2026-02-06-nagara-mimamori-guide",
+      "article_title": "見守り活動の新しいカタチ「ながら見守り」のすすめ",
+      "category": "volunteer-activity",
+      "thumbnail": {
+        "description": "散歩をしながら子どもに手を振る地域の大人",
+        "dimensions": "1200x630",
+        "style": "illustration",
+        "color_scheme": {
+          "primary": "#22C55E",
+          "secondary": "#DCFCE7",
+          "text": "#FFFFFF"
+        },
+        "text_overlay": {
+          "title": "ながら見守り",
+          "subtitle": "のすすめ",
+          "position": "bottom-right"
+        },
+        "suggested_stock_keywords": ["community", "walking", "neighborhood watch", "children safety"],
+        "icon": "Users"
+      },
+      "infographics": [
+        {
+          "type": "icon-list",
+          "title": "ながら見守りの例",
+          "data": [
+            {"icon": "Dog", "text": "犬の散歩のついでに"},
+            {"icon": "ShoppingBag", "text": "買い物帰りに"},
+            {"icon": "Flower", "text": "庭の水やりをしながら"},
+            {"icon": "Running", "text": "ジョギングのついでに"}
+          ],
+          "dimensions": "600x400"
+        },
+        {
+          "type": "step-diagram",
+          "title": "ながら見守りの始め方",
+          "data": {
+            "steps": [
+              {"number": 1, "title": "時間を知る", "desc": "登下校時間を確認"},
+              {"number": 2, "title": "行動を見直す", "desc": "外出の用事を探す"},
+              {"number": 3, "title": "挨拶から", "desc": "「おはよう」と声かけ"},
+              {"number": 4, "title": "続ける", "desc": "週1回からでOK"}
+            ]
+          },
+          "dimensions": "800x250"
+        },
+        {
+          "type": "keyword-card",
+          "title": "防犯合言葉「はちみつじまん」",
+          "data": {
+            "keywords": [
+              {"letter": "は", "meaning": "話しかけてくる人に注意"},
+              {"letter": "ち", "meaning": "近づいてくる人に注意"},
+              {"letter": "み", "meaning": "見つめてくる人に注意"},
+              {"letter": "つ", "meaning": "ついてくる人に注意"},
+              {"letter": "じ", "meaning": "車に乗せようとする人に注意"},
+              {"letter": "ま", "meaning": "待っている人に注意"},
+              {"letter": "ん", "meaning": "？と思ったらすぐ逃げる"}
+            ]
+          },
+          "dimensions": "600x500"
+        }
+      ],
+      "ui_components": [
+        {
+          "type": "cta-button",
+          "usage": "見守り活動参加呼びかけ",
+          "props": {
+            "text": "今日からできる！ながら見守り",
+            "variant": "primary",
+            "icon": "Heart"
+          }
+        },
+        {
+          "type": "info-box",
+          "usage": "子ども110番の家の説明",
+          "props": {
+            "title": "子ども110番の家とは",
+            "icon": "Home",
+            "description": "子どもが危険を感じた時に駆け込める場所"
+          }
+        }
+      ]
+    }
+  ],
+  "shared_components": {
+    "category_badges": {
+      "accident-news": {"color": "#EF4444", "icon": "AlertTriangle", "label": "事故ニュース"},
+      "danger-ranking": {"color": "#F97316", "icon": "BarChart2", "label": "危険度情報"},
+      "volunteer-activity": {"color": "#22C55E", "icon": "Users", "label": "見守り活動"},
+      "safety-tips": {"color": "#3B82F6", "icon": "Shield", "label": "安全対策"},
+      "policy-update": {"color": "#8B5CF6", "icon": "FileText", "label": "施策・制度"}
+    },
+    "fonts": {
+      "title": "Noto Sans JP Bold",
+      "body": "Noto Sans JP Regular"
+    },
+    "accessibility": {
+      "color_contrast": "WCAG AA準拠",
+      "alt_text_required": true
+    }
+  }
+}

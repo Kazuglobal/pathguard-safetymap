@@ -30,9 +30,9 @@ export default function MapStyleSelector({ currentStyle, onChange }: MapStyleSel
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center">
-          <Layers className="h-4 w-4 mr-2" />
-          地図スタイル
+        <Button variant="outline" size="sm" className="flex items-center h-9 sm:h-10 px-2.5 sm:px-3">
+          <Layers className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">地図スタイル</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
