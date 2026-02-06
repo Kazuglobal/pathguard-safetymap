@@ -1,6 +1,4 @@
-"use client"
-
-import { useParams } from "next/navigation"
+import { notFound } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, AlertTriangle, AlertCircle, Construction, FileText, Users, Clock, Tag, MapPin, ExternalLink, CheckCircle, Zap } from "lucide-react"
@@ -15,22 +13,18 @@ const CATEGORY_ICONS = {
   "Users": Users,
 }
 
-export default function NewsDetailPage() {
-  const params = useParams()
-  const slug = params.slug as string
+type NewsDetailPageProps = {
+  params: Promise<{
+    slug: string
+  }>
+}
+
+export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
+  const { slug } = await params
   const item = getNewsItemBySlug(slug)
 
   if (!item) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500 mb-4">ニュースが見つかりません</p>
-          <Link href="/school-route-news" className="text-red-600 hover:underline">
-            ニュース一覧に戻る
-          </Link>
-        </div>
-      </div>
-    )
+    notFound()
   }
 
   const category = NEWS_CATEGORIES[item.category as NewsCategory]

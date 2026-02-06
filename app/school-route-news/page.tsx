@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, AlertTriangle, AlertCircle, Construction, FileText, Users, Clock, Tag, MapPin, Zap } from "lucide-react"
