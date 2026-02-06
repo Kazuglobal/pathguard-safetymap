@@ -18,6 +18,7 @@ import DangerReportDetailModal from "../danger-report/danger-report-detail-modal
 import { useToast } from "@/components/ui/use-toast"
 import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { createRoot } from "react-dom/client"
+import { createPortal } from "react-dom"
 import { addPoints } from "@/lib/gamification"
 import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -1249,9 +1250,9 @@ export default function MapContainer() {
             </div>
           )}
 
-          {/* Report Form - モバイル用（フルスクリーンモーダル） */}
-          {isReportFormOpen && isMobile && (
-            <div className="fixed inset-0 z-50 flex flex-col bg-white mobile-fullscreen-form">
+          {/* Report Form - モバイル用（フルスクリーンモーダル）- Portal経由でbodyに直接レンダリング */}
+          {isReportFormOpen && isMobile && createPortal(
+            <div className="fixed inset-0 z-[60] flex flex-col bg-white mobile-fullscreen-form">
               {/* モバイルフォームヘッダー */}
               <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white safe-area-top">
                 <Button
@@ -1305,7 +1306,7 @@ export default function MapContainer() {
                         setIsReportFormOpen(false);
                         setAwaitingLocationSelection(true);
                       }}
-                      className="text-xs h-7 px-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                      className="text-xs h-9 px-3 border-blue-200 text-blue-600 hover:bg-blue-50"
                     >
                       変更
                     </Button>
@@ -1329,13 +1330,14 @@ export default function MapContainer() {
                   isMobileFullscreen={true}
                 />
               </div>
-            </div>
+            </div>,
+            document.body
           )}
-          {/* --- ▼▼▼ モバイル用地点選択UI（コンパクトなボトムバー） ▼▼▼ --- */}
-          {isMobile && awaitingLocationSelection && (
+          {/* --- ▼▼▼ モバイル用地点選択UI（ボトムシート）- Portal経由でbodyに直接レンダリング ▼▼▼ --- */}
+          {isMobile && awaitingLocationSelection && createPortal(
             <>
               {/* 上部のコンパクトなガイド */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
+              <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none">
                 <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-blue-200 px-4 py-2">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
@@ -1344,25 +1346,23 @@ export default function MapContainer() {
                 </div>
               </div>
 
-              {/* 下部の確認バー - ナビゲーションバーの上に表示 */}
-              <div className="absolute bottom-20 left-3 right-3 z-50 mobile-bottom-bar">
-                <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+              {/* 下部の確認バー - ナビゲーションバーの上に固定表示 */}
+              <div className="fixed bottom-0 left-0 right-0 z-[60] mobile-bottom-bar">
+                <div className="bg-white rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] border-t border-gray-200">
                   {selectedLocation ? (
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <MapPin className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">地点を選択しました</p>
-                            <p className="text-xs text-gray-500">
-                              {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
-                            </p>
-                          </div>
+                    <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-semibold text-gray-900">地点を選択しました</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-3">
                         <Button
                           size="default"
                           variant="outline"
@@ -1375,7 +1375,7 @@ export default function MapContainer() {
                             }
                             toast({ title: "地点選択をキャンセルしました" });
                           }}
-                          className="flex-1 h-11 text-sm"
+                          className="flex-1 h-12 text-base font-medium rounded-xl"
                         >
                           キャンセル
                         </Button>
@@ -1385,24 +1385,27 @@ export default function MapContainer() {
                             setAwaitingLocationSelection(false);
                             setIsReportFormOpen(true);
                           }}
-                          className="flex-[1.5] h-11 text-sm bg-blue-600 hover:bg-blue-700"
+                          className="flex-[2] h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
                         >
-                          報告する
+                          この地点で報告する
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4">
+                    <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
                       <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600">地図をタップして地点を選んでください</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <p className="text-sm text-gray-600">地図をタップして地点を選んでください</p>
+                        </div>
                         <Button
-                          size="sm"
+                          size="default"
                           variant="ghost"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             toast({ title: "地点選択をキャンセルしました" });
                           }}
-                          className="text-gray-500 hover:text-gray-700"
+                          className="text-gray-500 hover:text-gray-700 h-10 px-4"
                         >
                           キャンセル
                         </Button>
@@ -1411,7 +1414,8 @@ export default function MapContainer() {
                   )}
                 </div>
               </div>
-            </>
+            </>,
+            document.body
           )}
           {/* --- ▲▲▲ モバイル用地点選択UI ▲▲▲ --- */}
           

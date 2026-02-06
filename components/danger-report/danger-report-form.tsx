@@ -1432,14 +1432,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
         {/* 送信ボタン */}
         <div className={isMobileFullscreen
-          ? "sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 -mx-4 mt-4 safe-area-bottom"
+          ? "sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 -mx-4 mt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-10"
           : "flex justify-end gap-2 pt-2"
-        }>
+        }
+          style={isMobileFullscreen ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" } : undefined}
+        >
           {isMobileFullscreen ? (
             <Button
               type="submit"
               disabled={isSubmitting || !selectedLocation}
-              className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700"
+              className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
             >
               {isSubmitting ? (
                 <>
