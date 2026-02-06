@@ -1,0 +1,140 @@
+{
+  "research_date": "2026-02-06",
+  "total_items": 8,
+  "items": [
+    {
+      "id": "news-001",
+      "title": "福岡・筑紫野市で小学生の列に車が突っ込み5人搬送",
+      "summary": "2025年5月19日午後3時半頃、福岡県筑紫野市針摺西で74歳女性が運転する軽乗用車が下校中の小学生の列に突っ込んだ。9歳の男児4人と運転手の女性が病院に搬送され、男児1人と女性が骨折したが全員命に別条なし。現場は以前から「危険な通学路」としてリストアップされており、舗装の色を変えるなどの対策が講じられていた箇所だった。",
+      "source_urls": [
+        "https://www.nishinippon.co.jp/item/1352790/",
+        "https://news.web.nhk/newsweb/na/na-k10014810151000/",
+        "https://kbc.co.jp/gyutto/detail.php?cdid=41495"
+      ],
+      "published_date": "2025-05-19",
+      "category": "accident-news",
+      "location": {
+        "prefecture": "福岡県",
+        "city": "筑紫野市"
+      },
+      "relevance_score": 9,
+      "keywords": ["通学路事故", "小学生", "交通事故", "危険箇所"]
+    },
+    {
+      "id": "news-002",
+      "title": "警視庁が令和7年上半期の小学生交通事故統計を公表",
+      "summary": "警視庁は2025年7月10日現在のデータとして、令和7年（2025年）上半期における小学生の交通人身事故発生状況を発表。歩行中の事故が依然として多く、特に小学1年生の死者・重傷者数は6年生の約2.9倍に上る。登下校時の事故防止が継続的な課題として示された。",
+      "source_urls": [
+        "https://www.keishicho.metro.tokyo.lg.jp/about_mpd/jokyo_tokei/tokei_jokyo/vta.files/schoolchildren.pdf"
+      ],
+      "published_date": "2025-07-10",
+      "category": "danger-ranking",
+      "location": {
+        "prefecture": "東京都",
+        "city": null
+      },
+      "relevance_score": 8,
+      "keywords": ["統計", "小学生事故", "1年生", "交通安全"]
+    },
+    {
+      "id": "news-003",
+      "title": "日本損害保険協会が全国交通事故多発交差点マップ最新版を公表",
+      "summary": "一般社団法人日本損害保険協会は2025年9月に最新版の「全国交通事故多発交差点マップ」を公表。2024年の交通事故データをもとに、人身事故の半数以上が交差点・交差点付近で発生していることを踏まえ、都道府県ごとの事故多発交差点を紹介。2023年以降は各交差点から最も近い小学校の情報も掲載し、登下校中の児童事故防止に活用。",
+      "source_urls": [
+        "https://jaf-training.jp/column/intersection-accident-map-2024/",
+        "https://www.sonpo.or.jp/about/useful/kousaten/"
+      ],
+      "published_date": "2025-09-01",
+      "category": "danger-ranking",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 8,
+      "keywords": ["交差点", "事故多発", "マップ", "小学校"]
+    },
+    {
+      "id": "news-004",
+      "title": "国土交通省：通学路危険箇所の約91%で安全対策が完了",
+      "summary": "令和5年12月末時点で、全国の通学路における対策必要箇所72,568箇所のうち、66,203箇所（約91%）で安全対策が講じられた。千葉県八街市の事故（2021年）を契機に実施された全国一斉点検で76,404箇所がリストアップされ、歩道整備、路肩カラー舗装、防護柵設置、信号機整備などの対策が進む。",
+      "source_urls": [
+        "https://www.mlit.go.jp/road/road/traffic/sesaku/tsugakuro.html"
+      ],
+      "published_date": "2023-12-31",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 8,
+      "keywords": ["国土交通省", "安全対策", "ゾーン30", "危険箇所"]
+    },
+    {
+      "id": "news-005",
+      "title": "見守りボランティアの高齢化・担い手不足が全国で課題に",
+      "summary": "全国各地でスクールガード・見守りボランティアの高齢化と担い手不足が深刻化。一部地域では見守り活動参加者の平均年齢が80歳を超え、日々の参加者数が半減している事例も報告されている。文部科学省は「やってみよう！登下校見守り活動ハンドブック」を公開し、「ながら見守り」（散歩やジョギング中の見守り）など新たな参加形態を推奨。",
+      "source_urls": [
+        "https://anzenkyouiku.mext.go.jp/tougekoumimamori/index.html",
+        "https://www.kobe-np.co.jp/news/sougou/202112/0014902470.shtml"
+      ],
+      "published_date": "2025-01-01",
+      "category": "volunteer-activity",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 7,
+      "keywords": ["見守り", "ボランティア", "高齢化", "担い手不足"]
+    },
+    {
+      "id": "news-006",
+      "title": "学校・通学路向けAI防犯カメラの導入が加速",
+      "summary": "AI搭載カメラが不審者の早期発見・即座通知機能で注目され、特に登下校時間帯や校門付近での活用が期待されている。エッジAIソリューション市場は2026年度までに年率41.3%増の431億円規模に成長見込み。ただし、遊びをいじめと誤認したり光の反射を不審者と判断するなどの誤作動課題も指摘されている。",
+      "source_urls": [
+        "https://n-sk.jp/blog/aicamera-school",
+        "https://www.webjapan.co.jp/blog/ai-camera/ai-camera-explanation/"
+      ],
+      "published_date": "2025-06-01",
+      "category": "safety-tips",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 7,
+      "keywords": ["AI", "防犯カメラ", "テクノロジー", "不審者"]
+    },
+    {
+      "id": "news-007",
+      "title": "文部科学省「登下校防犯プラン」で子ども110番の家との連携強化",
+      "summary": "文部科学省は登下校防犯プランにおいて、教育委員会・学校と「子ども110番の家」との連携を一層推進する方針を示している。不審者による声かけ事案のほとんどは子どもがひとりでいる時に発生しており、登下校中もなるべく友達と行動すること、「はちみつじまん」などの防犯合言葉の教育が推奨されている。",
+      "source_urls": [
+        "https://anzenkyouiku.mext.go.jp/tougekoubouhan/index.html",
+        "https://www.secom.co.jp/kodomo/a/20230105.html"
+      ],
+      "published_date": "2025-01-01",
+      "category": "safety-tips",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 7,
+      "keywords": ["防犯プラン", "子ども110番", "声かけ", "防犯教育"]
+    },
+    {
+      "id": "news-008",
+      "title": "2026年春の全国交通安全運動の実施予定",
+      "summary": "2026年4月より自転車の車道通行義務化が施行される予定であり、これに伴い2026年春の全国交通安全運動では通学路における自転車と歩行者の安全確保が重点課題となる見込み。子どもの交通安全教育の強化が求められている。",
+      "source_urls": [
+        "https://www.teguchi.info/traffic-accident-2/spring/"
+      ],
+      "published_date": "2026-04-01",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 6,
+      "keywords": ["交通安全運動", "自転車", "2026年", "安全教育"]
+    }
+  ]
+}

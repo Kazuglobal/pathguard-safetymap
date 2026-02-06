@@ -3,7 +3,7 @@
 import {
   StickyHeader,
   HeroCarousel,
-  SafetyNewsSection,
+  SchoolRouteNewsSection,
   HazardMapBanner,
   StoreSection,
   SafeMagazine,
@@ -23,8 +23,8 @@ export default function LandingPage() {
           <HeroCarousel />
         </section>
 
-        {/* 通学路の安全NEWS */}
-        <SafetyNewsSection />
+        {/* 通学路の安全ニュース（リアルタイム） */}
+        <SchoolRouteNewsSection />
 
         {/* 危険マップ誘導バナー */}
         <HazardMapBanner />
