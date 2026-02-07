@@ -216,14 +216,17 @@ describe('RouteManager Component', () => {
 
       await userEvent.click(screen.getByTestId('add-route-button'))
 
-      // Should show instructions about clicking on map
-      expect(screen.getByText(/地図をクリック|マップ上で/i)).toBeInTheDocument()
+      // Default mode is auto-route
+      expect(
+        screen.getByText(/開始地点と終了地点をタップすると、道路に沿ったルートを自動生成します/i)
+      ).toBeInTheDocument()
     })
 
     it('allows entering route name', async () => {
       render(<RouteManager />)
 
       await userEvent.click(screen.getByTestId('add-route-button'))
+      await userEvent.click(screen.getByTestId('click-mode-button'))
 
       const nameInput = screen.getByTestId('route-name-input')
       await userEvent.type(nameInput, 'テスト通学路')
@@ -249,6 +252,7 @@ describe('RouteManager Component', () => {
       render(<RouteManager />)
 
       await userEvent.click(screen.getByTestId('add-route-button'))
+      await userEvent.click(screen.getByTestId('click-mode-button'))
 
       const nameInput = screen.getByTestId('route-name-input')
       await userEvent.type(nameInput, 'テスト通学路')
@@ -558,6 +562,7 @@ describe('RouteManager Component', () => {
       const { rerender } = render(<RouteManager />)
 
       await userEvent.click(screen.getByTestId('add-route-button'))
+      await userEvent.click(screen.getByTestId('click-mode-button'))
 
       const nameInput = screen.getByTestId('route-name-input')
       await userEvent.type(nameInput, 'テスト')

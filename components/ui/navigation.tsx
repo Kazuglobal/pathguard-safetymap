@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { isAdminUser } from "@/lib/admin"
 
 interface NavigationProps {
   user?: any
@@ -40,8 +41,7 @@ type NavItem = {
 
 export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay = false }: NavigationProps) {
   const pathname = usePathname()
-  // 管理者チェック（暫定実装）
-  const isAdmin = user?.email?.includes("admin") || user?.role === "admin"
+  const isAdmin = isAdminUser(user)
 
   const mainNavItems: NavItem[] = [
     {

@@ -1,15 +1,38 @@
 import React from "react"
+import { redirect } from "next/navigation"
+import { createServerClient } from "@/lib/supabase-server"
+import { isAdminEmail } from "@/lib/admin"
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // ここで管理者認証チェックなどを将来的に追加
+  const supabase = await createServerClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login")
+  }
+
+  if (!isAdminEmail(user.email)) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single()
+
+    if (profile?.role !== "admin") {
+      redirect("/map")
+    }
+  }
+
   return (
     <section>
-      {/* 将来的には管理者用ナビゲーションなどをここに追加 */}
       {children}
     </section>
-  );
-} 
+  )
+}
