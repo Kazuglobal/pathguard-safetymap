@@ -28,10 +28,10 @@
     "test:responsive:tablet": "playwright test tests/responsive --project='Tablet - iPad'",
     "test:responsive:desktop": "playwright test tests/responsive --project='Desktop - Chrome 1920x1080'",
     "test:api": "playwright test --config=playwright.api.config.ts",
-    "test:db-migration": "tsx test-report-gallery-migration.ts",
-    "test:gallery-api": "tsx test-gallery-api.ts",
-    "apply-migration": "tsx apply-migration.ts",
-    "insert-dummy-data": "tsx insert-dummy-data.ts",
+    "test:db-migration": "tsx scripts/test-report-gallery-migration.ts",
+    "test:gallery-api": "tsx scripts/test-gallery-api.ts",
+    "apply-migration": "tsx scripts/apply-migration.ts",
+    "insert-dummy-data": "tsx scripts/insert-dummy-data.ts",
     "create-test-users": "tsx scripts/create-test-users.ts"
   },
   "dependencies": {

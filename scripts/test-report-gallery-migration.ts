@@ -2,7 +2,7 @@
  * Test script for Report Gallery & Feed database migration
  * 危険報告ギャラリー・共有フィードのデータベーステスト
  *
- * Run: npx tsx test-report-gallery-migration.ts
+ * Run: npx tsx scripts/test-report-gallery-migration.ts
  */
 
 import { config } from 'dotenv'
@@ -12,7 +12,7 @@ import { resolve } from 'path'
 config({ path: resolve(process.cwd(), '.env.local') })
 
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from './lib/database.types'
+import type { Database } from '../lib/database.types'
 
 // Color codes for console output
 const colors = {

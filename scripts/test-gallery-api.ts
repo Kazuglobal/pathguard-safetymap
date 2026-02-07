@@ -12,7 +12,7 @@ import { resolve } from 'path'
 config({ path: resolve(process.cwd(), '.env.local') })
 
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from './lib/database.types'
+import type { Database } from '../lib/database.types'
 
 // Color codes for console output
 const colors = {
