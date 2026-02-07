@@ -488,7 +488,10 @@ export default function DangerReportDetailModal({
                                       variant="outline"
                                       size="icon"
                                       className="h-6 w-6"
-                                      onClick={() => setReplaceTargetIndex(idx) || replaceInputRef.current?.click()}
+                                      onClick={() => {
+                                        setReplaceTargetIndex(idx)
+                                        replaceInputRef.current?.click()
+                                      }}
                                       disabled={isUploading}
                                       title="画像を差し替え"
                                     >

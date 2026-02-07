@@ -32,8 +32,9 @@ export function createRouteBuffer(
     throw new Error('Route geometry must have at least 2 points')
   }
 
-  const lineFeature = turf.lineString(routeGeometry.coordinates)
-  const buffered = turf.buffer(lineFeature, bufferMeters, { units: 'meters' })
+  const turfAny = turf as any
+  const lineFeature = turfAny.lineString(routeGeometry.coordinates)
+  const buffered = turfAny.buffer(lineFeature, bufferMeters, { units: 'meters' })
 
   if (!buffered || buffered.geometry.type !== 'Polygon') {
     throw new Error('Failed to create buffer polygon')
@@ -59,11 +60,12 @@ export function findDangersNearRoute(
     return []
   }
 
+  const turfAny = turf as any
   const bufferPolygon = createRouteBuffer(routeGeometry, bufferMeters)
 
   return dangerReports.filter((danger) => {
-    const point = turf.point([danger.longitude, danger.latitude])
-    return turf.booleanPointInPolygon(point, bufferPolygon)
+    const point = turfAny.point([danger.longitude, danger.latitude])
+    return turfAny.booleanPointInPolygon(point, bufferPolygon)
   })
 }
 
@@ -87,13 +89,14 @@ export function sortDangersByRoutePosition(
     return [...dangerReports]
   }
 
-  const lineFeature = turf.lineString(routeGeometry.coordinates)
-  const lineLength = turf.length(lineFeature, { units: 'meters' })
+  const turfAny = turf as any
+  const lineFeature = turfAny.lineString(routeGeometry.coordinates)
+  const lineLength = turfAny.length(lineFeature, { units: 'meters' })
 
   // Calculate position along route for each danger
   const dangersWithPosition = dangerReports.map((danger, originalIndex) => {
-    const point = turf.point([danger.longitude, danger.latitude])
-    const nearestPoint = turf.nearestPointOnLine(lineFeature, point)
+    const point = turfAny.point([danger.longitude, danger.latitude])
+    const nearestPoint = turfAny.nearestPointOnLine(lineFeature, point)
     const distanceFromStart = nearestPoint.properties.location || 0
 
     return {

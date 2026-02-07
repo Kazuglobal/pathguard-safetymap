@@ -4,9 +4,12 @@ import HazardGameClient from "./hazard-game-client"
 
 export default async function HazardGamePage() {
   const supabase = await createServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (error || !user) {
     redirect("/login")
   }
 

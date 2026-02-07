@@ -51,7 +51,7 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
     setShowResults(true)
 
     try {
-      const accessToken = mapboxgl.accessToken
+      const accessToken = mapboxgl.accessToken || ""
       const params = new URLSearchParams({
         access_token: accessToken,
         country: "jp",

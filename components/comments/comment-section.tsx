@@ -57,7 +57,14 @@ export function CommentSection({ spotId, isLoggedIn = false }: CommentSectionPro
         return
       }
 
-      setComments(data || [])
+      const normalizedComments: Comment[] = (data || []).map((comment: any) => ({
+        ...comment,
+        profiles: Array.isArray(comment.profiles)
+          ? (comment.profiles[0] ?? null)
+          : (comment.profiles ?? null),
+      }))
+
+      setComments(normalizedComments)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "コメントの取得に失敗しました"

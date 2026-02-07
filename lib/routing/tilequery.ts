@@ -249,6 +249,85 @@ export class TilequeryService {
   }
 
   /**
+   * Backward-compatible alias used by API routes.
+   */
+  async queryMapFeatures(request: TilequeryRequest): Promise<MapboxAPIResponse<TilequeryResponse>> {
+    return this.queryFeatures(request)
+  }
+
+  /**
+   * Backward-compatible helper for nearby POI search.
+   */
+  async findNearbyPOIs(
+    location: [number, number],
+    radius: number = 1000,
+    _layers?: TilequeryLayer[],
+    _limit: number = 50
+  ): Promise<MapboxAPIResponse<POIAnalysis>> {
+    return this.analyzePOIs(location, radius)
+  }
+
+  /**
+   * Backward-compatible helper for route POI analysis.
+   */
+  async analyzeRoutePOIs(
+    routeGeometry: GeoJSON.LineString,
+    buffer: number = 500,
+    _layers?: TilequeryLayer[],
+    _categories?: string[]
+  ): Promise<MapboxAPIResponse<POIAnalysis>> {
+    const coordinates = Array.isArray(routeGeometry?.coordinates)
+      ? routeGeometry.coordinates
+      : []
+    const midpoint = coordinates.length > 0 ? coordinates[Math.floor(coordinates.length / 2)] : undefined
+    if (!midpoint || midpoint.length < 2) {
+      return {
+        success: false,
+        error: 'Valid route geometry is required'
+      }
+    }
+    return this.analyzePOIs([midpoint[0], midpoint[1]], buffer)
+  }
+
+  /**
+   * Backward-compatible helper for emergency service discovery.
+   */
+  async findEmergencyServices(
+    location: [number, number],
+    radius: number = 5000,
+    _serviceTypes?: string[]
+  ): Promise<MapboxAPIResponse<POIAnalysis>> {
+    return this.analyzePOIs(location, radius)
+  }
+
+  /**
+   * Backward-compatible helper for transportation analysis.
+   */
+  async analyzeTransportation(
+    location: [number, number],
+    radius: number = 2000,
+    _transportModes?: string[]
+  ): Promise<MapboxAPIResponse<POIAnalysis>> {
+    return this.analyzePOIs(location, radius)
+  }
+
+  /**
+   * Backward-compatible helper for safety feature search.
+   */
+  async findSafetyFeatures(
+    location: [number, number],
+    radius: number = 1000,
+    _featureTypes?: string[]
+  ): Promise<MapboxAPIResponse<TilequeryResponse>> {
+    return this.queryFeatures({
+      coordinates: location,
+      radius,
+      layers: ['poi'],
+      geometry: 'point'
+    })
+  }
+
+  /**
    * Get road attributes at a specific location
    */
   async getRoadAttributes(coordinates: [number, number], radius: number = 10): Promise<MapboxAPIResponse<RoadAttributes[]>> {
@@ -263,7 +342,7 @@ export class TilequeryService {
     const response = await this.queryFeatures(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<RoadAttributes[]>
+      return response as unknown as MapboxAPIResponse<RoadAttributes[]>
     }
 
     const roadAttributes = response.data.features.map(feature => 
@@ -291,7 +370,7 @@ export class TilequeryService {
     const response = await this.queryFeatures(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<IntersectionAnalysis>
+      return response as unknown as MapboxAPIResponse<IntersectionAnalysis>
     }
 
     const roadFeatures = response.data.features.filter(f => 
@@ -341,7 +420,7 @@ export class TilequeryService {
     const response = await this.queryFeatures(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<POIAnalysis>
+      return response as unknown as MapboxAPIResponse<POIAnalysis>
     }
 
     const poiFeatures = response.data.features.filter(f => 
@@ -413,7 +492,7 @@ export class TilequeryService {
     const response = await this.queryFeatures(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<LandUseAnalysis>
+      return response as unknown as MapboxAPIResponse<LandUseAnalysis>
     }
 
     const landUseFeatures = response.data.features.filter(f => 
@@ -454,7 +533,7 @@ export class TilequeryService {
     const response = await this.queryFeatures(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<EnvironmentalAnalysis>
+      return response as unknown as MapboxAPIResponse<EnvironmentalAnalysis>
     }
 
     const waterFeatures = response.data.features

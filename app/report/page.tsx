@@ -137,7 +137,7 @@ export default function ReportHubPage() {
     }
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (isMounted) {
         setIsLoggedIn(!!session?.user)
       }

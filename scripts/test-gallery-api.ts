@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Test script for Gallery API functionality
  * ギャラリーAPI機能のテストスクリプト

@@ -52,13 +52,13 @@ export default function LoginForm() {
         subscription?.unsubscribe()
         resolve()
       }
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data } = supabase.auth.onAuthStateChange((event: any, session: any) => {
         if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
           finalize()
         }
       })
       subscription = data.subscription
-      if (settled) {
+      if (settled && subscription) {
         subscription.unsubscribe()
         return
       }

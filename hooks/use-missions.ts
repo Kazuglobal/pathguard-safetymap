@@ -47,7 +47,7 @@ export function useMissions() {
         .eq("user_id", user.id)
 
       const progressMap: Record<number, ProgressRow> = {}
-      ;(progressRows ?? []).forEach((p) => {
+      ;(progressRows ?? []).forEach((p: any) => {
         progressMap[p.mission_id] = p
       })
 

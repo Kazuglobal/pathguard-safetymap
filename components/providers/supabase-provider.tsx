@@ -2,11 +2,10 @@
 
 import React, { createContext, useContext, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 
 type SupabaseContext = {
-  supabase: SupabaseClient<Database>
+  supabase: any
 }
 
 const Context = createContext<SupabaseContext | undefined>(undefined)
@@ -24,7 +23,7 @@ const isValidSupabaseUrl = (url: string | undefined): boolean => {
   }
 }
 
-const buildSupabaseClient = (): SupabaseClient<Database> => {
+const buildSupabaseClient = (): any => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -40,7 +39,7 @@ const buildSupabaseClient = (): SupabaseClient<Database> => {
     }
   }
 
-  if (!isValidSupabaseUrl(url) || !anonKey) {
+  if (!url || !isValidSupabaseUrl(url) || !anonKey) {
     console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定または無効です。ダミークライアントを返します。')
     return createBrowserClient<Database>('https://example.supabase.co', 'public-anon-key', {
       auth: {

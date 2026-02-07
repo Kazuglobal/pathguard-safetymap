@@ -609,7 +609,7 @@ export default function MapContainer() {
 
       map.current.on("error", (e) => { 
         console.error("Mapbox error:", e.error || e); 
-        const errorMessage = e.error?.message || e.message || "不明なエラー";
+        const errorMessage = (e.error as Error | undefined)?.message || "不明なエラー";
         setMapError(`マップエラー: ${errorMessage}`); 
       });
 

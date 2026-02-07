@@ -50,7 +50,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     loadUser()
 
     // Keep user state in sync with auth state changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null)
     })
 

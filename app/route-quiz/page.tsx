@@ -184,7 +184,8 @@ export default function RouteQuizPage() {
     })
 
     // ルートに合わせてズーム
-    const [minX, minY, maxX, maxY] = turf.bbox(routeLine)
+    const turfAny = turf as any
+    const [minX, minY, maxX, maxY] = turfAny.bbox(routeLine)
     map.current.fitBounds(
       [
         [minX, minY],
@@ -194,9 +195,9 @@ export default function RouteQuizPage() {
     )
 
     // 50 m バッファで近くの危険箇所抽出
-    const buffered = turf.buffer(routeLine, 0.05, { units: "kilometers" })
+    const buffered = turfAny.buffer(routeLine, 0.05, { units: "kilometers" })
     const near = hazards.filter((h) =>
-      turf.booleanPointInPolygon(turf.point([h.longitude, h.latitude]), buffered!),
+      turfAny.booleanPointInPolygon(turfAny.point([h.longitude, h.latitude]), buffered!),
     )
     setQuizList(shuffle(near))
   }, [routeLine, hazards])
