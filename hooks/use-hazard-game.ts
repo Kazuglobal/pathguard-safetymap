@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react"
 import useSWR from "swr"
+import { useSupabase } from "@/components/providers/supabase-provider"
 import type {
   PipelineAnalysisResult,
   PipelineProgress,
@@ -32,6 +33,16 @@ interface GameHistoryResponse {
   stats: GameStats
 }
 
+const EMPTY_GAME_HISTORY: GameHistoryResponse = {
+  sessions: [],
+  stats: {
+    totalSessions: 0,
+    averageScore: 0,
+    highScore: 0,
+    totalHazardsDetected: 0,
+  },
+}
+
 const STAGE_DELAY_MS = 300
 
 function delay(ms: number): Promise<void> {
@@ -39,6 +50,7 @@ function delay(ms: number): Promise<void> {
 }
 
 export function useHazardGame() {
+  const { supabase } = useSupabase()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<PipelineAnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -49,14 +61,43 @@ export function useHazardGame() {
   const { data: gameHistory, error: historyError, mutate } = useSWR<GameHistoryResponse>(
     "hazard-game-history",
     async () => {
-      const response = await fetch("/api/hazard-game/analyze", { headers: { Accept: 'application/json' } })
-      if (!response.ok) {
-        throw new Error("Failed to fetch game history")
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (userError) {
+          // "Auth session missing" is expected when user is not logged in.
+          if (!userError.message?.includes("Auth session missing")) {
+            console.error("useHazardGame: getUser error", userError)
+          }
+          return EMPTY_GAME_HISTORY
+        }
+
+        if (!user) return EMPTY_GAME_HISTORY
+
+        const response = await fetch("/api/hazard-game/analyze", {
+          headers: { Accept: "application/json" },
+        })
+
+        if (response.status === 401) {
+          return EMPTY_GAME_HISTORY
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch game history (status: ${response.status})`)
+        }
+
+        return response.json()
+      } catch (fetchError) {
+        console.error("useHazardGame: failed to fetch history", fetchError)
+        return EMPTY_GAME_HISTORY
       }
-      return response.json()
     },
     {
       refreshInterval: 30000,
+      shouldRetryOnError: false,
     }
   )
 
@@ -196,12 +237,7 @@ export function useHazardGame() {
     error,
     pipelineProgress,
     gameHistory: gameHistory?.sessions || [],
-    gameStats: gameHistory?.stats || {
-      totalSessions: 0,
-      averageScore: 0,
-      highScore: 0,
-      totalHazardsDetected: 0,
-    },
+    gameStats: gameHistory?.stats || EMPTY_GAME_HISTORY.stats,
     historyError,
 
     // Actions
