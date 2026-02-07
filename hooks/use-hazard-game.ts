@@ -1,14 +1,19 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import useSWR from "swr"
-import { HazardAnalysisResult } from "@/lib/openai"
+import { useSupabase } from "@/components/providers/supabase-provider"
+import type {
+  PipelineAnalysisResult,
+  PipelineProgress,
+  PipelineStage,
+} from "@/lib/hazard-game-types"
 import { compressImage, fileToBase64 } from "@/lib/image-utils"
 
 interface GameSession {
   id: string
   user_id: string
-  analysis_result: HazardAnalysisResult
+  analysis_result: PipelineAnalysisResult
   score: number
   hazards_detected: number
   overall_safety: number
@@ -28,30 +33,86 @@ interface GameHistoryResponse {
   stats: GameStats
 }
 
+const EMPTY_GAME_HISTORY: GameHistoryResponse = {
+  sessions: [],
+  stats: {
+    totalSessions: 0,
+    averageScore: 0,
+    highScore: 0,
+    totalHazardsDetected: 0,
+  },
+}
+
+const STAGE_DELAY_MS = 300
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export function useHazardGame() {
+  const { supabase } = useSupabase()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<HazardAnalysisResult | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<PipelineAnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pipelineProgress, setPipelineProgress] = useState<PipelineProgress | null>(null)
   const lastAnalyzeAtRef = useRef(0)
 
   // Fetch game history and stats
   const { data: gameHistory, error: historyError, mutate } = useSWR<GameHistoryResponse>(
     "hazard-game-history",
     async () => {
-      const response = await fetch("/api/hazard-game/analyze", { headers: { Accept: 'application/json' } })
-      if (!response.ok) {
-        throw new Error("Failed to fetch game history")
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (userError) {
+          // "Auth session missing" is expected when user is not logged in.
+          if (!userError.message?.includes("Auth session missing")) {
+            console.error("useHazardGame: getUser error", userError)
+          }
+          return EMPTY_GAME_HISTORY
+        }
+
+        if (!user) return EMPTY_GAME_HISTORY
+
+        const response = await fetch("/api/hazard-game/analyze", {
+          headers: { Accept: "application/json" },
+        })
+
+        if (response.status === 401) {
+          return EMPTY_GAME_HISTORY
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch game history (status: ${response.status})`)
+        }
+
+        return response.json()
+      } catch (fetchError) {
+        console.error("useHazardGame: failed to fetch history", fetchError)
+        return EMPTY_GAME_HISTORY
       }
-      return response.json()
     },
     {
-      refreshInterval: 30000, // Refresh every 30 seconds
+      refreshInterval: 30000,
+      shouldRetryOnError: false,
     }
   )
 
-  // Analyze image for hazards
+  const updateProgress = useCallback((stage: PipelineStage, completed: PipelineStage[], startTime: number) => {
+    setPipelineProgress({
+      currentStage: stage,
+      stagesCompleted: completed,
+      startTime,
+      elapsedMs: Date.now() - startTime,
+    })
+  }, [])
+
+  // Analyze image using pipeline
   const analyzeImage = async (
-    imageFile: File, 
+    imageFile: File,
     userDetectedHazards?: string[],
     promptType: "default" | "expert" | "child" = "default"
   ) => {
@@ -67,12 +128,16 @@ export function useHazardGame() {
     setError(null)
     setAnalysisResult(null)
 
+    const startTime = Date.now()
+    updateProgress("vision", [], startTime)
+
     try {
-      // Compress large images, then convert to base64
       const compressed = await compressImage(imageFile)
       const imageBase64 = await fileToBase64(compressed)
 
-      // Call API
+      // Show think stage while API call is in progress
+      updateProgress("think", ["vision"], startTime)
+
       const response = await fetch("/api/hazard-game/analyze", {
         method: "POST",
         headers: {
@@ -86,15 +151,13 @@ export function useHazardGame() {
         }),
       })
 
-      // Robust error handling that doesn’t assume JSON error bodies
       if (!response.ok) {
         const ct = response.headers.get('content-type') || ''
         let friendlyMessage = `画像の解析に失敗しました (Status: ${response.status})`
-        let errorData: any = {}
 
         if (ct.includes('application/json')) {
           try {
-            errorData = await response.json()
+            const errorData = await response.json()
             friendlyMessage = errorData.error || errorData.message || friendlyMessage
           } catch (e) {
             console.error('Failed to parse error response:', e)
@@ -103,44 +166,52 @@ export function useHazardGame() {
           const text = await response.text()
           if (response.status === 413 || /Too Large|FUNCTION_PAYLOAD_TOO_LARGE/i.test(text)) {
             friendlyMessage = '画像が大きすぎます。5MB超の場合は縮小してから再試行してください。'
-          } else if (response.status === 406) {
-            friendlyMessage = '要求の形式が受け入れられません (406)。Accept や Content-Type をご確認ください。'
           }
           console.error('Non-JSON error body:', text)
-        }
-
-        console.error('Response status:', response.status)
-        console.error('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2))
-        if (process.env.NODE_ENV === 'development' && (errorData as any).debugInfo) {
-          console.error('Debug info:', JSON.stringify((errorData as any).debugInfo, null, 2))
         }
 
         throw new Error(friendlyMessage)
       }
 
-      const result = await response.json()
-      setAnalysisResult(result)
+      // Simulate score stage transition
+      updateProgress("score", ["vision", "think"], startTime)
+      await delay(STAGE_DELAY_MS)
 
-      // Refresh game history to include new session
+      const responseData = await response.json()
+
+      // Build PipelineAnalysisResult from response
+      const result: PipelineAnalysisResult = {
+        vision: responseData.vision,
+        think: responseData.think,
+        score: responseData.score,
+        educationalTips: responseData.educationalTips ?? [],
+        analysisTimestamp: responseData.analysisTimestamp ?? new Date().toISOString(),
+      }
+
+      // Complete
+      updateProgress("complete", ["vision", "think", "score"], startTime)
+      await delay(STAGE_DELAY_MS)
+
+      setAnalysisResult(result)
       mutate()
 
-      return result as HazardAnalysisResult & { sessionId?: string }
+      return result
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "予期しないエラーが発生しました"
       setError(errorMessage)
       throw err
     } finally {
       setIsAnalyzing(false)
+      setPipelineProgress(null)
     }
   }
 
-  // Reset analysis state
   const resetAnalysis = () => {
     setAnalysisResult(null)
     setError(null)
+    setPipelineProgress(null)
   }
 
-  // Calculate user rank based on high score
   const getUserRank = (score: number): string => {
     if (score >= 95) return "安全マスター"
     if (score >= 90) return "危険発見エキスパート"
@@ -150,7 +221,6 @@ export function useHazardGame() {
     return "見習い分析者"
   }
 
-  // Get achievement level based on total sessions
   const getAchievementLevel = (totalSessions: number): string => {
     if (totalSessions >= 100) return "レジェンド"
     if (totalSessions >= 50) return "マスター"
@@ -165,13 +235,9 @@ export function useHazardGame() {
     isAnalyzing,
     analysisResult,
     error,
+    pipelineProgress,
     gameHistory: gameHistory?.sessions || [],
-    gameStats: gameHistory?.stats || {
-      totalSessions: 0,
-      averageScore: 0,
-      highScore: 0,
-      totalHazardsDetected: 0,
-    },
+    gameStats: gameHistory?.stats || EMPTY_GAME_HISTORY.stats,
     historyError,
 
     // Actions
