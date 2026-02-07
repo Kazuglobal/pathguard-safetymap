@@ -15,6 +15,8 @@ config({ path: resolve(process.cwd(), '.env.local') })
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const MIGRATION_RELATIVE_PATH = 'supabase/migrations/database-migration-report-gallery-feed.sql'
+const MIGRATION_FILE_PATH = resolve(process.cwd(), MIGRATION_RELATIVE_PATH)
 
 if (!SUPABASE_URL) {
   console.error('❌ Missing SUPABASE_URL in environment variables')
@@ -27,7 +29,7 @@ if (!SUPABASE_SERVICE_KEY) {
   console.log('ℹ️  You can find it in Supabase Dashboard > Settings > API > service_role key')
   console.log('\n📋 Please copy the SQL file content and run it manually in Supabase SQL Editor:')
   console.log('   https://supabase.com/dashboard/project/_/sql/new')
-  console.log('\n📄 SQL file location: database-migration-report-gallery-feed.sql\n')
+  console.log(`\n📄 SQL file location: ${MIGRATION_RELATIVE_PATH}\n`)
   process.exit(1)
 }
 
@@ -42,10 +44,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 async function applyMigration() {
   try {
     console.log('📖 Reading migration file...')
-    const sqlContent = readFileSync(
-      resolve(process.cwd(), 'database-migration-report-gallery-feed.sql'),
-      'utf-8'
-    )
+    const sqlContent = readFileSync(MIGRATION_FILE_PATH, 'utf-8')
 
     console.log('🚀 Applying migration to Supabase...')
     console.log(`   Database: ${SUPABASE_URL}`)
@@ -57,7 +56,7 @@ async function applyMigration() {
       console.error('❌ Migration failed:', error.message)
       console.log('\n📋 Please run the migration manually in Supabase SQL Editor:')
       console.log('   1. Go to https://supabase.com/dashboard/project/_/sql/new')
-      console.log('   2. Copy the content from: database-migration-report-gallery-feed.sql')
+      console.log(`   2. Copy the content from: ${MIGRATION_RELATIVE_PATH}`)
       console.log('   3. Paste and run in SQL Editor')
       process.exit(1)
     }
@@ -72,7 +71,7 @@ async function applyMigration() {
     console.error('❌ Error applying migration:', err)
     console.log('\n📋 Manual migration required. Please:')
     console.log('   1. Go to https://supabase.com/dashboard/project/_/sql/new')
-    console.log('   2. Copy the content from: database-migration-report-gallery-feed.sql')
+    console.log(`   2. Copy the content from: ${MIGRATION_RELATIVE_PATH}`)
     console.log('   3. Paste and run in SQL Editor')
     process.exit(1)
   }
