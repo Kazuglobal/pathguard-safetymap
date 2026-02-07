@@ -54,4 +54,31 @@ describe("hazard-game-matching", () => {
     expect(result.unmatchedUserMarkers).toHaveLength(0)
     expect(result.unmatchedAiDetections).toHaveLength(0)
   })
+
+  it("reports unmatched AI positions when only part of a multi-position detection is matched", () => {
+    const detections: DetectionItem[] = [
+      createDetection({
+        category: "hazards",
+        label: "guardrail",
+        count: 2,
+        positions: [
+          { x: 0.1, y: 0.1, width: 0.2, height: 0.2 },
+          { x: 0.6, y: 0.6, width: 0.2, height: 0.2 },
+        ],
+      }),
+    ]
+
+    const markers: UserMarker[] = [
+      createMarker({ id: "m1", x: 0.1, y: 0.1, timestamp: 1 }),
+    ]
+
+    const result = compareUserMarkersWithAI(markers, detections)
+
+    expect(result.matches).toHaveLength(1)
+    expect(result.unmatchedAiDetections).toHaveLength(1)
+    expect(result.unmatchedAiDetections[0].count).toBe(1)
+    expect(result.unmatchedAiDetections[0].positions).toEqual([
+      { x: 0.6, y: 0.6, width: 0.2, height: 0.2 },
+    ])
+  })
 })
