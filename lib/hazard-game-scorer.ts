@@ -205,6 +205,7 @@ export function calculateFinalScoreWithBonus(
   baseScore: SafetyScore,
   comparison: ComparisonResult
 ): SafetyScore {
+  const finalScore = Math.min(100, baseScore.score + comparison.bonusPoints)
   const bonusItem = {
     item: "ユーザーマーキングボーナス",
     category: "contextual" as const,
@@ -214,7 +215,8 @@ export function calculateFinalScoreWithBonus(
 
   return {
     ...baseScore,
-    score: Math.min(100, baseScore.score + comparison.bonusPoints),
+    score: finalScore,
+    level: determineLevel(finalScore),
     breakdown: [...baseScore.breakdown, bonusItem],
   }
 }

@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   calculateSafetyScore,
+  calculateFinalScoreWithBonus,
   checkSafetyEquipment,
   checkHazards,
   checkTraffic,
@@ -21,6 +22,8 @@ import type {
   ThinkResult,
   DetectionItem,
   ContextualRisk,
+  ComparisonResult,
+  SafetyScore,
 } from '@/lib/hazard-game-types'
 
 // ---- Test Helpers ----
@@ -55,6 +58,38 @@ function createMockThink(overrides: Partial<ThinkResult> = {}): ThinkResult {
     priorityImprovements: [],
     latentRisks: [],
     childPerspectiveRisks: [],
+    ...overrides,
+  }
+}
+
+function createSafetyScore(overrides: Partial<SafetyScore> = {}): SafetyScore {
+  return {
+    score: 58,
+    level: 'warning',
+    breakdown: [],
+    detectionSummary: {
+      safetyEquipmentCount: 0,
+      hazardCount: 0,
+      trafficCount: 0,
+      obstructionCount: 0,
+    },
+    thinkSummary: {
+      contextualRiskCount: 0,
+      highSeverityCount: 0,
+      mediumSeverityCount: 0,
+      lowSeverityCount: 0,
+    },
+    ...overrides,
+  }
+}
+
+function createComparisonResult(overrides: Partial<ComparisonResult> = {}): ComparisonResult {
+  return {
+    matches: [],
+    unmatchedUserMarkers: [],
+    unmatchedAiDetections: [],
+    accuracyScore: 60,
+    bonusPoints: 10,
     ...overrides,
   }
 }
@@ -302,6 +337,23 @@ describe('hazard-game-scorer', () => {
       expect(result[0].points).toBe(-5)
       expect(result[1].points).toBe(-3)
       expect(result[2].points).toBe(-1)
+    })
+  })
+
+  describe('calculateFinalScoreWithBonus', () => {
+    it('recalculates level from the final score after bonus is applied', () => {
+      const baseScore = createSafetyScore({
+        score: 58,
+        level: 'warning',
+      })
+      const comparison = createComparisonResult({
+        bonusPoints: 10,
+      })
+
+      const result = calculateFinalScoreWithBonus(baseScore, comparison)
+
+      expect(result.score).toBe(68)
+      expect(result.level).toBe('caution')
     })
   })
 })

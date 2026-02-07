@@ -48,14 +48,27 @@ function categoriesMatch(
 function findBestMatch(
   marker: UserMarker,
   detections: readonly DetectionItem[],
-  alreadyMatchedDetections: ReadonlySet<DetectionItem>
-): { detection: DetectionItem; iou: number; categoryMatch: boolean } | null {
-  let bestMatch: { detection: DetectionItem; iou: number; categoryMatch: boolean } | null = null
+  alreadyMatchedDetectionInstances: ReadonlySet<string>
+): {
+  detection: DetectionItem
+  detectionIndex: number
+  iou: number
+  categoryMatch: boolean
+  instanceKey: string
+} | null {
+  let bestMatch: {
+    detection: DetectionItem
+    detectionIndex: number
+    iou: number
+    categoryMatch: boolean
+    instanceKey: string
+  } | null = null
 
-  for (const detection of detections) {
-    if (alreadyMatchedDetections.has(detection)) continue
+  for (const [detectionIndex, detection] of detections.entries()) {
+    for (const [positionIndex, position] of detection.positions.entries()) {
+      const instanceKey = `${detectionIndex}:${positionIndex}`
+      if (alreadyMatchedDetectionInstances.has(instanceKey)) continue
 
-    for (const position of detection.positions) {
       const markerBox: BoundingBox = {
         x: marker.x,
         y: marker.y,
@@ -67,8 +80,10 @@ function findBestMatch(
       if (iou >= IOU_THRESHOLD && (!bestMatch || iou > bestMatch.iou)) {
         bestMatch = {
           detection,
+          detectionIndex,
           iou,
           categoryMatch: categoriesMatch(marker.category, detection.category),
+          instanceKey,
         }
       }
     }
@@ -101,12 +116,13 @@ export function compareUserMarkersWithAI(
 ): ComparisonResult {
   const matches: MarkerMatch[] = []
   const unmatchedUserMarkers: UserMarker[] = []
-  const matchedDetections = new Set<DetectionItem>()
+  const matchedDetectionInstances = new Set<string>()
+  const matchedDetectionIndexes = new Set<number>()
 
   const sortedMarkers = [...markers].sort((a, b) => a.timestamp - b.timestamp)
 
   for (const marker of sortedMarkers) {
-    const bestMatch = findBestMatch(marker, allDetections, matchedDetections)
+    const bestMatch = findBestMatch(marker, allDetections, matchedDetectionInstances)
 
     if (bestMatch) {
       const match: MarkerMatch = {
@@ -116,14 +132,15 @@ export function compareUserMarkersWithAI(
         categoryMatch: bestMatch.categoryMatch,
       }
       matches.push(match)
-      matchedDetections.add(bestMatch.detection)
+      matchedDetectionInstances.add(bestMatch.instanceKey)
+      matchedDetectionIndexes.add(bestMatch.detectionIndex)
     } else {
       unmatchedUserMarkers.push(marker)
     }
   }
 
   const unmatchedAiDetections = allDetections.filter(
-    (detection) => !matchedDetections.has(detection)
+    (_, detectionIndex) => !matchedDetectionIndexes.has(detectionIndex)
   )
 
   const totalMarkers = markers.length
