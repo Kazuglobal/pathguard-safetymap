@@ -135,8 +135,8 @@ export interface CommutingAnalysis {
     employees: number
   }>
   commuteMatrix: {
-    averageTime: number[][]
-    averageDistance: number[][]
+    averageTime: (number | null)[][]
+    averageDistance: (number | null)[][]
     mode: MatrixProfile
   }
   insights: {
@@ -613,8 +613,8 @@ export class MatrixService {
       residentialAreas,
       workplaces,
       commuteMatrix: {
-        averageTime: matrix.durations.map((row) => row.map((value) => value ?? 0)),
-        averageDistance: (matrix.distances || []).map((row) => row.map((value) => value ?? 0)),
+        averageTime: matrix.durations,
+        averageDistance: matrix.distances || [],
         mode
       },
       insights: {
