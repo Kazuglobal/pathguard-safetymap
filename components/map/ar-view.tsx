@@ -133,6 +133,7 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   const { toast } = useToast()
   const animationFrameRef = useRef<number | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const orientationListenerRef = useRef<EventListener | null>(null)
   const lastHeadingUpdateRef = useRef<number>(0)
   const isDev = process.env.NODE_ENV === "development"
 
@@ -355,7 +356,11 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     }
 
     const setupOrientationListener = () => {
-      window.addEventListener("deviceorientation", handleOrientation as EventListener)
+      const listener: EventListener = (event) => {
+        handleOrientation(event as DeviceOrientationEvent)
+      }
+      orientationListenerRef.current = listener
+      window.addEventListener("deviceorientation", listener)
       setPermissions((prev) => ({ ...prev, orientation: true }))
     }
 
@@ -390,7 +395,10 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     }
 
     return () => {
-      window.removeEventListener("deviceorientation", handleOrientation as EventListener)
+      if (orientationListenerRef.current) {
+        window.removeEventListener("deviceorientation", orientationListenerRef.current)
+        orientationListenerRef.current = null
+      }
       handleOrientation.cancel()
     }
   }, [toast])
@@ -410,9 +418,10 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         maxDistance, // 設定可能な最大表示距離
         maxAngle: MAX_ANGLE_DEGREES, // 前方90度以内のみ表示（通過した地点は非表示）
         showBehind: false,
+        fov, // UI設定またはカメラ推定値の視野角を反映
       }
     )
-  }, [userLocation, userHeading, reports, maxDistance])
+  }, [userLocation, userHeading, reports, maxDistance, fov])
 
   // キャンバスへの描画（パフォーマンス最適化版）
   useEffect(() => {

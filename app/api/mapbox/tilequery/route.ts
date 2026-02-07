@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { tilequeryService } from '@/lib/routing/tilequery'
+import type { TilequeryLayer } from '@/lib/routing/tilequery'
 
 export async function POST(request: NextRequest) {
   try {
@@ -189,10 +190,15 @@ export async function GET(request: NextRequest) {
     const [lng, lat] = coordinatesParam.split(',').map(Number)
     const coordinates: [number, number] = [lng, lat]
 
+    const parsedLayers = searchParams
+      .get('layers')
+      ?.split(',')
+      .filter(Boolean) as TilequeryLayer[] | undefined
+
     const tilequeryRequest = {
       coordinates,
       radius: searchParams.get('radius') ? parseInt(searchParams.get('radius')!) : 1000,
-      layers: searchParams.get('layers')?.split(','),
+      layers: parsedLayers,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50,
       dedupe: searchParams.get('dedupe') !== 'false',
       geometry: (searchParams.get('geometry') as any) || 'point'

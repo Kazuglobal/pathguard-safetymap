@@ -51,6 +51,12 @@ type RiskAnalysisItem = {
   measure: string
 }
 
+type GeneratedPromptsState = {
+  vizPrompt?: string
+  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+  riskObservationTable?: string
+}
+
 const AUTO_GEN_DEBOUNCE_MS = 350
 const REGEN_COOLDOWN_MS = 1500
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
@@ -149,11 +155,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [autoGenLoading, setAutoGenLoading] = useState(false)
   const [autoGenError, setAutoGenError] = useState<string | null>(null)
   const lastAutoGenKey = useRef<string | null>(null)
-  const [generatedPrompts, setGeneratedPrompts] = useState<{
-    vizPrompt?: string
-    simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
-    riskObservationTable?: string
-  } | null>(null)
+  const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPromptsState | null>(null)
   const [lastHazards, setLastHazards] = useState<HazardItem[]>([])
   type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
   const [situation, setSituation] = useState<Situation>('viz')
@@ -338,7 +340,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0)
 
-      const colorFor = (t: string) => {
+      const colorFor = (t?: string) => {
         const s = (t || '').toLowerCase()
         if (s.includes('冠水') || s.includes('flood')) return 'rgba(37, 99, 235, 0.28)'
         if (s.includes('延焼') || s.includes('fire') || s.includes('炎')) return 'rgba(234, 88, 12, 0.28)'
@@ -704,13 +706,20 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           })
           if (pRes.ok) {
             const pjson = await pRes.json()
-            pr = pjson?.prompts
-            if (pr) {
-              setGeneratedPrompts({
-                vizPrompt: pr.vizPrompt,
-                simulationPrompts: pr.simulationPrompts,
-                riskObservationTable: pr.riskObservation?.tableMarkdown,
-              })
+            const prompts = pjson?.prompts as
+              | {
+                  vizPrompt?: string
+                  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+                  riskObservation?: { tableMarkdown?: string }
+                }
+              | undefined
+            if (prompts) {
+              pr = {
+                vizPrompt: prompts.vizPrompt,
+                simulationPrompts: prompts.simulationPrompts,
+                riskObservationTable: prompts.riskObservation?.tableMarkdown,
+              }
+              setGeneratedPrompts(pr)
             }
           }
         }

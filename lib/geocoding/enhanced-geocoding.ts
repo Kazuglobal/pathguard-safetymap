@@ -35,6 +35,7 @@ export interface GeocodingResult {
     accuracy?: string
     address?: string
     category?: string
+    distance?: number
     maki?: string
     landmark?: boolean
     tel?: string
@@ -797,7 +798,7 @@ export class EnhancedGeocodingService {
       .map(s => s.distance)
       .filter(d => d !== undefined) as number[]
     
-    const categories = [...new Set(suggestions.map(s => s.category).filter(c => c))]
+    const categories = [...new Set(suggestions.map(s => s.category).filter((c): c is string => typeof c === 'string' && c.length > 0))]
     const types = [...new Set(suggestions.flatMap(s => s.place_type))]
     
     return {

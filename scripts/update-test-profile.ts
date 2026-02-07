@@ -30,7 +30,13 @@ async function main() {
     }
 
     const users = authData?.users ?? []
-    testUser = users.find(u => u.email === 'user@test.com')
+    const foundUser = users.find(u => u.email === 'user@test.com')
+    if (foundUser) {
+      testUser = {
+        id: foundUser.id,
+        email: foundUser.email ?? null,
+      }
+    }
 
     if (users.length < perPage) {
       break
@@ -51,7 +57,7 @@ async function main() {
     .from('profiles')
     .upsert({
       id: testUser.id,
-      email: testUser.email,
+      email: testUser.email ?? null,
       display_name: 'TEST USER',
       full_name: 'Test User',
       updated_at: new Date().toISOString()

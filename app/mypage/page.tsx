@@ -474,14 +474,14 @@ export default function MyPage() {
           setProfileKey((k) => k + 1)
           // Reload profile data
           if (supabase) {
-            supabase.auth.getUser().then(({ data: { user } }) => {
+            supabase.auth.getUser().then(({ data: { user } }: any) => {
               if (user) {
                 supabase
                   .from("profiles")
                   .select("display_name")
                   .eq("id", user.id)
                   .maybeSingle()
-                  .then(({ data }) => {
+                  .then(({ data }: any) => {
                     if (data?.display_name) {
                       setUserName(data.display_name)
                     }

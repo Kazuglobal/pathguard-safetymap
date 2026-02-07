@@ -20,7 +20,7 @@ export default function SharedGallery3D() {
     const loadGalleryImages = async () => {
       try {
         const { data, error } = await supabase
-          .from("gallery_images")
+          .from("gallery_images" as any)
           .select("*")
           .order("position", { ascending: true })
 

@@ -240,7 +240,7 @@ export class IsochroneService {
     const response = await this.generateIsochrone(isochroneRequest)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<SchoolZoneAnalysis>
+      return response as unknown as MapboxAPIResponse<SchoolZoneAnalysis>
     }
 
     const features = response.data.features
@@ -296,7 +296,7 @@ export class IsochroneService {
     const response = await this.generateIsochrone(isochroneRequest)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<EvacuationZoneAnalysis>
+      return response as unknown as MapboxAPIResponse<EvacuationZoneAnalysis>
     }
 
     const features = response.data.features

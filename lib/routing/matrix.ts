@@ -135,8 +135,8 @@ export interface CommutingAnalysis {
     employees: number
   }>
   commuteMatrix: {
-    averageTime: number[][]
-    averageDistance: number[][]
+    averageTime: (number | null)[][]
+    averageDistance: (number | null)[][]
     mode: MatrixProfile
   }
   insights: {
@@ -223,7 +223,7 @@ export class MatrixService {
     const response = await this.calculateMatrix(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<TravelTimeMatrix>
+      return response as unknown as MapboxAPIResponse<TravelTimeMatrix>
     }
 
     const matrix = response.data
@@ -378,7 +378,7 @@ export class MatrixService {
     const response = await this.calculateMatrix(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<ServiceAreaAnalysis>
+      return response as unknown as MapboxAPIResponse<ServiceAreaAnalysis>
     }
 
     const matrix = response.data
@@ -407,10 +407,19 @@ export class MatrixService {
     for (let j = 0; j < analysisPoints.length; j++) {
       const distances = matrix.distances?.map(row => row[j]) || []
       const durations = matrix.durations.map(row => row[j])
-      
-      const nearestServiceIndex = distances.reduce((minIdx, dist, idx) => 
-        (dist !== null && (distances[minIdx] === null || dist < distances[minIdx]!)) ? idx : minIdx, 0
-      )
+
+      let nearestServiceIndex = -1
+      let nearestDistanceValue = Infinity
+      distances.forEach((dist, idx) => {
+        if (dist !== null && dist < nearestDistanceValue) {
+          nearestDistanceValue = dist
+          nearestServiceIndex = idx
+        }
+      })
+
+      if (nearestServiceIndex === -1) {
+        continue
+      }
       
       const nearestDistance = distances[nearestServiceIndex]
       const nearestDuration = durations[nearestServiceIndex]
@@ -466,7 +475,7 @@ export class MatrixService {
     const profiles: MatrixProfile[] = ['walking', 'cycling', 'driving']
     const coordinates = locations.map(loc => loc.coordinates)
     
-    const results: { [key: string]: { [profile: string]: number[] } } = {}
+    const results: AccessibilityMatrix['accessibility'] = {}
     
     try {
       for (const profile of profiles) {
@@ -482,9 +491,13 @@ export class MatrixService {
           for (let i = 0; i < locations.length; i++) {
             const locationName = locations[i].name
             if (!results[locationName]) {
-              results[locationName] = {}
+              results[locationName] = {
+                walking: [],
+                cycling: [],
+                driving: [],
+              }
             }
-            results[locationName][profile] = response.data.durations[i].map(d => d || Infinity)
+            results[locationName][profile] = response.data.durations[i].map((d) => d ?? Infinity)
           }
         }
       }
@@ -558,7 +571,7 @@ export class MatrixService {
     const response = await this.calculateMatrix(request)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<CommutingAnalysis>
+      return response as unknown as MapboxAPIResponse<CommutingAnalysis>
     }
 
     const matrix = response.data

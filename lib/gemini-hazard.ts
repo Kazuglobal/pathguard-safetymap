@@ -31,7 +31,7 @@ export type HazardAnalysisResult = {
   score: number
 }
 
-import { getSanitizedGeminiApiKey, getSanitizedGeminiModel } from "./gemini-util"
+import { getSanitizedGeminiApiKey, getSanitizedGeminiVisionModel } from "./gemini-util"
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -61,7 +61,7 @@ async function callGeminiVision(
   }
 
   const apiKey = getSanitizedGeminiApiKey()
-  const model = getSanitizedGeminiModel("gemini-3-pro-preview")
+  const model = getSanitizedGeminiVisionModel("gemini-2.5-flash")
 
   let mimeType = "image/jpeg"
   let dataBase64 = imageBase64OrDataUrl

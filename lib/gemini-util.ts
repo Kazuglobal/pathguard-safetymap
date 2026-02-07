@@ -14,3 +14,8 @@ export function getSanitizedGeminiModel(defaultModel = "gemini-2.5-flash"): stri
   return raw.trim()
 }
 
+export function getSanitizedGeminiVisionModel(defaultModel = "gemini-2.5-flash"): string {
+  const raw = process.env.GEMINI_VISION_MODEL || defaultModel
+  return raw.trim()
+}
+
