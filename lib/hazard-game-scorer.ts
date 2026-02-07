@@ -6,6 +6,7 @@
  */
 
 import type {
+  ComparisonResult,
   VisionResult,
   ThinkResult,
   SafetyScore,
@@ -195,6 +196,28 @@ export function calculateSafetyScore(
       mediumSeverityCount: mediumCount,
       lowSeverityCount: lowCount,
     },
+  }
+}
+
+// ---- ユーザーマーキングボーナス加算 ----
+
+export function calculateFinalScoreWithBonus(
+  baseScore: SafetyScore,
+  comparison: ComparisonResult
+): SafetyScore {
+  const finalScore = Math.min(100, baseScore.score + comparison.bonusPoints)
+  const bonusItem = {
+    item: "ユーザーマーキングボーナス",
+    category: "contextual" as const,
+    points: comparison.bonusPoints,
+    reason: `精度${comparison.accuracyScore}%、${comparison.matches.length}件マッチ`,
+  }
+
+  return {
+    ...baseScore,
+    score: finalScore,
+    level: determineLevel(finalScore),
+    breakdown: [...baseScore.breakdown, bonusItem],
   }
 }
 

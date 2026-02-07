@@ -1,18 +1,19 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
-import { Lightbulb, Brain, AlertTriangle, Eye, ArrowUpRight } from "lucide-react"
+import { Lightbulb, Brain, AlertTriangle, Eye, ArrowUpRight, Target, CheckCircle, XCircle, Search } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { PipelineAnalysisResult, VisionResult, DetectionItem } from "@/lib/hazard-game-types"
+import type { PipelineAnalysisResultWithComparison, UserMarkingResult, DetectionItem } from "@/lib/hazard-game-types"
 import { ScoreBreakdown } from "./score-breakdown"
 import { DetectionCategories } from "./detection-categories"
 import { SafetyReportCard } from "./safety-report"
 
 interface AnalysisResultsProps {
-  result: PipelineAnalysisResult
+  result: PipelineAnalysisResultWithComparison
   onPlayAgain: () => void
   sourceImageFile?: File
+  userMarking?: UserMarkingResult
 }
 
 // Category-based overlay colors
@@ -30,7 +31,7 @@ const CATEGORY_BORDER: Record<string, string> = {
   obstructions: "rgba(249, 115, 22, 0.6)",
 }
 
-export function AnalysisResults({ result, onPlayAgain, sourceImageFile }: AnalysisResultsProps) {
+export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMarking }: AnalysisResultsProps) {
   const [vizLoading, setVizLoading] = useState(false)
   const [vizError, setVizError] = useState<string | null>(null)
   const [vizDataUrl, setVizDataUrl] = useState<string | null>(null)
@@ -114,7 +115,7 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile }: Analys
       ctx.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.004))
       ctx.strokeRect(rx, ry, rw, rh)
 
-      const label = `${item.label} / ${Math.round(item.confidence * 100)}%`
+      const label = `${item.description || item.label} / ${Math.round(item.confidence * 100)}%`
       const textW = ctx.measureText(label).width
       const lbPadX = Math.round(fontSize * 0.5)
       const lbPadY = Math.round(fontSize * 0.35)
@@ -162,39 +163,39 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile }: Analys
             写真上でハザードを可視化
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <p className="text-sm text-gray-600 mb-2">元の写真プレビュー</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-2">元の写真プレビュー</p>
               {previewUrl ? (
                 <img src={previewUrl} alt="source preview" className="w-full h-auto rounded border" />
               ) : (
-                <div className="w-full h-40 border rounded flex items-center justify-center text-gray-400 text-sm">
+                <div className="w-full h-40 border rounded flex items-center justify-center text-gray-400 text-xs sm:text-sm">
                   写真が未指定です
                 </div>
               )}
             </div>
             <div className="flex flex-col justify-between">
               <div>
-                <p className="text-sm text-gray-700 mb-2">
+                <p className="text-xs sm:text-sm text-gray-700 mb-2">
                   カテゴリ別に色分けして危険箇所を描画します:
                 </p>
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  <span className="flex items-center"><span className="inline-block w-3 h-3 rounded bg-green-400 mr-1" /> 安全設備</span>
-                  <span className="flex items-center"><span className="inline-block w-3 h-3 rounded bg-red-400 mr-1" /> 危険要素</span>
-                  <span className="flex items-center"><span className="inline-block w-3 h-3 rounded bg-blue-400 mr-1" /> 交通</span>
-                  <span className="flex items-center"><span className="inline-block w-3 h-3 rounded bg-orange-400 mr-1" /> 障害物</span>
+                <div className="grid grid-cols-2 gap-1 text-[10px] sm:text-xs">
+                  <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-green-400 mr-1" /> 安全設備</span>
+                  <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-red-400 mr-1" /> 危険要素</span>
+                  <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-blue-400 mr-1" /> 交通</span>
+                  <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-orange-400 mr-1" /> 障害物</span>
                 </div>
               </div>
               <div className="mt-3">
                 <button
                   onClick={onVisualize}
                   disabled={vizLoading || !sourceImageFile}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-sm disabled:opacity-50"
                 >
                   {vizLoading ? "生成中..." : "写真上で可視化する"}
                 </button>
-                {vizError && <p className="text-sm text-red-600 mt-2">{vizError}</p>}
+                {vizError && <p className="text-xs sm:text-sm text-red-600 mt-2">{vizError}</p>}
               </div>
             </div>
           </div>
@@ -209,6 +210,123 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile }: Analys
           )}
         </CardContent>
       </Card>
+
+      {/* User Marking Comparison */}
+      {userMarking && userMarking.markers.length > 0 && result.comparison && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center">
+              <Target className="h-5 w-5 mr-2 text-purple-600" />
+              あなたのマーキング vs AI検出
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Summary stats */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">マッチ数</p>
+                <p className="text-lg sm:text-2xl font-bold text-green-600">
+                  {result.comparison.matches.length}
+                  <span className="text-xs sm:text-sm font-normal text-gray-400">
+                    /{userMarking.markers.length}
+                  </span>
+                </p>
+              </div>
+              <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">精度スコア</p>
+                <p className="text-lg sm:text-2xl font-bold text-blue-600">
+                  {result.comparison.accuracyScore}%
+                </p>
+              </div>
+              <div className="bg-purple-50 p-2 sm:p-3 rounded-lg border border-purple-200 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">ボーナス</p>
+                <p className="text-lg sm:text-2xl font-bold text-purple-600">
+                  +{result.comparison.bonusPoints}pt
+                </p>
+              </div>
+            </div>
+
+            {/* Matched markers */}
+            {result.comparison.matches.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
+                  マッチした箇所 ({result.comparison.matches.length})
+                </h4>
+                <div className="space-y-2">
+                  {result.comparison.matches.map((match, i) => (
+                    <div key={i} className="bg-gray-50 rounded p-2 sm:p-3 text-xs sm:text-sm">
+                      <div className="flex items-start sm:items-center justify-between gap-2 mb-1">
+                        <span className="font-medium text-gray-900 min-w-0 break-words">
+                          {match.userMarker.label} → {match.aiDetection.label}
+                        </span>
+                        <Badge
+                          variant={
+                            match.overlapRatio >= 0.7
+                              ? "default"
+                              : match.overlapRatio >= 0.4
+                                ? "secondary"
+                                : "outline"
+                          }
+                          className="text-[10px] sm:text-xs flex-shrink-0"
+                        >
+                          {Math.round(match.overlapRatio * 100)}%一致
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500">
+                        {match.categoryMatch && (
+                          <span className="text-green-600">カテゴリ一致 +5pt</span>
+                        )}
+                        <span>
+                          {match.overlapRatio >= 0.7 ? "+20pt" : match.overlapRatio >= 0.4 ? "+10pt" : "+5pt"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unmatched user markers */}
+            {result.comparison.unmatchedUserMarkers.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <XCircle className="h-4 w-4 mr-1 text-orange-500" />
+                  AIが検出しなかった箇所 ({result.comparison.unmatchedUserMarkers.length})
+                </h4>
+                <div className="space-y-1">
+                  {result.comparison.unmatchedUserMarkers.map((marker, i) => (
+                    <div key={i} className="text-sm text-gray-600 flex items-start">
+                      <span className="text-orange-400 mr-2">-</span>
+                      {marker.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unmatched AI detections */}
+            {result.comparison.unmatchedAiDetections.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <Search className="h-4 w-4 mr-1 text-blue-500" />
+                  AIが追加検出した箇所 ({result.comparison.unmatchedAiDetections.length})
+                </h4>
+                <div className="space-y-1">
+                  {result.comparison.unmatchedAiDetections.map((detection, i) => (
+                    <div key={i} className="text-sm text-gray-600 flex items-start">
+                      <span className="text-blue-400 mr-2">-</span>
+                      <span>
+                        <span className="font-medium">{detection.label}</span>: {detection.description}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Score Breakdown */}
       <ScoreBreakdown score={result.score} />
@@ -238,12 +356,12 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile }: Analys
                 </h4>
                 <div className="space-y-2">
                   {result.think.contextualRisks.map((risk, i) => (
-                    <div key={i} className="bg-gray-50 rounded p-3 text-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-gray-900">{risk.description}</span>
+                    <div key={i} className="bg-gray-50 rounded p-2 sm:p-3 text-xs sm:text-sm">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <span className="text-gray-900 min-w-0">{risk.description}</span>
                         <Badge
                           variant={risk.severity === "high" ? "destructive" : risk.severity === "medium" ? "default" : "secondary"}
-                          className="text-xs ml-2 flex-shrink-0"
+                          className="text-[10px] sm:text-xs flex-shrink-0"
                         >
                           {risk.severity === "high" ? "高" : risk.severity === "medium" ? "中" : "低"}
                         </Badge>
@@ -338,10 +456,10 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile }: Analys
       <SafetyReportCard result={result} />
 
       {/* Play Again Button */}
-      <div className="text-center pt-4">
+      <div className="text-center pt-4 px-2 sm:px-0">
         <button
           onClick={onPlayAgain}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors"
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors text-sm sm:text-base"
         >
           もう一度プレイ
         </button>
