@@ -24,6 +24,7 @@ import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数�
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
+import { isAdminEmail } from "@/lib/admin"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -241,8 +242,7 @@ export default function MapContainer() {
           console.error("Error fetching user:", error);
           return;
         }
-        // user.app_metadata.role === 'admin' で判定 (実際のロール管理方法に合わせて変更)
-        if (user?.app_metadata?.role === 'admin') {
+        if (isAdminEmail(user?.email)) {
           if (isMounted) setIsAdmin(true);
         } else {
           if (isMounted) setIsAdmin(false);
