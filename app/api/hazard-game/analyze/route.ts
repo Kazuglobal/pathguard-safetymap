@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 export const runtime = "nodejs"
 import { createServerClient } from "@/lib/supabase-server"
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
-import type { PipelineAnalysisResult, SafetyLevel } from "@/lib/hazard-game-types"
+import type { PipelineAnalysisResultWithComparison, SafetyLevel } from "@/lib/hazard-game-types"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
@@ -17,7 +17,7 @@ function toLegacyOverallSafety(level: SafetyLevel): number {
   }
 }
 
-function toLegacyHazards(result: PipelineAnalysisResult) {
+function toLegacyHazards(result: PipelineAnalysisResultWithComparison) {
   return result.vision.hazards.map((item) => ({
     type: item.label,
     description: item.description,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { imageBase64, userDetectedHazards, promptType } = body
+    const { imageBase64, userMarkers, promptType } = body
 
     if (!imageBase64) {
       console.error('No image data provided')
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     if (includeDebug) console.log(`Image data received, size: ${imageBase64.length} characters`)
 
-    let pipelineResult: PipelineAnalysisResult
+    let pipelineResult: PipelineAnalysisResultWithComparison
     let sessionId = null
 
     try {
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
       pipelineResult = await analyzeImagePipeline(
         imageBase64,
-        userDetectedHazards,
+        Array.isArray(userMarkers) ? userMarkers : undefined,
         promptType || "default"
       )
 
@@ -202,6 +202,7 @@ export async function POST(request: NextRequest) {
       score: pipelineResult.score,
       educationalTips: pipelineResult.educationalTips,
       analysisTimestamp: pipelineResult.analysisTimestamp,
+      comparison: pipelineResult.comparison,
       // Legacy-compatible fields
       hazards: toLegacyHazards(pipelineResult),
       overallSafety: toLegacyOverallSafety(pipelineResult.score.level),

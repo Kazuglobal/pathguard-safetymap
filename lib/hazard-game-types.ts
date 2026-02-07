@@ -105,6 +105,49 @@ export interface PipelineAnalysisResult {
   readonly analysisTimestamp: string
 }
 
+// ---- User Marker Types (Interactive Mode) ----
+
+export type UserMarkerCategory = "hazard" | "safety" | "traffic" | "obstruction" | "unknown"
+
+export interface UserMarker {
+  readonly id: string
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+  readonly label: string
+  readonly category: UserMarkerCategory
+  readonly timestamp: number
+}
+
+export interface UserMarkingResult {
+  readonly markers: readonly UserMarker[]
+  readonly markingStartTime: number
+  readonly markingEndTime: number
+}
+
+// ---- Comparison Types ----
+
+export interface MarkerMatch {
+  readonly userMarker: UserMarker
+  readonly aiDetection: DetectionItem
+  readonly overlapRatio: number
+  readonly categoryMatch: boolean
+}
+
+export interface ComparisonResult {
+  readonly matches: readonly MarkerMatch[]
+  readonly unmatchedUserMarkers: readonly UserMarker[]
+  readonly unmatchedAiDetections: readonly DetectionItem[]
+  readonly accuracyScore: number
+  readonly bonusPoints: number
+}
+
+export interface PipelineAnalysisResultWithComparison extends PipelineAnalysisResult {
+  readonly comparison?: ComparisonResult
+  readonly userMarking?: UserMarkingResult
+}
+
 // ---- Legacy 互換型 ----
 
 export interface LegacyHazard {

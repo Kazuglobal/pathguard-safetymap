@@ -7,9 +7,12 @@ import type {
   BoundingBox,
   ContextualRisk,
   RiskSeverity,
+  UserMarker,
+  ComparisonResult,
+  PipelineAnalysisResultWithComparison,
 } from "./hazard-game-types"
-import { calculateSafetyScore } from "./hazard-game-scorer"
-import type { PipelineAnalysisResult } from "./hazard-game-types"
+import { calculateSafetyScore, calculateFinalScoreWithBonus } from "./hazard-game-scorer"
+import { compareUserMarkersWithAI } from "./hazard-game-matching"
 
 export type { PromptType }
 
@@ -109,29 +112,38 @@ async function callGeminiVision(
 const PIPELINE_JSON_SCHEMA = `{
   "vision": {
     "safety_equipment": [
-      { "label": "string", "description": "string", "count": 1, "confidence": 0.9, "coverage_ratio": 0.05, "positions": [{"x":0.1,"y":0.2,"width":0.1,"height":0.1}] }
+      { "label": "guardrail", "description": "道路左右に設置されたガードレール", "count": 2, "confidence": 0.92, "coverage_ratio": 0.15, "positions": [{"x":0.02,"y":0.55,"width":0.38,"height":0.08}, {"x":0.60,"y":0.52,"width":0.35,"height":0.09}] },
+      { "label": "crosswalk", "description": "横断歩道の白線", "count": 1, "confidence": 0.88, "coverage_ratio": 0.10, "positions": [{"x":0.25,"y":0.70,"width":0.50,"height":0.15}] }
     ],
-    "hazards": [],
-    "traffic": [],
-    "obstructions": []
+    "hazards": [
+      { "label": "cracked_wall", "description": "ブロック塀の縦方向のひび割れ（地震時倒壊リスク）", "count": 1, "confidence": 0.85, "coverage_ratio": 0.08, "positions": [{"x":0.72,"y":0.25,"width":0.18,"height":0.40}] }
+    ],
+    "traffic": [
+      { "label": "car", "description": "走行中の乗用車", "count": 1, "confidence": 0.95, "coverage_ratio": 0.12, "positions": [{"x":0.30,"y":0.40,"width":0.25,"height":0.20}] }
+    ],
+    "obstructions": [
+      { "label": "overgrown_vegetation", "description": "歩道にはみ出した雑草", "count": 1, "confidence": 0.75, "coverage_ratio": 0.05, "positions": [{"x":0.85,"y":0.60,"width":0.12,"height":0.25}] }
+    ]
   },
   "think": {
     "contextual_risks": [
-      { "description": "string", "severity": "high|medium|low", "related_detections": ["guardrail"] }
+      { "description": "ブロック塀のひび割れが進行しており、震度5以上で倒壊し歩行者を巻き込む可能性", "severity": "high", "related_detections": ["cracked_wall"] }
     ],
-    "priority_improvements": ["string"],
-    "latent_risks": ["string"],
-    "child_perspective_risks": ["string"]
+    "priority_improvements": ["ブロック塀の耐震補強または撤去・フェンス化"],
+    "latent_risks": ["豪雨時に側溝が詰まり道路冠水の可能性"],
+    "child_perspective_risks": ["ガードレールの隙間から車道に出てしまうリスク"]
   },
-  "educational_tips": ["string"]
+  "educational_tips": ["ひび割れたブロック塀の近くを歩かないようにしましょう", "横断歩道では左右を確認してから渡りましょう", "雑草で見通しが悪い場所では立ち止まって確認しましょう"]
 }`
 
 function getPipelinePromptByType(
   promptType: PromptType,
-  userDetectedHazards?: string[]
+  userMarkers?: readonly UserMarker[]
 ): string {
-  const userSuffix = userDetectedHazards?.length
-    ? `\nユーザーが事前に発見した危険: ${userDetectedHazards.join(', ')}`
+  const userSuffix = userMarkers?.length
+    ? `\n\n【ユーザーマーキング情報】\nユーザーは以下の${userMarkers.length}箇所を事前に危険と判断しました:\n${userMarkers.map((m, i) =>
+        `${i + 1}. カテゴリ: ${m.category}, ラベル: ${m.label}, 位置: (x:${m.x.toFixed(2)}, y:${m.y.toFixed(2)}, w:${m.width.toFixed(2)}, h:${m.height.toFixed(2)})`
+      ).join('\n')}\nユーザーがマーキングした領域を注意深く確認し、その付近にある危険を正確にbboxで記述してください。\nまた、ユーザーが見逃した危険箇所も積極的に検出してください。\nユーザーのbboxに影響されず、AIとして独自に正確なbboxを算出すること。`
     : ''
 
   const commonSchema = `
@@ -143,12 +155,58 @@ ${PIPELINE_JSON_SCHEMA}
 - vision.hazards: 工事現場、壊れたフェンス、ブロック塀のひび、老朽化建物、落下物リスクなど。
 - vision.traffic: 車両(car)、トラック(truck)、バイク(motorcycle)、自転車(bicycle)など。
 - vision.obstructions: 雑草の繁茂、放置自転車、不法投棄物、視界を遮る看板など。
-- 各カテゴリのアイテム: label(英語キーワード), description(日本語), count(個数), confidence(0-1), coverage_ratio(画像面積に対する割合0-1), positions(正規化bbox配列、不明なら空配列)
+
+各カテゴリのアイテム必須フィールド:
+- label: 英語キーワード (例: guardrail, broken_fence, car)
+- description: 日本語での詳細説明（何がどこにあるか具体的に）
+- count: 検出個数 (整数、実際に見える数)
+- confidence: 検出信頼度 0.0-1.0
+- coverage_ratio: 画像面積に対する割合 0.0-1.0
+- positions: 【必須】正規化bbox配列。空配列[]は絶対に不可。
+
+Bounding Box (positions) 記述ルール:
+1. 全ての検出物に対してpositionsを必ず1つ以上記述すること。空配列[]は禁止。
+2. countの値とpositions配列の要素数は必ず一致させること（count=3なら3つのbbox）。
+3. x, y は物体の左上角の座標。width, height は物体のサイズ。全て0.00-1.00の正規化値（小数第2位まで）。画像左上が(0,0)、右下が(1,1)。
+4. bboxは物体に密着（tight-fit）させること。余白を含めない。物体の輪郭ギリギリを囲む。
+5. confidence >= 0.8 の検出物は特に精密なbboxを記述すること。物体の実際の形状・位置を正確に反映。
+6. 物体が部分的に隠れている・画面端で切れている場合でも、可視部分全体を囲むbboxを記述。
+7. 画像の座標系を正しく認識すること: 左=x小、右=x大、上=y小、下=y大。
+
+よくある間違い（避けること）:
+- NG: positions: [] （空配列は禁止）
+- NG: count: 3, positions: [bbox1] （countとpositions数が不一致）
+- NG: {"x":0.0,"y":0.0,"width":1.0,"height":1.0} （画像全体を囲むのは不正確）
+- NG: 全ての検出物が同じ座標 （各物体の実際の位置を個別に特定すること）
+
+Bounding Box 座標の具体例:
+- 画像中央やや左の車: positions: [{"x":0.25,"y":0.40,"width":0.30,"height":0.22}]
+- 画像下部の横断歩道: positions: [{"x":0.10,"y":0.72,"width":0.55,"height":0.18}]
+- 画面右端で半分切れている看板: positions: [{"x":0.85,"y":0.08,"width":0.15,"height":0.20}]
+- 道路の左右にガードレール2本: count: 2, positions: [{"x":0.02,"y":0.50,"width":0.15,"height":0.08}, {"x":0.80,"y":0.48,"width":0.18,"height":0.09}]
+
+空間的位置の判断基準:
+- 画像の左半分にあるもの: x < 0.5
+- 画像の右半分にあるもの: x >= 0.5
+- 画像の上半分にあるもの: y < 0.5
+- 画像の下半分にあるもの: y >= 0.5
+- 遠くの小さい物体: width, height は小さめ (0.03-0.15程度)
+- 近くの大きい物体: width, height は大きめ (0.2-0.8程度)
+- 物体同士が重なっている場合: それぞれ個別のbboxを記述
+
 - think.contextual_risks: 視覚的兆候から推測される潜在的・複合的リスク。severity は "high"/"medium"/"low"。
 - think.priority_improvements: 優先的に改善すべき項目。
 - think.latent_risks: 時間経過や天候変化で顕在化するリスク。
 - think.child_perspective_risks: 子どもの目線で気づきにくい危険。
 - educational_tips: 具体的で実践的な安全アドバイスを日本語で3つ以上。
+
+重要: 検出物がないカテゴリは空配列[]で構いません。ただし検出物がある場合、そのpositionsフィールドは必ず非空にすること。
+
+出力前チェックリスト（必ず確認）:
+1. 全てのアイテムのpositionsが空配列[]になっていないか → なっていればbboxを追加
+2. countとpositions配列の要素数が一致しているか
+3. bboxの座標が0.00-1.00の範囲内か
+4. 各bboxが実際の物体の位置・サイズに対応しているか
 ${userSuffix}
 必ずJSONのみを出力。`
 
@@ -164,7 +222,7 @@ ${userSuffix}
 5. 防災設備: 消火栓、避難誘導灯、避難経路の障害物
 
 トーン: 冷静で客観的な専門家レベルの詳細分析。住民・行政双方への提言を含む。
-各カテゴリ5-8件程度を詳細に検出してください。
+各カテゴリ5-8件程度を詳細に検出してください。全ての検出物に正確なbounding boxを付与すること。
 ${commonSchema}`
 
     case "child":
@@ -178,7 +236,7 @@ ${commonSchema}`
 
 トーン: やさしい日本語。こわがらせず、前向きで楽しく学べるように。
 label は英語キーワード（例: guardrail, crosswalk, traffic_light, sidewalk）を使い、description はやさしい日本語で記述（例：「たてもののひび」「みえにくいかど」）。
-各カテゴリ2-4件程度を検出してください。
+各カテゴリ2-4件程度を検出してください。全てのものに正確なbounding boxをつけること。
 ${commonSchema}`
 
     case "default":
@@ -193,7 +251,7 @@ ${commonSchema}`
 - 潜在的リスク: 地震・台風・豪雨時に顕在化する危険、連鎖的な被害
 
 トーン: バランスの取れた分析。表面的な危険だけでなく潜在的・複合的リスクも深く分析。
-各カテゴリ3-5件程度を検出してください。
+各カテゴリ3-5件程度を検出してください。全ての検出物に正確で密着したbounding boxを付与すること。
 ${commonSchema}`
   }
 }
@@ -296,12 +354,12 @@ export function parseGeminiPipelineResponse(raw: any): {
 
 export async function analyzeImagePipeline(
   imageBase64OrDataUrl: string,
-  userDetectedHazards?: string[],
+  userMarkers?: readonly UserMarker[],
   promptType: PromptType = "default"
-): Promise<PipelineAnalysisResult> {
+): Promise<PipelineAnalysisResultWithComparison> {
   const startTime = Date.now()
 
-  const prompt = getPipelinePromptByType(promptType, userDetectedHazards)
+  const prompt = getPipelinePromptByType(promptType, userMarkers)
   const textResponse = await callGeminiVision(imageBase64OrDataUrl, prompt)
   const parsed = extractFirstJson(textResponse)
   const { vision, think, educationalTips } = parseGeminiPipelineResponse(parsed)
@@ -311,14 +369,30 @@ export async function analyzeImagePipeline(
     inferenceTimeMs: Date.now() - startTime,
   }
 
-  const score = calculateSafetyScore(visionWithTiming, think)
+  const baseScore = calculateSafetyScore(visionWithTiming, think)
+
+  let comparison: ComparisonResult | undefined
+  if (userMarkers && userMarkers.length > 0) {
+    const allDetections = [
+      ...visionWithTiming.safetyEquipment,
+      ...visionWithTiming.hazards,
+      ...visionWithTiming.traffic,
+      ...visionWithTiming.obstructions,
+    ]
+    comparison = compareUserMarkersWithAI(userMarkers, allDetections)
+  }
+
+  const finalScore = comparison
+    ? calculateFinalScoreWithBonus(baseScore, comparison)
+    : baseScore
 
   return {
     vision: visionWithTiming,
     think,
-    score,
+    score: finalScore,
     educationalTips,
     analysisTimestamp: new Date().toISOString(),
+    comparison,
   }
 }
 

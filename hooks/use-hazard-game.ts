@@ -4,16 +4,17 @@ import { useState, useRef, useCallback } from "react"
 import useSWR from "swr"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import type {
-  PipelineAnalysisResult,
+  PipelineAnalysisResultWithComparison,
   PipelineProgress,
   PipelineStage,
+  UserMarker,
 } from "@/lib/hazard-game-types"
 import { compressImage, fileToBase64 } from "@/lib/image-utils"
 
 interface GameSession {
   id: string
   user_id: string
-  analysis_result: PipelineAnalysisResult
+  analysis_result: PipelineAnalysisResultWithComparison
   score: number
   hazards_detected: number
   overall_safety: number
@@ -52,7 +53,7 @@ function delay(ms: number): Promise<void> {
 export function useHazardGame() {
   const { supabase } = useSupabase()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<PipelineAnalysisResult | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<PipelineAnalysisResultWithComparison | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pipelineProgress, setPipelineProgress] = useState<PipelineProgress | null>(null)
   const lastAnalyzeAtRef = useRef(0)
@@ -113,7 +114,7 @@ export function useHazardGame() {
   // Analyze image using pipeline
   const analyzeImage = async (
     imageFile: File,
-    userDetectedHazards?: string[],
+    userMarkers?: readonly UserMarker[],
     promptType: "default" | "expert" | "child" = "default"
   ) => {
     const now = Date.now()
@@ -146,7 +147,7 @@ export function useHazardGame() {
         },
         body: JSON.stringify({
           imageBase64,
-          userDetectedHazards,
+          userMarkers,
           promptType,
         }),
       })
@@ -179,13 +180,15 @@ export function useHazardGame() {
 
       const responseData = await response.json()
 
-      // Build PipelineAnalysisResult from response
-      const result: PipelineAnalysisResult = {
+      // Build PipelineAnalysisResultWithComparison from response
+      const result: PipelineAnalysisResultWithComparison = {
         vision: responseData.vision,
         think: responseData.think,
         score: responseData.score,
         educationalTips: responseData.educationalTips ?? [],
         analysisTimestamp: responseData.analysisTimestamp ?? new Date().toISOString(),
+        comparison: responseData.comparison,
+        userMarking: responseData.userMarking,
       }
 
       // Complete
