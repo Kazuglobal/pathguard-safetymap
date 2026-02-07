@@ -169,6 +169,27 @@ describe('hazard-game-pipeline parser', () => {
       expect(items[0].positions).toHaveLength(0)
       expect(items[0].category).toBe('hazards')
     })
+
+    it('falls back to type when label is missing', () => {
+      const items = parseDetectionItems(
+        [{ type: 'guardrail', description: 'ガードレール' }],
+        'safety_equipment'
+      )
+
+      expect(items).toHaveLength(1)
+      expect(items[0].label).toBe('guardrail')
+    })
+
+    it('falls back to a safe integer when count is non-numeric', () => {
+      const items = parseDetectionItems(
+        [{ label: 'car', count: 'many' }],
+        'traffic'
+      )
+
+      expect(items).toHaveLength(1)
+      expect(items[0].count).toBe(1)
+      expect(Number.isNaN(items[0].count)).toBe(false)
+    })
   })
 
   describe('parseContextualRisks', () => {

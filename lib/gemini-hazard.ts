@@ -177,7 +177,7 @@ ${commonSchema}`
 4. にげるときのみち: ひろいながれ、じゃまなもの
 
 トーン: やさしい日本語。こわがらせず、前向きで楽しく学べるように。
-type, description はやさしい日本語で記述（例：「たてもののひび」「みえにくいかど」）。
+label は英語キーワード（例: guardrail, crosswalk, traffic_light, sidewalk）を使い、description はやさしい日本語で記述（例：「たてもののひび」「みえにくいかど」）。
 各カテゴリ2-4件程度を検出してください。
 ${commonSchema}`
 
@@ -220,11 +220,17 @@ export function parseDetectionItems(
   category: DetectionCategory
 ): DetectionItem[] {
   if (!Array.isArray(rawItems)) return []
+  const parseCount = (rawCount: unknown): number => {
+    const n = Number(rawCount)
+    if (!Number.isFinite(n)) return 1
+    return Math.max(0, Math.round(n))
+  }
+
   return rawItems.map((item: any) => ({
     category,
-    label: String(item?.label ?? "unknown"),
+    label: String(item?.label ?? item?.type ?? "unknown"),
     description: String(item?.description ?? ""),
-    count: Math.max(0, Math.round(Number(item?.count ?? 1))),
+    count: parseCount(item?.count ?? 1),
     confidence: clampNum(item?.confidence, 0, 1, 0.5),
     coverageRatio: clampNum(item?.coverage_ratio, 0, 1, 0),
     positions: Array.isArray(item?.positions)

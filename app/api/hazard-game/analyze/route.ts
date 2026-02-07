@@ -18,13 +18,7 @@ function toLegacyOverallSafety(level: SafetyLevel): number {
 }
 
 function toLegacyHazards(result: PipelineAnalysisResult) {
-  const allItems = [
-    ...result.vision.safetyEquipment,
-    ...result.vision.hazards,
-    ...result.vision.traffic,
-    ...result.vision.obstructions,
-  ]
-  return allItems.map((item) => ({
+  return result.vision.hazards.map((item) => ({
     type: item.label,
     description: item.description,
     severity: item.confidence >= 0.8 ? 1 : item.confidence >= 0.5 ? 2 : 3,
