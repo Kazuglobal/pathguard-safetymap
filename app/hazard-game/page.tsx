@@ -14,7 +14,7 @@ import { GameStats } from "@/components/hazard-game/game-stats"
 import { LoadingAnimation } from "@/components/hazard-game/loading-animation"
 import { useHazardGame } from "@/hooks/use-hazard-game"
 import Link from "next/link"
-import type { PromptType } from "@/lib/gemini-hazard"
+import type { PromptType } from "@/lib/hazard-game-types"
 
 type GameState = "intro" | "upload" | "analyzing" | "results"
 
@@ -27,6 +27,7 @@ export default function HazardGamePage() {
     isAnalyzing,
     analysisResult,
     error,
+    pipelineProgress,
     gameHistory,
     gameStats,
     analyzeImage,
@@ -233,7 +234,7 @@ export default function HazardGamePage() {
 
   const renderAnalyzingScreen = () => (
     <div className="max-w-2xl mx-auto">
-      <LoadingAnimation />
+      <LoadingAnimation pipelineProgress={pipelineProgress} />
     </div>
   )
 

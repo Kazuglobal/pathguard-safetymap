@@ -2,16 +2,50 @@ import { NextRequest, NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 import { createServerClient } from "@/lib/supabase-server"
-import { analyzeImageForHazardsGemini } from "@/lib/gemini-hazard"
+import { analyzeImagePipeline } from "@/lib/gemini-hazard"
+import type { PipelineAnalysisResult, SafetyLevel } from "@/lib/hazard-game-types"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
 
+function toLegacyOverallSafety(level: SafetyLevel): number {
+  switch (level) {
+    case "safe": return 4
+    case "caution": return 3
+    case "warning": return 2
+    case "danger": return 1
+  }
+}
+
+function toLegacyHazards(result: PipelineAnalysisResult) {
+  const allItems = [
+    ...result.vision.safetyEquipment,
+    ...result.vision.hazards,
+    ...result.vision.traffic,
+    ...result.vision.obstructions,
+  ]
+  return allItems.map((item) => ({
+    type: item.label,
+    description: item.description,
+    severity: item.confidence >= 0.8 ? 1 : item.confidence >= 0.5 ? 2 : 3,
+    location: item.category,
+    confidence: item.confidence,
+    bbox: item.positions[0]
+      ? {
+          x: item.positions[0].x,
+          y: item.positions[0].y,
+          width: item.positions[0].width,
+          height: item.positions[0].height,
+        }
+      : undefined,
+  }))
+}
+
 export async function POST(request: NextRequest) {
   try {
     const includeDebug = process.env.NODE_ENV !== "production"
-    console.log('Starting hazard game analysis request...')
-    
+    console.log('Starting hazard game pipeline analysis...')
+
     // Check request size before processing
     const contentLength = request.headers.get('content-length')
     if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
@@ -22,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createServerClient()
-    
+
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -33,7 +67,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`User authenticated: ${user.id}`)
+    if (includeDebug) console.log(`User authenticated: ${user.id.slice(0, 8)}***`)
 
     let body: any
     try {
@@ -64,228 +98,140 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`Image data received, size: ${imageBase64.length} characters`)
+    if (includeDebug) console.log(`Image data received, size: ${imageBase64.length} characters`)
 
-    let analysisResult: any
+    let pipelineResult: PipelineAnalysisResult
     let sessionId = null
 
     try {
-      console.log('Starting Gemini analysis...')
-      console.log('User ID:', user.id)
-      console.log('Image base64 length:', imageBase64.length)
-      console.log('User detected hazards:', userDetectedHazards)
-      console.log('Env - GOOGLE_API_KEY present:', !!process.env.GOOGLE_API_KEY)
-      console.log('Env - GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY)
+      if (includeDebug) {
+        console.log('Starting pipeline analysis (Vision → Think → Score)...')
+        console.log('Prompt type:', promptType || "default")
+      }
 
-      // Always use Gemini for hazard analysis
-      analysisResult = await analyzeImageForHazardsGemini(
+      pipelineResult = await analyzeImagePipeline(
         imageBase64,
         userDetectedHazards,
         promptType || "default"
       )
-      
-      console.log(`Analysis completed for user ${user.id}: ${analysisResult.hazards.length} hazards detected, score: ${analysisResult.score}`)
-      
+
+      const { score, vision } = pipelineResult
+      const totalDetections =
+        vision.safetyEquipment.length +
+        vision.hazards.length +
+        vision.traffic.length +
+        vision.obstructions.length
+
+      console.log(
+        `Pipeline complete: score=${score.score} (${score.level}), ` +
+        `detections=${totalDetections}, ` +
+        `contextual_risks=${pipelineResult.think.contextualRisks.length}, ` +
+        `inference=${vision.inferenceTimeMs}ms`
+      )
+
     } catch (analysisError) {
-      console.error("=== IMAGE ANALYSIS ERROR DETAILS ===")
-      console.error("Error occurred during image analysis:", analysisError)
-      
-      // Log detailed error information
+      console.error("=== PIPELINE ANALYSIS ERROR ===")
+      console.error("Error:", analysisError)
+
       if (analysisError instanceof Error) {
         console.error('Error name:', analysisError.name)
         console.error('Error message:', analysisError.message)
-        console.error('Error stack:', analysisError.stack)
-        
-        // Prefer Gemini-specific auth errors if Gemini is configured
-        {
-          // Treat only 401/403/unauthorized as auth issues; avoid mislabeling 404 as auth
-          const msg = analysisError.message || ''
-          if (/\b401\b|\b403\b/i.test(msg) || /unauthorized|forbidden|api\s*key/i.test(msg)) {
-            const debugInfo = includeDebug ? {
-              errorName: analysisError.name,
-              originalError: analysisError.message,
-              helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
-              timestamp: new Date().toISOString()
-            } : undefined
-            return NextResponse.json(
-              {
-                error: 'Gemini APIキーが無効または権限不足です。.env.localのGOOGLE_API_KEYまたはGEMINI_API_KEYを確認してください。',
-                ...(debugInfo ? { debugInfo } : {})
-              },
-              { status: 401 }
-            )
-          }
-        }
-        
-        // Check for API key errors
-        if (analysisError.message.includes('APIキー') || analysisError.message.includes('API key')) {
-          const debugInfo = includeDebug ? {
-            errorName: analysisError.name,
-            originalError: analysisError.message,
-            helpUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
-            timestamp: new Date().toISOString()
-          } : undefined
+
+        const msg = analysisError.message || ''
+
+        // Auth errors
+        if (/\b401\b|\b403\b/i.test(msg) || /unauthorized|forbidden|api\s*key/i.test(msg)) {
           return NextResponse.json(
             {
-              error: 'Gemini APIキーが無効です。管理者に連絡して、.env.localのGOOGLE_API_KEYまたはGEMINI_API_KEYを更新してください。',
-              ...(debugInfo ? { debugInfo } : {})
+              error: '画像分析サービスの認証に失敗しました。管理者にお問い合わせください。',
+              ...(includeDebug ? { debugInfo: { originalError: msg, timestamp: new Date().toISOString() } } : {}),
             },
             { status: 401 }
           )
         }
-        
-        // Check for quota errors
-        if (analysisError.message.includes('利用枠') || analysisError.message.includes('quota') || analysisError.message.includes('クレジット')) {
-          const debugInfo = includeDebug ? {
-            errorName: 'QuotaExceeded',
-            originalError: analysisError.message,
-            helpUrl: 'https://ai.google.dev/pricing',
-            timestamp: new Date().toISOString()
-          } : undefined
+
+        // Quota errors
+        if (msg.includes('利用枠') || msg.includes('quota') || msg.includes('クレジット')) {
           return NextResponse.json(
             {
               error: 'Gemini APIの利用枠を超過しています。Google Cloud Console でクォータ/請求設定をご確認ください。',
-              ...(debugInfo ? { debugInfo } : {})
+              ...(includeDebug ? { debugInfo: { originalError: msg, timestamp: new Date().toISOString() } } : {}),
             },
             { status: 429 }
           )
         }
-        
-        // Log any additional error properties
-        const errorObj = analysisError as any
-        if (errorObj.status) console.error('HTTP status:', errorObj.status)
-        if (errorObj.code) console.error('Error code:', errorObj.code)
-        if (errorObj.response) {
-          console.error('Error response data:', JSON.stringify(errorObj.response?.data, null, 2))
-          console.error('Error response status:', errorObj.response?.status)
-        }
-        
-        // Log specific error patterns for debugging
-        if (analysisError.message.includes('rate limit')) {
-          console.error('RATE LIMIT ERROR detected')
-        }
-        if (analysisError.message.includes('quota')) {
-          console.error('QUOTA ERROR detected')
-        }
-        if (analysisError.message.includes('api_key')) {
-          console.error('API KEY ERROR detected')
-        }
-        if (analysisError.message.includes('model')) {
-          console.error('MODEL ERROR detected')
-        }
-        if (analysisError.message.includes('401')) {
-          console.error('AUTHENTICATION ERROR detected - check API key')
-        }
       }
-      
+
       console.error("=== END ERROR DETAILS ===")
-      
-      // Return specific error message from analysis
-      const errorMessage = analysisError instanceof Error 
-        ? analysisError.message 
+
+      const errorMessage = analysisError instanceof Error
+        ? analysisError.message
         : "画像の分析中にエラーが発生しました"
-      
-      const debugInfo = includeDebug ? {
-        errorName: analysisError instanceof Error ? analysisError.name : 'Unknown',
-        originalError: analysisError instanceof Error ? analysisError.message : 'Unknown',
-        errorStack: analysisError instanceof Error ? analysisError.stack?.split('\n').slice(0, 5) : undefined,
-        timestamp: new Date().toISOString()
-      } : undefined
-      
-      console.error('Returning error response:', { errorMessage, ...(debugInfo ? { debugInfo } : {}) })
-      
-      // Map message patterns to more appropriate HTTP status codes
+
       let status = 422
-      if (errorMessage.includes('認証') || errorMessage.includes('APIキー') || errorMessage.toLowerCase().includes('api key')) {
-        status = 401
-      } else if (errorMessage.includes('レート制限') || errorMessage.includes('rate limit') || errorMessage.includes('利用枠') || errorMessage.includes('quota')) {
-        status = 429
-      } else if (errorMessage.includes('サイズ') || errorMessage.includes('大きすぎ') || errorMessage.includes('20MB') || errorMessage.includes('413')) {
-        status = 413
-      } else if (errorMessage.includes('サポートされていない') || errorMessage.includes('415')) {
-        status = 415
-      } else if (errorMessage.includes('形式') || errorMessage.includes('Bad Request') || errorMessage.includes('400')) {
-        status = 400
-      }
+      if (errorMessage.includes('認証') || errorMessage.includes('APIキー')) status = 401
+      else if (errorMessage.includes('rate limit') || errorMessage.includes('利用枠')) status = 429
+      else if (errorMessage.includes('サイズ') || errorMessage.includes('大きすぎ')) status = 413
 
       const clientMessage = includeDebug ? errorMessage : "画像の分析中にエラーが発生しました。"
       return NextResponse.json(
-        { error: clientMessage, ...(debugInfo ? { debugInfo } : {}) },
+        {
+          error: clientMessage,
+          ...(includeDebug ? { debugInfo: { originalError: errorMessage, timestamp: new Date().toISOString() } } : {}),
+        },
         { status }
       )
     }
 
-    // Only award points if analysis was successful
+    // Award points based on deterministic score
     try {
       const { error: pointsError } = await supabase.rpc("increment_user_points", {
         p_user_id: user.id,
-        p_delta: analysisResult.score,
+        p_delta: pipelineResult.score.score,
       })
-      
+
       if (pointsError) {
         console.error("Error updating points:", pointsError)
-        // Don't fail the request if points update fails, but log it
       } else {
-        console.log(`Points awarded to user ${user.id}: ${analysisResult.score}`)
+        console.log(`Points awarded to user ${user.id}: ${pipelineResult.score.score}`)
       }
-
-      // For mission progress, we'll implement this later when the missions are properly set up
-      // TODO: Update mission progress for hazard game missions
-      
     } catch (pointsError) {
       console.error("Error in points transaction:", pointsError)
-      // Continue even if points update fails - the analysis was successful
     }
 
+    // Return both new pipeline format and legacy-compatible fields
     return NextResponse.json({
       success: true,
-      ...analysisResult,
+      // New pipeline fields
+      vision: pipelineResult.vision,
+      think: pipelineResult.think,
+      score: pipelineResult.score,
+      educationalTips: pipelineResult.educationalTips,
+      analysisTimestamp: pipelineResult.analysisTimestamp,
+      // Legacy-compatible fields
+      hazards: toLegacyHazards(pipelineResult),
+      overallSafety: toLegacyOverallSafety(pipelineResult.score.level),
+      legacyScore: pipelineResult.score.score,
       sessionId,
     })
 
   } catch (error) {
     console.error("Error in hazard game analysis:", error)
-    
-    // Categorize errors for appropriate HTTP status codes
+
     if (error instanceof Error) {
-      // Authentication errors
       if (error.message.includes('認証')) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: error.message }, { status: 401 })
       }
-      
-      // Validation errors
-      if (error.message.includes('画像データ') || 
-          error.message.includes('形式') || 
-          error.message.includes('サイズ')) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        )
+      if (error.message.includes('画像データ') || error.message.includes('形式') || error.message.includes('サイズ')) {
+        return NextResponse.json({ error: error.message }, { status: 400 })
       }
-      
-      // Rate limiting errors
       if (error.message.includes('rate limit') || error.message.includes('多くのリクエスト')) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 429 }
-        )
-      }
-      
-      // Service unavailable errors
-      if (error.message.includes('一時的に') || error.message.includes('利用できません')) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 503 }
-        )
+        return NextResponse.json({ error: error.message }, { status: 429 })
       }
     }
-    
-    // Generic server error
-    const errorMessage = error instanceof Error 
-      ? error.message 
+
+    const errorMessage = error instanceof Error
+      ? error.message
       : "画像の分析中にエラーが発生しました。もう一度お試しください。"
 
     return NextResponse.json(
@@ -298,8 +244,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
-    
-    // Check if user is authenticated
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       console.warn('Authentication failed for GET request:', authError)
@@ -309,11 +254,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log(`Fetching game history for user ${user.id}`)
-
-    // For now, return mock data until database migration is complete
-    // TODO: Implement real game history once hazard_game_sessions table is created
-    
     return NextResponse.json({
       sessions: [],
       stats: {
@@ -326,11 +266,11 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error fetching game history:", error)
-    
-    const errorMessage = error instanceof Error 
-      ? `ゲーム履歴の取得に失敗しました: ${error.message}` 
+
+    const errorMessage = error instanceof Error
+      ? `ゲーム履歴の取得に失敗しました: ${error.message}`
       : "ゲーム履歴の取得に失敗しました"
-    
+
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
