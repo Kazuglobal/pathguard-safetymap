@@ -93,6 +93,7 @@ const mockReport: DangerReport = {
   created_at: '2025-01-15T10:00:00Z',
   updated_at: '2025-01-15T10:00:00Z',
   image_url: null,
+  processed_image_url: null,
   processed_image_urls: null,
 }
 

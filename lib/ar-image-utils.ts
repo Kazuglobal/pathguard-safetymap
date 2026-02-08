@@ -89,7 +89,13 @@ export function getReportImages(report: DangerReport): string[] {
     images.push(report.image_url)
   }
 
-  // processed_image_urls があれば追加（検証付き）
+  // processed_image_url（単数形）があれば追加（検証付き）
+  // DBには単数形カラムも存在するため、両方を読み取る
+  if (report.processed_image_url && isValidImageUrl(report.processed_image_url)) {
+    images.push(report.processed_image_url)
+  }
+
+  // processed_image_urls（複数形）があれば追加（検証付き）
   if (report.processed_image_urls && Array.isArray(report.processed_image_urls)) {
     for (const url of report.processed_image_urls) {
       if (isValidImageUrl(url)) {
