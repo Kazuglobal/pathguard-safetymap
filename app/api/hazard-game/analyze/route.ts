@@ -3,25 +3,24 @@ import { NextRequest, NextResponse } from "next/server"
 export const runtime = "nodejs"
 import { createServerClient } from "@/lib/supabase-server"
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
-import type { PipelineAnalysisResultWithComparison, SafetyLevel } from "@/lib/hazard-game-types"
+import type { PipelineAnalysisResultWithComparison } from "@/lib/hazard-game-types"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
 
-function toLegacyOverallSafety(level: SafetyLevel): number {
-  switch (level) {
-    case "safe": return 4
-    case "caution": return 3
-    case "warning": return 2
-    case "danger": return 1
-  }
+function toLegacyOverallSafety(score: number): number {
+  if (score >= 80) return 5
+  if (score >= 60) return 4
+  if (score >= 40) return 3
+  if (score >= 20) return 2
+  return 1
 }
 
 function toLegacyHazards(result: PipelineAnalysisResultWithComparison) {
   return result.vision.hazards.map((item) => ({
     type: item.label,
     description: item.description,
-    severity: item.confidence >= 0.8 ? 1 : item.confidence >= 0.5 ? 2 : 3,
+    severity: item.confidence >= 0.8 ? 5 : item.confidence >= 0.5 ? 4 : 3,
     location: item.category,
     confidence: item.confidence,
     bbox: item.positions[0]
@@ -205,7 +204,7 @@ export async function POST(request: NextRequest) {
       comparison: pipelineResult.comparison,
       // Legacy-compatible fields
       hazards: toLegacyHazards(pipelineResult),
-      overallSafety: toLegacyOverallSafety(pipelineResult.score.level),
+      overallSafety: toLegacyOverallSafety(pipelineResult.score.score),
       legacyScore: pipelineResult.score.score,
       sessionId,
     })
