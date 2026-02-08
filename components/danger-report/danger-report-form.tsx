@@ -846,7 +846,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const timestamp = Date.now()
       const fileExt = file.name.split(".").pop()
       const fileName = `${timestamp}-${Math.random().toString(36).substring(2, 15)}-${type}.${fileExt}`
-      const filePath = `danger-reports/${fileName}`
+      const filePath = fileName
 
       // アップロードの進捗を監視するためのコールバック
       const onUploadProgress = (progress: number) => {

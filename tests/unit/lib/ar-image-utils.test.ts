@@ -23,6 +23,7 @@ const createMockReport = (overrides: Partial<DangerReport> = {}): DangerReport =
   danger_level: 3,
   status: 'active',
   image_url: null,
+  processed_image_url: null,
   processed_image_urls: null,
   prefecture: '東京都',
   prefecture_code: 13,
@@ -53,6 +54,41 @@ describe('ar-image-utils', () => {
       })
       const images = getReportImages(report)
       expect(images).toEqual(['https://test.supabase.co/storage/v1/object/public/image1.jpg'])
+    })
+
+    it('processed_image_url（単数形）のみがある場合はそれを配列で返す', () => {
+      const report = createMockReport({
+        processed_image_url: 'https://test.supabase.co/storage/v1/object/public/single-processed.jpg',
+      })
+      const images = getReportImages(report)
+      expect(images).toEqual(['https://test.supabase.co/storage/v1/object/public/single-processed.jpg'])
+    })
+
+    it('processed_image_url（単数形）とprocessed_image_urls（複数形）の両方がある場合は結合して返す', () => {
+      const report = createMockReport({
+        processed_image_url: 'https://test.supabase.co/storage/v1/object/public/single-processed.jpg',
+        processed_image_urls: [
+          'https://test.supabase.co/storage/v1/object/public/multi-processed1.jpg',
+        ],
+      })
+      const images = getReportImages(report)
+      expect(images).toEqual([
+        'https://test.supabase.co/storage/v1/object/public/single-processed.jpg',
+        'https://test.supabase.co/storage/v1/object/public/multi-processed1.jpg',
+      ])
+    })
+
+    it('processed_image_url（単数形）の重複は除去される', () => {
+      const report = createMockReport({
+        processed_image_url: 'https://test.supabase.co/storage/v1/object/public/same.jpg',
+        processed_image_urls: [
+          'https://test.supabase.co/storage/v1/object/public/same.jpg',
+        ],
+      })
+      const images = getReportImages(report)
+      expect(images).toEqual([
+        'https://test.supabase.co/storage/v1/object/public/same.jpg',
+      ])
     })
 
     it('processed_image_urlsのみがある場合はそれを返す', () => {
