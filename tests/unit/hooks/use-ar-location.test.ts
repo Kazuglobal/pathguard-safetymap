@@ -11,9 +11,13 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import { useARLocation } from "@/hooks/use-ar-location"
 
 // toast モック
-const mockToast = vi.fn()
+const toastMock = vi.hoisted(() => {
+  const state = { current: vi.fn() }
+  const useToast = vi.fn(() => ({ toast: state.current }))
+  return { state, useToast }
+})
 vi.mock("@/components/ui/use-toast", () => ({
-  useToast: () => ({ toast: mockToast }),
+  useToast: toastMock.useToast,
 }))
 
 // watchPosition / clearWatch モック
@@ -72,6 +76,7 @@ function createMockGeolocationError(
 describe("useARLocation", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    toastMock.state.current = vi.fn()
     capturedSuccessCallback = null
     capturedErrorCallback = null
     watchIdCounter = 0
@@ -184,7 +189,7 @@ describe("useARLocation", () => {
         capturedErrorCallback?.(createMockGeolocationError(3))
       })
 
-      expect(mockToast).toHaveBeenCalledWith(
+      expect(toastMock.state.current).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "位置情報の取得に時間がかかっています",
           variant: "destructive",
@@ -211,15 +216,28 @@ describe("useARLocation", () => {
   describe("watchPosition 再登録防止 (Issue #39)", () => {
     it("toast 参照が変わっても watchPosition が再登録されないこと", () => {
       const { rerender } = renderHook(() => useARLocation())
+      const firstToast = toastMock.state.current
 
       expect(mockWatchPosition).toHaveBeenCalledTimes(1)
 
       // 複数回のリレンダリングを実行
+      toastMock.state.current = vi.fn()
       rerender()
+      const secondToast = toastMock.state.current
+
+      toastMock.state.current = vi.fn()
       rerender()
+      const thirdToast = toastMock.state.current
+
+      toastMock.state.current = vi.fn()
       rerender()
+      const fourthToast = toastMock.state.current
 
       // watchPosition は最初の1回のみ
+      expect(toastMock.useToast.mock.calls.length).toBeGreaterThanOrEqual(4)
+      expect(firstToast).not.toBe(secondToast)
+      expect(secondToast).not.toBe(thirdToast)
+      expect(thirdToast).not.toBe(fourthToast)
       expect(mockWatchPosition).toHaveBeenCalledTimes(1)
       expect(mockClearWatch).not.toHaveBeenCalled()
     })

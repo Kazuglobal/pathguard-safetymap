@@ -11,9 +11,13 @@ import { renderHook, act } from "@testing-library/react"
 import { useAROrientation } from "@/hooks/use-ar-orientation"
 
 // toast モック
-const mockToast = vi.fn()
+const toastMock = vi.hoisted(() => {
+  const state = { current: vi.fn() }
+  const useToast = vi.fn(() => ({ toast: state.current }))
+  return { state, useToast }
+})
 vi.mock("@/components/ui/use-toast", () => ({
-  useToast: () => ({ toast: mockToast }),
+  useToast: toastMock.useToast,
 }))
 
 // DeviceOrientationEvent のイベントリスナーをキャプチャ
@@ -39,6 +43,7 @@ describe("useAROrientation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    toastMock.state.current = vi.fn()
     capturedOrientationHandler = null
 
     window.addEventListener = mockAddEventListener as typeof window.addEventListener
@@ -130,6 +135,7 @@ describe("useAROrientation", () => {
   describe("リスナー再登録防止 (Issue #39)", () => {
     it("toast 参照が変わっても リスナーが再登録されないこと", () => {
       const { rerender } = renderHook(() => useAROrientation())
+      const firstToast = toastMock.state.current
 
       const initialCallCount = mockAddEventListener.mock.calls.filter(
         (call) => call[0] === "deviceorientation"
@@ -137,13 +143,25 @@ describe("useAROrientation", () => {
       expect(initialCallCount).toBe(1)
 
       // 複数回のリレンダリング
+      toastMock.state.current = vi.fn()
       rerender()
+      const secondToast = toastMock.state.current
+
+      toastMock.state.current = vi.fn()
       rerender()
+      const thirdToast = toastMock.state.current
+
+      toastMock.state.current = vi.fn()
       rerender()
+      const fourthToast = toastMock.state.current
 
       const afterRerenderCount = mockAddEventListener.mock.calls.filter(
         (call) => call[0] === "deviceorientation"
       ).length
+      expect(toastMock.useToast.mock.calls.length).toBeGreaterThanOrEqual(4)
+      expect(firstToast).not.toBe(secondToast)
+      expect(secondToast).not.toBe(thirdToast)
+      expect(thirdToast).not.toBe(fourthToast)
       expect(afterRerenderCount).toBe(1)
     })
 
@@ -198,7 +216,7 @@ describe("useAROrientation", () => {
 
       renderHook(() => useAROrientation())
 
-      expect(mockToast).toHaveBeenCalledWith(
+      expect(toastMock.state.current).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "方向検出が利用できません",
         })
