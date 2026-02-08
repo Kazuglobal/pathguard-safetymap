@@ -28,6 +28,8 @@ export function useARLocation(): UseARLocationReturn {
   const [error, setError] = useState<ARError | null>(null)
   const watchIdRef = useRef<number | null>(null)
   const { toast } = useToast()
+  const toastRef = useRef(toast)
+  toastRef.current = toast
 
   const stopWatch = useCallback(() => {
     if (watchIdRef.current !== null) {
@@ -64,7 +66,7 @@ export function useARLocation(): UseARLocationReturn {
             setError(createARError("location_unavailable"))
             break
           case err.TIMEOUT:
-            toast({
+            toastRef.current({
               title: "位置情報の取得に時間がかかっています",
               description: "GPS信号が弱い可能性があります",
               variant: "destructive",
@@ -80,7 +82,7 @@ export function useARLocation(): UseARLocationReturn {
         timeout: LOCATION_TIMEOUT_MS,
       }
     )
-  }, [stopWatch, toast])
+  }, [stopWatch])
 
   useEffect(() => {
     startWatch()
