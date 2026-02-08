@@ -389,6 +389,42 @@ describe('ARImageGallery', () => {
       expect(screen.queryByTestId('ar-image-retry-button')).not.toBeInTheDocument()
     })
 
+    it('images変更時にエラー状態とリトライ回数がリセットされる', () => {
+      const { rerender } = render(
+        <ARImageGallery
+          images={['https://example.com/broken-1.jpg']}
+          alt="テスト画像"
+        />
+      )
+
+      const image = screen.getByAltText('テスト画像')
+
+      // リトライ上限まで到達させる
+      for (let i = 0; i < 3; i++) {
+        fireEvent.error(image)
+        fireEvent.click(screen.getByTestId('ar-image-retry-button'))
+      }
+      fireEvent.error(image)
+      expect(screen.queryByTestId('ar-image-retry-button')).not.toBeInTheDocument()
+
+      // 画像セットを入れ替える
+      rerender(
+        <ARImageGallery
+          images={['https://example.com/broken-2.jpg']}
+          alt="テスト画像"
+        />
+      )
+
+      // 新しい画像では古いエラー状態を引き継がず、loadingから始まる
+      expect(screen.getByTestId('ar-image-skeleton')).toBeInTheDocument()
+      expect(screen.queryByTestId('ar-image-error')).not.toBeInTheDocument()
+
+      // 新しい画像でエラー時は再びリトライ可能
+      const nextImage = screen.getByAltText('テスト画像')
+      fireEvent.error(nextImage)
+      expect(screen.getByTestId('ar-image-retry-button')).toBeInTheDocument()
+    })
+
     it('エラー状態でもナビゲーションが機能する', () => {
       render(
         <ARImageGallery

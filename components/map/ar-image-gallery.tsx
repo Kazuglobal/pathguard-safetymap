@@ -1,6 +1,12 @@
 "use client"
 
-import { useState, useCallback, type KeyboardEvent } from "react"
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+} from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -40,11 +46,28 @@ export function ARImageGallery({
     {}
   )
   const [retryCountMap, setRetryCountMap] = useState<Record<number, number>>({})
+  const previousImagesRef = useRef<string[] | null>(null)
 
   const hasImages = images.length > 0
   const hasMultipleImages = images.length > 1
   const currentImage = hasImages ? images[currentIndex] : null
   const currentState: ImageLoadState = imageStates[currentIndex] ?? "loading"
+
+  useEffect(() => {
+    const previousImages = previousImagesRef.current
+    const hasImageListChanged =
+      previousImages === null ||
+      previousImages.length !== images.length ||
+      previousImages.some((image, index) => image !== images[index])
+
+    if (hasImageListChanged) {
+      setImageStates({})
+      setRetryCountMap({})
+      setCurrentIndex(0)
+    }
+
+    previousImagesRef.current = images
+  }, [images])
 
   const updateImageState = useCallback(
     (index: number, state: ImageLoadState) => {
