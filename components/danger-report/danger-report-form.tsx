@@ -860,6 +860,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const { data, error } = await supabase.storage.from("danger-reports").upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
+        contentType: file.type || "image/jpeg",
       })
 
       if (error) {
@@ -920,8 +921,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       // 報告データの準備
       let uploadedProcessedImageUrls: (string | null)[] = []
       if (processedImageFiles.length > 0) {
+        const compressedFiles = await Promise.all(
+          processedImageFiles.map((file) =>
+            compressImage(file, { maxDimension: 2048, jpegQuality: 0.82, targetMaxSize: 4.5 * 1024 * 1024 })
+          )
+        )
         uploadedProcessedImageUrls = await Promise.all(
-          processedImageFiles.map((file) => uploadImage(file, "processed"))
+          compressedFiles.map((file) => uploadImage(file, "processed"))
         )
       }
 
@@ -936,13 +942,17 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         processed_image_urls: uploadedProcessedImageUrls.filter(Boolean) as string[],
       }
 
-      // 元画像がある場合はアップロード
+      // 元画像がある場合は圧縮してアップロード
       if (originalImageFile) {
-        const imageUrl = await uploadImage(originalImageFile, "original")
+        const compressedOriginal = await compressImage(originalImageFile, {
+          maxDimension: 2048,
+          jpegQuality: 0.85,
+          targetMaxSize: 4.5 * 1024 * 1024,
+        })
+        const imageUrl = await uploadImage(compressedOriginal, "original")
         if (imageUrl) {
           reportData.image_url = imageUrl
         }
-
       }
 
       // 親コンポーネントの送信ハンドラーを呼び出し
