@@ -567,8 +567,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
         // 5) NanoBanana (Gemini 2.5 Flash) image-to-image generation using generated prompts
         try {
+          const compressedForGen = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
           const fd = new FormData()
-          fd.append('image', originalImageFile)
+          fd.append('image', compressedForGen)
           const baseViz =
             prLocal?.vizPrompt ||
             generatedPrompts?.vizPrompt ||
@@ -605,9 +606,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         const simsLocal = prLocal?.simulationPrompts || generatedPrompts?.simulationPrompts
         if (simsLocal) {
           try {
+            const compressedForSim = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
             const make = async (prompt: string, suffix: string) => {
               const fd = new FormData()
-              fd.append('image', originalImageFile)
+              fd.append('image', compressedForSim)
               fd.append('prompt', prompt)
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
@@ -736,8 +738,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         return
       }
 
+      const compressed = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
       const fd = new FormData()
-      fd.append('image', originalImageFile)
+      fd.append('image', compressed)
       const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
