@@ -77,7 +77,25 @@
       "Bash(vercel:*)",
       "WebFetch(domain:path-guardian-k40y61jnt-globalbunny77-gmailcoms-projects.vercel.app)",
       "Bash(git status:*)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "WebFetch(domain:www.iwate-np.co.jp)",
+      "Bash(more:*)",
+      "Bash(git diff:*)",
+      "Bash(git reset:*)",
+      "Bash(gh label list:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue list:*)",
+      "Bash(xargs:*)",
+      "Bash(wc:*)",
+      "Bash(pnpm build:*)",
+      "Bash(findstr:*)",
+      "Bash(pnpm vitest run:*)",
+      "mcp__claude_ai_Vercel__get_deployment",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "WebFetch(domain:qiita.com)",
+      "Bash(gh issue view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue close:*)"
     ],
     "deny": []
   }
