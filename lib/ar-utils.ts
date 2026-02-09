@@ -4,6 +4,13 @@
  */
 
 import type { DangerReport } from "./types"
+import {
+  DEFAULT_FOV,
+  DEFAULT_MAX_DISTANCE,
+  FOV_SAFE_MAX,
+  FOV_SAFE_MIN,
+  MAX_ANGLE_DEGREES,
+} from "./ar-constants"
 
 const isValidCoordinate = (lat: number, lon: number): boolean => {
   return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
@@ -88,6 +95,7 @@ export interface ARHazardOptions {
   maxDistance?: number // 最大表示距離（メートル、デフォルト500m）
   maxAngle?: number // 最大表示角度（度、デフォルト90度 = 前方のみ）
   showBehind?: boolean // 後方の地点も表示するか（デフォルトfalse）
+  fov?: number // 視野角（度、デフォルト60度）
 }
 
 export function calculateARHazardData(
@@ -102,10 +110,15 @@ export function calculateARHazardData(
     ? { maxDistance: options }
     : options
 
-  const maxDistance = opts.maxDistance ?? 500
-  const maxAngle = opts.maxAngle ?? 90
+  const maxDistance = opts.maxDistance ?? DEFAULT_MAX_DISTANCE
+  const maxAngle = opts.maxAngle ?? MAX_ANGLE_DEGREES
   const showBehind = opts.showBehind ?? false
   const safeMaxDistance = maxDistance > 0 ? maxDistance : 1
+  const safeFov = (() => {
+    const rawFov = opts.fov ?? DEFAULT_FOV
+    if (!Number.isFinite(rawFov)) return DEFAULT_FOV
+    return Math.min(FOV_SAFE_MAX, Math.max(FOV_SAFE_MIN, rawFov))
+  })()
 
   if (!isValidCoordinate(userLat, userLon)) {
     return []
@@ -146,8 +159,7 @@ export function calculateARHazardData(
 
       // AR空間での座標を計算
       // 視野角を考慮して、-1〜1の範囲にマッピング
-      const fov = 60 // 視野角（度）
-      const x = Math.tan((relativeAngle * Math.PI) / 180) / Math.tan((fov / 2) * Math.PI / 180)
+      const x = Math.tan((relativeAngle * Math.PI) / 180) / Math.tan((safeFov / 2) * Math.PI / 180)
       const y = 0 // 水平面での表示を想定
       const z = Math.min(distance / safeMaxDistance, 1) // 正規化された距離
 
