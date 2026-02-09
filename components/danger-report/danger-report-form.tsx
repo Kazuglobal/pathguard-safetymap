@@ -567,8 +567,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
         // 5) NanoBanana (Gemini 2.5 Flash) image-to-image generation using generated prompts
         try {
+          const compressedForGen = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
           const fd = new FormData()
-          fd.append('image', originalImageFile)
+          fd.append('image', compressedForGen)
           const baseViz =
             prLocal?.vizPrompt ||
             generatedPrompts?.vizPrompt ||
@@ -605,9 +606,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         const simsLocal = prLocal?.simulationPrompts || generatedPrompts?.simulationPrompts
         if (simsLocal) {
           try {
+            const compressedForSim = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
             const make = async (prompt: string, suffix: string) => {
               const fd = new FormData()
-              fd.append('image', originalImageFile)
+              fd.append('image', compressedForSim)
               fd.append('prompt', prompt)
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
@@ -736,8 +738,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         return
       }
 
+      const compressed = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
       const fd = new FormData()
-      fd.append('image', originalImageFile)
+      fd.append('image', compressed)
       const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
@@ -857,6 +860,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const { data, error } = await supabase.storage.from("danger-reports").upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
+        contentType: file.type || "image/jpeg",
       })
 
       if (error) {
@@ -917,8 +921,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       // 報告データの準備
       let uploadedProcessedImageUrls: (string | null)[] = []
       if (processedImageFiles.length > 0) {
+        const compressedFiles = await Promise.all(
+          processedImageFiles.map((file) =>
+            compressImage(file, { maxDimension: 2048, jpegQuality: 0.82, targetMaxSize: 4.5 * 1024 * 1024 })
+          )
+        )
         uploadedProcessedImageUrls = await Promise.all(
-          processedImageFiles.map((file) => uploadImage(file, "processed"))
+          compressedFiles.map((file) => uploadImage(file, "processed"))
         )
       }
 
@@ -933,13 +942,17 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         processed_image_urls: uploadedProcessedImageUrls.filter(Boolean) as string[],
       }
 
-      // 元画像がある場合はアップロード
+      // 元画像がある場合は圧縮してアップロード
       if (originalImageFile) {
-        const imageUrl = await uploadImage(originalImageFile, "original")
+        const compressedOriginal = await compressImage(originalImageFile, {
+          maxDimension: 2048,
+          jpegQuality: 0.85,
+          targetMaxSize: 4.5 * 1024 * 1024,
+        })
+        const imageUrl = await uploadImage(compressedOriginal, "original")
         if (imageUrl) {
           reportData.image_url = imageUrl
         }
-
       }
 
       // 親コンポーネントの送信ハンドラーを呼び出し

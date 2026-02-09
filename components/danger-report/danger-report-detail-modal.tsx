@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -325,11 +325,6 @@ export default function DangerReportDetailModal({
       fileInputRef.current.value = ""
     }
   }
-  console.log("--- Report Detail Modal ---"); // 目印
-  console.log("Report Data in Modal:", report);
-  console.log("Processed URLs:", report?.processed_image_urls);
-  console.log("Type of Processed URLs:", typeof report?.processed_image_urls);
-  console.log("Is Processed URLs Array?:", Array.isArray(report?.processed_image_urls));
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -356,6 +351,7 @@ export default function DangerReportDetailModal({
             />
             <DialogTitle className="text-xl">{report.title}</DialogTitle>
           </div>
+          <DialogDescription className="sr-only">危険箇所レポートの詳細情報と画像</DialogDescription>
           <DialogClose asChild>
              <Button variant="ghost" size="icon" className="h-8 w-8">
                <X className="h-4 w-4" />
