@@ -1,7 +1,7 @@
 // AR Canvas描画ユーティリティ（純粋関数）
 
 import { formatDistance, type ARHazardData } from "@/lib/ar-utils"
-import { getDangerLevelColor } from "@/lib/ar-display-utils"
+import { getDangerLevelColor, hexToRgba } from "@/lib/ar-display-utils"
 import {
   SCREEN_X_SCALE,
   SCREEN_Y_OFFSET,
@@ -29,6 +29,11 @@ import {
   MARKER_ROAD_Y_PADDING,
   MARKER_FG_COLOR,
 } from "@/lib/ar-constants"
+
+const markerCircleColorOpacityRaw = Number.parseInt(MARKER_CIRCLE_COLOR_ALPHA, 16) / 255
+const markerCircleColorOpacity = Number.isFinite(markerCircleColorOpacityRaw)
+  ? Math.max(0, Math.min(1, markerCircleColorOpacityRaw))
+  : 1
 
 /**
  * 道路からマーカーへの破線を描画
@@ -80,7 +85,7 @@ export function drawMarkerCircle(
   ctx.save()
   ctx.beginPath()
   ctx.arc(x, y, iconRadius, 0, Math.PI * 2)
-  ctx.fillStyle = color + MARKER_CIRCLE_COLOR_ALPHA
+  ctx.fillStyle = hexToRgba(color, markerCircleColorOpacity)
   ctx.fill()
   ctx.strokeStyle = color
   ctx.lineWidth = MARKER_CIRCLE_LINE_WIDTH

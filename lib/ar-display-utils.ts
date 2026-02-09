@@ -71,6 +71,27 @@ export function getDangerLevelColor(level: number): string {
 }
 
 /**
+ * 6桁hex色コードをrgba形式に変換
+ * @param hex 6桁hex色コード（例: "#ef4444"）
+ * @param alpha 透明度（0-1）
+ * @returns rgba文字列（例: "rgba(239, 68, 68, 0.8)"）
+ */
+export function hexToRgba(hex: string, alpha: number): string {
+  const normalizedHex = hex.trim().replace(/^#/, "")
+  const clampedAlpha = Math.max(0, Math.min(1, alpha))
+
+  if (!/^[0-9a-fA-F]{6}$/.test(normalizedHex)) {
+    return `rgba(0, 0, 0, ${clampedAlpha})`
+  }
+
+  const r = Number.parseInt(normalizedHex.slice(0, 2), 16)
+  const g = Number.parseInt(normalizedHex.slice(2, 4), 16)
+  const b = Number.parseInt(normalizedHex.slice(4, 6), 16)
+
+  return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`
+}
+
+/**
  * 方向（度数）を日本語の向き表示に変換
  * 精度情報(±XX°)は含めない
  * @param heading 方向（0-360度、0が北）
