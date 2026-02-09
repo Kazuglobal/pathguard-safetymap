@@ -20,7 +20,6 @@ import {
   MARKER_BORDER_OFFSET,
   MARKER_BORDER_ALPHA,
   MARKER_CIRCLE_LINE_WIDTH,
-  MARKER_CIRCLE_COLOR_ALPHA,
   MARKER_FONT,
   MARKER_TEXT_PADDING,
   MARKER_TEXT_HEIGHT,
@@ -175,7 +174,7 @@ describe("AR Canvas描画ユーティリティ", () => {
 
     it("色にアルファサフィックスを付けてfillする", () => {
       drawMarkerCircle(ctx as unknown as CanvasRenderingContext2D, 100, 200, 20, "#ef4444")
-      expect(ctx.fillStyle).toBe("#ef4444" + MARKER_CIRCLE_COLOR_ALPHA)
+      expect(ctx.fillStyle).toBe("rgba(239, 68, 68, 0.8)")
     })
 
     it("色をstrokeStyleに設定する", () => {
