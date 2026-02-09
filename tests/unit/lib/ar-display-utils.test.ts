@@ -8,6 +8,7 @@ import {
   translateDangerType,
   getDangerLevelLabel,
   getDangerLevelColor,
+  hexToRgba,
   formatHeadingDisplay,
 } from "@/lib/ar-display-utils"
 
@@ -167,6 +168,20 @@ describe("AR表示改善ユーティリティ", () => {
 
     it("負の角度も正しく処理する", () => {
       expect(formatHeadingDisplay(-90)).toBe("西向き")
+    })
+  })
+
+  describe("hexToRgba - 色変換", () => {
+    it("6桁hexをrgbaに変換する", () => {
+      expect(hexToRgba("#ef4444", 0.8)).toBe("rgba(239, 68, 68, 0.8)")
+    })
+
+    it("alpha=0を正しく変換する", () => {
+      expect(hexToRgba("#22c55e", 0)).toBe("rgba(34, 197, 94, 0)")
+    })
+
+    it("alpha=1を正しく変換する", () => {
+      expect(hexToRgba("#22c55e", 1)).toBe("rgba(34, 197, 94, 1)")
     })
   })
 })
