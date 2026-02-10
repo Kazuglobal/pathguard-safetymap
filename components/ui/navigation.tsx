@@ -18,6 +18,7 @@ import {
   Gamepad2,
   Home,
   Route,
+  Brain,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
@@ -90,6 +91,13 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
   ]
 
   const secondaryNavItems: NavItem[] = [
+    {
+      key: "ai-safety",
+      href: "/ai-safety",
+      label: "AI分析",
+      icon: Brain,
+      description: "AI安全分析センター",
+    },
     {
       key: "missions",
       href: "/missions",
