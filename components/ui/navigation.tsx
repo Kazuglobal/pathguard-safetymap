@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -41,18 +41,19 @@ type NavItem = {
 
 export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay = false }: NavigationProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const isAdmin = isAdminUser(user)
   const [loggingOut, setLoggingOut] = React.useState(false)
 
   const handleLogoutClick = React.useCallback(async () => {
-    if (loggingOut) return
     setLoggingOut(true)
     try {
       await onLogout?.()
+      router.push('/login')
     } finally {
       setLoggingOut(false)
     }
-  }, [onLogout, loggingOut])
+  }, [onLogout, router])
 
   const mainNavItems: NavItem[] = [
     {
@@ -286,6 +287,23 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
               </Link>
             )
           })}
+          {user && (
+            <button
+              onClick={handleLogoutClick}
+              disabled={loggingOut}
+              data-testid="mobile-logout-button"
+              aria-label="ログアウト"
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
+                "text-slate-400 hover:text-red-500"
+              )}
+            >
+              <span className="flex items-center justify-center rounded-full border border-transparent bg-white shadow-sm transition-all h-10 w-10 hover:border-red-200 hover:bg-red-50">
+                <LogOut className="h-5 w-5" />
+              </span>
+              <span className="max-w-[72px] text-center">ログアウト</span>
+            </button>
+          )}
         </div>
       </nav>
 
