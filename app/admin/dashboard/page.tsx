@@ -11,53 +11,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ProcessImageDialog } from "@/components/admin/ProcessImageDialog";
-import { useSupabase } from "@/components/providers/supabase-provider"; // useSupabase をインポート
-import type { Database } from "@/lib/database.types"; // 生成された型をインポート
-import { Button } from "@/components/ui/button"; // Button をインポート
+import { useSupabase } from "@/components/providers/supabase-provider";
+import type { Database } from "@/lib/database.types";
+import type { ReportWithProfile } from "@/lib/admin-reports-service";
+import { Button } from "@/components/ui/button";
 
-// 実際のDangerReport型 (database.types.ts から)
-type DangerReport = Database["public"]["Tables"]["danger_reports"]["Row"];
-// report_images テーブルの型 (仮。実際の型に合わせてください)
 type ReportImageInsert = Database["public"]["Tables"]["report_images"]["Insert"];
 
 export default function AdminDashboardPage() {
   const { supabase } = useSupabase();
-  const [reports, setReports] = useState<DangerReport[]>([]); // Supabaseから取得するレポート
+  const [reports, setReports] = useState<ReportWithProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Supabaseからレポートデータを取得する関数
+  // サーバー側 API 経由でレポートデータを取得する関数
   const fetchReports = useCallback(async () => {
-    if (!supabase) return;
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: 必要に応じて、管理者のみが閲覧できるようにRLSを設定するか、ここでフィルタリング
-      // TODO: report_imagesテーブルとJOINして、加工画像の有無なども取得すると良い
-      const { data, error } = await supabase
-        .from("danger_reports")
-        .select(`
-          *,
-          profiles ( display_name )
-        `) // ユーザー名も取得する例
-        .order("created_at", { ascending: false }); // 新しい順
+      const response = await fetch('/api/admin/reports');
+      const json = await response.json();
 
-      if (error) throw error;
-      setReports(data || []);
-    } catch (err: any) {
-      console.error("Error fetching reports:", err);
-      setError(`レポートの取得に失敗しました: ${err.message}`);
+      if (!response.ok) {
+        throw new Error(json.error || 'レポートの取得に失敗しました');
+      }
+
+      setReports(json.reports || []);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'レポートの取得に失敗しました';
+      setError(`レポートの取得に失敗しました: ${message}`);
       setReports([]);
     } finally {
       setIsLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
-    if (supabase) { // supabase クライアントが利用可能になってから fetchReports を呼び出す
-      fetchReports();
-    }
-  }, [supabase, fetchReports]);
+    fetchReports();
+  }, [fetchReports]);
 
   // 加工画像アップロード完了時の処理
   const handleImageUploadComplete = async (processedImageUrl: string, reportId: string) => {
@@ -100,7 +91,7 @@ export default function AdminDashboardPage() {
   };
 
   // 仮のレポートデータを ProcessImageDialog が期待する形に変換
-  const reportForDialog = (report: DangerReport) => ({
+  const reportForDialog = (report: ReportWithProfile) => ({
     id: report.id,
     originalImageUrl: report.image_url || "", // danger_reports.image_url を想定 (nullableなら空文字)
     reportedAt: report.created_at ? new Date(report.created_at).toLocaleString('ja-JP') : "不明",
@@ -135,7 +126,7 @@ export default function AdminDashboardPage() {
               <TableHead>場所 (緯度経度)</TableHead>
               <TableHead>カテゴリ</TableHead>
               <TableHead>元画像</TableHead>
-              {/* <TableHead>ステータス</TableHead> */}
+              <TableHead>ステータス</TableHead>
               <TableHead>操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -146,7 +137,6 @@ export default function AdminDashboardPage() {
                   {report.created_at ? new Date(report.created_at).toLocaleString('ja-JP') : "不明"}
                 </TableCell>
                 <TableCell>
-                  {/* @ts-ignore */}
                   {report.profiles?.display_name || report.user_id?.substring(0, 8) || "匿名"}
                 </TableCell>
                 <TableCell>
@@ -167,16 +157,17 @@ export default function AdminDashboardPage() {
                     "画像なし"
                   )}
                 </TableCell>
-                {/* <TableCell>
-                  <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      // TODO: 加工画像の有無などでステータスを決定
-                      "bg-yellow-200 text-yellow-800"
-                    }`}
-                  >
-                    未処理
-                  </span>
-                </TableCell> */}
+                <TableCell>
+                  {report.processed_image_urls && report.processed_image_urls.length > 0 ? (
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-200 text-green-800">
+                      加工済み ({report.processed_image_urls.length}枚)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-800">
+                      未処理
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <ProcessImageDialog
                     report={reportForDialog(report)}

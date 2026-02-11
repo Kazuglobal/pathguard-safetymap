@@ -56,6 +56,8 @@ const optionalEnvVars = [
   'SUPABASE_ANON_KEY',
   // OpenAI is optional at build time. Related features will be disabled if absent.
   'OPENAI_API_KEY',
+  // Mapbox secret token (sk.xxx) for Usage API. Public token (pk.xxx) cannot access usage data.
+  'MAPBOX_SECRET_TOKEN',
 ]
 
 function validateEnvironmentVariables() {
@@ -129,6 +131,12 @@ function validateEnvironmentVariables() {
     const maybeOpenAIKey = process.env.OPENAI_API_KEY
     if (maybeOpenAIKey && !maybeOpenAIKey.startsWith('sk-')) {
       console.warn("[env] OPENAI_API_KEY is set but doesn't start with 'sk-'. OpenAI features may fail.")
+    }
+
+    // Validate optional Mapbox secret token format if provided
+    const maybeMapboxSecret = process.env.MAPBOX_SECRET_TOKEN
+    if (maybeMapboxSecret && !maybeMapboxSecret.startsWith('sk.')) {
+      console.warn("[env] MAPBOX_SECRET_TOKEN is set but doesn't start with 'sk.'. Usage API requires a secret token.")
     }
 
     if (usedFallbacks.length > 0) {

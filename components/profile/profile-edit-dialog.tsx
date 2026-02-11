@@ -172,19 +172,47 @@ export function ProfileEditDialog({
         avatarUrl = await uploadAvatar(selectedFile, user.id)
       }
 
-      // Upsert profile (create if not exists, update if exists)
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: user.id,
-          email: user.email ?? "",
-          display_name: profile.display_name.trim(),
-          full_name: profile.full_name.trim(),
-          avatar_url: avatarUrl,
-          updated_at: new Date().toISOString(),
-        })
+      const timestamp = new Date().toISOString()
+      const profileUpdates = {
+        display_name: profile.display_name.trim(),
+        full_name: profile.full_name.trim(),
+        avatar_url: avatarUrl,
+        updated_at: timestamp,
+      }
 
-      if (error) throw error
+      // Keep profile edits working with least-privilege grants:
+      // update mutable columns first, then insert only when row does not exist.
+      const { data: updatedRow, error: updateError } = await supabase
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", user.id)
+        .select("id")
+        .maybeSingle()
+
+      if (updateError) throw updateError
+
+      if (!updatedRow) {
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            email: user.email ?? "",
+            ...profileUpdates,
+          })
+
+        if (insertError) {
+          // Handle concurrent create from another request/tab.
+          const duplicateKey = insertError.code === "23505"
+          if (!duplicateKey) throw insertError
+
+          const { error: retryError } = await supabase
+            .from("profiles")
+            .update(profileUpdates)
+            .eq("id", user.id)
+
+          if (retryError) throw retryError
+        }
+      }
 
       toast({
         title: "プロフィールを更新しました",

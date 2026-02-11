@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithGemini } from "@/lib/gemini-image"
 import { createServerClient } from "@/lib/supabase-server"
+import { logApiUsage } from "@/lib/api-usage-logger"
 
 export const runtime = "nodejs"
 
@@ -44,9 +45,11 @@ export async function POST(req: NextRequest) {
       imageMimeType,
     })
 
+    logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: 'gemini-3-pro-image-preview', request_count: 1, estimated_cost_usd: 0.04, success: true })
     return NextResponse.json({ images })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
+    logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: 'gemini-3-pro-image-preview', request_count: 1, estimated_cost_usd: 0, success: false, error_message: message })
     // Graceful degrade: return empty result with warning so UI doesn't break
     return NextResponse.json({ images: [], warning: message }, { status: 200 })
   }
