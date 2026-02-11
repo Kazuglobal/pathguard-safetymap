@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { directionsService } from '@/lib/routing/directions'
+import { logApiUsage } from '@/lib/api-usage-logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
         }
 
         const routeResult = await directionsService.getRoute(options)
-        
+
         if (!routeResult.success) {
           return NextResponse.json(
             { error: routeResult.error || 'Route calculation failed' },
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(routeResult.data)
 
       case 'getMultiModalRoutes':
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
         }
 
         const multiModalResult = await directionsService.getMultiModalRoutes(options)
-        
+
         if (!multiModalResult.success) {
           return NextResponse.json(
             { error: multiModalResult.error || 'Multi-modal routing failed' },
@@ -50,6 +52,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(multiModalResult.data)
 
       case 'optimizeWaypoints':
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(optimizeResult.data)
 
       case 'getTrafficAwareRoute':
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
         }
 
         const trafficResult = await directionsService.getTrafficAwareRoute(options)
-        
+
         if (!trafficResult.success) {
           return NextResponse.json(
             { error: trafficResult.error || 'Traffic-aware routing failed' },
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(trafficResult.data)
 
       case 'getAccessibilityRoute':
@@ -114,6 +119,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(accessibilityResult.data)
 
       case 'getLocalizedInstructions':
@@ -144,6 +150,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(localizedResult.data)
 
       default:
@@ -193,7 +200,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await directionsService.getRoute(routeOptions)
-    
+
     if (!result.success) {
       return NextResponse.json(
         { error: result.error || 'Route calculation failed' },
@@ -201,6 +208,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
     return NextResponse.json(result.data)
   } catch (error) {
     console.error('Directions GET API error:', error)

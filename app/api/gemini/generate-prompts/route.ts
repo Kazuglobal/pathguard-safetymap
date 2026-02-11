@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateDisasterPrompts } from "@/lib/gemini-prompts"
 import { createServerClient } from "@/lib/supabase-server"
+import { logApiUsage } from "@/lib/api-usage-logger"
 
 export const runtime = "nodejs"
 
@@ -84,9 +85,11 @@ export async function POST(req: NextRequest) {
 
     try {
       const prompts = await generateDisasterPrompts(imageBase64, { language, customHazards })
+      logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-prompts', model_name: 'gemini-2.5-flash', request_count: 1, estimated_cost_usd: 0.002, success: true })
       return NextResponse.json({ success: true, prompts })
     } catch (innerError) {
       const warning = innerError instanceof Error ? innerError.message : String(innerError)
+      logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-prompts', model_name: 'gemini-2.5-flash', request_count: 1, estimated_cost_usd: 0, success: false, error_message: warning })
       const safeWarning = isDev ? warning : "プロンプトの生成に失敗しました。"
       return NextResponse.json({ success: false, prompts: fallbackPrompts(), warning: safeWarning })
     }

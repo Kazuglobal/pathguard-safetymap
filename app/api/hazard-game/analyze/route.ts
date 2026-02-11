@@ -4,6 +4,7 @@ export const runtime = "nodejs"
 import { createServerClient } from "@/lib/supabase-server"
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
 import type { PipelineAnalysisResultWithComparison } from "@/lib/hazard-game-types"
+import { logApiUsage } from "@/lib/api-usage-logger"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
@@ -166,6 +167,7 @@ export async function POST(request: NextRequest) {
       else if (errorMessage.includes('rate limit') || errorMessage.includes('利用枠')) status = 429
       else if (errorMessage.includes('サイズ') || errorMessage.includes('大きすぎ')) status = 413
 
+      logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: 'gemini-2.5-flash', request_count: 3, estimated_cost_usd: 0, success: false, error_message: errorMessage })
       const clientMessage = includeDebug ? errorMessage : "画像の分析中にエラーが発生しました。"
       return NextResponse.json(
         {
@@ -191,6 +193,8 @@ export async function POST(request: NextRequest) {
     } catch (pointsError) {
       console.error("Error in points transaction:", pointsError)
     }
+
+    logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: 'gemini-2.5-flash', request_count: 3, estimated_cost_usd: 0.006, success: true })
 
     // Return both new pipeline format and legacy-compatible fields
     return NextResponse.json({

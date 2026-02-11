@@ -4,6 +4,7 @@
 
 const ADMIN_EMAILS: ReadonlyArray<string> = [
   "globalbunny77@gmail.com",
+  "japanprofessionals@gmail.com",
 ] as const
 
 /**
