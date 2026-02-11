@@ -193,11 +193,23 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
             <div className="flex items-center space-x-3">
               {user && <NotificationBell isLoggedIn={!!user} />}
               {user ? (
-                <div className="hidden sm:flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
-                  <span className="font-semibold text-gray-900">
-                    {user.email?.split("@")[0] || "ユーザー"}
-                  </span>
-                  <span className="text-xs text-gray-500">ログイン中</span>
+                <div className="hidden sm:flex items-center space-x-3">
+                  <div className="flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
+                    <span className="font-semibold text-gray-900">
+                      {user.email?.split("@")[0] || "ユーザー"}
+                    </span>
+                    <span className="text-xs text-gray-500">ログイン中</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLogout}
+                    data-testid="logout-button"
+                    aria-label="ログアウト"
+                    className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
                 </div>
               ) : (
                 <div className="hidden sm:flex items-center space-x-2">
