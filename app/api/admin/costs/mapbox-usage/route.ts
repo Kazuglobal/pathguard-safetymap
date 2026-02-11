@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { verifyAdminRequest } from '@/lib/admin-auth'
 
-const MAPBOX_USERNAME = process.env.MAPBOX_USERNAME || process.env.NEXT_PUBLIC_MAPBOX_USERNAME
+// Mapbox は使用量統計の公開 REST API を提供していない。
+// 使用量データは Mapbox ダッシュボード (https://account.mapbox.com/) の
+// Statistics ページでのみ確認可能。
+// 参考: https://docs.mapbox.com/accounts/guides/statistics/
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const { authorized, status, error } = await verifyAdminRequest()
     if (!authorized) {
@@ -13,57 +16,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!MAPBOX_USERNAME) {
-      return NextResponse.json(
-        { error: 'Mapbox Usage API を利用するには .env.local に MAPBOX_USERNAME を設定してください（例: MAPBOX_USERNAME=kazu1988）' },
-        { status: 501 }
-      )
-    }
-
-    const accessToken = process.env.MAPBOX_ACCESS_TOKEN
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Mapbox Usage API を利用するには .env.local に MAPBOX_ACCESS_TOKEN（シークレットトークン sk.xxx）を設定してください' },
-        { status: 501 }
-      )
-    }
-
-    const { searchParams } = new URL(request.url)
-    const periodParam = searchParams.get('period') || ''
-    if (periodParam && !/^\d{6}$/.test(periodParam)) {
-      return NextResponse.json(
-        { error: 'period パラメータが不正です。YYYYMM 形式で指定してください' },
-        { status: 400 }
-      )
-    }
-    const period = periodParam
-
-    const url = new URL(`https://api.mapbox.com/usage/v1/${encodeURIComponent(MAPBOX_USERNAME)}`)
-    if (period) {
-      url.searchParams.set('period', period)
-    }
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
+    return NextResponse.json({
+      unavailable: true,
+      message: 'Mapbox は使用量統計の公開 API を提供していません。使用量データは Mapbox ダッシュボードで確認してください。',
+      dashboardUrl: 'https://account.mapbox.com/',
     })
-
-    if (!response.ok) {
-      const requestId = response.headers.get('x-request-id') || response.headers.get('x-mapbox-request-id')
-      const requestIdInfo = requestId ? ` (request_id: ${requestId})` : ''
-      console.error(`[api/admin/costs/mapbox-usage] Mapbox API error: status=${response.status}${requestIdInfo}`)
-      return NextResponse.json(
-        { error: `Mapbox API から使用量データを取得できませんでした（status: ${response.status}）${requestIdInfo}` },
-        { status: 502 }
-      )
-    }
-
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error('[api/admin/costs/mapbox-usage] Failed to fetch Mapbox usage data:', error)
+  } catch (err) {
+    console.error('[api/admin/costs/mapbox-usage] Unexpected error:', err)
     return NextResponse.json(
       { error: 'Mapbox 使用量データの取得に失敗しました' },
       { status: 500 }
