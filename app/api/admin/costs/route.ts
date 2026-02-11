@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase-server'
-import { isAdminEmail } from '@/lib/admin'
+import { verifyAdminRequest } from '@/lib/admin-auth'
 import { getCostSummary, getDailyBreakdown, getEndpointBreakdown, getBudgetSettings } from '@/lib/admin-costs-service'
 
 const VALID_PERIODS = ['month', 'day'] as const
@@ -17,46 +16,14 @@ function isValidYearMonth(value: string | null): value is string {
   return month >= 1 && month <= 12
 }
 
-async function verifyAdmin(): Promise<{ authorized: boolean; errorResponse?: NextResponse }> {
-  const supabase = await createServerClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      ),
-    }
-  }
-
-  if (!isAdminEmail(user.email)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return {
-        authorized: false,
-        errorResponse: NextResponse.json(
-          { error: '管理者権限が必要です' },
-          { status: 403 }
-        ),
-      }
-    }
-  }
-
-  return { authorized: true }
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const { authorized, errorResponse } = await verifyAdmin()
+    const { authorized, status, error } = await verifyAdminRequest()
     if (!authorized) {
-      return errorResponse
+      return NextResponse.json(
+        { error: error ?? '管理者権限が必要です' },
+        { status: status ?? 403 }
+      )
     }
 
     const { searchParams } = new URL(request.url)
@@ -113,9 +80,9 @@ export async function GET(request: NextRequest) {
       total_cost_usd,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : '不明なエラーが発生しました'
+    console.error('[api/admin/costs] Failed to fetch cost data:', error)
     return NextResponse.json(
-      { error: `コストデータの取得に失敗しました: ${message}` },
+      { error: 'コストデータの取得に失敗しました' },
       { status: 500 }
     )
   }

@@ -1,49 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase-server'
-import { isAdminEmail } from '@/lib/admin'
+import { verifyAdminRequest } from '@/lib/admin-auth'
 
 const MAPBOX_USERNAME = process.env.MAPBOX_USERNAME || process.env.NEXT_PUBLIC_MAPBOX_USERNAME
 
-async function verifyAdmin(): Promise<{ authorized: boolean; errorResponse?: NextResponse }> {
-  const supabase = await createServerClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      ),
-    }
-  }
-
-  if (!isAdminEmail(user.email)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return {
-        authorized: false,
-        errorResponse: NextResponse.json(
-          { error: '管理者権限が必要です' },
-          { status: 403 }
-        ),
-      }
-    }
-  }
-
-  return { authorized: true }
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const { authorized, errorResponse } = await verifyAdmin()
+    const { authorized, status, error } = await verifyAdminRequest()
     if (!authorized) {
-      return errorResponse
+      return NextResponse.json(
+        { error: error ?? '管理者権限が必要です' },
+        { status: status ?? 403 }
+      )
     }
 
     if (!MAPBOX_USERNAME) {
@@ -71,31 +38,34 @@ export async function GET(request: NextRequest) {
     }
     const period = periodParam
 
-    const url = new URL(`https://api.mapbox.com/usage/v1/${MAPBOX_USERNAME}`)
-    url.searchParams.set('access_token', accessToken)
+    const url = new URL(`https://api.mapbox.com/usage/v1/${encodeURIComponent(MAPBOX_USERNAME)}`)
     if (period) {
       url.searchParams.set('period', period)
     }
 
     const response = await fetch(url.toString(), {
-      headers: { 'Accept': 'application/json' },
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      const sanitizedError = errorText.slice(0, 200).replace(/[<>]/g, '')
+      const requestId = response.headers.get('x-request-id') || response.headers.get('x-mapbox-request-id')
+      const requestIdInfo = requestId ? ` (request_id: ${requestId})` : ''
+      console.error(`[api/admin/costs/mapbox-usage] Mapbox API error: status=${response.status}${requestIdInfo}`)
       return NextResponse.json(
-        { error: `Mapbox API エラー: ${response.status} ${sanitizedError}` },
-        { status: response.status }
+        { error: `Mapbox API から使用量データを取得できませんでした（status: ${response.status}）${requestIdInfo}` },
+        { status: 502 }
       )
     }
 
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
-    const message = error instanceof Error ? error.message : '不明なエラーが発生しました'
+    console.error('[api/admin/costs/mapbox-usage] Failed to fetch Mapbox usage data:', error)
     return NextResponse.json(
-      { error: `Mapbox 使用量データの取得に失敗しました: ${message}` },
+      { error: 'Mapbox 使用量データの取得に失敗しました' },
       { status: 500 }
     )
   }

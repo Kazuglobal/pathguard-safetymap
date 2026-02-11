@@ -1,58 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase-server'
-import { isAdminEmail } from '@/lib/admin'
+import { verifyAdminRequest } from '@/lib/admin-auth'
 import { getBudgetSettings, updateBudgetSettings } from '@/lib/admin-costs-service'
 
 const VALID_PROVIDERS = ['gemini', 'openai', 'mapbox'] as const
 
-async function verifyAdmin(): Promise<{ authorized: boolean; errorResponse?: NextResponse }> {
-  const supabase = await createServerClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+function isFiniteNonNegative(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+}
 
-  if (authError || !user) {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      ),
-    }
-  }
-
-  if (!isAdminEmail(user.email)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return {
-        authorized: false,
-        errorResponse: NextResponse.json(
-          { error: '管理者権限が必要です' },
-          { status: 403 }
-        ),
-      }
-    }
-  }
-
-  return { authorized: true }
+function isFinitePercent(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
 }
 
 export async function GET() {
   try {
-    const { authorized, errorResponse } = await verifyAdmin()
+    const { authorized, status, error } = await verifyAdminRequest()
     if (!authorized) {
-      return errorResponse
+      return NextResponse.json(
+        { error: error ?? '管理者権限が必要です' },
+        { status: status ?? 403 }
+      )
     }
 
     const settings = await getBudgetSettings()
     return NextResponse.json(settings)
   } catch (error) {
-    const message = error instanceof Error ? error.message : '不明なエラーが発生しました'
+    console.error('[api/admin/costs/budget] Failed to fetch budget settings:', error)
     return NextResponse.json(
-      { error: `予算設定の取得に失敗しました: ${message}` },
+      { error: '予算設定の取得に失敗しました' },
       { status: 500 }
     )
   }
@@ -60,9 +35,12 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { authorized, errorResponse } = await verifyAdmin()
+    const { authorized, status, error } = await verifyAdminRequest()
     if (!authorized) {
-      return errorResponse
+      return NextResponse.json(
+        { error: error ?? '管理者権限が必要です' },
+        { status: status ?? 403 }
+      )
     }
 
     const body = await request.json()
@@ -75,16 +53,23 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    if (monthly_budget_usd !== undefined && (typeof monthly_budget_usd !== 'number' || monthly_budget_usd < 0)) {
+    if (monthly_budget_usd !== undefined && !isFiniteNonNegative(monthly_budget_usd)) {
       return NextResponse.json(
         { error: 'monthly_budget_usd は 0 以上の数値を指定してください' },
         { status: 400 }
       )
     }
 
-    if (alert_threshold_percent !== undefined && (typeof alert_threshold_percent !== 'number' || alert_threshold_percent < 0 || alert_threshold_percent > 100)) {
+    if (alert_threshold_percent !== undefined && !isFinitePercent(alert_threshold_percent)) {
       return NextResponse.json(
         { error: 'alert_threshold_percent は 0〜100 の数値を指定してください' },
+        { status: 400 }
+      )
+    }
+
+    if (monthly_budget_usd === undefined && alert_threshold_percent === undefined) {
+      return NextResponse.json(
+        { error: '更新する項目がありません。monthly_budget_usd または alert_threshold_percent を指定してください' },
         { status: 400 }
       )
     }
@@ -100,9 +85,9 @@ export async function PUT(request: NextRequest) {
     const updated = await updateBudgetSettings(provider, settings)
     return NextResponse.json(updated)
   } catch (error) {
-    const message = error instanceof Error ? error.message : '不明なエラーが発生しました'
+    console.error('[api/admin/costs/budget] Failed to update budget settings:', error)
     return NextResponse.json(
-      { error: `予算設定の更新に失敗しました: ${message}` },
+      { error: '予算設定の更新に失敗しました' },
       { status: 500 }
     )
   }
