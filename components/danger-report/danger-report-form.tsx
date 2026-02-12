@@ -607,7 +607,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           } else if (isActive()) {
             const t = await genRes.text()
             console.warn('gemini generate-image failed', genRes.status, t)
-            setAutoGenError(`AI画像生成に失敗しました: ${genRes.status} ${genRes.statusText}`)
+            setAutoGenError(`AI画像生成に失敗しました (${genRes.status})`)
           }
         } catch (e) {
           if (isActive()) console.warn('nanobanana generation skipped due to error', e)
@@ -757,8 +757,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       fd.append('prompt', withRegions)
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`画像生成に失敗しました: ${res.status} ${res.statusText} - ${text}`)
+        const errorBody = await res.text()
+        const detail = errorBody ? `: ${errorBody.slice(0, 200)}` : ''
+        throw new Error(`画像生成に失敗しました (${res.status})${detail}`)
       }
 
       const json = await res.json()

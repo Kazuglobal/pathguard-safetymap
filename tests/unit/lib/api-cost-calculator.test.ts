@@ -3,6 +3,7 @@ import {
   calculateCost,
   getModelPricing,
   calculateMapboxCost,
+  estimateImageGenerationCost,
   estimateMonthlyProjection,
   API_PRICING,
 } from '@/lib/api-cost-calculator'
@@ -91,6 +92,28 @@ describe('api-cost-calculator', () => {
       })
       expect(cost).toBeGreaterThan(0)
       expect(Number.isFinite(cost)).toBe(true)
+    })
+  })
+
+  describe('estimateImageGenerationCost', () => {
+    it('returns per-request price for known models', () => {
+      const cost = estimateImageGenerationCost('gemini-2.5-flash-image')
+      expect(cost).toBeCloseTo(0.04, 6)
+    })
+
+    it('falls back to default price for unknown models', () => {
+      const cost = estimateImageGenerationCost('unknown-image-model')
+      expect(cost).toBeCloseTo(0.04, 6)
+    })
+
+    it('scales linearly with requestCount', () => {
+      const cost = estimateImageGenerationCost('gemini-3-pro-image-preview', 3)
+      expect(cost).toBeCloseTo(0.12, 6)
+    })
+
+    it('returns 0 when requestCount is zero or negative', () => {
+      expect(estimateImageGenerationCost('gemini-2.5-flash-image', 0)).toBe(0)
+      expect(estimateImageGenerationCost('gemini-2.5-flash-image', -2)).toBe(0)
     })
   })
 
