@@ -282,25 +282,6 @@ export function Navigation({
               </Link>
             )
           })}
-          {user && (
-            <button
-              type="button"
-              onClick={onLogout}
-              disabled={isLoggingOut}
-              data-testid="mobile-logout-button"
-              aria-label="ログアウト"
-              aria-busy={isLoggingOut}
-              className={cn(
-                "flex min-w-[56px] flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
-                isLoggingOut ? "text-slate-400" : "text-rose-600 active:text-rose-700"
-              )}
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50">
-                <LogOut className="h-5 w-5" />
-              </span>
-              <span className="max-w-[72px] text-center">ログアウト</span>
-            </button>
-          )}
         </div>
       </nav>
 
