@@ -37,6 +37,10 @@ const DEFAULT_MODEL_PRICING: ModelPricing = {
 
 export const API_PRICING = {
   gemini: {
+    'gemini-2.5-flash-image': {
+      inputPer1kTokens: 0.00015,
+      outputPer1kTokens: 0.03,
+    },
     'gemini-3-pro-image-preview': {
       inputPer1kTokens: 0.0025,
       outputPer1kTokens: 0.01,
