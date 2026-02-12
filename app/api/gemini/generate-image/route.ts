@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generateImageWithGemini, getImageModel } from "@/lib/gemini-image"
+import { generateImageWithGeminiWithModel, getImageModel } from "@/lib/gemini-image"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
+import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
-  const modelName = getImageModel()
+  let modelName = getImageModel()
   try {
     // 認証チェック - ログインユーザーのみ使用可能
     const supabase = await createServerClient()
@@ -41,16 +42,24 @@ export async function POST(req: NextRequest) {
       imageMimeType = file.type || "image/png"
     }
 
-    const images = await generateImageWithGemini({
+    const result = await generateImageWithGeminiWithModel({
       prompt,
       imageBase64,
       imageMimeType,
     })
+    modelName = result.model
 
     try {
-      logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: modelName, request_count: 1, estimated_cost_usd: 0.04, success: true })
+      logApiUsage({
+        api_provider: 'gemini',
+        api_endpoint: 'generate-image',
+        model_name: modelName,
+        request_count: 1,
+        estimated_cost_usd: estimateImageGenerationCost(modelName, 1),
+        success: true,
+      })
     } catch { /* fire-and-forget */ }
-    return NextResponse.json({ images })
+    return NextResponse.json({ images: result.images })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     try {

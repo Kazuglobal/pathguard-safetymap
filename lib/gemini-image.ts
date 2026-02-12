@@ -8,6 +8,10 @@ export type GenerateImageParams = {
   imageBase64?: string
   imageMimeType?: string
 }
+export type GenerateImageResult = {
+  images: GeneratedImage[]
+  model: string
+}
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 import { getSanitizedGeminiApiKey } from "./gemini-util"
@@ -241,6 +245,18 @@ export async function generateImageWithGemini({
   imageBase64,
   imageMimeType,
 }: GenerateImageParams): Promise<GeneratedImage[]> {
+  const result = await generateImageWithGeminiWithModel({
+    prompt,
+    imageBase64,
+    imageMimeType,
+  })
+  return result.images
+}
+export async function generateImageWithGeminiWithModel({
+  prompt,
+  imageBase64,
+  imageMimeType,
+}: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = getSanitizedGeminiApiKey()
 
   // Get the image generation model (user-specified or default)
@@ -264,7 +280,7 @@ export async function generateImageWithGemini({
           const primaryImages = await extractImagesFromAny(payload, apiKey)
           if (primaryImages.length > 0) {
             console.log(`[Gemini] Success with model: ${model} via :predict`)
-            return primaryImages
+            return { images: primaryImages, model }
           }
         } else {
           const errText = await primary.text()
@@ -317,7 +333,7 @@ export async function generateImageWithGemini({
         const images = await extractImagesFromAny(data, apiKey)
         if (images.length > 0) {
           console.log(`[Gemini] Success with model: ${model} via generateContent`)
-          return images
+          return { images, model }
         }
       } else {
         const errText = await res.text()

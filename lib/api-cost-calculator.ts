@@ -34,6 +34,11 @@ const DEFAULT_MODEL_PRICING: ModelPricing = {
   inputPer1kTokens: 0.001,
   outputPer1kTokens: 0.002,
 } as const
+const IMAGE_GENERATION_ESTIMATED_COST_PER_REQUEST_USD = {
+  'gemini-2.5-flash-image': 0.04,
+  'gemini-3-pro-image-preview': 0.04,
+} as const
+const DEFAULT_IMAGE_GENERATION_ESTIMATED_COST_USD = 0.04
 
 export const API_PRICING = {
   gemini: {
@@ -126,6 +131,22 @@ export function calculateCost({
   return inputCost + outputCost
 }
 
+/**
+ * Estimates image generation cost as a per-request fixed price.
+ *
+ * The provider does not always return token counts for image generation,
+ * so request-level estimation is used for dashboard consistency.
+ */
+export function estimateImageGenerationCost(model: string, requestCount = 1): number {
+  const safeRequestCount = Math.max(0, requestCount)
+  if (safeRequestCount === 0) {
+    return 0
+  }
+  const perRequest =
+    (IMAGE_GENERATION_ESTIMATED_COST_PER_REQUEST_USD as Record<string, number>)[model] ??
+    DEFAULT_IMAGE_GENERATION_ESTIMATED_COST_USD
+  return perRequest * safeRequestCount
+}
 // ---------------------------------------------------------------------------
 // Mapbox cost calculation
 // ---------------------------------------------------------------------------
