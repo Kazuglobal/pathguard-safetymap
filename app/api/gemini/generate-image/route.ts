@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
           ? STANDARD_SCENARIO_IMAGE_MODEL
           : undefined
 
+
     const result = await generateImageWithGeminiWithModel({
       prompt,
       imageBase64,

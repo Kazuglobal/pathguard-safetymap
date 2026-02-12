@@ -11,6 +11,7 @@ export interface DangerReport {
   danger_level: number
   status: string
   image_url: string | null
+  processed_image_url: string | null
   processed_image_urls: string[] | null
   prefecture: string | null
   prefecture_code: number | null
