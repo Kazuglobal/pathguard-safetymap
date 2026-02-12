@@ -25,6 +25,7 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
 import { isAdminUser } from "@/lib/admin"
+import { useCurrentLocation } from "@/hooks/use-current-location"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -292,7 +293,16 @@ export default function MapContainer() {
   const [isHelpVisible, setIsHelpVisible] = useState(true);
   const [isHelpDismissed, setIsHelpDismissed] = useState(false);
   const [showMobileMapHint, setShowMobileMapHint] = useState(false);
-  // --- ▲▲▲ --- 
+
+  // GPS現在地取得フック
+  const {
+    location: gpsLocation,
+    isLoading: isAcquiringGPS,
+    requestLocation: requestGPSLocation,
+    reset: resetGPSLocation,
+  } = useCurrentLocation()
+  const gpsConsumedRef = useRef(false)
+  // --- ▲▲▲ ---
 
   useEffect(() => {
     if (!isMobile) {
@@ -1154,6 +1164,32 @@ export default function MapContainer() {
   };
   // --- ▲▲▲ ---
 
+  // --- ▼▼▼ 現在地で報告ハンドラー ▼▼▼ ---
+  const handleReportAtCurrentLocation = useCallback(() => {
+    gpsConsumedRef.current = false
+    resetGPSLocation()
+    requestGPSLocation()
+  }, [resetGPSLocation, requestGPSLocation])
+
+  // GPS位置取得成功時: 地図を移動してフォームを開く
+  useEffect(() => {
+    if (!gpsLocation || gpsConsumedRef.current) return
+    gpsConsumedRef.current = true
+
+    setSelectedLocation(gpsLocation)
+    flyToLocation(gpsLocation[0], gpsLocation[1], 16)
+    setAwaitingLocationSelection(false)
+    setIsReportFormOpen(true)
+    resetGPSLocation()
+
+    toast({
+      title: "現在地を取得しました",
+      description: "現在地で危険箇所を報告できます",
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsLocation])
+  // --- ▲▲▲ 現在地で報告ハンドラー ▲▲▲ ---
+
   // --- Render ---
   return (
     <div className="fullscreen-map-container">
@@ -1172,6 +1208,8 @@ export default function MapContainer() {
           isARMode={isARMode}
           onToggleSidebar={toggleSidebar}
           isMobile={isMobile}
+          onReportAtCurrentLocation={handleReportAtCurrentLocation}
+          isAcquiringGPS={isAcquiringGPS}
         />
 
         {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}

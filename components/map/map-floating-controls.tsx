@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Navigation, List } from "lucide-react"
+import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Navigation, List, Loader2, Crosshair } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
 import Map3DToggle from "./map-3d-toggle"
 import HelpDialog from "./help-dialog"
@@ -19,6 +19,8 @@ interface MapFloatingControlsProps {
   isARMode?: boolean
   onToggleSidebar?: () => void
   isMobile?: boolean
+  onReportAtCurrentLocation?: () => void
+  isAcquiringGPS?: boolean
 }
 
 export default function MapFloatingControls({
@@ -33,6 +35,8 @@ export default function MapFloatingControls({
   isARMode = false,
   onToggleSidebar,
   isMobile = false,
+  onReportAtCurrentLocation,
+  isAcquiringGPS = false,
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
@@ -157,7 +161,60 @@ export default function MapFloatingControls({
             )}
           </Button>
         )}
+
+        {/* 現在地で報告ボタン（モバイル用） */}
+        {isMobile && onReportAtCurrentLocation && (
+          <Button
+            onClick={onReportAtCurrentLocation}
+            disabled={isReportFormOpen || isSelecting || isAcquiringGPS}
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 shadow-lg border bg-white/95 backdrop-blur-sm border-green-200 hover:bg-green-50"
+            aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
+          >
+            {isAcquiringGPS ? (
+              <>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                位置取得中
+              </>
+            ) : (
+              <>
+                <Crosshair className="mr-1.5 h-4 w-4 text-green-600" />
+                現在地で報告
+              </>
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* 下部中央: 現在地で報告ボタン（デスクトップ） */}
+      {showPrimaryCta && onReportAtCurrentLocation && (
+        <div
+          className="absolute left-1/2 transform -translate-x-1/2 z-20"
+          style={{ bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)" : "9.5rem" }}
+        >
+          <Button
+            onClick={onReportAtCurrentLocation}
+            disabled={isReportFormOpen || !!isSelectingLocation || isAcquiringGPS}
+            variant="outline"
+            size="lg"
+            className="h-12 px-5 rounded-full shadow-lg bg-white/95 backdrop-blur-sm border border-green-200 hover:bg-green-50"
+            aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
+          >
+            {isAcquiringGPS ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                位置取得中...
+              </>
+            ) : (
+              <>
+                <Crosshair className="mr-2 h-4 w-4 text-green-600" />
+                現在地で報告
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* 下部中央: 報告ボタン（メインCTA） */}
       {showPrimaryCta && (
