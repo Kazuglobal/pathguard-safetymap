@@ -96,9 +96,11 @@ Step 1 – Risk Observation
 - Keep entries concise and actionable while avoiding private information.
 
 Step 2 – Hazard Visualization Prompt
-- Provide a single English prompt suited for the Gemini Image Generation API (Imagen 3 / Gemini 3) that creates one photorealistic 2048×2048 infographic.
-- Requirements: retain the same camera position, lens, perspective, and daylight as the uploaded photo; natural color grading; crisp focus; high dynamic range; Japanese suburban street context; do not introduce new people or vehicles.
-- Describe semi-transparent overlays and warning icons for each hazard, with the specified Japanese labels: collapsed fence (red shade + exclamation icons, label "フェンス倒壊"), fallen utility pole (red circle + arrow, label "電柱倒壊"), flooding (blue haze + droplet icons, label "冠水"), fire spread (orange glow + flame icons, label "延焼"). Explicitly request “no extra text or watermarks” and forbid mentioning model names.
+- Provide a single polished English prompt for standard hazard-visualization (not post-disaster destruction) for the Gemini Image Generation API.
+- The prompt must enforce strict scene preservation: same camera position, lens, perspective, horizon, daylight, and object layout as the uploaded photo. No scene replacement and no new people/vehicles/buildings.
+- The prompt must request overlay-only risk communication with exactly these Japanese labels: "フェンス倒壊注意", "電柱倒壊注意", "冠水注意", "延焼注意".
+- Require location-anchored callouts (semi-transparent polygons, arrows, warning icons, numbered markers 1-4, short leader lines) and a compact Japanese legend: "凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意".
+- Require realistic civic-infographic quality (HDR, sharp focus, balanced contrast, mobile-readable labels) and explicitly forbid gore, graphic destruction, extra text, watermarks, or model names.
 
 Step 3 – Post-Disaster Simulation Prompts
 - Provide four English prompts (earthquake aftermath, typhoon-class wind aftermath, flash flood, post-fire) for the Gemini Image Generation API.
@@ -167,7 +169,7 @@ Do not output anything except the JSON object.`
     vizPrompt:
       typeof parsed?.vizPrompt === "string" && parsed.vizPrompt.trim().length > 0
         ? parsed.vizPrompt
-        : "Photorealistic 2048x2048 infographic from the same viewpoint as the uploaded Japanese suburban street photo. Maintain identical camera angle, daylight, and composition. Overlay semi-transparent hazard shading with warning icons and Japanese labels: collapsed fence (red shade + exclamation icons, label \"フェンス倒壊\"), fallen utility pole (red circle + arrow, label \"電柱倒壊\"), flooding (blue haze + droplet icons, label \"冠水\"), fire spread (orange glow + flame icons, label \"延焼\"). High dynamic range, sharp focus, no extra people, vehicles, text, or watermarks, and do not mention model names.",
+        : "Create one 2048x2048 photorealistic hazard-communication infographic based on the uploaded Japanese suburban school-route photo. Preserve the original scene geometry exactly: same camera position, lens, horizon, perspective, building outlines, road markings, and daylight color temperature. Do not alter existing objects and do not add new buildings, people, or vehicles. Add overlays only. Mark four potential hazards with clean civic-design callouts anchored to real locations: (1) fence instability: semi-transparent red polygon + warning triangles + Japanese label \"フェンス倒壊注意\"; (2) utility pole failure risk: red circle/arrow + Japanese label \"電柱倒壊注意\"; (3) flooding-prone low spot: semi-transparent blue wash + droplet icons + Japanese label \"冠水注意\"; (4) fire spread exposure: semi-transparent amber haze + flame icons + Japanese label \"延焼注意\". Add numbered markers 1-4 with short leader lines and include a compact Japanese legend at bottom-left: \"凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意\". Style: realistic, HDR, sharp focus, balanced contrast, mobile-readable annotations. No graphic destruction, no gore, no extra text beyond the specified Japanese labels and legend, no watermark, and no model names.",
     simulationPrompts: {
       earthquake:
         typeof parsed?.simulationPrompts?.earthquake === "string" && parsed.simulationPrompts.earthquake.trim().length > 0
