@@ -14,6 +14,8 @@ import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
+import { useLongPress } from "@/hooks/use-long-press"
+import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
 
 interface ShowImageOptions {
   reportId?: string
@@ -51,6 +53,9 @@ export default function DangerReportDetailModal({
   // 差し替え用の入力
   const replaceInputRef = useRef<HTMLInputElement>(null)
   const [replaceTargetIndex, setReplaceTargetIndex] = useState<number | null>(null)
+
+  // 長押し拡大表示用
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
 
   // report.processed_image_urls を直接利用するヘルパー
   const currentProcessedUrls = report?.processed_image_urls || []
@@ -390,15 +395,11 @@ export default function DangerReportDetailModal({
                     </TabsList>
                     <TabsContent value="original" className="mt-4">
                       {originalImageSrc && !originalImageError ? (
-                        <div className="relative w-full h-64 md:h-80 bg-gray-50 rounded-md overflow-hidden">
-                          <Image
-                            src={addCacheBuster(originalImageSrc) || "/placeholder.svg"}
-                            alt="危険箇所の元画像"
-                            fill
-                            className="object-contain"
-                            onError={() => setOriginalImageError(true)}
-                          />
-                        </div>
+                        <OriginalImageWithLongPress
+                          src={addCacheBuster(originalImageSrc) || "/placeholder.svg"}
+                          onZoom={() => setZoomImageUrl(addCacheBuster(originalImageSrc) || originalImageSrc!)}
+                          onError={() => setOriginalImageError(true)}
+                        />
                       ) : (
                         <div className="flex flex-col items-center justify-center h-64 md:h-80 bg-gray-100 rounded-md">
                           <ImageIcon className="h-12 w-12 text-gray-300 mb-2" />
@@ -427,20 +428,16 @@ export default function DangerReportDetailModal({
                           {currentProcessedUrls.map((url, idx) => (
                              <div key={url} className="relative group border rounded-md p-2">
                                 {!processedImageErrors[idx] ? (
-                                  <div className="relative w-full max-h-80">
-                                    <Image
-                                      src={addCacheBuster(url) || "/placeholder.svg"}
-                                      alt={`加工画像 ${idx + 1}`}
-                                      width={800}
-                                      height={320}
-                                      className="w-full h-auto max-h-80 object-contain rounded"
-                                      onError={() => setProcessedImageErrors(prev => {
-                                          const next = [...prev];
-                                          next[idx] = true;
-                                          return next;
-                                      })}
-                                    />
-                                  </div>
+                                  <ProcessedImageWithLongPress
+                                    src={addCacheBuster(url) || "/placeholder.svg"}
+                                    idx={idx}
+                                    onZoom={() => setZoomImageUrl(addCacheBuster(url) || url)}
+                                    onError={() => setProcessedImageErrors(prev => {
+                                        const next = [...prev];
+                                        next[idx] = true;
+                                        return next;
+                                    })}
+                                  />
                                 ) : (
                                   <div className="flex flex-col items-center justify-center h-40 bg-gray-100 rounded">
                                      <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -776,6 +773,79 @@ export default function DangerReportDetailModal({
           </div>
         </div>
       </DialogContent>
+      <ImageZoomOverlay
+        src={zoomImageUrl || ""}
+        alt="拡大画像"
+        isOpen={!!zoomImageUrl}
+        onClose={() => setZoomImageUrl(null)}
+      />
     </Dialog>
+  )
+}
+
+/** Helper: original image with long-press zoom */
+function OriginalImageWithLongPress({
+  src,
+  onZoom,
+  onError,
+}: {
+  src: string
+  onZoom: () => void
+  onError: () => void
+}) {
+  const handlers = useLongPress({ delay: 400, onLongPress: onZoom })
+  return (
+    <div
+      className="relative w-full h-64 md:h-80 bg-gray-50 rounded-md overflow-hidden"
+      {...handlers}
+      style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+    >
+      <Image
+        src={src}
+        alt="危険箇所の元画像"
+        fill
+        className="object-contain"
+        draggable={false}
+        onError={onError}
+      />
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-white text-[10px] pointer-events-none">
+        長押しで拡大
+      </div>
+    </div>
+  )
+}
+
+/** Helper: processed image with long-press zoom */
+function ProcessedImageWithLongPress({
+  src,
+  idx,
+  onZoom,
+  onError,
+}: {
+  src: string
+  idx: number
+  onZoom: () => void
+  onError: () => void
+}) {
+  const handlers = useLongPress({ delay: 400, onLongPress: onZoom })
+  return (
+    <div
+      className="relative w-full max-h-80"
+      {...handlers}
+      style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+    >
+      <Image
+        src={src}
+        alt={`加工画像 ${idx + 1}`}
+        width={800}
+        height={320}
+        className="w-full h-auto max-h-80 object-contain rounded"
+        draggable={false}
+        onError={onError}
+      />
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-white text-[10px] pointer-events-none">
+        長押しで拡大
+      </div>
+    </div>
   )
 }

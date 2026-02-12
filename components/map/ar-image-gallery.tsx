@@ -16,6 +16,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useLongPress } from "@/hooks/use-long-press"
+import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
 
 /**
  * AR画像ギャラリーコンポーネント
@@ -47,6 +49,8 @@ export function ARImageGallery({
   )
   const [retryCountMap, setRetryCountMap] = useState<Record<number, number>>({})
   const previousImagesRef = useRef<string[] | null>(null)
+
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
 
   const hasImages = images.length > 0
   const hasMultipleImages = images.length > 1
@@ -122,6 +126,16 @@ export function ARImageGallery({
     }
   }, [currentIndex, currentImage, onClick])
 
+  const longPressHandlers = useLongPress({
+    delay: 400,
+    onLongPress: () => {
+      if (currentImage) {
+        setZoomImageUrl(getImageSrc(currentImage, currentIndex))
+      }
+    },
+    onClick: handleImageClick,
+  })
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (!hasMultipleImages) return
@@ -165,17 +179,23 @@ export function ARImageGallery({
       onKeyDown={handleKeyDown}
     >
       {/* 画像 */}
-      <img
-        src={getImageSrc(currentImage!, currentIndex)}
-        alt={alt}
-        className={cn(
-          "w-full h-full object-cover cursor-pointer",
-          currentState === "loading" && "opacity-0"
-        )}
-        onLoad={() => updateImageState(currentIndex, "loaded")}
-        onError={() => updateImageState(currentIndex, "error")}
-        onClick={handleImageClick}
-      />
+      <div
+        {...longPressHandlers}
+        className="w-full h-full"
+        style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+      >
+        <img
+          src={getImageSrc(currentImage!, currentIndex)}
+          alt={alt}
+          className={cn(
+            "w-full h-full object-cover cursor-pointer",
+            currentState === "loading" && "opacity-0"
+          )}
+          draggable={false}
+          onLoad={() => updateImageState(currentIndex, "loaded")}
+          onError={() => updateImageState(currentIndex, "error")}
+        />
+      </div>
 
       {/* ローディングスケルトン */}
       {currentState === "loading" && (
@@ -277,6 +297,14 @@ export function ARImageGallery({
           ))}
         </div>
       )}
+
+      {/* 長押し拡大オーバーレイ */}
+      <ImageZoomOverlay
+        src={zoomImageUrl || ""}
+        alt={alt}
+        isOpen={!!zoomImageUrl}
+        onClose={() => setZoomImageUrl(null)}
+      />
     </div>
   )
 }
