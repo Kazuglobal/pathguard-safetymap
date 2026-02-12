@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
 import { SupabaseProvider, useSupabase } from "@/components/providers/supabase-provider"
 import { Toaster } from "@/components/ui/toaster"
@@ -12,7 +13,10 @@ interface LayoutProviderInnerProps {
 
 function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
   const { supabase } = useSupabase()
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const logoutInFlightRef = useRef(false)
 
   useEffect(() => {
     let isMounted = true
@@ -61,16 +65,24 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
   }, [supabase])
 
   const handleLogout = useCallback(async () => {
+    if (logoutInFlightRef.current) return
+    logoutInFlightRef.current = true
+    setIsLoggingOut(true)
     try {
       await supabase.auth.signOut()
+      router.replace("/login")
+      router.refresh()
     } catch (e) {
       console.error("サインアウトに失敗しました:", (e as Error)?.message || e)
+    } finally {
+      logoutInFlightRef.current = false
+      setIsLoggingOut(false)
     }
-  }, [supabase])
+  }, [router, supabase])
 
   return (
     <>
-      <NavigationWrapper user={user} onLogout={handleLogout}>
+      <NavigationWrapper user={user} onLogout={handleLogout} isLoggingOut={isLoggingOut}>
         {children}
       </NavigationWrapper>
       <Toaster />

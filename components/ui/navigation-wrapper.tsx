@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils"
 interface NavigationWrapperProps {
   user: User | null
   onLogout: () => Promise<void>
+  isLoggingOut?: boolean
   children: React.ReactNode
 }
 
-export function NavigationWrapper({ user, onLogout, children }: NavigationWrapperProps) {
+export function NavigationWrapper({ user, onLogout, isLoggingOut = false, children }: NavigationWrapperProps) {
   const pathname = usePathname()
 
   // ナビゲーションを表示しないページ（ランディングは表示対象）
@@ -38,6 +39,7 @@ export function NavigationWrapper({ user, onLogout, children }: NavigationWrappe
         <Navigation
           user={user}
           onLogout={onLogout}
+          isLoggingOut={isLoggingOut}
           hideTopNavMobile={isLandingPage || isMapPage}
           isOverlay={isMapPage}
         />

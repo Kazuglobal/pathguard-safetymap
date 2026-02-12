@@ -1,8 +1,9 @@
 
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useGamification } from "@/hooks/use-gamification"
 import { useMissions } from "@/hooks/use-missions"
@@ -30,6 +31,7 @@ import {
   ArrowRight,
   Clock,
   Edit,
+  LogOut,
 } from "lucide-react"
 
 interface ReportSummary extends Pick<
@@ -48,6 +50,7 @@ const STATUS_LABEL: Record<string, { label: string; variant: "outline" | "second
 
 export default function MyPage() {
   const { supabase } = useSupabase()
+  const router = useRouter()
   const { level, points, isLoading: isGamificationLoading } = useGamification()
   const { missions, progress, isLoading: isMissionsLoading } = useMissions()
 
@@ -56,6 +59,8 @@ export default function MyPage() {
   const [isReportsLoading, setIsReportsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [profileKey, setProfileKey] = useState(0)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const signOutInFlightRef = useRef(false)
 
   useEffect(() => {
     let isMounted = true
@@ -172,6 +177,22 @@ export default function MyPage() {
   const pointsTowardsLevel = Math.max(points - previousThreshold, 0)
   const levelProgress = Math.min(pointsTowardsLevel / (nextThreshold - previousThreshold), 1)
   const pointsToNextLevel = Math.max(nextThreshold - points, 0)
+
+  const handleSignOut = async () => {
+    if (!supabase || signOutInFlightRef.current) return
+    signOutInFlightRef.current = true
+    setIsSigningOut(true)
+    try {
+      await supabase.auth.signOut()
+      router.replace("/login")
+      router.refresh()
+    } catch (error) {
+      console.error("サインアウトに失敗しました", error)
+    } finally {
+      signOutInFlightRef.current = false
+      setIsSigningOut(false)
+    }
+  }
 
   const renderMissionList = () => {
     if (isMissionsLoading) {
@@ -305,6 +326,19 @@ export default function MyPage() {
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white/20 text-white hover:bg-white/30"
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    aria-label="マイページからログアウト"
+                    data-testid="mypage-logout-button"
+                  >
+                    <LogOut className="mr-1 h-4 w-4" />
+                    {isSigningOut ? "ログアウト中..." : "ログアウト"}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
