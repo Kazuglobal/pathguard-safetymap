@@ -7,6 +7,7 @@ export type GenerateImageParams = {
   prompt?: string
   imageBase64?: string
   imageMimeType?: string
+  model?: string
 }
 export type GenerateImageResult = {
   images: GeneratedImage[]
@@ -59,6 +60,7 @@ const PER_CALL_TIMEOUT_MS = 25_000
 
 // Available image generation models (in order of preference)
 const IMAGE_GEN_MODELS = [
+  "gemini-2.5-pro-image-preview",     // Gemini 2.5 Pro Image Preview
   "gemini-2.5-flash-image",           // Gemini 2.5 Flash Image (stable GA, fast)
   "gemini-3-pro-image-preview",       // Gemini 3 Pro Image Preview (higher quality, preview)
 ]
@@ -256,11 +258,13 @@ export async function generateImageWithGeminiWithModel({
   prompt,
   imageBase64,
   imageMimeType,
+  model,
 }: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Get the image generation model (user-specified or default)
-  const primaryModel = getImageModel()
+  // Per-request model override takes priority; otherwise use env/default.
+  const requestedModel = typeof model === 'string' ? sanitizeModelName(model.trim()) : ''
+  const primaryModel = requestedModel.length > 0 ? requestedModel : getImageModel()
 
   // Build list of models to try (primary first, then fallbacks)
   const modelsToTry = [primaryModel, ...IMAGE_GEN_MODELS.filter(m => m !== primaryModel)]

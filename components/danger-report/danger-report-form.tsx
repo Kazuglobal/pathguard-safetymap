@@ -577,7 +577,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         }
         if (!isActive()) return
 
-        // 5) NanoBanana (Gemini 2.5 Flash) image-to-image generation using generated prompts
+        // 5) Standard scenario image-to-image generation using generated prompts
         try {
           const compressedForGen = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
           const fd = new FormData()
@@ -585,9 +585,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           const baseViz =
             prLocal?.vizPrompt ||
             generatedPrompts?.vizPrompt ||
-            "Photorealistic 2048x2048 infographic from the same viewpoint, camera height, and daylight as the uploaded Japanese suburban street photo. Maintain identical composition and lens characteristics. Overlay semi-transparent hazard shading with caution icons and Japanese labels: potential wall/fence risk area (yellow shade + caution icons, label \"塀・壁 注意\"), utility pole vicinity (yellow circle + arrow, label \"電柱周辺 注意\"), potential flooding area (blue haze + droplet icons, label \"冠水注意\"), fire spread risk direction (light orange haze + warning icons, label \"延焼注意\"). Use warning overlays only — do not depict actual destruction or damage. High dynamic range, sharp focus, natural daylight, no extra people, vehicles, text, watermarks, or model names."
+            "Create one 2048x2048 photorealistic hazard-communication infographic based on the uploaded Japanese suburban school-route photo. Preserve the original scene geometry exactly: same camera position, lens, horizon, perspective, building outlines, road markings, and daylight color temperature. Do not alter existing objects and do not add new buildings, people, or vehicles. Add overlays only. Mark four potential hazards with clean civic-design callouts anchored to real locations: (1) fence instability: semi-transparent red polygon + warning triangles + Japanese label \"フェンス倒壊注意\"; (2) utility pole failure risk: red circle/arrow + Japanese label \"電柱倒壊注意\"; (3) flooding-prone low spot: semi-transparent blue wash + droplet icons + Japanese label \"冠水注意\"; (4) fire spread exposure: semi-transparent amber haze + flame icons + Japanese label \"延焼注意\". Add numbered markers 1-4 with short leader lines and include a compact Japanese legend at bottom-left: \"凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意\". Style: realistic, HDR, sharp focus, balanced contrast, mobile-readable annotations. No graphic destruction, no gore, no extra text beyond the specified Japanese labels and legend, no watermark, and no model names."
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
+          fd.append('generationMode', 'standard')
           const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
           if (genRes.ok) {
             const gen = await genRes.json()
@@ -623,6 +624,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               const fd = new FormData()
               fd.append('image', compressedForSim)
               fd.append('prompt', prompt)
+              fd.append('generationMode', 'standard')
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
                 const txt = await r.text()
@@ -755,6 +757,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       fd.append('image', compressed)
       const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
+      fd.append('generationMode', useCustomPrompt ? 'disaster' : 'standard')
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
         const errorBody = await res.text()
