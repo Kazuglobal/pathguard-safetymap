@@ -100,6 +100,24 @@ describe('Navigation Logout Functionality', () => {
       const logoutButton = screen.getByTestId('logout-button')
       expect(logoutButton).toBeInTheDocument()
     })
+
+    it('renders a mobile logout button', () => {
+      render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const mobileLogoutButton = screen.getByTestId('mobile-logout-button')
+      expect(mobileLogoutButton).toBeInTheDocument()
+      expect(mobileLogoutButton).toHaveAccessibleName(/ログアウト/i)
+    })
+
+    it('calls onLogout when mobile logout button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const mobileLogoutButton = screen.getByTestId('mobile-logout-button')
+      await user.click(mobileLogoutButton)
+
+      expect(mockOnLogout).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('When user is NOT authenticated', () => {
@@ -107,7 +125,9 @@ describe('Navigation Logout Functionality', () => {
       render(<Navigation user={undefined} onLogout={mockOnLogout} />)
 
       const logoutButton = screen.queryByTestId('logout-button')
+      const mobileLogoutButton = screen.queryByTestId('mobile-logout-button')
       expect(logoutButton).not.toBeInTheDocument()
+      expect(mobileLogoutButton).not.toBeInTheDocument()
     })
 
     it('renders login and register buttons instead', () => {
@@ -123,13 +143,6 @@ describe('Navigation Logout Functionality', () => {
       render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
       expect(mockOnLogout).not.toHaveBeenCalled()
-    })
-
-    it('handles missing onLogout prop gracefully', () => {
-      // Should not throw when onLogout is undefined
-      expect(() => {
-        render(<Navigation user={mockUser} onLogout={undefined} />)
-      }).not.toThrow()
     })
   })
 })

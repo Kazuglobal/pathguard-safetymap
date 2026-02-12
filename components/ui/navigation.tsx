@@ -25,7 +25,8 @@ import { isAdminUser } from "@/lib/admin"
 
 interface NavigationProps {
   user?: any
-  onLogout?: () => void
+  onLogout: () => void | Promise<void>
+  isLoggingOut?: boolean
   hideTopNavMobile?: boolean
   isOverlay?: boolean
 }
@@ -39,7 +40,13 @@ type NavItem = {
   emphasize?: boolean
 }
 
-export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay = false }: NavigationProps) {
+export function Navigation({
+  user,
+  onLogout,
+  isLoggingOut = false,
+  hideTopNavMobile = false,
+  isOverlay = false,
+}: NavigationProps) {
   const pathname = usePathname()
   const isAdmin = isAdminUser(user)
 
@@ -204,8 +211,10 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
                     variant="ghost"
                     size="sm"
                     onClick={onLogout}
+                    disabled={isLoggingOut}
                     data-testid="logout-button"
                     aria-label="ログアウト"
+                    aria-busy={isLoggingOut}
                     className="text-gray-500 hover:text-red-600 hover:bg-red-50"
                   >
                     <LogOut className="w-4 h-4" />
@@ -273,6 +282,25 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
               </Link>
             )
           })}
+          {user && (
+            <button
+              type="button"
+              onClick={onLogout}
+              disabled={isLoggingOut}
+              data-testid="mobile-logout-button"
+              aria-label="ログアウト"
+              aria-busy={isLoggingOut}
+              className={cn(
+                "flex min-w-[56px] flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
+                isLoggingOut ? "text-slate-400" : "text-rose-600 active:text-rose-700"
+              )}
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50">
+                <LogOut className="h-5 w-5" />
+              </span>
+              <span className="max-w-[72px] text-center">ログアウト</span>
+            </button>
+          )}
         </div>
       </nav>
 

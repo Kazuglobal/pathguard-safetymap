@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper, TEST_USERS } from '../utils/auth-helpers';
+import { AuthHelper, TEST_USERS, hasE2ERegularCredentials } from '../utils/auth-helpers';
 
 /**
  * TDD テスト: プロフィール編集機能 (Phase 1.2)
@@ -29,6 +29,10 @@ async function tryLogin(page: any) {
 }
 
 test.describe('Profile Edit - Phase 1.2', () => {
+  test.skip(
+    !hasE2ERegularCredentials,
+    'E2E_REGULAR_EMAIL と E2E_REGULAR_PASSWORD が未設定のため、認証必須テストをスキップします。'
+  );
 
   // ============================================
   // 1-2-profile-form: 編集フォームコンポーネント
@@ -834,6 +838,26 @@ test.describe('Profile Edit - Phase 1.2', () => {
           expect(isDisabled, 'save button should be disabled when no changes').toBeTruthy();
         }
       }
+    });
+
+    test('マイページからログアウトできる', async ({ page }) => {
+      const loggedIn = await tryLogin(page);
+
+      expect(loggedIn, 'Login failed for test user').toBeTruthy();
+
+      await page.goto('/mypage');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+
+      const mypageLogoutButton = page.locator(
+        '[data-testid="mypage-logout-button"], ' +
+        'button[aria-label="マイページからログアウト"]'
+      );
+
+      await expect(mypageLogoutButton).toBeVisible({ timeout: 10000 });
+      await mypageLogoutButton.click();
+
+      await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
     });
   });
 

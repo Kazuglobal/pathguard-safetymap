@@ -7,20 +7,24 @@ export interface TestUser {
   name?: string;
 }
 
+export const hasE2ERegularCredentials =
+  Boolean(process.env.E2E_REGULAR_EMAIL) &&
+  Boolean(process.env.E2E_REGULAR_PASSWORD);
+
 export const TEST_USERS: Record<string, TestUser> = {
   admin: {
-    email: 'admin@test.com',
-    password: 'testpassword123',
+    email: process.env.E2E_ADMIN_EMAIL || 'admin@test.com',
+    password: process.env.E2E_ADMIN_PASSWORD || 'testpassword123',
     name: 'Admin User'
   },
   regular: {
-    email: 'user@test.com',
-    password: 'testpassword123',
+    email: process.env.E2E_REGULAR_EMAIL || 'user@test.com',
+    password: process.env.E2E_REGULAR_PASSWORD || 'testpassword123',
     name: 'Regular User'
   },
   student: {
-    email: 'student@test.com',
-    password: 'testpassword123',
+    email: process.env.E2E_STUDENT_EMAIL || 'student@test.com',
+    password: process.env.E2E_STUDENT_PASSWORD || 'testpassword123',
     name: 'Student User'
   }
 };
