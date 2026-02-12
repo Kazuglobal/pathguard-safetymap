@@ -26,6 +26,7 @@ import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
 import { isAdminUser } from "@/lib/admin"
 import { useCurrentLocation } from "@/hooks/use-current-location"
+import { isValidCoordinates } from "@/lib/coordinates"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -37,12 +38,28 @@ if (!tokenValidation.isValid) {
 
 mapboxgl.accessToken = mapboxToken || ""
 
+const REVERSE_GEOCODE_DECIMALS = 3
+
+function toCoarseCoordinate(value: number, decimals = REVERSE_GEOCODE_DECIMALS): number {
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}
+
 async function reverseGeocodeLocation(latitude: number, longitude: number) {
   const token = getMapboxToken()
   if (!token) {
     console.warn("Mapbox token is missing; skip reverse geocoding.")
     return { prefecture: null as string | null, city: null as string | null }
   }
+
+  if (!isValidCoordinates(latitude, longitude)) {
+    console.warn("Invalid coordinates for reverse geocoding", { latitude, longitude })
+    return { prefecture: null as string | null, city: null as string | null }
+  }
+
+  // Send coarse coordinates (~100m) to reduce precise-location exposure to external services.
+  const coarseLatitude = toCoarseCoordinate(latitude)
+  const coarseLongitude = toCoarseCoordinate(longitude)
 
   try {
     const params = new URLSearchParams({
@@ -53,7 +70,7 @@ async function reverseGeocodeLocation(latitude: number, longitude: number) {
     })
 
     const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?${params.toString()}`,
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${coarseLongitude},${coarseLatitude}.json?${params.toString()}`,
     )
 
     if (!response.ok) {
@@ -158,6 +175,8 @@ interface MapImageOverlayEntry {
   coordinates: [number, number]
   hasError?: boolean
 }
+
+type LocationSelectionSource = "manual" | "gps" | null
 // MapContainer コンポーネント
 export default function MapContainer() {
   const { supabase } = useSupabase()
@@ -168,6 +187,8 @@ export default function MapContainer() {
   const [isLoading, setIsLoading] = useState(true)
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null)
+  const [locationSelectionSource, setLocationSelectionSource] =
+    useState<LocationSelectionSource>(null)
   const [selectedReport, setSelectedReport] = useState<DangerReport | null>(null)
   const [filterOptions, setFilterOptions] = useState({
     dangerType: "all",
@@ -537,6 +558,7 @@ export default function MapContainer() {
         const lngLat = selectionMarker.current.getLngLat();
         const newCoordinates: [number, number] = [lngLat.lng, lngLat.lat];
         setSelectedLocation(newCoordinates);
+        setLocationSelectionSource("manual");
         toast({ 
           title: "地点を移動しました", 
           description: "ドラッグで位置を調整しました" 
@@ -558,6 +580,7 @@ export default function MapContainer() {
       // 地点選択モード：位置を選択
       console.log("Location selection mode: Setting location");
       setSelectedLocation(coordinates);
+      setLocationSelectionSource("manual");
 
       if (isMobile) {
         // モバイル：地点を選択するだけ（フォームはボトムバーの「この地点で報告する」ボタンで開く）
@@ -578,6 +601,7 @@ export default function MapContainer() {
       // フォームが開いている場合：モバイル・デスクトップ関係なく位置を更新
       console.log("Form is open: Updating location");
       setSelectedLocation(coordinates);
+      setLocationSelectionSource("manual");
       toast({
         title: "地点を変更しました",
         description: "新しい位置に報告地点を変更しました"
@@ -655,12 +679,14 @@ export default function MapContainer() {
         const center = map.current.getCenter();
         const initialLocation: [number, number] = [center.lng, center.lat];
         setSelectedLocation(initialLocation);
+        setLocationSelectionSource("manual");
         // updateSelectionMarker is called via useEffect below
       }
     }
     if (!isReportFormOpen && !submittedReport && selectionMarker.current) {
       selectionMarker.current.remove(); selectionMarker.current = null;
       setSelectedLocation(null); // Reset location when form closes without submission
+      setLocationSelectionSource(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReportFormOpen, submittedReport]); // submittedReport dependency added
@@ -937,6 +963,11 @@ export default function MapContainer() {
       return;
     }
 
+    if (!isValidCoordinates(selectedLocation[1], selectedLocation[0])) {
+      toast({ title: "エラー", description: "位置情報が不正です。地図で地点を再選択してください。", variant: "destructive" });
+      return;
+    }
+
     // 画像ファイルを取り出す (プロパティ名は要確認)
     const imageFile = reportData.imageFile;
     // insert するデータから imageFile を除外
@@ -1141,6 +1172,7 @@ export default function MapContainer() {
     setIsReportFormOpen(false); // フォームを一旦閉じる
     setSubmittedReport(null); // 送信済みプレビューもクリア
     setSelectedLocation(null); // 選択地点もクリア
+    setLocationSelectionSource(null);
 
     if (isMobile) {
       if (awaitingLocationSelection) {
@@ -1174,17 +1206,28 @@ export default function MapContainer() {
   // GPS位置取得成功時: 地図を移動してフォームを開く
   useEffect(() => {
     if (!gpsLocation || gpsConsumedRef.current) return
+    if (!isValidCoordinates(gpsLocation[1], gpsLocation[0])) {
+      resetGPSLocation()
+      toast({
+        title: "位置情報エラー",
+        description: "現在地の座標が不正です。再取得してください。",
+        variant: "destructive",
+      })
+      return
+    }
+
     gpsConsumedRef.current = true
 
     setSelectedLocation(gpsLocation)
+    setLocationSelectionSource("gps")
     flyToLocation(gpsLocation[0], gpsLocation[1], 16)
     setAwaitingLocationSelection(false)
     setIsReportFormOpen(true)
     resetGPSLocation()
 
     toast({
-      title: "現在地を取得しました",
-      description: "現在地で危険箇所を報告できます",
+      title: "現在地を候補として設定しました",
+      description: "現在地は端末の推定値です。地図で確認・調整してから報告してください。",
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsLocation])
@@ -1218,7 +1261,7 @@ export default function MapContainer() {
             className="absolute left-0 right-0 z-30 px-3 sm:px-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
           >
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
-              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); setLocationSelectionSource("manual"); flyToLocation(coords[0], coords[1]); } }} />
             </div>
           </div>
         )}
@@ -1312,6 +1355,7 @@ export default function MapContainer() {
                 onSubmit={handleReportSubmit}
                 onCancel={() => setIsReportFormOpen(false)}
                 selectedLocation={selectedLocation}
+                locationSource={locationSelectionSource}
               />
             </div>
           )}
@@ -1341,6 +1385,7 @@ export default function MapContainer() {
                   onClick={() => {
                     setIsReportFormOpen(false);
                     setSelectedLocation(null);
+                    setLocationSelectionSource(null);
                     if (selectionMarker.current) {
                       selectionMarker.current.remove();
                       selectionMarker.current = null;
@@ -1387,12 +1432,14 @@ export default function MapContainer() {
                   onCancel={() => {
                     setIsReportFormOpen(false);
                     setSelectedLocation(null);
+                    setLocationSelectionSource(null);
                     if (selectionMarker.current) {
                       selectionMarker.current.remove();
                       selectionMarker.current = null;
                     }
                   }}
                   selectedLocation={selectedLocation}
+                  locationSource={locationSelectionSource}
                   isMobileFullscreen={true}
                 />
               </div>
@@ -1435,6 +1482,7 @@ export default function MapContainer() {
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             setSelectedLocation(null);
+                            setLocationSelectionSource(null);
                             if (selectionMarker.current) {
                               selectionMarker.current.remove();
                               selectionMarker.current = null;

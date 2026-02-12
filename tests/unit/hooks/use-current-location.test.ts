@@ -133,6 +133,23 @@ describe("useCurrentLocation", () => {
       expect(result.current.error).toBeNull()
     })
 
+
+    it("範囲外座標の場合は error.type='position_unavailable' になること", () => {
+      const { result } = renderHook(() => useCurrentLocation())
+
+      act(() => {
+        result.current.requestLocation()
+      })
+      act(() => {
+        capturedSuccessCallback?.(createMockPosition(95.0, 200.0))
+      })
+
+      expect(result.current.location).toBeNull()
+      expect(result.current.error).toEqual(
+        expect.objectContaining({ type: "position_unavailable" })
+      )
+      expect(result.current.isLoading).toBe(false)
+    })
     it("getCurrentPosition に enableHighAccuracy: true が渡されること", () => {
       const { result } = renderHook(() => useCurrentLocation())
 

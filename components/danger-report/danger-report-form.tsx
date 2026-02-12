@@ -29,6 +29,7 @@ interface DangerReportFormProps {
   onSubmit: (data: Partial<DangerReport>) => void
   onCancel: () => void
   selectedLocation: [number, number] | null
+  locationSource?: "manual" | "gps" | null
   isMobileFullscreen?: boolean
 }
 
@@ -127,7 +128,7 @@ const validateImageFile = async (file: File) => {
   return { ok: true, mime: sniffed }
 }
 
-export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, isMobileFullscreen = false }: DangerReportFormProps) {
+export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, locationSource = null, isMobileFullscreen = false }: DangerReportFormProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -150,6 +151,17 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const isGpsLocation = locationSource === "gps"
+  const [isGpsLocationConfirmed, setIsGpsLocationConfirmed] = useState(false)
+
+  useEffect(() => {
+    if (isGpsLocation) {
+      setIsGpsLocationConfirmed(false)
+      return
+    }
+    setIsGpsLocationConfirmed(true)
+  }, [isGpsLocation, selectedLocation?.[0], selectedLocation?.[1]])
+
 
   const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisItem[] | null>(null)
   const [autoGenLoading, setAutoGenLoading] = useState(false)
@@ -914,6 +926,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       return
     }
 
+    if (isGpsLocation && !isGpsLocationConfirmed) {
+      toast({
+        title: "確認が必要です",
+        description: "現在地の確認チェックを入れてから送信してください。",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
     setUploadProgress(0)
 
@@ -968,6 +989,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       setIsSubmitting(false)
     }
   }
+
+  const canSubmit = !!selectedLocation && (!isGpsLocation || isGpsLocationConfirmed)
 
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
@@ -1440,6 +1463,27 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           )
         )}
 
+        {selectedLocation && (
+          <p className="text-xs text-gray-500">
+            住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
+          </p>
+        )}
+
+        {isGpsLocation && selectedLocation && (
+          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-medium">GPS由来の位置は端末の推定値です。送信前に正しい地点か確認してください。</p>
+            <label className="flex items-start gap-2 text-sm text-amber-900">
+              <input
+                type="checkbox"
+                checked={isGpsLocationConfirmed}
+                onChange={(e) => setIsGpsLocationConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>この地点が報告対象であることを確認しました</span>
+            </label>
+          </div>
+        )}
+
         {/* 解析結果表示 */}
         {riskAnalysis && (
           <div className="space-y-2 rounded-md border p-4 text-sm">
@@ -1462,7 +1506,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           {isMobileFullscreen ? (
             <Button
               type="submit"
-              disabled={isSubmitting || !selectedLocation}
+              disabled={isSubmitting || !canSubmit}
               className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
             >
               {isSubmitting ? (
@@ -1479,7 +1523,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               <Button type="button" variant="outline" onClick={onCancel}>
                 キャンセル
               </Button>
-              <Button type="submit" disabled={isSubmitting || !selectedLocation} className="min-w-[100px]">
+              <Button type="submit" disabled={isSubmitting || !canSubmit} className="min-w-[100px]">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

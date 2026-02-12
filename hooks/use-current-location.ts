@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { LOCATION_MAX_AGE_MS, LOCATION_TIMEOUT_MS } from "@/lib/ar-constants"
+import { isValidCoordinates } from "@/lib/coordinates"
 
 export type CurrentLocationErrorType =
   | "permission_denied"
@@ -69,7 +70,27 @@ export function useCurrentLocation(): UseCurrentLocationReturn {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation([position.coords.longitude, position.coords.latitude])
+        const latitude = position.coords.latitude
+        const longitude = position.coords.longitude
+
+        if (!isValidCoordinates(latitude, longitude)) {
+          const locError: CurrentLocationError = {
+            type: "position_unavailable",
+            message: ERROR_MESSAGES.position_unavailable,
+          }
+          setLocation(null)
+          setError(locError)
+          setIsLoading(false)
+          isLoadingRef.current = false
+          toastRef.current({
+            title: "位置情報エラー",
+            description: locError.message,
+            variant: "destructive",
+          })
+          return
+        }
+
+        setLocation([longitude, latitude])
         setIsLoading(false)
         isLoadingRef.current = false
         setError(null)
