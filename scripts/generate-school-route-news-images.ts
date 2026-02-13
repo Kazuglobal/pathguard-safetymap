@@ -86,23 +86,44 @@ ${QUALITY_SUFFIX}`,
     description: "ゾーン30プラス"
   },
   {
-    slug: "osaka-higashiosaka-incident",
-    filename: "osaka-higashiosaka-incident.png",
-    prompt: `Create a Japanese safety awareness illustration about protecting school children from vehicle attacks on school routes.
+    slug: "iga-safety-signs",
+    filename: "iga-safety-signs.png",
+    prompt: `Create a warm Japanese community scene showing a safety sign donation ceremony for school routes.
 
-Visual elements (abstract, NOT depicting violence):
-- A school route with guardrails protecting the sidewalk
-- Yellow safety barriers between road and walking path
-- Elementary school children walking safely behind barriers
-- A "School Zone" sign
-- Emphasis on physical protection measures
-- Warning/alert visual indicator
+Scene elements (Japanese specific):
+- Japanese rural/suburban setting in Mie Prefecture (三重県)
+- "飛び出し注意" (Watch Out for Children) safety sign - classic Japanese yellow diamond-shaped sign with child figure
+- Construction company representative (竹島建設 worker) presenting/installing sign
+- Local community members and district officers (地区役員) observing
+- County road (県道) setting with narrow Japanese street
+- Elementary school children walking with yellow safety caps and randoseru in background
+- Ayama Elementary/Junior High School (阿山小学校・中学校) visible in distance
 
-Style: Serious but not disturbing, Japanese editorial
-Focus: Importance of physical safety barriers
-Color palette: Red warning accents, grey for infrastructure
+Mood: Community cooperation, warmth, local pride, safety-focused
+Atmosphere: Bright daylight, hopeful, collaborative
+
+Visual style:
+- Warm Japanese slice-of-life illustration
+- Soft, friendly aesthetic suitable for community news
+- Focus on human connection and local collaboration
+- Construction company worker in uniform/vest with company logo visible
+
+Japanese text elements to include visually:
+- "飛び出し注意" on the sign
+- Community gathering feeling
+
+Color palette:
+- Yellow for safety sign (classic Japanese warning sign color)
+- Warm earth tones for community setting
+- Green accents (company activity, nature)
+- Bright, optimistic colors
+
+Setting details:
+- Residential area typical of Japanese countryside cities
+- Small traditional shops or houses in background
+- Power lines, narrow roads typical of Japanese prefectural roads
 ${QUALITY_SUFFIX}`,
-    description: "大阪府東大阪市の事件"
+    description: "伊賀市看板寄贈"
   },
   {
     slug: "mext-volunteer-awards",
