@@ -86,36 +86,6 @@ ${QUALITY_SUFFIX}`,
     description: "ゾーン30プラス"
   },
   {
-    slug: "mext-nationwide-alert",
-    filename: "mext-nationwide-alert.png",
-    prompt: `Create a professional Japanese government announcement illustration about school route safety.
-
-Scene elements:
-- Japanese government/ministry setting (official, formal)
-- Map of Japan in background showing multiple prefectures highlighted: 大阪府 (Osaka), 埼玉県 (Saitama), 福岡県 (Fukuoka)
-- Warning/alert symbol (注意喚起 - attention/caution)
-- Silhouettes of elementary school children with yellow safety caps and randoseru
-- Document or bulletin board showing "文部科学省" (Ministry of Education)
-- Calendar showing January 2026 (1月)
-- Serious but constructive mood
-
-Visual style:
-- Professional Japanese government infographic aesthetic
-- Clean, authoritative design
-- Red/orange alert colors combined with official blue
-- Icons representing: education boards (教育委員会), school guards (スクールガード), budget allocation (予算)
-
-Japanese text elements to include visually:
-- "全国注意喚起" (Nationwide Alert)
-- "異例の事態" (Unusual Situation)
-- Calendar dates: 1/1, 1/14, 1/19 marked
-
-Mood: Official, serious, protective, government authority
-Color palette: Official blue, alert red/orange, white background
-${QUALITY_SUFFIX}`,
-    description: "文科省全国注意喚起"
-  },
-  {
     slug: "iga-safety-signs",
     filename: "iga-safety-signs.png",
     prompt: `Create a warm Japanese community scene showing a safety sign donation ceremony for school routes.
