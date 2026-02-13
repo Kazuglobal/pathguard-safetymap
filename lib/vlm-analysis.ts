@@ -79,8 +79,67 @@ export interface AnalyzeHazardResponse {
   error?: string
 }
 
+interface ParsedFunctionError {
+  message: string
+  status?: number
+  statusText?: string
+  responseBody?: string
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
+}
+
+function extractErrorMessageFromBody(body: string): string | null {
+  if (!body) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>
+    if (typeof parsed.error === "string" && parsed.error.trim().length > 0) {
+      return parsed.error
+    }
+    if (typeof parsed.message === "string" && parsed.message.trim().length > 0) {
+      return parsed.message
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+async function parseFunctionInvokeError(error: unknown): Promise<ParsedFunctionError> {
+  const fallbackMessage = error instanceof Error ? error.message : "分析に失敗しました"
+
+  if (!isRecord(error)) {
+    return { message: fallbackMessage }
+  }
+
+  const context = error.context
+  if (!(context instanceof Response)) {
+    return { message: fallbackMessage }
+  }
+
+  const status = context.status
+  const statusText = context.statusText
+  let responseBody = ""
+  try {
+    responseBody = await context.clone().text()
+  } catch {
+    responseBody = ""
+  }
+
+  const bodyMessage = extractErrorMessageFromBody(responseBody)
+  const message =
+    bodyMessage ||
+    (status ? `Edge Function error (${status}${statusText ? ` ${statusText}` : ""})` : fallbackMessage)
+
+  return {
+    message,
+    status,
+    statusText,
+    responseBody,
+  }
 }
 
 function isHazardCategory(value: unknown): value is HazardCategory {
@@ -303,10 +362,16 @@ export async function analyzeHazardWithVLM(
     })
 
     if (error) {
-      console.error("[VLM Analysis] Edge Function error:", error)
+      const parsedError = await parseFunctionInvokeError(error)
+      console.error("[VLM Analysis] Edge Function error:", {
+        originalError: error,
+        status: parsedError.status,
+        statusText: parsedError.statusText,
+        responseBody: parsedError.responseBody?.slice(0, 500),
+      })
       return {
         success: false,
-        error: error.message || "分析に失敗しました",
+        error: parsedError.message || "分析に失敗しました",
       }
     }
 

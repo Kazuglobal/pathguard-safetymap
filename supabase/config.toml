@@ -308,4 +308,6 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.analyze-hazard]
-verify_jwt = true
+# JWT is validated inside the function after handling OPTIONS.
+# Keep this false so browser CORS preflight can return HTTP 200.
+verify_jwt = false

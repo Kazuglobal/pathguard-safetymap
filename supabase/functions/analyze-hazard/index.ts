@@ -11,16 +11,21 @@ const DEFAULT_DEV_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 const MAX_ADDITIONAL_CONTEXT_LENGTH = Number(Deno.env.get("VLM_MAX_CONTEXT_LENGTH") ?? "1200")
 const RATE_LIMIT_WINDOW_SECONDS = Number(Deno.env.get("VLM_RATE_LIMIT_WINDOW_SECONDS") ?? "300")
 const RATE_LIMIT_MAX_REQUESTS = Number(Deno.env.get("VLM_RATE_LIMIT_MAX_REQUESTS") ?? "10")
-
-const IS_PRODUCTION =
-  Deno.env.get("NODE_ENV") === "production" || Deno.env.get("DENO_ENV") === "production"
+const ALLOW_LOCAL_DEV_ORIGINS = parseBooleanEnv(
+  Deno.env.get("VLM_ALLOW_LOCAL_DEV_ORIGINS"),
+  true
+)
+const ENFORCE_ORIGIN_CHECK = parseBooleanEnv(
+  Deno.env.get("VLM_ENFORCE_ORIGIN_CHECK"),
+  false
+)
 
 const ALLOWED_ORIGINS = (() => {
   const configured = parseCsvEnv(Deno.env.get("VLM_ALLOWED_ORIGINS"))
-  if (configured.length > 0) {
-    return configured
-  }
-  return IS_PRODUCTION ? [] : DEFAULT_DEV_ORIGINS
+  const merged = ALLOW_LOCAL_DEV_ORIGINS
+    ? [...DEFAULT_DEV_ORIGINS, ...configured]
+    : configured
+  return [...new Set(merged)]
 })()
 
 const ALLOWED_IMAGE_HOSTS = parseCsvEnv(Deno.env.get("VLM_ALLOWED_IMAGE_HOSTS")).map((host) =>
@@ -90,17 +95,36 @@ function parseCsvEnv(value: string | undefined): string[] {
     .filter((item) => item.length > 0)
 }
 
+function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined) {
+    return defaultValue
+  }
+  const normalized = value.trim().toLowerCase()
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false
+  }
+  return defaultValue
+}
+
 function resolveCorsOrigin(origin: string | null): string | null {
   if (!origin) {
     return null
+  }
+  if (ALLOWED_ORIGINS.includes("*")) {
+    return origin
   }
   return ALLOWED_ORIGINS.includes(origin) ? origin : null
 }
 
 function buildCorsHeaders(allowedOrigin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-api-version",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   }
   if (allowedOrigin) {
@@ -313,15 +337,25 @@ function validateAnalysisPayload(payload: unknown): payload is VlmAnalysisResult
 serve(async (req) => {
   const requestOrigin = req.headers.get("origin")
   const allowedOrigin = resolveCorsOrigin(requestOrigin)
-
-  if (requestOrigin && !allowedOrigin) {
-    return jsonResponse({ error: "Origin not allowed" }, 403, buildCorsHeaders(null))
-  }
-
-  const corsHeaders = buildCorsHeaders(allowedOrigin)
+  const responseOrigin = ENFORCE_ORIGIN_CHECK
+    ? allowedOrigin
+    : requestOrigin ?? allowedOrigin
+  const corsHeaders = buildCorsHeaders(responseOrigin)
 
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
+    const requestHeaders = req.headers.get("access-control-request-headers")
+    const optionsHeaders = {
+      ...corsHeaders,
+      // Reflect requested headers to avoid client/library header drift breaking preflight.
+      "Access-Control-Allow-Headers":
+        requestHeaders || corsHeaders["Access-Control-Allow-Headers"],
+      "Access-Control-Allow-Origin": allowedOrigin ?? requestOrigin ?? "*",
+    }
+    return new Response("ok", { status: 200, headers: optionsHeaders })
+  }
+
+  if (ENFORCE_ORIGIN_CHECK && requestOrigin && !allowedOrigin) {
+    return jsonResponse({ error: "Origin not allowed" }, 403, buildCorsHeaders(requestOrigin))
   }
 
   if (req.method !== "POST") {
@@ -331,7 +365,11 @@ serve(async (req) => {
   try {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !ANTHROPIC_API_KEY) {
       console.error("Required secrets are not configured")
-      return jsonResponse({ error: "Server configuration error" }, 500, corsHeaders)
+      return jsonResponse(
+        { error: "Server configuration error: required secrets are missing" },
+        500,
+        corsHeaders
+      )
     }
 
     const bearerToken = extractBearerToken(req)
@@ -505,7 +543,11 @@ JSON以外の文章は出力しないでください。`,
         status: claudeResponse.status,
         body: errorText.slice(0, 500),
       })
-      return jsonResponse({ error: "AI analysis failed" }, 502, corsHeaders)
+      return jsonResponse(
+        { error: `AI analysis failed (Anthropic ${claudeResponse.status})` },
+        502,
+        corsHeaders
+      )
     }
 
     const claudeData = await claudeResponse.json()
