@@ -86,23 +86,74 @@ ${QUALITY_SUFFIX}`,
     description: "ゾーン30プラス"
   },
   {
-    slug: "osaka-higashiosaka-incident",
-    filename: "osaka-higashiosaka-incident.png",
-    prompt: `Create a Japanese safety awareness illustration about protecting school children from vehicle attacks on school routes.
+    slug: "mext-nationwide-alert",
+    filename: "mext-nationwide-alert.png",
+    prompt: `Create a professional Japanese government announcement illustration about school route safety.
 
-Visual elements (abstract, NOT depicting violence):
-- A school route with guardrails protecting the sidewalk
-- Yellow safety barriers between road and walking path
-- Elementary school children walking safely behind barriers
-- A "School Zone" sign
-- Emphasis on physical protection measures
-- Warning/alert visual indicator
+Scene elements:
+- Japanese government/ministry setting (official, formal)
+- Map of Japan in background showing multiple prefectures highlighted: 大阪府 (Osaka), 埼玉県 (Saitama), 福岡県 (Fukuoka)
+- Warning/alert symbol (注意喚起 - attention/caution)
+- Silhouettes of elementary school children with yellow safety caps and randoseru
+- Document or bulletin board showing "文部科学省" (Ministry of Education)
+- Calendar showing January 2026 (1月)
+- Serious but constructive mood
 
-Style: Serious but not disturbing, Japanese editorial
-Focus: Importance of physical safety barriers
-Color palette: Red warning accents, grey for infrastructure
+Visual style:
+- Professional Japanese government infographic aesthetic
+- Clean, authoritative design
+- Red/orange alert colors combined with official blue
+- Icons representing: education boards (教育委員会), school guards (スクールガード), budget allocation (予算)
+
+Japanese text elements to include visually:
+- "全国注意喚起" (Nationwide Alert)
+- "異例の事態" (Unusual Situation)
+- Calendar dates: 1/1, 1/14, 1/19 marked
+
+Mood: Official, serious, protective, government authority
+Color palette: Official blue, alert red/orange, white background
 ${QUALITY_SUFFIX}`,
-    description: "大阪府東大阪市の事件"
+    description: "文科省全国注意喚起"
+  },
+  {
+    slug: "iga-safety-signs",
+    filename: "iga-safety-signs.png",
+    prompt: `Create a warm Japanese community scene showing a safety sign donation ceremony for school routes.
+
+Scene elements (Japanese specific):
+- Japanese rural/suburban setting in Mie Prefecture (三重県)
+- "飛び出し注意" (Watch Out for Children) safety sign - classic Japanese yellow diamond-shaped sign with child figure
+- Construction company representative (竹島建設 worker) presenting/installing sign
+- Local community members and district officers (地区役員) observing
+- County road (県道) setting with narrow Japanese street
+- Elementary school children walking with yellow safety caps and randoseru in background
+- Ayama Elementary/Junior High School (阿山小学校・中学校) visible in distance
+
+Mood: Community cooperation, warmth, local pride, safety-focused
+Atmosphere: Bright daylight, hopeful, collaborative
+
+Visual style:
+- Warm Japanese slice-of-life illustration
+- Soft, friendly aesthetic suitable for community news
+- Focus on human connection and local collaboration
+- Construction company worker in uniform/vest with company logo visible
+
+Japanese text elements to include visually:
+- "飛び出し注意" on the sign
+- Community gathering feeling
+
+Color palette:
+- Yellow for safety sign (classic Japanese warning sign color)
+- Warm earth tones for community setting
+- Green accents (company activity, nature)
+- Bright, optimistic colors
+
+Setting details:
+- Residential area typical of Japanese countryside cities
+- Small traditional shops or houses in background
+- Power lines, narrow roads typical of Japanese prefectural roads
+${QUALITY_SUFFIX}`,
+    description: "伊賀市看板寄贈"
   },
   {
     slug: "mext-volunteer-awards",
