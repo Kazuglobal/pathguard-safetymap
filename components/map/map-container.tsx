@@ -957,15 +957,17 @@ export default function MapContainer() {
     setFilterOptions(prev => ({ ...prev, ...newFilters }));
   };
 
-  const handleReportSubmit = async (reportData: Partial<DangerReport> & { imageFile?: File | null }) => {
+  const handleReportSubmit = async (
+    reportData: Partial<DangerReport> & { imageFile?: File | null }
+  ): Promise<{ reportId: string; imageUrl: string | null }> => {
     if (!supabase || !selectedLocation) { // Check supabase and selectedLocation
       toast({ title: "エラー", description: "地図上で位置を選択してください。", variant: "destructive" });
-      return;
+      throw new Error("地図上で位置を選択してください。");
     }
 
     if (!isValidCoordinates(selectedLocation[1], selectedLocation[0])) {
       toast({ title: "エラー", description: "位置情報が不正です。地図で地点を再選択してください。", variant: "destructive" });
-      return;
+      throw new Error("位置情報が不正です。地図で地点を再選択してください。");
     }
 
     // 画像ファイルを取り出す (プロパティ名は要確認)
@@ -977,7 +979,7 @@ export default function MapContainer() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({ title: "認証エラー", description: "ユーザー情報が取得できませんでした。", variant: "destructive" });
-        return;
+        throw new Error("ユーザー情報が取得できませんでした。");
       }
 
       // 1. 基本情報をまず INSERT (processed_image_urls は含めないか NULL)
@@ -1082,7 +1084,8 @@ export default function MapContainer() {
         // selectedLocation が null の場合のエラーハンドリングが必要な場合がある
       }
 
-      setIsReportFormOpen(false); // Close form
+      // TEMP: Keep form open to show VLM analysis results
+      // setIsReportFormOpen(false); // Close form
 
       // プレビューモーダル表示 (API の結果を反映したデータで判断)
       if (finalReportData.image_url || (finalReportData.processed_image_urls && finalReportData.processed_image_urls.length > 0)) {
@@ -1096,9 +1099,15 @@ export default function MapContainer() {
       // ローカル状態を更新 (API の結果を反映したデータを使う)
       setPendingReports(prev => [finalReportData, ...prev]);
 
+      // Return report ID and image URL for VLM analysis
+      return {
+        reportId: newReportId,
+        imageUrl: finalReportData.image_url || null,
+      };
     } catch (error: any) {
       console.error("Error submitting report:", error);
       toast({ title: "送信エラー", description: `報告の送信エラー: ${error.message}`, variant: "destructive" });
+      throw error; // Re-throw so form can handle it
     }
   };
 
