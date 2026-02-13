@@ -9,14 +9,17 @@ import {
 
 // Set environment to disable mock data and test real code path
 const originalEnv = process.env.NEXT_PUBLIC_VLM_USE_MOCK
+const originalNodeEnv = process.env.NODE_ENV
 beforeEach(() => {
   // Ensure tests run against real Edge Function code, not mock
   process.env.NEXT_PUBLIC_VLM_USE_MOCK = "false"
+  process.env.NODE_ENV = "test"
 })
 
 afterEach(() => {
   // Restore original environment
   process.env.NEXT_PUBLIC_VLM_USE_MOCK = originalEnv
+  process.env.NODE_ENV = originalNodeEnv
 })
 
 describe("vlm-analysis", () => {
@@ -135,6 +138,28 @@ describe("vlm-analysis", () => {
       ).rejects.toThrow("image_url must use HTTPS")
     })
 
+    it("should throw error when additional_context is too long", async () => {
+      await expect(
+        analyzeHazardWithVLM(mockSupabase, {
+          image_url: "https://example.com/image.jpg",
+          report_id: "test-id",
+          additional_context: "a".repeat(1201),
+        })
+      ).rejects.toThrow("additional_context must be at most 1200 characters")
+    })
+
+    it("should reject mock mode in production", async () => {
+      process.env.NEXT_PUBLIC_VLM_USE_MOCK = "true"
+      process.env.NODE_ENV = "production"
+
+      await expect(
+        analyzeHazardWithVLM(mockSupabase, {
+          image_url: "https://example.com/image.jpg",
+          report_id: "test-id",
+        })
+      ).rejects.toThrow("VLM mock mode is disabled in production")
+    })
+
     it("should call Edge Function with correct parameters", async () => {
       const mockAnalysis = {
         hazards: [],
@@ -208,6 +233,27 @@ describe("vlm-analysis", () => {
       expect(result).toEqual({
         success: false,
         error: "分析結果が空です",
+      })
+    })
+
+    it("should handle invalid analysis schema from Edge Function", async () => {
+      mockSupabase.functions.invoke.mockResolvedValue({
+        data: {
+          analysis: {
+            hazards: [{ category: "invalid", severity: 10 }],
+          },
+        },
+        error: null,
+      })
+
+      const result = await analyzeHazardWithVLM(mockSupabase, {
+        image_url: "https://example.com/image.jpg",
+        report_id: "test-report-id",
+      })
+
+      expect(result).toEqual({
+        success: false,
+        error: "分析結果の形式が不正です",
       })
     })
 

@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+const MAX_IMAGE_URL_LENGTH = 2048
+const MAX_REPORT_ID_LENGTH = 128
+const MAX_ADDITIONAL_CONTEXT_LENGTH = 1200
+
 /**
  * 15 hazard categories with Japanese labels, Lucide icon names, and Tailwind colors
  */
@@ -75,6 +79,95 @@ export interface AnalyzeHazardResponse {
   error?: string
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function isHazardCategory(value: unknown): value is HazardCategory {
+  return typeof value === "string" && value in HAZARD_CATEGORY_MAP
+}
+
+function isIntegerInRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max
+}
+
+function isOptionalString(value: unknown, maxLength: number): value is string | undefined {
+  return value === undefined || (typeof value === "string" && value.length <= maxLength)
+}
+
+function isStringArray(value: unknown, maxItems: number, itemMaxLength: number): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= maxItems &&
+    value.every((item) => typeof item === "string" && item.length <= itemMaxLength)
+  )
+}
+
+function isVlmHazard(value: unknown): value is VlmHazard {
+  if (!isRecord(value)) {
+    return false
+  }
+  return (
+    isHazardCategory(value.category) &&
+    isIntegerInRange(value.severity, 1, 5) &&
+    typeof value.description_ja === "string" &&
+    typeof value.description_en === "string" &&
+    typeof value.child_specific_risk === "string" &&
+    typeof value.recommendation === "string"
+  )
+}
+
+function isVlmAnalysisResult(value: unknown): value is VlmAnalysisResult {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  if (!Array.isArray(value.hazards) || !value.hazards.every(isVlmHazard)) {
+    return false
+  }
+
+  if (!isIntegerInRange(value.overall_safety_score, 0, 100)) {
+    return false
+  }
+
+  if (!isIntegerInRange(value.overall_risk_level, 1, 5)) {
+    return false
+  }
+
+  if (typeof value.child_perspective_summary !== "string") {
+    return false
+  }
+
+  if (!isRecord(value.time_weather_risks)) {
+    return false
+  }
+
+  const timeWeather = value.time_weather_risks
+  const validTimeWeather =
+    isOptionalString(timeWeather.morning_commute, 500) &&
+    isOptionalString(timeWeather.evening_return, 500) &&
+    isOptionalString(timeWeather.rainy_conditions, 500) &&
+    isOptionalString(timeWeather.winter_conditions, 500)
+  if (!validTimeWeather) {
+    return false
+  }
+
+  if (!isRecord(value.improvement_suggestions)) {
+    return false
+  }
+
+  const suggestions = value.improvement_suggestions
+  const validSuggestions =
+    (suggestions.immediate_actions === undefined ||
+      isStringArray(suggestions.immediate_actions, 20, 300)) &&
+    (suggestions.medium_term_improvements === undefined ||
+      isStringArray(suggestions.medium_term_improvements, 20, 300)) &&
+    (suggestions.community_involvement === undefined ||
+      isStringArray(suggestions.community_involvement, 20, 300))
+
+  return validSuggestions
+}
+
 /**
  * Call Supabase Edge Function to analyze hazard image using Claude Haiku Vision
  *
@@ -87,14 +180,28 @@ export async function analyzeHazardWithVLM(
   supabase: SupabaseClient,
   request: AnalyzeHazardRequest
 ): Promise<AnalyzeHazardResponse> {
+  const imageUrl = request.image_url?.trim()
+  const reportId = request.report_id?.trim()
+  const additionalContext = (request.additional_context || "").trim()
+
   // Input validation
-  if (!request.image_url || !request.report_id) {
+  if (!imageUrl || !reportId) {
     throw new Error("image_url and report_id are required")
+  }
+
+  if (imageUrl.length > MAX_IMAGE_URL_LENGTH || reportId.length > MAX_REPORT_ID_LENGTH) {
+    throw new Error("image_url or report_id is too long")
+  }
+
+  if (additionalContext.length > MAX_ADDITIONAL_CONTEXT_LENGTH) {
+    throw new Error(
+      `additional_context must be at most ${MAX_ADDITIONAL_CONTEXT_LENGTH} characters`
+    )
   }
 
   // Validate image URL format and protocol
   try {
-    const parsed = new URL(request.image_url)
+    const parsed = new URL(imageUrl)
     if (parsed.protocol !== "https:") {
       throw new Error("image_url must use HTTPS")
     }
@@ -112,6 +219,10 @@ export async function analyzeHazardWithVLM(
   const USE_MOCK_DATA = process.env.NEXT_PUBLIC_VLM_USE_MOCK === "true"
 
   if (USE_MOCK_DATA) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("VLM mock mode is disabled in production")
+    }
+
     // Mock data for development only
     if (process.env.NODE_ENV === "development") {
       console.log("[VLM Mock] Using mock data for development")
@@ -185,9 +296,9 @@ export async function analyzeHazardWithVLM(
   try {
     const { data, error } = await supabase.functions.invoke("analyze-hazard", {
       body: {
-        image_url: request.image_url,
-        report_id: request.report_id,
-        additional_context: request.additional_context || "",
+        image_url: imageUrl,
+        report_id: reportId,
+        additional_context: additionalContext,
       },
     })
 
@@ -206,9 +317,17 @@ export async function analyzeHazardWithVLM(
       }
     }
 
+    if (!isVlmAnalysisResult(data.analysis)) {
+      console.error("[VLM Analysis] Invalid analysis schema:", data.analysis)
+      return {
+        success: false,
+        error: "分析結果の形式が不正です",
+      }
+    }
+
     return {
       success: true,
-      analysis: data.analysis as VlmAnalysisResult,
+      analysis: data.analysis,
       analysis_id: data.analysis_id,
     }
   } catch (err) {

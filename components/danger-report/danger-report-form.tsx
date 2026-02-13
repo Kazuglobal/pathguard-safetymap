@@ -1095,6 +1095,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="危険箇所の名前や特徴"
+            maxLength={120}
             required
           />
         </div>
@@ -1107,6 +1108,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             onChange={(e) => setDescription(e.target.value)}
             placeholder="危険箇所の詳細な説明や注意点"
             className="resize-none"
+            maxLength={1000}
           />
         </div>
 
