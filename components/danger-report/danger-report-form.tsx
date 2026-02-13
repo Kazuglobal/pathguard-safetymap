@@ -24,9 +24,11 @@ import {
   defaultSituations,
   type DefaultSituation,
 } from "@/lib/disaster-scenario-prompts"
+import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
+import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 
 interface DangerReportFormProps {
-  onSubmit: (data: Partial<DangerReport>) => void
+  onSubmit: (data: Partial<DangerReport>) => Promise<{ reportId: string; imageUrl: string | null }>
   onCancel: () => void
   selectedLocation: [number, number] | null
   locationSource?: "manual" | "gps" | null
@@ -184,6 +186,20 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // 手動解析トリガー（自動解析を無効化し、ボタンクリックで開始）
   const [manualAnalysisTriggered, setManualAnalysisTriggered] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
+
+  // VLM Analysis Hook
+  const {
+    status: vlmStatus,
+    result: vlmResult,
+    error: vlmError,
+    startAnalysis: startVlmAnalysis,
+    retry: retryVlmAnalysis,
+    reset: resetVlmAnalysis,
+  } = useVlmAnalysis()
+
+  // Store submitted report info for VLM analysis
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
+  const [submittedImageUrl, setSubmittedImageUrl] = useState<string | null>(null)
 
   const registerBlobUrl = (url: string) => {
     if (url.startsWith("blob:")) {
@@ -980,8 +996,25 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         }
       }
 
-      // 親コンポーネントの送信ハンドラーを呼び出し
-      onSubmit(reportData)
+      // 親コンポーネントの送信ハンドラーを呼び出し、report IDとimage URLを取得
+      const result = await onSubmit(reportData)
+
+      // Validate result before using for VLM analysis
+      if (result?.reportId && result?.imageUrl) {
+        // Store report metadata for VLM analysis
+        setSubmittedReportId(result.reportId)
+        setSubmittedImageUrl(result.imageUrl)
+
+        // Trigger VLM analysis with validated data
+        const additionalContext = `${title}${description ? ` - ${description}` : ""}`
+        startVlmAnalysis({
+          reportId: result.reportId,
+          imageUrl: result.imageUrl,
+          additionalContext,
+        }).catch((err) => {
+          console.warn("VLM分析は失敗しましたが、レポートは保存されています:", err)
+        })
+      }
     } catch (error) {
       console.error("Error submitting report:", error)
       toast({
@@ -1455,6 +1488,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* VLM Analysis Panel */}
+        {(vlmStatus !== "idle" || submittedReportId) && (
+          <VlmAnalysisPanel
+            status={vlmStatus}
+            result={vlmResult}
+            error={vlmError}
+            onRetry={retryVlmAnalysis}
+          />
+        )}
 
         {/* 選択位置の表示 - モバイルフルスクリーン時は親で表示するため非表示 */}
         {!isMobileFullscreen && (
