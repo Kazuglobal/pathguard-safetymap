@@ -318,6 +318,32 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     return new File([blob], filename, { type: blob.type || 'image/png' })
   }
 
+  // Convert a data URL (or any fetchable URL) to a lightweight blob URL for preview.
+  // Blob URLs are short reference strings (~60 chars) vs multi-MB base64 data URLs,
+  // drastically reducing React state size and re-render cost.
+  const dataUrlToBlobUrl = async (dataUrl: string, signal?: AbortSignal): Promise<string> => {
+    const res = await fetch(dataUrl, { signal })
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    registerBlobUrl(url)
+    return url
+  }
+
+  // Convert a data URL to both a File and a blob URL in a single fetch,
+  // avoiding redundant memory copies.
+  const dataUrlToFileAndBlobUrl = async (
+    dataUrl: string,
+    filename: string,
+    signal?: AbortSignal,
+  ): Promise<{ file: File; blobUrl: string }> => {
+    const res = await fetch(dataUrl, { signal })
+    const blob = await res.blob()
+    const file = new File([blob], filename, { type: blob.type || 'image/png' })
+    const blobUrl = URL.createObjectURL(blob)
+    registerBlobUrl(blobUrl)
+    return { file, blobUrl }
+  }
+
   const buildRegionConstraints = (hazards: HazardItem[]): string => {
     if (!Array.isArray(hazards) || hazards.length === 0) return ''
     const lines: string[] = []
@@ -548,34 +574,36 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         if (!isActive()) return
 
         // 3) visualization overlay (local fallback always available)
-        const overlayUrl = await drawOverlayFromHazards(originalImageFile, hazards)
+        // Convert data URLs to lightweight blob URLs to avoid storing multi-MB
+        // base64 strings in React state, which causes UI freezes on re-render.
+        const overlayDataUrl = await drawOverlayFromHazards(originalImageFile, hazards)
         if (!isActive()) return
-        const overlayFile = await dataUrlToFile(overlayUrl, 'overlay.png', abortController.signal)
-        if (isActive()) {
-          setProcessedImageFiles(prev => [...prev, overlayFile])
-          setProcessedImagePreviews(prev => [...prev, overlayUrl])
-        }
+        const overlay = await dataUrlToFileAndBlobUrl(overlayDataUrl, 'overlay.png', abortController.signal)
         if (!isActive()) return
 
         // 4) simple local simulations (flood/fire/typhoon/earthquake)
-        const [floodUrl, fireUrl, typhoonUrl, quakeUrl] = await Promise.all([
+        const [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl] = await Promise.all([
           simulateVariant(originalImageFile, 'flood'),
           simulateVariant(originalImageFile, 'fire'),
           simulateVariant(originalImageFile, 'typhoon'),
           simulateVariant(originalImageFile, 'earthquake'),
         ])
         if (!isActive()) return
-        const toFiles = await Promise.all([
-          dataUrlToFile(floodUrl, 'flood.png', abortController.signal),
-          dataUrlToFile(fireUrl, 'fire.png', abortController.signal),
-          dataUrlToFile(typhoonUrl, 'typhoon.png', abortController.signal),
-          dataUrlToFile(quakeUrl, 'earthquake.png', abortController.signal),
-        ])
+        const simNames = ['flood', 'fire', 'typhoon', 'earthquake'] as const
+        const simDataUrls = [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl]
+        const simResults = await Promise.all(
+          simDataUrls.map((url, i) => dataUrlToFileAndBlobUrl(url, `${simNames[i]}.png`, abortController.signal))
+        )
+        // Batch a single state update for all local results (overlay + 4 sims)
         if (isActive()) {
-          setProcessedImageFiles(prev => [...prev, ...toFiles])
-          setProcessedImagePreviews(prev => [...prev, floodUrl, fireUrl, typhoonUrl, quakeUrl])
+          const localFiles = [overlay.file, ...simResults.map(r => r.file)]
+          const localPreviews = [overlay.blobUrl, ...simResults.map(r => r.blobUrl)]
+          setProcessedImageFiles(prev => [...prev, ...localFiles])
+          setProcessedImagePreviews(prev => [...prev, ...localPreviews])
         }
         if (!isActive()) return
+        // Yield to main thread so the UI stays responsive
+        await new Promise(r => setTimeout(r, 0))
 
         // 5) Standard scenario image-to-image generation using generated prompts
         try {
@@ -595,10 +623,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             const imgs = Array.isArray(gen.images) ? gen.images : []
             const ok = imgs.slice(0, 2)
             if (ok.length > 0 && isActive()) {
-              const files = await Promise.all(ok.map(async (im: { dataUrl: string }, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`, abortController.signal)))
+              // Convert API data URLs to blob URLs to keep state lightweight
+              const converted = await Promise.all(
+                ok.map((im: { dataUrl: string }, i: number) =>
+                  dataUrlToFileAndBlobUrl(im.dataUrl, `nanobanana-${i}.png`, abortController.signal)
+                )
+              )
               if (isActive()) {
-                setProcessedImageFiles(prev => [...prev, ...files])
-                setProcessedImagePreviews(prev => [...prev, ...ok.map((im: { dataUrl: string }) => im.dataUrl)])
+                setProcessedImageFiles(prev => [...prev, ...converted.map(c => c.file)])
+                setProcessedImagePreviews(prev => [...prev, ...converted.map(c => c.blobUrl)])
               }
             } else if (gen.warning && isActive()) {
               setAutoGenError(gen.warning)
@@ -640,16 +673,27 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               return { file: f, url: im.dataUrl }
             }
             const sims = simsLocal
-            const results = await Promise.all([
-              make(sims.earthquake, 'earthquake'),
-              make(sims.typhoon, 'typhoon'),
-              make(sims.flood, 'flood'),
-              make(sims.fire, 'fire'),
-            ])
-            const ok = results.filter(Boolean) as { file: File; url: string }[]
-            if (ok.length && isActive()) {
-              setProcessedImageFiles(prev => [...prev, ...ok.map(item => item.file)])
-              setProcessedImagePreviews(prev => [...prev, ...ok.map(item => item.url)])
+            // Run disaster simulations with limited concurrency (2 at a time)
+            // to avoid overwhelming the browser with large concurrent payloads
+            const simKeys = ['earthquake', 'typhoon', 'flood', 'fire'] as const
+            const simPrompts = [sims.earthquake, sims.typhoon, sims.flood, sims.fire]
+            const simResultsBatch: { file: File; blobUrl: string }[] = []
+            for (let i = 0; i < simKeys.length; i += 2) {
+              const batch = simPrompts.slice(i, i + 2).map((p, j) => make(p, simKeys[i + j]))
+              const batchResults = await Promise.all(batch)
+              for (const r of batchResults) {
+                if (!r) continue
+                // Convert data URL to blob URL
+                const blobUrl = await dataUrlToBlobUrl(r.url, abortController.signal)
+                simResultsBatch.push({ file: r.file, blobUrl })
+              }
+              if (!isActive()) break
+              // Yield between batches
+              await new Promise(resolve => setTimeout(resolve, 0))
+            }
+            if (simResultsBatch.length && isActive()) {
+              setProcessedImageFiles(prev => [...prev, ...simResultsBatch.map(item => item.file)])
+              setProcessedImagePreviews(prev => [...prev, ...simResultsBatch.map(item => item.blobUrl)])
             }
             if (isActive()) setActiveImageTab('processed')
           } catch (e) {
@@ -771,11 +815,12 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
       if (ok.length) {
         const suffix = useCustomPrompt && selectedPromptId ? selectedPromptId : situation
-        const files = await Promise.all(
-          ok.map((im, idx: number) => dataUrlToFile(im.dataUrl, `regen-${suffix}-${idx}.png`)),
+        // Convert API data URLs to blob URLs to prevent state bloat
+        const converted = await Promise.all(
+          ok.map((im, idx: number) => dataUrlToFileAndBlobUrl(im.dataUrl, `regen-${suffix}-${idx}.png`)),
         )
-        setProcessedImageFiles(prev => [...prev, ...files])
-        setProcessedImagePreviews(prev => [...prev, ...ok.map((im) => im.dataUrl)])
+        setProcessedImageFiles(prev => [...prev, ...converted.map(c => c.file)])
+        setProcessedImagePreviews(prev => [...prev, ...converted.map(c => c.blobUrl)])
       } else {
         setAutoGenError(json.warning || '画像生成に失敗しました。')
       }
@@ -1413,11 +1458,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                     {processedImagePreviews.map((preview, idx) => (
                       <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px] group">
                         <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(preview)}>
-                          <NextImage
+                          {/* Use native <img> for blob/data URLs — NextImage's optimization
+                              pipeline adds overhead for non-remote images and can cause jank */}
+                          <img
                             src={preview}
                             alt={`加工画像 ${idx + 1}`}
-                            fill
-                            className="object-cover"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading="lazy"
                             onError={() => {
                               toast({
                                 title: "エラー",
