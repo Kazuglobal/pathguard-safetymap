@@ -3,7 +3,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
-import Image from 'next/image'
 
 interface ImagePreviewDialogProps {
   isOpen: boolean
@@ -26,12 +25,12 @@ export default function ImagePreviewDialog({ isOpen, imageUrl, onClose }: ImageP
           </DialogClose>
         </DialogHeader>
         <div className="relative w-full h-[60vh]">
-          <Image
+          {/* Use native <img> because preview URLs are blob: or data: URLs
+              where NextImage optimization adds overhead without benefit */}
+          <img
             src={imageUrl}
             alt="危険箇所の画像"
-            fill
-            className="object-contain"
-            priority
+            className="absolute inset-0 w-full h-full object-contain"
           />
         </div>
       </DialogContent>
