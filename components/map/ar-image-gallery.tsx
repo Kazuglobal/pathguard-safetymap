@@ -182,7 +182,7 @@ export function ARImageGallery({
       <div
         {...longPressHandlers}
         className="w-full h-full"
-        style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+        style={{ WebkitTouchCallout: "none", userSelect: "none", touchAction: "manipulation" }}
       >
         <img
           src={getImageSrc(currentImage!, currentIndex)}

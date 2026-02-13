@@ -798,7 +798,7 @@ function OriginalImageWithLongPress({
     <div
       className="relative w-full h-64 md:h-80 bg-gray-50 rounded-md overflow-hidden"
       {...handlers}
-      style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+      style={{ WebkitTouchCallout: "none", userSelect: "none", touchAction: "manipulation" }}
     >
       <Image
         src={src}
@@ -832,7 +832,7 @@ function ProcessedImageWithLongPress({
     <div
       className="relative w-full max-h-80"
       {...handlers}
-      style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+      style={{ WebkitTouchCallout: "none", userSelect: "none", touchAction: "manipulation" }}
     >
       <Image
         src={src}

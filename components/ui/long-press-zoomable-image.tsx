@@ -52,7 +52,12 @@ export function LongPressZoomableImage({
       <div
         className={wrapperClassName}
         {...longPressHandlers}
-        style={{ cursor: "pointer", WebkitTouchCallout: "none", userSelect: "none" }}
+        style={{
+          cursor: "pointer",
+          WebkitTouchCallout: "none",
+          userSelect: "none",
+          touchAction: "manipulation",
+        }}
       >
         {children || (
           <img
