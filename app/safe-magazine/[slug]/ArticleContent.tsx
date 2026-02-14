@@ -34,7 +34,7 @@ export function ArticleContent({ article }: ArticleContentProps) {
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
-            <span className="text-sm font-medium text-gray-500">SAFE MAGAZINE</span>
+            <span className="text-sm font-medium text-gray-500">PathGuard Press</span>
           </div>
         </div>
       </header>

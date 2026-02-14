@@ -1,5 +1,5 @@
 /**
- * SAFE MAGAZINE 記事用画像生成スクリプト
+ * PathGuard Press 記事用画像生成スクリプト
  * Gemini 3 Pro Image Preview を使用
  * 高品質な教育用イラストを生成
  */
@@ -347,7 +347,7 @@ async function generateImage(prompt: string, outputPath: string): Promise<boolea
 }
 
 async function generateAllImages() {
-  console.log("=== SAFE MAGAZINE 日本向け高品質画像生成 ===\n")
+  console.log("=== PathGuard Press 日本向け高品質画像生成 ===\n")
 
   const basePath = path.join(process.cwd(), "public", "images", "safe-magazine")
 
