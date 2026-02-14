@@ -35,6 +35,7 @@ type NavItem = {
   key: string
   href: string
   label: string
+  mobileLabel?: string
   icon: LucideIcon
   description?: string
   emphasize?: boolean
@@ -91,6 +92,7 @@ export function Navigation({
       key: "mypage",
       href: "/mypage",
       label: "マイページ",
+      mobileLabel: "マイ",
       icon: User,
       description: "ミッションやコレクション",
     },
@@ -278,7 +280,7 @@ export function Navigation({
                 >
                   <Icon className={cn(isEmphasized ? "h-6 w-6" : "h-5 w-5")} />
                 </span>
-                <span className="max-w-[72px] text-center">{item.label}</span>
+                <span className="max-w-[72px] text-center">{item.mobileLabel ?? item.label}</span>
               </Link>
             )
           })}
