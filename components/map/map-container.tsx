@@ -1371,7 +1371,7 @@ export default function MapContainer() {
 
           {/* Report Form - モバイル用（フルスクリーンモーダル）- Portal経由でbodyに直接レンダリング */}
           {isReportFormOpen && isMobile && createPortal(
-            <div className="fixed inset-0 z-[60] flex flex-col bg-white mobile-fullscreen-form">
+            <div className="fixed inset-0 z-[60] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-white mobile-fullscreen-form">
               {/* モバイルフォームヘッダー */}
               <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white safe-area-top">
                 <Button
@@ -1436,7 +1436,7 @@ export default function MapContainer() {
 
               {/* フォーム本体 */}
               <div
-                className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain"
+                className="flex-1 min-h-0 overflow-y-auto touch-pan-y"
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <DangerReportForm
