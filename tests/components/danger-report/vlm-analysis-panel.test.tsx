@@ -36,6 +36,12 @@ const mockResult: VlmAnalysisResult = {
   },
 }
 
+/** Expand the collapsible details section */
+function expandDetails() {
+  const toggleButton = screen.getByRole("button", { name: /分析詳細を展開/ })
+  fireEvent.click(toggleButton)
+}
+
 describe("VlmAnalysisPanel", () => {
   it("should not render anything when status is idle", () => {
     const { container } = render(
@@ -88,7 +94,7 @@ describe("VlmAnalysisPanel", () => {
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
-  it("should render completed state with analysis results", () => {
+  it("should render completed state with safety score always visible", () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -98,28 +104,16 @@ describe("VlmAnalysisPanel", () => {
       />
     )
 
-    // Check status badge
+    // Status badge
     expect(screen.getByText("完了")).toBeInTheDocument()
 
-    // Check safety score
+    // Safety score always visible (even when collapsed)
     expect(screen.getByText("65")).toBeInTheDocument()
     expect(screen.getByText("/100")).toBeInTheDocument()
     expect(screen.getByText("要注意")).toBeInTheDocument()
-
-    // Check hazards count
-    expect(screen.getByText("検出されたリスク要因 (2件)")).toBeInTheDocument()
-
-    // Check hazard descriptions
-    expect(screen.getByText("交通量が多く、車のスピードが速い")).toBeInTheDocument()
-    expect(screen.getByText("見通しが悪い交差点")).toBeInTheDocument()
-
-    // Check tabs
-    expect(screen.getByRole("tab", { name: "子供視点" })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: "時間・天候" })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: "改善提案" })).toBeInTheDocument()
   })
 
-  it("should display child-specific risks in hazard items", () => {
+  it("should show collapsed hint with hazard count when collapsed", () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -128,12 +122,94 @@ describe("VlmAnalysisPanel", () => {
         onRetry={vi.fn()}
       />
     )
+
+    expect(screen.getByText(/タップして詳細を表示（リスク要因 2件）/)).toBeInTheDocument()
+
+    // Details should NOT be visible when collapsed
+    expect(screen.queryByText("検出されたリスク要因 (2件)")).not.toBeInTheDocument()
+    expect(screen.queryByText("交通量が多く、車のスピードが速い")).not.toBeInTheDocument()
+  })
+
+  it("should expand details when toggle button is clicked", () => {
+    render(
+      <VlmAnalysisPanel
+        status="completed"
+        result={mockResult}
+        error={null}
+        onRetry={vi.fn()}
+      />
+    )
+
+    // Expand
+    expandDetails()
+
+    // Now details should be visible
+    expect(screen.getByText("検出されたリスク要因 (2件)")).toBeInTheDocument()
+    expect(screen.getByText("交通量が多く、車のスピードが速い")).toBeInTheDocument()
+    expect(screen.getByText("見通しが悪い交差点")).toBeInTheDocument()
+
+    // Tabs should be visible
+    expect(screen.getByRole("tab", { name: "子供視点" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "時間・天候" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "改善提案" })).toBeInTheDocument()
+
+    // Collapsed hint should disappear
+    expect(screen.queryByText(/タップして詳細を表示/)).not.toBeInTheDocument()
+  })
+
+  it("should collapse details when toggle button is clicked again", () => {
+    render(
+      <VlmAnalysisPanel
+        status="completed"
+        result={mockResult}
+        error={null}
+        onRetry={vi.fn()}
+      />
+    )
+
+    // Expand then collapse
+    expandDetails()
+    expandDetails()
+
+    // Details should be hidden again
+    expect(screen.queryByText("検出されたリスク要因 (2件)")).not.toBeInTheDocument()
+    expect(screen.getByText(/タップして詳細を表示/)).toBeInTheDocument()
+  })
+
+  it("should have correct aria-expanded attribute on toggle button", () => {
+    render(
+      <VlmAnalysisPanel
+        status="completed"
+        result={mockResult}
+        error={null}
+        onRetry={vi.fn()}
+      />
+    )
+
+    const toggleButton = screen.getByRole("button", { name: /分析詳細を展開/ })
+    expect(toggleButton).toHaveAttribute("aria-expanded", "false")
+
+    fireEvent.click(toggleButton)
+    expect(toggleButton).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("should display child-specific risks when expanded", () => {
+    render(
+      <VlmAnalysisPanel
+        status="completed"
+        result={mockResult}
+        error={null}
+        onRetry={vi.fn()}
+      />
+    )
+
+    expandDetails()
 
     expect(screen.getByText(/子供が横断中に車に気づかれにくい/)).toBeInTheDocument()
     expect(screen.getByText(/背の低い子供が見えにくい/)).toBeInTheDocument()
   })
 
-  it("should display recommendations in hazard items", () => {
+  it("should display recommendations when expanded", () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -142,12 +218,14 @@ describe("VlmAnalysisPanel", () => {
         onRetry={vi.fn()}
       />
     )
+
+    expandDetails()
 
     expect(screen.getByText(/信号機の設置を検討/)).toBeInTheDocument()
     expect(screen.getByText(/カーブミラーの設置/)).toBeInTheDocument()
   })
 
-  it("should display correct severity badges", () => {
+  it("should display correct severity badges when expanded", () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -156,12 +234,14 @@ describe("VlmAnalysisPanel", () => {
         onRetry={vi.fn()}
       />
     )
+
+    expandDetails()
 
     expect(screen.getByText("レベル4")).toBeInTheDocument()
     expect(screen.getByText("レベル3")).toBeInTheDocument()
   })
 
-  it("should render all tab content", () => {
+  it("should render all tab content when expanded", () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -170,6 +250,8 @@ describe("VlmAnalysisPanel", () => {
         onRetry={vi.fn()}
       />
     )
+
+    expandDetails()
 
     // Check that all tabs are present
     expect(screen.getByRole("tab", { name: "子供視点" })).toBeInTheDocument()
@@ -180,7 +262,7 @@ describe("VlmAnalysisPanel", () => {
     expect(screen.getByText(mockResult.child_perspective_summary)).toBeInTheDocument()
   })
 
-  it("should display improvement suggestions correctly", () => {
+  it("should display improvement suggestions correctly when expanded", () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -189,6 +271,8 @@ describe("VlmAnalysisPanel", () => {
         onRetry={vi.fn()}
       />
     )
+
+    expandDetails()
 
     // All improvement suggestions should be in the document (even if hidden)
     // Just verify the data is rendered
@@ -216,6 +300,11 @@ describe("VlmAnalysisPanel", () => {
       />
     )
 
+    // No collapsed hint when there are no hazards
+    expect(screen.queryByText(/タップして詳細を表示/)).not.toBeInTheDocument()
+
+    expandDetails()
+
     expect(screen.getByText("検出されたリスク要因 (0件)")).toBeInTheDocument()
   })
 
@@ -233,6 +322,8 @@ describe("VlmAnalysisPanel", () => {
         onRetry={vi.fn()}
       />
     )
+
+    expandDetails()
 
     // Switch to time/weather tab
     fireEvent.click(screen.getByRole("tab", { name: "時間・天候" }))

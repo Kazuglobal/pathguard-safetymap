@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,8 @@ import {
   Brain,
   Camera,
   Wrench,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import type { LucideProps } from "lucide-react"
 import {
@@ -194,13 +196,23 @@ function FailedView({
 }
 
 /**
- * Completed state view with full analysis results
+ * Completed state view with full analysis results.
+ * Uses a collapsible accordion so the panel doesn't push the form
+ * content too far down, especially on mobile devices.
  */
 function CompletedView({ result }: { result: VlmAnalysisResult }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
   return (
     <div className="space-y-4">
-      {/* Overall Safety Score */}
-      <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+      {/* Overall Safety Score - always visible, acts as toggle */}
+      <button
+        type="button"
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="flex w-full items-center justify-between p-3 bg-white rounded-lg border hover:border-blue-300 transition-colors text-left"
+        aria-expanded={isExpanded}
+        aria-label="分析詳細を展開"
+      >
         <div>
           <p className="text-xs text-gray-500">総合安全スコア</p>
           <p className="text-2xl font-bold text-gray-800">
@@ -208,58 +220,77 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
             <span className="text-sm text-gray-500">/100</span>
           </p>
         </div>
-        <Badge
-          variant={getSeverityVariant(result.overall_risk_level)}
-          className="text-sm"
-        >
-          {getRiskLevelLabel(result.overall_risk_level)}
-        </Badge>
-      </div>
-
-      {/* Hazards List */}
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold text-gray-700">
-          検出されたリスク要因 ({result.hazards.length}件)
-        </h4>
-        <div className="space-y-2 md:max-h-64 md:overflow-y-auto">
-          {result.hazards.map((hazard, idx) => (
-            <HazardItem key={idx} hazard={hazard} />
-          ))}
-        </div>
-      </div>
-
-      {/* Tabs for additional info */}
-      <Tabs defaultValue="child" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="child">子供視点</TabsTrigger>
-          <TabsTrigger value="time">時間・天候</TabsTrigger>
-          <TabsTrigger value="improve">改善提案</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="child" className="space-y-2">
-          <p className="text-sm text-gray-700">
-            {result.child_perspective_summary}
-          </p>
-        </TabsContent>
-
-        <TabsContent value="time" className="space-y-2">
-          {Object.entries(result.time_weather_risks).map(
-            ([key, value]) =>
-              value && (
-                <div key={key} className="text-sm">
-                  <p className="font-medium text-gray-700">
-                    {formatTimeWeatherKey(key)}
-                  </p>
-                  <p className="text-gray-600">{value}</p>
-                </div>
-              )
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={getSeverityVariant(result.overall_risk_level)}
+            className="text-sm"
+          >
+            {getRiskLevelLabel(result.overall_risk_level)}
+          </Badge>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-gray-400 flex-shrink-0" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-gray-400 flex-shrink-0" />
           )}
-        </TabsContent>
+        </div>
+      </button>
 
-        <TabsContent value="improve" className="space-y-3">
-          {renderImprovementSuggestions(result.improvement_suggestions)}
-        </TabsContent>
-      </Tabs>
+      {/* Collapsed hint */}
+      {!isExpanded && result.hazards.length > 0 && (
+        <p className="text-xs text-gray-500 text-center">
+          タップして詳細を表示（リスク要因 {result.hazards.length}件）
+        </p>
+      )}
+
+      {/* Expandable detail section */}
+      {isExpanded && (
+        <>
+          {/* Hazards List */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-700">
+              検出されたリスク要因 ({result.hazards.length}件)
+            </h4>
+            <div className="space-y-2 max-h-48 overflow-y-auto overscroll-y-contain md:max-h-64">
+              {result.hazards.map((hazard, idx) => (
+                <HazardItem key={idx} hazard={hazard} />
+              ))}
+            </div>
+          </div>
+
+          {/* Tabs for additional info */}
+          <Tabs defaultValue="child" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="child">子供視点</TabsTrigger>
+              <TabsTrigger value="time">時間・天候</TabsTrigger>
+              <TabsTrigger value="improve">改善提案</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="child" className="space-y-2">
+              <p className="text-sm text-gray-700">
+                {result.child_perspective_summary}
+              </p>
+            </TabsContent>
+
+            <TabsContent value="time" className="space-y-2">
+              {Object.entries(result.time_weather_risks).map(
+                ([key, value]) =>
+                  value && (
+                    <div key={key} className="text-sm">
+                      <p className="font-medium text-gray-700">
+                        {formatTimeWeatherKey(key)}
+                      </p>
+                      <p className="text-gray-600">{value}</p>
+                    </div>
+                  )
+              )}
+            </TabsContent>
+
+            <TabsContent value="improve" className="space-y-3">
+              {renderImprovementSuggestions(result.improvement_suggestions)}
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
     </div>
   )
 }
