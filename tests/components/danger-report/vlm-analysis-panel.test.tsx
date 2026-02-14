@@ -202,6 +202,42 @@ describe("VlmAnalysisPanel", () => {
     ).toBeInTheDocument()
   })
 
+  it("should generate unique detail section ids per panel instance", () => {
+    render(
+      <>
+        <VlmAnalysisPanel
+          status="completed"
+          result={mockResult}
+          error={null}
+          onRetry={vi.fn()}
+        />
+        <VlmAnalysisPanel
+          status="completed"
+          result={mockResult}
+          error={null}
+          onRetry={vi.fn()}
+        />
+      </>
+    )
+
+    const toggleButtons = screen.getAllByRole("button", { name: /分析詳細を展開/ })
+    expect(toggleButtons).toHaveLength(2)
+
+    const firstControls = toggleButtons[0].getAttribute("aria-controls")
+    const secondControls = toggleButtons[1].getAttribute("aria-controls")
+    expect(firstControls).toBeTruthy()
+    expect(secondControls).toBeTruthy()
+    expect(firstControls).not.toBe(secondControls)
+    expect(document.getElementById(firstControls as string)).toBeNull()
+    expect(document.getElementById(secondControls as string)).toBeNull()
+
+    fireEvent.click(toggleButtons[0])
+    fireEvent.click(toggleButtons[1])
+
+    expect(document.getElementById(firstControls as string)).toBeInTheDocument()
+    expect(document.getElementById(secondControls as string)).toBeInTheDocument()
+  })
+
   it("should display child-specific risks when expanded", () => {
     render(
       <VlmAnalysisPanel

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -202,7 +202,7 @@ function FailedView({
  */
 function CompletedView({ result }: { result: VlmAnalysisResult }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const detailsSectionId = "vlm-analysis-details"
+  const detailsSectionId = useId()
 
   return (
     <div className="space-y-4">
