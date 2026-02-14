@@ -221,7 +221,7 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
         <h4 className="text-sm font-semibold text-gray-700">
           検出されたリスク要因 ({result.hazards.length}件)
         </h4>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="space-y-2">
           {result.hazards.map((hazard, idx) => (
             <HazardItem key={idx} hazard={hazard} />
           ))}

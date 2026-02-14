@@ -1132,7 +1132,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         </div>
       )}
 
-      <form onSubmit={handleFormSubmit} className={isMobileFullscreen ? "space-y-4" : "space-y-3"}>
+      <form onSubmit={handleFormSubmit} className={isMobileFullscreen ? "space-y-4 pb-20" : "space-y-3"}>
         <div className="space-y-2">
           <Label htmlFor="title">タイトル</Label>
           <Input
