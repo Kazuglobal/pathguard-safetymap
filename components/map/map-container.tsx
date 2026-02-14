@@ -1435,7 +1435,7 @@ export default function MapContainer() {
               )}
 
               {/* フォーム本体 */}
-              <div className="flex-1 overflow-y-auto overscroll-y-contain" style={{ WebkitOverflowScrolling: "touch" }}>
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain" style={{ WebkitOverflowScrolling: "touch" }}>
                 <DangerReportForm
                   onSubmit={handleReportSubmit}
                   onCancel={() => {
