@@ -263,7 +263,7 @@ export function Navigation({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
                   active ? "text-sky-600" : "text-slate-500"
                 )}
                 aria-label={item.label}
@@ -280,7 +280,7 @@ export function Navigation({
                 >
                   <Icon className={cn(isEmphasized ? "h-6 w-6" : "h-5 w-5")} />
                 </span>
-                <span className="block w-[72px] truncate text-center">
+                <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
                   {item.mobileLabel ?? item.label}
                 </span>
               </Link>
