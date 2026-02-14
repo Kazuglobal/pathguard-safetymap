@@ -1,6 +1,6 @@
 /**
  * Gemini 2.5 Flash 画像生成ユーティリティ
- * PathGuard Press用のサムネイルと記事内画像を生成
+ * SAFE MAGAZINE用のサムネイルと記事内画像を生成
  *
  * Model: gemini-3-pro-image-preview
  * ネイティブ画像生成機能を使用
@@ -311,7 +311,7 @@ export function generatePlaceholderSVG(
   <rect width="100%" height="100%" fill="${bg}"/>
   <text x="50%" y="45%" text-anchor="middle" font-size="80" fill="${fg}">${icon}</text>
   <text x="50%" y="60%" text-anchor="middle" font-size="24" fill="${fg}" font-family="sans-serif">
-    PathGuard Press
+    SAFE MAGAZINE
   </text>
 </svg>
   `.trim()

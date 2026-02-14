@@ -52,6 +52,7 @@ schoolsafetymap/     # リポジトリに含めないコピーを除外
 # -----------------------------------------
 /test-results/
 /playwright-report/
+.playwright-mcp/
 
 # -----------------------------------------
 # IDE・エディタ

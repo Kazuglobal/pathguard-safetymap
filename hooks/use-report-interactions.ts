@@ -313,11 +313,11 @@ export function useReportInteractionsBatch(reportIds: string[]): {
       const likeCounts = new Map<string, number>()
       const saveCounts = new Map<string, number>()
 
-      likesData?.forEach(item => {
+      likesData?.forEach((item: any) => {
         likeCounts.set(item.report_id, (likeCounts.get(item.report_id) ?? 0) + 1)
       })
 
-      bookmarksData?.forEach(item => {
+      bookmarksData?.forEach((item: any) => {
         saveCounts.set(item.report_id, (saveCounts.get(item.report_id) ?? 0) + 1)
       })
 
@@ -338,8 +338,8 @@ export function useReportInteractionsBatch(reportIds: string[]): {
           .eq("user_id", user.id)
           .in("report_id", reportIds)
 
-        userLikesData?.forEach(item => userLikes.add(item.report_id))
-        userSavesData?.forEach(item => userSaves.add(item.report_id))
+        userLikesData?.forEach((item: any) => userLikes.add(item.report_id))
+        userSavesData?.forEach((item: any) => userSaves.add(item.report_id))
       }
 
       // Build result map

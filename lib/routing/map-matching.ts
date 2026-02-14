@@ -288,7 +288,7 @@ export class MapMatchingService {
     const response = await this.matchGPSTrack(matchingOptions)
     
     if (!response.success || !response.data) {
-      return response as MapboxAPIResponse<GPSTrackAnalysis>
+      return response as unknown as MapboxAPIResponse<GPSTrackAnalysis>
     }
 
     const matching = response.data.matchings[0]
@@ -318,7 +318,7 @@ export class MapMatchingService {
     const analysisResponse = await this.analyzeGPSTrack(gpsPoints, profile)
     
     if (!analysisResponse.success || !analysisResponse.data) {
-      return analysisResponse as MapboxAPIResponse<RouteValidationResult>
+      return analysisResponse as unknown as MapboxAPIResponse<RouteValidationResult>
     }
 
     const analysis = analysisResponse.data
@@ -352,7 +352,7 @@ export class MapMatchingService {
     const analysisResponse = await this.analyzeGPSTrack(gpsPoints, profile)
     
     if (!analysisResponse.success || !analysisResponse.data) {
-      return analysisResponse as MapboxAPIResponse<VehicleTrackingData>
+      return analysisResponse as unknown as MapboxAPIResponse<VehicleTrackingData>
     }
 
     const analysis = analysisResponse.data
@@ -523,7 +523,9 @@ export class MapMatchingService {
     
     for (const leg of matchedTrack.legs) {
       const congestion = leg.annotation?.congestion || []
-      conditions.add(...congestion)
+      for (const level of congestion) {
+        conditions.add(level)
+      }
     }
 
     return Array.from(conditions)

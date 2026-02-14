@@ -5,6 +5,7 @@ import Image from "next/image"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogClose,
@@ -64,6 +65,7 @@ export default function SubmittedReportPreview({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="text-xl">報告画像プレビュー</DialogTitle>
+          <DialogDescription className="sr-only">送信した報告の画像プレビュー</DialogDescription>
           <DialogClose asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <X className="h-4 w-4" />

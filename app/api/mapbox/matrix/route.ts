@@ -209,13 +209,21 @@ export async function GET(request: NextRequest) {
       return [lng, lat] as [number, number]
     })
 
+    const parsedApproaches = searchParams
+      .get("approaches")
+      ?.split(",")
+      .filter(
+        (approach): approach is "unrestricted" | "curb" =>
+          approach === "unrestricted" || approach === "curb",
+      )
+
     const matrixRequest = {
       coordinates,
       profile: (searchParams.get('profile') as any) || 'driving',
       annotations: searchParams.get('annotations')?.split(',') as any[] || ['duration', 'distance'],
       sources: searchParams.get('sources')?.split(',').map(Number),
       destinations: searchParams.get('destinations')?.split(',').map(Number),
-      approaches: searchParams.get('approaches')?.split(','),
+      approaches: parsedApproaches,
       exclude: searchParams.get('exclude') as any
     }
 

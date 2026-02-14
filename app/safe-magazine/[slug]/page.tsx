@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!article) {
     return {
-      title: "記事が見つかりません | PathGuard Press",
+      title: "記事が見つかりません | SAFE MAGAZINE",
       description: "お探しの記事は見つかりませんでした。"
     }
   }
@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     keywords: keywords.join(", "),
-    authors: [{ name: "PathGuard Press編集部" }],
+    authors: [{ name: "SAFE MAGAZINE編集部" }],
     openGraph: {
       title,
       description,
@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       locale: "ja_JP",
       type: "article",
       publishedTime: article.publishedDate,
-      authors: ["PathGuard Press編集部"],
+      authors: ["SAFE MAGAZINE編集部"],
       tags: article.tags
     },
     twitter: {

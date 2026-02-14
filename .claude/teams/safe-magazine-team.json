@@ -1,0 +1,242 @@
+{
+  "name": "SAFE MAGAZINE Content Team",
+  "description": "通学路安全ニュース・SAFEMAGAZINEのコンテンツを自動更新するエージェントチーム",
+  "version": "1.0.0",
+  "agents": [
+    {
+      "id": "news-researcher",
+      "name": "ニュースリサーチャー",
+      "role": "リアルタイムニュース・情報収集担当",
+      "description": "全国の通学路に関するリアルタイムニュースや安全情報を収集する",
+      "responsibilities": [
+        "通学中の事故・事件ニュースの収集",
+        "通学路見守りボランティア活動情報",
+        "子どもの防犯対策・安全教育情報",
+        "交差点・危険箇所の事故統計",
+        "地域の安全対策事例",
+        "警察・自治体の安全施策発表"
+      ],
+      "tools": ["WebSearch", "WebFetch"],
+      "output_format": {
+        "type": "research_report",
+        "fields": ["title", "summary", "source_url", "date", "category", "location", "relevance_score"]
+      }
+    },
+    {
+      "id": "fact-checker",
+      "name": "ファクトチェッカー",
+      "role": "情報検証・信頼性確認担当",
+      "description": "収集された情報の正確性と信頼性を検証する",
+      "responsibilities": [
+        "ソースの信頼性評価",
+        "情報の正確性検証",
+        "複数ソースによるクロスチェック",
+        "日付・場所・統計データの確認",
+        "偏向・誤情報の検出",
+        "引用元の明確化"
+      ],
+      "tools": ["WebSearch", "WebFetch", "Read"],
+      "input_from": ["news-researcher"],
+      "output_format": {
+        "type": "verification_report",
+        "fields": ["original_claim", "verification_status", "confidence_level", "sources_checked", "corrections", "approved"]
+      }
+    },
+    {
+      "id": "article-writer",
+      "name": "記事ライター",
+      "role": "コンテンツ作成担当",
+      "description": "検証済み情報から読みやすい記事を作成する",
+      "responsibilities": [
+        "ニュース記事の執筆",
+        "安全ガイドの作成",
+        "保護者向けアドバイス記事",
+        "子ども向け安全教育コンテンツ",
+        "地域別安全情報まとめ",
+        "SEO最適化されたタイトル・見出し"
+      ],
+      "tools": ["Write", "Edit", "Read"],
+      "input_from": ["fact-checker"],
+      "output_format": {
+        "type": "article",
+        "fields": ["title", "subtitle", "body", "tags", "category", "target_audience", "related_links"]
+      },
+      "conditions": {
+        "require_approval": true,
+        "only_if": "fact-checker.approved === true"
+      }
+    },
+    {
+      "id": "visual-designer",
+      "name": "ビジュアルデザイナー",
+      "role": "画像・UI設計担当",
+      "description": "記事に必要な画像、インフォグラフィック、UIコンポーネントの設計を行う",
+      "responsibilities": [
+        "記事サムネイル画像の設計・プロンプト作成",
+        "インフォグラフィック設計",
+        "安全マップUI改善提案",
+        "統計データの可視化設計",
+        "アイコン・イラスト方針",
+        "レスポンシブデザイン対応"
+      ],
+      "tools": ["Write", "Edit", "Read", "Glob"],
+      "input_from": ["article-writer"],
+      "output_format": {
+        "type": "design_spec",
+        "fields": ["image_requirements", "ui_components", "color_scheme", "layout_suggestions", "accessibility_notes", "image_prompts"]
+      }
+    },
+    {
+      "id": "image-generator",
+      "name": "画像ジェネレーター",
+      "role": "AI画像生成担当",
+      "description": "Gemini API (Imagen 3) を使用してサムネイルと記事内画像を生成する",
+      "responsibilities": [
+        "記事サムネイル画像の生成",
+        "記事内挿入画像の生成",
+        "インフォグラフィック用イラスト生成",
+        "安全教育用イラスト生成",
+        "子ども向けビジュアルの生成",
+        "生成画像の品質管理"
+      ],
+      "tools": ["Bash", "Write", "Read"],
+      "input_from": ["visual-designer"],
+      "api": {
+        "provider": "google",
+        "model": "gemini-3-pro-image-preview",
+        "endpoint": "generativelanguage.googleapis.com",
+        "features": ["text-to-image", "multimodal", "image-generation"]
+      },
+      "output_format": {
+        "type": "generated_images",
+        "fields": ["thumbnail_path", "article_images", "image_metadata", "generation_params"]
+      },
+      "constraints": {
+        "safety_settings": "block_dangerous_content",
+        "aspect_ratios": ["16:9", "1:1", "4:3"],
+        "max_images_per_article": 5
+      }
+    },
+    {
+      "id": "seo-specialist",
+      "name": "SEOスペシャリスト",
+      "role": "SEO最適化担当",
+      "description": "記事のSEO最適化、メタデータ生成、構造化データ作成を行う",
+      "responsibilities": [
+        "SEO最適化されたタイトル・メタディスクリプションの作成",
+        "キーワード分析と最適化",
+        "JSON-LD構造化データ（Article, FAQPage, HowTo）の生成",
+        "Open Graph・Twitterカード用メタタグの設定",
+        "URL/スラッグの最適化提案",
+        "内部リンク・関連記事の提案",
+        "見出し構造（H1-H6）の最適化",
+        "alt属性・画像SEOの確認",
+        "コアウェブバイタル対応の確認"
+      ],
+      "tools": ["Write", "Edit", "Read", "Grep", "WebSearch"],
+      "input_from": ["article-writer", "image-generator"],
+      "output_format": {
+        "type": "seo_optimization",
+        "fields": [
+          "meta_title",
+          "meta_description",
+          "canonical_url",
+          "keywords",
+          "structured_data",
+          "og_tags",
+          "twitter_card",
+          "internal_links",
+          "heading_structure",
+          "seo_score"
+        ]
+      },
+      "constraints": {
+        "meta_title_max_length": 60,
+        "meta_description_max_length": 160,
+        "min_keyword_density": 1,
+        "max_keyword_density": 3
+      }
+    }
+  ],
+  "workflow": {
+    "trigger": "manual",
+    "schedule": "daily",
+    "steps": [
+      {
+        "step": 1,
+        "agent": "news-researcher",
+        "action": "collect_news",
+        "timeout": "10m"
+      },
+      {
+        "step": 2,
+        "agent": "fact-checker",
+        "action": "verify_information",
+        "timeout": "5m",
+        "depends_on": [1]
+      },
+      {
+        "step": 3,
+        "agent": "article-writer",
+        "action": "create_article",
+        "timeout": "10m",
+        "depends_on": [2],
+        "condition": "step_2.approved === true"
+      },
+      {
+        "step": 4,
+        "agent": "visual-designer",
+        "action": "design_visuals",
+        "timeout": "5m",
+        "depends_on": [3]
+      },
+      {
+        "step": 5,
+        "agent": "image-generator",
+        "action": "generate_images",
+        "timeout": "10m",
+        "depends_on": [4]
+      },
+      {
+        "step": 6,
+        "agent": "seo-specialist",
+        "action": "optimize_seo",
+        "timeout": "5m",
+        "depends_on": [3, 5]
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "accident-news",
+      "name": "事故ニュース",
+      "description": "通学中の交通事故・事件報道"
+    },
+    {
+      "id": "volunteer-activity",
+      "name": "見守り活動",
+      "description": "通学路見守りボランティア情報"
+    },
+    {
+      "id": "safety-tips",
+      "name": "防犯・安全対策",
+      "description": "子どもの防犯力を高める方法"
+    },
+    {
+      "id": "danger-ranking",
+      "name": "危険度ランキング",
+      "description": "交差点・通学路の危険度統計"
+    },
+    {
+      "id": "policy-update",
+      "name": "施策・制度",
+      "description": "自治体・国の安全施策"
+    }
+  ],
+  "output_directory": "content/safe-magazine",
+  "metadata": {
+    "language": "ja",
+    "target_regions": ["全国", "都道府県別"],
+    "update_frequency": "daily"
+  }
+}

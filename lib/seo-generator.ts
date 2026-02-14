@@ -1,5 +1,5 @@
 /**
- * SEO Generator for PathGuard Press
+ * SEO Generator for SAFE MAGAZINE
  * 記事のSEOメタデータ、構造化データを生成
  */
 
@@ -92,7 +92,7 @@ const LOGO_URL = `${SITE_URL}/logo.png`
  */
 export function generateSEOTitle(article: SafeMagazineArticle): string {
   const maxLength = 60
-  const suffix = " | PathGuard Press"
+  const suffix = " | SAFE MAGAZINE"
   const availableLength = maxLength - suffix.length
 
   let title = article.title
@@ -121,7 +121,7 @@ export function generateMetaDescription(article: SafeMagazineArticle): string {
  * 記事からキーワードを抽出
  */
 export function extractKeywords(article: SafeMagazineArticle): string[] {
-  const baseKeywords = ["通学路", "安全", "子ども", "PathGuard Press"]
+  const baseKeywords = ["通学路", "安全", "子ども", "SAFE MAGAZINE"]
   const categoryKeywords: Record<string, string[]> = {
     "accident-news": ["事故", "交通事故", "通学路事故", "小学生"],
     "danger-ranking": ["危険", "統計", "リスク", "危険箇所"],
@@ -156,7 +156,7 @@ export function generateArticleSchema(article: SafeMagazineArticle): ArticleSche
     dateModified: article.publishedDate,
     author: {
       "@type": "Organization",
-      name: "PathGuard Press編集部"
+      name: "SAFE MAGAZINE編集部"
     },
     publisher: {
       "@type": "Organization",

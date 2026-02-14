@@ -1,15 +1,24 @@
 import React from "react"
+import { redirect } from "next/navigation"
+import { getCurrentUserAdminStatus } from "@/lib/admin-auth"
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // ここで管理者認証チェックなどを将来的に追加
+  const { isAuthenticated, isAdmin } = await getCurrentUserAdminStatus()
+  if (!isAuthenticated) {
+    redirect("/login")
+  }
+
+  if (!isAdmin) {
+    redirect("/map")
+  }
+
   return (
     <section>
-      {/* 将来的には管理者用ナビゲーションなどをここに追加 */}
       {children}
     </section>
-  );
-} 
+  )
+}

@@ -1,4 +1,4 @@
-// PathGuard Press記事データのユーティリティ
+// SAFE MAGAZINE記事データのユーティリティ
 
 export interface SafeMagazineArticle {
   id: string

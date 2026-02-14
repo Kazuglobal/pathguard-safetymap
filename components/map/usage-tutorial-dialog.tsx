@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -11,198 +11,280 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Camera, MapPin, AlertTriangle, Users, Star, ChevronLeft, ChevronRight, X } from "lucide-react"
+import {
+  Shield,
+  Camera,
+  Sparkles,
+  Map,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Check,
+  Ban,
+  Lightbulb,
+  Heart,
+  Target,
+  Trophy,
+  TrendingUp,
+} from "lucide-react"
+import { markTutorialCompleted } from "@/lib/tutorial-storage"
 
 interface UsageTutorialDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+function CardIcon({ icon: Icon, gradient }: { icon: React.ElementType; gradient: string }) {
+  return (
+    <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg`}>
+      <Icon className="w-7 h-7 text-white" />
+    </div>
+  )
+}
+
 export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutorialDialogProps) {
   const [currentStep, setCurrentStep] = useState(0)
 
-  const tutorialSteps = [
+  const tutorialSteps = useMemo(() => [
     {
-      title: "PathGuardianへようこそ！",
-      description: "AIで通学路・通勤路の安全性を可視化するアプリです",
-      icon: <Star className="w-8 h-8 text-yellow-500" />,
+      title: "PathGuardianへようこそ",
+      description: "あなたの目が、地域の安全を守ります",
+      icon: <CardIcon icon={Shield} gradient="from-sky-500 to-blue-600" />,
       content: (
         <div className="space-y-4">
           <div className="text-center">
-            <div className="text-4xl mb-4">🛡️</div>
+            <p className="text-lg font-semibold text-gray-800 mb-2">
+              お子さんの通学路、本当に安全ですか？
+            </p>
             <p className="text-gray-600 leading-relaxed">
-              PathGuardianは、AIを活用して日常の道路や建物の安全性を分析し、
-              地域の防災・減災に貢献するアプリです。
+              PathGuardianは、あなたが撮った1枚の写真から
+              AIが危険を見つけ、地域みんなで安全を守るアプリです。
             </p>
           </div>
-          <div className="bg-sky-50 p-4 rounded-lg">
-            <p className="text-sm text-sky-700 font-medium">
-              📱 簡単操作で、あなたも地域の安全を守る一員になれます！
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex flex-col items-center p-3 bg-sky-50 rounded-xl border border-sky-100">
+              <Camera className="w-5 h-5 text-sky-600 mb-1.5" />
+              <p className="text-xs font-medium text-sky-800 text-center">気になる場所を撮影</p>
+            </div>
+            <div className="flex flex-col items-center p-3 bg-amber-50 rounded-xl border border-amber-100">
+              <Sparkles className="w-5 h-5 text-amber-600 mb-1.5" />
+              <p className="text-xs font-medium text-amber-800 text-center">AIが安全性を分析</p>
+            </div>
+            <div className="flex flex-col items-center p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+              <Map className="w-5 h-5 text-emerald-600 mb-1.5" />
+              <p className="text-xs font-medium text-emerald-800 text-center">マップで共有・確認</p>
+            </div>
+          </div>
+          <div className="bg-gradient-to-r from-sky-50 to-blue-50 p-3 rounded-xl border border-sky-100">
+            <p className="text-sm text-sky-700 font-medium text-center">
+              あなたの1枚の写真が、子どもの通学路を安全にします
             </p>
           </div>
         </div>
       )
     },
     {
-      title: "📷 ステップ1: 写真を撮影",
+      title: "撮影ガイド",
       description: "気になる場所をスマホで撮影するだけ",
-      icon: <Camera className="w-8 h-8 text-blue-500" />,
+      icon: <CardIcon icon={Camera} gradient="from-blue-500 to-indigo-600" />,
       content: (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl mb-2">✅</div>
-              <p className="text-sm font-medium text-green-700">撮影すべき場所</p>
-              <ul className="text-xs text-green-600 mt-2 space-y-1">
-                <li>• 古い建物・塀</li>
-                <li>• ひび割れした道路</li>
-                <li>• 傾いた電柱</li>
-                <li>• 老朽化した橋</li>
+            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <p className="text-sm font-semibold text-emerald-800">撮影すべき場所</p>
+              </div>
+              <ul className="text-xs text-emerald-700 space-y-1.5">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-400 mt-0.5">&#9679;</span>
+                  <span>古い建物・ブロック塀</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-400 mt-0.5">&#9679;</span>
+                  <span>ひび割れした道路・歩道</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-400 mt-0.5">&#9679;</span>
+                  <span>傾いた電柱・標識</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-400 mt-0.5">&#9679;</span>
+                  <span>見通しの悪い交差点</span>
+                </li>
               </ul>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl mb-2">❌</div>
-              <p className="text-sm font-medium text-red-700">避けるべきもの</p>
-              <ul className="text-xs text-red-600 mt-2 space-y-1">
-                <li>• 人の顔が写る写真</li>
-                <li>• プライベートな場所</li>
-                <li>• 車のナンバープレート</li>
-                <li>• 個人情報</li>
+            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Ban className="w-4 h-4 text-red-500" />
+                <p className="text-sm font-semibold text-red-800">撮影を避けるもの</p>
+              </div>
+              <ul className="text-xs text-red-700 space-y-1.5">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-red-400 mt-0.5">&#9679;</span>
+                  <span>人の顔が写る写真</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-red-400 mt-0.5">&#9679;</span>
+                  <span>プライベートな場所</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-red-400 mt-0.5">&#9679;</span>
+                  <span>車のナンバープレート</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-red-400 mt-0.5">&#9679;</span>
+                  <span>個人情報が含まれるもの</span>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm text-blue-700">
-              💡 <strong>コツ:</strong> 明るい時間帯に、対象物全体がはっきり写るように撮影しましょう
-            </p>
+          <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-blue-700">
+                <strong>コツ:</strong> 明るい時間帯に、対象物全体がはっきり写るように撮影しましょう
+              </p>
+            </div>
           </div>
         </div>
       )
     },
     {
-      title: "🤖 ステップ2: AI分析",
-      description: "AIが自動で危険度を5段階で評価",
-      icon: <AlertTriangle className="w-8 h-8 text-orange-500" />,
+      title: "AIが安全性を自動判定",
+      description: "写真を送るだけで、AIが総合的に分析します",
+      icon: <CardIcon icon={Sparkles} gradient="from-amber-500 to-orange-600" />,
       content: (
         <div className="space-y-4">
-          <div className="text-center mb-4">
-            <p className="text-gray-600 mb-4">
-              撮影した写真をAIが分析し、災害時のリスクを5段階で評価します
-            </p>
-          </div>
+          <p className="text-gray-600 text-sm text-center">
+            AIが建物の老朽化、道路状況、交通環境、災害リスクなどを
+            総合的に分析し、5段階で安全性を評価します。
+          </p>
           <div className="space-y-2">
-            <div className="flex items-center gap-3 p-2 rounded">
-              <Badge variant="destructive" className="w-16 text-center">危険</Badge>
-              <span className="text-sm">⚠️ 早急な対策が必要</span>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-red-50/50">
+              <Badge variant="destructive" className="w-14 text-center text-xs">危険</Badge>
+              <span className="text-sm text-gray-700">早急な対策が必要</span>
             </div>
-            <div className="flex items-center gap-3 p-2 rounded">
-              <Badge className="w-16 text-center bg-orange-500">注意</Badge>
-              <span className="text-sm">🔍 継続的な監視が推奨</span>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-orange-50/50">
+              <Badge className="w-14 text-center text-xs bg-orange-500 hover:bg-orange-500">注意</Badge>
+              <span className="text-sm text-gray-700">継続的な監視が推奨</span>
             </div>
-            <div className="flex items-center gap-3 p-2 rounded">
-              <Badge className="w-16 text-center bg-yellow-500">普通</Badge>
-              <span className="text-sm">📋 定期点検を推奨</span>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-yellow-50/50">
+              <Badge className="w-14 text-center text-xs bg-yellow-500 hover:bg-yellow-500">普通</Badge>
+              <span className="text-sm text-gray-700">定期点検を推奨</span>
             </div>
-            <div className="flex items-center gap-3 p-2 rounded">
-              <Badge className="w-16 text-center bg-blue-500">良好</Badge>
-              <span className="text-sm">👍 現状維持で問題なし</span>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-blue-50/50">
+              <Badge className="w-14 text-center text-xs bg-blue-500 hover:bg-blue-500">良好</Badge>
+              <span className="text-sm text-gray-700">現状維持で問題なし</span>
             </div>
-            <div className="flex items-center gap-3 p-2 rounded">
-              <Badge className="w-16 text-center bg-green-500">安全</Badge>
-              <span className="text-sm">✨ 非常に良好な状態</span>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-green-50/50">
+              <Badge className="w-14 text-center text-xs bg-green-500 hover:bg-green-500">安全</Badge>
+              <span className="text-sm text-gray-700">非常に良好な状態</span>
             </div>
+          </div>
+          <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
+            <p className="text-xs text-amber-700 text-center">
+              詳細な分析レポート（子ども目線・時間帯別リスク・改善提案）は
+              報告完了後に確認できます
+            </p>
           </div>
         </div>
       )
     },
     {
-      title: "🗺️ ステップ3: マップで確認",
-      description: "結果をリアルタイムでマップに反映",
-      icon: <MapPin className="w-8 h-8 text-green-500" />,
+      title: "マップで地域の安全を確認",
+      description: "あなたの報告がリアルタイムでマップに反映されます",
+      icon: <CardIcon icon={Map} gradient="from-emerald-500 to-teal-600" />,
       content: (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50 to-sky-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-800 mb-2">マップの使い方</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500">📍</span>
-                <span><strong>マーカーをクリック:</strong> 詳細情報を確認</span>
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-100">
+            <ul className="space-y-3 text-sm text-gray-700">
+              <li className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Target className="w-3.5 h-3.5 text-emerald-600" />
+                </div>
+                <span><strong>マーカーをタップ</strong>して詳細情報や写真を確認</span>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-500">🔍</span>
-                <span><strong>ズーム/パン:</strong> 地域を詳しく探索</span>
+              <li className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                </div>
+                <span><strong>他のユーザーの報告</strong>も確認できます</span>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="text-purple-500">📊</span>
-                <span><strong>フィルター:</strong> 危険度別に表示切り替え</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-orange-500">📷</span>
-                <span><strong>写真追加:</strong> 新しい場所を報告</span>
+              <li className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                </div>
+                <span><strong>フィルター機能</strong>で危険度別に表示を切り替え</span>
               </li>
             </ul>
           </div>
-          <div className="bg-green-50 p-3 rounded-lg">
-            <p className="text-sm text-green-700">
-              🌟 あなたの報告が地域の安全向上に貢献します！
-            </p>
+          <div className="bg-sky-50 p-3 rounded-xl border border-sky-100">
+            <div className="flex items-start gap-2">
+              <Heart className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-sky-700">
+                報告が増えるほど、安全マップが充実し地域全体の安全が高まります
+              </p>
+            </div>
           </div>
         </div>
       )
     },
     {
-      title: "👥 コミュニティで安全を守る",
-      description: "みんなで作る安全な街づくり",
-      icon: <Users className="w-8 h-8 text-purple-500" />,
+      title: "みんなで守る安全なまち",
+      description: "あなたの参加が、地域全体の安全につながります",
+      icon: <CardIcon icon={Users} gradient="from-violet-500 to-purple-600" />,
       content: (
         <div className="space-y-4">
           <div className="text-center">
-            <div className="text-4xl mb-4">🤝</div>
-            <p className="text-gray-600 leading-relaxed mb-4">
+            <p className="text-gray-600 leading-relaxed">
               PathGuardianは一人ひとりの報告で成り立っています。
-              あなたの参加が、地域全体の安全につながります。
+              あなたが見つけた危険が、誰かの安全を守ります。
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-xl mb-1">🏆</div>
-              <p className="text-xs font-medium text-blue-700">バッジ獲得</p>
-              <p className="text-xs text-blue-600">活動に応じて特別バッジを獲得</p>
+          <div className="bg-gradient-to-br from-violet-50 to-purple-50 p-4 rounded-xl border border-violet-100">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-violet-600" />
+              <p className="text-sm font-semibold text-violet-800">楽しみながら続けられる工夫</p>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-xl mb-1">📈</div>
-              <p className="text-xs font-medium text-green-700">ポイント獲得</p>
-              <p className="text-xs text-green-600">報告数に応じてポイントアップ</p>
-            </div>
-            <div className="text-center p-3 bg-yellow-50 rounded-lg">
-              <div className="text-xl mb-1">👑</div>
-              <p className="text-xs font-medium text-yellow-700">ランキング</p>
-              <p className="text-xs text-yellow-600">地域の安全貢献度をランキング</p>
-            </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <div className="text-xl mb-1">🎯</div>
-              <p className="text-xs font-medium text-purple-700">ミッション</p>
-              <p className="text-xs text-purple-600">楽しみながら安全活動に参加</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 p-2 bg-white/60 rounded-lg">
+                <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-xs text-gray-700">バッジ・ポイント</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white/60 rounded-lg">
+                <TrendingUp className="w-4 h-4 text-blue-500 shrink-0" />
+                <span className="text-xs text-gray-700">ランキング</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white/60 rounded-lg">
+                <Target className="w-4 h-4 text-green-500 shrink-0" />
+                <span className="text-xs text-gray-700">デイリーミッション</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white/60 rounded-lg">
+                <Heart className="w-4 h-4 text-rose-500 shrink-0" />
+                <span className="text-xs text-gray-700">いいね・コメント</span>
+              </div>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-sky-50 to-blue-50 p-4 rounded-lg text-center">
-            <p className="text-sm font-semibold text-blue-800 mb-2">
-              🚀 さあ、安全な街づくりを始めましょう！
+          <div className="bg-gradient-to-r from-sky-50 to-blue-50 p-4 rounded-xl border border-sky-100 text-center">
+            <p className="text-sm font-semibold text-blue-800 mb-1">
+              さあ、まずは周辺の安全を確認してみましょう！
             </p>
             <p className="text-xs text-blue-600">
-              マップをクリックして、まずは周辺の状況を確認してみてください
+              マップをタップして、気になる場所を報告できます
             </p>
           </div>
         </div>
       )
     }
-  ]
+  ], [])
 
   // キーボードナビゲーション
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return
-      
+
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault()
@@ -246,11 +328,11 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
   const handleClose = () => {
     setCurrentStep(0)
     onOpenChange(false)
-    // ローカルストレージに初回表示済みを記録
-    localStorage.setItem('pathguard-tutorial-completed', 'true')
+    markTutorialCompleted()
   }
 
   const currentStepData = tutorialSteps[currentStep]
+  const progress = ((currentStep + 1) / tutorialSteps.length) * 100
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -260,9 +342,9 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
           <X className="h-5 w-5 text-gray-600" />
           <span className="sr-only">閉じる</span>
         </DialogClose>
-        
+
         <DialogHeader className="text-center flex-shrink-0 pr-12">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-3">
             {currentStepData.icon}
           </div>
           <DialogTitle className="text-xl font-bold">
@@ -277,24 +359,39 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
           </div>
         </DialogHeader>
 
-        <div className="py-4 overflow-y-auto flex-1" role="tabpanel" aria-labelledby={`step-${currentStep}`}>
+        <div
+          key={currentStep}
+          className="py-4 overflow-y-auto flex-1 tutorial-step-animate"
+          role="tabpanel"
+          aria-labelledby={`step-${currentStep}`}
+        >
           {currentStepData.content}
         </div>
 
-        {/* ステップインジケーター */}
-        <div className="flex justify-center gap-2 mb-4 flex-shrink-0" role="tablist" aria-label="チュートリアルステップ">
-          {tutorialSteps.map((step, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentStep(index)}
-              role="tab"
-              aria-selected={index === currentStep}
-              aria-label={`ステップ ${index + 1}: ${step.title}`}
-              className={`w-3 h-3 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${
-                index === currentStep ? 'bg-sky-600' : 'bg-gray-300 hover:bg-gray-400'
-              }`}
+        {/* プログレスバー + ステップインジケーター */}
+        <div className="flex-shrink-0 space-y-3 mb-4">
+          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-sky-500 to-blue-600 rounded-full transition-all duration-400 ease-out"
+              style={{ width: `${progress}%` }}
             />
-          ))}
+          </div>
+          <div className="flex justify-center gap-2" role="tablist" aria-label="チュートリアルステップ">
+            {tutorialSteps.map((step, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentStep(index)}
+                role="tab"
+                aria-selected={index === currentStep}
+                aria-label={`ステップ ${index + 1}: ${step.title}`}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${
+                  index === currentStep
+                    ? 'bg-sky-600 scale-125'
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* ナビゲーションボタン */}
@@ -311,18 +408,18 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
           </Button>
 
           <div className="flex gap-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={handleClose}
               className="min-h-[44px] min-w-[80px]"
               aria-label="チュートリアルをスキップ"
             >
               スキップ
             </Button>
-            
+
             {currentStep === tutorialSteps.length - 1 ? (
-              <Button 
-                onClick={handleClose} 
+              <Button
+                onClick={handleClose}
                 className="bg-sky-600 hover:bg-sky-700 min-h-[44px] min-w-[80px]"
                 aria-label="チュートリアルを完了してアプリを始める"
               >
@@ -343,4 +440,4 @@ export default function UsageTutorialDialog({ open, onOpenChange }: UsageTutoria
       </DialogContent>
     </Dialog>
   )
-} 
+}

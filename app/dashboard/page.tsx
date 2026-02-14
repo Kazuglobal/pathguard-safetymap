@@ -1,22 +1,14 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase-server"
 import DashboardContent from "@/components/dashboard/dashboard-content"
+import { getCurrentUserAdminStatus } from "@/lib/admin-auth"
 
 export default async function DashboardPage() {
-  const supabase = await createServerClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const { isAuthenticated, isAdmin } = await getCurrentUserAdminStatus()
+  if (!isAuthenticated) {
     redirect("/login")
   }
 
-  // Get user profile to check if admin
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-  if (!profile || profile.role !== "admin") {
+  if (!isAdmin) {
     redirect("/map")
   }
 

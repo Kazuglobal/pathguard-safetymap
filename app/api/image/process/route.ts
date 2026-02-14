@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     const fileExt = file.name.split(".").pop() || "bin";
     // ファイルパスを一意にする（reportIdを含めるなど検討の余地あり）
     const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const filePath = `danger-reports/${fileName}`; // 保存先を danger-reports バケット直下に
+    const filePath = fileName; // バケット直下に保存（バケット名は .from() で指定済み）
 
     console.log(`[POST Info] Uploading to Supabase Storage: ${filePath}`);
     const { error: uploadError } = await supabaseAdmin.storage

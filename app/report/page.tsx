@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { AlertTriangle, Bookmark, Heart, Images, MapPin, MessageCircle, Loader2 } from "lucide-react"
 import ImagePreviewDialog from "@/components/danger-report/image-preview-dialog"
 import SharedGallery3D from "@/components/report/shared-gallery-3d"
+import { LongPressZoomableImage } from "@/components/ui/long-press-zoomable-image"
 import { CommentSection } from "@/components/comments/comment-section"
 import { useReportInteractionsBatch } from "@/hooks/use-report-interactions"
 
@@ -137,7 +138,7 @@ export default function ReportHubPage() {
     }
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (isMounted) {
         setIsLoggedIn(!!session?.user)
       }
@@ -302,20 +303,15 @@ export default function ReportHubPage() {
           <span className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${meta.badge}`}>{meta.label}</span>
         </div>
         {cover ? (
-          <button
-            type="button"
-            className="mt-3 block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-            onClick={(e) => { e.stopPropagation(); setPreviewImage(cover) }}
-            aria-label="画像を拡大表示"
-          >
-            <img
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <LongPressZoomableImage
               src={cover}
               alt={`${meta.label}の共有画像`}
-              loading="lazy"
-              decoding="async"
+              wrapperClassName="overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
               className="h-44 sm:h-56 md:h-64 lg:h-72 w-full object-cover object-center cursor-zoom-in"
+              onClick={() => setPreviewImage(cover)}
             />
-          </button>
+          </div>
         ) : (
           <div className={`mt-3 flex h-44 sm:h-56 md:h-64 lg:h-72 items-center justify-center rounded-xl bg-gradient-to-br ${meta.accent}`}>
             <Images className="h-10 w-10 text-white/90" />
@@ -558,20 +554,13 @@ export default function ReportHubPage() {
                 <div className="mt-4 space-y-6">
                   {/* レポート画像 */}
                   {getCoverImage(selectedReport) && (
-                    <button
-                      type="button"
-                      className="w-full overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setPreviewImage(getCoverImage(selectedReport))
-                      }}
-                    >
-                      <img
-                        src={getCoverImage(selectedReport)!}
-                        alt="危険報告の画像"
-                        className="h-48 w-full object-cover object-center"
-                      />
-                    </button>
+                    <LongPressZoomableImage
+                      src={getCoverImage(selectedReport)!}
+                      alt="危険報告の画像"
+                      wrapperClassName="w-full overflow-hidden rounded-xl"
+                      className="h-48 w-full object-cover object-center"
+                      onClick={() => setPreviewImage(getCoverImage(selectedReport))}
+                    />
                   )}
 
                   {/* レポート詳細 */}

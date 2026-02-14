@@ -24,11 +24,14 @@ import {
   defaultSituations,
   type DefaultSituation,
 } from "@/lib/disaster-scenario-prompts"
+import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
+import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 
 interface DangerReportFormProps {
-  onSubmit: (data: Partial<DangerReport>) => void
+  onSubmit: (data: Partial<DangerReport>) => Promise<{ reportId: string; imageUrl: string | null }>
   onCancel: () => void
   selectedLocation: [number, number] | null
+  locationSource?: "manual" | "gps" | null
   isMobileFullscreen?: boolean
 }
 
@@ -49,6 +52,12 @@ type RiskAnalysisItem = {
   category: string
   risk: string
   measure: string
+}
+
+type GeneratedPromptsState = {
+  vizPrompt?: string
+  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+  riskObservationTable?: string
 }
 
 const AUTO_GEN_DEBOUNCE_MS = 350
@@ -121,7 +130,7 @@ const validateImageFile = async (file: File) => {
   return { ok: true, mime: sniffed }
 }
 
-export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, isMobileFullscreen = false }: DangerReportFormProps) {
+export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, locationSource = null, isMobileFullscreen = false }: DangerReportFormProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -144,16 +153,23 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const isGpsLocation = locationSource === "gps"
+  const [isGpsLocationConfirmed, setIsGpsLocationConfirmed] = useState(false)
+
+  useEffect(() => {
+    if (isGpsLocation) {
+      setIsGpsLocationConfirmed(false)
+      return
+    }
+    setIsGpsLocationConfirmed(true)
+  }, [isGpsLocation, selectedLocation?.[0], selectedLocation?.[1]])
+
 
   const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisItem[] | null>(null)
   const [autoGenLoading, setAutoGenLoading] = useState(false)
   const [autoGenError, setAutoGenError] = useState<string | null>(null)
   const lastAutoGenKey = useRef<string | null>(null)
-  const [generatedPrompts, setGeneratedPrompts] = useState<{
-    vizPrompt?: string
-    simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
-    riskObservationTable?: string
-  } | null>(null)
+  const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPromptsState | null>(null)
   const [lastHazards, setLastHazards] = useState<HazardItem[]>([])
   type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
   const [situation, setSituation] = useState<Situation>('viz')
@@ -170,6 +186,20 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // 手動解析トリガー（自動解析を無効化し、ボタンクリックで開始）
   const [manualAnalysisTriggered, setManualAnalysisTriggered] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
+
+  // VLM Analysis Hook
+  const {
+    status: vlmStatus,
+    result: vlmResult,
+    error: vlmError,
+    startAnalysis: startVlmAnalysis,
+    retry: retryVlmAnalysis,
+    reset: resetVlmAnalysis,
+  } = useVlmAnalysis()
+
+  // Store submitted report info for VLM analysis
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
+  const [submittedImageUrl, setSubmittedImageUrl] = useState<string | null>(null)
 
   const registerBlobUrl = (url: string) => {
     if (url.startsWith("blob:")) {
@@ -304,6 +334,32 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     return new File([blob], filename, { type: blob.type || 'image/png' })
   }
 
+  // Convert a data URL (or any fetchable URL) to a lightweight blob URL for preview.
+  // Blob URLs are short reference strings (~60 chars) vs multi-MB base64 data URLs,
+  // drastically reducing React state size and re-render cost.
+  const dataUrlToBlobUrl = async (dataUrl: string, signal?: AbortSignal): Promise<string> => {
+    const res = await fetch(dataUrl, { signal })
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    registerBlobUrl(url)
+    return url
+  }
+
+  // Convert a data URL to both a File and a blob URL in a single fetch,
+  // avoiding redundant memory copies.
+  const dataUrlToFileAndBlobUrl = async (
+    dataUrl: string,
+    filename: string,
+    signal?: AbortSignal,
+  ): Promise<{ file: File; blobUrl: string }> => {
+    const res = await fetch(dataUrl, { signal })
+    const blob = await res.blob()
+    const file = new File([blob], filename, { type: blob.type || 'image/png' })
+    const blobUrl = URL.createObjectURL(blob)
+    registerBlobUrl(blobUrl)
+    return { file, blobUrl }
+  }
+
   const buildRegionConstraints = (hazards: HazardItem[]): string => {
     if (!Array.isArray(hazards) || hazards.length === 0) return ''
     const lines: string[] = []
@@ -338,7 +394,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0)
 
-      const colorFor = (t: string) => {
+      const colorFor = (t?: string) => {
         const s = (t || '').toLowerCase()
         if (s.includes('冠水') || s.includes('flood')) return 'rgba(37, 99, 235, 0.28)'
         if (s.includes('延焼') || s.includes('fire') || s.includes('炎')) return 'rgba(234, 88, 12, 0.28)'
@@ -534,55 +590,64 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         if (!isActive()) return
 
         // 3) visualization overlay (local fallback always available)
-        const overlayUrl = await drawOverlayFromHazards(originalImageFile, hazards)
+        // Convert data URLs to lightweight blob URLs to avoid storing multi-MB
+        // base64 strings in React state, which causes UI freezes on re-render.
+        const overlayDataUrl = await drawOverlayFromHazards(originalImageFile, hazards)
         if (!isActive()) return
-        const overlayFile = await dataUrlToFile(overlayUrl, 'overlay.png', abortController.signal)
-        if (isActive()) {
-          setProcessedImageFiles(prev => [...prev, overlayFile])
-          setProcessedImagePreviews(prev => [...prev, overlayUrl])
-        }
+        const overlay = await dataUrlToFileAndBlobUrl(overlayDataUrl, 'overlay.png', abortController.signal)
         if (!isActive()) return
 
         // 4) simple local simulations (flood/fire/typhoon/earthquake)
-        const [floodUrl, fireUrl, typhoonUrl, quakeUrl] = await Promise.all([
+        const [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl] = await Promise.all([
           simulateVariant(originalImageFile, 'flood'),
           simulateVariant(originalImageFile, 'fire'),
           simulateVariant(originalImageFile, 'typhoon'),
           simulateVariant(originalImageFile, 'earthquake'),
         ])
         if (!isActive()) return
-        const toFiles = await Promise.all([
-          dataUrlToFile(floodUrl, 'flood.png', abortController.signal),
-          dataUrlToFile(fireUrl, 'fire.png', abortController.signal),
-          dataUrlToFile(typhoonUrl, 'typhoon.png', abortController.signal),
-          dataUrlToFile(quakeUrl, 'earthquake.png', abortController.signal),
-        ])
+        const simNames = ['flood', 'fire', 'typhoon', 'earthquake'] as const
+        const simDataUrls = [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl]
+        const simResults = await Promise.all(
+          simDataUrls.map((url, i) => dataUrlToFileAndBlobUrl(url, `${simNames[i]}.png`, abortController.signal))
+        )
+        // Batch a single state update for all local results (overlay + 4 sims)
         if (isActive()) {
-          setProcessedImageFiles(prev => [...prev, ...toFiles])
-          setProcessedImagePreviews(prev => [...prev, floodUrl, fireUrl, typhoonUrl, quakeUrl])
+          const localFiles = [overlay.file, ...simResults.map(r => r.file)]
+          const localPreviews = [overlay.blobUrl, ...simResults.map(r => r.blobUrl)]
+          setProcessedImageFiles(prev => [...prev, ...localFiles])
+          setProcessedImagePreviews(prev => [...prev, ...localPreviews])
         }
         if (!isActive()) return
+        // Yield to main thread so the UI stays responsive
+        await new Promise(r => setTimeout(r, 0))
 
-        // 5) NanoBanana (Gemini 2.5 Flash) image-to-image generation using generated prompts
+        // 5) Standard scenario image-to-image generation using generated prompts
         try {
+          const compressedForGen = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
           const fd = new FormData()
-          fd.append('image', originalImageFile)
+          fd.append('image', compressedForGen)
           const baseViz =
             prLocal?.vizPrompt ||
             generatedPrompts?.vizPrompt ||
-            "Photorealistic 2048x2048 infographic from the same viewpoint, camera height, and daylight as the uploaded Japanese suburban street photo. Maintain identical composition and lens characteristics. Overlay semi-transparent hazard shading with warning icons and Japanese labels: collapsed fence (red shade + exclamation icons, label \"フェンス倒壊\"), fallen utility pole (red circle + arrow, label \"電柱倒壊\"), flooding (blue haze + droplet icons, label \"冠水\"), fire spread (orange glow + flame icons, label \"延焼\"). High dynamic range, sharp focus, natural daylight, no extra people, vehicles, text, watermarks, or model names."
+            "Create one 2048x2048 photorealistic hazard-communication infographic based on the uploaded Japanese suburban school-route photo. Preserve the original scene geometry exactly: same camera position, lens, horizon, perspective, building outlines, road markings, and daylight color temperature. Do not alter existing objects and do not add new buildings, people, or vehicles. Add overlays only. Mark four potential hazards with clean civic-design callouts anchored to real locations: (1) fence instability: semi-transparent red polygon + warning triangles + Japanese label \"フェンス倒壊注意\"; (2) utility pole failure risk: red circle/arrow + Japanese label \"電柱倒壊注意\"; (3) flooding-prone low spot: semi-transparent blue wash + droplet icons + Japanese label \"冠水注意\"; (4) fire spread exposure: semi-transparent amber haze + flame icons + Japanese label \"延焼注意\". Add numbered markers 1-4 with short leader lines and include a compact Japanese legend at bottom-left: \"凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意\". Style: realistic, HDR, sharp focus, balanced contrast, mobile-readable annotations. No graphic destruction, no gore, no extra text beyond the specified Japanese labels and legend, no watermark, and no model names."
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
+          fd.append('generationMode', 'standard')
           const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
           if (genRes.ok) {
             const gen = await genRes.json()
             const imgs = Array.isArray(gen.images) ? gen.images : []
             const ok = imgs.slice(0, 2)
             if (ok.length > 0 && isActive()) {
-              const files = await Promise.all(ok.map(async (im: { dataUrl: string }, i: number) => dataUrlToFile(im.dataUrl, `nanobanana-${i}.png`, abortController.signal)))
+              // Convert API data URLs to blob URLs to keep state lightweight
+              const converted = await Promise.all(
+                ok.map((im: { dataUrl: string }, i: number) =>
+                  dataUrlToFileAndBlobUrl(im.dataUrl, `nanobanana-${i}.png`, abortController.signal)
+                )
+              )
               if (isActive()) {
-                setProcessedImageFiles(prev => [...prev, ...files])
-                setProcessedImagePreviews(prev => [...prev, ...ok.map((im: { dataUrl: string }) => im.dataUrl)])
+                setProcessedImageFiles(prev => [...prev, ...converted.map(c => c.file)])
+                setProcessedImagePreviews(prev => [...prev, ...converted.map(c => c.blobUrl)])
               }
             } else if (gen.warning && isActive()) {
               setAutoGenError(gen.warning)
@@ -592,7 +657,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           } else if (isActive()) {
             const t = await genRes.text()
             console.warn('gemini generate-image failed', genRes.status, t)
-            setAutoGenError(`AI画像生成に失敗しました: ${genRes.status} ${genRes.statusText}`)
+            setAutoGenError(`AI画像生成に失敗しました (${genRes.status})`)
           }
         } catch (e) {
           if (isActive()) console.warn('nanobanana generation skipped due to error', e)
@@ -603,10 +668,12 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         const simsLocal = prLocal?.simulationPrompts || generatedPrompts?.simulationPrompts
         if (simsLocal) {
           try {
+            const compressedForSim = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
             const make = async (prompt: string, suffix: string) => {
               const fd = new FormData()
-              fd.append('image', originalImageFile)
+              fd.append('image', compressedForSim)
               fd.append('prompt', prompt)
+              fd.append('generationMode', 'standard')
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
                 const txt = await r.text()
@@ -622,16 +689,27 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               return { file: f, url: im.dataUrl }
             }
             const sims = simsLocal
-            const results = await Promise.all([
-              make(sims.earthquake, 'earthquake'),
-              make(sims.typhoon, 'typhoon'),
-              make(sims.flood, 'flood'),
-              make(sims.fire, 'fire'),
-            ])
-            const ok = results.filter(Boolean) as { file: File; url: string }[]
-            if (ok.length && isActive()) {
-              setProcessedImageFiles(prev => [...prev, ...ok.map(item => item.file)])
-              setProcessedImagePreviews(prev => [...prev, ...ok.map(item => item.url)])
+            // Run disaster simulations with limited concurrency (2 at a time)
+            // to avoid overwhelming the browser with large concurrent payloads
+            const simKeys = ['earthquake', 'typhoon', 'flood', 'fire'] as const
+            const simPrompts = [sims.earthquake, sims.typhoon, sims.flood, sims.fire]
+            const simResultsBatch: { file: File; blobUrl: string }[] = []
+            for (let i = 0; i < simKeys.length; i += 2) {
+              const batch = simPrompts.slice(i, i + 2).map((p, j) => make(p, simKeys[i + j]))
+              const batchResults = await Promise.all(batch)
+              for (const r of batchResults) {
+                if (!r) continue
+                // Convert data URL to blob URL
+                const blobUrl = await dataUrlToBlobUrl(r.url, abortController.signal)
+                simResultsBatch.push({ file: r.file, blobUrl })
+              }
+              if (!isActive()) break
+              // Yield between batches
+              await new Promise(resolve => setTimeout(resolve, 0))
+            }
+            if (simResultsBatch.length && isActive()) {
+              setProcessedImageFiles(prev => [...prev, ...simResultsBatch.map(item => item.file)])
+              setProcessedImagePreviews(prev => [...prev, ...simResultsBatch.map(item => item.blobUrl)])
             }
             if (isActive()) setActiveImageTab('processed')
           } catch (e) {
@@ -704,13 +782,20 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           })
           if (pRes.ok) {
             const pjson = await pRes.json()
-            pr = pjson?.prompts
-            if (pr) {
-              setGeneratedPrompts({
-                vizPrompt: pr.vizPrompt,
-                simulationPrompts: pr.simulationPrompts,
-                riskObservationTable: pr.riskObservation?.tableMarkdown,
-              })
+            const prompts = pjson?.prompts as
+              | {
+                  vizPrompt?: string
+                  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+                  riskObservation?: { tableMarkdown?: string }
+                }
+              | undefined
+            if (prompts) {
+              pr = {
+                vizPrompt: prompts.vizPrompt,
+                simulationPrompts: prompts.simulationPrompts,
+                riskObservationTable: prompts.riskObservation?.tableMarkdown,
+              }
+              setGeneratedPrompts(pr)
             }
           }
         }
@@ -727,14 +812,17 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         return
       }
 
+      const compressed = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
       const fd = new FormData()
-      fd.append('image', originalImageFile)
+      fd.append('image', compressed)
       const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
+      fd.append('generationMode', useCustomPrompt ? 'disaster' : 'standard')
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`画像生成に失敗しました: ${res.status} ${res.statusText} - ${text}`)
+        const errorBody = await res.text()
+        const detail = errorBody ? `: ${errorBody.slice(0, 200)}` : ''
+        throw new Error(`画像生成に失敗しました (${res.status})${detail}`)
       }
 
       const json = await res.json()
@@ -743,11 +831,12 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
       if (ok.length) {
         const suffix = useCustomPrompt && selectedPromptId ? selectedPromptId : situation
-        const files = await Promise.all(
-          ok.map((im, idx: number) => dataUrlToFile(im.dataUrl, `regen-${suffix}-${idx}.png`)),
+        // Convert API data URLs to blob URLs to prevent state bloat
+        const converted = await Promise.all(
+          ok.map((im, idx: number) => dataUrlToFileAndBlobUrl(im.dataUrl, `regen-${suffix}-${idx}.png`)),
         )
-        setProcessedImageFiles(prev => [...prev, ...files])
-        setProcessedImagePreviews(prev => [...prev, ...ok.map((im) => im.dataUrl)])
+        setProcessedImageFiles(prev => [...prev, ...converted.map(c => c.file)])
+        setProcessedImagePreviews(prev => [...prev, ...converted.map(c => c.blobUrl)])
       } else {
         setAutoGenError(json.warning || '画像生成に失敗しました。')
       }
@@ -837,7 +926,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const timestamp = Date.now()
       const fileExt = file.name.split(".").pop()
       const fileName = `${timestamp}-${Math.random().toString(36).substring(2, 15)}-${type}.${fileExt}`
-      const filePath = `danger-reports/${fileName}`
+      const filePath = fileName
 
       // アップロードの進捗を監視するためのコールバック
       const onUploadProgress = (progress: number) => {
@@ -848,6 +937,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       const { data, error } = await supabase.storage.from("danger-reports").upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
+        contentType: file.type || "image/jpeg",
       })
 
       if (error) {
@@ -901,6 +991,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       return
     }
 
+    if (isGpsLocation && !isGpsLocationConfirmed) {
+      toast({
+        title: "確認が必要です",
+        description: "現在地の確認チェックを入れてから送信してください。",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
     setUploadProgress(0)
 
@@ -908,8 +1007,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       // 報告データの準備
       let uploadedProcessedImageUrls: (string | null)[] = []
       if (processedImageFiles.length > 0) {
+        const compressedFiles = await Promise.all(
+          processedImageFiles.map((file) =>
+            compressImage(file, { maxDimension: 2048, jpegQuality: 0.82, targetMaxSize: 4.5 * 1024 * 1024 })
+          )
+        )
         uploadedProcessedImageUrls = await Promise.all(
-          processedImageFiles.map((file) => uploadImage(file, "processed"))
+          compressedFiles.map((file) => uploadImage(file, "processed"))
         )
       }
 
@@ -924,17 +1028,38 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         processed_image_urls: uploadedProcessedImageUrls.filter(Boolean) as string[],
       }
 
-      // 元画像がある場合はアップロード
+      // 元画像がある場合は圧縮してアップロード
       if (originalImageFile) {
-        const imageUrl = await uploadImage(originalImageFile, "original")
+        const compressedOriginal = await compressImage(originalImageFile, {
+          maxDimension: 2048,
+          jpegQuality: 0.85,
+          targetMaxSize: 4.5 * 1024 * 1024,
+        })
+        const imageUrl = await uploadImage(compressedOriginal, "original")
         if (imageUrl) {
           reportData.image_url = imageUrl
         }
-
       }
 
-      // 親コンポーネントの送信ハンドラーを呼び出し
-      onSubmit(reportData)
+      // 親コンポーネントの送信ハンドラーを呼び出し、report IDとimage URLを取得
+      const result = await onSubmit(reportData)
+
+      // Validate result before using for VLM analysis
+      if (result?.reportId && result?.imageUrl) {
+        // Store report metadata for VLM analysis
+        setSubmittedReportId(result.reportId)
+        setSubmittedImageUrl(result.imageUrl)
+
+        // Trigger VLM analysis with validated data
+        const additionalContext = `${title}${description ? ` - ${description}` : ""}`
+        startVlmAnalysis({
+          reportId: result.reportId,
+          imageUrl: result.imageUrl,
+          additionalContext,
+        }).catch((err) => {
+          console.warn("VLM分析は失敗しましたが、レポートは保存されています:", err)
+        })
+      }
     } catch (error) {
       console.error("Error submitting report:", error)
       toast({
@@ -946,6 +1071,9 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       setIsSubmitting(false)
     }
   }
+
+  const canSubmit = !!selectedLocation && (!isGpsLocation || isGpsLocationConfirmed)
+  const showVlmPanel = vlmStatus !== "idle" || submittedReportId
 
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
@@ -1013,6 +1141,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="危険箇所の名前や特徴"
+            maxLength={120}
             required
           />
         </div>
@@ -1025,6 +1154,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
             onChange={(e) => setDescription(e.target.value)}
             placeholder="危険箇所の詳細な説明や注意点"
             className="resize-none"
+            maxLength={1000}
           />
         </div>
 
@@ -1059,6 +1189,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           </Select>
           <p className="text-xs text-gray-500">1: 軽度 - 5: 重大</p>
         </div>
+
+        {/* モバイルでは上部に表示して、長いフォームをスクロールせずに結果を確認しやすくする */}
+        {isMobileFullscreen && showVlmPanel && (
+          <VlmAnalysisPanel
+            status={vlmStatus}
+            result={vlmResult}
+            error={vlmError}
+            onRetry={retryVlmAnalysis}
+          />
+        )}
 
         <div className="space-y-2">
           <Label>画像（任意）</Label>
@@ -1364,11 +1504,13 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
                     {processedImagePreviews.map((preview, idx) => (
                       <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px] group">
                         <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(preview)}>
-                          <NextImage
+                          {/* Use native <img> for blob/data URLs — NextImage's optimization
+                              pipeline adds overhead for non-remote images and can cause jank */}
+                          <img
                             src={preview}
                             alt={`加工画像 ${idx + 1}`}
-                            fill
-                            className="object-cover"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading="lazy"
                             onError={() => {
                               toast({
                                 title: "エラー",
@@ -1407,6 +1549,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           </Tabs>
         </div>
 
+        {/* VLM Analysis Panel */}
+        {!isMobileFullscreen && showVlmPanel && (
+          <VlmAnalysisPanel
+            status={vlmStatus}
+            result={vlmResult}
+            error={vlmError}
+            onRetry={retryVlmAnalysis}
+          />
+        )}
+
         {/* 選択位置の表示 - モバイルフルスクリーン時は親で表示するため非表示 */}
         {!isMobileFullscreen && (
           selectedLocation ? (
@@ -1416,6 +1568,27 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           ) : (
             <div className="text-sm text-red-600">地図上で位置を選択してください</div>
           )
+        )}
+
+        {selectedLocation && (
+          <p className="text-xs text-gray-500">
+            住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
+          </p>
+        )}
+
+        {isGpsLocation && selectedLocation && (
+          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-medium">GPS由来の位置は端末の推定値です。送信前に正しい地点か確認してください。</p>
+            <label className="flex items-start gap-2 text-sm text-amber-900">
+              <input
+                type="checkbox"
+                checked={isGpsLocationConfirmed}
+                onChange={(e) => setIsGpsLocationConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>この地点が報告対象であることを確認しました</span>
+            </label>
+          </div>
         )}
 
         {/* 解析結果表示 */}
@@ -1432,14 +1605,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
         {/* 送信ボタン */}
         <div className={isMobileFullscreen
-          ? "sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 -mx-4 mt-4 safe-area-bottom"
+          ? "bg-white border-t border-gray-200 px-4 pt-3 -mx-4 mt-6"
           : "flex justify-end gap-2 pt-2"
-        }>
+        }
+          style={isMobileFullscreen ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" } : undefined}
+        >
           {isMobileFullscreen ? (
             <Button
               type="submit"
-              disabled={isSubmitting || !selectedLocation}
-              className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700"
+              disabled={isSubmitting || !canSubmit}
+              className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
             >
               {isSubmitting ? (
                 <>
@@ -1455,7 +1630,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
               <Button type="button" variant="outline" onClick={onCancel}>
                 キャンセル
               </Button>
-              <Button type="submit" disabled={isSubmitting || !selectedLocation} className="min-w-[100px]">
+              <Button type="submit" disabled={isSubmitting || !canSubmit} className="min-w-[100px]">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

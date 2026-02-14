@@ -18,11 +18,15 @@ import DangerReportDetailModal from "../danger-report/danger-report-detail-modal
 import { useToast } from "@/components/ui/use-toast"
 import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { createRoot } from "react-dom/client"
+import { createPortal } from "react-dom"
 import { addPoints } from "@/lib/gamification"
 import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
+import { isAdminUser } from "@/lib/admin"
+import { useCurrentLocation } from "@/hooks/use-current-location"
+import { isValidCoordinates } from "@/lib/coordinates"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -34,12 +38,28 @@ if (!tokenValidation.isValid) {
 
 mapboxgl.accessToken = mapboxToken || ""
 
+const REVERSE_GEOCODE_DECIMALS = 3
+
+function toCoarseCoordinate(value: number, decimals = REVERSE_GEOCODE_DECIMALS): number {
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}
+
 async function reverseGeocodeLocation(latitude: number, longitude: number) {
   const token = getMapboxToken()
   if (!token) {
     console.warn("Mapbox token is missing; skip reverse geocoding.")
     return { prefecture: null as string | null, city: null as string | null }
   }
+
+  if (!isValidCoordinates(latitude, longitude)) {
+    console.warn("Invalid coordinates for reverse geocoding", { latitude, longitude })
+    return { prefecture: null as string | null, city: null as string | null }
+  }
+
+  // Send coarse coordinates (~100m) to reduce precise-location exposure to external services.
+  const coarseLatitude = toCoarseCoordinate(latitude)
+  const coarseLongitude = toCoarseCoordinate(longitude)
 
   try {
     const params = new URLSearchParams({
@@ -50,7 +70,7 @@ async function reverseGeocodeLocation(latitude: number, longitude: number) {
     })
 
     const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?${params.toString()}`,
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${coarseLongitude},${coarseLatitude}.json?${params.toString()}`,
     )
 
     if (!response.ok) {
@@ -155,6 +175,8 @@ interface MapImageOverlayEntry {
   coordinates: [number, number]
   hasError?: boolean
 }
+
+type LocationSelectionSource = "manual" | "gps" | null
 // MapContainer コンポーネント
 export default function MapContainer() {
   const { supabase } = useSupabase()
@@ -165,6 +187,8 @@ export default function MapContainer() {
   const [isLoading, setIsLoading] = useState(true)
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null)
+  const [locationSelectionSource, setLocationSelectionSource] =
+    useState<LocationSelectionSource>(null)
   const [selectedReport, setSelectedReport] = useState<DangerReport | null>(null)
   const [filterOptions, setFilterOptions] = useState({
     dangerType: "all",
@@ -222,9 +246,12 @@ export default function MapContainer() {
     const maxRetries = 3
 
     const checkAdminStatus = async () => {
-      if (!supabase) return;
+      if (!supabase) return
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
         if (error) {
           // "Auth session missing"はセッション同期待ち、リトライする
           if (error.message?.includes("Auth session missing")) {
@@ -237,23 +264,47 @@ export default function MapContainer() {
             if (isMounted) setIsAdmin(false)
             return
           }
-          console.error("Error fetching user:", error);
-          return;
+          console.error("Error fetching user:", error)
+          if (isMounted) setIsAdmin(false)
+          return
         }
-        // user.app_metadata.role === 'admin' で判定 (実際のロール管理方法に合わせて変更)
-        if (user?.app_metadata?.role === 'admin') {
-          if (isMounted) setIsAdmin(true);
+
+        if (!user) {
+          if (isMounted) setIsAdmin(false)
+          return
+        }
+
+        let role: string | null = null
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle()
+
+        if (profileError) {
+          console.error("Error fetching user profile role:", profileError)
         } else {
-          if (isMounted) setIsAdmin(false);
+          role = profile?.role ?? null
+        }
+
+        if (isMounted) {
+          setIsAdmin(
+            isAdminUser({
+              email: user.email,
+              role,
+            }),
+          )
         }
       } catch (err) {
-        console.error("Error in checkAdminStatus:", err);
-        if (isMounted) setIsAdmin(false); // エラー時は念のため false に
+        console.error("Error in checkAdminStatus:", err)
+        if (isMounted) setIsAdmin(false) // エラー時は念のため false に
       }
-    };
-    checkAdminStatus();
-    return () => { isMounted = false }
-  }, [supabase]); // supabase クライアントが変わった時にも再チェック
+    }
+    checkAdminStatus()
+    return () => {
+      isMounted = false
+    }
+  }, [supabase]) // supabase クライアントが変わった時にも再チェック
 
   // --- ▼▼▼ モバイル判定と地点選択待ち state を追加 ▼▼▼ ---
   const isMobile = useMediaQuery("(max-width: 768px)"); // md ブレークポイント (Tailwind)
@@ -263,7 +314,16 @@ export default function MapContainer() {
   const [isHelpVisible, setIsHelpVisible] = useState(true);
   const [isHelpDismissed, setIsHelpDismissed] = useState(false);
   const [showMobileMapHint, setShowMobileMapHint] = useState(false);
-  // --- ▲▲▲ --- 
+
+  // GPS現在地取得フック
+  const {
+    location: gpsLocation,
+    isLoading: isAcquiringGPS,
+    requestLocation: requestGPSLocation,
+    reset: resetGPSLocation,
+  } = useCurrentLocation()
+  const gpsConsumedRef = useRef(false)
+  // --- ▲▲▲ ---
 
   useEffect(() => {
     if (!isMobile) {
@@ -498,6 +558,7 @@ export default function MapContainer() {
         const lngLat = selectionMarker.current.getLngLat();
         const newCoordinates: [number, number] = [lngLat.lng, lngLat.lat];
         setSelectedLocation(newCoordinates);
+        setLocationSelectionSource("manual");
         toast({ 
           title: "地点を移動しました", 
           description: "ドラッグで位置を調整しました" 
@@ -519,6 +580,7 @@ export default function MapContainer() {
       // 地点選択モード：位置を選択
       console.log("Location selection mode: Setting location");
       setSelectedLocation(coordinates);
+      setLocationSelectionSource("manual");
 
       if (isMobile) {
         // モバイル：地点を選択するだけ（フォームはボトムバーの「この地点で報告する」ボタンで開く）
@@ -539,6 +601,7 @@ export default function MapContainer() {
       // フォームが開いている場合：モバイル・デスクトップ関係なく位置を更新
       console.log("Form is open: Updating location");
       setSelectedLocation(coordinates);
+      setLocationSelectionSource("manual");
       toast({
         title: "地点を変更しました",
         description: "新しい位置に報告地点を変更しました"
@@ -580,7 +643,7 @@ export default function MapContainer() {
 
       map.current.on("error", (e) => { 
         console.error("Mapbox error:", e.error || e); 
-        const errorMessage = e.error?.message || e.message || "不明なエラー";
+        const errorMessage = (e.error as Error | undefined)?.message || "不明なエラー";
         setMapError(`マップエラー: ${errorMessage}`); 
       });
 
@@ -616,12 +679,14 @@ export default function MapContainer() {
         const center = map.current.getCenter();
         const initialLocation: [number, number] = [center.lng, center.lat];
         setSelectedLocation(initialLocation);
+        setLocationSelectionSource("manual");
         // updateSelectionMarker is called via useEffect below
       }
     }
     if (!isReportFormOpen && !submittedReport && selectionMarker.current) {
       selectionMarker.current.remove(); selectionMarker.current = null;
       setSelectedLocation(null); // Reset location when form closes without submission
+      setLocationSelectionSource(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReportFormOpen, submittedReport]); // submittedReport dependency added
@@ -892,10 +957,17 @@ export default function MapContainer() {
     setFilterOptions(prev => ({ ...prev, ...newFilters }));
   };
 
-  const handleReportSubmit = async (reportData: Partial<DangerReport> & { imageFile?: File | null }) => {
+  const handleReportSubmit = async (
+    reportData: Partial<DangerReport> & { imageFile?: File | null }
+  ): Promise<{ reportId: string; imageUrl: string | null }> => {
     if (!supabase || !selectedLocation) { // Check supabase and selectedLocation
       toast({ title: "エラー", description: "地図上で位置を選択してください。", variant: "destructive" });
-      return;
+      throw new Error("地図上で位置を選択してください。");
+    }
+
+    if (!isValidCoordinates(selectedLocation[1], selectedLocation[0])) {
+      toast({ title: "エラー", description: "位置情報が不正です。地図で地点を再選択してください。", variant: "destructive" });
+      throw new Error("位置情報が不正です。地図で地点を再選択してください。");
     }
 
     // 画像ファイルを取り出す (プロパティ名は要確認)
@@ -907,7 +979,7 @@ export default function MapContainer() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({ title: "認証エラー", description: "ユーザー情報が取得できませんでした。", variant: "destructive" });
-        return;
+        throw new Error("ユーザー情報が取得できませんでした。");
       }
 
       // 1. 基本情報をまず INSERT (processed_image_urls は含めないか NULL)
@@ -1012,7 +1084,8 @@ export default function MapContainer() {
         // selectedLocation が null の場合のエラーハンドリングが必要な場合がある
       }
 
-      setIsReportFormOpen(false); // Close form
+      // TEMP: Keep form open to show VLM analysis results
+      // setIsReportFormOpen(false); // Close form
 
       // プレビューモーダル表示 (API の結果を反映したデータで判断)
       if (finalReportData.image_url || (finalReportData.processed_image_urls && finalReportData.processed_image_urls.length > 0)) {
@@ -1026,9 +1099,15 @@ export default function MapContainer() {
       // ローカル状態を更新 (API の結果を反映したデータを使う)
       setPendingReports(prev => [finalReportData, ...prev]);
 
+      // Return report ID and image URL for VLM analysis
+      return {
+        reportId: newReportId,
+        imageUrl: finalReportData.image_url || null,
+      };
     } catch (error: any) {
       console.error("Error submitting report:", error);
       toast({ title: "送信エラー", description: `報告の送信エラー: ${error.message}`, variant: "destructive" });
+      throw error; // Re-throw so form can handle it
     }
   };
 
@@ -1102,6 +1181,7 @@ export default function MapContainer() {
     setIsReportFormOpen(false); // フォームを一旦閉じる
     setSubmittedReport(null); // 送信済みプレビューもクリア
     setSelectedLocation(null); // 選択地点もクリア
+    setLocationSelectionSource(null);
 
     if (isMobile) {
       if (awaitingLocationSelection) {
@@ -1125,6 +1205,43 @@ export default function MapContainer() {
   };
   // --- ▲▲▲ ---
 
+  // --- ▼▼▼ 現在地で報告ハンドラー ▼▼▼ ---
+  const handleReportAtCurrentLocation = useCallback(() => {
+    gpsConsumedRef.current = false
+    resetGPSLocation()
+    requestGPSLocation()
+  }, [resetGPSLocation, requestGPSLocation])
+
+  // GPS位置取得成功時: 地図を移動してフォームを開く
+  useEffect(() => {
+    if (!gpsLocation || gpsConsumedRef.current) return
+    if (!isValidCoordinates(gpsLocation[1], gpsLocation[0])) {
+      resetGPSLocation()
+      toast({
+        title: "位置情報エラー",
+        description: "現在地の座標が不正です。再取得してください。",
+        variant: "destructive",
+      })
+      return
+    }
+
+    gpsConsumedRef.current = true
+
+    setSelectedLocation(gpsLocation)
+    setLocationSelectionSource("gps")
+    flyToLocation(gpsLocation[0], gpsLocation[1], 16)
+    setAwaitingLocationSelection(false)
+    setIsReportFormOpen(true)
+    resetGPSLocation()
+
+    toast({
+      title: "現在地を候補として設定しました",
+      description: "現在地は端末の推定値です。地図で確認・調整してから報告してください。",
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsLocation])
+  // --- ▲▲▲ 現在地で報告ハンドラー ▲▲▲ ---
+
   // --- Render ---
   return (
     <div className="fullscreen-map-container">
@@ -1143,6 +1260,8 @@ export default function MapContainer() {
           isARMode={isARMode}
           onToggleSidebar={toggleSidebar}
           isMobile={isMobile}
+          onReportAtCurrentLocation={handleReportAtCurrentLocation}
+          isAcquiringGPS={isAcquiringGPS}
         />
 
         {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
@@ -1151,7 +1270,7 @@ export default function MapContainer() {
             className="absolute left-0 right-0 z-30 px-3 sm:px-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
           >
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
-              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); flyToLocation(coords[0], coords[1]); } }} />
+              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); setLocationSelectionSource("manual"); flyToLocation(coords[0], coords[1]); } }} />
             </div>
           </div>
         )}
@@ -1245,13 +1364,14 @@ export default function MapContainer() {
                 onSubmit={handleReportSubmit}
                 onCancel={() => setIsReportFormOpen(false)}
                 selectedLocation={selectedLocation}
+                locationSource={locationSelectionSource}
               />
             </div>
           )}
 
-          {/* Report Form - モバイル用（フルスクリーンモーダル） */}
-          {isReportFormOpen && isMobile && (
-            <div className="fixed inset-0 z-50 flex flex-col bg-white mobile-fullscreen-form">
+          {/* Report Form - モバイル用（フルスクリーンモーダル）- Portal経由でbodyに直接レンダリング */}
+          {isReportFormOpen && isMobile && createPortal(
+            <div className="fixed inset-0 z-[60] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-white mobile-fullscreen-form">
               {/* モバイルフォームヘッダー */}
               <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white safe-area-top">
                 <Button
@@ -1274,6 +1394,7 @@ export default function MapContainer() {
                   onClick={() => {
                     setIsReportFormOpen(false);
                     setSelectedLocation(null);
+                    setLocationSelectionSource(null);
                     if (selectionMarker.current) {
                       selectionMarker.current.remove();
                       selectionMarker.current = null;
@@ -1305,7 +1426,7 @@ export default function MapContainer() {
                         setIsReportFormOpen(false);
                         setAwaitingLocationSelection(true);
                       }}
-                      className="text-xs h-7 px-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                      className="text-xs h-9 px-3 border-blue-200 text-blue-600 hover:bg-blue-50"
                     >
                       変更
                     </Button>
@@ -1314,28 +1435,34 @@ export default function MapContainer() {
               )}
 
               {/* フォーム本体 */}
-              <div className="flex-1 overflow-y-auto">
+              <div
+                className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
                 <DangerReportForm
                   onSubmit={handleReportSubmit}
                   onCancel={() => {
                     setIsReportFormOpen(false);
                     setSelectedLocation(null);
+                    setLocationSelectionSource(null);
                     if (selectionMarker.current) {
                       selectionMarker.current.remove();
                       selectionMarker.current = null;
                     }
                   }}
                   selectedLocation={selectedLocation}
+                  locationSource={locationSelectionSource}
                   isMobileFullscreen={true}
                 />
               </div>
-            </div>
+            </div>,
+            document.body
           )}
-          {/* --- ▼▼▼ モバイル用地点選択UI（コンパクトなボトムバー） ▼▼▼ --- */}
-          {isMobile && awaitingLocationSelection && (
+          {/* --- ▼▼▼ モバイル用地点選択UI（ボトムシート）- Portal経由でbodyに直接レンダリング ▼▼▼ --- */}
+          {isMobile && awaitingLocationSelection && createPortal(
             <>
               {/* 上部のコンパクトなガイド */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
+              <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none">
                 <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-blue-200 px-4 py-2">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
@@ -1344,38 +1471,37 @@ export default function MapContainer() {
                 </div>
               </div>
 
-              {/* 下部の確認バー - ナビゲーションバーの上に表示 */}
-              <div className="absolute bottom-20 left-3 right-3 z-50 mobile-bottom-bar">
-                <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+              {/* 下部の確認バー - ナビゲーションバーの上に固定表示 */}
+              <div className="fixed bottom-0 left-0 right-0 z-[60] mobile-bottom-bar">
+                <div className="bg-white rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] border-t border-gray-200">
                   {selectedLocation ? (
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <MapPin className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">地点を選択しました</p>
-                            <p className="text-xs text-gray-500">
-                              {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
-                            </p>
-                          </div>
+                    <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-semibold text-gray-900">地点を選択しました</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-3">
                         <Button
                           size="default"
                           variant="outline"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             setSelectedLocation(null);
+                            setLocationSelectionSource(null);
                             if (selectionMarker.current) {
                               selectionMarker.current.remove();
                               selectionMarker.current = null;
                             }
                             toast({ title: "地点選択をキャンセルしました" });
                           }}
-                          className="flex-1 h-11 text-sm"
+                          className="flex-1 h-12 text-base font-medium rounded-xl"
                         >
                           キャンセル
                         </Button>
@@ -1385,24 +1511,27 @@ export default function MapContainer() {
                             setAwaitingLocationSelection(false);
                             setIsReportFormOpen(true);
                           }}
-                          className="flex-[1.5] h-11 text-sm bg-blue-600 hover:bg-blue-700"
+                          className="flex-[2] h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
                         >
-                          報告する
+                          この地点で報告する
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4">
+                    <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
                       <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600">地図をタップして地点を選んでください</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <p className="text-sm text-gray-600">地図をタップして地点を選んでください</p>
+                        </div>
                         <Button
-                          size="sm"
+                          size="default"
                           variant="ghost"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             toast({ title: "地点選択をキャンセルしました" });
                           }}
-                          className="text-gray-500 hover:text-gray-700"
+                          className="text-gray-500 hover:text-gray-700 h-10 px-4"
                         >
                           キャンセル
                         </Button>
@@ -1411,7 +1540,8 @@ export default function MapContainer() {
                   )}
                 </div>
               </div>
-            </>
+            </>,
+            document.body
           )}
           {/* --- ▲▲▲ モバイル用地点選択UI ▲▲▲ --- */}
           

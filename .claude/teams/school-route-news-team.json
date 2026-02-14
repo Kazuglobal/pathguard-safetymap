@@ -1,0 +1,209 @@
+{
+  "team_name": "通学路の安全ニュースチーム",
+  "description": "全国で起きた通学路関連のリアルタイムニュースを取得・検証・記事化・公開するチーム",
+  "version": "1.0.0",
+  "agents": [
+    {
+      "id": "news-fetcher",
+      "name": "ニュースフェッチャー",
+      "role": "リアルタイムニュース取得担当",
+      "description": "全国の通学路関連ニュースをリアルタイムで収集する",
+      "responsibilities": [
+        "通学路事故・事件のニュース検索",
+        "都道府県別のローカルニュース収集",
+        "警察・自治体の発表情報取得",
+        "SNSでの関連情報モニタリング",
+        "ニュースソースの優先度付け"
+      ],
+      "tools": ["WebSearch", "WebFetch", "Read", "Write"],
+      "search_keywords": [
+        "通学路 事故 速報",
+        "スクールゾーン 交通事故",
+        "登下校 児童 事故",
+        "通学中 小学生",
+        "横断歩道 児童",
+        "見守り活動 不審者"
+      ],
+      "output_format": {
+        "type": "news_items",
+        "fields": ["title", "source", "url", "published_date", "location", "summary", "category"]
+      }
+    },
+    {
+      "id": "fact-checker",
+      "name": "ファクトチェッカー",
+      "role": "情報検証担当",
+      "description": "収集したニュースの正確性と信頼性を検証する",
+      "responsibilities": [
+        "ソースの信頼性評価",
+        "複数ソースによるクロスチェック",
+        "日時・場所・詳細の正確性確認",
+        "誤報・デマの除外",
+        "公式発表との照合"
+      ],
+      "tools": ["WebSearch", "WebFetch", "Read"],
+      "input_from": ["news-fetcher"],
+      "output_format": {
+        "type": "verified_news",
+        "fields": ["original_item", "verification_status", "confidence_score", "verified_sources", "notes"]
+      }
+    },
+    {
+      "id": "news-writer",
+      "name": "ニュースライター",
+      "role": "記事執筆担当",
+      "description": "検証済みニュースを読みやすい記事に編集する",
+      "responsibilities": [
+        "客観的で正確な記事執筆",
+        "保護者・教育関係者向けの分かりやすい表現",
+        "重要ポイントの抽出",
+        "関連情報・対策のアドバイス追加",
+        "適切な見出し・要約の作成"
+      ],
+      "tools": ["Write", "Edit", "Read"],
+      "input_from": ["fact-checker"],
+      "output_format": {
+        "type": "news_article",
+        "fields": ["title", "excerpt", "content", "key_points", "location", "category", "tags", "sources"]
+      },
+      "constraints": {
+        "max_title_length": 50,
+        "max_excerpt_length": 150,
+        "tone": "客観的・冷静・保護者目線"
+      }
+    },
+    {
+      "id": "seo-optimizer",
+      "name": "SEOオプティマイザー",
+      "role": "SEO最適化担当",
+      "description": "記事のSEOとメタデータを最適化する",
+      "responsibilities": [
+        "検索キーワードの最適化",
+        "メタタイトル・ディスクリプションの作成",
+        "JSON-LD構造化データの生成",
+        "地域名・日付のSEO対策",
+        "Open Graph・Twitter Cardの設定"
+      ],
+      "tools": ["Write", "Edit", "Read"],
+      "input_from": ["news-writer"],
+      "output_format": {
+        "type": "seo_metadata",
+        "fields": ["meta_title", "meta_description", "keywords", "structured_data", "og_tags"]
+      },
+      "constraints": {
+        "meta_title_max_length": 60,
+        "meta_description_max_length": 160
+      }
+    },
+    {
+      "id": "image-generator",
+      "name": "画像ジェネレーター",
+      "role": "画像生成担当",
+      "description": "ニュース記事用のサムネイルと図解を生成する",
+      "responsibilities": [
+        "ニュース内容に適したサムネイル画像生成",
+        "地図・位置情報の可視化",
+        "事故状況の図解（抽象的表現）",
+        "安全対策のインフォグラフィック",
+        "日本向けデザインの適用"
+      ],
+      "tools": ["Bash", "Write", "Read"],
+      "input_from": ["news-writer"],
+      "output_format": {
+        "type": "generated_images",
+        "fields": ["thumbnail_path", "content_images", "alt_texts"]
+      },
+      "constraints": {
+        "style": "日本向けイラスト",
+        "no_realistic_accident_scenes": true,
+        "focus_on_safety_awareness": true
+      }
+    }
+  ],
+  "workflow": {
+    "trigger": "manual",
+    "schedule": "daily",
+    "time": "07:00",
+    "steps": [
+      {
+        "step": 1,
+        "agent": "news-fetcher",
+        "action": "fetch_news",
+        "timeout": "10m",
+        "depends_on": []
+      },
+      {
+        "step": 2,
+        "agent": "fact-checker",
+        "action": "verify_news",
+        "timeout": "5m",
+        "depends_on": [1]
+      },
+      {
+        "step": 3,
+        "agent": "news-writer",
+        "action": "write_articles",
+        "timeout": "10m",
+        "depends_on": [2]
+      },
+      {
+        "step": 4,
+        "agent": "seo-optimizer",
+        "action": "optimize_seo",
+        "timeout": "5m",
+        "depends_on": [3]
+      },
+      {
+        "step": 5,
+        "agent": "image-generator",
+        "action": "generate_images",
+        "timeout": "10m",
+        "depends_on": [3]
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "accident",
+      "name": "交通事故",
+      "color": "#EF4444",
+      "icon": "AlertTriangle",
+      "keywords": ["事故", "衝突", "はねられ", "巻き込まれ"]
+    },
+    {
+      "id": "suspicious",
+      "name": "不審者情報",
+      "color": "#F97316",
+      "icon": "AlertCircle",
+      "keywords": ["不審者", "声かけ", "つきまとい", "写真撮影"]
+    },
+    {
+      "id": "infrastructure",
+      "name": "インフラ整備",
+      "color": "#3B82F6",
+      "icon": "Construction",
+      "keywords": ["整備", "設置", "改良", "工事"]
+    },
+    {
+      "id": "policy",
+      "name": "施策・対策",
+      "color": "#8B5CF6",
+      "icon": "FileText",
+      "keywords": ["施策", "対策", "計画", "予算"]
+    },
+    {
+      "id": "community",
+      "name": "地域活動",
+      "color": "#22C55E",
+      "icon": "Users",
+      "keywords": ["見守り", "ボランティア", "パトロール", "活動"]
+    }
+  ],
+  "output_directory": "content/school-route-news",
+  "metadata": {
+    "language": "ja",
+    "target_regions": ["全国", "都道府県別"],
+    "update_frequency": "daily",
+    "retention_days": 90
+  }
+}

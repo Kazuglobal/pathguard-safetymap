@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedGeocodingService } from '@/lib/geocoding/enhanced-geocoding'
+import { logApiUsage } from '@/lib/api-usage-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
     return NextResponse.json(result.data)
   } catch (error) {
     console.error('Geocoding API error:', error)
@@ -74,6 +76,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json(autocompleteResult.data)
 
       case 'reverse':
@@ -96,6 +99,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json(reverseResult.data)
 
       case 'smartSearch':
@@ -118,6 +122,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json(smartSearchResult.data)
 
       case 'batch':
@@ -140,6 +145,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json(batchResult.data)
 
       case 'createSession':
@@ -149,6 +155,7 @@ export async function POST(request: NextRequest) {
           options.language
         )
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json({ sessionId })
 
       case 'getSearchSuggestions':
@@ -165,6 +172,7 @@ export async function POST(request: NextRequest) {
           options.limit
         )
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json(suggestions)
 
       case 'analyzeSearchPatterns':
@@ -172,6 +180,7 @@ export async function POST(request: NextRequest) {
           options.sessionId
         )
 
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
         return NextResponse.json(patterns)
 
       default:

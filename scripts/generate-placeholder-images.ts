@@ -1,5 +1,5 @@
 /**
- * PathGuard Press プレースホルダー画像生成スクリプト
+ * SAFE MAGAZINE プレースホルダー画像生成スクリプト
  * SVG形式で仮画像を作成
  */
 
@@ -85,7 +85,7 @@ function generateThumbnailSVG(config: ImageConfig): string {
 
   <!-- Category badge -->
   <rect x="130" y="430" width="140" height="36" rx="18" fill="${colors.accent}"/>
-  <text x="200" y="455" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="bold" fill="white">PathGuard Press</text>
+  <text x="200" y="455" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="bold" fill="white">SAFE MAGAZINE</text>
 
   <!-- Title text -->
   <text x="130" y="520" font-family="sans-serif" font-size="36" font-weight="bold" fill="#1F2937">${config.title}</text>

@@ -21,10 +21,12 @@ import {
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { isAdminUser } from "@/lib/admin"
 
 interface NavigationProps {
   user?: any
-  onLogout?: () => void
+  onLogout: () => void | Promise<void>
+  isLoggingOut?: boolean
   hideTopNavMobile?: boolean
   isOverlay?: boolean
 }
@@ -33,15 +35,21 @@ type NavItem = {
   key: string
   href: string
   label: string
+  mobileLabel?: string
   icon: LucideIcon
   description?: string
   emphasize?: boolean
 }
 
-export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay = false }: NavigationProps) {
+export function Navigation({
+  user,
+  onLogout,
+  isLoggingOut = false,
+  hideTopNavMobile = false,
+  isOverlay = false,
+}: NavigationProps) {
   const pathname = usePathname()
-  // 管理者チェック（暫定実装）
-  const isAdmin = user?.email?.includes("admin") || user?.role === "admin"
+  const isAdmin = isAdminUser(user)
 
   const mainNavItems: NavItem[] = [
     {
@@ -84,6 +92,7 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
       key: "mypage",
       href: "/mypage",
       label: "マイページ",
+      mobileLabel: "マイ",
       icon: User,
       description: "ミッションやコレクション",
     },
@@ -193,11 +202,25 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
             <div className="flex items-center space-x-3">
               {user && <NotificationBell isLoggedIn={!!user} />}
               {user ? (
-                <div className="hidden sm:flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
-                  <span className="font-semibold text-gray-900">
-                    {user.email?.split("@")[0] || "ユーザー"}
-                  </span>
-                  <span className="text-xs text-gray-500">ログイン中</span>
+                <div className="hidden sm:flex items-center space-x-3">
+                  <div className="flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
+                    <span className="font-semibold text-gray-900">
+                      {user.email?.split("@")[0] || "ユーザー"}
+                    </span>
+                    <span className="text-xs text-gray-500">ログイン中</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLogout}
+                    disabled={isLoggingOut}
+                    data-testid="logout-button"
+                    aria-label="ログアウト"
+                    aria-busy={isLoggingOut}
+                    className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
                 </div>
               ) : (
                 <div className="hidden sm:flex items-center space-x-2">
@@ -240,7 +263,7 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
                   active ? "text-sky-600" : "text-slate-500"
                 )}
                 aria-label={item.label}
@@ -257,7 +280,9 @@ export function Navigation({ user, onLogout, hideTopNavMobile = false, isOverlay
                 >
                   <Icon className={cn(isEmphasized ? "h-6 w-6" : "h-5 w-5")} />
                 </span>
-                <span className="max-w-[72px] text-center">{item.label}</span>
+                <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
+                  {item.mobileLabel ?? item.label}
+                </span>
               </Link>
             )
           })}

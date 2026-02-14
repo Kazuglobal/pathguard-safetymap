@@ -29,7 +29,7 @@ export default function SafeMagazinePage() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">PathGuard Press</h1>
+              <h1 className="text-xl font-bold text-gray-900">SAFE MAGAZINE</h1>
               <p className="text-sm text-gray-500">通学路の安全に関する最新情報</p>
             </div>
           </div>

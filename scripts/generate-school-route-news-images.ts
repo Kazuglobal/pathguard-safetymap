@@ -29,64 +29,6 @@ interface NewsImageConfig {
 
 const NEWS_IMAGES: NewsImageConfig[] = [
   {
-    slug: "fukuoka-accident-20260206",
-    filename: "fukuoka-accident-20260206.png",
-    prompt: `Create a Japanese safety awareness illustration about a traffic accident in a residential area involving school children.
-
-Scene elements (abstract, NOT depicting actual accident):
-- A quiet Japanese residential street without separate sidewalk
-- A stopped light car (kei car) at the scene
-- Yellow safety caps scattered on the ground
-- School backpacks (randoseru) visible
-- Emergency response atmosphere with caution tape
-- Japanese residential houses in background
-
-Style: Somber but not graphic, Japanese editorial illustration
-Focus on safety awareness about residential roads without sidewalks
-Color palette: Muted tones with red warning accents
-${QUALITY_SUFFIX}`,
-    description: "福岡県筑紫野市の下校中事故"
-  },
-  {
-    slug: "tokyo-suspicious-20260206",
-    filename: "tokyo-suspicious-20260206.png",
-    prompt: `Create a Japanese safety awareness illustration about stranger danger for school children.
-
-Scene elements:
-- A Japanese urban residential street (Setagaya-ku, Tokyo style)
-- A child in school uniform running toward a "こども110番の家" (Child Safety House) sign
-- The distinctive yellow triangle sign of "こども110番の家" on a house
-- Morning light suggesting early school commute time
-- Safe, protective atmosphere around the safety house
-
-Style: Japanese safety education illustration
-Focus on the "こども110番の家" concept and child's quick escape
-Color palette: Warning orange accents, morning light yellows, safe green around the house
-Mood: Empowering children to protect themselves
-${QUALITY_SUFFIX}`,
-    description: "東京都世田谷区の不審者声かけ"
-  },
-  {
-    slug: "osaka-guardrail-20260205",
-    filename: "osaka-guardrail-20260205.png",
-    prompt: `Create a Japanese illustration showing newly installed guardrails along a school commute route.
-
-Scene elements:
-- Shiny new silver guardrails along a Japanese municipal road
-- Elementary school children with yellow caps walking safely behind the guardrails
-- Before/after comparison feeling - safe side with guardrails
-- Japanese road markings and infrastructure
-- City workers or construction equipment in background finishing installation
-- A school zone sign visible
-
-Style: Positive, progress-oriented Japanese editorial illustration
-Focus on infrastructure improvement for child safety
-Color palette: Blue for infrastructure, silver for guardrails, yellow safety accents
-Mood: Progress, safety improvement, community investment
-${QUALITY_SUFFIX}`,
-    description: "大阪府堺市のガードレール設置"
-  },
-  {
     slug: "fukuoka-asakura-accident",
     filename: "fukuoka-asakura-accident.png",
     prompt: `Create a Japanese safety awareness illustration about a traffic accident at an intersection involving children on bicycles.

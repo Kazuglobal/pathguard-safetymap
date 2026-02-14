@@ -7,6 +7,11 @@ export type GenerateImageParams = {
   prompt?: string
   imageBase64?: string
   imageMimeType?: string
+  model?: string
+}
+export type GenerateImageResult = {
+  images: GeneratedImage[]
+  model: string
 }
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -50,15 +55,22 @@ function sanitizeModelName(model: string): string {
   return model.replace(/[^a-zA-Z0-9._-]/g, '')
 }
 
+// Per-call timeout to prevent hanging on slow API responses
+const PER_CALL_TIMEOUT_MS = 25_000
+
 // Available image generation models (in order of preference)
 const IMAGE_GEN_MODELS = [
-  "gemini-3-pro-image-preview",                 // Gemini 3 Pro Image Preview (NanoBanana Pro)
-  "gemini-2.0-flash-exp-image-generation",      // Gemini 2.0 Flash Exp Image Generation
-  "gemini-2.0-flash-preview-image-generation",  // Gemini 2.0 Flash Preview
-  "imagen-3.0-generate-001",                    // Imagen 3 standard
+  "gemini-2.5-pro-image-preview",     // Gemini 2.5 Pro Image Preview
+  "gemini-2.5-flash-image",           // Gemini 2.5 Flash Image (stable GA, fast)
+  "gemini-3-pro-image-preview",       // Gemini 3 Pro Image Preview (higher quality, preview)
 ]
 
-function getImageModel(): string {
+// Imagen models use the :predict endpoint; Gemini models use :generateContent
+function isImagenModel(model: string): boolean {
+  return model.startsWith('imagen-')
+}
+
+export function getImageModel(): string {
   const envModel = process.env.GEMINI_IMAGE_MODEL?.trim()
   if (envModel && envModel.length > 0) {
     return envModel
@@ -91,6 +103,7 @@ async function tryImagesGenerate(apiKey: string, model: string, prompt: string, 
       "x-goog-api-key": apiKey
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
   })
   return res
 }
@@ -234,10 +247,24 @@ export async function generateImageWithGemini({
   imageBase64,
   imageMimeType,
 }: GenerateImageParams): Promise<GeneratedImage[]> {
+  const result = await generateImageWithGeminiWithModel({
+    prompt,
+    imageBase64,
+    imageMimeType,
+  })
+  return result.images
+}
+export async function generateImageWithGeminiWithModel({
+  prompt,
+  imageBase64,
+  imageMimeType,
+  model,
+}: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Get the image generation model (user-specified or default)
-  const primaryModel = getImageModel()
+  // Per-request model override takes priority; otherwise use env/default.
+  const requestedModel = typeof model === 'string' ? sanitizeModelName(model.trim()) : ''
+  const primaryModel = requestedModel.length > 0 ? requestedModel : getImageModel()
 
   // Build list of models to try (primary first, then fallbacks)
   const modelsToTry = [primaryModel, ...IMAGE_GEN_MODELS.filter(m => m !== primaryModel)]
@@ -248,32 +275,35 @@ export async function generateImageWithGemini({
   for (const model of modelsToTry) {
     console.log(`[Gemini] Trying model: ${model}`)
 
-    // First attempt: dedicated images:generate endpoint (preferred per Gemini docs)
-    try {
-      const primary = await tryImagesGenerate(apiKey, model, text, imageBase64, imageMimeType)
-      if (primary.ok) {
-        const payload = await primary.json()
-        const primaryImages = await extractImagesFromAny(payload, apiKey)
-        if (primaryImages.length > 0) {
-          console.log(`[Gemini] Success with model: ${model} via images:generate`)
-          return primaryImages
+    // Imagen models use :predict endpoint
+    if (isImagenModel(model)) {
+      try {
+        const primary = await tryImagesGenerate(apiKey, model, text, imageBase64, imageMimeType)
+        if (primary.ok) {
+          const payload = await primary.json()
+          const primaryImages = await extractImagesFromAny(payload, apiKey)
+          if (primaryImages.length > 0) {
+            console.log(`[Gemini] Success with model: ${model} via :predict`)
+            return { images: primaryImages, model }
+          }
+        } else {
+          const errText = await primary.text()
+          lastError = new Error(`${model}: ${primary.status} - ${errText}`)
+          console.warn(`[Gemini] :predict failed for ${model}: ${errText}`)
         }
-      } else {
-        // If the endpoint rejects (e.g., unsupported model), fall through to generateContent
-        const errText = await primary.text()
-        console.warn(`[Gemini] images:generate failed for ${model}: ${errText}`)
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.warn(`[Gemini] :predict error for ${model}:`, error)
       }
-    } catch (error) {
-      console.warn(`[Gemini] images:generate error for ${model}:`, error)
+      continue
     }
 
-    // Fallback: generateContent with response_modalities for native image generation
+    // Gemini models use :generateContent with response_modalities
     try {
-      // Security: Sanitize model name and MIME type
       const safeModel = sanitizeModelName(model)
       const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
 
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         contents: [
           {
             role: "user",
@@ -298,6 +328,7 @@ export async function generateImageWithGemini({
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
           body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
         }
       )
 
@@ -306,16 +337,21 @@ export async function generateImageWithGemini({
         const images = await extractImagesFromAny(data, apiKey)
         if (images.length > 0) {
           console.log(`[Gemini] Success with model: ${model} via generateContent`)
-          return images
+          return { images, model }
         }
       } else {
         const errText = await res.text()
-        lastError = new Error(`${model}: ${res.status} ${res.statusText} - ${errText}`)
+        lastError = new Error(`${model}: ${res.status} - ${errText.slice(0, 200)}`)
         console.warn(`[Gemini] generateContent failed for ${model}: ${errText}`)
       }
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
-      console.warn(`[Gemini] generateContent error for ${model}:`, error)
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        lastError = new Error(`${model}: タイムアウト (${PER_CALL_TIMEOUT_MS}ms)`)
+        console.warn(`[Gemini] generateContent timed out for ${model}`)
+      } else {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.warn(`[Gemini] generateContent error for ${model}:`, error)
+      }
     }
   }
 
