@@ -22,7 +22,7 @@ export function SafeMagazine() {
         <div className="flex items-center justify-between px-4 mb-4 md:mb-6">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 md:w-6 md:h-6 text-red-600" />
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">SAFE MAGAZINE</h2>
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">PathGuard Press</h2>
           </div>
           <Link
             href="/safe-magazine"

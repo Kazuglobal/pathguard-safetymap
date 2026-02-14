@@ -34,7 +34,7 @@ export default function LandingPage() {
         {/* 通学・見守りストア */}
         <StoreSection />
 
-        {/* SAFE MAGAZINE */}
+        {/* PathGuard Press */}
         <SafeMagazine />
 
         {/* みんなのヒヤリハット報告 */}

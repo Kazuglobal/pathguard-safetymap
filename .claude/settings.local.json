@@ -95,7 +95,8 @@
       "WebFetch(domain:qiita.com)",
       "Bash(gh issue view:*)",
       "Bash(gh api:*)",
-      "Bash(gh issue close:*)"
+      "Bash(gh issue close:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
