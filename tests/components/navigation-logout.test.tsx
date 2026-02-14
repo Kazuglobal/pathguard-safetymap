@@ -126,4 +126,32 @@ describe('Navigation Logout Functionality', () => {
       expect(mockOnLogout).not.toHaveBeenCalled()
     })
   })
+
+  describe('Mobile bottom nav labels', () => {
+    it('uses mobileLabel when provided while keeping full aria label', () => {
+      const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const mypageBottomLink = container.querySelector('a[aria-label="マイページ"]')
+      expect(mypageBottomLink).toBeInTheDocument()
+      expect(mypageBottomLink).toHaveTextContent('マイ')
+      expect(mypageBottomLink).not.toHaveTextContent('マイページ')
+    })
+
+    it('falls back to label when mobileLabel is not provided', () => {
+      const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const mapBottomLink = container.querySelector('a[aria-label="マップ"]')
+      expect(mapBottomLink).toBeInTheDocument()
+      expect(mapBottomLink).toHaveTextContent('マップ')
+    })
+
+    it('applies one-line truncation styles to bottom nav labels', () => {
+      const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const mypageBottomLink = container.querySelector('a[aria-label="マイページ"]')
+      const label = mypageBottomLink?.querySelector('span:last-child')
+      expect(label).toBeInTheDocument()
+      expect(label).toHaveClass('block', 'w-[72px]', 'truncate', 'text-center')
+    })
+  })
 })
