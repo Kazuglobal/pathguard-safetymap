@@ -26,8 +26,8 @@ export function StickyHeader() {
             <Shield className="w-5 h-5 text-white" />
           </div>
           <span className="text-lg font-bold">
-            <span className="text-red-600">Safe</span>
-            <span className="text-gray-900">Route</span>
+            <span className="text-red-600">Path</span>
+            <span className="text-gray-900">Guardian</span>
           </span>
         </Link>
 

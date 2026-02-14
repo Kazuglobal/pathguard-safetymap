@@ -41,7 +41,7 @@ export default function LandingPage() {
         {/* フッター（モバイルボトムナビの上に余白を確保） */}
         <footer className="mt-8 py-8 px-4 bg-gray-900 text-center">
           <p className="text-sm text-gray-400">
-            © 2025 SafeRoute. All rights reserved.
+            © 2025 PathGuardian. All rights reserved.
           </p>
           <div className="flex justify-center gap-4 mt-4 text-xs text-gray-500">
             <a href="#" className="hover:text-gray-300 transition-colors">
