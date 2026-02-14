@@ -1,0 +1,4 @@
+interface:
+  display_name: "Principal Commit Review"
+  short_description: "PE目線でコミットレビューと指摘修正を進める"
+  default_prompt: "Use $principal-commit-review-fix to review commit <SHA> with severity-ranked findings and implement approved fixes."
