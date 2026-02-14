@@ -280,7 +280,9 @@ export function Navigation({
                 >
                   <Icon className={cn(isEmphasized ? "h-6 w-6" : "h-5 w-5")} />
                 </span>
-                <span className="max-w-[72px] text-center">{item.mobileLabel ?? item.label}</span>
+                <span className="block w-[72px] truncate text-center">
+                  {item.mobileLabel ?? item.label}
+                </span>
               </Link>
             )
           })}
