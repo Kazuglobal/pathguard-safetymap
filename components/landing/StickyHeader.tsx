@@ -22,11 +22,11 @@ export function StickyHeader() {
       <div className="flex items-center justify-between h-14 px-4">
         {/* ロゴ */}
         <Link href="/landing" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center">
             <Shield className="w-5 h-5 text-white" />
           </div>
-          <span className="text-lg font-bold">
-            <span className="text-red-600">Path</span>
+          <span className="text-xl font-bold">
+            <span className="text-sky-600">Path</span>
             <span className="text-gray-900">Guardian</span>
           </span>
         </Link>
