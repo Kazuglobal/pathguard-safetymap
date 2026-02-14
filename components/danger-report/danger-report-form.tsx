@@ -1073,6 +1073,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   }
 
   const canSubmit = !!selectedLocation && (!isGpsLocation || isGpsLocationConfirmed)
+  const showVlmPanel = vlmStatus !== "idle" || submittedReportId
 
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
@@ -1188,6 +1189,16 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           </Select>
           <p className="text-xs text-gray-500">1: 軽度 - 5: 重大</p>
         </div>
+
+        {/* モバイルでは上部に表示して、長いフォームをスクロールせずに結果を確認しやすくする */}
+        {isMobileFullscreen && showVlmPanel && (
+          <VlmAnalysisPanel
+            status={vlmStatus}
+            result={vlmResult}
+            error={vlmError}
+            onRetry={retryVlmAnalysis}
+          />
+        )}
 
         <div className="space-y-2">
           <Label>画像（任意）</Label>
@@ -1539,7 +1550,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         </div>
 
         {/* VLM Analysis Panel */}
-        {(vlmStatus !== "idle" || submittedReportId) && (
+        {!isMobileFullscreen && showVlmPanel && (
           <VlmAnalysisPanel
             status={vlmStatus}
             result={vlmResult}
@@ -1594,7 +1605,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
         {/* 送信ボタン */}
         <div className={isMobileFullscreen
-          ? "sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 -mx-4 mt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-10"
+          ? "bg-white border-t border-gray-200 px-4 pt-3 -mx-4 mt-6"
           : "flex justify-end gap-2 pt-2"
         }
           style={isMobileFullscreen ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" } : undefined}
