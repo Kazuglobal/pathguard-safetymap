@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { VlmAnalysisPanel } from "@/components/danger-report/vlm-analysis-panel"
 import type { VlmAnalysisResult } from "@/lib/vlm-analysis"
 
@@ -37,8 +38,13 @@ const mockResult: VlmAnalysisResult = {
 }
 
 /** Expand the collapsible details section */
+function getToggleButton() {
+  return screen.getByRole("button", { name: /分析詳細を(展開|折りたたむ)/ })
+}
+
+/** Toggle the collapsible details section */
 function expandDetails() {
-  const toggleButton = screen.getByRole("button", { name: /分析詳細を展開/ })
+  const toggleButton = getToggleButton()
   fireEvent.click(toggleButton)
 }
 
@@ -191,6 +197,9 @@ describe("VlmAnalysisPanel", () => {
 
     fireEvent.click(toggleButton)
     expect(toggleButton).toHaveAttribute("aria-expanded", "true")
+    expect(
+      screen.getByRole("button", { name: /分析詳細を折りたたむ/ })
+    ).toBeInTheDocument()
   })
 
   it("should display child-specific risks when expanded", () => {
@@ -262,7 +271,7 @@ describe("VlmAnalysisPanel", () => {
     expect(screen.getByText(mockResult.child_perspective_summary)).toBeInTheDocument()
   })
 
-  it("should display improvement suggestions correctly when expanded", () => {
+  it("should display improvement suggestions correctly when expanded", async () => {
     render(
       <VlmAnalysisPanel
         status="completed"
@@ -274,15 +283,16 @@ describe("VlmAnalysisPanel", () => {
 
     expandDetails()
 
-    // All improvement suggestions should be in the document (even if hidden)
-    // Just verify the data is rendered
+    const user = userEvent.setup()
     const improvementTab = screen.getByRole("tab", { name: "改善提案" })
-    expect(improvementTab).toBeInTheDocument()
+    await user.click(improvementTab)
+    expect(improvementTab).toHaveAttribute("aria-selected", "true")
 
-    // Verify component renders without crashing when mockResult contains improvement suggestions
-    expect(mockResult.improvement_suggestions.immediate_actions?.length).toBeGreaterThan(0)
-    expect(mockResult.improvement_suggestions.medium_term_improvements?.length).toBeGreaterThan(0)
-    expect(mockResult.improvement_suggestions.community_involvement?.length).toBeGreaterThan(0)
+    expect(await screen.findByText("警察に取締りを依頼")).toBeInTheDocument()
+    expect(screen.getByText("保護者の見守り強化")).toBeInTheDocument()
+    expect(screen.getByText("信号機の設置")).toBeInTheDocument()
+    expect(screen.getByText("横断歩道の追加")).toBeInTheDocument()
+    expect(screen.getByText("地域でのパトロール活動")).toBeInTheDocument()
   })
 
   it("should handle empty hazards array", () => {
@@ -300,15 +310,15 @@ describe("VlmAnalysisPanel", () => {
       />
     )
 
-    // No collapsed hint when there are no hazards
-    expect(screen.queryByText(/タップして詳細を表示/)).not.toBeInTheDocument()
+    // Collapsed hint should still be visible to discover expandable summary
+    expect(screen.getByText(/タップして詳細を表示（分析サマリーを確認）/)).toBeInTheDocument()
 
     expandDetails()
 
     expect(screen.getByText("検出されたリスク要因 (0件)")).toBeInTheDocument()
   })
 
-  it("should handle missing time/weather risks", () => {
+  it("should handle missing time/weather risks", async () => {
     const resultWithoutTimeRisks: VlmAnalysisResult = {
       ...mockResult,
       time_weather_risks: {},
@@ -325,8 +335,11 @@ describe("VlmAnalysisPanel", () => {
 
     expandDetails()
 
+    const user = userEvent.setup()
     // Switch to time/weather tab
-    fireEvent.click(screen.getByRole("tab", { name: "時間・天候" }))
+    const timeWeatherTab = screen.getByRole("tab", { name: "時間・天候" })
+    await user.click(timeWeatherTab)
+    expect(timeWeatherTab).toHaveAttribute("aria-selected", "true")
 
     // Should not display any risk entries
     expect(screen.queryByText("朝の通学時")).not.toBeInTheDocument()

@@ -202,6 +202,7 @@ function FailedView({
  */
 function CompletedView({ result }: { result: VlmAnalysisResult }) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const detailsSectionId = "vlm-analysis-details"
 
   return (
     <div className="space-y-4">
@@ -211,7 +212,8 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
         onClick={() => setIsExpanded((prev) => !prev)}
         className="flex w-full items-center justify-between p-3 bg-white rounded-lg border hover:border-blue-300 transition-colors text-left"
         aria-expanded={isExpanded}
-        aria-label="分析詳細を展開"
+        aria-controls={detailsSectionId}
+        aria-label={isExpanded ? "分析詳細を折りたたむ" : "分析詳細を展開"}
       >
         <div>
           <p className="text-xs text-gray-500">総合安全スコア</p>
@@ -236,15 +238,17 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
       </button>
 
       {/* Collapsed hint */}
-      {!isExpanded && result.hazards.length > 0 && (
+      {!isExpanded && (
         <p className="text-xs text-gray-500 text-center">
-          タップして詳細を表示（リスク要因 {result.hazards.length}件）
+          {result.hazards.length > 0
+            ? `タップして詳細を表示（リスク要因 ${result.hazards.length}件）`
+            : "タップして詳細を表示（分析サマリーを確認）"}
         </p>
       )}
 
       {/* Expandable detail section */}
       {isExpanded && (
-        <>
+        <div id={detailsSectionId}>
           {/* Hazards List */}
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-gray-700">
@@ -289,7 +293,7 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
               {renderImprovementSuggestions(result.improvement_suggestions)}
             </TabsContent>
           </Tabs>
-        </>
+        </div>
       )}
     </div>
   )
