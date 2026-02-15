@@ -16,6 +16,8 @@ import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { useLongPress } from "@/hooks/use-long-press"
 import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
+import { AccidentStatsPanel, AccidentStatsLoading } from "@/components/danger-report/accident-stats-panel"
+import { useAccidentStats } from "@/hooks/use-accident-stats"
 
 interface ShowImageOptions {
   reportId?: string
@@ -57,6 +59,9 @@ export default function DangerReportDetailModal({
   // 長押し拡大表示用
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
 
+  // 事故統計データ取得
+  const { stats, status: statsStatus, fetchStats, error: statsError } = useAccidentStats()
+
   // report.processed_image_urls を直接利用するヘルパー
   const currentProcessedUrls = report?.processed_image_urls || []
 
@@ -80,6 +85,18 @@ export default function DangerReportDetailModal({
       }
     }
   }, [report])
+
+  // 事故統計を取得
+  useEffect(() => {
+    if (!report?.latitude || !report?.longitude) return
+
+    fetchStats({
+      latitude: report.latitude,
+      longitude: report.longitude,
+      radius_meters: 300,  // 300m radius
+      years: 5,            // Past 5 years
+    })
+  }, [report?.id, fetchStats])
 
   if (!report) return null
 
@@ -681,6 +698,30 @@ export default function DangerReportDetailModal({
                         ref={fileInputRef}
                       />
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 事故統計パネル */}
+            {report && (
+              <Card>
+                <CardContent className="p-4">
+                  {statsStatus === 'loading' && <AccidentStatsLoading />}
+
+                  {statsStatus === 'error' && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-sm text-red-800">
+                        ⚠️ 事故統計の取得に失敗しました
+                      </p>
+                      {statsError && (
+                        <p className="text-xs text-red-600 mt-1">{statsError}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {statsStatus === 'loaded' && stats && (
+                    <AccidentStatsPanel stats={stats} mode="full" />
                   )}
                 </CardContent>
               </Card>
