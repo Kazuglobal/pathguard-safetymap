@@ -18,6 +18,7 @@ interface AccidentStatsPanelProps {
 export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelProps) {
   const riskInfo = getAccidentRiskLevel(stats.risk_score)
   const isCompact = mode === 'compact'
+  const hasBucketedTimeDistribution = Boolean(stats.time_buckets?.length)
   const timeDistribution = stats.time_buckets?.length
     ? stats.time_buckets.map((bucket) => ({
         key: bucket.label,
@@ -31,6 +32,7 @@ export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelP
         count: hour.count,
         isSchoolTime: hour.is_school_time,
       }))
+  const timeDistributionMaxCount = Math.max(...timeDistribution.map((item) => item.count), 1)
 
   // Empty state - zero accidents
   if (stats.total_accidents === 0) {
@@ -88,16 +90,32 @@ export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelP
           {/* Time Distribution */}
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">時間帯別事故</h4>
-            <div className="grid grid-cols-6 gap-1">
+            <div
+              className={
+                hasBucketedTimeDistribution
+                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-2'
+                  : 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5'
+              }
+            >
               {timeDistribution.map((item) => (
                 <div
                   key={item.key}
-                  className={`text-xs p-1 rounded ${
-                    item.isSchoolTime ? 'bg-orange-100' : 'bg-gray-100'
+                  className={`rounded-md border p-2 ${
+                    item.isSchoolTime ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-200'
                   }`}
                   data-testid={item.isSchoolTime ? 'school-time' : undefined}
                 >
-                  {item.label}: {item.count}
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] leading-tight text-gray-700 break-words">{item.label}</span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums">{item.count}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-white/80 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${item.isSchoolTime ? 'bg-orange-500' : 'bg-gray-500'}`}
+                      style={{ width: `${Math.max((item.count / timeDistributionMaxCount) * 100, 2)}%` }}
+                    />
+                  </div>
+                  <span className="sr-only">{`${item.label}: ${item.count}`}</span>
                 </div>
               ))}
             </div>

@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import {
   mockHighRiskStats,
   mockMediumRiskStats,
@@ -44,7 +44,9 @@ describe('AccidentStatsPanel', () => {
       expect(screen.getByText('127')).toBeInTheDocument()
 
       // Assert - Fatal accidents
-      expect(screen.getByText('3')).toBeInTheDocument()
+      const fatalCard = screen.getByText('死亡事故').closest('[data-testid="stat-card"]')
+      expect(fatalCard).toBeInTheDocument()
+      expect(within(fatalCard as HTMLElement).getByText('3')).toBeInTheDocument()
 
       // Assert - Pedestrian accidents
       expect(screen.getByText('45')).toBeInTheDocument()
