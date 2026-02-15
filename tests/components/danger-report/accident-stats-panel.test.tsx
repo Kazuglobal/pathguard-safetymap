@@ -90,6 +90,25 @@ describe('AccidentStatsPanel', () => {
       expect(schoolHours.length).toBeGreaterThan(0)
     })
 
+    it('should prefer bucketed time distribution when provided', () => {
+      // Arrange
+      const bucketedStats = {
+        ...mockHighRiskStats,
+        accidents_by_hour: mockHighRiskStats.accidents_by_hour.map((hour) => ({ ...hour, count: 0 })),
+        time_buckets: [
+          { label: '14-17時 (下校時間帯)', count: 12, is_school_time: true },
+          { label: 'その他', count: 101, is_school_time: false },
+        ],
+      }
+
+      // Act
+      render(<AccidentStatsPanel stats={bucketedStats} />)
+
+      // Assert
+      expect(screen.getByText(/14-17時 \(下校時間帯\): 12/i)).toBeInTheDocument()
+      expect(screen.queryByText(/14時:\s*10/i)).not.toBeInTheDocument()
+    })
+
     it('should show accident types with pedestrian accidents highlighted', () => {
       // Act
       const { container } = render(<AccidentStatsPanel stats={mockHighRiskStats} />)

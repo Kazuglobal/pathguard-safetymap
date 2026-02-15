@@ -51,6 +51,12 @@ export interface AccidentStats {
     count: number
     is_school_time: boolean
   }[]
+  // Optional bucketed distribution (used by RPC v2 that does not provide hourly granularity)
+  time_buckets?: {
+    label: string
+    count: number
+    is_school_time: boolean
+  }[]
 
   // Accident types
   accident_types: {
@@ -91,9 +97,106 @@ export interface AccidentStatsParams {
 }
 
 /**
- * Runtime shape guard for RPC response.
- * Supabase RPC is typed as Json, so we validate minimum required structure.
+ * RPC v2 response (observed in production DB).
  */
+interface RpcAccidentStatsV2 {
+  total_accidents: number
+  risk_score: number
+  fatal_accidents: number
+  child_involved: number
+  pedestrian_involved: number
+  by_year: Record<string, number>
+  by_weather: Record<string, number>
+  by_time_of_day: Record<string, number>
+  by_accident_type: Record<string, number>
+  nearest_accidents: Array<{
+    distance_m?: number | null
+    severity?: string | null
+    type?: string | null
+    involved_child?: boolean | null
+    involved_pedestrian?: boolean | null
+    year?: number | null
+  }>
+  search_params?: {
+    latitude?: number
+    longitude?: number
+    radius_meters?: number
+    years?: number
+  } | null
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function toNumericRecord(value: unknown): Record<string, number> {
+  if (!isObjectRecord(value)) return {}
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, val]) => [key, toFiniteNumber(val, Number.NaN)])
+      .filter(([, val]) => Number.isFinite(val))
+  )
+}
+
+function buildEmptyHourlyDistribution(): AccidentStats['accidents_by_hour'] {
+  return Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    count: 0,
+    is_school_time: (hour >= 7 && hour <= 8) || (hour >= 14 && hour <= 16),
+  }))
+}
+
+function buildTimeBucketLabel(bucket: string): string {
+  if (bucket.toLowerCase() === 'other') return 'その他'
+
+  const rangeMatch = bucket.match(/(\d{1,2})-(\d{1,2})/)
+  if (!rangeMatch) return bucket
+
+  const start = Number(rangeMatch[1])
+  const end = Number(rangeMatch[2])
+  const range = `${start}-${end}時`
+
+  if (bucket.includes('morning_commute')) return `${range} (登校時間帯)`
+  if (bucket.includes('after_school')) return `${range} (下校時間帯)`
+  if (bucket.includes('evening')) return `${range} (夕方)`
+  return range
+}
+
+function isSchoolTimeBucket(bucket: string): boolean {
+  const rangeMatch = bucket.match(/(\d{1,2})-(\d{1,2})/)
+  if (!rangeMatch) return false
+  const start = Number(rangeMatch[1])
+  const end = Number(rangeMatch[2])
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return false
+
+  // School commute windows: 07-09 and 14-17
+  const overlapsMorning = start < 9 && end > 7
+  const overlapsAfternoon = start < 17 && end > 14
+  return overlapsMorning || overlapsAfternoon
+}
+
+function buildTimeBuckets(byTimeOfDay: Record<string, number>): NonNullable<AccidentStats['time_buckets']> {
+  return Object.entries(byTimeOfDay)
+    .map(([bucket, count]) => ({
+      label: buildTimeBucketLabel(bucket),
+      count,
+      is_school_time: isSchoolTimeBucket(bucket),
+    }))
+    .sort((a, b) => b.count - a.count)
+}
+
+function mapSeverity(rawSeverity: unknown): 'fatal' | 'serious' | 'minor' {
+  const severity = String(rawSeverity ?? '').toLowerCase()
+  if (severity.includes('fatal')) return 'fatal'
+  if (severity.includes('serious')) return 'serious'
+  return 'minor'
+}
+
 function isAccidentStats(value: unknown): value is AccidentStats {
   if (!value || typeof value !== 'object') return false
 
@@ -117,6 +220,107 @@ function isAccidentStats(value: unknown): value is AccidentStats {
     Array.isArray(stats.accidents_by_year) &&
     Array.isArray(stats.nearest_accidents)
   )
+}
+
+function isRpcAccidentStatsV2(value: unknown): value is RpcAccidentStatsV2 {
+  if (!isObjectRecord(value)) return false
+
+  return (
+    typeof value.total_accidents === 'number' &&
+    typeof value.risk_score === 'number' &&
+    typeof value.fatal_accidents === 'number' &&
+    isObjectRecord(value.by_year) &&
+    isObjectRecord(value.by_weather) &&
+    isObjectRecord(value.by_time_of_day) &&
+    isObjectRecord(value.by_accident_type) &&
+    Array.isArray(value.nearest_accidents)
+  )
+}
+
+function normalizeRpcV2ToAccidentStats(
+  value: RpcAccidentStatsV2,
+  fallbackParams: Required<AccidentStatsParams>
+): AccidentStats {
+  const byYear = toNumericRecord(value.by_year)
+  const byWeather = toNumericRecord(value.by_weather)
+  const byTimeOfDay = toNumericRecord(value.by_time_of_day)
+  const byAccidentType = toNumericRecord(value.by_accident_type)
+
+  const searchLatitude = toFiniteNumber(value.search_params?.latitude, fallbackParams.latitude)
+  const searchLongitude = toFiniteNumber(value.search_params?.longitude, fallbackParams.longitude)
+  const searchRadius = toFiniteNumber(value.search_params?.radius_meters, fallbackParams.radius_meters)
+  const searchYears = toFiniteNumber(value.search_params?.years, fallbackParams.years)
+
+  const totalAccidents = toFiniteNumber(value.total_accidents)
+  const fatalAccidents = toFiniteNumber(value.fatal_accidents)
+  const childInvolved = toFiniteNumber(value.child_involved)
+  const pedestrianInvolved = toFiniteNumber(value.pedestrian_involved)
+
+  const accidentTypes = Object.entries(byAccidentType)
+    .map(([type, count]) => ({
+      type,
+      count,
+      is_pedestrian_related: /人対車両|歩行者|pedestrian/i.test(type),
+    }))
+    .sort((a, b) => b.count - a.count)
+
+  const weatherConditions = Object.entries(byWeather)
+    .map(([condition, count]) => ({ condition, count }))
+    .sort((a, b) => b.count - a.count)
+
+  const accidentsByYear = Object.entries(byYear)
+    .map(([year, count]) => ({ year: Number(year), count }))
+    .filter((entry) => Number.isFinite(entry.year))
+    .sort((a, b) => a.year - b.year)
+
+  const nearestAccidents = value.nearest_accidents
+    .filter((accident) => isObjectRecord(accident))
+    .map((accident) => {
+      const year = toFiniteNumber(accident.year, new Date().getFullYear())
+      return {
+        distance_meters: Math.max(0, Math.round(toFiniteNumber(accident.distance_m))),
+        // RPC v2 has year-level precision only; avoid fabricating month/day.
+        accident_date: `${year}`,
+        severity: mapSeverity(accident.severity),
+        type: String(accident.type ?? '不明'),
+        has_child: Boolean(accident.involved_child),
+        has_pedestrian: Boolean(accident.involved_pedestrian),
+      }
+    })
+    .sort((a, b) => a.distance_meters - b.distance_meters)
+
+  return {
+    latitude: searchLatitude,
+    longitude: searchLongitude,
+    radius_meters: Math.max(1, Math.round(searchRadius)),
+    years_analyzed: Math.max(1, Math.round(searchYears)),
+    total_accidents: totalAccidents,
+    risk_score: toFiniteNumber(value.risk_score),
+    fatal_accidents: fatalAccidents,
+    serious_accidents: 0,
+    minor_accidents: Math.max(totalAccidents - fatalAccidents, 0),
+    pedestrian_accidents: pedestrianInvolved,
+    bicycle_accidents: 0,
+    motorcycle_accidents: 0,
+    car_accidents: 0,
+    child_involved: childInvolved,
+    elderly_involved: 0,
+    accidents_by_hour: buildEmptyHourlyDistribution(),
+    time_buckets: buildTimeBuckets(byTimeOfDay),
+    accident_types: accidentTypes,
+    weather_conditions: weatherConditions,
+    accidents_by_year: accidentsByYear,
+    nearest_accidents: nearestAccidents,
+  }
+}
+
+function normalizeAccidentStatsResponse(
+  value: unknown,
+  fallbackParams: Required<AccidentStatsParams>
+): AccidentStats | null {
+  if (isAccidentStats(value)) return value
+  if (isRpcAccidentStatsV2(value)) return normalizeRpcV2ToAccidentStats(value, fallbackParams)
+  return null
 }
 
 /**
@@ -147,11 +351,18 @@ export async function getAccidentStatsRPC(
   // RPC may return array or single object - handle both cases
   const result = Array.isArray(data) ? data[0] : data
 
-  if (!isAccidentStats(result)) {
+  const normalized = normalizeAccidentStatsResponse(result, {
+    latitude,
+    longitude,
+    radius_meters,
+    years,
+  })
+
+  if (!normalized) {
     throw new Error('Invalid accident statistics response')
   }
 
-  return result
+  return normalized
 }
 
 /**

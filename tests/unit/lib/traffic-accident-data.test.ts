@@ -108,6 +108,76 @@ describe('getAccidentStatsRPC', () => {
     expect(result).toEqual(mockLowRiskStats)
   })
 
+  it('should normalize RPC v2 shape into AccidentStats', async () => {
+    // Arrange - Production RPC shape
+    vi.mocked(mockSupabase.rpc).mockResolvedValue({
+      data: {
+        total_accidents: 137,
+        risk_score: 90,
+        fatal_accidents: 1,
+        child_involved: 0,
+        pedestrian_involved: 2,
+        by_year: { '2021': 44, '2022': 40, '2023': 53 },
+        by_weather: { 晴: 103, 曇: 16, 雨: 18 },
+        by_time_of_day: {
+          other: 101,
+          '17-19_evening': 8,
+          '14-17_after_school': 12,
+          '07-09_morning_commute': 16,
+        },
+        by_accident_type: {
+          車両単独: 4,
+          人対車両_その他: 23,
+          人対車両_横断中: 15,
+          車両相互_その他: 57,
+          車両相互_正面衝突: 37,
+        },
+        nearest_accidents: [
+          {
+            type: '人対車両_その他',
+            year: 2022,
+            severity: 'injury',
+            distance_m: 22.3,
+            involved_child: false,
+            involved_pedestrian: null,
+          },
+        ],
+        search_params: {
+          years: 5,
+          latitude: 35.6595,
+          longitude: 139.7004,
+          radius_meters: 300,
+        },
+      },
+      error: null,
+    } as any)
+
+    // Act
+    const result = await getAccidentStatsRPC(mockSupabase, {
+      latitude: 35.6595,
+      longitude: 139.7004,
+      radius_meters: 300,
+      years: 5,
+    })
+
+    // Assert
+    expect(result.total_accidents).toBe(137)
+    expect(result.risk_score).toBe(90)
+    expect(result.radius_meters).toBe(300)
+    expect(result.years_analyzed).toBe(5)
+    expect(result.pedestrian_accidents).toBe(2)
+    expect(result.accidents_by_hour).toHaveLength(24)
+    expect(result.accidents_by_hour.every((hour) => hour.count === 0)).toBe(true)
+    expect(result.time_buckets).toBeDefined()
+    expect(result.time_buckets?.some((bucket) => bucket.label.includes('14-17時') && bucket.count === 12)).toBe(true)
+    expect(result.accident_types[0].count).toBeGreaterThanOrEqual(result.accident_types[1].count)
+    expect(result.weather_conditions.some((item) => item.condition === '晴' && item.count === 103)).toBe(true)
+    expect(result.accidents_by_year.map((item) => item.year)).toEqual([2021, 2022, 2023])
+    expect(result.nearest_accidents[0].distance_meters).toBe(22)
+    expect(result.nearest_accidents[0].accident_date).toBe('2022')
+    expect(result.nearest_accidents[0].has_pedestrian).toBe(false)
+  })
+
   it('should throw when RPC returns an empty array', async () => {
     // Arrange
     vi.mocked(mockSupabase.rpc).mockResolvedValue({

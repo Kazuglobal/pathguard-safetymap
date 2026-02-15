@@ -18,6 +18,19 @@ interface AccidentStatsPanelProps {
 export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelProps) {
   const riskInfo = getAccidentRiskLevel(stats.risk_score)
   const isCompact = mode === 'compact'
+  const timeDistribution = stats.time_buckets?.length
+    ? stats.time_buckets.map((bucket) => ({
+        key: bucket.label,
+        label: bucket.label,
+        count: bucket.count,
+        isSchoolTime: bucket.is_school_time,
+      }))
+    : stats.accidents_by_hour.map((hour) => ({
+        key: String(hour.hour),
+        label: `${hour.hour}時`,
+        count: hour.count,
+        isSchoolTime: hour.is_school_time,
+      }))
 
   // Empty state - zero accidents
   if (stats.total_accidents === 0) {
@@ -76,15 +89,15 @@ export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelP
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">時間帯別事故</h4>
             <div className="grid grid-cols-6 gap-1">
-              {stats.accidents_by_hour.map((hour) => (
+              {timeDistribution.map((item) => (
                 <div
-                  key={hour.hour}
+                  key={item.key}
                   className={`text-xs p-1 rounded ${
-                    hour.is_school_time ? 'bg-orange-100' : 'bg-gray-100'
+                    item.isSchoolTime ? 'bg-orange-100' : 'bg-gray-100'
                   }`}
-                  data-testid={hour.is_school_time ? 'school-time' : undefined}
+                  data-testid={item.isSchoolTime ? 'school-time' : undefined}
                 >
-                  {hour.hour}時: {hour.count}
+                  {item.label}: {item.count}
                 </div>
               ))}
             </div>
