@@ -108,6 +108,42 @@ describe('getAccidentStatsRPC', () => {
     expect(result).toEqual(mockLowRiskStats)
   })
 
+  it('should throw when RPC returns an empty array', async () => {
+    // Arrange
+    vi.mocked(mockSupabase.rpc).mockResolvedValue({
+      data: [],
+      error: null,
+    } as any)
+
+    // Act & Assert
+    await expect(
+      getAccidentStatsRPC(mockSupabase, {
+        latitude: 35.7090,
+        longitude: 139.7319,
+        radius_meters: 500,
+        years: 3,
+      })
+    ).rejects.toThrow('Invalid accident statistics response')
+  })
+
+  it('should throw when RPC returns null', async () => {
+    // Arrange
+    vi.mocked(mockSupabase.rpc).mockResolvedValue({
+      data: null,
+      error: null,
+    } as any)
+
+    // Act & Assert
+    await expect(
+      getAccidentStatsRPC(mockSupabase, {
+        latitude: 35.7090,
+        longitude: 139.7319,
+        radius_meters: 500,
+        years: 3,
+      })
+    ).rejects.toThrow('Invalid accident statistics response')
+  })
+
   it('should handle empty results (zero accidents)', async () => {
     // Arrange
     vi.mocked(mockSupabase.rpc).mockResolvedValue({

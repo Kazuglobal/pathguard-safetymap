@@ -91,6 +91,35 @@ export interface AccidentStatsParams {
 }
 
 /**
+ * Runtime shape guard for RPC response.
+ * Supabase RPC is typed as Json, so we validate minimum required structure.
+ */
+function isAccidentStats(value: unknown): value is AccidentStats {
+  if (!value || typeof value !== 'object') return false
+
+  const stats = value as Partial<AccidentStats>
+
+  return (
+    typeof stats.latitude === 'number' &&
+    typeof stats.longitude === 'number' &&
+    typeof stats.radius_meters === 'number' &&
+    typeof stats.years_analyzed === 'number' &&
+    typeof stats.total_accidents === 'number' &&
+    typeof stats.risk_score === 'number' &&
+    typeof stats.fatal_accidents === 'number' &&
+    typeof stats.serious_accidents === 'number' &&
+    typeof stats.minor_accidents === 'number' &&
+    typeof stats.pedestrian_accidents === 'number' &&
+    typeof stats.child_involved === 'number' &&
+    Array.isArray(stats.accidents_by_hour) &&
+    Array.isArray(stats.accident_types) &&
+    Array.isArray(stats.weather_conditions) &&
+    Array.isArray(stats.accidents_by_year) &&
+    Array.isArray(stats.nearest_accidents)
+  )
+}
+
+/**
  * Fetch nearby accident statistics using Supabase RPC
  *
  * @param supabase - Supabase client instance
@@ -117,7 +146,12 @@ export async function getAccidentStatsRPC(
 
   // RPC may return array or single object - handle both cases
   const result = Array.isArray(data) ? data[0] : data
-  return result as AccidentStats
+
+  if (!isAccidentStats(result)) {
+    throw new Error('Invalid accident statistics response')
+  }
+
+  return result
 }
 
 /**
@@ -235,7 +269,7 @@ export async function enrichReportWithAccidents(
     id: updatedReport.id,
     latitude: updatedReport.latitude,
     longitude: updatedReport.longitude,
-    accident_stats: stats as AccidentStats,
+    accident_stats: stats,
     accident_risk_score: stats.risk_score,
   }
 }

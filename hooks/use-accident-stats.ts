@@ -31,7 +31,7 @@ export interface UseAccidentStatsReturn {
  * - Fetch accident stats for any location
  * - Enrich danger reports with accident data
  * - Automatic state management (loading, loaded, error)
- * - Prevent concurrent requests (useRef pattern)
+ * - Latest request wins (prevents stale async updates)
  * - Reset functionality
  *
  * @example
@@ -55,9 +55,9 @@ export function useAccidentStats(): UseAccidentStatsReturn {
   // Get Supabase client from provider
   const { supabase } = useSupabase()
 
-  // Refs - prevent re-creates and concurrent requests
+  // Refs - avoid re-creates and stale async commits
   const supabaseRef = useRef(supabase)
-  const isLoadingRef = useRef(false)
+  const latestRequestIdRef = useRef(0)
 
   // Update ref when supabase changes
   useEffect(() => {
@@ -68,29 +68,34 @@ export function useAccidentStats(): UseAccidentStatsReturn {
    * Fetch accident statistics for a location
    */
   const fetchStats = useCallback(async (params: AccidentStatsParams): Promise<AccidentStats | null> => {
-    // Prevent concurrent requests
-    if (isLoadingRef.current) {
-      return null
-    }
+    const requestId = latestRequestIdRef.current + 1
+    latestRequestIdRef.current = requestId
 
     try {
-      isLoadingRef.current = true
       setStatus('loading')
       setError(null)
 
       const result = await getAccidentStatsRPC(supabaseRef.current, params)
 
+      // Ignore stale responses when a newer request has started.
+      if (latestRequestIdRef.current !== requestId) {
+        return result
+      }
+
       setStats(result)
       setStatus('loaded')
       return result
     } catch (err) {
+      // Ignore stale errors when a newer request has started.
+      if (latestRequestIdRef.current !== requestId) {
+        return null
+      }
+
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch accident statistics'
       setError(errorMessage)
       setStatus('error')
       setStats(null)
       return null
-    } finally {
-      isLoadingRef.current = false
     }
   }, []) // Empty deps - uses refs only
 
@@ -98,29 +103,34 @@ export function useAccidentStats(): UseAccidentStatsReturn {
    * Enrich a danger report with accident statistics
    */
   const enrichReport = useCallback(async (reportId: string): Promise<AccidentStats | null> => {
-    // Prevent concurrent requests
-    if (isLoadingRef.current) {
-      return null
-    }
+    const requestId = latestRequestIdRef.current + 1
+    latestRequestIdRef.current = requestId
 
     try {
-      isLoadingRef.current = true
       setStatus('loading')
       setError(null)
 
       const result = await enrichReportWithAccidents(supabaseRef.current, reportId)
 
+      // Ignore stale responses when a newer request has started.
+      if (latestRequestIdRef.current !== requestId) {
+        return result.accident_stats
+      }
+
       setStats(result.accident_stats)
       setStatus('loaded')
       return result.accident_stats
     } catch (err) {
+      // Ignore stale errors when a newer request has started.
+      if (latestRequestIdRef.current !== requestId) {
+        return null
+      }
+
       const errorMessage = err instanceof Error ? err.message : 'Failed to enrich report with accident data'
       setError(errorMessage)
       setStatus('error')
       setStats(null)
       return null
-    } finally {
-      isLoadingRef.current = false
     }
   }, []) // Empty deps - uses refs only
 
@@ -128,10 +138,11 @@ export function useAccidentStats(): UseAccidentStatsReturn {
    * Reset to initial state
    */
   const reset = useCallback(() => {
+    // Invalidate any in-flight requests so they cannot commit stale state.
+    latestRequestIdRef.current += 1
     setStats(null)
     setStatus('idle')
     setError(null)
-    isLoadingRef.current = false
   }, [])
 
   // Derived state

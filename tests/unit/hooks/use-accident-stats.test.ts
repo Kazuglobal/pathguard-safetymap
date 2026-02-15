@@ -7,6 +7,7 @@
  * Test Coverage:
  * - State management: idle, loading, loaded, error
  * - fetchStats: Success, error handling, loading state
+ * - fetchStats: Latest-request-wins race handling
  * - enrichReport: Success, error handling
  * - reset: Clear state
  */
@@ -16,6 +17,7 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import React from 'react'
 import {
   mockHighRiskStats,
+  mockLowRiskStats,
   mockMediumRiskStats,
   mockEmptyAccidentStats,
   mockDatabaseError,
@@ -194,34 +196,76 @@ describe('useAccidentStats', () => {
       })
     })
 
-    it('should prevent concurrent fetches (useRef pattern)', async () => {
+    it('should keep latest result when fetches resolve out of order', async () => {
       // Arrange
-      let resolveCount = 0
-      mockSupabaseRpc.mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            resolveCount++
-            setTimeout(() => resolve({ data: mockHighRiskStats, error: null }), 50)
-          })
-      )
+      mockSupabaseRpc
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve({ data: mockLowRiskStats, error: null }), 70)
+            })
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve({ data: mockHighRiskStats, error: null }), 10)
+            })
+        )
 
       const { result } = renderHook(() => useAccidentStats())
 
-      // Act - Call fetchStats twice rapidly
+      // Act - Start two fetches rapidly; second should win.
       act(() => {
         result.current.fetchStats({
           latitude: 35.6595,
           longitude: 139.7004,
         })
         result.current.fetchStats({
+          latitude: 35.6812,
+          longitude: 139.7671,
+        })
+      })
+
+      // Assert - Second response should become final state.
+      await waitFor(() => {
+        expect(result.current.status).toBe('loaded')
+        expect(result.current.stats).toEqual(mockHighRiskStats)
+      })
+
+      // Ensure stale first response did not overwrite latest result.
+      await new Promise((resolve) => setTimeout(resolve, 90))
+      expect(result.current.stats).toEqual(mockHighRiskStats)
+      expect(mockSupabaseRpc).toHaveBeenCalledTimes(2)
+    })
+
+    it('should invalidate in-flight fetch on reset', async () => {
+      // Arrange
+      mockSupabaseRpc.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve({ data: mockHighRiskStats, error: null }), 50)
+          })
+      )
+
+      const { result } = renderHook(() => useAccidentStats())
+
+      // Act
+      act(() => {
+        result.current.fetchStats({
           latitude: 35.6595,
           longitude: 139.7004,
         })
       })
 
-      // Assert - Should only call RPC once (second call ignored)
-      await waitFor(() => expect(result.current.status).toBe('loaded'))
-      expect(resolveCount).toBe(1)
+      act(() => {
+        result.current.reset()
+      })
+
+      // Assert
+      await new Promise((resolve) => setTimeout(resolve, 70))
+      expect(result.current.status).toBe('idle')
+      expect(result.current.stats).toBeNull()
+      expect(result.current.error).toBeNull()
     })
 
     it('should return AccidentStats on success', async () => {

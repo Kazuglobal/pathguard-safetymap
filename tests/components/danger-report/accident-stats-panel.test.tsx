@@ -83,6 +83,7 @@ describe('AccidentStatsPanel', () => {
 
       // Assert - Should show time distribution section
       expect(screen.getByText(/時間帯別/i)).toBeInTheDocument()
+      expect(screen.getByText(/14時:\s*10/i)).toBeInTheDocument()
 
       // School hours should be highlighted (7-9am, 2-5pm)
       const schoolHours = screen.getAllByTestId(/school-time/)

@@ -60,7 +60,7 @@ export default function DangerReportDetailModal({
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
 
   // 事故統計データ取得
-  const { stats, status: statsStatus, fetchStats, error: statsError } = useAccidentStats()
+  const { stats, status: statsStatus, fetchStats, error: statsError, reset: resetAccidentStats } = useAccidentStats()
 
   // report.processed_image_urls を直接利用するヘルパー
   const currentProcessedUrls = report?.processed_image_urls || []
@@ -88,7 +88,9 @@ export default function DangerReportDetailModal({
 
   // 事故統計を取得
   useEffect(() => {
-    if (!report?.latitude || !report?.longitude) return
+    // Clear stale stats whenever the report target changes.
+    resetAccidentStats()
+    if (report?.latitude == null || report?.longitude == null) return
 
     fetchStats({
       latitude: report.latitude,
@@ -96,7 +98,7 @@ export default function DangerReportDetailModal({
       radius_meters: 300,  // 300m radius
       years: 5,            // Past 5 years
     })
-  }, [report?.id, fetchStats])
+  }, [report?.id, report?.latitude, report?.longitude, fetchStats, resetAccidentStats])
 
   if (!report) return null
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { getAccidentRiskLevel, type AccidentStats, type RiskLevelInfo } from '@/lib/traffic-accident-data'
+import { getAccidentRiskLevel, type AccidentStats } from '@/lib/traffic-accident-data'
 
 /** Component props */
 interface AccidentStatsPanelProps {
@@ -76,7 +76,7 @@ export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelP
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">時間帯別事故</h4>
             <div className="grid grid-cols-6 gap-1">
-              {stats.accidents_by_hour.slice(0, 12).map((hour) => (
+              {stats.accidents_by_hour.map((hour) => (
                 <div
                   key={hour.hour}
                   className={`text-xs p-1 rounded ${
