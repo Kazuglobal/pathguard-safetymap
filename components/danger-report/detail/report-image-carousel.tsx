@@ -109,7 +109,9 @@ export function ReportImageCarousel({
         >
           <CarouselContent>
             {slides.map((slide, slideIdx) => {
-              const cachedUrl = addCacheBuster(slide.url, cacheToken) ?? slide.url
+              const cachedUrl = addCacheBuster(slide.url, cacheToken)
+              const imageSrc = cachedUrl ?? "/placeholder.svg"
+              const zoomSrc = cachedUrl ?? slide.url
 
               return (
                 <CarouselItem key={`${slide.type}-${slide.index}`}>
@@ -136,10 +138,10 @@ export function ReportImageCarousel({
                     ) : (
                       <div className="h-64 md:h-80 lg:h-96">
                         <ImageWithLongPress
-                          src={cachedUrl}
+                          src={imageSrc}
                           alt={slide.label}
                           fill
-                          onZoom={() => onZoomImage(cachedUrl)}
+                          onZoom={() => onZoomImage(zoomSrc)}
                           onError={() => markImageError(slideIdx)}
                           className="relative w-full h-full"
                         />
