@@ -9,6 +9,7 @@ interface AccidentStatsPanelProps {
   stats: AccidentStats
   mode?: 'full' | 'compact'
   onAccidentClick?: (accident: AccidentStats['nearest_accidents'][number]) => void
+  allowApproximateNavigation?: boolean
 }
 
 /**
@@ -18,7 +19,12 @@ interface AccidentStatsPanelProps {
  * - Full mode: All statistics including trends, breakdowns, nearest accidents
  * - Compact mode: Only essential stats (risk badge + score bar + 2 cards)
  */
-export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: AccidentStatsPanelProps) {
+export function AccidentStatsPanel({
+  stats,
+  mode = 'full',
+  onAccidentClick,
+  allowApproximateNavigation = false,
+}: AccidentStatsPanelProps) {
   const riskInfo = getAccidentRiskLevel(stats.risk_score)
   const isCompact = mode === 'compact'
   const hasBucketedTimeDistribution = Boolean(stats.time_buckets?.length)
@@ -177,20 +183,29 @@ export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: Ac
                   const toCoordinateNumber = (value: unknown): number | undefined => {
                     if (typeof value === 'number' && Number.isFinite(value)) return value
                     if (typeof value === 'string') {
-                      const parsed = Number(value.trim())
+                      const trimmed = value.trim()
+                      if (!trimmed) return undefined
+                      const parsed = Number(trimmed)
                       return Number.isFinite(parsed) ? parsed : undefined
                     }
                     return undefined
                   }
                   const latitude = toCoordinateNumber(accident.latitude)
                   const longitude = toCoordinateNumber(accident.longitude)
-                  const hasNavigableCoordinates =
+                  const hasExactCoordinates =
                     latitude != null &&
                     longitude != null &&
                     isValidCoordinates(latitude, longitude)
                   const isClickable =
-                    hasNavigableCoordinates &&
-                    onAccidentClick != null
+                    onAccidentClick != null &&
+                    (hasExactCoordinates || allowApproximateNavigation)
+                  const isApproximateNavigation = isClickable && !hasExactCoordinates
+                  const navigationLabel = hasExactCoordinates ? '地図で表示' : '報告地点へ移動'
+                  const iconColorClass = hasExactCoordinates ? 'text-blue-500' : 'text-amber-500'
+                  const iconTitle = hasExactCoordinates ? '事故地点へ移動' : '事故座標なし（報告地点へ移動）'
+                  const iconDescription = hasExactCoordinates ? '' : '（概算）'
+                  const itemAriaLabel = `近隣事故 ${accident.distance_meters}m (${accident.type}) を${navigationLabel}`
+                  const canNavigate = isClickable
 
                   const content = (
                     <div className="flex items-center justify-between">
@@ -204,8 +219,11 @@ export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: Ac
                       </span>
                       <span className="flex items-center gap-1">
                         <span className="text-xs text-gray-600">{accident.type}</span>
-                        {isClickable && (
-                          <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                        {canNavigate && (
+                          <span className="inline-flex items-center gap-1" title={iconTitle}>
+                            <MapPin className={`h-3 w-3 shrink-0 ${iconColorClass}`} />
+                            {isApproximateNavigation && <span className="text-[10px] text-amber-700">{iconDescription}</span>}
+                          </span>
                         )}
                       </span>
                     </div>
@@ -216,7 +234,7 @@ export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: Ac
                       key={accident.id ?? idx}
                       type="button"
                       className="w-full text-left p-2 bg-gray-50 rounded text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors border border-transparent"
-                      aria-label={`近隣事故 ${accident.distance_meters}m (${accident.type}) を地図で表示`}
+                      aria-label={itemAriaLabel}
                       data-severity={accident.severity}
                       onClick={() => onAccidentClick(accident)}
                     >

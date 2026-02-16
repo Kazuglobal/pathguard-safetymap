@@ -321,5 +321,31 @@ describe('AccidentStatsPanel', () => {
       const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
       expect(accidentButtons).toHaveLength(0)
     })
+
+    it('should render as clickable with approximate navigation when coordinates are missing', async () => {
+      const user = userEvent.setup()
+      const handleClick = vi.fn()
+      const statsWithoutCoords = {
+        ...mockHighRiskStats,
+        nearest_accidents: mockHighRiskStats.nearest_accidents.map(
+          ({ id, latitude, longitude, ...rest }) => rest
+        ),
+      }
+
+      render(
+        <AccidentStatsPanel
+          stats={statsWithoutCoords}
+          onAccidentClick={handleClick}
+          allowApproximateNavigation
+        />
+      )
+
+      const buttons = screen.getAllByRole('button')
+      const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
+      expect(accidentButton).toBeDefined()
+
+      await user.click(accidentButton!)
+      expect(handleClick).toHaveBeenCalledTimes(1)
+    })
   })
 })

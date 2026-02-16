@@ -740,13 +740,23 @@ export default function DangerReportDetailModal({
                     <AccidentStatsPanel
                       stats={stats}
                       mode="full"
+                      allowApproximateNavigation
                       onAccidentClick={(accident) => {
                         if (!onAccidentNavigate) return
                         const latitude = toCoordinateNumber(accident.latitude)
                         const longitude = toCoordinateNumber(accident.longitude)
-                        if (latitude == null || longitude == null) return
-                        if (!isValidCoordinates(latitude, longitude)) return
-                        onAccidentNavigate([longitude, latitude])
+                        if (latitude != null && longitude != null && isValidCoordinates(latitude, longitude)) {
+                          onAccidentNavigate([longitude, latitude])
+                          return
+                        }
+
+                        if (isValidCoordinates(report.latitude, report.longitude)) {
+                          toast({
+                            title: "事故地点の座標不足",
+                            description: "近隣事故の正確な座標がないため、報告地点へ移動しました。",
+                          })
+                          onAccidentNavigate([report.longitude, report.latitude])
+                        }
                       }}
                     />
                   )}
