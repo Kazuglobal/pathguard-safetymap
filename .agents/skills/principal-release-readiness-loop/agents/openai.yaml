@@ -1,0 +1,4 @@
+interface:
+  display_name: "Principal Release Loop"
+  short_description: "Principal review and fix loop to release-ready quality"
+  default_prompt: "Run strict review and fix loops until release-ready, then validate and report PR status."

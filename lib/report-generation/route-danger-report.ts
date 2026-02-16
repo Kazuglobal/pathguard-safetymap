@@ -16,6 +16,19 @@ interface MapDimensions {
   height: number
 }
 
+interface NormalizedDangerPoint {
+  danger: DangerReport
+  lng: number
+  lat: number
+}
+
+interface BoundingBox {
+  minLng: number
+  minLat: number
+  maxLng: number
+  maxLat: number
+}
+
 const DEFAULT_MAP_DIMENSIONS: MapDimensions = {
   width: 600,
   height: 400,
@@ -25,6 +38,12 @@ const MAX_STATIC_IMAGE_DIMENSION = 1280
 const HI_DPI_SCALE = 2
 const HTML2CANVAS_SCALE = 2
 const IMAGE_TIMEOUT_MS = 15000
+const MAP_BBOX_PADDING_RATIO = 0.22
+const MIN_BBOX_SPAN_DEGREES = 0.004
+const MAP_MARKER_LABELS = '1234567890abcdefghijklmnopqrstuvwxyz'
+const MAP_MARKER_LIMIT = MAP_MARKER_LABELS.length
+const MAP_CALLOUT_LIMIT = 20
+const MAP_CALLOUT_THUMBNAIL_LIMIT = 12
 
 /**
  * Generates a Mapbox Static Images API URL for the route overview map.
@@ -43,35 +62,47 @@ export function generateOverviewMapUrl(
 ): string {
   const { width, height } = dimensions
   const style = 'mapbox/streets-v12'
+  const normalizedRouteCoords = normalizeRouteCoordinates(routeGeometry)
+  const normalizedDangerPoints = dangers
+    .map((danger) => toNormalizedDangerPoint(danger))
+    .filter((point): point is NormalizedDangerPoint => point !== null)
+    .slice(0, MAP_MARKER_LIMIT)
 
-  // Encode route as coordinate path for Mapbox Static Images API
-  // GeoJSON uses [lng, lat] which matches Mapbox static path format.
-  const coordinates = routeGeometry.coordinates
-  const coordinatePath = coordinates.map(([lng, lat]) => `${lng},${lat}`).join(';')
-  const pathOverlay = `path-4+3b82f6-0.7(${encodeURIComponent(coordinatePath)})`
+  // Encode route as coordinate path for Mapbox Static Images API.
+  // Only use normalized coordinates to avoid generating invalid map URLs.
+  const routePathCoordinates =
+    normalizedRouteCoords.length > 1 ? normalizedRouteCoords : []
+  const pathOverlay = buildPathOverlay(routePathCoordinates)
 
-  // Create markers for dangers
-  const markerOverlays = dangers
-    .slice(0, 50) // Limit markers to avoid URL length issues
-    .map((danger) => {
+  // Create numbered markers for dangers.
+  const markerOverlays = normalizedDangerPoints
+    .map(({ danger, lng, lat }, index) => {
       const color = getDangerLevelColor(danger.danger_level)
-      return `pin-s+${color}(${danger.longitude},${danger.latitude})`
+      const label = getMapMarkerLabel(index)
+      return `pin-l-${label}+${color}(${lng},${lat})`
     })
     .join(',')
 
   // Build the URL
-  const overlays = markerOverlays
-    ? `${pathOverlay},${markerOverlays}`
-    : pathOverlay
+  const overlays = [pathOverlay, markerOverlays].filter(Boolean).join(',')
+  const overlaySegment = overlays ? `${overlays}/` : ''
 
-  // Calculate auto center and zoom
+  // Calculate focused map view around school route and danger points.
+  const focusedBBox = calculateFocusedBoundingBox(
+    normalizedRouteCoords,
+    normalizedDangerPoints
+  )
+  const viewport = focusedBBox
+    ? formatBoundingBox(focusedBBox)
+    : buildFallbackViewport(normalizedRouteCoords, normalizedDangerPoints)
+
   const safeWidth = Math.min(width, MAX_STATIC_IMAGE_DIMENSION)
   const safeHeight = Math.min(height, MAX_STATIC_IMAGE_DIMENSION)
   const canUseHiDpi =
     safeWidth * HI_DPI_SCALE <= MAX_STATIC_IMAGE_DIMENSION &&
     safeHeight * HI_DPI_SCALE <= MAX_STATIC_IMAGE_DIMENSION
   const pixelRatio = canUseHiDpi ? '@2x' : ''
-  const url = `https://api.mapbox.com/styles/v1/${style}/static/${overlays}/auto/${safeWidth}x${safeHeight}${pixelRatio}?access_token=${mapboxToken}`
+  const url = `https://api.mapbox.com/styles/v1/${style}/static/${overlaySegment}${viewport}/${safeWidth}x${safeHeight}${pixelRatio}?padding=48&access_token=${encodeURIComponent(mapboxToken)}`
 
   return url
 }
@@ -89,6 +120,126 @@ function getDangerLevelColor(level: number): string {
     default:
       return 'eab308' // yellow-500
   }
+}
+
+function getMapMarkerLabel(index: number): string {
+  return MAP_MARKER_LABELS[index] ?? MAP_MARKER_LABELS[MAP_MARKER_LABELS.length - 1]
+}
+
+function buildPathOverlay(routeCoordinates: [number, number][]): string {
+  if (routeCoordinates.length < 2) {
+    return ''
+  }
+
+  const coordinatePath = routeCoordinates
+    .map(([lng, lat]) => `${lng},${lat}`)
+    .join(';')
+  return `path-4+3b82f6-0.7(${encodeURIComponent(coordinatePath)})`
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function normalizeLngLat(rawLng: unknown, rawLat: unknown): [number, number] | null {
+  if (!isFiniteNumber(rawLng) || !isFiniteNumber(rawLat)) {
+    return null
+  }
+
+  if (rawLng >= -180 && rawLng <= 180 && rawLat >= -90 && rawLat <= 90) {
+    return [rawLng, rawLat]
+  }
+
+  // Fallback for accidentally swapped coordinates.
+  if (rawLat >= -180 && rawLat <= 180 && rawLng >= -90 && rawLng <= 90) {
+    return [rawLat, rawLng]
+  }
+
+  return null
+}
+
+function normalizeRouteCoordinates(routeGeometry: GeoJSON.LineString): [number, number][] {
+  return routeGeometry.coordinates
+    .map(([lng, lat]) => normalizeLngLat(lng, lat))
+    .filter((coord): coord is [number, number] => coord !== null)
+}
+
+function toNormalizedDangerPoint(danger: DangerReport): NormalizedDangerPoint | null {
+  const normalized = normalizeLngLat(danger.longitude, danger.latitude)
+  if (!normalized) {
+    return null
+  }
+
+  return {
+    danger,
+    lng: normalized[0],
+    lat: normalized[1],
+  }
+}
+
+function calculateFocusedBoundingBox(
+  routeCoordinates: [number, number][],
+  dangerPoints: NormalizedDangerPoint[]
+): BoundingBox | null {
+  const allPoints: [number, number][] = [
+    ...routeCoordinates,
+    ...dangerPoints.map((point) => [point.lng, point.lat]),
+  ]
+
+  if (allPoints.length === 0) {
+    return null
+  }
+
+  let minLng = Infinity
+  let minLat = Infinity
+  let maxLng = -Infinity
+  let maxLat = -Infinity
+
+  for (const [lng, lat] of allPoints) {
+    minLng = Math.min(minLng, lng)
+    maxLng = Math.max(maxLng, lng)
+    minLat = Math.min(minLat, lat)
+    maxLat = Math.max(maxLat, lat)
+  }
+
+  const spanLng = Math.max(maxLng - minLng, MIN_BBOX_SPAN_DEGREES)
+  const spanLat = Math.max(maxLat - minLat, MIN_BBOX_SPAN_DEGREES)
+  const padLng = Math.max(spanLng * MAP_BBOX_PADDING_RATIO, MIN_BBOX_SPAN_DEGREES / 2)
+  const padLat = Math.max(spanLat * MAP_BBOX_PADDING_RATIO, MIN_BBOX_SPAN_DEGREES / 2)
+
+  return {
+    minLng: clamp(minLng - padLng, -180, 180),
+    minLat: clamp(minLat - padLat, -90, 90),
+    maxLng: clamp(maxLng + padLng, -180, 180),
+    maxLat: clamp(maxLat + padLat, -90, 90),
+  }
+}
+
+function formatBoundingBox(bbox: BoundingBox): string {
+  return `[${bbox.minLng.toFixed(6)},${bbox.minLat.toFixed(6)},${bbox.maxLng.toFixed(6)},${bbox.maxLat.toFixed(6)}]`
+}
+
+function buildFallbackViewport(
+  routeCoordinates: [number, number][],
+  dangerPoints: NormalizedDangerPoint[]
+): string {
+  const firstRoutePoint = routeCoordinates[0]
+  if (firstRoutePoint) {
+    const [lng, lat] = firstRoutePoint
+    return `${lng.toFixed(6)},${lat.toFixed(6)},15`
+  }
+
+  const firstDangerPoint = dangerPoints[0]
+  if (firstDangerPoint) {
+    return `${firstDangerPoint.lng.toFixed(6)},${firstDangerPoint.lat.toFixed(6)},15`
+  }
+
+  // Last-resort fallback that still produces a valid static-map URL.
+  return '0,0,1'
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }
 
 /**
@@ -237,6 +388,16 @@ function createReportHtmlContainer(
 
   // Map image (if route geometry exists)
   if (report.route.route_geometry) {
+    const mapSection = document.createElement('section')
+    mapSection.style.marginBottom = '20px'
+
+    const mapSectionTitle = document.createElement('h2')
+    mapSectionTitle.textContent = '通学路の拡大地図（危険箇所番号付き）'
+    mapSectionTitle.style.fontSize = '18px'
+    mapSectionTitle.style.marginBottom = '10px'
+    mapSectionTitle.style.color = '#1f2937'
+    mapSection.appendChild(mapSectionTitle)
+
     const mapUrl = generateOverviewMapUrl(
       report.route.route_geometry,
       report.dangers,
@@ -248,8 +409,11 @@ function createReportHtmlContainer(
     mapImg.src = mapUrl
     mapImg.style.width = '100%'
     mapImg.style.borderRadius = '8px'
-    mapImg.style.marginBottom = '20px'
-    container.appendChild(mapImg)
+    mapImg.style.border = '1px solid #dbeafe'
+    mapSection.appendChild(mapImg)
+
+    appendMapPhotoCallouts(mapSection, report.dangers)
+    container.appendChild(mapSection)
   }
 
   // Danger breakdown (if there are dangers)
@@ -401,6 +565,13 @@ function appendImageSection(
     return
   }
 
+  const safeImageUrls = imageUrls
+    .map((url) => sanitizeImageUrl(url))
+    .filter((url): url is string => url !== null)
+  if (safeImageUrls.length === 0) {
+    return
+  }
+
   const section = document.createElement('div')
   section.style.marginTop = '12px'
 
@@ -416,7 +587,7 @@ function appendImageSection(
   imageContainer.style.flexDirection = 'column'
   imageContainer.style.gap = '8px'
 
-  for (const imageUrl of imageUrls) {
+  for (const imageUrl of safeImageUrls) {
     const img = document.createElement('img')
     img.crossOrigin = 'anonymous' // Enable CORS for html2canvas
     img.src = imageUrl
@@ -430,6 +601,124 @@ function appendImageSection(
 
   section.appendChild(imageContainer)
   parent.appendChild(section)
+}
+
+function appendMapPhotoCallouts(parent: HTMLElement, dangers: DangerReport[]): void {
+  if (dangers.length === 0) {
+    return
+  }
+
+  const calloutSection = document.createElement('div')
+  calloutSection.style.marginTop = '10px'
+  calloutSection.style.display = 'flex'
+  calloutSection.style.flexDirection = 'column'
+  calloutSection.style.gap = '8px'
+
+  dangers.slice(0, MAP_CALLOUT_LIMIT).forEach((danger, index) => {
+    const row = document.createElement('div')
+    row.style.display = 'flex'
+    row.style.alignItems = 'center'
+    row.style.gap = '8px'
+    row.style.padding = '8px'
+    row.style.backgroundColor = '#f8fafc'
+    row.style.border = '1px solid #e2e8f0'
+    row.style.borderRadius = '8px'
+
+    const marker = document.createElement('div')
+    marker.textContent = getMapMarkerLabel(index)
+    marker.style.width = '24px'
+    marker.style.height = '24px'
+    marker.style.borderRadius = '9999px'
+    marker.style.display = 'flex'
+    marker.style.alignItems = 'center'
+    marker.style.justifyContent = 'center'
+    marker.style.fontWeight = 'bold'
+    marker.style.fontSize = '12px'
+    marker.style.color = '#ffffff'
+    marker.style.backgroundColor = `#${getDangerLevelColor(danger.danger_level)}`
+    row.appendChild(marker)
+
+    const arrow = document.createElement('span')
+    arrow.textContent = '→'
+    arrow.style.fontSize = '16px'
+    arrow.style.color = '#334155'
+    row.appendChild(arrow)
+
+    const textBlock = document.createElement('div')
+    textBlock.style.flex = '1'
+
+    const title = document.createElement('div')
+    title.textContent = danger.title
+    title.style.fontSize = '13px'
+    title.style.fontWeight = '600'
+    title.style.color = '#0f172a'
+    textBlock.appendChild(title)
+
+    const locationText = [danger.prefecture, danger.city, danger.town]
+      .filter(Boolean)
+      .join('')
+    if (locationText) {
+      const location = document.createElement('div')
+      location.textContent = locationText
+      location.style.fontSize = '11px'
+      location.style.color = '#64748b'
+      textBlock.appendChild(location)
+    }
+
+    row.appendChild(textBlock)
+
+    const imageUrl = index < MAP_CALLOUT_THUMBNAIL_LIMIT ? getDangerPreviewImageUrl(danger) : null
+    if (imageUrl) {
+      const thumb = document.createElement('img')
+      thumb.crossOrigin = 'anonymous'
+      thumb.src = imageUrl
+      thumb.style.width = '76px'
+      thumb.style.height = '54px'
+      thumb.style.objectFit = 'cover'
+      thumb.style.borderRadius = '6px'
+      thumb.style.backgroundColor = '#e5e7eb'
+      row.appendChild(thumb)
+    }
+
+    calloutSection.appendChild(row)
+  })
+
+  if (dangers.length > MAP_CALLOUT_LIMIT) {
+    const more = document.createElement('p')
+    more.textContent = `※ 危険箇所が多いため、地図注釈は上位${MAP_CALLOUT_LIMIT}件を表示しています。`
+    more.style.fontSize = '11px'
+    more.style.color = '#64748b'
+    more.style.margin = '2px 0 0 0'
+    calloutSection.appendChild(more)
+  }
+
+  parent.appendChild(calloutSection)
+}
+
+function getDangerPreviewImageUrl(danger: DangerReport): string | null {
+  if (danger.image_url) {
+    return sanitizeImageUrl(danger.image_url)
+  }
+  if (danger.processed_image_urls?.length) {
+    return sanitizeImageUrl(danger.processed_image_urls[0] ?? null)
+  }
+  return null
+}
+
+function sanitizeImageUrl(url: string | null): string | null {
+  if (!url) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return null
+    }
+    return parsed.toString()
+  } catch {
+    return null
+  }
 }
 
 /**
