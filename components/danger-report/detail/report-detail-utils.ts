@@ -117,10 +117,10 @@ export function toCoordinateNumber(value: unknown): number | undefined {
 }
 
 /** Add cache-busting parameter to image URL */
-export function addCacheBuster(url: string | null): string | null {
+export function addCacheBuster(url: string | null, token: number = Date.now()): string | null {
   if (!url) return null
   const separator = url.includes("?") ? "&" : "?"
-  return `${url}${separator}t=${Date.now()}`
+  return `${url}${separator}t=${token}`
 }
 
 /** Format address from report fields */

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { ImageIcon, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -49,6 +49,10 @@ export function ReportImageCarousel({
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
 
   const processedUrls = report.processed_image_urls ?? []
+  const cacheToken = useMemo(
+    () => Date.now(),
+    [report.id, report.image_url, processedUrls.join("|")],
+  )
 
   // Build unified slide list
   const slides: SlideInfo[] = []
@@ -104,68 +108,72 @@ export function ReportImageCarousel({
           opts={{ loop: slides.length > 1 }}
         >
           <CarouselContent>
-            {slides.map((slide, slideIdx) => (
-              <CarouselItem key={`${slide.type}-${slide.index}`}>
-                <div className="relative bg-gray-50 rounded-lg overflow-hidden">
-                  {imageErrors.has(slideIdx) ? (
-                    <div className="flex flex-col items-center justify-center h-64 md:h-80 lg:h-96">
-                      <ImageIcon className="h-10 w-10 text-gray-300 mb-2" />
-                      <p className="text-sm text-gray-500">読み込みに失敗しました</p>
+            {slides.map((slide, slideIdx) => {
+              const cachedUrl = addCacheBuster(slide.url, cacheToken) ?? slide.url
+
+              return (
+                <CarouselItem key={`${slide.type}-${slide.index}`}>
+                  <div className="relative bg-gray-50 rounded-lg overflow-hidden">
+                    {imageErrors.has(slideIdx) ? (
+                      <div className="flex flex-col items-center justify-center h-64 md:h-80 lg:h-96">
+                        <ImageIcon className="h-10 w-10 text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-500">読み込みに失敗しました</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() =>
+                            setImageErrors((prev) => {
+                              const next = new Set(prev)
+                              next.delete(slideIdx)
+                              return next
+                            })
+                          }
+                        >
+                          再試行
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="h-64 md:h-80 lg:h-96">
+                        <ImageWithLongPress
+                          src={cachedUrl}
+                          alt={slide.label}
+                          fill
+                          onZoom={() => onZoomImage(cachedUrl)}
+                          onError={() => markImageError(slideIdx)}
+                          className="relative w-full h-full"
+                        />
+                      </div>
+                    )}
+
+                    {/* Slide type label overlay */}
+                    <div className="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-white text-xs font-medium pointer-events-none">
+                      {slide.label}
+                    </div>
+
+                    {/* Show on map button for processed images */}
+                    {slide.type === "processed" && onShowImage && !imageErrors.has(slideIdx) && (
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
-                        className="mt-2"
+                        className="absolute top-2 right-2 h-7 gap-1 bg-white/90 hover:bg-white shadow-sm"
                         onClick={() =>
-                          setImageErrors((prev) => {
-                            const next = new Set(prev)
-                            next.delete(slideIdx)
-                            return next
+                          onShowImage(slide.url, [report.longitude, report.latitude], {
+                            reportId: report.id,
+                            reportTitle: report.title ?? null,
+                            type: "processed",
+                            index: slide.index,
                           })
                         }
                       >
-                        再試行
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="text-xs">地図で表示</span>
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="h-64 md:h-80 lg:h-96">
-                      <ImageWithLongPress
-                        src={addCacheBuster(slide.url) ?? "/placeholder.svg"}
-                        alt={slide.label}
-                        fill
-                        onZoom={() => onZoomImage(addCacheBuster(slide.url) ?? slide.url)}
-                        onError={() => markImageError(slideIdx)}
-                        className="relative w-full h-full"
-                      />
-                    </div>
-                  )}
-
-                  {/* Slide type label overlay */}
-                  <div className="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-white text-xs font-medium pointer-events-none">
-                    {slide.label}
+                    )}
                   </div>
-
-                  {/* Show on map button for processed images */}
-                  {slide.type === "processed" && onShowImage && !imageErrors.has(slideIdx) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="absolute top-2 right-2 h-7 gap-1 bg-white/90 hover:bg-white shadow-sm"
-                      onClick={() =>
-                        onShowImage(slide.url, [report.longitude, report.latitude], {
-                          reportId: report.id,
-                          reportTitle: report.title ?? null,
-                          type: "processed",
-                          index: slide.index,
-                        })
-                      }
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span className="text-xs">地図で表示</span>
-                    </Button>
-                  )}
-                </div>
-              </CarouselItem>
-            ))}
+                </CarouselItem>
+              )
+            })}
           </CarouselContent>
 
           {/* Navigation arrows - hidden on mobile, shown on md+ */}

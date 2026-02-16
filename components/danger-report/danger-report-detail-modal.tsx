@@ -38,6 +38,7 @@ export default function DangerReportDetailModal({
 }: DangerReportDetailModalProps) {
   // Zoom overlay state
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
+  const [processedImageUrls, setProcessedImageUrls] = useState<string[]>([])
 
   // Accident stats
   const {
@@ -47,6 +48,16 @@ export default function DangerReportDetailModal({
     error: statsError,
     reset: resetAccidentStats,
   } = useAccidentStats()
+  const processedUrlsKey = report?.processed_image_urls?.join("|") ?? ""
+
+  useEffect(() => {
+    if (!report) {
+      setProcessedImageUrls([])
+      return
+    }
+
+    setProcessedImageUrls(report.processed_image_urls ?? [])
+  }, [report?.id, report?.updated_at, processedUrlsKey])
 
   // Fetch accident stats when report changes
   useEffect(() => {
@@ -62,6 +73,10 @@ export default function DangerReportDetailModal({
   }, [report?.id, report?.latitude, report?.longitude, fetchStats, resetAccidentStats])
 
   if (!report) return null
+  const reportForDisplay: DangerReport = {
+    ...report,
+    processed_image_urls: processedImageUrls,
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -78,7 +93,7 @@ export default function DangerReportDetailModal({
         {/* 2. Image Carousel */}
         <div className="pt-2 pb-3">
           <ReportImageCarousel
-            report={report}
+            report={reportForDisplay}
             onShowImage={onShowImage}
             onZoomImage={setZoomImageUrl}
           />
@@ -86,7 +101,11 @@ export default function DangerReportDetailModal({
 
         {/* 3. Admin Image Upload (collapsed) */}
         {isAdmin && (
-          <ReportAdminImageUpload report={report} isAdmin={isAdmin} />
+          <ReportAdminImageUpload
+            report={reportForDisplay}
+            isAdmin={isAdmin}
+            onProcessedUrlsChange={setProcessedImageUrls}
+          />
         )}
 
         {/* 4. Description */}

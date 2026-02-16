@@ -13,13 +13,18 @@ import type { DangerReport } from "@/lib/types"
 interface ReportAdminImageUploadProps {
   report: DangerReport
   isAdmin: boolean
+  onProcessedUrlsChange?: (urls: string[]) => void
 }
 
 /**
  * Admin-only collapsible section for uploading, replacing, and deleting processed images.
  * Extracted from the main modal to reduce its complexity.
  */
-export function ReportAdminImageUpload({ report, isAdmin }: ReportAdminImageUploadProps) {
+export function ReportAdminImageUpload({
+  report,
+  isAdmin,
+  onProcessedUrlsChange,
+}: ReportAdminImageUploadProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
@@ -86,9 +91,19 @@ export function ReportAdminImageUpload({ report, isAdmin }: ReportAdminImageUplo
         body: formData,
       })
 
+      let responseData: { message?: string; updatedUrls?: string[] } = {}
+      try {
+        responseData = await response.json()
+      } catch {
+        responseData = {}
+      }
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to update report with processed image")
+        throw new Error(responseData.message || "Failed to update report with processed image")
+      }
+
+      if (Array.isArray(responseData.updatedUrls)) {
+        onProcessedUrlsChange?.(responseData.updatedUrls)
       }
 
       toast({
@@ -138,6 +153,8 @@ export function ReportAdminImageUpload({ report, isAdmin }: ReportAdminImageUplo
         .eq("id", report.id)
 
       if (updateDbError) throw updateDbError
+
+      onProcessedUrlsChange?.(updatedUrls)
 
       // Attempt storage cleanup
       try {
@@ -201,6 +218,8 @@ export function ReportAdminImageUpload({ report, isAdmin }: ReportAdminImageUplo
         })
         .eq("id", report.id)
       if (dbErr) throw dbErr
+
+      onProcessedUrlsChange?.(next)
 
       // Clean up old file from storage
       try {
