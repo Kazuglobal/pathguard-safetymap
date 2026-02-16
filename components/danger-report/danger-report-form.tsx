@@ -26,6 +26,9 @@ import {
 } from "@/lib/disaster-scenario-prompts"
 import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
 import { VlmAnalysisPanel } from "./vlm-analysis-panel"
+import { useAccidentStats } from "@/hooks/use-accident-stats"
+import { AccidentStatsPanel, AccidentStatsLoading } from "./accident-stats-panel"
+import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 
 interface DangerReportFormProps {
   onSubmit: (data: Partial<DangerReport>) => Promise<{ reportId: string; imageUrl: string | null }>
@@ -164,7 +167,6 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     setIsGpsLocationConfirmed(true)
   }, [isGpsLocation, selectedLocation?.[0], selectedLocation?.[1]])
 
-
   const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisItem[] | null>(null)
   const [autoGenLoading, setAutoGenLoading] = useState(false)
   const [autoGenError, setAutoGenError] = useState<string | null>(null)
@@ -196,6 +198,24 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     retry: retryVlmAnalysis,
     reset: resetVlmAnalysis,
   } = useVlmAnalysis()
+
+  // Accident Statistics Hook
+  const {
+    stats: accidentStats,
+    status: accidentStatsStatus,
+    fetchStats: fetchAccidentStats,
+    reset: resetAccidentStats,
+  } = useAccidentStats()
+
+  // Fetch accident stats when location changes
+  useEffect(() => {
+    resetAccidentStats()
+    if (!selectedLocation) return
+    fetchAccidentStats({
+      latitude: selectedLocation[1],
+      longitude: selectedLocation[0],
+    })
+  }, [selectedLocation?.[0], selectedLocation?.[1], fetchAccidentStats, resetAccidentStats])
 
   // Store submitted report info for VLM analysis
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null)
@@ -1060,6 +1080,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           console.warn("VLM分析は失敗しましたが、レポートは保存されています:", err)
         })
       }
+
+      // Enrich report with accident statistics (fire-and-forget)
+      // Call library function directly to avoid mutating hook state post-submit
+      if (result?.reportId && supabase) {
+        enrichReportWithAccidents(supabase, result.reportId).catch((err) => {
+          console.warn("事故統計の保存に失敗:", err)
+        })
+      }
     } catch (error) {
       console.error("Error submitting report:", error)
       toast({
@@ -1189,6 +1217,18 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           </Select>
           <p className="text-xs text-gray-500">1: 軽度 - 5: 重大</p>
         </div>
+
+        {selectedLocation && accidentStatsStatus !== 'idle' && (
+          <div className="mt-4 border-t pt-4">
+            {accidentStatsStatus === 'loading' && <AccidentStatsLoading />}
+            {accidentStatsStatus === 'error' && (
+              <p className="text-xs text-amber-700">事故統計の取得に失敗しました（報告には影響しません）</p>
+            )}
+            {accidentStatsStatus === 'loaded' && accidentStats && (
+              <AccidentStatsPanel stats={accidentStats} mode="compact" />
+            )}
+          </div>
+        )}
 
         {/* モバイルでは上部に表示して、長いフォームをスクロールせずに結果を確認しやすくする */}
         {isMobileFullscreen && showVlmPanel && (
