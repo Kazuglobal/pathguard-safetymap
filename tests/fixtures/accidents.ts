@@ -57,6 +57,9 @@ export interface AccidentStats {
 
   // Nearest accidents (top 5)
   nearest_accidents: {
+    id?: number
+    latitude?: number
+    longitude?: number
     distance_meters: number
     accident_date: string
     severity: 'fatal' | 'serious' | 'minor'
@@ -137,6 +140,9 @@ export const mockHighRiskStats: AccidentStats = {
 
   nearest_accidents: [
     {
+      id: 10001,
+      latitude: 35.6598,
+      longitude: 139.7008,
       distance_meters: 45,
       accident_date: '2025-01-15',
       severity: 'serious',
@@ -145,6 +151,9 @@ export const mockHighRiskStats: AccidentStats = {
       has_pedestrian: true,
     },
     {
+      id: 10002,
+      latitude: 35.6601,
+      longitude: 139.7012,
       distance_meters: 78,
       accident_date: '2024-12-20',
       severity: 'minor',
@@ -153,6 +162,9 @@ export const mockHighRiskStats: AccidentStats = {
       has_pedestrian: true,
     },
     {
+      id: 10003,
+      latitude: 35.6588,
+      longitude: 139.6998,
       distance_meters: 92,
       accident_date: '2024-11-05',
       severity: 'fatal',
@@ -161,6 +173,9 @@ export const mockHighRiskStats: AccidentStats = {
       has_pedestrian: false,
     },
     {
+      id: 10004,
+      latitude: 35.6605,
+      longitude: 139.7015,
       distance_meters: 110,
       accident_date: '2024-10-18',
       severity: 'serious',
@@ -169,6 +184,9 @@ export const mockHighRiskStats: AccidentStats = {
       has_pedestrian: false,
     },
     {
+      id: 10005,
+      latitude: 35.6610,
+      longitude: 139.6990,
       distance_meters: 135,
       accident_date: '2024-09-30',
       severity: 'minor',

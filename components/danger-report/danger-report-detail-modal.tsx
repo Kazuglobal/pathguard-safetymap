@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/utils"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { useLongPress } from "@/hooks/use-long-press"
+import { isValidCoordinates } from "@/lib/coordinates"
 import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
 import { AccidentStatsPanel, AccidentStatsLoading } from "@/components/danger-report/accident-stats-panel"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
@@ -32,6 +33,7 @@ interface DangerReportDetailModalProps {
   report: DangerReport | null
   isAdmin?: boolean
   onShowImage?: (url: string, coords?: [number, number], options?: ShowImageOptions) => void
+  onAccidentNavigate?: (coords: [number, number]) => void
 }
 
 export default function DangerReportDetailModal({
@@ -40,6 +42,7 @@ export default function DangerReportDetailModal({
   report,
   isAdmin = false,
   onShowImage,
+  onAccidentNavigate,
 }: DangerReportDetailModalProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -323,6 +326,17 @@ export default function DangerReportDetailModal({
       default:
         return "bg-gray-100 text-gray-800 border-gray-200"
     }
+  }
+
+  const toCoordinateNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && Number.isFinite(value)) return value
+    if (typeof value === "string") {
+      const trimmed = value.trim()
+      if (!trimmed) return undefined
+      const parsed = Number(trimmed)
+      return Number.isFinite(parsed) ? parsed : undefined
+    }
+    return undefined
   }
 
   const hasImages = report.image_url || currentProcessedUrls.length > 0 || newProcessedImagePreview
@@ -723,7 +737,28 @@ export default function DangerReportDetailModal({
                   )}
 
                   {statsStatus === 'loaded' && stats && (
-                    <AccidentStatsPanel stats={stats} mode="full" />
+                    <AccidentStatsPanel
+                      stats={stats}
+                      mode="full"
+                      allowApproximateNavigation
+                      onAccidentClick={(accident) => {
+                        if (!onAccidentNavigate) return
+                        const latitude = toCoordinateNumber(accident.latitude)
+                        const longitude = toCoordinateNumber(accident.longitude)
+                        if (latitude != null && longitude != null && isValidCoordinates(latitude, longitude)) {
+                          onAccidentNavigate([longitude, latitude])
+                          return
+                        }
+
+                        if (isValidCoordinates(report.latitude, report.longitude)) {
+                          toast({
+                            title: "事故地点の座標不足",
+                            description: "近隣事故の正確な座標がないため、報告地点へ移動しました。",
+                          })
+                          onAccidentNavigate([report.longitude, report.latitude])
+                        }
+                      }}
+                    />
                   )}
                 </CardContent>
               </Card>

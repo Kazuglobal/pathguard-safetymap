@@ -594,3 +594,19 @@
 .tutorial-step-animate {
   animation: tutorial-step-enter 0.4s ease-out;
 }
+
+/* 事故位置ハイライトマーカー */
+.accident-highlight-marker {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(239, 68, 68, 0.3);
+  border: 3px solid #ef4444;
+  animation: accident-pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes accident-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}

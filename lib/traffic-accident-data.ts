@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
+import { isValidCoordinates } from '@/lib/coordinates'
 
 /** Default RPC parameters */
 const DEFAULT_RADIUS_METERS = 500
@@ -79,6 +80,9 @@ export interface AccidentStats {
 
   // Nearest accidents (top 5)
   nearest_accidents: {
+    id?: number
+    latitude?: number
+    longitude?: number
     distance_meters: number
     accident_date: string
     severity: 'fatal' | 'serious' | 'minor'
@@ -110,6 +114,9 @@ interface RpcAccidentStatsV2 {
   by_time_of_day: Record<string, number>
   by_accident_type: Record<string, number>
   nearest_accidents: Array<{
+    id?: number | null
+    latitude?: number | null
+    longitude?: number | null
     distance_m?: number | null
     severity?: string | null
     type?: string | null
@@ -197,6 +204,73 @@ function mapSeverity(rawSeverity: unknown): 'fatal' | 'serious' | 'minor' {
   return 'minor'
 }
 
+function sanitizeCoordinatePair(
+  latitude: unknown,
+  longitude: unknown
+): { latitude: number | undefined; longitude: number | undefined } {
+  const toCoordinateNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) return undefined
+      const parsed = Number(trimmed)
+      return Number.isFinite(parsed) ? parsed : undefined
+    }
+    return undefined
+  }
+
+  const lat = toCoordinateNumber(latitude)
+  const lng = toCoordinateNumber(longitude)
+
+  if (lat == null || lng == null) {
+    return { latitude: undefined, longitude: undefined }
+  }
+
+  if (!isValidCoordinates(lat, lng)) {
+    return { latitude: undefined, longitude: undefined }
+  }
+
+  return { latitude: lat, longitude: lng }
+}
+
+function sanitizeNearestAccidents(
+  accidents: AccidentStats['nearest_accidents']
+): AccidentStats['nearest_accidents'] {
+  return accidents.map((accident) => {
+    const { latitude, longitude } = sanitizeCoordinatePair(accident.latitude, accident.longitude)
+    return {
+      ...accident,
+      latitude,
+      longitude,
+    }
+  })
+}
+
+function sanitizeAccidentStats(
+  value: AccidentStats,
+  fallbackParams: Required<AccidentStatsParams>
+): AccidentStats {
+  const rootCoordinates = sanitizeCoordinatePair(value.latitude, value.longitude)
+  const fallbackCoordinates = sanitizeCoordinatePair(
+    fallbackParams.latitude,
+    fallbackParams.longitude
+  )
+
+  const latitude = rootCoordinates.latitude ?? fallbackCoordinates.latitude ?? fallbackParams.latitude
+  const longitude = rootCoordinates.longitude ?? fallbackCoordinates.longitude ?? fallbackParams.longitude
+
+  return {
+    ...value,
+    latitude,
+    longitude,
+    radius_meters: Math.max(1, Math.round(toFiniteNumber(value.radius_meters, fallbackParams.radius_meters))),
+    years_analyzed: Math.max(1, Math.round(toFiniteNumber(value.years_analyzed, fallbackParams.years))),
+    nearest_accidents: sanitizeNearestAccidents(value.nearest_accidents),
+  }
+}
+
 function isAccidentStats(value: unknown): value is AccidentStats {
   if (!value || typeof value !== 'object') return false
 
@@ -277,7 +351,11 @@ function normalizeRpcV2ToAccidentStats(
     .filter((accident) => isObjectRecord(accident))
     .map((accident) => {
       const year = toFiniteNumber(accident.year, new Date().getFullYear())
+      const normalizedCoordinates = sanitizeCoordinatePair(accident.latitude, accident.longitude)
       return {
+        id: typeof accident.id === 'number' ? accident.id : undefined,
+        latitude: normalizedCoordinates.latitude,
+        longitude: normalizedCoordinates.longitude,
         distance_meters: Math.max(0, Math.round(toFiniteNumber(accident.distance_m))),
         // RPC v2 has year-level precision only; avoid fabricating month/day.
         accident_date: `${year}`,
@@ -289,7 +367,7 @@ function normalizeRpcV2ToAccidentStats(
     })
     .sort((a, b) => a.distance_meters - b.distance_meters)
 
-  return {
+  const normalizedStats: AccidentStats = {
     latitude: searchLatitude,
     longitude: searchLongitude,
     radius_meters: Math.max(1, Math.round(searchRadius)),
@@ -312,13 +390,15 @@ function normalizeRpcV2ToAccidentStats(
     accidents_by_year: accidentsByYear,
     nearest_accidents: nearestAccidents,
   }
+
+  return sanitizeAccidentStats(normalizedStats, fallbackParams)
 }
 
 function normalizeAccidentStatsResponse(
   value: unknown,
   fallbackParams: Required<AccidentStatsParams>
 ): AccidentStats | null {
-  if (isAccidentStats(value)) return value
+  if (isAccidentStats(value)) return sanitizeAccidentStats(value, fallbackParams)
   if (isRpcAccidentStatsV2(value)) return normalizeRpcV2ToAccidentStats(value, fallbackParams)
   return null
 }
