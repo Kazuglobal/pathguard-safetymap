@@ -623,8 +623,13 @@ export default function MapContainer() {
     }
     if (accidentMarkerTimerRef.current) {
       clearTimeout(accidentMarkerTimerRef.current)
+      accidentMarkerTimerRef.current = null
     }
     if (!map.current) return
+    if (!isValidCoordinates(coords[1], coords[0])) {
+      console.warn("Skipped accident marker due to invalid coordinates", { coords })
+      return
+    }
 
     const el = document.createElement('div')
     el.className = 'accident-highlight-marker'
@@ -633,10 +638,16 @@ export default function MapContainer() {
       .addTo(map.current)
     accidentMarkerRef.current = marker
 
-    accidentMarkerTimerRef.current = setTimeout(() => {
+    const timerId = setTimeout(() => {
       marker.remove()
-      accidentMarkerRef.current = null
+      if (accidentMarkerRef.current === marker) {
+        accidentMarkerRef.current = null
+      }
+      if (accidentMarkerTimerRef.current === timerId) {
+        accidentMarkerTimerRef.current = null
+      }
     }, 8000)
+    accidentMarkerTimerRef.current = timerId
   }, []);
 
   // --- ▼▼▼ handleMapClick を修正 ▼▼▼ ---
@@ -731,7 +742,9 @@ export default function MapContainer() {
 
     return () => {
       accidentMarkerRef.current?.remove()
+      accidentMarkerRef.current = null
       if (accidentMarkerTimerRef.current) clearTimeout(accidentMarkerTimerRef.current)
+      accidentMarkerTimerRef.current = null
       if (map.current) {
         if (mapClickHandler.current) map.current.off("click", mapClickHandler.current);
         map.current.remove(); map.current = null;
@@ -1772,6 +1785,14 @@ export default function MapContainer() {
           report={selectedReport}
           isAdmin={isAdmin}
           onAccidentNavigate={(coords) => {
+            if (!isValidCoordinates(coords[1], coords[0])) {
+              toast({
+                title: "事故位置データエラー",
+                description: "事故位置座標が不正なため地図に移動できません。",
+                variant: "destructive",
+              })
+              return
+            }
             setIsDetailModalOpen(false)
             flyToLocation(coords[0], coords[1], 17)
             showTemporaryAccidentMarker(coords)

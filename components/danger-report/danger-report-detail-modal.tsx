@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/utils"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { useLongPress } from "@/hooks/use-long-press"
+import { isValidCoordinates } from "@/lib/coordinates"
 import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
 import { AccidentStatsPanel, AccidentStatsLoading } from "@/components/danger-report/accident-stats-panel"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
@@ -729,9 +730,10 @@ export default function DangerReportDetailModal({
                       stats={stats}
                       mode="full"
                       onAccidentClick={(accident) => {
-                        if (accident.latitude != null && accident.longitude != null && onAccidentNavigate) {
-                          onAccidentNavigate([accident.longitude, accident.latitude])
-                        }
+                        if (!onAccidentNavigate) return
+                        if (typeof accident.latitude !== "number" || typeof accident.longitude !== "number") return
+                        if (!isValidCoordinates(accident.latitude, accident.longitude)) return
+                        onAccidentNavigate([accident.longitude, accident.latitude])
                       }}
                     />
                   )}

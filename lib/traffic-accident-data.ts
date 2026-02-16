@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
+import { isValidCoordinates } from '@/lib/coordinates'
 
 /** Default RPC parameters */
 const DEFAULT_RADIUS_METERS = 500
@@ -283,10 +284,16 @@ function normalizeRpcV2ToAccidentStats(
     .filter((accident) => isObjectRecord(accident))
     .map((accident) => {
       const year = toFiniteNumber(accident.year, new Date().getFullYear())
+      const latitude = typeof accident.latitude === 'number' ? accident.latitude : undefined
+      const longitude = typeof accident.longitude === 'number' ? accident.longitude : undefined
+      const hasValidCoordinates =
+        latitude != null &&
+        longitude != null &&
+        isValidCoordinates(latitude, longitude)
       return {
         id: typeof accident.id === 'number' ? accident.id : undefined,
-        latitude: typeof accident.latitude === 'number' ? accident.latitude : undefined,
-        longitude: typeof accident.longitude === 'number' ? accident.longitude : undefined,
+        latitude: hasValidCoordinates ? latitude : undefined,
+        longitude: hasValidCoordinates ? longitude : undefined,
         distance_meters: Math.max(0, Math.round(toFiniteNumber(accident.distance_m))),
         // RPC v2 has year-level precision only; avoid fabricating month/day.
         accident_date: `${year}`,

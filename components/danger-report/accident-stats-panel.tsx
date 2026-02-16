@@ -1,6 +1,7 @@
 "use client"
 
 import { MapPin } from 'lucide-react'
+import { isValidCoordinates } from '@/lib/coordinates'
 import { getAccidentRiskLevel, type AccidentStats } from '@/lib/traffic-accident-data'
 
 /** Component props */
@@ -173,9 +174,12 @@ export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: Ac
               <h4 className="font-semibold text-sm">近隣の事故</h4>
               <div className="space-y-2">
                 {stats.nearest_accidents.slice(0, 5).map((accident, idx) => {
+                  const hasNavigableCoordinates =
+                    typeof accident.latitude === 'number' &&
+                    typeof accident.longitude === 'number' &&
+                    isValidCoordinates(accident.latitude, accident.longitude)
                   const isClickable =
-                    accident.latitude != null &&
-                    accident.longitude != null &&
+                    hasNavigableCoordinates &&
                     onAccidentClick != null
 
                   const content = (
@@ -202,6 +206,7 @@ export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: Ac
                       key={accident.id ?? idx}
                       type="button"
                       className="w-full text-left p-2 bg-gray-50 rounded text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors border border-transparent"
+                      aria-label={`近隣事故 ${accident.distance_meters}m (${accident.type}) を地図で表示`}
                       data-severity={accident.severity}
                       onClick={() => onAccidentClick(accident)}
                     >

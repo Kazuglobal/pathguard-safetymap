@@ -238,6 +238,7 @@ describe('AccidentStatsPanel', () => {
       const buttons = screen.getAllByRole('button')
       const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
       expect(accidentButton).toBeDefined()
+      expect(accidentButton).toHaveAttribute('aria-label', expect.stringContaining('45m'))
 
       await user.click(accidentButton!)
 
@@ -268,6 +269,25 @@ describe('AccidentStatsPanel', () => {
       expect(accidentButtons).toHaveLength(0)
 
       // Should still display the distance text
+      expect(screen.getByText(/45m/)).toBeInTheDocument()
+    })
+
+    it('should render as non-clickable when coordinates are out of range', () => {
+      const handleClick = vi.fn()
+      const statsWithInvalidCoords = {
+        ...mockHighRiskStats,
+        nearest_accidents: mockHighRiskStats.nearest_accidents.map((accident, index) =>
+          index === 0
+            ? { ...accident, latitude: 95, longitude: 190 }
+            : accident
+        ),
+      }
+
+      render(<AccidentStatsPanel stats={statsWithInvalidCoords} onAccidentClick={handleClick} />)
+
+      const buttons = screen.queryAllByRole('button')
+      const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
+      expect(accidentButtons).toHaveLength(0)
       expect(screen.getByText(/45m/)).toBeInTheDocument()
     })
 
