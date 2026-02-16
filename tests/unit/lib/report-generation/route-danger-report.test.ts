@@ -19,7 +19,7 @@ import {
   mockDangerReportsNearRoute,
   mockEmptyDangerReports,
 } from '../../../fixtures/dangers'
-import type { RouteDangerReport, ReportExportFormat } from '@/lib/types'
+import type { DangerReport, RouteDangerReport } from '@/lib/types'
 
 describe('route-danger-report', () => {
   const mockRoute = mockRoutes[0]
@@ -119,6 +119,94 @@ describe('route-danger-report', () => {
 
       expect(url).toContain('750x400')
       expect(url).not.toContain('@2x')
+    })
+
+    it('uses focused bbox viewport instead of world auto viewport', () => {
+      const url = generateOverviewMapUrl(
+        mockRoute.route_geometry!,
+        mockDangerReportsNearRoute,
+        mockMapboxToken
+      )
+
+      expect(url).toContain('[')
+      expect(url).toContain(']')
+      expect(url).not.toContain('/auto/')
+    })
+
+    it('uses numbered marker labels for dangers', () => {
+      const url = generateOverviewMapUrl(
+        mockRoute.route_geometry!,
+        mockDangerReportsNearRoute,
+        mockMapboxToken
+      )
+
+      expect(url).toContain('pin-l-1+')
+      expect(url).toContain('pin-l-2+')
+    })
+
+    it('does not duplicate marker labels up to supported marker limit', () => {
+      const manyDangers: DangerReport[] = Array.from({ length: 36 }, (_, i) => ({
+        ...mockDangerReportsNearRoute[0],
+        id: `danger-many-${i}`,
+        latitude: 35.689 + i * 0.0001,
+        longitude: 139.691 + i * 0.0001,
+      }))
+
+      const url = generateOverviewMapUrl(
+        mockRoute.route_geometry!,
+        manyDangers,
+        mockMapboxToken
+      )
+
+      const labels = Array.from(
+        url.matchAll(/pin-l-([a-z0-9])\+/g),
+        (match) => match[1]
+      )
+
+      expect(labels.length).toBe(36)
+      expect(new Set(labels).size).toBe(36)
+    })
+
+    it('does not include invalid route coordinates in path overlay', () => {
+      const routeWithInvalidPoint: GeoJSON.LineString = {
+        type: 'LineString',
+        coordinates: [
+          [999, 999],
+          [139.7001, 35.6901],
+          [139.7011, 35.6911],
+        ],
+      }
+
+      const url = generateOverviewMapUrl(
+        routeWithInvalidPoint,
+        mockDangerReportsNearRoute,
+        mockMapboxToken
+      )
+
+      const match = url.match(/path-[^(]*\(([^)]+)\)/)
+      expect(match).toBeTruthy()
+      const decodedPath = decodeURIComponent(match ? match[1] : '')
+      expect(decodedPath).not.toContain('999')
+      expect(decodedPath).toContain('139.7001,35.6901')
+    })
+
+    it('falls back to a valid default viewport when all coordinates are invalid', () => {
+      const invalidRoute: GeoJSON.LineString = {
+        type: 'LineString',
+        coordinates: [
+          [999, 999],
+          [888, 888],
+        ],
+      }
+
+      const url = generateOverviewMapUrl(
+        invalidRoute,
+        mockEmptyDangerReports,
+        mockMapboxToken
+      )
+
+      expect(url).toContain('/static/0,0,1/')
+      expect(url).not.toContain('/auto/')
     })
   })
 
