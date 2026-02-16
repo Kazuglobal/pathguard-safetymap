@@ -204,6 +204,60 @@ function mapSeverity(rawSeverity: unknown): 'fatal' | 'serious' | 'minor' {
   return 'minor'
 }
 
+function sanitizeCoordinatePair(
+  latitude: unknown,
+  longitude: unknown
+): { latitude: number | undefined; longitude: number | undefined } {
+  const lat = typeof latitude === 'number' && Number.isFinite(latitude) ? latitude : undefined
+  const lng = typeof longitude === 'number' && Number.isFinite(longitude) ? longitude : undefined
+
+  if (lat == null || lng == null) {
+    return { latitude: undefined, longitude: undefined }
+  }
+
+  if (!isValidCoordinates(lat, lng)) {
+    return { latitude: undefined, longitude: undefined }
+  }
+
+  return { latitude: lat, longitude: lng }
+}
+
+function sanitizeNearestAccidents(
+  accidents: AccidentStats['nearest_accidents']
+): AccidentStats['nearest_accidents'] {
+  return accidents.map((accident) => {
+    const { latitude, longitude } = sanitizeCoordinatePair(accident.latitude, accident.longitude)
+    return {
+      ...accident,
+      latitude,
+      longitude,
+    }
+  })
+}
+
+function sanitizeAccidentStats(
+  value: AccidentStats,
+  fallbackParams: Required<AccidentStatsParams>
+): AccidentStats {
+  const rootCoordinates = sanitizeCoordinatePair(value.latitude, value.longitude)
+  const fallbackCoordinates = sanitizeCoordinatePair(
+    fallbackParams.latitude,
+    fallbackParams.longitude
+  )
+
+  const latitude = rootCoordinates.latitude ?? fallbackCoordinates.latitude ?? fallbackParams.latitude
+  const longitude = rootCoordinates.longitude ?? fallbackCoordinates.longitude ?? fallbackParams.longitude
+
+  return {
+    ...value,
+    latitude,
+    longitude,
+    radius_meters: Math.max(1, Math.round(toFiniteNumber(value.radius_meters, fallbackParams.radius_meters))),
+    years_analyzed: Math.max(1, Math.round(toFiniteNumber(value.years_analyzed, fallbackParams.years))),
+    nearest_accidents: sanitizeNearestAccidents(value.nearest_accidents),
+  }
+}
+
 function isAccidentStats(value: unknown): value is AccidentStats {
   if (!value || typeof value !== 'object') return false
 
@@ -284,16 +338,11 @@ function normalizeRpcV2ToAccidentStats(
     .filter((accident) => isObjectRecord(accident))
     .map((accident) => {
       const year = toFiniteNumber(accident.year, new Date().getFullYear())
-      const latitude = typeof accident.latitude === 'number' ? accident.latitude : undefined
-      const longitude = typeof accident.longitude === 'number' ? accident.longitude : undefined
-      const hasValidCoordinates =
-        latitude != null &&
-        longitude != null &&
-        isValidCoordinates(latitude, longitude)
+      const normalizedCoordinates = sanitizeCoordinatePair(accident.latitude, accident.longitude)
       return {
         id: typeof accident.id === 'number' ? accident.id : undefined,
-        latitude: hasValidCoordinates ? latitude : undefined,
-        longitude: hasValidCoordinates ? longitude : undefined,
+        latitude: normalizedCoordinates.latitude,
+        longitude: normalizedCoordinates.longitude,
         distance_meters: Math.max(0, Math.round(toFiniteNumber(accident.distance_m))),
         // RPC v2 has year-level precision only; avoid fabricating month/day.
         accident_date: `${year}`,
@@ -305,7 +354,7 @@ function normalizeRpcV2ToAccidentStats(
     })
     .sort((a, b) => a.distance_meters - b.distance_meters)
 
-  return {
+  const normalizedStats: AccidentStats = {
     latitude: searchLatitude,
     longitude: searchLongitude,
     radius_meters: Math.max(1, Math.round(searchRadius)),
@@ -328,13 +377,15 @@ function normalizeRpcV2ToAccidentStats(
     accidents_by_year: accidentsByYear,
     nearest_accidents: nearestAccidents,
   }
+
+  return sanitizeAccidentStats(normalizedStats, fallbackParams)
 }
 
 function normalizeAccidentStatsResponse(
   value: unknown,
   fallbackParams: Required<AccidentStatsParams>
 ): AccidentStats | null {
-  if (isAccidentStats(value)) return value
+  if (isAccidentStats(value)) return sanitizeAccidentStats(value, fallbackParams)
   if (isRpcAccidentStatsV2(value)) return normalizeRpcV2ToAccidentStats(value, fallbackParams)
   return null
 }

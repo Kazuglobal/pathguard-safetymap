@@ -69,6 +69,41 @@ describe('getAccidentStatsRPC', () => {
     expect(result.total_accidents).toBe(127)
   })
 
+  it('should sanitize v1 AccidentStats coordinates and fallback to request coordinates when needed', async () => {
+    // Arrange
+    const invalidV1Response = {
+      ...mockHighRiskStats,
+      latitude: 999,
+      longitude: 999,
+      nearest_accidents: mockHighRiskStats.nearest_accidents.map((accident, index) =>
+        index === 0
+          ? { ...accident, latitude: 91, longitude: 181 }
+          : accident
+      ),
+    }
+
+    vi.mocked(mockSupabase.rpc).mockResolvedValue({
+      data: invalidV1Response,
+      error: null,
+    } as any)
+
+    // Act
+    const result = await getAccidentStatsRPC(mockSupabase, {
+      latitude: TEST_COORDINATES.SHIBUYA_CROSSING.lat,
+      longitude: TEST_COORDINATES.SHIBUYA_CROSSING.lng,
+      radius_meters: DEFAULT_RPC_PARAMS.radius_meters,
+      years: DEFAULT_RPC_PARAMS.years,
+    })
+
+    // Assert
+    expect(result.latitude).toBe(TEST_COORDINATES.SHIBUYA_CROSSING.lat)
+    expect(result.longitude).toBe(TEST_COORDINATES.SHIBUYA_CROSSING.lng)
+    expect(result.nearest_accidents[0].latitude).toBeUndefined()
+    expect(result.nearest_accidents[0].longitude).toBeUndefined()
+    expect(result.nearest_accidents[1].latitude).toBeDefined()
+    expect(result.nearest_accidents[1].longitude).toBeDefined()
+  })
+
   it('should successfully fetch medium-risk accident statistics', async () => {
     // Arrange
     vi.mocked(mockSupabase.rpc).mockResolvedValue({
@@ -229,6 +264,41 @@ describe('getAccidentStatsRPC', () => {
     expect(result.nearest_accidents[0].latitude).toBe(35.6598)
     expect(result.nearest_accidents[0].longitude).toBe(139.7008)
     expect(result.nearest_accidents[0].distance_meters).toBe(22)
+  })
+
+  it('should fallback to request coordinates when RPC v2 search_params coordinates are invalid', async () => {
+    // Arrange
+    vi.mocked(mockSupabase.rpc).mockResolvedValue({
+      data: {
+        total_accidents: 10,
+        risk_score: 40,
+        fatal_accidents: 0,
+        child_involved: 0,
+        pedestrian_involved: 1,
+        by_year: { '2023': 10 },
+        by_weather: { 晴: 10 },
+        by_time_of_day: { other: 10 },
+        by_accident_type: { 追突: 10 },
+        nearest_accidents: [],
+        search_params: {
+          years: 3,
+          latitude: 999,
+          longitude: 999,
+          radius_meters: 500,
+        },
+      },
+      error: null,
+    } as any)
+
+    // Act
+    const result = await getAccidentStatsRPC(mockSupabase, {
+      latitude: 35.6595,
+      longitude: 139.7004,
+    })
+
+    // Assert
+    expect(result.latitude).toBe(35.6595)
+    expect(result.longitude).toBe(139.7004)
   })
 
   it('should discard out-of-range coordinates in normalized nearest_accidents', async () => {
