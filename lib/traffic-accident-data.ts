@@ -79,6 +79,9 @@ export interface AccidentStats {
 
   // Nearest accidents (top 5)
   nearest_accidents: {
+    id?: number
+    latitude?: number
+    longitude?: number
     distance_meters: number
     accident_date: string
     severity: 'fatal' | 'serious' | 'minor'
@@ -110,6 +113,9 @@ interface RpcAccidentStatsV2 {
   by_time_of_day: Record<string, number>
   by_accident_type: Record<string, number>
   nearest_accidents: Array<{
+    id?: number | null
+    latitude?: number | null
+    longitude?: number | null
     distance_m?: number | null
     severity?: string | null
     type?: string | null
@@ -278,6 +284,9 @@ function normalizeRpcV2ToAccidentStats(
     .map((accident) => {
       const year = toFiniteNumber(accident.year, new Date().getFullYear())
       return {
+        id: typeof accident.id === 'number' ? accident.id : undefined,
+        latitude: typeof accident.latitude === 'number' ? accident.latitude : undefined,
+        longitude: typeof accident.longitude === 'number' ? accident.longitude : undefined,
         distance_meters: Math.max(0, Math.round(toFiniteNumber(accident.distance_m))),
         // RPC v2 has year-level precision only; avoid fabricating month/day.
         accident_date: `${year}`,

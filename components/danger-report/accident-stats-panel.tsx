@@ -1,11 +1,13 @@
 "use client"
 
+import { MapPin } from 'lucide-react'
 import { getAccidentRiskLevel, type AccidentStats } from '@/lib/traffic-accident-data'
 
 /** Component props */
 interface AccidentStatsPanelProps {
   stats: AccidentStats
   mode?: 'full' | 'compact'
+  onAccidentClick?: (accident: AccidentStats['nearest_accidents'][number]) => void
 }
 
 /**
@@ -15,7 +17,7 @@ interface AccidentStatsPanelProps {
  * - Full mode: All statistics including trends, breakdowns, nearest accidents
  * - Compact mode: Only essential stats (risk badge + score bar + 2 cards)
  */
-export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelProps) {
+export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: AccidentStatsPanelProps) {
   const riskInfo = getAccidentRiskLevel(stats.risk_score)
   const isCompact = mode === 'compact'
   const hasBucketedTimeDistribution = Boolean(stats.time_buckets?.length)
@@ -170,12 +172,13 @@ export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelP
             <div className="space-y-2">
               <h4 className="font-semibold text-sm">近隣の事故</h4>
               <div className="space-y-2">
-                {stats.nearest_accidents.slice(0, 5).map((accident, idx) => (
-                  <div
-                    key={idx}
-                    className="p-2 bg-gray-50 rounded text-sm"
-                    data-severity={accident.severity}
-                  >
+                {stats.nearest_accidents.slice(0, 5).map((accident, idx) => {
+                  const isClickable =
+                    accident.latitude != null &&
+                    accident.longitude != null &&
+                    onAccidentClick != null
+
+                  const content = (
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         {accident.severity === 'fatal' && (
@@ -185,10 +188,35 @@ export function AccidentStatsPanel({ stats, mode = 'full' }: AccidentStatsPanelP
                         {accident.has_child && <span>🎒</span>}
                         {accident.has_pedestrian && <span>🚶</span>}
                       </span>
-                      <span className="text-xs text-gray-600">{accident.type}</span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-xs text-gray-600">{accident.type}</span>
+                        {isClickable && (
+                          <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                        )}
+                      </span>
                     </div>
-                  </div>
-                ))}
+                  )
+
+                  return isClickable ? (
+                    <button
+                      key={accident.id ?? idx}
+                      type="button"
+                      className="w-full text-left p-2 bg-gray-50 rounded text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors border border-transparent"
+                      data-severity={accident.severity}
+                      onClick={() => onAccidentClick(accident)}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div
+                      key={accident.id ?? idx}
+                      className="p-2 bg-gray-50 rounded text-sm"
+                      data-severity={accident.severity}
+                    >
+                      {content}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

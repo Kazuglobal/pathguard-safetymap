@@ -254,6 +254,8 @@ export default function MapContainer() {
   const mapClickHandler = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null)
   const mapImagePopupRefs = useRef<Map<string, mapboxgl.Popup>>(new Map())
   const mapImagePopupRootRefs = useRef<Map<string, ReturnType<typeof createRoot>>>(new Map())
+  const accidentMarkerRef = useRef<mapboxgl.Marker | null>(null)
+  const accidentMarkerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const destroyAllMapImagePopups = useCallback(() => {
     const popupRefs = mapImagePopupRefs.current
@@ -614,6 +616,29 @@ export default function MapContainer() {
     map.current?.flyTo({ center: [longitude, latitude], zoom: zoom, essential: true });
   };
 
+  const showTemporaryAccidentMarker = useCallback((coords: [number, number]) => {
+    if (accidentMarkerRef.current) {
+      accidentMarkerRef.current.remove()
+      accidentMarkerRef.current = null
+    }
+    if (accidentMarkerTimerRef.current) {
+      clearTimeout(accidentMarkerTimerRef.current)
+    }
+    if (!map.current) return
+
+    const el = document.createElement('div')
+    el.className = 'accident-highlight-marker'
+    const marker = new mapboxgl.Marker(el)
+      .setLngLat(coords)
+      .addTo(map.current)
+    accidentMarkerRef.current = marker
+
+    accidentMarkerTimerRef.current = setTimeout(() => {
+      marker.remove()
+      accidentMarkerRef.current = null
+    }, 8000)
+  }, []);
+
   // --- ▼▼▼ handleMapClick を修正 ▼▼▼ ---
   const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
     const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
@@ -705,6 +730,8 @@ export default function MapContainer() {
     }
 
     return () => {
+      accidentMarkerRef.current?.remove()
+      if (accidentMarkerTimerRef.current) clearTimeout(accidentMarkerTimerRef.current)
       if (map.current) {
         if (mapClickHandler.current) map.current.off("click", mapClickHandler.current);
         map.current.remove(); map.current = null;
@@ -1744,6 +1771,11 @@ export default function MapContainer() {
           onClose={() => setIsDetailModalOpen(false)}
           report={selectedReport}
           isAdmin={isAdmin}
+          onAccidentNavigate={(coords) => {
+            setIsDetailModalOpen(false)
+            flyToLocation(coords[0], coords[1], 17)
+            showTemporaryAccidentMarker(coords)
+          }}
           onShowImage={(url, coords, options) => {
             try {
               const targetReport = options?.reportId

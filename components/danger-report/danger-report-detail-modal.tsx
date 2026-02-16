@@ -32,6 +32,7 @@ interface DangerReportDetailModalProps {
   report: DangerReport | null
   isAdmin?: boolean
   onShowImage?: (url: string, coords?: [number, number], options?: ShowImageOptions) => void
+  onAccidentNavigate?: (coords: [number, number]) => void
 }
 
 export default function DangerReportDetailModal({
@@ -40,6 +41,7 @@ export default function DangerReportDetailModal({
   report,
   isAdmin = false,
   onShowImage,
+  onAccidentNavigate,
 }: DangerReportDetailModalProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -723,7 +725,15 @@ export default function DangerReportDetailModal({
                   )}
 
                   {statsStatus === 'loaded' && stats && (
-                    <AccidentStatsPanel stats={stats} mode="full" />
+                    <AccidentStatsPanel
+                      stats={stats}
+                      mode="full"
+                      onAccidentClick={(accident) => {
+                        if (accident.latitude != null && accident.longitude != null && onAccidentNavigate) {
+                          onAccidentNavigate([accident.longitude, accident.latitude])
+                        }
+                      }}
+                    />
                   )}
                 </CardContent>
               </Card>

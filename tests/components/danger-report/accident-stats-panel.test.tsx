@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   mockHighRiskStats,
   mockMediumRiskStats,
@@ -223,6 +224,60 @@ describe('AccidentStatsPanel', () => {
       // Assert - Should have skeleton/loading indicators
       const loadingElements = container.querySelectorAll('[data-loading="true"]')
       expect(loadingElements.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Nearest Accident Click', () => {
+    it('should call onAccidentClick when a clickable accident item is clicked', async () => {
+      const user = userEvent.setup()
+      const handleClick = vi.fn()
+
+      render(<AccidentStatsPanel stats={mockHighRiskStats} onAccidentClick={handleClick} />)
+
+      // Items with coordinates should render as buttons
+      const buttons = screen.getAllByRole('button')
+      const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
+      expect(accidentButton).toBeDefined()
+
+      await user.click(accidentButton!)
+
+      expect(handleClick).toHaveBeenCalledTimes(1)
+      expect(handleClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          distance_meters: 45,
+          latitude: 35.6598,
+          longitude: 139.7008,
+        })
+      )
+    })
+
+    it('should render as non-clickable div when coordinates are missing', () => {
+      const handleClick = vi.fn()
+      const statsWithoutCoords = {
+        ...mockHighRiskStats,
+        nearest_accidents: mockHighRiskStats.nearest_accidents.map(
+          ({ id, latitude, longitude, ...rest }) => rest
+        ),
+      }
+
+      render(<AccidentStatsPanel stats={statsWithoutCoords} onAccidentClick={handleClick} />)
+
+      // Without coordinates, items should not be buttons
+      const buttons = screen.queryAllByRole('button')
+      const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
+      expect(accidentButtons).toHaveLength(0)
+
+      // Should still display the distance text
+      expect(screen.getByText(/45m/)).toBeInTheDocument()
+    })
+
+    it('should render as non-clickable when onAccidentClick is not provided', () => {
+      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
+
+      // No onAccidentClick = no buttons for accidents
+      const buttons = screen.queryAllByRole('button')
+      const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
+      expect(accidentButtons).toHaveLength(0)
     })
   })
 })
