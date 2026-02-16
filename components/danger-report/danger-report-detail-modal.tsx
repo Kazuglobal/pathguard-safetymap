@@ -328,6 +328,17 @@ export default function DangerReportDetailModal({
     }
   }
 
+  const toCoordinateNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && Number.isFinite(value)) return value
+    if (typeof value === "string") {
+      const trimmed = value.trim()
+      if (!trimmed) return undefined
+      const parsed = Number(trimmed)
+      return Number.isFinite(parsed) ? parsed : undefined
+    }
+    return undefined
+  }
+
   const hasImages = report.image_url || currentProcessedUrls.length > 0 || newProcessedImagePreview
 
   // 画像URLにキャッシュバスターを追加する関数
@@ -731,9 +742,11 @@ export default function DangerReportDetailModal({
                       mode="full"
                       onAccidentClick={(accident) => {
                         if (!onAccidentNavigate) return
-                        if (typeof accident.latitude !== "number" || typeof accident.longitude !== "number") return
-                        if (!isValidCoordinates(accident.latitude, accident.longitude)) return
-                        onAccidentNavigate([accident.longitude, accident.latitude])
+                        const latitude = toCoordinateNumber(accident.latitude)
+                        const longitude = toCoordinateNumber(accident.longitude)
+                        if (latitude == null || longitude == null) return
+                        if (!isValidCoordinates(latitude, longitude)) return
+                        onAccidentNavigate([longitude, latitude])
                       }}
                     />
                   )}

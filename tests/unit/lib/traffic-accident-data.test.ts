@@ -266,6 +266,53 @@ describe('getAccidentStatsRPC', () => {
     expect(result.nearest_accidents[0].distance_meters).toBe(22)
   })
 
+  it('should accept numeric-string coordinates in normalized nearest_accidents', async () => {
+    // Arrange - RPC v2 response with numeric strings
+    vi.mocked(mockSupabase.rpc).mockResolvedValue({
+      data: {
+        total_accidents: 10,
+        risk_score: 40,
+        fatal_accidents: 0,
+        child_involved: 0,
+        pedestrian_involved: 1,
+        by_year: { '2023': 10 },
+        by_weather: { 晴: 10 },
+        by_time_of_day: { other: 10 },
+        by_accident_type: { 追突: 10 },
+        nearest_accidents: [
+          {
+            id: 44,
+            latitude: '35.6598',
+            longitude: '139.7008',
+            type: '人対車両_その他',
+            year: 2023,
+            severity: 'injury',
+            distance_m: 22.3,
+            involved_child: false,
+            involved_pedestrian: true,
+          },
+        ],
+        search_params: {
+          years: 3,
+          latitude: 35.6595,
+          longitude: 139.7004,
+          radius_meters: 500,
+        },
+      },
+      error: null,
+    } as any)
+
+    // Act
+    const result = await getAccidentStatsRPC(mockSupabase, {
+      latitude: 35.6595,
+      longitude: 139.7004,
+    })
+
+    // Assert
+    expect(result.nearest_accidents[0].latitude).toBe(35.6598)
+    expect(result.nearest_accidents[0].longitude).toBe(139.7008)
+  })
+
   it('should fallback to request coordinates when RPC v2 search_params coordinates are invalid', async () => {
     // Arrange
     vi.mocked(mockSupabase.rpc).mockResolvedValue({

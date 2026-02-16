@@ -174,10 +174,20 @@ export function AccidentStatsPanel({ stats, mode = 'full', onAccidentClick }: Ac
               <h4 className="font-semibold text-sm">近隣の事故</h4>
               <div className="space-y-2">
                 {stats.nearest_accidents.slice(0, 5).map((accident, idx) => {
+                  const toCoordinateNumber = (value: unknown): number | undefined => {
+                    if (typeof value === 'number' && Number.isFinite(value)) return value
+                    if (typeof value === 'string') {
+                      const parsed = Number(value.trim())
+                      return Number.isFinite(parsed) ? parsed : undefined
+                    }
+                    return undefined
+                  }
+                  const latitude = toCoordinateNumber(accident.latitude)
+                  const longitude = toCoordinateNumber(accident.longitude)
                   const hasNavigableCoordinates =
-                    typeof accident.latitude === 'number' &&
-                    typeof accident.longitude === 'number' &&
-                    isValidCoordinates(accident.latitude, accident.longitude)
+                    latitude != null &&
+                    longitude != null &&
+                    isValidCoordinates(latitude, longitude)
                   const isClickable =
                     hasNavigableCoordinates &&
                     onAccidentClick != null

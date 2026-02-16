@@ -291,6 +291,28 @@ describe('AccidentStatsPanel', () => {
       expect(screen.getByText(/45m/)).toBeInTheDocument()
     })
 
+    it('should render as clickable when coordinates are numeric strings', async () => {
+      const user = userEvent.setup()
+      const handleClick = vi.fn()
+      const statsWithStringCoords = {
+        ...mockHighRiskStats,
+        nearest_accidents: mockHighRiskStats.nearest_accidents.map((accident, index) =>
+          index === 0
+            ? ({ ...accident, latitude: '35.6598', longitude: '139.7008' } as any)
+            : accident
+        ),
+      } as any
+
+      render(<AccidentStatsPanel stats={statsWithStringCoords} onAccidentClick={handleClick} />)
+
+      const buttons = screen.getAllByRole('button')
+      const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
+      expect(accidentButton).toBeDefined()
+
+      await user.click(accidentButton!)
+      expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+
     it('should render as non-clickable when onAccidentClick is not provided', () => {
       render(<AccidentStatsPanel stats={mockHighRiskStats} />)
 

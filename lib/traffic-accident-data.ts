@@ -208,8 +208,21 @@ function sanitizeCoordinatePair(
   latitude: unknown,
   longitude: unknown
 ): { latitude: number | undefined; longitude: number | undefined } {
-  const lat = typeof latitude === 'number' && Number.isFinite(latitude) ? latitude : undefined
-  const lng = typeof longitude === 'number' && Number.isFinite(longitude) ? longitude : undefined
+  const toCoordinateNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) return undefined
+      const parsed = Number(trimmed)
+      return Number.isFinite(parsed) ? parsed : undefined
+    }
+    return undefined
+  }
+
+  const lat = toCoordinateNumber(latitude)
+  const lng = toCoordinateNumber(longitude)
 
   if (lat == null || lng == null) {
     return { latitude: undefined, longitude: undefined }
