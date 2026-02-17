@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Navigation, List, Loader2, Crosshair } from "lucide-react"
+import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Navigation, List, Loader2, Crosshair, Flame } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
 import Map3DToggle from "./map-3d-toggle"
 import HelpDialog from "./help-dialog"
@@ -21,6 +21,8 @@ interface MapFloatingControlsProps {
   isMobile?: boolean
   onReportAtCurrentLocation?: () => void
   isAcquiringGPS?: boolean
+  onToggleHeatmap?: () => void
+  isHeatmapVisible?: boolean
 }
 
 export default function MapFloatingControls({
@@ -37,6 +39,8 @@ export default function MapFloatingControls({
   isMobile = false,
   onReportAtCurrentLocation,
   isAcquiringGPS = false,
+  onToggleHeatmap,
+  isHeatmapVisible = false,
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
@@ -86,6 +90,25 @@ export default function MapFloatingControls({
             >
               <Navigation className="h-4 w-4 mr-1" />
               AR
+            </Button>
+          )}
+
+          {/* 事故ヒートマップトグル */}
+          {onToggleHeatmap && (
+            <Button
+              onClick={onToggleHeatmap}
+              variant={isHeatmapVisible ? "default" : "outline"}
+              size="sm"
+              aria-pressed={isHeatmapVisible}
+              className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
+                isHeatmapVisible
+                  ? "bg-red-600 text-white border-red-600 hover:bg-red-700"
+                  : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
+              }`}
+              aria-label="事故ヒートマップ表示切替"
+            >
+              <Flame className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">事故</span>
             </Button>
           )}
         </div>

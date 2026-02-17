@@ -27,6 +27,10 @@ import ARView from "./ar-view"
 import { isAdminUser } from "@/lib/admin"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
+import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
+import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
+import { AccidentHeatmapControls } from "./accident-heatmap-controls"
+import type { ViewportBounds } from "@/lib/traffic-accident-heatmap"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -256,6 +260,9 @@ export default function MapContainer() {
   const mapImagePopupRootRefs = useRef<Map<string, ReturnType<typeof createRoot>>>(new Map())
   const accidentMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const accidentMarkerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // --- Accident Heatmap ---
+  const accidentHeatmap = useAccidentHeatmap()
 
   const destroyAllMapImagePopups = useCallback(() => {
     const popupRefs = mapImagePopupRefs.current
@@ -842,6 +849,31 @@ export default function MapContainer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]); // Removed is3DEnabled from dependency array to prevent loop
 
+  // --- Accident Heatmap: fetch data on map move ---
+  useEffect(() => {
+    if (!map.current || !accidentHeatmap.isVisible) return
+
+    const handleMoveEnd = () => {
+      if (!map.current) return
+      const bounds = map.current.getBounds()
+      if (!bounds) return
+      accidentHeatmap.fetchForViewport({
+        minLng: bounds.getWest(),
+        minLat: bounds.getSouth(),
+        maxLng: bounds.getEast(),
+        maxLat: bounds.getNorth(),
+      })
+    }
+
+    map.current.on('moveend', handleMoveEnd)
+    handleMoveEnd()
+
+    return () => {
+      map.current?.off('moveend', handleMoveEnd)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accidentHeatmap.isVisible, accidentHeatmap.filters])
+
   // --- Map Cursor Style Management ---
   useEffect(() => {
     if (!map.current) return;
@@ -1394,6 +1426,8 @@ export default function MapContainer() {
           isMobile={isMobile}
           onReportAtCurrentLocation={handleReportAtCurrentLocation}
           isAcquiringGPS={isAcquiringGPS}
+          onToggleHeatmap={accidentHeatmap.toggleVisibility}
+          isHeatmapVisible={accidentHeatmap.isVisible}
         />
 
         {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
@@ -1441,6 +1475,26 @@ export default function MapContainer() {
             if (showMobileMapHint) setShowMobileMapHint(false);
           }}
         />
+
+        {/* 事故ヒートマップレイヤー */}
+        <AccidentHeatmapLayer
+          map={map.current}
+          geoJSON={accidentHeatmap.geoJSON}
+          isVisible={accidentHeatmap.isVisible}
+        />
+
+        {/* 事故ヒートマップコントロール */}
+        <div className="absolute right-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] sm:bottom-6">
+          <AccidentHeatmapControls
+            filters={accidentHeatmap.filters}
+            onFiltersChange={accidentHeatmap.setFilters}
+            isVisible={accidentHeatmap.isVisible}
+            onToggleVisibility={accidentHeatmap.toggleVisibility}
+            isLoading={accidentHeatmap.isLoading}
+            featureCount={accidentHeatmap.featureCount}
+            error={accidentHeatmap.error}
+          />
+        </div>
 
         {/* モバイルマップヒント */}
         {showMobileMapHint && (
