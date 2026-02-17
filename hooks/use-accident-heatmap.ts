@@ -23,8 +23,7 @@ function isAbortLikeError(error: unknown): boolean {
   return (
     lower.includes('aborterror') ||
     lower.includes('operation was aborted') ||
-    lower.includes('the operation was aborted') ||
-    lower.includes('canceling statement due to user request')
+    lower.includes('the operation was aborted')
   )
 }
 

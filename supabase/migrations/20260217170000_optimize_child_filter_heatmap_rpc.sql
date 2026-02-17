@@ -131,10 +131,13 @@ $$;
 REVOKE ALL ON FUNCTION public.get_accidents_in_bbox FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_accidents_in_bbox TO anon, authenticated;
 
-CREATE INDEX IF NOT EXISTS idx_traffic_accidents_child_fallback_year_severity
-  ON traffic_accidents(source_year, severity_code)
-  WHERE (involves_child IS TRUE OR party_a_age = 1 OR party_b_age = 1);
-
-CREATE INDEX IF NOT EXISTS idx_traffic_accidents_child_fallback_location_gist
-  ON traffic_accidents USING GIST(location)
-  WHERE (involves_child IS TRUE OR party_a_age = 1 OR party_b_age = 1);
+-- NOTE:
+-- Partial index creation is intentionally excluded from this auto migration.
+-- On large production tables, non-concurrent CREATE INDEX can block writes.
+-- If needed, create these indexes in a dedicated maintenance window using:
+--   CREATE INDEX CONCURRENTLY idx_traffic_accidents_child_fallback_year_severity
+--     ON public.traffic_accidents(source_year, severity_code)
+--     WHERE (involves_child IS TRUE OR party_a_age = 1 OR party_b_age = 1);
+--   CREATE INDEX CONCURRENTLY idx_traffic_accidents_child_fallback_location_gist
+--     ON public.traffic_accidents USING GIST(location)
+--     WHERE (involves_child IS TRUE OR party_a_age = 1 OR party_b_age = 1);
