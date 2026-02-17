@@ -88,7 +88,7 @@ export function AccidentStatsPanel({
         {!isCompact && (
           <>
             <StatCard label="歩行者事故" value={stats.pedestrian_accidents} />
-            <StatCard label="子供関与" value={stats.child_involved} />
+            <StatCard label="24歳以下関与" value={stats.child_involved} />
           </>
         )}
       </div>
@@ -214,7 +214,7 @@ export function AccidentStatsPanel({
                           <span className="w-2 h-2 bg-red-500 rounded-full" />
                         )}
                         <span className="font-medium">{accident.distance_meters}m</span>
-                        {accident.has_child && <span>🎒</span>}
+                        {accident.has_child && <span title="24歳以下関与">🎒</span>}
                         {accident.has_pedestrian && <span>🚶</span>}
                       </span>
                       <span className="flex items-center gap-1">
@@ -262,6 +262,8 @@ export function AccidentStatsPanel({
           半径{stats.radius_meters}m以内 / 過去{stats.years_analyzed}年間
           <br />
           出典: 警察庁「交通事故統計情報のオープンデータ」
+          <br />
+          年齢判定: 24歳以下は年齢区分による集計
         </div>
       )}
     </div>
