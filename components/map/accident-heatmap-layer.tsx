@@ -18,6 +18,18 @@ const EMPTY_GEOJSON: GeoJSON.FeatureCollection = {
   features: [],
 }
 
+interface PopupDisplayData {
+  severity: number | null
+  severityLabel: string
+  year: number | null
+  type: string | null
+  weather: string | null
+  fatalities: number
+  injuries: number
+  hasChild: boolean
+  hasPedestrian: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -148,6 +160,105 @@ function removeSourceAndLayers(m: mapboxgl.Map) {
   safeRemoveSource(m, SOURCE_ID)
 }
 
+function parseBoolean(value: unknown): boolean {
+  return value === true || value === 'true' || value === 1 || value === '1'
+}
+
+function parseNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
+function parseNonNegativeNumber(value: unknown): number {
+  const parsed = parseNullableNumber(value)
+  if (parsed === null) return 0
+  return Math.max(0, parsed)
+}
+
+function parseText(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+export function toPopupDisplayData(properties: Record<string, unknown>): PopupDisplayData {
+  const severity = parseNullableNumber(properties.severity)
+  return {
+    severity,
+    severityLabel: getSeverityLabel(severity),
+    year: parseNullableNumber(properties.year),
+    type: parseText(properties.type),
+    weather: parseText(properties.weather),
+    fatalities: parseNonNegativeNumber(properties.fatalities),
+    injuries: parseNonNegativeNumber(properties.injuries),
+    hasChild: parseBoolean(properties.hasChild),
+    hasPedestrian: parseBoolean(properties.hasPedestrian),
+  }
+}
+
+export function buildAccidentPopupContent(properties: Record<string, unknown>): HTMLDivElement {
+  const data = toPopupDisplayData(properties)
+  const severityColor = data.severity === 1 ? '#DC2626' : '#F59E0B'
+
+  const root = document.createElement('div')
+  root.style.padding = '8px'
+  root.style.minWidth = '160px'
+
+  const title = document.createElement('div')
+  title.style.fontWeight = '700'
+  title.style.color = severityColor
+  title.style.marginBottom = '4px'
+  title.style.fontSize = '14px'
+  title.textContent = data.severityLabel
+  root.appendChild(title)
+
+  if (data.type) {
+    const typeEl = document.createElement('p')
+    typeEl.style.margin = '2px 0'
+    typeEl.style.fontSize = '12px'
+    typeEl.style.color = '#555'
+    typeEl.textContent = data.type
+    root.appendChild(typeEl)
+  }
+
+  const meta = document.createElement('p')
+  meta.style.margin = '2px 0'
+  meta.style.fontSize = '12px'
+  const metaParts: string[] = []
+  if (data.year !== null) metaParts.push(`${data.year}年`)
+  if (data.weather) metaParts.push(`天候: ${data.weather}`)
+  meta.textContent = metaParts.join(' / ')
+  root.appendChild(meta)
+
+  const casualties = document.createElement('p')
+  casualties.style.margin = '4px 0 0'
+  casualties.style.fontSize = '12px'
+  casualties.style.color = '#333'
+  casualties.textContent = `死亡: ${data.fatalities}人 / 負傷: ${data.injuries}人`
+  root.appendChild(casualties)
+
+  if (data.hasChild) {
+    const child = document.createElement('p')
+    child.style.margin = '4px 0 0'
+    child.style.fontSize = '11px'
+    child.style.color = '#DC2626'
+    child.textContent = '子供関与'
+    root.appendChild(child)
+  }
+
+  if (data.hasPedestrian) {
+    const pedestrian = document.createElement('p')
+    pedestrian.style.margin = '2px 0 0'
+    pedestrian.style.fontSize = '11px'
+    pedestrian.style.color = '#1D4ED8'
+    pedestrian.textContent = '歩行者関与'
+    root.appendChild(pedestrian)
+  }
+
+  return root
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -165,6 +276,11 @@ function removeSourceAndLayers(m: mapboxgl.Map) {
 export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatmapLayerProps) {
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const layersAddedRef = useRef(false)
+  const latestGeoJSONRef = useRef<AccidentGeoJSON | null>(geoJSON)
+
+  useEffect(() => {
+    latestGeoJSONRef.current = geoJSON
+  }, [geoJSON])
 
   // -------------------------------------------------------------------------
   // Popup on circle click
@@ -176,31 +292,8 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatma
 
     const feature = e.features[0]
     const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number]
-    const props = feature.properties ?? {}
-
-    const severityLabel = getSeverityLabel(props.severity)
-    const severityColor = props.severity === 1 ? '#DC2626' : '#F59E0B'
-    const typeText = props.type ? `<p style="margin:2px 0;font-size:12px;color:#555;">${props.type}</p>` : ''
-    const weatherText = props.weather ? `<span style="color:#888;">天候: ${props.weather}</span>` : ''
-
-    const html = `
-      <div style="padding:8px;min-width:160px;">
-        <div style="font-weight:700;color:${severityColor};margin-bottom:4px;font-size:14px;">
-          ${severityLabel}
-        </div>
-        ${typeText}
-        <p style="margin:2px 0;font-size:12px;">
-          ${props.year ?? ''}年
-          ${weatherText ? ' / ' + weatherText : ''}
-        </p>
-        <p style="margin:4px 0 0;font-size:12px;color:#333;">
-          死亡: ${props.fatalities ?? 0}人 / 負傷: ${props.injuries ?? 0}人
-        </p>
-        ${props.hasChild === true || props.hasChild === 'true'
-          ? '<p style="margin:4px 0 0;font-size:11px;color:#DC2626;">子供関与</p>'
-          : ''}
-      </div>
-    `
+    const props = (feature.properties ?? {}) as Record<string, unknown>
+    const content = buildAccidentPopupContent(props)
 
     // Remove previous popup
     if (popupRef.current) {
@@ -209,7 +302,7 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatma
 
     popupRef.current = new mapboxgl.Popup({ offset: 12, maxWidth: '240px' })
       .setLngLat(coords)
-      .setHTML(html)
+      .setDOMContent(content)
       .addTo(mapInstance)
   }, [])
 
@@ -242,9 +335,9 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatma
         if (layersAddedRef.current) {
           addSourceAndLayers(map)
           // Re-set data if we have it
-          if (geoJSON) {
+          if (latestGeoJSONRef.current) {
             const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined
-            if (src) src.setData(geoJSON as any)
+            if (src) src.setData(latestGeoJSONRef.current as any)
           }
         }
       }
@@ -265,7 +358,7 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatma
       removeSourceAndLayers(map)
       layersAddedRef.current = false
     }
-  }, [map, isVisible, handleCircleClick, handleMouseEnter, handleMouseLeave, geoJSON])
+  }, [map, isVisible, handleCircleClick, handleMouseEnter, handleMouseLeave])
 
   // -------------------------------------------------------------------------
   // Update GeoJSON data

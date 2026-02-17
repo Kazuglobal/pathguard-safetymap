@@ -30,7 +30,6 @@ import { isValidCoordinates } from "@/lib/coordinates"
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
-import type { ViewportBounds } from "@/lib/traffic-accident-heatmap"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()

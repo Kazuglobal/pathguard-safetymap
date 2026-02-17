@@ -82,6 +82,37 @@ export const FETCH_DEBOUNCE_MS = 300
 // Data Fetching
 // ---------------------------------------------------------------------------
 
+function createEmptyFeatureCollection(): AccidentGeoJSON {
+  return { type: 'FeatureCollection', features: [] }
+}
+
+function normalizeBounds(bounds: ViewportBounds): ViewportBounds | null {
+  const values = [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat]
+  if (values.some((v) => !Number.isFinite(v))) return null
+
+  const minLng = Math.min(bounds.minLng, bounds.maxLng)
+  const maxLng = Math.max(bounds.minLng, bounds.maxLng)
+  const minLat = Math.min(bounds.minLat, bounds.maxLat)
+  const maxLat = Math.max(bounds.minLat, bounds.maxLat)
+
+  if (minLng < -180 || maxLng > 180 || minLat < -90 || maxLat > 90) return null
+
+  return { minLng, minLat, maxLng, maxLat }
+}
+
+function normalizeFilters(filters: AccidentHeatmapFilters): AccidentHeatmapFilters {
+  const minYear = Number.isFinite(filters.minYear) ? Math.floor(filters.minYear) : DEFAULT_HEATMAP_FILTERS.minYear
+  const maxYear = Number.isFinite(filters.maxYear) ? Math.floor(filters.maxYear) : DEFAULT_HEATMAP_FILTERS.maxYear
+
+  return {
+    minYear: Math.min(minYear, maxYear),
+    maxYear: Math.max(minYear, maxYear),
+    severityFilter: filters.severityFilter === 'fatal' ? 'fatal' : 'all',
+    childFilter: filters.childFilter === true ? true : null,
+    pedestrianFilter: filters.pedestrianFilter === true ? true : null,
+  }
+}
+
 /**
  * Fetch accident GeoJSON for the given viewport bounds and filters.
  * Uses Supabase RPC `get_accidents_in_bbox`.
@@ -91,17 +122,24 @@ export async function fetchAccidentsInBounds(
   bounds: ViewportBounds,
   filters: AccidentHeatmapFilters,
 ): Promise<AccidentGeoJSON> {
+  const normalizedBounds = normalizeBounds(bounds)
+  if (!normalizedBounds) {
+    return createEmptyFeatureCollection()
+  }
+
+  const normalizedFilters = normalizeFilters(filters)
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not yet in generated types
   const { data, error } = await (supabase.rpc as any)('get_accidents_in_bbox', {
-    p_min_lng: bounds.minLng,
-    p_min_lat: bounds.minLat,
-    p_max_lng: bounds.maxLng,
-    p_max_lat: bounds.maxLat,
-    p_min_year: filters.minYear,
-    p_max_year: filters.maxYear,
-    p_severity_filter: filters.severityFilter,
-    p_child_filter: filters.childFilter,
-    p_pedestrian_filter: filters.pedestrianFilter,
+    p_min_lng: normalizedBounds.minLng,
+    p_min_lat: normalizedBounds.minLat,
+    p_max_lng: normalizedBounds.maxLng,
+    p_max_lat: normalizedBounds.maxLat,
+    p_min_year: normalizedFilters.minYear,
+    p_max_year: normalizedFilters.maxYear,
+    p_severity_filter: normalizedFilters.severityFilter,
+    p_child_filter: normalizedFilters.childFilter,
+    p_pedestrian_filter: normalizedFilters.pedestrianFilter,
     p_limit: MAX_RECORDS_PER_FETCH,
   })
 
@@ -112,7 +150,7 @@ export async function fetchAccidentsInBounds(
   // Validate shape
   const result = data as unknown as AccidentGeoJSON | null
   if (!result || result.type !== 'FeatureCollection' || !Array.isArray(result.features)) {
-    return { type: 'FeatureCollection', features: [] }
+    return createEmptyFeatureCollection()
   }
 
   return result

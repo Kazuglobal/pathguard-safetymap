@@ -52,22 +52,24 @@ export function AccidentHeatmapControls({
   return (
     <div className="w-56 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
       {/* Header with main toggle */}
-      <button
-        type="button"
-        onClick={onToggleVisibility}
-        className="flex items-center justify-between w-full px-3 py-2.5 hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors">
+        <button
+          type="button"
+          onClick={onToggleVisibility}
+          className="flex items-center gap-2 text-left"
+          aria-label="事故ヒートマップ表示切替"
+        >
           <Flame className={`h-4 w-4 ${isVisible ? 'text-red-500' : 'text-gray-400'}`} />
           <span className="text-sm font-medium text-gray-700">事故ヒートマップ</span>
-        </div>
+        </button>
         <Switch
           checked={isVisible}
-          onCheckedChange={onToggleVisibility}
+          onCheckedChange={(checked) => {
+            if (checked !== isVisible) onToggleVisibility()
+          }}
           aria-label="事故ヒートマップ表示切替"
-          className="pointer-events-none"
         />
-      </button>
+      </div>
 
       {/* Expanded filters (only when visible) */}
       {isVisible && (

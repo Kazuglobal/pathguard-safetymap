@@ -47,7 +47,8 @@ export interface UseAccidentHeatmapReturn {
  *
  * - Viewport-based fetching with 300ms debounce
  * - Latest-request-wins pattern to discard stale responses
- * - Immutable filter updates that trigger data clear + re-fetch
+ * - Immutable filter updates; caller controls when viewport re-fetch runs
+ * - Visibility-off cancels pending/in-flight updates to avoid stale UI writes
  */
 export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
   const { supabase } = useSupabase()
@@ -63,25 +64,42 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
   // Async safety refs
   const latestRequestIdRef = useRef(0)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastBoundsRef = useRef<ViewportBounds | null>(null)
+  const isVisibleRef = useRef(isVisible)
 
   // Keep supabase ref current
   useEffect(() => {
     supabaseRef.current = supabase
   }, [supabase])
 
+  // Keep visibility ref current
+  useEffect(() => {
+    isVisibleRef.current = isVisible
+  }, [isVisible])
+
   // ---------------------------------------------------------------------------
   // Fetch (debounced, latest-wins)
   // ---------------------------------------------------------------------------
 
+  const cancelPendingFetch = useCallback(() => {
+    latestRequestIdRef.current += 1
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+    setIsLoading(false)
+  }, [])
+
   const fetchForViewport = useCallback((bounds: ViewportBounds) => {
-    lastBoundsRef.current = bounds
+    if (!isVisibleRef.current) return
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
     }
 
     debounceTimerRef.current = setTimeout(async () => {
+      debounceTimerRef.current = null
+      if (!isVisibleRef.current) return
+
       const requestId = latestRequestIdRef.current + 1
       latestRequestIdRef.current = requestId
 
@@ -121,37 +139,31 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
     setFiltersState((prev) => ({ ...prev, ...patch }))
   }, [])
 
-  // Re-fetch when filters change (if visible and we have a last viewport)
-  useEffect(() => {
-    if (!isVisible || !lastBoundsRef.current) return
-    fetchForViewport(lastBoundsRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, isVisible])
-
   // ---------------------------------------------------------------------------
   // Visibility toggle
   // ---------------------------------------------------------------------------
 
   const toggleVisibility = useCallback(() => {
-    setIsVisible((prev) => !prev)
-  }, [])
+    const next = !isVisibleRef.current
+    isVisibleRef.current = next
+    setIsVisible(next)
+    if (!next) {
+      cancelPendingFetch()
+    }
+  }, [cancelPendingFetch])
 
   // ---------------------------------------------------------------------------
   // Reset
   // ---------------------------------------------------------------------------
 
   const reset = useCallback(() => {
-    latestRequestIdRef.current += 1
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
+    cancelPendingFetch()
     setGeoJSON(null)
-    setIsLoading(false)
     setError(null)
+    isVisibleRef.current = false
     setIsVisible(false)
     setFiltersState(DEFAULT_HEATMAP_FILTERS)
-    lastBoundsRef.current = null
-  }, [])
+  }, [cancelPendingFetch])
 
   // Cleanup on unmount
   useEffect(() => {
