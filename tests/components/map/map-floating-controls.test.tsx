@@ -45,6 +45,9 @@ describe('MapFloatingControls mobile layout', () => {
   it('shows bottom-right mobile action dock in normal state', () => {
     renderControls()
 
+    expect(screen.getByTestId('mobile-action-dock')).toHaveStyle({
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6rem)',
+    })
     expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
   })

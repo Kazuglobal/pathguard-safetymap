@@ -45,6 +45,7 @@ export default function MapFloatingControls({
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile
+  const mobileBottomNavClearance = "calc(env(safe-area-inset-bottom, 0px) + 6rem)"
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -160,8 +161,9 @@ export default function MapFloatingControls({
       {/* 右下: モバイル主要アクションドック */}
       {showMobileActionDock && (
         <div
+          data-testid="mobile-action-dock"
           className="absolute right-3 z-20 flex flex-col items-end gap-2"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          style={{ bottom: mobileBottomNavClearance }}
         >
           {onReportAtCurrentLocation && (
             <Button
