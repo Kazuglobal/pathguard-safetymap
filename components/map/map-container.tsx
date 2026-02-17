@@ -1483,17 +1483,19 @@ export default function MapContainer() {
         />
 
         {/* 事故ヒートマップコントロール */}
-        <div className="absolute right-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] sm:bottom-6">
-          <AccidentHeatmapControls
-            filters={accidentHeatmap.filters}
-            onFiltersChange={accidentHeatmap.setFilters}
-            isVisible={accidentHeatmap.isVisible}
-            onToggleVisibility={accidentHeatmap.toggleVisibility}
-            isLoading={accidentHeatmap.isLoading}
-            featureCount={accidentHeatmap.featureCount}
-            error={accidentHeatmap.error}
-          />
-        </div>
+        {(!isMobile || (!awaitingLocationSelection && !isReportFormOpen)) && (
+          <div className="absolute left-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] sm:left-auto sm:right-3 sm:bottom-6">
+            <AccidentHeatmapControls
+              filters={accidentHeatmap.filters}
+              onFiltersChange={accidentHeatmap.setFilters}
+              isVisible={accidentHeatmap.isVisible}
+              onToggleVisibility={accidentHeatmap.toggleVisibility}
+              isLoading={accidentHeatmap.isLoading}
+              featureCount={accidentHeatmap.featureCount}
+              error={accidentHeatmap.error}
+            />
+          </div>
+        )}
 
         {/* モバイルマップヒント */}
         {showMobileMapHint && (
