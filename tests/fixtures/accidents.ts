@@ -4,70 +4,7 @@
  * Phase: Traffic Accident Statistics & Risk Score Feature
  */
 
-// AccidentStats interface - matches RPC return type
-export interface AccidentStats {
-  // Location info
-  latitude: number
-  longitude: number
-  radius_meters: number
-  years_analyzed: number
-
-  // Overall statistics
-  total_accidents: number
-  risk_score: number // 0-100
-
-  // Severity breakdown
-  fatal_accidents: number
-  serious_accidents: number
-  minor_accidents: number
-
-  // Victim breakdown
-  pedestrian_accidents: number
-  bicycle_accidents: number
-  motorcycle_accidents: number
-  car_accidents: number
-  child_involved: number
-  elderly_involved: number
-
-  // Time distribution (24-hour)
-  accidents_by_hour: {
-    hour: number
-    count: number
-    is_school_time: boolean // 7-9am, 2-5pm
-  }[]
-
-  // Accident types
-  accident_types: {
-    type: string
-    count: number
-    is_pedestrian_related: boolean
-  }[]
-
-  // Weather conditions
-  weather_conditions: {
-    condition: string
-    count: number
-  }[]
-
-  // Year-by-year trend
-  accidents_by_year: {
-    year: number
-    count: number
-  }[]
-
-  // Nearest accidents (top 5)
-  nearest_accidents: {
-    id?: number
-    latitude?: number
-    longitude?: number
-    distance_meters: number
-    accident_date: string
-    severity: 'fatal' | 'serious' | 'minor'
-    type: string
-    has_child: boolean
-    has_pedestrian: boolean
-  }[]
-}
+import type { AccidentStats } from '@/lib/traffic-accident-data'
 
 // High-risk location (Shibuya Crossing)
 export const mockHighRiskStats: AccidentStats = {
