@@ -77,6 +77,7 @@ describe('traffic-accident-heatmap', () => {
         DEFAULT_HEATMAP_FILTERS,
       ),
     ).rejects.toThrow('事故データの取得に失敗しました: permission denied')
+    expect(supabase.rpc).toHaveBeenCalledTimes(1)
   })
 
   it('returns empty collection when RPC returns malformed payload', async () => {
@@ -92,5 +93,73 @@ describe('traffic-accident-heatmap', () => {
     )
 
     expect(result).toEqual({ type: 'FeatureCollection', features: [] })
+  })
+
+  it('retries with lower limit when statement gets canceled', async () => {
+    const response: AccidentGeoJSON = { type: 'FeatureCollection', features: [] }
+    const supabase = createSupabaseRpcMock(async () => {
+      const callCount = vi.mocked(supabase.rpc).mock.calls.length
+      if (callCount === 1) {
+        return {
+          data: null,
+          error: { message: 'canceling statement due to statement timeout' },
+        }
+      }
+      return {
+        data: response,
+        error: null,
+      }
+    })
+
+    const result = await fetchAccidentsInBounds(
+      supabase,
+      { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+      DEFAULT_HEATMAP_FILTERS,
+    )
+
+    expect(result).toEqual(response)
+    expect(supabase.rpc).toHaveBeenCalledTimes(2)
+
+    const [, firstParams] = vi.mocked(supabase.rpc).mock.calls[0]
+    const [, secondParams] = vi.mocked(supabase.rpc).mock.calls[1]
+    expect(firstParams.p_limit).toBe(10000)
+    expect(secondParams.p_limit).toBe(5000)
+  })
+
+  it('uses safer initial limit for child-only filter', async () => {
+    const supabase = createSupabaseRpcMock(async () => ({
+      data: { type: 'FeatureCollection', features: [] },
+      error: null,
+    }))
+
+    await fetchAccidentsInBounds(
+      supabase,
+      { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+      {
+        ...DEFAULT_HEATMAP_FILTERS,
+        childFilter: true,
+      },
+    )
+
+    const [, params] = vi.mocked(supabase.rpc).mock.calls[0]
+    expect(params.p_child_filter).toBe(true)
+    expect(params.p_limit).toBe(5000)
+  })
+
+  it('surfaces canceling statement errors when request is not aborted by client', async () => {
+    const supabase = createSupabaseRpcMock(async () => ({
+      data: null,
+      error: { message: 'canceling statement due to user request' },
+    }))
+
+    await expect(
+      fetchAccidentsInBounds(
+        supabase,
+        { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+        DEFAULT_HEATMAP_FILTERS,
+      ),
+    ).rejects.toThrow('事故データの取得に失敗しました: canceling statement due to user request')
+
+    expect(supabase.rpc).toHaveBeenCalledTimes(4)
   })
 })

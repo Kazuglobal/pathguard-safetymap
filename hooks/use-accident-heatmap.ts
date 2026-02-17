@@ -11,6 +11,22 @@ import {
   type AccidentGeoJSON,
 } from '@/lib/traffic-accident-heatmap'
 
+function isAbortLikeError(error: unknown): boolean {
+  if (!error) return false
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error !== null && 'message' in error
+        ? String((error as { message?: unknown }).message ?? '')
+        : String(error)
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('aborterror') ||
+    lower.includes('operation was aborted') ||
+    lower.includes('the operation was aborted')
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Return type
 // ---------------------------------------------------------------------------
@@ -65,6 +81,7 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
   const latestRequestIdRef = useRef(0)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isVisibleRef = useRef(isVisible)
+  const inFlightAbortRef = useRef<AbortController | null>(null)
 
   // Keep supabase ref current
   useEffect(() => {
@@ -80,14 +97,22 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
   // Fetch (debounced, latest-wins)
   // ---------------------------------------------------------------------------
 
+  const cancelInFlightFetch = useCallback(() => {
+    if (inFlightAbortRef.current) {
+      inFlightAbortRef.current.abort()
+      inFlightAbortRef.current = null
+    }
+  }, [])
+
   const cancelPendingFetch = useCallback(() => {
     latestRequestIdRef.current += 1
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
       debounceTimerRef.current = null
     }
+    cancelInFlightFetch()
     setIsLoading(false)
-  }, [])
+  }, [cancelInFlightFetch])
 
   const fetchForViewport = useCallback((bounds: ViewportBounds) => {
     if (!isVisibleRef.current) return
@@ -103,6 +128,10 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
       const requestId = latestRequestIdRef.current + 1
       latestRequestIdRef.current = requestId
 
+      cancelInFlightFetch()
+      const abortController = new AbortController()
+      inFlightAbortRef.current = abortController
+
       setIsLoading(true)
       setError(null)
 
@@ -111,6 +140,7 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
           supabaseRef.current,
           bounds,
           filters,
+          { signal: abortController.signal },
         )
 
         // Discard stale response
@@ -119,17 +149,21 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
         setGeoJSON(data)
       } catch (err) {
         if (latestRequestIdRef.current !== requestId) return
+        if (abortController.signal.aborted || isAbortLikeError(err)) return
 
         const message = err instanceof Error ? err.message : '事故データの取得に失敗しました'
         setError(message)
         setGeoJSON(null)
       } finally {
+        if (inFlightAbortRef.current === abortController) {
+          inFlightAbortRef.current = null
+        }
         if (latestRequestIdRef.current === requestId) {
           setIsLoading(false)
         }
       }
     }, FETCH_DEBOUNCE_MS)
-  }, [filters])
+  }, [cancelInFlightFetch, filters])
 
   // ---------------------------------------------------------------------------
   // Filter update (immutable)
@@ -171,8 +205,9 @@ export function useAccidentHeatmap(): UseAccidentHeatmapReturn {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
       }
+      cancelInFlightFetch()
     }
-  }, [])
+  }, [cancelInFlightFetch])
 
   return {
     geoJSON,

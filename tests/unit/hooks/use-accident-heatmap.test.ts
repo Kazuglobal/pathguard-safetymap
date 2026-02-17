@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAccidentHeatmap } from '@/hooks/use-accident-heatmap'
-import { FETCH_DEBOUNCE_MS } from '@/lib/traffic-accident-heatmap'
+import { FETCH_DEBOUNCE_MS, type AccidentGeoJSON } from '@/lib/traffic-accident-heatmap'
 
 vi.mock('@/components/providers/supabase-provider', () => ({
   useSupabase: vi.fn(),
@@ -188,6 +188,119 @@ describe('useAccidentHeatmap', () => {
     })
 
     expect(fetchAccidentsInBounds).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('does not surface abort-like errors as user-facing error', async () => {
+    vi.mocked(fetchAccidentsInBounds).mockRejectedValue(new Error('AbortError'))
+
+    const { result } = renderHook(() => useAccidentHeatmap())
+
+    act(() => {
+      result.current.toggleVisibility()
+      result.current.fetchForViewport({
+        minLng: 139,
+        minLat: 35,
+        maxLng: 140,
+        maxLat: 36,
+      })
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(FETCH_DEBOUNCE_MS)
+      await Promise.resolve()
+    })
+
+    expect(result.current.error).toBeNull()
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('aborts previous in-flight request before starting a new one', async () => {
+    let firstResolve: ((value: AccidentGeoJSON) => void) | null = null
+    const signals: AbortSignal[] = []
+
+    vi.mocked(fetchAccidentsInBounds).mockImplementation(async (_supabase, _bounds, _filters, options) => {
+      const signal = options?.signal as AbortSignal
+      signals.push(signal)
+
+      if (signals.length === 1) {
+        return await new Promise<AccidentGeoJSON>((resolve) => {
+          firstResolve = resolve
+        })
+      }
+
+      return {
+        type: 'FeatureCollection',
+        features: [],
+      }
+    })
+
+    const { result } = renderHook(() => useAccidentHeatmap())
+
+    act(() => {
+      result.current.toggleVisibility()
+      result.current.fetchForViewport({
+        minLng: 139,
+        minLat: 35,
+        maxLng: 140,
+        maxLat: 36,
+      })
+      vi.advanceTimersByTime(FETCH_DEBOUNCE_MS)
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(signals).toHaveLength(1)
+    expect(signals[0]?.aborted).toBe(false)
+
+    act(() => {
+      result.current.fetchForViewport({
+        minLng: 130,
+        minLat: 30,
+        maxLng: 131,
+        maxLat: 31,
+      })
+      vi.advanceTimersByTime(FETCH_DEBOUNCE_MS)
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(signals).toHaveLength(2)
+    expect(signals[0]?.aborted).toBe(true)
+
+    await act(async () => {
+      firstResolve?.({ type: 'FeatureCollection', features: [] })
+      await Promise.resolve()
+    })
+  })
+
+  it('surfaces database cancel errors when not aborted by client', async () => {
+    vi.mocked(fetchAccidentsInBounds).mockRejectedValue(
+      new Error('事故データの取得に失敗しました: canceling statement due to user request'),
+    )
+
+    const { result } = renderHook(() => useAccidentHeatmap())
+
+    act(() => {
+      result.current.toggleVisibility()
+      result.current.fetchForViewport({
+        minLng: 139,
+        minLat: 35,
+        maxLng: 140,
+        maxLat: 36,
+      })
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(FETCH_DEBOUNCE_MS)
+      await Promise.resolve()
+    })
+
+    expect(result.current.error).toBe('事故データの取得に失敗しました: canceling statement due to user request')
     expect(result.current.isLoading).toBe(false)
   })
 })

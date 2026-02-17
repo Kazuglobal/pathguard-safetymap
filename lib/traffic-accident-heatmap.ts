@@ -24,6 +24,10 @@ export interface ViewportBounds {
   maxLat: number
 }
 
+export interface FetchAccidentsOptions {
+  signal?: AbortSignal
+}
+
 /** Properties for a single accident GeoJSON feature */
 export interface AccidentFeatureProperties {
   id: number
@@ -74,6 +78,8 @@ export const CIRCLE_MIN_ZOOM = 13
 
 /** Maximum records per viewport fetch */
 export const MAX_RECORDS_PER_FETCH = 10000
+const CHILD_FILTER_MAX_RECORDS_PER_FETCH = 5000
+const RETRY_LIMIT_FALLBACKS = [5000, 2500, 1000] as const
 
 /** Debounce delay for map move events (ms) */
 export const FETCH_DEBOUNCE_MS = 300
@@ -113,6 +119,28 @@ function normalizeFilters(filters: AccidentHeatmapFilters): AccidentHeatmapFilte
   }
 }
 
+function isAbortLikeMessage(message: string): boolean {
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('aborterror') ||
+    lower.includes('operation was aborted') ||
+    lower.includes('the operation was aborted')
+  )
+}
+
+function isRetriableStatementCancel(message: string): boolean {
+  const lower = message.toLowerCase()
+  if (!lower.includes('canceling statement') && !lower.includes('statement timeout')) {
+    return false
+  }
+  return !isAbortLikeMessage(lower)
+}
+
+function buildLimitCandidates(initialLimit: number): number[] {
+  const candidates = [initialLimit, ...RETRY_LIMIT_FALLBACKS]
+  return [...new Set(candidates.filter((limit) => limit >= 1 && limit <= initialLimit))]
+}
+
 /**
  * Fetch accident GeoJSON for the given viewport bounds and filters.
  * Uses Supabase RPC `get_accidents_in_bbox`.
@@ -121,6 +149,7 @@ export async function fetchAccidentsInBounds(
   supabase: SupabaseClient<Database>,
   bounds: ViewportBounds,
   filters: AccidentHeatmapFilters,
+  options: FetchAccidentsOptions = {},
 ): Promise<AccidentGeoJSON> {
   const normalizedBounds = normalizeBounds(bounds)
   if (!normalizedBounds) {
@@ -128,32 +157,59 @@ export async function fetchAccidentsInBounds(
   }
 
   const normalizedFilters = normalizeFilters(filters)
+  const initialLimit = normalizedFilters.childFilter
+    ? Math.min(MAX_RECORDS_PER_FETCH, CHILD_FILTER_MAX_RECORDS_PER_FETCH)
+    : MAX_RECORDS_PER_FETCH
+  const limitCandidates = buildLimitCandidates(initialLimit)
+  let lastErrorMessage = '不明なエラー'
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not yet in generated types
-  const { data, error } = await (supabase.rpc as any)('get_accidents_in_bbox', {
-    p_min_lng: normalizedBounds.minLng,
-    p_min_lat: normalizedBounds.minLat,
-    p_max_lng: normalizedBounds.maxLng,
-    p_max_lat: normalizedBounds.maxLat,
-    p_min_year: normalizedFilters.minYear,
-    p_max_year: normalizedFilters.maxYear,
-    p_severity_filter: normalizedFilters.severityFilter,
-    p_child_filter: normalizedFilters.childFilter,
-    p_pedestrian_filter: normalizedFilters.pedestrianFilter,
-    p_limit: MAX_RECORDS_PER_FETCH,
-  })
+  for (const limit of limitCandidates) {
+    if (options.signal?.aborted) {
+      throw new Error('AbortError')
+    }
 
-  if (error) {
-    throw new Error(`事故データの取得に失敗しました: ${error.message}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not yet in generated types
+    let request = (supabase.rpc as any)('get_accidents_in_bbox', {
+      p_min_lng: normalizedBounds.minLng,
+      p_min_lat: normalizedBounds.minLat,
+      p_max_lng: normalizedBounds.maxLng,
+      p_max_lat: normalizedBounds.maxLat,
+      p_min_year: normalizedFilters.minYear,
+      p_max_year: normalizedFilters.maxYear,
+      p_severity_filter: normalizedFilters.severityFilter,
+      p_child_filter: normalizedFilters.childFilter,
+      p_pedestrian_filter: normalizedFilters.pedestrianFilter,
+      p_limit: limit,
+    })
+    if (options.signal && typeof request?.abortSignal === 'function') {
+      request = request.abortSignal(options.signal)
+    }
+
+    const { data, error } = await request
+
+    if (error) {
+      const message = String(error.message ?? '')
+      if (options.signal?.aborted || isAbortLikeMessage(message)) {
+        throw new Error('AbortError')
+      }
+
+      lastErrorMessage = message || lastErrorMessage
+      if (isRetriableStatementCancel(message) && limit !== limitCandidates[limitCandidates.length - 1]) {
+        continue
+      }
+      throw new Error(`事故データの取得に失敗しました: ${lastErrorMessage}`)
+    }
+
+    // Validate shape
+    const result = data as unknown as AccidentGeoJSON | null
+    if (!result || result.type !== 'FeatureCollection' || !Array.isArray(result.features)) {
+      return createEmptyFeatureCollection()
+    }
+
+    return result
   }
 
-  // Validate shape
-  const result = data as unknown as AccidentGeoJSON | null
-  if (!result || result.type !== 'FeatureCollection' || !Array.isArray(result.features)) {
-    return createEmptyFeatureCollection()
-  }
-
-  return result
+  throw new Error(`事故データの取得に失敗しました: ${lastErrorMessage}`)
 }
 
 // ---------------------------------------------------------------------------
