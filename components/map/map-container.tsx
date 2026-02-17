@@ -1484,7 +1484,7 @@ export default function MapContainer() {
 
         {/* 事故ヒートマップコントロール */}
         {((!isMobile && !awaitingLocationSelection) || (isMobile && accidentHeatmap.isVisible && !awaitingLocationSelection && !isReportFormOpen)) && (
-          <div className="absolute left-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:left-auto sm:right-3 sm:bottom-6">
+          <div className="absolute left-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] sm:left-auto sm:right-3 sm:bottom-6">
             <AccidentHeatmapControls
               filters={accidentHeatmap.filters}
               onFiltersChange={accidentHeatmap.setFilters}
