@@ -50,7 +50,7 @@ export function AccidentHeatmapControls({
   error,
 }: AccidentHeatmapControlsProps) {
   return (
-    <div className="w-56 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
+    <div className="w-56 max-h-[calc(100svh-12rem)] sm:max-h-none bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden flex flex-col">
       {/* Header with main toggle */}
       <div className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors">
         <button
@@ -73,7 +73,7 @@ export function AccidentHeatmapControls({
 
       {/* Expanded filters (only when visible) */}
       {isVisible && (
-        <div className="px-3 pb-3 space-y-3 border-t border-gray-100 pt-2">
+        <div className="px-3 pb-3 space-y-3 border-t border-gray-100 pt-2 overflow-y-auto overscroll-y-contain min-h-0">
           {/* Status bar */}
           <div className="flex items-center justify-between text-xs text-gray-500">
             {isLoading ? (

@@ -1483,7 +1483,7 @@ export default function MapContainer() {
         />
 
         {/* 事故ヒートマップコントロール */}
-        <div className="absolute right-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] sm:bottom-6">
+        <div className="absolute right-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] sm:bottom-6">
           <AccidentHeatmapControls
             filters={accidentHeatmap.filters}
             onFiltersChange={accidentHeatmap.setFilters}
