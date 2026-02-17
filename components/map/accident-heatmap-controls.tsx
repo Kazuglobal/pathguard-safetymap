@@ -50,7 +50,7 @@ export function AccidentHeatmapControls({
   error,
 }: AccidentHeatmapControlsProps) {
   return (
-    <div className="w-56 max-h-[calc(100svh-12rem)] sm:max-h-none bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden flex flex-col">
+    <div className="w-56 max-w-[calc(100vw-1.5rem)] max-h-[calc(100svh-12rem)] sm:max-h-none bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden flex flex-col">
       {/* Header with main toggle */}
       <div className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors">
         <button

@@ -56,6 +56,13 @@ describe('MapFloatingControls mobile layout', () => {
     expect(screen.queryByRole('button', { name: '現在地で報告' })).not.toBeInTheDocument()
   })
 
+  it('hides mobile action dock when heatmap is visible', () => {
+    renderControls({ isHeatmapVisible: true })
+
+    expect(screen.queryByRole('button', { name: '危険箇所を報告する' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '現在地で報告' })).not.toBeInTheDocument()
+  })
+
   it('hides bottom legend when heatmap is visible on mobile', () => {
     renderControls({ isHeatmapVisible: true })
 

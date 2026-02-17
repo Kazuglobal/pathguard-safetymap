@@ -51,7 +51,7 @@ export default function MapFloatingControls({
   const legendBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
   }
-  const showMobileActionDock = isMobile && !isSelecting && !isReportFormOpen
+  const showMobileActionDock = isMobile && !isSelecting && !isReportFormOpen && !isHeatmapVisible
   const showLegend = !isMobile || (!isSelecting && !isHeatmapVisible)
 
   return (
