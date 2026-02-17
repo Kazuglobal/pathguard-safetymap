@@ -243,7 +243,7 @@ export function buildAccidentPopupContent(properties: Record<string, unknown>): 
     child.style.margin = '4px 0 0'
     child.style.fontSize = '11px'
     child.style.color = '#DC2626'
-    child.textContent = '子供関与'
+    child.textContent = '24歳以下関与（年齢区分）'
     root.appendChild(child)
   }
 
