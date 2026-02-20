@@ -23,6 +23,12 @@ Run a strict, senior-level review first. Prioritize correctness, regression risk
 - Include impact, concrete evidence, and file references (`path:line`).
 - If no findings exist, state that explicitly.
 - Call out residual risks and test gaps.
+- Evaluate and report the 5-point release rubric with `✅` or `⚠️`:
+  - Security (injection, auth leaks)
+  - Performance (N+1, unnecessary rerenders)
+  - Maintainability (readability in 6 months)
+  - Edge cases (null, empty arrays, concurrency)
+  - Overengineering (YAGNI violations)
 
 4. Decide fix execution.
 - If the request includes fixing (for example, "指摘を修正"), implement directly.
@@ -45,18 +51,22 @@ Run a strict, senior-level review first. Prioritize correctness, regression risk
 ## Review Checklist
 
 - Behavioral correctness and regressions
+- Security (injection, auth leaks, privilege boundaries)
+- Performance (query shape, N+1, render churn)
 - Edge cases and state transitions
 - Accessibility (`aria-*`, keyboard, semantics)
 - Responsive layout (overflow, clipping, wrapping)
 - Type/runtime safety
 - Test coverage for changed behavior
 - Maintainability and duplication
+- Overengineering / YAGNI
 
 ## Output Contract
 
 Use this structure for responses:
 
 1. `Findings` (required, severity-ordered, with file references)
-2. `Open Questions / Assumptions` (only when needed)
-3. `Validation` (commands and pass/fail summary)
-4. `Change Summary` (only after findings/fixes)
+2. `5-Point Gate` (required, each item must be `✅` or `⚠️`)
+3. `Open Questions / Assumptions` (only when needed)
+4. `Validation` (commands and pass/fail summary)
+5. `Change Summary` (only after findings/fixes)

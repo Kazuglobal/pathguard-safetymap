@@ -30,6 +30,9 @@ import { isValidCoordinates } from "@/lib/coordinates"
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
+import { useAccidentStats } from "@/hooks/use-accident-stats"
+import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
+import { X } from "lucide-react"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -262,6 +265,14 @@ export default function MapContainer() {
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
+
+  // --- Accident Statistics for clicked location ---
+  const {
+    stats: clickedLocationStats,
+    status: clickedLocationStatsStatus,
+    fetchStats: fetchClickedLocationStats,
+    reset: resetClickedLocationStats,
+  } = useAccidentStats()
 
   const destroyAllMapImagePopups = useCallback(() => {
     const popupRefs = mapImagePopupRefs.current
@@ -692,8 +703,19 @@ export default function MapContainer() {
         description: "新しい位置に報告地点を変更しました"
       });
     } else {
-      // その他の場合：何もしない（通常の地図操作）
-      console.log("Normal map interaction: No action taken");
+      // 通常の地図クリック時に事故統計を取得・表示
+      console.log("Normal map click: Fetching accident statistics");
+      fetchClickedLocationStats({
+        latitude: coordinates[1],
+        longitude: coordinates[0],
+        radiusMeters: 300,
+        years: 5,
+      });
+
+      // サイドバーを開く（モバイル時）
+      if (isMobile) {
+        setIsSidebarOpen(true);
+      }
     }
   };
   // --- ▲▲▲ ---
@@ -1428,6 +1450,52 @@ export default function MapContainer() {
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
         />
+
+        {/* 事故統計パネル - 地図クリック時に表示 */}
+        {clickedLocationStatsStatus !== 'idle' && !awaitingLocationSelection && !isReportFormOpen && (
+          <div className={`absolute z-40 ${
+            isMobile
+              ? 'bottom-4 left-4 right-4 max-h-[60vh]'
+              : 'top-24 right-4 w-96 max-h-[calc(100vh-8rem)]'
+          } overflow-y-auto`}>
+            {clickedLocationStatsStatus === 'loading' && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-lg">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                  <span className="ml-3 text-gray-600">事故統計を取得中...</span>
+                </div>
+              </div>
+            )}
+            {clickedLocationStatsStatus === 'error' && (
+              <div className="bg-white rounded-xl border border-red-200 p-4 shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-red-600 font-medium">事故統計の取得に失敗しました</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetClickedLocationStats}
+                    className="h-8 w-8 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            {clickedLocationStatsStatus === 'loaded' && clickedLocationStats && (
+              <div className="relative bg-white rounded-xl shadow-lg border border-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetClickedLocationStats}
+                  className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-white/90 hover:bg-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                <AccidentStatsPanel stats={clickedLocationStats} mode="full" />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (

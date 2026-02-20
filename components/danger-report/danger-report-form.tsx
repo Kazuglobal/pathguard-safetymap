@@ -27,7 +27,7 @@ import {
 import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
 import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
-import { AccidentStatsPanel, AccidentStatsLoading } from "./accident-stats-panel"
+import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 
 interface DangerReportFormProps {
@@ -1083,8 +1083,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
       // Enrich report with accident statistics (fire-and-forget)
       // Call library function directly to avoid mutating hook state post-submit
-      if (result?.reportId && supabase) {
-        enrichReportWithAccidents(supabase, result.reportId).catch((err) => {
+      if (result?.reportId) {
+        enrichReportWithAccidents(result.reportId).catch((err) => {
           console.warn("事故統計の保存に失敗:", err)
         })
       }
