@@ -1,162 +1,110 @@
-"use client"
+/**
+ * use-accident-stats.ts
+ * 交通事故統計データのReact Hook
+ * PathGuardian - 通学路安全マップ
+ */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { useSupabase } from '@/components/providers/supabase-provider'
+"use client";
+
+import { useState, useCallback, useRef } from "react";
 import {
+  AccidentStats,
   getAccidentStatsRPC,
   enrichReportWithAccidents,
-  type AccidentStats,
-  type AccidentStatsParams,
-} from '@/lib/traffic-accident-data'
+} from "@/lib/traffic-accident-data";
 
-/** Hook status states */
-export type AccidentStatsStatus = 'idle' | 'loading' | 'loaded' | 'error'
+export type AccidentStatsStatus = "idle" | "loading" | "loaded" | "error";
+type Status = AccidentStatsStatus;
 
-/** Hook return interface */
-export interface UseAccidentStatsReturn {
-  stats: AccidentStats | null
-  status: AccidentStatsStatus
-  error: string | null
-  isLoading: boolean
-  hasData: boolean
-  fetchStats: (params: AccidentStatsParams) => Promise<AccidentStats | null>
-  enrichReport: (reportId: string) => Promise<AccidentStats | null>
-  reset: () => void
-}
+export function useAccidentStats() {
+  const [stats, setStats] = useState<AccidentStats | null>(null);
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const latestRequestIdRef = useRef(0);
 
-/**
- * React Hook for managing accident statistics
- *
- * Features:
- * - Fetch accident stats for any location
- * - Enrich danger reports with accident data
- * - Automatic state management (loading, loaded, error)
- * - Latest request wins (prevents stale async updates)
- * - Reset functionality
- *
- * @example
- * ```tsx
- * const { stats, status, fetchStats } = useAccidentStats()
- *
- * useEffect(() => {
- *   fetchStats({ latitude: 35.6595, longitude: 139.7004 })
- * }, [])
- *
- * if (status === 'loading') return <Loading />
- * if (stats) return <AccidentStatsPanel stats={stats} />
- * ```
- */
-export function useAccidentStats(): UseAccidentStatsReturn {
-  // State
-  const [stats, setStats] = useState<AccidentStats | null>(null)
-  const [status, setStatus] = useState<AccidentStatsStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const beginRequest = useCallback(() => {
+    const requestId = latestRequestIdRef.current + 1;
+    latestRequestIdRef.current = requestId;
+    setStatus("loading");
+    setError(null);
+    return requestId;
+  }, []);
 
-  // Get Supabase client from provider
-  const { supabase } = useSupabase()
+  const isLatestRequest = useCallback(
+    (requestId: number) => latestRequestIdRef.current === requestId,
+    []
+  );
 
-  // Refs - avoid re-creates and stale async commits
-  const supabaseRef = useRef(supabase)
-  const latestRequestIdRef = useRef(0)
+  /** 座標を指定して近隣事故統計を取得 */
+  const fetchStats = useCallback(
+    async (params: {
+      latitude: number;
+      longitude: number;
+      radiusMeters?: number;
+      years?: number;
+    }) => {
+      const requestId = beginRequest();
 
-  // Update ref when supabase changes
-  useEffect(() => {
-    supabaseRef.current = supabase
-  }, [supabase])
+      try {
+        // Edge Function経由ではなくRPC直接呼び出し（高速・コスト0）
+        const data = await getAccidentStatsRPC(params);
+        if (!isLatestRequest(requestId)) return null;
+        setStats(data);
+        setStatus("loaded");
+        return data;
+      } catch (e) {
+        if (!isLatestRequest(requestId)) return null;
+        const msg = e instanceof Error ? e.message : "統計取得に失敗しました";
+        setError(msg);
+        setStatus("error");
+        return null;
+      }
+    },
+    [beginRequest, isLatestRequest]
+  );
 
-  /**
-   * Fetch accident statistics for a location
-   */
-  const fetchStats = useCallback(async (params: AccidentStatsParams): Promise<AccidentStats | null> => {
-    const requestId = latestRequestIdRef.current + 1
-    latestRequestIdRef.current = requestId
+  /** レポートIDを指定して事故統計を付与 & 取得 */
+  const enrichReport = useCallback(async (reportId: string) => {
+    const requestId = beginRequest();
 
     try {
-      setStatus('loading')
-      setError(null)
-
-      const result = await getAccidentStatsRPC(supabaseRef.current, params)
-
-      // Ignore stale responses when a newer request has started.
-      if (latestRequestIdRef.current !== requestId) {
-        return result
+      const data = await enrichReportWithAccidents(reportId);
+      if (!isLatestRequest(requestId)) return null;
+      if (!data) {
+        setError("統計付与に失敗しました");
+        setStatus("error");
+        return null;
       }
-
-      setStats(result)
-      setStatus('loaded')
-      return result
-    } catch (err) {
-      // Ignore stale errors when a newer request has started.
-      if (latestRequestIdRef.current !== requestId) {
-        return null
-      }
-
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch accident statistics'
-      setError(errorMessage)
-      setStatus('error')
-      setStats(null)
-      return null
+      setStats(data);
+      setStatus("loaded");
+      return data;
+    } catch (e) {
+      if (!isLatestRequest(requestId)) return null;
+      const msg = e instanceof Error ? e.message : "統計付与に失敗しました";
+      setError(msg);
+      setStatus("error");
+      return null;
     }
-  }, []) // Empty deps - uses refs only
+  }, [beginRequest, isLatestRequest]);
 
-  /**
-   * Enrich a danger report with accident statistics
-   */
-  const enrichReport = useCallback(async (reportId: string): Promise<AccidentStats | null> => {
-    const requestId = latestRequestIdRef.current + 1
-    latestRequestIdRef.current = requestId
-
-    try {
-      setStatus('loading')
-      setError(null)
-
-      const result = await enrichReportWithAccidents(supabaseRef.current, reportId)
-
-      // Ignore stale responses when a newer request has started.
-      if (latestRequestIdRef.current !== requestId) {
-        return result.accident_stats
-      }
-
-      setStats(result.accident_stats)
-      setStatus('loaded')
-      return result.accident_stats
-    } catch (err) {
-      // Ignore stale errors when a newer request has started.
-      if (latestRequestIdRef.current !== requestId) {
-        return null
-      }
-
-      const errorMessage = err instanceof Error ? err.message : 'Failed to enrich report with accident data'
-      setError(errorMessage)
-      setStatus('error')
-      setStats(null)
-      return null
-    }
-  }, []) // Empty deps - uses refs only
-
-  /**
-   * Reset to initial state
-   */
+  /** リセット */
   const reset = useCallback(() => {
-    // Invalidate any in-flight requests so they cannot commit stale state.
-    latestRequestIdRef.current += 1
-    setStats(null)
-    setStatus('idle')
-    setError(null)
-  }, [])
-
-  // Derived state
-  const isLoading = status === 'loading'
-  const hasData = stats !== null
+    // invalidate in-flight requests
+    latestRequestIdRef.current += 1;
+    setStats(null);
+    setStatus("idle");
+    setError(null);
+  }, []);
 
   return {
     stats,
     status,
     error,
-    isLoading,
-    hasData,
+    isLoading: status === "loading",
+    isLoaded: status === "loaded",
+    hasData: stats !== null,
     fetchStats,
     enrichReport,
     reset,
-  }
+  };
 }

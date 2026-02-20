@@ -1,7 +1,7 @@
 "use client"
 
 import { Car } from "lucide-react"
-import { AccidentStatsPanel, AccidentStatsLoading } from "@/components/danger-report/accident-stats-panel"
+import AccidentStatsPanel, { AccidentStatsLoading } from "@/components/danger-report/accident-stats-panel"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { DangerReport } from "@/lib/types"
@@ -59,31 +59,9 @@ export function ReportAccidentSection({
           <AccidentStatsPanel
             stats={stats}
             mode="full"
-            allowApproximateNavigation
-            onAccidentClick={(accident) => {
-              if (!onAccidentNavigate) return
-              const latitude = toCoordinateNumber(accident.latitude)
-              const longitude = toCoordinateNumber(accident.longitude)
-
-              if (
-                latitude != null &&
-                longitude != null &&
-                isValidCoordinates(latitude, longitude)
-              ) {
-                onAccidentNavigate([longitude, latitude])
-                return
-              }
-
-              if (isValidCoordinates(report.latitude, report.longitude)) {
-                toast({
-                  title: "事故地点の座標不足",
-                  description: "近隣事故の正確な座標がないため、報告地点へ移動しました。",
-                })
-                onAccidentNavigate([report.longitude, report.latitude])
-              }
-            }}
           />
         )}
+
       </div>
     </div>
   )

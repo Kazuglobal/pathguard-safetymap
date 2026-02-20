@@ -150,7 +150,7 @@ export function AccidentHeatmapControls({
             <div className="flex items-center gap-1.5">
               <Baby className="h-3.5 w-3.5 text-pink-500" />
               <Label htmlFor="child-filter" className="text-xs text-gray-600 cursor-pointer">
-                子供関与のみ
+                子ども関与のみ（補充票確認分）
               </Label>
             </div>
             <Switch

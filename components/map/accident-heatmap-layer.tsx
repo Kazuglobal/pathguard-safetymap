@@ -27,6 +27,7 @@ interface PopupDisplayData {
   fatalities: number
   injuries: number
   hasChild: boolean
+  hasYoung: boolean
   hasPedestrian: boolean
 }
 
@@ -193,6 +194,7 @@ export function toPopupDisplayData(properties: Record<string, unknown>): PopupDi
     fatalities: parseNonNegativeNumber(properties.fatalities),
     injuries: parseNonNegativeNumber(properties.injuries),
     hasChild: parseBoolean(properties.hasChild),
+    hasYoung: parseBoolean(properties.hasYoung),
     hasPedestrian: parseBoolean(properties.hasPedestrian),
   }
 }
@@ -243,8 +245,17 @@ export function buildAccidentPopupContent(properties: Record<string, unknown>): 
     child.style.margin = '4px 0 0'
     child.style.fontSize = '11px'
     child.style.color = '#DC2626'
-    child.textContent = '子供関与'
+    child.textContent = '子ども関与（補充票確認分）'
     root.appendChild(child)
+  }
+
+  if (data.hasYoung) {
+    const young = document.createElement('p')
+    young.style.margin = '2px 0 0'
+    young.style.fontSize = '11px'
+    young.style.color = '#7C3AED'
+    young.textContent = '若年者関与（24歳以下コード）'
+    root.appendChild(young)
   }
 
   if (data.hasPedestrian) {

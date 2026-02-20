@@ -67,7 +67,7 @@ export default function DangerReportDetailModal({
     fetchStats({
       latitude: report.latitude,
       longitude: report.longitude,
-      radius_meters: 300,
+      radiusMeters: 300,
       years: 5,
     })
   }, [report?.id, report?.latitude, report?.longitude, fetchStats, resetAccidentStats])

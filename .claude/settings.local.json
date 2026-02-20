@@ -96,7 +96,13 @@
       "Bash(gh issue view:*)",
       "Bash(gh api:*)",
       "Bash(gh issue close:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(pnpm vitest:*)",
+      "Bash(pnpm tsc:*)",
+      "WebFetch(domain:online-marketing.jp)",
+      "WebFetch(domain:shubihiro.com)",
+      "Bash(python3:*)",
+      "Bash(npm:*)"
     ],
     "deny": []
   }

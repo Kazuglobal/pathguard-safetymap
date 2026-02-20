@@ -39,9 +39,13 @@ const slides: CarouselSlide[] = [
 ]
 
 export function HeroCarousel() {
+  const autoplay = React.useMemo(
+    () => Autoplay({ delay: 5000, stopOnInteraction: false }) as any,
+    []
+  )
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: true, align: "center" },
-    [Autoplay({ delay: 5000, stopOnInteraction: false })]
+    [autoplay]
   )
   const [selectedIndex, setSelectedIndex] = React.useState(0)
 

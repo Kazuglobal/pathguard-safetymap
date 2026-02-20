@@ -103,8 +103,17 @@ env.defaults.json
 .windsurf/
 .zencoder/
 skills/
+.worktrees/
 
 # -----------------------------------------
 # 参照用リポジトリ
 # -----------------------------------------
 everything-claude-code/
+
+# -----------------------------------------
+# 大容量ローカルデータ / 生成物
+# -----------------------------------------
+honhyo_*.csv
+honhyo_part*.csv
+twitter-buzz-agents/
+header.txt

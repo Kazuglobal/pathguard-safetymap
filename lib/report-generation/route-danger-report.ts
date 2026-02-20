@@ -183,7 +183,7 @@ function calculateFocusedBoundingBox(
 ): BoundingBox | null {
   const allPoints: [number, number][] = [
     ...routeCoordinates,
-    ...dangerPoints.map((point) => [point.lng, point.lat]),
+    ...dangerPoints.map((point): [number, number] => [point.lng, point.lat]),
   ]
 
   if (allPoints.length === 0) {
