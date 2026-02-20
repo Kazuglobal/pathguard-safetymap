@@ -37,7 +37,6 @@ export interface AccidentFeatureProperties {
   year: number
   type: string | null
   hasChild: boolean | null
-  hasYoung: boolean | null
   hasPedestrian: boolean | null
   date: string | null
   weather: string | null
@@ -125,8 +124,7 @@ function isAbortLikeMessage(message: string): boolean {
   return (
     lower.includes('aborterror') ||
     lower.includes('operation was aborted') ||
-    lower.includes('the operation was aborted') ||
-    lower.includes('canceling statement due to user request')
+    lower.includes('the operation was aborted')
   )
 }
 

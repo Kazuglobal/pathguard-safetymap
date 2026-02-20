@@ -277,4 +277,30 @@ describe('useAccidentHeatmap', () => {
       await Promise.resolve()
     })
   })
+
+  it('surfaces database cancel errors when not aborted by client', async () => {
+    vi.mocked(fetchAccidentsInBounds).mockRejectedValue(
+      new Error('事故データの取得に失敗しました: canceling statement due to user request'),
+    )
+
+    const { result } = renderHook(() => useAccidentHeatmap())
+
+    act(() => {
+      result.current.toggleVisibility()
+      result.current.fetchForViewport({
+        minLng: 139,
+        minLat: 35,
+        maxLng: 140,
+        maxLat: 36,
+      })
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(FETCH_DEBOUNCE_MS)
+      await Promise.resolve()
+    })
+
+    expect(result.current.error).toBe('事故データの取得に失敗しました: canceling statement due to user request')
+    expect(result.current.isLoading).toBe(false)
+  })
 })

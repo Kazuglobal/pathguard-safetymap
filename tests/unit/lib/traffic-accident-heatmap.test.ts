@@ -145,4 +145,21 @@ describe('traffic-accident-heatmap', () => {
     expect(params.p_child_filter).toBe(true)
     expect(params.p_limit).toBe(5000)
   })
+
+  it('surfaces canceling statement errors when request is not aborted by client', async () => {
+    const supabase = createSupabaseRpcMock(async () => ({
+      data: null,
+      error: { message: 'canceling statement due to user request' },
+    }))
+
+    await expect(
+      fetchAccidentsInBounds(
+        supabase,
+        { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+        DEFAULT_HEATMAP_FILTERS,
+      ),
+    ).rejects.toThrow('事故データの取得に失敗しました: canceling statement due to user request')
+
+    expect(supabase.rpc).toHaveBeenCalledTimes(4)
+  })
 })

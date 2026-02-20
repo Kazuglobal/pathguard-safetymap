@@ -1,8 +1,6 @@
--- Optimize child-only heatmap filtering to avoid statement timeouts.
--- Key points:
--- 1) Keep child fallback logic (involves_child OR age code = 1).
--- 2) Remove ORDER BY in RPC payload query to avoid large sorts.
--- 3) Add partial indexes for child-fallback predicates.
+-- Restore public read behavior for accident heatmap RPC.
+-- The dataset is open data, so function should execute with owner privileges
+-- while keeping a fixed search_path.
 
 CREATE OR REPLACE FUNCTION public.get_accidents_in_bbox(
   p_min_lng DOUBLE PRECISION,
@@ -19,8 +17,9 @@ CREATE OR REPLACE FUNCTION public.get_accidents_in_bbox(
 RETURNS JSON
 LANGUAGE plpgsql
 STABLE
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public
+SET statement_timeout = '12s'
 AS $$
 DECLARE
   result JSON;
@@ -57,7 +56,6 @@ BEGIN
 
   v_limit := LEAST(GREATEST(COALESCE(p_limit, 10000), 1), 10000);
   IF p_child_filter IS TRUE THEN
-    -- Child-only filtering expands predicates and tends to be heavier.
     v_limit := LEAST(v_limit, 5000);
   END IF;
 
@@ -130,14 +128,3 @@ $$;
 
 REVOKE ALL ON FUNCTION public.get_accidents_in_bbox FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_accidents_in_bbox TO anon, authenticated;
-
--- NOTE:
--- Partial index creation is intentionally excluded from this auto migration.
--- On large production tables, non-concurrent CREATE INDEX can block writes.
--- If needed, create these indexes in a dedicated maintenance window using:
---   CREATE INDEX CONCURRENTLY idx_traffic_accidents_child_fallback_year_severity
---     ON public.traffic_accidents(source_year, severity_code)
---     WHERE (involves_child IS TRUE OR party_a_age = 1 OR party_b_age = 1);
---   CREATE INDEX CONCURRENTLY idx_traffic_accidents_child_fallback_location_gist
---     ON public.traffic_accidents USING GIST(location)
---     WHERE (involves_child IS TRUE OR party_a_age = 1 OR party_b_age = 1);
