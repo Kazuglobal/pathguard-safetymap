@@ -159,7 +159,7 @@ export function HiyariHatReport() {
                   )}
 
                   {/* 場所タグ */}
-                  {report.latitude && report.longitude && (
+                  {report.latitude != null && report.longitude != null && (
                     <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
                       <MapPin className="w-3 h-3" />
                       {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}

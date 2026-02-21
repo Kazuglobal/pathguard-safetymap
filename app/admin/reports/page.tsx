@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -48,7 +47,7 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
 export default function AdminReportsPage() {
   const [reports, setReports] = useState<AdminReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set())
   const { toast } = useToast()
 
   const fetchReports = useCallback(async () => {
@@ -75,7 +74,11 @@ export default function AdminReportsPage() {
 
   const handleStatusChange = useCallback(
     async (reportId: string, newStatus: string) => {
-      setUpdatingId(reportId)
+      setUpdatingIds((prev) => {
+        const next = new Set(prev)
+        next.add(reportId)
+        return next
+      })
       try {
         const res = await fetch("/api/admin/reports", {
           method: "PATCH",
@@ -97,7 +100,11 @@ export default function AdminReportsPage() {
           variant: "destructive",
         })
       } finally {
-        setUpdatingId(null)
+        setUpdatingIds((prev) => {
+          const next = new Set(prev)
+          next.delete(reportId)
+          return next
+        })
       }
     },
     [toast]
@@ -165,7 +172,7 @@ export default function AdminReportsPage() {
                         <User className="w-3 h-3" />
                         {report.profiles?.display_name ?? "匿名"}
                       </span>
-                      {report.latitude && report.longitude && (
+                      {report.latitude != null && report.longitude != null && (
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
@@ -181,7 +188,7 @@ export default function AdminReportsPage() {
                     <Select
                       value={report.status}
                       onValueChange={(val) => handleStatusChange(report.id, val)}
-                      disabled={updatingId === report.id}
+                      disabled={updatingIds.has(report.id)}
                     >
                       <SelectTrigger className="w-32 h-8 text-xs">
                         <SelectValue />
