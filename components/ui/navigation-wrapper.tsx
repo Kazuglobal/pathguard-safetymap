@@ -24,7 +24,7 @@ export function NavigationWrapper({ user, onLogout, isLoggingOut = false, childr
   const isLandingPage = pathname === '/landing'
 
   // マップページはフルスクリーン表示（ナビゲーションはオーバーレイ）
-  const isMapPage = pathname === '/map'
+  const isMapPage = pathname === '/map' || pathname === '/3d-route-poc'
 
   // マップページ以外は通常のパディング
   const mainPaddingClass = showNavigation && !isMapPage ? "pb-24 md:pb-0" : undefined

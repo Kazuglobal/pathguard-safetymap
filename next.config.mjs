@@ -46,6 +46,9 @@ const nextConfig = {
     NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: resolveEnv('NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN', ''),
     NEXT_PUBLIC_SUPABASE_URL: resolveEnv('NEXT_PUBLIC_SUPABASE_URL', ''),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: resolveEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', ''),
+    // 3D Route PoC
+    NEXT_PUBLIC_CESIUM_ION_TOKEN: resolveEnv('NEXT_PUBLIC_CESIUM_ION_TOKEN', ''),
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: resolveEnv('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
   },
   
   // Allow remote images (Supabase storage + Unsplash)
@@ -81,6 +84,10 @@ const nextConfig = {
     if (isServer) {
       config.externals = config.externals || []
       // Don't externalize @supabase/ssr - it needs to be bundled
+      // cesiumはブラウザ専用 - SSRバンドルから除外
+      if (Array.isArray(config.externals)) {
+        config.externals.push('cesium')
+      }
     }
     
     // React 19 - JSX runtime aliases removed to prevent webpack conflicts
