@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef } from 'react'
+import type { Viewer as CesiumViewerType } from 'cesium'
 
 // 東京・渋谷駅周辺のデフォルト座標
 const POC_LON = 139.7006
@@ -23,8 +24,7 @@ export default function CesiumViewer({
   location: Location | null
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const viewerRef = useRef<any>(null)
+  const viewerRef = useRef<CesiumViewerType | null>(null)
 
   // ① 初期化: マウント時1回のみ
   useEffect(() => {
@@ -33,15 +33,18 @@ export default function CesiumViewer({
 
     async function init() {
       // Turbopackは DefinePlugin 不可のため、import前に手動設定
-      ;(window as any).CESIUM_BASE_URL = '/cesium'
+      ;(window as Window & { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL = '/cesium'
 
       const Cesium = await import('cesium')
 
       // TurbopackではCSS importが動作しないため動的注入
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
+      if (!document.head.querySelector('link[data-cesium-widgets="true"]')) {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = '/cesium/Widgets/widgets.css'
+        link.dataset.cesiumWidgets = 'true'
+        document.head.appendChild(link)
+      }
 
       if (destroyed || !containerRef.current) return
 

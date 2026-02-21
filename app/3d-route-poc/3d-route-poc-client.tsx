@@ -1,6 +1,6 @@
 "use client"
 import dynamic from 'next/dynamic'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import TimeOfDaySlider from '@/components/3d-route/time-of-day-slider'
 import AddressSearch, { GeoResult } from '@/components/3d-route/address-search'
 
@@ -40,6 +40,7 @@ export default function ThreeDRoutePocClient() {
   const [hourOfDay, setHourOfDay] = useState(9)
   const [location, setLocation] = useState<{ lon: number; lat: number } | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('3d')
+  const [streetViewInitialized, setStreetViewInitialized] = useState(false)
 
   const handleSelect = (result: GeoResult) => {
     setLocation({ lon: result.lon, lat: result.lat })
@@ -47,25 +48,38 @@ export default function ThreeDRoutePocClient() {
 
   const show3d = viewMode === '3d' || viewMode === 'split'
   const showStreet = viewMode === 'street' || viewMode === 'split'
+  const showStreetComponent = showStreet || streetViewInitialized
+
+  useEffect(() => {
+    if (showStreet) {
+      setStreetViewInitialized(true)
+    }
+  }, [showStreet])
+
+  const threeDPaneClass =
+    viewMode === 'split'
+      ? 'w-1/2 h-full'
+      : viewMode === '3d'
+        ? 'w-full h-full'
+        : 'w-0 h-full overflow-hidden pointer-events-none'
+
+  const streetPaneClass =
+    viewMode === 'split'
+      ? 'w-1/2 h-full border-l border-white/10'
+      : viewMode === 'street'
+        ? 'w-full h-full'
+        : 'w-0 h-full overflow-hidden pointer-events-none'
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
       {/* メインビューポート */}
       <div className="absolute inset-0 flex">
-        {show3d && (
-          <div className={viewMode === 'split' ? 'w-1/2 h-full' : 'w-full h-full'}>
-            <CesiumViewer hourOfDay={hourOfDay} location={location} />
-          </div>
-        )}
-        {showStreet && (
-          <div
-            className={
-              viewMode === 'split'
-                ? 'w-1/2 h-full border-l border-white/10'
-                : 'w-full h-full'
-            }
-          >
-            <StreetViewPanel location={location} />
+        <div className={threeDPaneClass} aria-hidden={!show3d}>
+          <CesiumViewer hourOfDay={hourOfDay} location={location} />
+        </div>
+        {showStreetComponent && (
+          <div className={streetPaneClass} aria-hidden={!showStreet}>
+            <StreetViewPanel location={location} active={showStreet} />
           </div>
         )}
       </div>

@@ -115,9 +115,14 @@ async function parseFunctionInvokeError(error: unknown): Promise<ParsedFunctionE
     return { message: fallbackMessage }
   }
 
+  const directMessage =
+    typeof error.message === "string" && error.message.trim().length > 0
+      ? error.message
+      : fallbackMessage
+
   const context = error.context
   if (!(context instanceof Response)) {
-    return { message: fallbackMessage }
+    return { message: directMessage }
   }
 
   const status = context.status
@@ -132,7 +137,7 @@ async function parseFunctionInvokeError(error: unknown): Promise<ParsedFunctionE
   const bodyMessage = extractErrorMessageFromBody(responseBody)
   const message =
     bodyMessage ||
-    (status ? `Edge Function error (${status}${statusText ? ` ${statusText}` : ""})` : fallbackMessage)
+    (status ? `Edge Function error (${status}${statusText ? ` ${statusText}` : ""})` : directMessage)
 
   return {
     message,

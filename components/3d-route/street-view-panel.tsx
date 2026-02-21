@@ -3,16 +3,50 @@ import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   location: { lon: number; lat: number } | null
+  active: boolean
+}
+
+interface StreetViewPanoramaLike {
+  setPosition: (position: { lat: number; lng: number }) => void
+}
+
+interface StreetViewServiceLike {
+  getPanorama: (
+    request: { location: { lat: number; lng: number }; radius: number },
+    callback: (data: unknown, status: string) => void
+  ) => void
+}
+
+interface MapsLike {
+  StreetViewService: new () => StreetViewServiceLike
+  StreetViewPanorama: new (
+    container: Element,
+    options: {
+      position: { lat: number; lng: number }
+      pov: { heading: number; pitch: number }
+      zoom: number
+      addressControl: boolean
+      showRoadLabels: boolean
+    }
+  ) => StreetViewPanoramaLike
+  StreetViewStatus: {
+    OK: string
+  }
+}
+
+function getMapsApi(): MapsLike | null {
+  const g = (window as Window & { google?: { maps?: MapsLike } }).google
+  return g?.maps ?? null
 }
 
 const DEFAULT_LAT = 35.6585
 const DEFAULT_LON = 139.7006
 
-export default function StreetViewPanel({ location }: Props) {
+export default function StreetViewPanel({ location, active }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const panoramaRef = useRef<any>(null)
+  const panoramaRef = useRef<StreetViewPanoramaLike | null>(null)
   const apiLoadedRef = useRef(false)
+  const requestIdRef = useRef(0)
   const [hasError, setHasError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -33,34 +67,31 @@ export default function StreetViewPanel({ location }: Props) {
 
         if (cancelled || !containerRef.current) return
 
+        const maps = getMapsApi()
+        if (!maps) throw new Error('Google Maps API not available')
+
         const lat = location?.lat ?? DEFAULT_LAT
         const lng = location?.lon ?? DEFAULT_LON
+        const requestId = ++requestIdRef.current
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sv = new (window as any).google.maps.StreetViewService()
+        const sv = new maps.StreetViewService()
         sv.getPanorama(
           { location: { lat, lng }, radius: 50 },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (data: any, status: any) => {
-            if (cancelled) return
+          (_data: unknown, status: string) => {
+            if (cancelled || requestId !== requestIdRef.current) return
             setIsLoading(false)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const OK = (window as any).google.maps.StreetViewStatus.OK
-            if (status !== OK) {
+            if (status !== maps.StreetViewStatus.OK) {
               setHasError(true)
               return
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            panoramaRef.current = new (window as any).google.maps.StreetViewPanorama(
-              containerRef.current!,
-              {
-                position: { lat, lng },
-                pov: { heading: 0, pitch: 0 },
-                zoom: 0,
-                addressControl: false,
-                showRoadLabels: true,
-              }
-            )
+            setHasError(false)
+            panoramaRef.current = new maps.StreetViewPanorama(containerRef.current!, {
+              position: { lat, lng },
+              pov: { heading: 0, pitch: 0 },
+              zoom: 0,
+              addressControl: false,
+              showRoadLabels: true,
+            })
           }
         )
       } catch {
@@ -77,30 +108,33 @@ export default function StreetViewPanel({ location }: Props) {
 
   // ② 場所変更: location変化時にパノラマを移動
   useEffect(() => {
-    if (!apiLoadedRef.current || !location) return
+    if (!active || !apiLoadedRef.current || !location) return
+
+    const maps = getMapsApi()
+    if (!maps) return
 
     const lat = location.lat
     const lng = location.lon
+    const requestId = ++requestIdRef.current
     setHasError(false)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const google = (window as any).google
-    if (!google?.maps) return
-
-    const sv = new google.maps.StreetViewService()
+    setIsLoading(true)
+    const sv = new maps.StreetViewService()
     sv.getPanorama(
       { location: { lat, lng }, radius: 50 },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (data: any, status: any) => {
-        if (status !== google.maps.StreetViewStatus.OK) {
+      (_data: unknown, status: string) => {
+        if (requestId !== requestIdRef.current) return
+
+        setIsLoading(false)
+        if (status !== maps.StreetViewStatus.OK) {
           setHasError(true)
           return
         }
+
         if (panoramaRef.current) {
           panoramaRef.current.setPosition({ lat, lng })
         } else if (containerRef.current) {
           // パノラマ未作成の場合 (デフォルト地点がStreetViewなしだったケース)
-          panoramaRef.current = new google.maps.StreetViewPanorama(
+          panoramaRef.current = new maps.StreetViewPanorama(
             containerRef.current,
             {
               position: { lat, lng },
@@ -113,7 +147,7 @@ export default function StreetViewPanel({ location }: Props) {
         }
       }
     )
-  }, [location])
+  }, [active, location])
 
   return (
     <div className="relative w-full h-full">

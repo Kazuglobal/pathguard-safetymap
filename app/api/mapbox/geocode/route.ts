@@ -1,11 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedGeocodingService } from '@/lib/geocoding/enhanced-geocoding'
 import { logApiUsage } from '@/lib/api-usage-logger'
+import { createServerClient } from '@/lib/supabase-server'
+
+const DEFAULT_LIMIT = 10
+const MAX_LIMIT = 20
+const MAX_QUERY_LENGTH = 200
+
+async function requireAuthenticatedUser() {
+  const supabase = await createServerClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    )
+  }
+
+  return null
+}
+
+function parseCoordinatePair(value: string | null): [number, number] | undefined {
+  if (!value) return undefined
+
+  const [first, second] = value.split(',').map((v) => Number(v.trim()))
+  if (!Number.isFinite(first) || !Number.isFinite(second)) {
+    return undefined
+  }
+
+  return [first, second]
+}
+
+function parseLimit(value: string | null): number {
+  if (!value) return DEFAULT_LIMIT
+
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed)) return DEFAULT_LIMIT
+
+  return Math.min(MAX_LIMIT, Math.max(1, parsed))
+}
+
+function normalizeQuery(value: string | null): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.length > MAX_QUERY_LENGTH) return null
+  return trimmed
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAuthenticatedUser()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
-    const query = searchParams.get('query')
+    const query = normalizeQuery(searchParams.get('query'))
     
     if (!query) {
       return NextResponse.json(
@@ -15,17 +68,13 @@ export async function GET(request: NextRequest) {
     }
 
     const options = {
-      proximity: searchParams.get('proximity') 
-        ? searchParams.get('proximity')!.split(',').map(Number) as [number, number]
-        : undefined,
+      proximity: parseCoordinatePair(searchParams.get('proximity')),
       country: searchParams.get('country')?.split(','),
       types: searchParams.get('types')?.split(','),
       language: searchParams.get('language') || 'ja',
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10,
+      limit: parseLimit(searchParams.get('limit')),
       sessionId: searchParams.get('sessionId') || undefined,
-      userLocation: searchParams.get('userLocation')
-        ? searchParams.get('userLocation')!.split(',').map(Number) as [number, number]
-        : undefined,
+      userLocation: parseCoordinatePair(searchParams.get('userLocation')),
       includeAlternatives: searchParams.get('includeAlternatives') === 'true',
       includeDetails: searchParams.get('includeDetails') === 'true'
     }
@@ -52,6 +101,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAuthenticatedUser()
+    if (authError) return authError
+
     const body = await request.json()
     const { type, ...options } = body
 
