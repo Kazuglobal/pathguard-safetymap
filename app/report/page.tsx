@@ -14,7 +14,7 @@ import { AlertTriangle, Bookmark, Heart, Images, MapPin, MessageCircle, Loader2 
 import ImagePreviewDialog from "@/components/danger-report/image-preview-dialog"
 import SharedGallery3D from "@/components/report/shared-gallery-3d"
 import { LongPressZoomableImage } from "@/components/ui/long-press-zoomable-image"
-import { CommentSection } from "@/components/comments/comment-section"
+import { ReportCommentSection } from "@/components/comments/report-comment-section"
 import { useReportInteractionsBatch } from "@/hooks/use-report-interactions"
 
 interface PublicReport extends Pick<
@@ -578,9 +578,8 @@ export default function ReportHubPage() {
 
                   {/* コメントセクション */}
                   <div className="border-t pt-6">
-                    <CommentSection
-                      spotId={selectedReport.id}
-                      isLoggedIn={isLoggedIn}
+                    <ReportCommentSection
+                      reportId={selectedReport.id}
                     />
                   </div>
                 </div>

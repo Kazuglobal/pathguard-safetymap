@@ -166,18 +166,33 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     }
 
     try {
-      const { data, error } = await supabase.rpc("toggle_report_like", {
+      const { error: rpcError } = await supabase.rpc("toggle_report_like", {
         p_user_id: user.id,
         p_report_id: reportId,
       })
 
-      if (error) throw error
+      if (rpcError) {
+        // Fallback: direct INSERT / DELETE
+        const wasLiked = (userInteraction ?? { liked: false }).liked
+        if (wasLiked) {
+          const { error } = await supabase
+            .from("report_likes")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("report_id", reportId)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("report_likes")
+            .insert({ user_id: user.id, report_id: reportId })
+          if (error) throw error
+        }
+      }
 
       // Revalidate to get accurate server state
       mutateUserInteraction()
       globalMutate(`report-stats-${reportId}`)
     } catch (e) {
-      console.error("Failed to toggle like:", e)
       // Rollback on error
       mutateUserInteraction()
       globalMutate(`report-stats-${reportId}`)
@@ -230,12 +245,27 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     }
 
     try {
-      const { data, error } = await supabase.rpc("toggle_report_bookmark", {
+      const { error: rpcError } = await supabase.rpc("toggle_report_bookmark", {
         p_user_id: user.id,
         p_report_id: reportId,
       })
 
-      if (error) throw error
+      if (rpcError) {
+        // Fallback: direct INSERT / DELETE
+        if (wasSaved) {
+          const { error } = await supabase
+            .from("report_bookmarks")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("report_id", reportId)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("report_bookmarks")
+            .insert({ user_id: user.id, report_id: reportId })
+          if (error) throw error
+        }
+      }
 
       // Revalidate to get accurate server state
       mutateUserInteraction()
@@ -246,7 +276,6 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
         duration: 2000,
       })
     } catch (e) {
-      console.error("Failed to toggle save:", e)
       // Rollback on error
       mutateUserInteraction()
       globalMutate(`report-stats-${reportId}`)

@@ -52,3 +52,17 @@ export async function getReportsWithProfiles(): Promise<ReportWithProfile[]> {
     }
   })
 }
+
+export async function updateReportStatus(
+  reportId: string,
+  status: 'pending' | 'approved' | 'published' | 'resolved' | 'rejected'
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('danger_reports')
+    .update({ status })
+    .eq('id', reportId)
+
+  if (error) {
+    throw new Error(`ステータス更新に失敗しました: ${error.message}`)
+  }
+}
