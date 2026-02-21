@@ -7,8 +7,10 @@
     "node": "20.x"
   },
   "scripts": {
+    "copy-cesium": "node scripts/copy-cesium.js",
+    "predev": "node scripts/copy-cesium.js",
     "dev": "next dev",
-    "build": "node scripts/validate-env.js && cross-env DISABLE_ESLINT_PLUGIN=true next build",
+    "build": "node scripts/copy-cesium.js && node scripts/validate-env.js && cross-env DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -35,6 +37,7 @@
     "create-test-users": "tsx scripts/create-test-users.ts"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^1.16.8",
     "@hookform/resolvers": "^3.9.1",
     "@mapbox/polyline": "^1.2.1",
     "@radix-ui/react-accordion": "^1.2.2",
@@ -71,6 +74,7 @@
     "@turf/turf": "^7.2.0",
     "@types/react-map-gl": "^6.1.7",
     "autoprefixer": "^10.4.20",
+    "cesium": "^1.138.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
@@ -109,6 +113,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/google.maps": "^3.58.1",
     "@types/geojson": "^7946.0.16",
     "@types/lodash.shuffle": "^4.2.7",
     "@types/mapbox-gl": "^3.4.1",
