@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import type { Viewer as CesiumViewerType, PostProcessStage as CesiumPostProcessStageType, Entity as CesiumEntity } from 'cesium'
+import { useEffect, useRef } from 'react'
+import type {
+  Entity as CesiumEntity,
+  PostProcessStage as CesiumPostProcessStageType,
+  PostProcessStageComposite as CesiumPostProcessStageCompositeType,
+  Viewer as CesiumViewerType,
+} from 'cesium'
+import { getNextWalkIndex } from '@/components/3d-route/cesium-walk-utils'
 
 // 東京・渋谷駅周辺のデフォルト座標
 const POC_LON = 139.7006
@@ -59,11 +65,20 @@ export default function CesiumViewer({
   const routeEntityRef = useRef<CesiumEntity | null>(null)
   const hazardsRef = useRef<CesiumEntity[]>([])
   const xroadRef = useRef<CesiumEntity[]>([])
-
-  const [currentWalkIndex, setCurrentWalkIndex] = useState(0)
+  const currentWalkIndexRef = useRef(0)
+  const onMapClickRef = useRef<CesiumViewerProps['onMapClick']>(onMapClick)
+  const clickHandlerRef = useRef<{ destroy: () => void } | null>(null)
 
   // Weather effect references
-  const fogStageRef = useRef<CesiumPostProcessStageType | null>(null)
+  const fogStageRef = useRef<CesiumPostProcessStageType | CesiumPostProcessStageCompositeType | null>(null)
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick
+  }, [onMapClick])
+
+  useEffect(() => {
+    currentWalkIndexRef.current = 0
+  }, [routeCoordinates])
 
   // ① 初期化: マウント時1回のみ
   useEffect(() => {
@@ -131,34 +146,34 @@ export default function CesiumViewer({
       })
 
       // Setup Click Handler for Hazard Pins
-      const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+      const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+      clickHandlerRef.current = handler
       handler.setInputAction((click: any) => {
         // We only want to add pins if not actively walking
         if (!viewer.scene.globe && viewer.scene.pickPositionSupported) {
-          const pickedObject = viewer.scene.pick(click.position);
           if (viewer.scene.pickPositionSupported) {
-            const cartesian = viewer.scene.pickPosition(click.position);
+            const cartesian = viewer.scene.pickPosition(click.position)
             if (cartesian) {
-              const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-              const lon = Cesium.Math.toDegrees(cartographic.longitude);
-              const lat = Cesium.Math.toDegrees(cartographic.latitude);
-              if (onMapClick) onMapClick(lon, lat);
+              const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
+              const lon = Cesium.Math.toDegrees(cartographic.longitude)
+              const lat = Cesium.Math.toDegrees(cartographic.latitude)
+              onMapClickRef.current?.(lon, lat)
             }
           }
         } else {
           // Fallback raycast if globe is active (it's not but for safety)
-          const ray = viewer.camera.getPickRay(click.position);
+          const ray = viewer.camera.getPickRay(click.position)
           if (ray) {
-            const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+            const cartesian = viewer.scene.globe.pick(ray, viewer.scene)
             if (cartesian) {
-              const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-              const lon = Cesium.Math.toDegrees(cartographic.longitude);
-              const lat = Cesium.Math.toDegrees(cartographic.latitude);
-              if (onMapClick) onMapClick(lon, lat);
+              const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
+              const lon = Cesium.Math.toDegrees(cartographic.longitude)
+              const lat = Cesium.Math.toDegrees(cartographic.latitude)
+              onMapClickRef.current?.(lon, lat)
             }
           }
         }
-      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
 
       // Setup Fog Post Process Stage
       const fogShader = `
@@ -179,12 +194,12 @@ export default function CesiumViewer({
             vec4 fogColor = vec4(0.8, 0.8, 0.8, 1.0); // Light gray fog
             fragColor = mix(fogColor, color, fogFactor);
         }
-      `;
+      `
       const fogStage = viewer.scene.postProcessStages.add(new Cesium.PostProcessStage({
         fragmentShader: fogShader
-      }));
-      fogStage.enabled = false;
-      fogStageRef.current = fogStage;
+      }))
+      fogStage.enabled = false
+      fogStageRef.current = fogStage
 
     }
 
@@ -192,12 +207,14 @@ export default function CesiumViewer({
 
     return () => {
       destroyed = true
+      clickHandlerRef.current?.destroy()
+      clickHandlerRef.current = null
       if (viewerRef.current && viewerRef.current.isDestroyed?.() === false) {
         viewerRef.current.destroy()
         viewerRef.current = null
       }
     }
-  }, [onMapClick]) // Added onMapClick to deps since it's bound to the click handler
+  }, [])
 
   // ② 場所・高さ変更: locationまたはeyeHeight変化時にカメラを飛行/移動
   useEffect(() => {
@@ -240,38 +257,41 @@ export default function CesiumViewer({
 
   // ④ 天候変更: weather変化時
   useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed?.()) return;
+    const viewer = viewerRef.current
+    if (!viewer || viewer.isDestroyed?.()) return
 
     if (fogStageRef.current) {
-      fogStageRef.current.enabled = (weather === 'fog' || weather === 'rain' || weather === 'snow');
+      fogStageRef.current.enabled = (weather === 'fog' || weather === 'rain' || weather === 'snow')
     }
+
+    const skyAtmosphere = viewer.scene.skyAtmosphere
+    if (!skyAtmosphere) return
 
     // Additional weather states (skycolor, lighting tweaks) can be done here.
     switch (weather) {
       case 'clear':
-        viewer.scene.skyAtmosphere.hueShift = 0.0;
-        viewer.scene.skyAtmosphere.saturationShift = 0.0;
-        viewer.scene.skyAtmosphere.brightnessShift = 0.0;
-        break;
+        skyAtmosphere.hueShift = 0.0
+        skyAtmosphere.saturationShift = 0.0
+        skyAtmosphere.brightnessShift = 0.0
+        break
       case 'rain':
-        viewer.scene.skyAtmosphere.hueShift = -0.5; // Cooler
-        viewer.scene.skyAtmosphere.saturationShift = -0.5; // Less saturated
-        viewer.scene.skyAtmosphere.brightnessShift = -0.4; // Darker
-        break;
+        skyAtmosphere.hueShift = -0.5 // Cooler
+        skyAtmosphere.saturationShift = -0.5 // Less saturated
+        skyAtmosphere.brightnessShift = -0.4 // Darker
+        break
       case 'snow':
-        viewer.scene.skyAtmosphere.hueShift = 0.0;
-        viewer.scene.skyAtmosphere.saturationShift = -0.7; // Grayscale-ish
-        viewer.scene.skyAtmosphere.brightnessShift = 0.2; // Brighter due to scattering
-        break;
+        skyAtmosphere.hueShift = 0.0
+        skyAtmosphere.saturationShift = -0.7 // Grayscale-ish
+        skyAtmosphere.brightnessShift = 0.2 // Brighter due to scattering
+        break
       case 'fog':
-        viewer.scene.skyAtmosphere.hueShift = 0.0;
-        viewer.scene.skyAtmosphere.saturationShift = -0.3;
-        viewer.scene.skyAtmosphere.brightnessShift = -0.1;
-        break;
+        skyAtmosphere.hueShift = 0.0
+        skyAtmosphere.saturationShift = -0.3
+        skyAtmosphere.brightnessShift = -0.1
+        break
     }
 
-  }, [weather]);
+  }, [weather])
 
   // ⑤ ルート描画
   useEffect(() => {
@@ -305,60 +325,55 @@ export default function CesiumViewer({
 
   // ⑥ 自動ウォークスルー (Auto Walk)
   useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed?.() || !routeCoordinates || routeCoordinates.length < 2) return;
+    const viewer = viewerRef.current
+    if (!viewer || viewer.isDestroyed?.() || routeCoordinates.length < 2) return
 
-    let timeoutId: NodeJS.Timeout;
-
-    if (isAutoWalking) {
-      // Start or continue walking
-      import('cesium').then(({ Cartesian3, Math: CesiumMath }) => {
-        const walk = () => {
-          if (!isAutoWalking) return;
-
-          const nextIndex = (currentWalkIndex + 1) < routeCoordinates.length ? currentWalkIndex + 1 : 0;
-
-          if (nextIndex === 0) {
-            // Reached the end, you could either loop or stop. Let's loop for now.
-            setCurrentWalkIndex(0);
-          } else {
-            const nextCoord = routeCoordinates[nextIndex];
-            const currentCoord = routeCoordinates[currentWalkIndex];
-
-            // Calculate heading towards the next point
-            const dx = nextCoord.lon - currentCoord.lon;
-            const dy = nextCoord.lat - currentCoord.lat;
-            const heading = Math.atan2(dx, dy); // Simplified 2D heading
-
-            viewer.camera.flyTo({
-              destination: Cartesian3.fromDegrees(nextCoord.lon, nextCoord.lat, APPROX_GROUND_H_JAPAN + eyeHeight),
-              orientation: {
-                heading: heading,
-                pitch: CesiumMath.toRadians(-5),
-                roll: 0,
-              },
-              duration: 2.0, // Simulate ~4km/h depending on distance, hardcoded duration for PoC simplicity
-            });
-
-            setCurrentWalkIndex(nextIndex);
-          }
-
-          // Schedule next step. Wait for flyTo to finish (~2s) plus a small buffer
-          if (nextIndex !== 0) {
-            timeoutId = setTimeout(walk, 2500);
-          }
-        };
-
-        // Trigger first step
-        walk();
-      });
+    if (!isAutoWalking) {
+      currentWalkIndexRef.current = 0
+      return
     }
 
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-  }, [isAutoWalking, currentWalkIndex, routeCoordinates, eyeHeight]);
+    import('cesium').then(({ Cartesian3, Math: CesiumMath }) => {
+      if (cancelled || viewer.isDestroyed?.()) return
+
+      const walk = () => {
+        if (cancelled || viewer.isDestroyed?.()) return
+
+        const routeLength = routeCoordinates.length
+        const currentIndex = Math.min(currentWalkIndexRef.current, routeLength - 1)
+        const nextIndex = getNextWalkIndex(currentIndex, routeLength)
+        const currentCoord = routeCoordinates[currentIndex]
+        const nextCoord = routeCoordinates[nextIndex]
+
+        const dx = nextCoord.lon - currentCoord.lon
+        const dy = nextCoord.lat - currentCoord.lat
+        const heading = Math.atan2(dx, dy)
+
+        viewer.camera.flyTo({
+          destination: Cartesian3.fromDegrees(nextCoord.lon, nextCoord.lat, APPROX_GROUND_H_JAPAN + eyeHeight),
+          orientation: {
+            heading,
+            pitch: CesiumMath.toRadians(-5),
+            roll: 0,
+          },
+          duration: 2.0,
+        })
+
+        currentWalkIndexRef.current = nextIndex
+        timeoutId = setTimeout(walk, 2500)
+      }
+
+      walk()
+    })
+
+    return () => {
+      cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [isAutoWalking, routeCoordinates, eyeHeight])
 
   // ⑦ 危険箇所（ハザード）ピンの描画
   useEffect(() => {

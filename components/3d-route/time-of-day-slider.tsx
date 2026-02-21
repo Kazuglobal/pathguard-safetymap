@@ -7,6 +7,13 @@ interface Props {
   onChange: (v: number) => void
 }
 
+export function extractSliderValue(values: number[]): number | null {
+  if (!values || values.length === 0) {
+    return null
+  }
+  return values[0]
+}
+
 function formatHour(h: number) {
   const hh = Math.floor(h)
   const mm = Math.round((h % 1) * 60)
@@ -32,7 +39,11 @@ export default function TimeOfDaySlider({ value, onChange }: Props) {
         max={23}
         step={0.25}
         value={[value]}
-        onValueChange={([v]) => onChange(v)}
+        onValueChange={(values) => {
+          const nextValue = extractSliderValue(values)
+          if (nextValue === null) return
+          onChange(nextValue)
+        }}
       />
       <div className="flex justify-between mt-1.5 text-slate-500 text-xs">
         <span>0:00</span>

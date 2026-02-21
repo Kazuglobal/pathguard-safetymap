@@ -1,6 +1,6 @@
 "use client"
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import TimeOfDaySlider from '@/components/3d-route/time-of-day-slider'
 import AddressSearch, { GeoResult } from '@/components/3d-route/address-search'
 import type { WeatherType, HazardPin } from '@/components/3d-route/cesium-viewer'
@@ -93,29 +93,29 @@ export default function ThreeDRoutePocClient() {
     setLocation({ lon: result.lon, lat: result.lat })
   }
 
-  const handleMapClick = (lon: number, lat: number) => {
-    if (show3d) {
-      setPendingHazardCoords({ lon, lat });
-    }
-  }
+  const show3d = viewMode === '3d' || viewMode === 'split'
+  const showStreet = viewMode === 'street' || viewMode === 'split'
+  const showStreetComponent = showStreet || streetViewInitialized
 
-  const handleSaveHazard = () => {
+  const handleMapClick = useCallback((lon: number, lat: number) => {
+    if (show3d) {
+      setPendingHazardCoords({ lon, lat })
+    }
+  }, [show3d])
+
+  const handleSaveHazard = useCallback(() => {
     if (pendingHazardCoords && hazardComment.trim()) {
       const newHazard: HazardPin = {
         id: Date.now().toString(),
         lon: pendingHazardCoords.lon,
         lat: pendingHazardCoords.lat,
         comment: hazardComment.trim()
-      };
-      setHazards([...hazards, newHazard]);
-      setPendingHazardCoords(null);
-      setHazardComment('');
+      }
+      setHazards((prev) => [...prev, newHazard])
+      setPendingHazardCoords(null)
+      setHazardComment('')
     }
-  }
-
-  const show3d = viewMode === '3d' || viewMode === 'split'
-  const showStreet = viewMode === 'street' || viewMode === 'split'
-  const showStreetComponent = showStreet || streetViewInitialized
+  }, [hazardComment, pendingHazardCoords])
 
   useEffect(() => {
     if (showStreet) {

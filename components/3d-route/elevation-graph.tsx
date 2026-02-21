@@ -107,7 +107,10 @@ export default function ElevationGraph({ routeCoordinates }: ElevationGraphProps
                             contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '10px' }}
                             itemStyle={{ color: '#fff' }}
                             labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-                            formatter={(value: number) => [`${value}m`, '標高']}
+                            formatter={(value, name) => {
+                                const displayValue = Array.isArray(value) ? value[0] : value
+                                return [`${displayValue ?? 0}m`, name ?? '標高']
+                            }}
                             labelFormatter={(label) => `距離: ${label}m`}
                         />
                         <Area
