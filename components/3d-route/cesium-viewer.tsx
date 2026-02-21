@@ -39,6 +39,7 @@ interface CesiumViewerProps {
   hazards?: HazardPin[]
   onMapClick?: (lon: number, lat: number) => void
   showXRoad?: boolean
+  showTraffic?: boolean
 }
 
 // 簡易的なxROADダミーデータ（渋谷周辺の「歩道がない」等の危険箇所想定）
@@ -57,6 +58,7 @@ export default function CesiumViewer({
   hazards = [],
   onMapClick,
   showXRoad = false,
+  showTraffic = false,
 }: CesiumViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<CesiumViewerType | null>(null)
@@ -65,6 +67,7 @@ export default function CesiumViewer({
   const routeEntityRef = useRef<CesiumEntity | null>(null)
   const hazardsRef = useRef<CesiumEntity[]>([])
   const xroadRef = useRef<CesiumEntity[]>([])
+  const trafficEntitiesRef = useRef<CesiumEntity[]>([])
   const currentWalkIndexRef = useRef(0)
   const onMapClickRef = useRef<CesiumViewerProps['onMapClick']>(onMapClick)
   const clickHandlerRef = useRef<{ destroy: () => void } | null>(null)
@@ -127,6 +130,11 @@ export default function CesiumViewer({
         const tileset = await Cesium.createGooglePhotorealistic3DTileset({
           key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
         })
+
+        // 高精度化: 解像度（ディテール）を向上させるためにエラー許容値を下げる
+        tileset.maximumScreenSpaceError = 8;
+        tileset.dynamicScreenSpaceError = true;
+
         viewer.scene.primitives.add(tileset)
       } catch (err) {
         console.error('[CesiumViewer] Google 3D Tiles 読み込み失敗:', err)
@@ -250,8 +258,8 @@ export default function CesiumViewer({
       const d = new Date()
       d.setHours(Math.floor(hourOfDay), Math.round((hourOfDay % 1) * 60), 0, 0)
       viewer.clock.currentTime = JulianDate.fromDate(d)
-      viewer.clock.multiplier = 0
-      viewer.clock.shouldAnimate = false
+      viewer.clock.multiplier = 1
+      viewer.clock.shouldAnimate = true
     })
   }, [hourOfDay])
 
@@ -306,16 +314,17 @@ export default function CesiumViewer({
       }
 
       if (routeCoordinates && routeCoordinates.length > 1) {
+        // 座標配列を作成（高度は指定せず、クランプに任せる）
         const positions = routeCoordinates.map(coord =>
-          Cartesian3.fromDegrees(coord.lon, coord.lat, APPROX_GROUND_H_JAPAN + 0.5) // Slightly above ground
+          Cartesian3.fromDegrees(coord.lon, coord.lat)
         );
 
         routeEntityRef.current = viewer.entities.add({
           polyline: {
             positions: positions,
-            width: 5,
-            material: Color.BLUE.withAlpha(0.7),
-            clampToGround: true, // Note: standard Cesium doesn't easily clamp onto 3D tiles without globe, so we raise it manually
+            width: 8,
+            material: Color.BLUE.withAlpha(0.6),
+            clampToGround: true, // 地形や3Dタイルに貼り付ける（高精度化）
           }
         });
       }
@@ -334,44 +343,80 @@ export default function CesiumViewer({
     }
 
     let cancelled = false
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-    import('cesium').then(({ Cartesian3, Math: CesiumMath }) => {
+    import('cesium').then(({ Cartesian3, Math: CesiumMath, CatmullRomSpline }) => {
       if (cancelled || viewer.isDestroyed?.()) return
 
-      const walk = () => {
-        if (cancelled || viewer.isDestroyed?.()) return
+      // スプライン曲線（CatmullRomSpline）を生成して滑らかなパスを作る
+      try {
+        const positions = routeCoordinates.map(coord =>
+          Cartesian3.fromDegrees(coord.lon, coord.lat, APPROX_GROUND_H_JAPAN + eyeHeight)
+        );
 
-        const routeLength = routeCoordinates.length
-        const currentIndex = Math.min(currentWalkIndexRef.current, routeLength - 1)
-        const nextIndex = getNextWalkIndex(currentIndex, routeLength)
-        const currentCoord = routeCoordinates[currentIndex]
-        const nextCoord = routeCoordinates[nextIndex]
+        // Spline requires strictly increasing times
+        const times: number[] = [];
+        let totalDistance = 0;
+        times.push(0);
 
-        const dx = nextCoord.lon - currentCoord.lon
-        const dy = nextCoord.lat - currentCoord.lat
-        const heading = Math.atan2(dx, dy)
+        for (let i = 1; i < positions.length; i++) {
+          const dist = Cartesian3.distance(positions[i - 1], positions[i]);
+          totalDistance += dist;
+          times.push(totalDistance); // use distance as a proxy for time to maintain constant-ish speed
+        }
 
-        viewer.camera.flyTo({
-          destination: Cartesian3.fromDegrees(nextCoord.lon, nextCoord.lat, APPROX_GROUND_H_JAPAN + eyeHeight),
-          orientation: {
-            heading,
-            pitch: CesiumMath.toRadians(-5),
-            roll: 0,
-          },
-          duration: 2.0,
-        })
+        const spline = new CatmullRomSpline({
+          times: times,
+          points: positions,
+        });
 
-        currentWalkIndexRef.current = nextIndex
-        timeoutId = setTimeout(walk, 2500)
+        const SECONDS_PER_METER = 0.5; // Walking speed approx (higher = slower)
+        const totalDuration = totalDistance * SECONDS_PER_METER;
+        const FPS = 30;
+        const totalFrames = Math.floor(totalDuration * FPS);
+        let currentFrame = 0;
+
+        const animateWalk = () => {
+          if (cancelled || viewer.isDestroyed?.() || !isAutoWalking) return;
+
+          currentFrame++;
+          if (currentFrame > totalFrames) {
+            currentFrame = 0; // Loop the walk
+          }
+
+          const t = (currentFrame / totalFrames) * totalDistance;
+
+          // Evaluate spline at current "time/distance"
+          const currentPos = spline.evaluate(t);
+
+          // Look slightly ahead to compute heading
+          const aheadT = Math.min(t + 2.0, totalDistance); // 2 meters ahead
+          const aheadPos = spline.evaluate(aheadT);
+
+          // Calculate heading vector
+          const direction = Cartesian3.subtract(aheadPos, currentPos, new Cartesian3());
+          Cartesian3.normalize(direction, direction);
+
+          // This is a simplified heading calculation. For true global heading:
+          // Transform direction to local East-North-Up and get atan2(East, North)
+          // As a quick fallback, we set the camera directly:
+
+          viewer.camera.position = currentPos;
+          viewer.camera.direction = direction;
+          viewer.camera.up = Cartesian3.normalize(currentPos, new Cartesian3()); // away from earth center
+          viewer.camera.right = Cartesian3.cross(viewer.camera.direction, viewer.camera.up, new Cartesian3());
+
+          requestAnimationFrame(animateWalk);
+        };
+
+        requestAnimationFrame(animateWalk);
+
+      } catch (e) {
+        console.warn("Spline generation failed, ignoring auto-walk", e);
       }
-
-      walk()
     })
 
     return () => {
       cancelled = true
-      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [isAutoWalking, routeCoordinates, eyeHeight])
 
@@ -380,19 +425,20 @@ export default function CesiumViewer({
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed?.()) return;
 
-    import('cesium').then(({ Cartesian3, Color, VerticalOrigin, HorizontalOrigin }) => {
+    import('cesium').then(({ Cartesian3, Color, VerticalOrigin, HorizontalOrigin, HeightReference }) => {
       // Clear old hazards
       hazardsRef.current.forEach(entity => viewer.entities.remove(entity));
       hazardsRef.current = [];
 
       hazards.forEach(hazard => {
         const entity = viewer.entities.add({
-          position: Cartesian3.fromDegrees(hazard.lon, hazard.lat, APPROX_GROUND_H_JAPAN + 2),
+          position: Cartesian3.fromDegrees(hazard.lon, hazard.lat),
           point: {
             pixelSize: 15,
             color: Color.RED,
             outlineColor: Color.WHITE,
             outlineWidth: 2,
+            heightReference: HeightReference.CLAMP_TO_GROUND, // 3Dタイル上にクランプ
           },
           label: {
             text: hazard.comment,
@@ -400,10 +446,11 @@ export default function CesiumViewer({
             fillColor: Color.WHITE,
             outlineColor: Color.BLACK,
             outlineWidth: 2,
-            style: 2, // LABEL_STYLE.FILL_AND_OUTLINE
+            style: 2,
             verticalOrigin: VerticalOrigin.BOTTOM,
             horizontalOrigin: HorizontalOrigin.CENTER,
             pixelOffset: { x: 0, y: -20 } as any, // Vector2
+            heightReference: HeightReference.CLAMP_TO_GROUND,
           }
         });
         hazardsRef.current.push(entity);
@@ -416,7 +463,7 @@ export default function CesiumViewer({
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed?.()) return;
 
-    import('cesium').then(({ Cartesian3, Color }) => {
+    import('cesium').then(({ Cartesian3, Color, HeightReference }) => {
       // Clear old xroad
       xroadRef.current.forEach(entity => viewer.entities.remove(entity));
       xroadRef.current = [];
@@ -424,7 +471,7 @@ export default function CesiumViewer({
       if (showXRoad) {
         DUMMY_XROAD_POINTS.forEach(pt => {
           const entity = viewer.entities.add({
-            position: Cartesian3.fromDegrees(pt.lon, pt.lat, APPROX_GROUND_H_JAPAN + 0.1),
+            position: Cartesian3.fromDegrees(pt.lon, pt.lat),
             polygon: {
               hierarchy: {
                 positions: Cartesian3.fromDegreesArray([
@@ -435,6 +482,10 @@ export default function CesiumViewer({
                 ])
               } as any,
               material: Color.ORANGE.withAlpha(0.5),
+              // HeightReference.CLAMP_TO_GROUND is not directly available on polygon without height property.
+              // To clamp a polygon without a globe (using 3D Tiles), per-position heights or classification primitives are better. 
+              // Since Cesium polygon clampToGround is partially supported without depth test against terrain, 
+              // we will enable depth fail material or let it float tightly if it fails.
             },
             label: {
               text: pt.title,
@@ -442,7 +493,8 @@ export default function CesiumViewer({
               fillColor: Color.ORANGE,
               outlineColor: Color.BLACK,
               outlineWidth: 1,
-              pixelOffset: { x: 0, y: -10 } as any
+              pixelOffset: { x: 0, y: -10 } as any,
+              heightReference: HeightReference.CLAMP_TO_GROUND,
             }
           });
           xroadRef.current.push(entity);
@@ -450,6 +502,110 @@ export default function CesiumViewer({
       }
     });
   }, [showXRoad]);
+
+  // ⑨ トラフィックシミュレーション (Traffic Simulation)
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed?.()) return;
+
+    if (!showTraffic || !routeCoordinates || routeCoordinates.length < 2) {
+      if (trafficEntitiesRef.current.length > 0) {
+        trafficEntitiesRef.current.forEach(e => viewer.entities.remove(e));
+        trafficEntitiesRef.current = [];
+      }
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const cleanupTimeouts: ReturnType<typeof setTimeout>[] = [];
+
+    import('cesium').then(({ Cartesian3, SampledPositionProperty, Entity, BoxGraphics, Color, JulianDate, VelocityOrientationProperty, ExtrapolationType, TimeIntervalCollection, TimeInterval, ShadowMode }) => {
+      if (cancelled || viewer.isDestroyed?.()) return;
+
+      const virtualRoad = routeCoordinates.map(coord => ({
+        lon: coord.lon + 0.00003, // ~3m shifted east
+        lat: coord.lat - 0.00001,
+      }));
+
+      const speedKmH = 40;
+      const speedMs = speedKmH * (1000 / 3600);
+
+      const spawnVehicle = () => {
+        if (cancelled || viewer.isDestroyed?.()) return;
+
+        const startTime = viewer.clock.currentTime;
+        let currentTime = startTime;
+
+        const positionProperty = new SampledPositionProperty();
+        positionProperty.forwardExtrapolationType = ExtrapolationType.NONE;
+
+        positionProperty.addSample(
+          currentTime,
+          Cartesian3.fromDegrees(virtualRoad[0].lon, virtualRoad[0].lat, APPROX_GROUND_H_JAPAN + 1.5)
+        );
+
+        for (let i = 1; i < virtualRoad.length; i++) {
+          const prev = virtualRoad[i - 1];
+          const curr = virtualRoad[i];
+
+          const dx = (curr.lon - prev.lon) * 91000;
+          const dy = (curr.lat - prev.lat) * 111000;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          const timeToTravelSecs = dist / speedMs;
+
+          currentTime = JulianDate.addSeconds(currentTime, timeToTravelSecs, new JulianDate());
+          positionProperty.addSample(
+            currentTime,
+            Cartesian3.fromDegrees(curr.lon, curr.lat, APPROX_GROUND_H_JAPAN + 1.5)
+          );
+        }
+
+        const endTime = currentTime;
+
+        const colors = [Color.SLATEGRAY, Color.WHITE, Color.DARKBLUE, Color.DARKRED];
+        const truckColor = colors[Math.floor(Math.random() * colors.length)];
+
+        const vehicleEntity = viewer.entities.add(new Entity({
+          availability: new TimeIntervalCollection([new TimeInterval({
+            start: startTime,
+            stop: endTime,
+          })]),
+          position: positionProperty,
+          orientation: new VelocityOrientationProperty(positionProperty),
+          box: new BoxGraphics({
+            dimensions: new Cartesian3(6.0, 2.5, 3.0),
+            material: truckColor,
+            shadows: ShadowMode.ENABLED,
+          }),
+        }));
+
+        trafficEntitiesRef.current.push(vehicleEntity);
+
+        const totalTravelMs = JulianDate.secondsDifference(endTime, startTime) * 1000;
+        const clTimeout = setTimeout(() => {
+          if (!viewer.isDestroyed?.()) {
+            viewer.entities.remove(vehicleEntity);
+            trafficEntitiesRef.current = trafficEntitiesRef.current.filter(x => x !== vehicleEntity);
+          }
+        }, totalTravelMs + 1000); // 1s buffer
+        cleanupTimeouts.push(clTimeout);
+
+        // Loop next spawn
+        const nextSpawnDelay = 3000 + Math.random() * 5000;
+        timeoutId = setTimeout(spawnVehicle, nextSpawnDelay);
+      };
+
+      spawnVehicle();
+    });
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      cleanupTimeouts.forEach(t => clearTimeout(t));
+    };
+  }, [showTraffic, routeCoordinates]);
 
   return (
     <div

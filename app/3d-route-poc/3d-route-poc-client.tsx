@@ -45,8 +45,16 @@ const WEATHER_LABELS: Record<WeatherType, string> = {
   fog: '霧',
 }
 
-// ダミールートデータ
-const MOCK_ROUTES = [
+
+type Coordinate = { lon: number, lat: number }
+
+type RouteData = {
+  id: string
+  name: string
+  coordinates: Coordinate[]
+}
+
+const INITIAL_MOCK_ROUTES: RouteData[] = [
   {
     id: 'route-1',
     name: '渋谷駅〜神南小学校ルート',
@@ -79,10 +87,16 @@ export default function ThreeDRoutePocClient() {
   const [eyeHeight, setEyeHeight] = useState<number>(1.1)
   const [weather, setWeather] = useState<WeatherType>('clear')
 
+  const [routes, setRoutes] = useState<RouteData[]>(INITIAL_MOCK_ROUTES)
   const [selectedRouteId, setSelectedRouteId] = useState<string>('')
   const [isAutoWalking, setIsAutoWalking] = useState(false)
 
+  // Custom route creation mode
+  const [isCreatingRoute, setIsCreatingRoute] = useState(false)
+  const [customRouteCoords, setCustomRouteCoords] = useState<{ lon: number, lat: number }[]>([])
+
   const [showXRoad, setShowXRoad] = useState(false)
+  const [showTraffic, setShowTraffic] = useState(false)
   const [hazards, setHazards] = useState<HazardPin[]>([
     { id: '1', lon: 139.7003, lat: 35.6588, comment: '夜間暗い' }
   ])
@@ -98,10 +112,14 @@ export default function ThreeDRoutePocClient() {
   const showStreetComponent = showStreet || streetViewInitialized
 
   const handleMapClick = useCallback((lon: number, lat: number) => {
-    if (show3d) {
+    if (!show3d) return;
+
+    if (isCreatingRoute) {
+      setCustomRouteCoords(prev => [...prev, { lon, lat }]);
+    } else {
       setPendingHazardCoords({ lon, lat })
     }
-  }, [show3d])
+  }, [show3d, isCreatingRoute])
 
   const handleSaveHazard = useCallback(() => {
     if (pendingHazardCoords && hazardComment.trim()) {
@@ -137,8 +155,10 @@ export default function ThreeDRoutePocClient() {
         ? 'w-full h-full'
         : 'w-0 h-full overflow-hidden pointer-events-none'
 
-  const activeRoute = MOCK_ROUTES.find(r => r.id === selectedRouteId)
-  const activeRouteCoordinates = activeRoute ? activeRoute.coordinates : []
+  const activeRoute = routes.find(r => r.id === selectedRouteId)
+  const baseRouteCoordinates = activeRoute ? activeRoute.coordinates : []
+  // Route to display: actual active selected route, OR the route currently being drawn
+  const activeRouteCoordinates = isCreatingRoute ? customRouteCoords : baseRouteCoordinates
 
   return (
     <div className="relative w-full h-screen overflow-hidden text-sm">
@@ -155,6 +175,7 @@ export default function ThreeDRoutePocClient() {
             hazards={hazards}
             onMapClick={handleMapClick}
             showXRoad={showXRoad}
+            showTraffic={showTraffic}
           />
         </div>
         {showStreetComponent && (
@@ -180,8 +201,8 @@ export default function ThreeDRoutePocClient() {
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={`flex-1 text-[11px] py-1.5 rounded-lg font-medium transition-colors ${viewMode === mode
-                    ? 'bg-white text-slate-900'
-                    : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
+                  ? 'bg-white text-slate-900'
+                  : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
                   }`}
               >
                 {VIEW_MODE_LABELS[mode]}
@@ -206,8 +227,8 @@ export default function ThreeDRoutePocClient() {
                 <button
                   onClick={() => setEyeHeight(1.1)}
                   className={`flex-1 text-[11px] py-1.5 rounded-lg font-medium transition-colors ${eyeHeight === 1.1
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
                     }`}
                 >
                   子ども (110cm)
@@ -215,8 +236,8 @@ export default function ThreeDRoutePocClient() {
                 <button
                   onClick={() => setEyeHeight(1.6)}
                   className={`flex-1 text-[11px] py-1.5 rounded-lg font-medium transition-colors ${eyeHeight === 1.6
-                      ? 'bg-slate-600 text-white'
-                      : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
+                    ? 'bg-slate-600 text-white'
+                    : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
                     }`}
                 >
                   大人 (160cm)
@@ -232,8 +253,8 @@ export default function ThreeDRoutePocClient() {
                     key={w}
                     onClick={() => setWeather(w)}
                     className={`text-[11px] py-1.5 rounded-lg font-medium transition-colors ${weather === w
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
                       }`}
                   >
                     {WEATHER_LABELS[w]}
@@ -268,6 +289,25 @@ export default function ThreeDRoutePocClient() {
                 className={`w-10 h-5 rounded-full relative transition-colors ${showXRoad ? 'bg-orange-500' : 'bg-slate-700'}`}
               >
                 <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showXRoad ? 'translate-x-5' : 'translate-x-0'}`}></div>
+              </button>
+            </div>
+
+            {/* トラフィック トグル */}
+            <div className="flex items-center justify-between mt-2 bg-white/5 p-2 rounded-lg border border-white/5">
+              <div>
+                <span className="text-xs text-white flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  交通量シミュレーション
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">交通量や大型車の近接・圧迫感を再現</p>
+              </div>
+              <button
+                onClick={() => setShowTraffic(!showTraffic)}
+                className={`w-10 h-5 rounded-full relative transition-colors ${showTraffic ? 'bg-blue-500' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showTraffic ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </button>
             </div>
 
@@ -306,22 +346,92 @@ export default function ThreeDRoutePocClient() {
                 onChange={(e) => {
                   setSelectedRouteId(e.target.value)
                   setIsAutoWalking(false)
+                  if (isCreatingRoute) {
+                    setIsCreatingRoute(false)
+                    setCustomRouteCoords([])
+                  }
                 }}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 appearance-none"
+                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-3 py-2 text-left focus:outline-none focus:border-blue-500 appearance-none"
               >
                 <option value="">（ルート非表示）</option>
-                {MOCK_ROUTES.map(r => (
+                {routes.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
 
-              {selectedRouteId && (
+              <div className="mt-2 text-right">
+                {!isCreatingRoute ? (
+                  <button
+                    onClick={() => {
+                      setIsCreatingRoute(true)
+                      setSelectedRouteId('')
+                      setIsAutoWalking(false)
+                      setCustomRouteCoords([])
+                    }}
+                    className="text-[10px] text-blue-400 hover:text-blue-300 underline"
+                  >
+                    + 新しいルートを作成する
+                  </button>
+                ) : (
+                  <div className="bg-blue-900/30 border border-blue-500/50 p-2 rounded flex flex-col gap-2 relative">
+                    {/* Pulse indicator for creation mode */}
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                    </span>
+
+                    <p className="text-[10px] text-blue-200 text-left mb-1">
+                      マップ上をクリックして経由地を追加してください。<br />
+                      現在 {customRouteCoords.length} 点
+                    </p>
+
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          setCustomRouteCoords([])
+                          setIsCreatingRoute(false)
+                        }}
+                        className="flex-1 py-1.5 rounded text-[10px] bg-slate-800 text-slate-300 hover:bg-slate-700"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        onClick={() => setCustomRouteCoords([])}
+                        disabled={customRouteCoords.length === 0}
+                        className="flex-1 py-1.5 rounded text-[10px] border border-slate-600 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                      >
+                        クリア
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (customRouteCoords.length < 2) return;
+                          const newRoute: RouteData = {
+                            id: `custom-route-${Date.now()}`,
+                            name: `作成ルート (${customRouteCoords.length}点)`,
+                            coordinates: [...customRouteCoords]
+                          };
+                          setRoutes([...routes, newRoute]);
+                          setSelectedRouteId(newRoute.id);
+                          setIsCreatingRoute(false);
+                          setCustomRouteCoords([]);
+                        }}
+                        disabled={customRouteCoords.length < 2}
+                        className="flex-1 py-1.5 rounded text-[10px] bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+                      >
+                        保存
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {selectedRouteId && !isCreatingRoute && (
                 <div className="mt-3">
                   <button
                     onClick={() => setIsAutoWalking(!isAutoWalking)}
                     className={`w-full flex items-center justify-center gap-2 text-[11px] py-2 rounded-lg font-bold transition-all ${isAutoWalking
-                        ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/50'
-                        : 'bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-900/20'
+                      ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/50'
+                      : 'bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-900/20'
                       }`}
                   >
                     {isAutoWalking ? 'ウォークスルー停止' : 'ルートを自動歩行'}
@@ -375,8 +485,8 @@ export default function ThreeDRoutePocClient() {
       {show3d && (
         <div
           className={`absolute bottom-8 z-10 w-[500px] flex flex-col gap-2 ${viewMode === 'split'
-              ? 'left-1/4 -translate-x-1/2'
-              : 'left-1/2 -translate-x-1/2'
+            ? 'left-1/4 -translate-x-1/2'
+            : 'left-1/2 -translate-x-1/2'
             }`}
         >
           {/* 標高グラフ（ルート選択時のみ表示） */}
