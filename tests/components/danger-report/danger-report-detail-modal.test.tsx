@@ -46,6 +46,10 @@ vi.mock("@/components/danger-report/detail/report-image-carousel", () => ({
   ),
 }))
 
+vi.mock("@/components/comments/report-comment-section", () => ({
+  ReportCommentSection: () => <div data-testid="comment-section" />,
+}))
+
 vi.mock("@/components/danger-report/detail/report-admin-image-upload", () => ({
   ReportAdminImageUpload: ({
     report,

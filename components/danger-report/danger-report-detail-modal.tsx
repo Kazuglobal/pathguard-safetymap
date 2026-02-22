@@ -11,6 +11,7 @@ import { ReportImageCarousel } from "./detail/report-image-carousel"
 import { ReportAdminImageUpload } from "./detail/report-admin-image-upload"
 import { ReportMetadataBar } from "./detail/report-metadata-bar"
 import { ReportAccidentSection } from "./detail/report-accident-section"
+import { ReportCommentSection } from "@/components/comments/report-comment-section"
 
 interface ShowImageOptions {
   reportId?: string
@@ -137,6 +138,11 @@ export default function DangerReportDetailModal({
               この情報は一般ユーザーからの報告に基づいています。状況は変化している可能性があります。
             </p>
           </div>
+        </div>
+
+        {/* 8. Comments */}
+        <div className="px-4 md:px-6 py-4 border-t border-gray-100">
+          <ReportCommentSection reportId={report.id} />
         </div>
       </DialogContent>
 

@@ -6,18 +6,8 @@ import Link from "next/link"
 import { ThumbsUp, AlertCircle, ChevronRight, MessageCircle, MapPin, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createBrowserClient } from "@supabase/ssr"
-
-interface LiveReport {
-  id: string
-  title: string | null
-  description: string | null
-  danger_type: string | null
-  latitude: number | null
-  longitude: number | null
-  image_url: string | null
-  processed_image_urls: string[] | null
-  created_at: string
-}
+import type { DangerReport } from "@/lib/types"
+import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -38,9 +28,11 @@ const DANGER_TYPE_LABELS: Record<string, string> = {
 }
 
 export function HiyariHatReport() {
-  const [reports, setReports] = React.useState<LiveReport[]>([])
+  const [reports, setReports] = React.useState<DangerReport[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [reactions, setReactions] = React.useState<Record<string, { helpful: boolean; caution: boolean }>>({})
+  const [selectedReport, setSelectedReport] = React.useState<DangerReport | null>(null)
+  const [isModalOpen, setIsModalOpen] = React.useState(false)
 
   React.useEffect(() => {
     const supabase = createBrowserClient(
@@ -52,7 +44,7 @@ export function HiyariHatReport() {
       try {
         const { data, error } = await supabase
           .from("danger_reports")
-          .select("id, title, description, danger_type, latitude, longitude, image_url, processed_image_urls, created_at")
+          .select("*")
           .in("status", ["approved", "published", "resolved"])
           .order("created_at", { ascending: false })
           .limit(5)
@@ -79,7 +71,7 @@ export function HiyariHatReport() {
     }))
   }
 
-  const thumbnailUrl = (report: LiveReport): string | undefined => {
+  const thumbnailUrl = (report: DangerReport): string | undefined => {
     if (report.processed_image_urls && report.processed_image_urls.length > 0) {
       return report.processed_image_urls[0]
     }
@@ -118,12 +110,25 @@ export function HiyariHatReport() {
             {reports.map((report) => {
               const thumb = thumbnailUrl(report)
               const dangerLabel = DANGER_TYPE_LABELS[report.danger_type ?? "other"] ?? "その他"
-              const timeLabel = formatRelativeTime(report.created_at)
+              const timeLabel = report.created_at ? formatRelativeTime(report.created_at) : ""
 
               return (
                 <article
                   key={report.id}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                  role="button"
+                  tabIndex={0}
+                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => {
+                    setSelectedReport(report)
+                    setIsModalOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setSelectedReport(report)
+                      setIsModalOpen(true)
+                    }
+                  }}
                 >
                   {/* ヘッダー */}
                   <div className="flex items-center gap-2 mb-2">
@@ -170,7 +175,7 @@ export function HiyariHatReport() {
                   <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
                     <button
                       type="button"
-                      onClick={() => toggleReaction(report.id, "helpful")}
+                      onClick={(e) => { e.stopPropagation(); toggleReaction(report.id, "helpful") }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
                         reactions[report.id]?.helpful
@@ -183,7 +188,7 @@ export function HiyariHatReport() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => toggleReaction(report.id, "caution")}
+                      onClick={(e) => { e.stopPropagation(); toggleReaction(report.id, "caution") }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
                         reactions[report.id]?.caution
@@ -211,6 +216,15 @@ export function HiyariHatReport() {
           </Link>
         </div>
       </div>
+
+      <DangerReportDetailModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setSelectedReport(null)
+        }}
+        report={selectedReport}
+      />
     </section>
   )
 }
