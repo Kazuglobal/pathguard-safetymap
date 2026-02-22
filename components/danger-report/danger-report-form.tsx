@@ -1044,7 +1044,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         danger_level: dangerLevel,
         latitude: selectedLocation[1],
         longitude: selectedLocation[0],
-        status: "pending", // 初期ステータスは審査中
+        status: "published", // 認証ユーザーの投稿は即時公開
         processed_image_urls: uploadedProcessedImageUrls.filter(Boolean) as string[],
       }
 

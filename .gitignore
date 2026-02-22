@@ -117,3 +117,8 @@ honhyo_*.csv
 honhyo_part*.csv
 twitter-buzz-agents/
 header.txt
+
+# -----------------------------------------
+# 生成された静的ファイル（copy-cesiumスクリプトで生成）
+# -----------------------------------------
+/public/cesium/

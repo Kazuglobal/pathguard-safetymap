@@ -2,61 +2,72 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { ThumbsUp, AlertCircle, ChevronRight, MessageCircle } from "lucide-react"
+import Link from "next/link"
+import { ThumbsUp, AlertCircle, ChevronRight, MessageCircle, MapPin, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { createBrowserClient } from "@supabase/ssr"
 
-interface HiyariHatPost {
+interface LiveReport {
   id: string
-  userAvatar: string
-  userName: string
-  userLocation: string
-  postedAt: string
-  content: string
-  imageUrl?: string
-  location: string
-  helpfulCount: number
-  cautionCount: number
+  title: string | null
+  description: string | null
+  danger_type: string | null
+  latitude: number | null
+  longitude: number | null
+  image_url: string | null
+  processed_image_urls: string[] | null
+  created_at: string
 }
 
-const posts: HiyariHatPost[] = [
-  {
-    id: "1",
-    userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces",
-    userName: "さくらママ",
-    userLocation: "東京都世田谷区",
-    postedAt: "2時間前",
-    content: "〇〇小学校前の横断歩道、信号が青になっても右折車が止まらずヒヤリ。子どもたちには青でも左右確認を徹底させています。",
-    location: "世田谷区〇〇1丁目",
-    helpfulCount: 24,
-    cautionCount: 18,
-  },
-  {
-    id: "2",
-    userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces",
-    userName: "見守りパパ",
-    userLocation: "神奈川県横浜市",
-    postedAt: "5時間前",
-    content: "駅前ロータリーで送迎車が歩道に乗り上げて駐車。子どもの通学時間帯は特に危険。学校にも報告しました。",
-    imageUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=300&fit=crop",
-    location: "横浜市〇〇区駅前",
-    helpfulCount: 45,
-    cautionCount: 32,
-  },
-  {
-    id: "3",
-    userAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=faces",
-    userName: "あんぜんばあば",
-    userLocation: "埼玉県さいたま市",
-    postedAt: "昨日",
-    content: "公園横の道、植木が伸びすぎて見通しが悪くなっています。市役所に剪定依頼を出しましたが、皆さんも通る際はご注意を。",
-    location: "さいたま市〇〇区",
-    helpfulCount: 67,
-    cautionCount: 41,
-  },
-]
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes}分前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}時間前`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return "昨日"
+  return `${days}日前`
+}
+
+const DANGER_TYPE_LABELS: Record<string, string> = {
+  traffic: "交通危険",
+  crime: "防犯",
+  disaster: "災害・自然",
+  other: "その他",
+}
 
 export function HiyariHatReport() {
+  const [reports, setReports] = React.useState<LiveReport[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [reactions, setReactions] = React.useState<Record<string, { helpful: boolean; caution: boolean }>>({})
+
+  React.useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    async function fetchReports() {
+      try {
+        const { data, error } = await supabase
+          .from("danger_reports")
+          .select("id, title, description, danger_type, latitude, longitude, image_url, processed_image_urls, created_at")
+          .in("status", ["approved", "published", "resolved"])
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (error) throw error
+        setReports(data ?? [])
+      } catch {
+        // Silently fail — landing page continues to work
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchReports()
+  }, [])
 
   const toggleReaction = (postId: string, type: "helpful" | "caution") => {
     setReactions((prev) => ({
@@ -68,6 +79,13 @@ export function HiyariHatReport() {
     }))
   }
 
+  const thumbnailUrl = (report: LiveReport): string | undefined => {
+    if (report.processed_image_urls && report.processed_image_urls.length > 0) {
+      return report.processed_image_urls[0]
+    }
+    return report.image_url ?? undefined
+  }
+
   return (
     <section className="py-6 md:py-10 bg-gray-50">
       <div className="max-w-6xl mx-auto">
@@ -77,119 +95,120 @@ export function HiyariHatReport() {
             <MessageCircle className="w-5 h-5 md:w-6 md:h-6 text-red-600" />
             <h2 className="text-lg md:text-xl font-bold text-gray-900">みんなのヒヤリハット報告</h2>
           </div>
-          <button
-            type="button"
+          <Link
+            href="/report"
             className="flex items-center gap-0.5 text-sm text-gray-500 hover:text-red-600 transition-colors"
           >
             すべて見る
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </Link>
         </div>
 
-        {/* 投稿リスト（デスクトップはグリッド） */}
-        <div className="px-4 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
-        {posts.map((post) => (
-          <article
-            key={post.id}
-            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
-          >
-            {/* ユーザー情報 */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                <Image
-                  src={post.userAvatar}
-                  alt={post.userName}
-                  fill
-                  className="object-cover"
-                  sizes="40px"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">
-                    {post.userName}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {post.userLocation}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-400">{post.postedAt}</span>
-              </div>
-            </div>
+        {/* 投稿リスト */}
+        {isLoading ? (
+          <div className="px-4 flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-red-500" />
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="px-4 text-center py-10 text-gray-500 text-sm">
+            まだ報告がありません
+          </div>
+        ) : (
+          <div className="px-4 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+            {reports.map((report) => {
+              const thumb = thumbnailUrl(report)
+              const dangerLabel = DANGER_TYPE_LABELS[report.danger_type ?? "other"] ?? "その他"
+              const timeLabel = formatRelativeTime(report.created_at)
 
-            {/* 投稿内容 */}
-            <p className="text-sm text-gray-700 leading-relaxed mb-3">
-              {post.content}
-            </p>
+              return (
+                <article
+                  key={report.id}
+                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                >
+                  {/* ヘッダー */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                      {dangerLabel}
+                    </span>
+                    <span className="text-xs text-gray-400">{timeLabel}</span>
+                  </div>
 
-            {/* 画像（ある場合） */}
-            {post.imageUrl && (
-              <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3">
-                <Image
-                  src={post.imageUrl}
-                  alt="投稿画像"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 400px"
-                />
-              </div>
-            )}
+                  {/* タイトル */}
+                  <p className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                    {report.title ?? "ヒヤリハット報告"}
+                  </p>
 
-            {/* 場所タグ */}
-            <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-              </svg>
-              {post.location}
-            </div>
+                  {/* 説明 */}
+                  {report.description && (
+                    <p className="text-sm text-gray-700 leading-relaxed mb-3 line-clamp-3">
+                      {report.description}
+                    </p>
+                  )}
 
-            {/* リアクションボタン */}
-            <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => toggleReaction(post.id, "helpful")}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  reactions[post.id]?.helpful
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                <ThumbsUp className="w-4 h-4" />
-                参考になった
-                <span className="text-xs">
-                  {post.helpfulCount + (reactions[post.id]?.helpful ? 1 : 0)}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleReaction(post.id, "caution")}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  reactions[post.id]?.caution
-                    ? "bg-orange-100 text-orange-600"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                <AlertCircle className="w-4 h-4" />
-                気をつける
-                <span className="text-xs">
-                  {post.cautionCount + (reactions[post.id]?.caution ? 1 : 0)}
-                </span>
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+                  {/* 画像 */}
+                  {thumb && (
+                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3">
+                      <Image
+                        src={thumb}
+                        alt="投稿画像"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 400px"
+                      />
+                    </div>
+                  )}
+
+                  {/* 場所タグ */}
+                  {report.latitude != null && report.longitude != null && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                      <MapPin className="w-3 h-3" />
+                      {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
+                    </div>
+                  )}
+
+                  {/* リアクションボタン */}
+                  <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => toggleReaction(report.id, "helpful")}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                        reactions[report.id]?.helpful
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      )}
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                      参考になった
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleReaction(report.id, "caution")}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                        reactions[report.id]?.caution
+                          ? "bg-orange-100 text-orange-600"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      )}
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      気をつける
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
 
         {/* 投稿ボタン */}
         <div className="px-4 mt-4 md:mt-6">
-          <button
-            type="button"
-            className="w-full md:w-auto md:px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors md:mx-auto md:block"
+          <Link
+            href="/map"
+            className="block w-full md:w-auto md:px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors text-center md:mx-auto md:inline-block"
           >
             ヒヤリハットを報告する
-          </button>
+          </Link>
         </div>
       </div>
     </section>

@@ -31,6 +31,11 @@ interface UserInteraction {
   saved: boolean
 }
 
+const isUniqueConstraintError = (error: { code?: string; message?: string } | null | undefined) => {
+  if (!error) return false
+  return error.code === "23505" || /duplicate key|already exists/i.test(error.message ?? "")
+}
+
 /**
  * Hook for managing single report's like/save state
  */
@@ -166,18 +171,33 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     }
 
     try {
-      const { data, error } = await supabase.rpc("toggle_report_like", {
+      const { error: rpcError } = await supabase.rpc("toggle_report_like", {
         p_user_id: user.id,
         p_report_id: reportId,
       })
 
-      if (error) throw error
+      if (rpcError) {
+        // Fallback: direct INSERT / DELETE
+        const wasLiked = (userInteraction ?? { liked: false }).liked
+        if (wasLiked) {
+          const { error } = await supabase
+            .from("report_likes")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("report_id", reportId)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("report_likes")
+            .insert({ user_id: user.id, report_id: reportId })
+          if (error) throw error
+        }
+      }
 
       // Revalidate to get accurate server state
       mutateUserInteraction()
       globalMutate(`report-stats-${reportId}`)
     } catch (e) {
-      console.error("Failed to toggle like:", e)
       // Rollback on error
       mutateUserInteraction()
       globalMutate(`report-stats-${reportId}`)
@@ -230,12 +250,27 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     }
 
     try {
-      const { data, error } = await supabase.rpc("toggle_report_bookmark", {
+      const { error: rpcError } = await supabase.rpc("toggle_report_bookmark", {
         p_user_id: user.id,
         p_report_id: reportId,
       })
 
-      if (error) throw error
+      if (rpcError) {
+        // Fallback: direct INSERT / DELETE
+        if (wasSaved) {
+          const { error } = await supabase
+            .from("report_bookmarks")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("report_id", reportId)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("report_bookmarks")
+            .insert({ user_id: user.id, report_id: reportId })
+          if (error) throw error
+        }
+      }
 
       // Revalidate to get accurate server state
       mutateUserInteraction()
@@ -246,7 +281,6 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
         duration: 2000,
       })
     } catch (e) {
-      console.error("Failed to toggle save:", e)
       // Rollback on error
       mutateUserInteraction()
       globalMutate(`report-stats-${reportId}`)
@@ -393,17 +427,31 @@ export function useReportInteractionsBatch(reportIds: string[]): {
     optimisticData.set(reportId, {
       ...current,
       liked: !wasLiked,
-      likeCount: wasLiked ? current.likeCount - 1 : current.likeCount + 1,
+      likeCount: Math.max(0, current.likeCount + (wasLiked ? -1 : 1)),
     })
     mutate(optimisticData, false)
 
     try {
-      const { error } = await supabase.rpc("toggle_report_like", {
+      const { error: rpcError } = await supabase.rpc("toggle_report_like", {
         p_user_id: user.id,
         p_report_id: reportId,
       })
 
-      if (error) throw error
+      if (rpcError) {
+        if (wasLiked) {
+          const { error } = await supabase
+            .from("report_likes")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("report_id", reportId)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("report_likes")
+            .insert({ user_id: user.id, report_id: reportId })
+          if (error && !isUniqueConstraintError(error)) throw error
+        }
+      }
 
       // Revalidate
       mutate()
@@ -440,17 +488,31 @@ export function useReportInteractionsBatch(reportIds: string[]): {
     optimisticData.set(reportId, {
       ...current,
       saved: !wasSaved,
-      saveCount: wasSaved ? current.saveCount - 1 : current.saveCount + 1,
+      saveCount: Math.max(0, current.saveCount + (wasSaved ? -1 : 1)),
     })
     mutate(optimisticData, false)
 
     try {
-      const { error } = await supabase.rpc("toggle_report_bookmark", {
+      const { error: rpcError } = await supabase.rpc("toggle_report_bookmark", {
         p_user_id: user.id,
         p_report_id: reportId,
       })
 
-      if (error) throw error
+      if (rpcError) {
+        if (wasSaved) {
+          const { error } = await supabase
+            .from("report_bookmarks")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("report_id", reportId)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("report_bookmarks")
+            .insert({ user_id: user.id, report_id: reportId })
+          if (error && !isUniqueConstraintError(error)) throw error
+        }
+      }
 
       mutate()
 

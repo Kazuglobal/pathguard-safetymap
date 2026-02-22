@@ -102,7 +102,14 @@
       "WebFetch(domain:online-marketing.jp)",
       "WebFetch(domain:shubihiro.com)",
       "Bash(python3:*)",
-      "Bash(npm:*)"
+      "Bash(npm:*)",
+      "WebSearch",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm config set:*)",
+      "Bash(pnpm store path:*)",
+      "Bash(cmd.exe /c \"cd C:\\\\Users\\\\s1598\\\\mapsefe\\\\20250615 && pnpm add cesium\")",
+      "Bash(wait:*)",
+      "Bash(du:*)"
     ],
     "deny": []
   }

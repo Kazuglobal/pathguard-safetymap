@@ -63,6 +63,7 @@ vi.mock("@/hooks/use-accident-stats", async () => {
 })
 
 vi.mock("@/components/danger-report/accident-stats-panel", () => ({
+  default: () => <div data-testid="accident-panel">accident-panel</div>,
   AccidentStatsPanel: () => <div data-testid="accident-panel">accident-panel</div>,
   AccidentStatsLoading: () => <div data-testid="accident-loading">accident-loading</div>,
 }))
@@ -116,7 +117,7 @@ describe("DangerReportForm", () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
-      expect(mocks.enrichReportWithAccidents).toHaveBeenCalledWith(mocks.supabase, "report-123")
+      expect(mocks.enrichReportWithAccidents).toHaveBeenCalledWith("report-123")
     })
 
     expect(mocks.hookState.enrichCallCount).toBe(0)

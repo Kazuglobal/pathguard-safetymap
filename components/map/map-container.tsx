@@ -27,6 +27,7 @@ import ARView from "./ar-view"
 import { isAdminUser } from "@/lib/admin"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
+import { resolveInitialDangerReportStatus } from "@/lib/danger-report-status"
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
@@ -1174,6 +1175,8 @@ export default function MapContainer() {
         ? await reverseGeocodeLocation(selectedLocation[1], selectedLocation[0])
         : { prefecture: null as string | null, city: null as string | null };
 
+      const initialStatus = resolveInitialDangerReportStatus(reportDataToInsert.status);
+
       const { data: insertedData, error: insertError } = await supabase
       .from("danger_reports")
       .insert({
@@ -1183,7 +1186,7 @@ export default function MapContainer() {
         longitude: selectedLocation[0],
         prefecture: locationDetails.prefecture,
         city: locationDetails.city,
-        status: 'pending',
+        status: initialStatus,
         title: reportDataToInsert.title || '無題の報告',
         danger_type: reportDataToInsert.danger_type || 'other',
         danger_level: reportDataToInsert.danger_level || 1,
