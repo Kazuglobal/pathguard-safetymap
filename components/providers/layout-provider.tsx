@@ -60,7 +60,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     // Keep user state in sync with auth state changes
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' && !logoutInFlightRef.current) {
         const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password']
         if (!publicPaths.some((p) => window.location.pathname.startsWith(p))) {
           router.replace('/login')
