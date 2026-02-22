@@ -30,8 +30,12 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
         const { data, error } = await supabase.auth.getUser()
         if (error) {
           // "Auth session missing" is expected when user is not logged in - not an error
-          if (error.message?.includes("Auth session missing")) {
-            // User not logged in - this is normal, no logging needed
+          if (
+            error.message?.includes("Auth session missing") ||
+            error.message?.includes("Invalid Refresh Token") ||
+            error.message?.includes("Refresh Token Not Found")
+          ) {
+            // Session gone — expected, not an error
             return
           }
           if (error.message?.includes("fetch failed")) {
@@ -54,8 +58,14 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     loadUser()
 
     // Keep user state in sync with auth state changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+      if (event === 'SIGNED_OUT') {
+        const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password']
+        if (!publicPaths.some((p) => window.location.pathname.startsWith(p))) {
+          router.replace('/login')
+        }
+      }
     })
 
     return () => {

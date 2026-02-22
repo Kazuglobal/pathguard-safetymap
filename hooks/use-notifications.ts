@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { useSupabase } from "@/components/providers/supabase-provider"
 
 export interface Notification {
   id: string
@@ -25,10 +25,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const { supabase } = useSupabase()
 
   const fetchNotifications = useCallback(async () => {
     try {
