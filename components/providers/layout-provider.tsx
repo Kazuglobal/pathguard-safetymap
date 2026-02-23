@@ -3,7 +3,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
-import { SupabaseProvider, useSupabase } from "@/components/providers/supabase-provider"
+import {
+  SupabaseProvider,
+  isAbortLikeFetchError,
+  useSupabase,
+} from "@/components/providers/supabase-provider"
 import { Toaster } from "@/components/ui/toaster"
 import type { User } from "@supabase/supabase-js"
 
@@ -29,6 +33,9 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
         }
         const { data, error } = await supabase.auth.getUser()
         if (error) {
+          if (isAbortLikeFetchError(error)) {
+            return
+          }
           // "Auth session missing" is expected when user is not logged in - not an error
           if (
             error.message?.includes("Auth session missing") ||
@@ -47,6 +54,9 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
         }
         if (isMounted) setUser(data.user ?? null)
       } catch (e: any) {
+        if (isAbortLikeFetchError(e)) {
+          return
+        }
         if (e?.message?.includes("fetch failed")) {
           console.warn("Supabaseサーバーに接続できません。オフラインモードで続行します。")
         } else {
