@@ -9,7 +9,17 @@ const resetAccidentStatsMock = vi.fn()
 
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) => (open ? <div>{children}</div> : null),
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => (
+    <div data-testid="dialog-content" className={className}>
+      {children}
+    </div>
+  ),
   DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
@@ -155,5 +165,26 @@ describe("DangerReportDetailModal", () => {
 
     expect(screen.getByTestId("carousel-image-count")).toHaveTextContent("0")
     expect(screen.getByTestId("admin-image-count")).toHaveTextContent("0")
+  })
+
+  it("uses fullscreen layout classes on mobile and modal layout classes on desktop", () => {
+    render(
+      <DangerReportDetailModal
+        isOpen={true}
+        onClose={vi.fn()}
+        report={createReport()}
+      />,
+    )
+
+    const content = screen.getByTestId("dialog-content")
+    const className = content.className
+
+    expect(className).toContain("w-screen")
+    expect(className).toContain("h-[100dvh]")
+    expect(className).toContain("left-0")
+    expect(className).toContain("top-0")
+    expect(className).toContain("sm:left-[50%]")
+    expect(className).toContain("sm:top-[50%]")
+    expect(className).toContain("sm:max-w-4xl")
   })
 })
