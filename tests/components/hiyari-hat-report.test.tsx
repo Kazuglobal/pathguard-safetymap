@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { HiyariHatReport } from "@/components/landing/HiyariHatReport"
+import type { DangerReport } from "@/lib/types"
 
 const mocks = vi.hoisted(() => ({
   createBrowserClient: vi.fn(),
@@ -27,24 +28,82 @@ vi.mock("next/link", () => ({
   ),
 }))
 
+vi.mock("@/components/danger-report/danger-report-detail-modal", () => ({
+  default: ({
+    isOpen,
+    report,
+  }: {
+    isOpen: boolean
+    report: DangerReport | null
+    onClose: () => void
+  }) =>
+    isOpen && report ? (
+      <div role="dialog" aria-label={report.title ?? "report"}>
+        {report.title}
+      </div>
+    ) : null,
+}))
+
+const zeroCoordReport = {
+  id: "report-1",
+  title: "座標ゼロのテスト",
+  description: "赤道・本初子午線",
+  danger_type: "other",
+  danger_level: 1,
+  status: "approved",
+  latitude: 0,
+  longitude: 0,
+  image_url: null,
+  processed_image_url: null,
+  processed_image_urls: null,
+  prefecture: null,
+  prefecture_code: null,
+  city: null,
+  municipality_code: null,
+  town: null,
+  postal_code: null,
+  geocode_source: null,
+  geocoded_at: null,
+  geocode_confidence: null,
+  address_hash: null,
+  user_id: "u1",
+  created_at: "2026-02-20T00:00:00.000Z",
+  updated_at: "2026-02-20T00:00:00.000Z",
+}
+
+const clickableReport = {
+  id: "report-click",
+  title: "交差点の危険",
+  description: "車がスピードを出しすぎている",
+  danger_type: "traffic",
+  danger_level: 3,
+  status: "approved",
+  latitude: 35.6895,
+  longitude: 139.6917,
+  image_url: null,
+  processed_image_url: null,
+  processed_image_urls: [],
+  prefecture: null,
+  prefecture_code: null,
+  city: null,
+  municipality_code: null,
+  town: null,
+  postal_code: null,
+  geocode_source: null,
+  geocoded_at: null,
+  geocode_confidence: null,
+  address_hash: null,
+  user_id: "u1",
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+}
+
 describe("HiyariHatReport", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     mocks.limit.mockResolvedValue({
-      data: [
-        {
-          id: "report-1",
-          title: "座標ゼロのテスト",
-          description: "赤道・本初子午線",
-          danger_type: "other",
-          latitude: 0,
-          longitude: 0,
-          image_url: null,
-          processed_image_urls: null,
-          created_at: "2026-02-20T00:00:00.000Z",
-        },
-      ],
+      data: [zeroCoordReport],
       error: null,
     })
     mocks.order.mockReturnValue({ limit: mocks.limit })
@@ -59,6 +118,49 @@ describe("HiyariHatReport", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/0\.0000,\s*0\.0000/)).toBeInTheDocument()
+    })
+  })
+
+  describe("詳細モーダル表示", () => {
+    beforeEach(() => {
+      mocks.limit.mockResolvedValue({
+        data: [clickableReport],
+        error: null,
+      })
+    })
+
+    it("報告カードが role=button を持つ", async () => {
+      const { container } = render(<HiyariHatReport />)
+
+      await waitFor(() => {
+        expect(container.querySelector('article[role="button"]')).toBeTruthy()
+      })
+    })
+
+    it("カードをクリックすると DangerReportDetailModal が開く", async () => {
+      const { container } = render(<HiyariHatReport />)
+
+      await waitFor(() => {
+        expect(container.querySelector('article[role="button"]')).toBeTruthy()
+      })
+
+      const card = container.querySelector('article[role="button"]') as HTMLElement
+      fireEvent.click(card)
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+    })
+
+    it("モーダルのタイトルが報告の title と一致する", async () => {
+      const { container } = render(<HiyariHatReport />)
+
+      await waitFor(() => {
+        expect(container.querySelector('article[role="button"]')).toBeTruthy()
+      })
+
+      const card = container.querySelector('article[role="button"]') as HTMLElement
+      fireEvent.click(card)
+
+      expect(screen.getByRole("dialog")).toHaveTextContent("交差点の危険")
     })
   })
 })

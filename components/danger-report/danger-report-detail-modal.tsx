@@ -6,11 +6,13 @@ import { AlertTriangle } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { ReportHeroHeader } from "./detail/report-hero-header"
 import { ReportImageCarousel } from "./detail/report-image-carousel"
 import { ReportAdminImageUpload } from "./detail/report-admin-image-upload"
 import { ReportMetadataBar } from "./detail/report-metadata-bar"
 import { ReportAccidentSection } from "./detail/report-accident-section"
+import { ReportCommentSection } from "@/components/comments/report-comment-section"
 
 interface ShowImageOptions {
   reportId?: string
@@ -49,6 +51,9 @@ export default function DangerReportDetailModal({
     reset: resetAccidentStats,
   } = useAccidentStats()
   const processedUrlsKey = report?.processed_image_urls?.join("|") ?? ""
+  const isPrimaryPointerCoarse = useMediaQuery("(pointer: coarse)")
+  const isAnyPointerCoarse = useMediaQuery("(any-pointer: coarse)")
+  const isTouchDevice = isPrimaryPointerCoarse || isAnyPointerCoarse
 
   useEffect(() => {
     if (!report) {
@@ -77,10 +82,13 @@ export default function DangerReportDetailModal({
     ...report,
     processed_image_urls: processedImageUrls,
   }
+  const dialogContentClassName = isTouchDevice
+    ? "w-screen max-w-none h-[100dvh] max-h-[100dvh] overflow-y-auto p-0 gap-0 left-0 top-0 translate-x-0 translate-y-0 rounded-none"
+    : "max-h-[95vh] overflow-y-auto p-0 gap-0 sm:max-w-4xl"
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className={dialogContentClassName}>
         {/* Accessible title/description (visually hidden) */}
         <DialogTitle className="sr-only">{report.title}</DialogTitle>
         <DialogDescription className="sr-only">
@@ -137,6 +145,11 @@ export default function DangerReportDetailModal({
               この情報は一般ユーザーからの報告に基づいています。状況は変化している可能性があります。
             </p>
           </div>
+        </div>
+
+        {/* 8. Comments */}
+        <div className="px-4 md:px-6 py-4 border-t border-gray-100">
+          <ReportCommentSection reportId={report.id} />
         </div>
       </DialogContent>
 

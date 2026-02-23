@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { useState, useEffect, useCallback } from "react"
+import { useSupabase } from "@/components/providers/supabase-provider"
 
 export interface ReportComment {
   id: string
@@ -24,13 +24,7 @@ export function useReportComments(reportId: string) {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const supabaseRef = useRef(
-    createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  )
-  const supabase = supabaseRef.current
+  const { supabase } = useSupabase()
 
   const fetchComments = useCallback(async () => {
     if (!reportId) {

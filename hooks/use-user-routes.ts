@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { useSupabase } from "@/components/providers/supabase-provider"
 import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
 
 export function useUserRoutes() {
@@ -14,13 +14,7 @@ export function useUserRoutes() {
   const routesRef = useRef<UserRoute[]>(routes)
   routesRef.current = routes
 
-  const supabaseRef = useRef(
-    createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  )
-  const supabase = supabaseRef.current
+  const { supabase } = useSupabase()
 
   const primaryRoute = useMemo(() => {
     return routes.find((r) => r.is_favorite) || null
