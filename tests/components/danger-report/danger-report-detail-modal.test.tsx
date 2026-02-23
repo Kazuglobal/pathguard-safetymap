@@ -6,6 +6,10 @@ import type { DangerReport } from "@/lib/types"
 
 const fetchStatsMock = vi.fn()
 const resetAccidentStatsMock = vi.fn()
+const mediaQueryState = vi.hoisted(() => ({
+  pointerCoarse: false,
+  anyPointerCoarse: false,
+}))
 
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) => (open ? <div>{children}</div> : null),
@@ -22,6 +26,14 @@ vi.mock("@/components/ui/dialog", () => ({
   ),
   DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock("@/hooks/use-media-query", () => ({
+  useMediaQuery: (query: string) => {
+    if (query.includes("any-pointer")) return mediaQueryState.anyPointerCoarse
+    if (query.includes("pointer")) return mediaQueryState.pointerCoarse
+    return false
+  },
 }))
 
 vi.mock("@/components/ui/image-zoom-overlay", () => ({
@@ -108,6 +120,8 @@ const createReport = (overrides: Partial<DangerReport> = {}): DangerReport => ({
 describe("DangerReportDetailModal", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mediaQueryState.pointerCoarse = false
+    mediaQueryState.anyPointerCoarse = false
   })
 
   it("updates displayed processed images when admin changes URLs", () => {
@@ -167,7 +181,9 @@ describe("DangerReportDetailModal", () => {
     expect(screen.getByTestId("admin-image-count")).toHaveTextContent("0")
   })
 
-  it("uses fullscreen layout classes on mobile and modal layout classes on desktop", () => {
+  it("uses fullscreen layout classes for touch devices", () => {
+    mediaQueryState.pointerCoarse = true
+
     render(
       <DangerReportDetailModal
         isOpen={true}
@@ -183,8 +199,25 @@ describe("DangerReportDetailModal", () => {
     expect(className).toContain("h-[100dvh]")
     expect(className).toContain("left-0")
     expect(className).toContain("top-0")
-    expect(className).toContain("sm:left-[50%]")
-    expect(className).toContain("sm:top-[50%]")
+    expect(className).not.toContain("sm:left-[50%]")
+    expect(className).not.toContain("sm:top-[50%]")
+  })
+
+  it("uses centered modal layout classes for non-touch devices", () => {
+    render(
+      <DangerReportDetailModal
+        isOpen={true}
+        onClose={vi.fn()}
+        report={createReport()}
+      />,
+    )
+
+    const content = screen.getByTestId("dialog-content")
+    const className = content.className
+
+    expect(className).toContain("max-h-[95vh]")
     expect(className).toContain("sm:max-w-4xl")
+    expect(className).not.toContain("h-[100dvh]")
+    expect(className).not.toContain("left-0")
   })
 })
