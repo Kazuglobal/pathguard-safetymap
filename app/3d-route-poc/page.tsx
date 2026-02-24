@@ -7,10 +7,11 @@ export const metadata = { title: '3D通学路 PoC - PathGuardian' }
 export default async function ThreeDRoutePocPage() {
   const supabase = await createServerClient()
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (error || !user) {
     redirect('/login')
   }
 
