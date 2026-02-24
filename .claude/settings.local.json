@@ -109,7 +109,26 @@
       "Bash(pnpm store path:*)",
       "Bash(cmd.exe /c \"cd C:\\\\Users\\\\s1598\\\\mapsefe\\\\20250615 && pnpm add cesium\")",
       "Bash(wait:*)",
-      "Bash(du:*)"
+      "Bash(du:*)",
+      "Bash(tail:*)",
+      "Bash(head:*)",
+      "Bash(ln:*)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "WebFetch(domain:sparkjs.dev)",
+      "Bash(cd:*)",
+      "Bash(cat:*)",
+      "Bash(git:*)",
+      "Bash(pnpm install:*)",
+      "Bash(sleep 8 && jobs -l 2>&1)",
+      "Bash(cd /mnt/c/Users/s1598/mapsefe/20250615 && timeout 15 pnpm dev 2>&1)",
+      "Bash(pkill:*)",
+      "Bash(fuser -k 3002/tcp)",
+      "Bash(fuser -k 3001/tcp)",
+      "Bash(fuser:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm dev:turbo:*)"
     ],
     "deny": []
   }

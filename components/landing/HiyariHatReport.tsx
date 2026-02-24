@@ -27,12 +27,38 @@ const DANGER_TYPE_LABELS: Record<string, string> = {
   other: "その他",
 }
 
+const LANDING_REPORT_SELECT_COLUMNS = [
+  "id",
+  "title",
+  "description",
+  "danger_type",
+  "danger_level",
+  "status",
+  "latitude",
+  "longitude",
+  "image_url",
+  "processed_image_url",
+  "processed_image_urls",
+  "prefecture",
+  "prefecture_code",
+  "city",
+  "municipality_code",
+  "town",
+  "postal_code",
+  "created_at",
+  "updated_at",
+].join(", ")
+
 export function HiyariHatReport() {
   const [reports, setReports] = React.useState<DangerReport[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [reactions, setReactions] = React.useState<Record<string, { helpful: boolean; caution: boolean }>>({})
   const [selectedReport, setSelectedReport] = React.useState<DangerReport | null>(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const openReportModal = React.useCallback((report: DangerReport) => {
+    setSelectedReport(report)
+    setIsModalOpen(true)
+  }, [])
 
   React.useEffect(() => {
     const supabase = createBrowserClient(
@@ -44,7 +70,7 @@ export function HiyariHatReport() {
       try {
         const { data, error } = await supabase
           .from("danger_reports")
-          .select("*")
+          .select(LANDING_REPORT_SELECT_COLUMNS)
           .in("status", ["approved", "published", "resolved"])
           .order("created_at", { ascending: false })
           .limit(5)
@@ -118,15 +144,12 @@ export function HiyariHatReport() {
                   role="button"
                   tabIndex={0}
                   className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => {
-                    setSelectedReport(report)
-                    setIsModalOpen(true)
-                  }}
+                  onClick={() => openReportModal(report)}
                   onKeyDown={(e) => {
+                    if (e.currentTarget !== e.target) return
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault()
-                      setSelectedReport(report)
-                      setIsModalOpen(true)
+                      openReportModal(report)
                     }
                   }}
                 >

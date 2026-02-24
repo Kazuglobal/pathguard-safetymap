@@ -1,6 +1,6 @@
 "use client"
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import TimeOfDaySlider from '@/components/3d-route/time-of-day-slider'
 import AddressSearch, { GeoResult } from '@/components/3d-route/address-search'
 import type { WeatherType, HazardPin } from '@/components/3d-route/cesium-viewer'
@@ -30,12 +30,13 @@ const StreetViewPanel = dynamic(
   }
 )
 
-type ViewMode = '3d' | 'street' | 'split'
+type ViewMode = '3d' | 'street' | 'split' | 'splat'
 
 const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   '3d': '3D',
   split: '分割',
   street: 'Street',
+  splat: '3Dスキャン',
 }
 
 const WEATHER_LABELS: Record<WeatherType, string> = {
@@ -44,6 +45,21 @@ const WEATHER_LABELS: Record<WeatherType, string> = {
   snow: '雪',
   fog: '霧',
 }
+
+const PRESET_SPLATS: { label: string; url: string }[] = [
+  {
+    label: 'ローカルPLY（public/splats/school-route.ply）',
+    url: '/splats/school-route.ply',
+  },
+  {
+    label: '危険交差点（サンプル）',
+    url: 'https://sparkjs.dev/assets/splats/butterfly.spz',
+  },
+  {
+    label: '歩道なし区間（サンプル）',
+    url: 'https://sparkjs.dev/assets/splats/bicycle.spz',
+  },
+]
 
 
 type Coordinate = { lon: number, lat: number }
@@ -81,7 +97,7 @@ export default function ThreeDRoutePocClient() {
   const [hourOfDay, setHourOfDay] = useState(9)
   const [location, setLocation] = useState<{ lon: number; lat: number } | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('3d')
-  const [streetViewInitialized, setStreetViewInitialized] = useState(false)
+  const [splatUrl, setSplatUrl] = useState(PRESET_SPLATS[0].url)
 
   // Enhancements State
   const [eyeHeight, setEyeHeight] = useState<number>(1.1)
@@ -109,7 +125,7 @@ export default function ThreeDRoutePocClient() {
 
   const show3d = viewMode === '3d' || viewMode === 'split'
   const showStreet = viewMode === 'street' || viewMode === 'split'
-  const showStreetComponent = showStreet || streetViewInitialized
+  const showSplat = viewMode === 'splat'
 
   const handleMapClick = useCallback((lon: number, lat: number) => {
     if (!show3d) return;
@@ -135,12 +151,6 @@ export default function ThreeDRoutePocClient() {
     }
   }, [hazardComment, pendingHazardCoords])
 
-  useEffect(() => {
-    if (showStreet) {
-      setStreetViewInitialized(true)
-    }
-  }, [showStreet])
-
   const threeDPaneClass =
     viewMode === 'split'
       ? 'w-1/2 h-full'
@@ -151,9 +161,10 @@ export default function ThreeDRoutePocClient() {
   const streetPaneClass =
     viewMode === 'split'
       ? 'w-1/2 h-full border-l border-white/10'
-      : viewMode === 'street'
-        ? 'w-full h-full'
-        : 'w-0 h-full overflow-hidden pointer-events-none'
+      : 'w-full h-full'
+
+  const splatPaneClass =
+    viewMode === 'splat' ? 'w-full h-full' : 'w-0 h-full overflow-hidden pointer-events-none'
 
   const activeRoute = routes.find(r => r.id === selectedRouteId)
   const baseRouteCoordinates = activeRoute ? activeRoute.coordinates : []
@@ -178,11 +189,22 @@ export default function ThreeDRoutePocClient() {
             showTraffic={showTraffic}
           />
         </div>
-        {showStreetComponent && (
+        {showStreet && (
           <div className={streetPaneClass} aria-hidden={!showStreet}>
             <StreetViewPanel location={location} active={showStreet} />
           </div>
         )}
+        <div className={splatPaneClass} aria-hidden={!showSplat}>
+          {showSplat && (
+            <iframe
+              key={splatUrl}
+              title="Spark Splat Viewer"
+              src={`/spark-viewer.html?splat=${encodeURIComponent(splatUrl)}`}
+              className="w-full h-full border-0 bg-slate-950"
+              allow="fullscreen"
+            />
+          )}
+        </div>
       </div>
 
       {/* 左上: 操作パネル */}
@@ -195,13 +217,15 @@ export default function ThreeDRoutePocClient() {
             子ども目線（110cm）で通学路の危険を体験し、データで可視化する統合プラットフォーム
           </p>
 
-          <div className="flex gap-1 mt-4">
-            {(['3d', 'split', 'street'] as ViewMode[]).map((mode) => (
+          <div className="grid grid-cols-4 gap-1 mt-4">
+            {(['3d', 'split', 'street', 'splat'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`flex-1 text-[11px] py-1.5 rounded-lg font-medium transition-colors ${viewMode === mode
-                  ? 'bg-white text-slate-900'
+                className={`text-[11px] py-1.5 rounded-lg font-medium transition-colors ${viewMode === mode
+                  ? mode === 'splat'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white text-slate-900'
                   : 'bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white'
                   }`}
               >
@@ -439,6 +463,50 @@ export default function ThreeDRoutePocClient() {
                 </div>
               )}
             </div>
+          </div>
+          {/* セクション 4: ガウシアン Splat (3D スキャン) */}
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-4 bg-purple-500 rounded-full"></div>
+              <h2 className="text-xs text-white font-bold">4. ガウシアン Splat (3D スキャン)</h2>
+            </div>
+
+            <p className="text-[10px] text-slate-400 leading-relaxed mb-3">
+              危険箇所の3DスキャンデータをSparkJSで表示します。スマートフォンで撮影したリアルな現場環境を体験できます。
+            </p>
+
+            <label className="text-[10px] text-slate-400 block mb-1">サンプルデータを選択</label>
+            <select
+              value={splatUrl}
+              onChange={(e) => {
+                setSplatUrl(e.target.value)
+                setViewMode('splat')
+              }}
+              className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500 appearance-none"
+            >
+              {PRESET_SPLATS.map((s) => (
+                <option key={s.url} value={s.url}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setViewMode('splat')}
+              className={`w-full mt-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                viewMode === 'splat'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white/10 text-slate-300 hover:bg-purple-600/40 hover:text-white'
+              }`}
+            >
+              3Dスキャンビューを表示
+            </button>
+
+            <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+              実際の通学路スキャンデータ（.spz / .ply）に差し替え可能です。
+              <br />
+              例: <span className="font-mono">public/splats/school-route.ply</span>
+            </p>
           </div>
         </div>
       </div>

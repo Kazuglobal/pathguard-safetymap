@@ -32,13 +32,28 @@ const nextConfig = {
   // React 19 strict mode
   reactStrictMode: true,
 
+  // Use project-local writable build directory to avoid stale permission issues on .next.
+  // Allow overriding during verification to isolate ACL-locked directories.
+  distDir: process.env.NEXT_DIST_DIR || 'next-runtime-app',
+
   // Ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
 
   // Turbopack configuration (Next.js 16 default)
-  turbopack: {},
+  turbopack: {
+    // Force project-local root to avoid picking parent lockfiles/workspaces.
+    root: process.cwd(),
+    // Some environments ship three without build/* artifacts.
+    // Resolve to source entry explicitly to keep Spark/Three revision checks stable.
+    resolveAlias: {
+      'three$': 'three/src/Three.js',
+    },
+  },
+
+  // Keep tracing root pinned to this repository when multiple lockfiles exist above cwd.
+  outputFileTracingRoot: process.cwd(),
 
   // Provide fallback environment values for public configuration
   // NOTE: Empty fallbacks will trigger offline/demo mode in supabase-provider.tsx
@@ -74,6 +89,12 @@ const nextConfig = {
   
   // Custom webpack configuration
   webpack: (config, { isServer }) => {
+    // Keep webpack and Turbopack behavior aligned for three resolution.
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'three$': path.resolve(process.cwd(), 'node_modules/three/src/Three.js'),
+    }
+
     // Prevent fs polyfill from being bundled client-side
     config.resolve.fallback = {
       ...config.resolve.fallback,
