@@ -8,13 +8,13 @@ export interface ReportComment {
   content: string
   created_at: string
   updated_at: string
-  user_id: string
+  user_id: string | null
   report_id: string
   is_edited: boolean
   parent_comment_id: string | null
   profiles: {
     display_name: string | null
-    email: string | null
+    email?: string | null
   } | null
 }
 
@@ -50,8 +50,7 @@ export function useReportComments(reportId: string) {
           is_edited,
           parent_comment_id,
           profiles:user_id (
-            display_name,
-            email
+            display_name
           )
         `
         )
