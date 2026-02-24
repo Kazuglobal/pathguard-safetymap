@@ -36,9 +36,9 @@ const nextConfig = {
   // Allow overriding during verification to isolate ACL-locked directories.
   distDir: process.env.NEXT_DIST_DIR || 'next-runtime-app',
 
-  // Ignore TypeScript errors during build
+  // Enforce TypeScript type-checking during build
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Turbopack configuration (Next.js 16 default)
@@ -122,6 +122,42 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+  },
+
+  // セキュリティヘッダー
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self)',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          // CSP は Report-Only モードで動作確認中。問題がなければ Content-Security-Policy に切り替える。
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com https://events.mapbox.com",
+              "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com https://images.unsplash.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://api.jartic-open-traffic.org",
+              "worker-src blob:",
+              "frame-ancestors 'self'",
+            ].join('; '),
+          },
+        ],
+      },
+    ]
   },
 }
 

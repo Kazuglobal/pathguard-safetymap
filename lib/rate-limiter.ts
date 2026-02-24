@@ -1,5 +1,6 @@
 /**
- * Rate limiter for API calls
+ * @deprecated Vercelサーバーレス環境では共有メモリがないため、このレート制限は無効です。
+ * サーバーレス対応の分散レート制限には lib/upstash-rate-limiter.ts を使用してください。
  */
 
 interface RateLimitEntry {

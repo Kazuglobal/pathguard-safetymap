@@ -9,7 +9,7 @@ import {
   useSupabase,
 } from "@/components/providers/supabase-provider"
 import { Toaster } from "@/components/ui/toaster"
-import type { User } from "@supabase/supabase-js"
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js"
 
 interface LayoutProviderInnerProps {
   children: React.ReactNode
@@ -68,7 +68,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     loadUser()
 
     // Keep user state in sync with auth state changes
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       setUser(session?.user ?? null)
       if (event === 'SIGNED_OUT' && !logoutInFlightRef.current) {
         const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password']

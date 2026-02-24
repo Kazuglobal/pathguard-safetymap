@@ -76,7 +76,7 @@ export function HiyariHatReport() {
           .limit(5)
 
         if (error) throw error
-        setReports(data ?? [])
+        setReports((data ?? []) as unknown as DangerReport[])
       } catch {
         // Silently fail — landing page continues to work
       } finally {

@@ -78,7 +78,11 @@ export async function POST(req: NextRequest) {
     try {
       logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: modelName, request_count: 1, estimated_cost_usd: 0, success: false, error_message: message })
     } catch { /* fire-and-forget */ }
-    // Graceful degrade: return empty result with warning so UI doesn't break
-    return NextResponse.json({ images: [], warning: message }, { status: 200 })
+    const statusCode = (() => {
+      if (/unauthorized|forbidden|api.?key|401|403/i.test(message)) return 401
+      if (/quota|rate.?limit|429/i.test(message)) return 429
+      return 500
+    })()
+    return NextResponse.json({ error: message }, { status: statusCode })
   }
 }
