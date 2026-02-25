@@ -31,6 +31,21 @@ const ALLOWED_ORIGINS = (() => {
 const ALLOWED_IMAGE_HOSTS = parseCsvEnv(Deno.env.get("VLM_ALLOWED_IMAGE_HOSTS")).map((host) =>
   host.toLowerCase()
 )
+const DEFAULT_ANTHROPIC_MODELS = [
+  "claude-3-5-haiku-latest",
+  "claude-3-5-haiku-20241022",
+  "claude-3-haiku-20240307",
+]
+const ANTHROPIC_MODEL_CANDIDATES = (() => {
+  const fromSingle = (Deno.env.get("ANTHROPIC_MODEL") ?? "").trim()
+  const fromList = parseCsvEnv(Deno.env.get("ANTHROPIC_MODEL_CANDIDATES"))
+  const merged = [
+    ...(fromSingle ? [fromSingle] : []),
+    ...fromList,
+    ...DEFAULT_ANTHROPIC_MODELS,
+  ]
+  return [...new Set(merged.filter((value) => value.length > 0))]
+})()
 
 const HAZARD_CATEGORIES = new Set([
   "traffic",
@@ -261,6 +276,41 @@ function isIntegerInRange(value: unknown, min: number, max: number): value is nu
   return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max
 }
 
+function extractAnthropicErrorInfo(errorText: string): { type?: string; message?: string } {
+  try {
+    const parsed = JSON.parse(errorText) as Record<string, unknown>
+    const rootMessage = typeof parsed.message === "string" ? parsed.message : undefined
+    const inner = parsed.error
+    if (!inner || typeof inner !== "object") {
+      return { message: rootMessage }
+    }
+    const errorObj = inner as Record<string, unknown>
+    return {
+      type: typeof errorObj.type === "string" ? errorObj.type : undefined,
+      message: typeof errorObj.message === "string" ? errorObj.message : rootMessage,
+    }
+  } catch {
+    return {}
+  }
+}
+
+function shouldRetryWithNextModel(status: number, errorText: string): boolean {
+  if (status !== 404) return false
+  const info = extractAnthropicErrorInfo(errorText)
+  const type = (info.type || "").toLowerCase()
+  const message = (info.message || errorText || "").toLowerCase()
+  return type.includes("not_found") || message.includes("model")
+}
+
+function buildAnthropicFailureMessage(status: number, errorText: string): string {
+  const info = extractAnthropicErrorInfo(errorText)
+  const detail = info.message?.trim()
+  if (detail) {
+    return `AI analysis failed (Anthropic ${status}): ${detail}`
+  }
+  return `AI analysis failed (Anthropic ${status})`
+}
+
 function validateAnalysisPayload(payload: unknown): payload is VlmAnalysisResultPayload {
   if (!payload || typeof payload !== "object") {
     return false
@@ -459,10 +509,14 @@ serve(async (req) => {
 
     const abortController = new AbortController()
     const timeoutId = setTimeout(() => abortController.abort(), 25000)
-    let claudeResponse: Response
+    let claudeResponse: Response | null = null
+    let claudeErrorText = ""
+    let selectedModel = ""
 
     try {
-      claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      for (const model of ANTHROPIC_MODEL_CANDIDATES) {
+        selectedModel = model
+        claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -471,7 +525,7 @@ serve(async (req) => {
         },
         signal: abortController.signal,
         body: JSON.stringify({
-          model: "claude-3-5-haiku-20241022",
+          model,
           max_tokens: 4096,
           messages: [
             {
@@ -533,18 +587,39 @@ JSON以外の文章は出力しないでください。`,
           ],
         }),
       })
+
+        if (claudeResponse.ok) {
+          break
+        }
+
+        claudeErrorText = await claudeResponse.text()
+        const willRetry = shouldRetryWithNextModel(claudeResponse.status, claudeErrorText)
+        console.error("Claude API error:", {
+          model,
+          status: claudeResponse.status,
+          retry_next_model: willRetry,
+          body: claudeErrorText.slice(0, 500),
+        })
+
+        if (!willRetry) {
+          break
+        }
+      }
     } finally {
       clearTimeout(timeoutId)
     }
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text()
-      console.error("Claude API error:", {
-        status: claudeResponse.status,
-        body: errorText.slice(0, 500),
+    if (!claudeResponse || !claudeResponse.ok) {
+      const status = claudeResponse?.status ?? 502
+      const message = buildAnthropicFailureMessage(status, claudeErrorText)
+      console.error("Claude API final failure:", {
+        selectedModel,
+        triedModels: ANTHROPIC_MODEL_CANDIDATES,
+        status,
+        message,
       })
       return jsonResponse(
-        { error: `AI analysis failed (Anthropic ${claudeResponse.status})` },
+        { error: message },
         502,
         corsHeaders
       )
