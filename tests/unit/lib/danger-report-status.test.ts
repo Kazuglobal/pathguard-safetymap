@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { resolveInitialDangerReportStatus } from "@/lib/danger-report-status"
+import {
+  resolveInitialDangerReportStatus,
+  shouldRetryDangerReportInsertAsPending,
+} from "@/lib/danger-report-status"
 
 describe("resolveInitialDangerReportStatus", () => {
   it("returns published when requested status is published", () => {
@@ -14,5 +17,34 @@ describe("resolveInitialDangerReportStatus", () => {
   it("falls back to pending when status is missing", () => {
     expect(resolveInitialDangerReportStatus(undefined)).toBe("pending")
     expect(resolveInitialDangerReportStatus(null)).toBe("pending")
+  })
+})
+
+describe("shouldRetryDangerReportInsertAsPending", () => {
+  it("returns true when published insert fails with RLS", () => {
+    expect(
+      shouldRetryDangerReportInsertAsPending("published", {
+        code: "42501",
+        message: "new row violates row-level security policy for table danger_reports",
+      })
+    ).toBe(true)
+  })
+
+  it("returns false for non-published status", () => {
+    expect(
+      shouldRetryDangerReportInsertAsPending("pending", {
+        code: "42501",
+        message: "new row violates row-level security policy",
+      })
+    ).toBe(false)
+  })
+
+  it("returns false for non-RLS errors", () => {
+    expect(
+      shouldRetryDangerReportInsertAsPending("published", {
+        code: "23505",
+        message: "duplicate key value violates unique constraint",
+      })
+    ).toBe(false)
   })
 })
