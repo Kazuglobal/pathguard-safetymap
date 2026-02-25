@@ -30,6 +30,15 @@ describe("shouldRetryDangerReportInsertAsPending", () => {
     ).toBe(true)
   })
 
+  it("returns true when published insert fails with status check constraint", () => {
+    expect(
+      shouldRetryDangerReportInsertAsPending("published", {
+        code: "23514",
+        message: 'new row for relation "danger_reports" violates check constraint "danger_reports_status_check"',
+      })
+    ).toBe(true)
+  })
+
   it("returns false for non-published status", () => {
     expect(
       shouldRetryDangerReportInsertAsPending("pending", {
