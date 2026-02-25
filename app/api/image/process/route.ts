@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { createServerClient } from "@/lib/supabase-server";
+import { isAdminEmail } from "@/lib/admin";
 // Node.js ランタイムを強制
 export const runtime = "nodejs";
 
@@ -15,6 +16,34 @@ const supabaseAdmin: SupabaseClient<Database> | null =
     ? createClient<Database>(supabaseUrl, supabaseKey)
     : null;
 // --- ここまでトップレベル ---
+
+const BUCKET_NAME = "danger-reports";
+
+type ImageType = "processed" | "original";
+
+function parseImageType(value: FormDataEntryValue | null): ImageType {
+  return value === "original" ? "original" : "processed";
+}
+
+function parseReplaceIndex(value: FormDataEntryValue | null): number | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  if (!/^-?\d+$/.test(value.trim())) return Number.NaN;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) ? parsed : Number.NaN;
+}
+
+function extractStoragePathFromPublicUrl(publicUrl: string, bucketName: string): string | null {
+  try {
+    const url = new URL(publicUrl);
+    const marker = `/storage/v1/object/public/${bucketName}/`;
+    const idx = url.pathname.indexOf(marker);
+    if (idx < 0) return null;
+    const path = decodeURIComponent(url.pathname.slice(idx + marker.length));
+    return path || null;
+  } catch {
+    return null;
+  }
+}
 
 
 // --- POST 関数定義 ---
@@ -43,6 +72,8 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const reportId = formData.get("reportId") as string;
+    const imageType = parseImageType(formData.get("imageType"));
+    const replaceIndex = parseReplaceIndex(formData.get("replaceIndex"));
 
     if (!file) {
       return new Response(JSON.stringify({ message: "file not provided" }), {
@@ -54,19 +85,59 @@ export async function POST(req: Request) {
         status: 400,
       });
     }
+    if (Number.isNaN(replaceIndex)) {
+      return new Response(
+        JSON.stringify({ message: "replaceIndex must be an integer" }),
+        { status: 400 },
+      );
+    }
+
+    // 1. 対象レポートを取得し、所有者/管理者を検証
+    const { data: existingReport, error: fetchError } = await supabaseAdmin
+      .from("danger_reports")
+      .select("user_id, image_url, processed_image_urls")
+      .eq("id", reportId)
+      .maybeSingle();
+
+    if (fetchError) {
+      return new Response(
+        JSON.stringify({
+          message: `Database fetch error: ${fetchError.message}`,
+        }),
+        { status: 500 },
+      );
+    }
+
+    if (!existingReport) {
+      return new Response(
+        JSON.stringify({ message: `Report with id ${reportId} not found.` }),
+        { status: 404 },
+      );
+    }
+
+    const admin = isAdminEmail(user.email)
+      || user.app_metadata?.role === "admin"
+      || user.user_metadata?.role === "admin";
+    if (existingReport.user_id !== user.id && !admin) {
+      return new Response(
+        JSON.stringify({ message: "このレポートを更新する権限がありません" }),
+        { status: 403 },
+      );
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const timestamp = Date.now();
-    const fileExt = file.name.split(".").pop() || "bin";
-    const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const rawExt = file.name.split(".").pop() || "bin";
+    const safeExt = /^[a-zA-Z0-9]+$/.test(rawExt) ? rawExt : "bin";
+    const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${safeExt}`;
     const filePath = fileName;
 
     const { error: uploadError } = await supabaseAdmin.storage
-      .from("danger-reports")
+      .from(BUCKET_NAME)
       .upload(filePath, buffer, {
         cacheControl: "3600",
         upsert: false,
-        contentType: file.type,
+        contentType: file.type || "application/octet-stream",
       });
 
     if (uploadError) {
@@ -79,42 +150,62 @@ export async function POST(req: Request) {
     }
 
     const { data: urlData } = supabaseAdmin.storage
-      .from("danger-reports")
+      .from(BUCKET_NAME)
       .getPublicUrl(filePath);
 
     const processedUrl = urlData.publicUrl;
 
-    // 1. 現在の danger_reports レコードを取得
-    const { data: existingReport, error: fetchError } = await supabaseAdmin
-      .from("danger_reports")
-      .select("processed_image_urls")
-      .eq("id", reportId)
-      .single();
+    if (imageType === "original") {
+      const { error: originalUpdateError } = await supabaseAdmin
+        .from("danger_reports")
+        .update({
+          image_url: processedUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", reportId);
 
-    if (fetchError) {
-      await supabaseAdmin.storage.from("danger-reports").remove([filePath]);
+      if (originalUpdateError) {
+        await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
+        return new Response(
+          JSON.stringify({
+            message: `Database update error: ${originalUpdateError.message}`,
+          }),
+          { status: 500 },
+        );
+      }
+
       return new Response(
         JSON.stringify({
-          message: `Database fetch error: ${fetchError.message}`,
+          message: "Original image uploaded and report updated successfully.",
+          imageUrl: processedUrl,
         }),
-        { status: 500 },
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
       );
     }
 
-    if (!existingReport) {
-      await supabaseAdmin.storage.from("danger-reports").remove([filePath]);
-      return new Response(
-        JSON.stringify({ message: `Report with id ${reportId} not found.` }),
-        { status: 404 },
-      );
-    }
-
-    // 2. processed_image_urls 配列を更新
+    // processed image: append or replace
     const currentUrls = existingReport.processed_image_urls || [];
-    const updatedUrls = [...currentUrls, processedUrl];
+    let updatedUrls = [...currentUrls];
+    let oldReplacedUrl: string | null = null;
 
-    // 3. danger_reports テーブルを更新
-    const { error: updateError } = await supabaseAdmin
+    if (replaceIndex === null) {
+      updatedUrls = [...currentUrls, processedUrl];
+    } else {
+      if (replaceIndex < 0 || replaceIndex >= currentUrls.length) {
+        await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
+        return new Response(
+          JSON.stringify({ message: "replaceIndex is out of range" }),
+          { status: 400 },
+        );
+      }
+      oldReplacedUrl = currentUrls[replaceIndex] || null;
+      updatedUrls[replaceIndex] = processedUrl;
+    }
+
+    const { error: processedUpdateError } = await supabaseAdmin
       .from("danger_reports")
       .update({
         processed_image_urls: updatedUrls,
@@ -122,21 +213,29 @@ export async function POST(req: Request) {
       })
       .eq("id", reportId);
 
-    if (updateError) {
-      await supabaseAdmin.storage.from("danger-reports").remove([filePath]);
+    if (processedUpdateError) {
+      await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
       return new Response(
         JSON.stringify({
-          message: `Database update error: ${updateError.message}`,
+          message: `Database update error: ${processedUpdateError.message}`,
         }),
         { status: 500 },
       );
     }
 
+    // replace時は旧ファイルをベストエフォートで削除
+    if (oldReplacedUrl) {
+      const oldPath = extractStoragePathFromPublicUrl(oldReplacedUrl, BUCKET_NAME);
+      if (oldPath) {
+        await supabaseAdmin.storage.from(BUCKET_NAME).remove([oldPath]);
+      }
+    }
+
     return new Response(
       JSON.stringify({
-        message: "Image processed and report updated successfully.",
+        message: "Processed image uploaded and report updated successfully.",
         processedImageUrl: processedUrl,
-        updatedUrls: updatedUrls,
+        updatedUrls,
       }),
       {
         status: 200,

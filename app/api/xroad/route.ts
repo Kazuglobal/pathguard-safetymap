@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { fetchFromXRoad, getRoadData, getTrafficData } from '@/lib/api/xroad';
+import { getRoadData, getTrafficData } from '@/lib/api/xroad';
 import { createServerClient } from '@/lib/supabase-server';
-
-// xROAD APIのベースURL
-const XROAD_API_BASE_URL = 'https://www.xroad.mlit.go.jp/api';
-
-// APIキー（サーバー専用環境変数 — NEXT_PUBLIC_ は使用しない）
-const XROAD_API_KEY = process.env.XROAD_API_KEY || '';
 
 // 日本の緯度経度範囲バリデーション
 const coordSchema = z.object({
@@ -31,6 +25,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const method = searchParams.get('method');
+    const proxyOrigin = new URL(request.url).origin;
 
     // メソッドに応じて処理を分岐
     if (method === 'getRoadData') {
@@ -57,7 +52,7 @@ export async function GET(request: NextRequest) {
       const dateTime = `${year}${month}${day}${hours}${minutes}`;
       const roadType = '3'; // 一般国道をデフォルトとする
 
-      const data = await getRoadData(latitude, longitude, radius, dateTime, roadType);
+      const data = await getRoadData(latitude, longitude, radius, dateTime, roadType, { proxyOrigin });
       return NextResponse.json(data);
     }
     else if (method === 'getTrafficData') {
@@ -83,7 +78,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const data = await getSchoolAreaTrafficData(latitude, longitude, radius, from, to);
+      const data = await getSchoolAreaTrafficData(latitude, longitude, radius, from, to, proxyOrigin);
       return NextResponse.json(data);
     }
     else {
@@ -109,7 +104,8 @@ async function getSchoolAreaTrafficData(
   longitude: number,
   radius: number,
   from: string,
-  to: string
+  to: string,
+  proxyOrigin: string
 ) {
   try {
     const demoObservationPoints = [
@@ -119,7 +115,7 @@ async function getSchoolAreaTrafficData(
     ];
 
     const observationCodes = demoObservationPoints.join(',');
-    return await getTrafficData(observationCodes, from, to, false);
+    return await getTrafficData(observationCodes, from, to, false, { proxyOrigin });
   } catch (error) {
     console.error('交通量データ取得エラー:', error);
     throw error;

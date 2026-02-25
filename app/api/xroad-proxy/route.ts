@@ -9,11 +9,20 @@ const ALLOWED_PARAMS = new Set([
   'version',
   'request',
   'typeName',
+  'typeNames',
   'outputFormat',
+  'exceptions',
   'bbox',
   'srsName',
   'maxFeatures',
   'cql_filter',
+  'MSTRKCODE',
+  'PLACE_NAME',
+  'MESHCODE',
+  'YYYYMMDDHHMM_FROM',
+  'YYYYMMDDHHMM_TO',
+  'YYYYMMDDHH_FROM',
+  'YYYYMMDDHH_TO',
 ]);
 
 export async function GET(request: Request) {
