@@ -74,9 +74,9 @@ describe("app/api/image/process ownership + imageType", () => {
     vi.clearAllMocks()
 
     mocks.mockStorageUpload.mockResolvedValue({ error: null })
-    mocks.mockStorageGetPublicUrl.mockReturnValue({
-      data: { publicUrl: "https://example.supabase.co/storage/v1/object/public/danger-reports/report-file.png" },
-    })
+    mocks.mockStorageGetPublicUrl.mockImplementation((path: string) => ({
+      data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/danger-reports/${path}` },
+    }))
     mocks.mockStorageRemove.mockResolvedValue({ error: null })
     mocks.mockDbUpdateEq.mockResolvedValue({ error: null })
   })
@@ -138,6 +138,11 @@ describe("app/api/image/process ownership + imageType", () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
+    expect(mocks.mockStorageUpload).toHaveBeenCalledWith(
+      expect.stringMatching(/^owner-1\/report-999\//),
+      expect.any(Buffer),
+      expect.any(Object),
+    )
     expect(mocks.mockDbUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         image_url: expect.stringContaining("https://example.supabase.co/storage/v1/object/public/danger-reports/"),
