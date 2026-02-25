@@ -1034,9 +1034,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       }
     } catch (error) {
       console.error("Error submitting report:", error)
+      const errorMessage = error instanceof Error ? error.message : "不明なエラー"
       toast({
         title: "エラー",
-        description: "報告の送信中にエラーが発生しました。",
+        description: `報告の送信中にエラーが発生しました: ${errorMessage}`,
         variant: "destructive",
       })
     } finally {
