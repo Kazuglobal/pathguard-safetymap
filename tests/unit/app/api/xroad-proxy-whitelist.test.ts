@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockCheckApiRateLimit: vi.fn(),
-  mockRateLimitedResponse: vi.fn(),
+  mockCheckLimit: vi.fn(),
 }))
 
 vi.mock("@/lib/supabase-server", () => ({
@@ -14,9 +13,10 @@ vi.mock("@/lib/supabase-server", () => ({
   })),
 }))
 
-vi.mock("@/lib/upstash-rate-limiter", () => ({
-  checkApiRateLimit: mocks.mockCheckApiRateLimit,
-  rateLimitedResponse: mocks.mockRateLimitedResponse,
+vi.mock("@/lib/rate-limiter", () => ({
+  apiRateLimiter: {
+    checkLimit: mocks.mockCheckLimit,
+  },
 }))
 
 import { GET } from "@/app/api/xroad-proxy/route"
@@ -28,8 +28,11 @@ describe("xroad-proxy whitelist forwarding", () => {
       data: { user: { id: "user-1", email: "user@example.com" } },
       error: null,
     })
-    mocks.mockCheckApiRateLimit.mockResolvedValue({ success: true })
-    mocks.mockRateLimitedResponse.mockReturnValue(new Response("rate-limited", { status: 429 }))
+    mocks.mockCheckLimit.mockResolvedValue({
+      allowed: true,
+      remainingRequests: 59,
+      resetTime: Date.now() + 60_000,
+    })
   })
 
   it("forwards allowed params including typeNames and drops unknown params", async () => {
