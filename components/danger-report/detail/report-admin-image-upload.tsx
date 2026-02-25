@@ -78,7 +78,7 @@ export function ReportAdminImageUpload({
   }
 
   const uploadProcessedImage = async () => {
-    if (!newFile || !supabase) return
+    if (!newFile) return
 
     setIsUploading(true)
     try {
@@ -186,55 +186,35 @@ export function ReportAdminImageUpload({
   }
 
   const handleReplaceImage = async (file: File) => {
-    if (replaceTargetIndex === null || !supabase) return
+    if (replaceTargetIndex === null) return
     if (!validateFile(file)) return
 
     setIsUploading(true)
     try {
-      const ts = Date.now()
-      const ext = file.name.split(".").pop()
-      const name = `${report.id}-${ts}-${Math.random().toString(36).substring(2, 15)}-processed.${ext}`
-      const path = `danger-reports/${name}`
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("reportId", report.id)
+      formData.append("imageType", "processed")
+      formData.append("replaceIndex", String(replaceTargetIndex))
 
-      const { error: upErr } = await supabase.storage
-        .from("danger-reports")
-        .upload(path, file, { cacheControl: "3600", upsert: false })
-      if (upErr) throw upErr
+      const response = await fetch("/api/image/process", {
+        method: "POST",
+        body: formData,
+      })
 
-      const { data: pub } = supabase.storage.from("danger-reports").getPublicUrl(path)
-      const newUrl = pub?.publicUrl
-      if (!newUrl) throw new Error("公開URLの取得に失敗しました")
-
-      const current = report.processed_image_urls ?? []
-      const oldUrl = current[replaceTargetIndex]
-      const next = [...current]
-      next[replaceTargetIndex] = newUrl
-
-      const { error: dbErr } = await supabase
-        .from("danger_reports")
-        .update({
-          processed_image_urls: next,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", report.id)
-      if (dbErr) throw dbErr
-
-      onProcessedUrlsChange?.(next)
-
-      // Clean up old file from storage
+      let responseData: { message?: string; updatedUrls?: string[] } = {}
       try {
-        const u = new URL(oldUrl)
-        const sp = decodeURIComponent(u.pathname.substring(1))
-        const seg = sp.split("/")
-        if (seg.length > 4 && seg[3] === "public") {
-          const bucket = seg[4]
-          const oldPath = seg.slice(5).join("/")
-          if (bucket === "danger-reports" && oldPath) {
-            await supabase.storage.from(bucket).remove([oldPath])
-          }
-        }
+        responseData = await response.json()
       } catch {
-        // Old file cleanup failure is non-critical
+        responseData = {}
+      }
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "画像の差し替えに失敗しました")
+      }
+
+      if (Array.isArray(responseData.updatedUrls)) {
+        onProcessedUrlsChange?.(responseData.updatedUrls)
       }
 
       toast({ title: "差し替え完了", description: "画像を変更しました。" })

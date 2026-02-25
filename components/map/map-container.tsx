@@ -7,7 +7,7 @@ import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
-import DangerReportForm from "../danger-report/danger-report-form"
+import DangerReportForm, { type DangerReportSubmitPayload } from "../danger-report/danger-report-form"
 import type { DangerReport } from "@/lib/types"
 import { AlertTriangle, Car, Shield, HelpCircle, Trash2, MapPin } from "lucide-react"
 import Map3DToggle from "./map-3d-toggle"
@@ -1144,7 +1144,7 @@ export default function MapContainer() {
   };
 
   const handleReportSubmit = async (
-    reportData: Partial<DangerReport> & { imageFile?: File | null }
+    reportData: DangerReportSubmitPayload & { imageFile?: File | null }
   ): Promise<{ reportId: string; imageUrl: string | null }> => {
     if (!supabase || !selectedLocation) { // Check supabase and selectedLocation
       toast({ title: "エラー", description: "地図上で位置を選択してください。", variant: "destructive" });
@@ -1156,10 +1156,22 @@ export default function MapContainer() {
       throw new Error("位置情報が不正です。地図で地点を再選択してください。");
     }
 
-    // 画像ファイルを取り出す (プロパティ名は要確認)
-    const imageFile = reportData.imageFile;
-    // insert するデータから imageFile を除外
-    const { imageFile: _removed, ...reportDataToInsert } = reportData;
+    // insert するデータからファイル・画像URL配列を除外（アップロードは API 側へ一本化）
+    const {
+      imageFile: legacyImageFile,
+      originalImageFile,
+      processedImageFiles,
+      image_url: _ignoredImageUrl,
+      processed_image_urls: _ignoredProcessedImageUrls,
+      ...reportDataToInsert
+    } = reportData;
+
+    const originalFileToUpload =
+      (originalImageFile instanceof File ? originalImageFile : null)
+      ?? (legacyImageFile instanceof File ? legacyImageFile : null);
+    const processedFilesToUpload = (processedImageFiles || []).filter(
+      (file): file is File => file instanceof File,
+    );
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1202,48 +1214,62 @@ export default function MapContainer() {
       const newReportId = insertedData.id;
       console.log(`Report inserted successfully with ID: ${newReportId}`);
 
-      // 2. 画像ファイルがあれば、画像処理 API を呼び出す
+      // 2. 画像があれば、画像処理 API を呼び出す（original / processed）
       let finalReportData = insertedData as DangerReport; // 型アサーション
-      if (imageFile && newReportId) {
-        console.log(`Image file found, calling /api/image/process for report ID: ${newReportId}`);
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('reportId', newReportId);
+      if (newReportId && (originalFileToUpload || processedFilesToUpload.length > 0)) {
+        console.log(`Calling /api/image/process for report ID: ${newReportId}`);
 
-        try {
-          const response = await fetch('/api/image/process', {
-            method: 'POST',
+        const uploadViaApi = async (file: File, imageType: "original" | "processed") => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("reportId", newReportId);
+          formData.append("imageType", imageType);
+          const response = await fetch("/api/image/process", {
+            method: "POST",
             body: formData,
           });
-
+          let data: any = {};
+          try {
+            data = await response.json();
+          } catch {
+            data = {};
+          }
           if (!response.ok) {
-            const errorData = await response.json();
-            // APIエラーが発生してもレポート自体は作成されているので、警告を出すに留める
-            console.error("Error calling /api/image/process:", errorData.message);
-            toast({
-              title: "画像処理エラー",
-              description: `レポートは保存されましたが、画像の処理に失敗しました: ${errorData.message || '不明なエラー'}`,
-              variant: "destructive",
-            });
-            // finalReportData は INSERT 直後のまま
-          } else {
-            const result = await response.json();
-            console.log("Image processed successfully:", result);
-            // API から返された更新後の URL 配列でローカルデータを更新
-            finalReportData = { ...finalReportData, processed_image_urls: result.updatedUrls || [] };
+            throw new Error(data.message || `画像処理APIエラー: status=${response.status}`);
+          }
+          return data;
+        };
+
+        try {
+          if (originalFileToUpload) {
+            const originalResult = await uploadViaApi(originalFileToUpload, "original");
+            finalReportData = {
+              ...finalReportData,
+              image_url: originalResult.imageUrl || finalReportData.image_url || null,
+            };
+          }
+
+          for (const processedFile of processedFilesToUpload) {
+            const processedResult = await uploadViaApi(processedFile, "processed");
+            finalReportData = {
+              ...finalReportData,
+              processed_image_urls: processedResult.updatedUrls || finalReportData.processed_image_urls || [],
+            };
+          }
+
+          if (originalFileToUpload || processedFilesToUpload.length > 0) {
             toast({ title: "画像処理完了", description: "画像がアップロード・処理されました。" });
           }
         } catch (apiError: any) {
-           console.error("Network or other error calling /api/image/process:", apiError);
-           toast({
-             title: "画像処理APIエラー",
-             description: `レポートは保存されましたが、画像の処理中に通信エラー等が発生しました: ${apiError.message || '詳細不明'}`,
-             variant: "destructive",
-           });
-           // finalReportData は INSERT 直後のまま
+          console.error("Error calling /api/image/process:", apiError);
+          toast({
+            title: "画像処理エラー",
+            description: `レポートは保存されましたが、画像の処理に失敗しました: ${apiError.message || "不明なエラー"}`,
+            variant: "destructive",
+          });
         }
       } else {
-         console.log("No image file provided or report ID missing, skipping image processing.");
+        console.log("No image file provided or report ID missing, skipping image processing.");
       }
 
 

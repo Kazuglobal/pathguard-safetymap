@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { X, Upload, Loader2, Camera, ImageIcon, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
 import type { DangerReport } from "@/lib/types"
@@ -31,11 +30,16 @@ import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 
 interface DangerReportFormProps {
-  onSubmit: (data: Partial<DangerReport>) => Promise<{ reportId: string; imageUrl: string | null }>
+  onSubmit: (data: DangerReportSubmitPayload) => Promise<{ reportId: string; imageUrl: string | null }>
   onCancel: () => void
   selectedLocation: [number, number] | null
   locationSource?: "manual" | "gps" | null
   isMobileFullscreen?: boolean
+}
+
+export type DangerReportSubmitPayload = Partial<DangerReport> & {
+  originalImageFile?: File | null
+  processedImageFiles?: File[]
 }
 
 type HazardBBox = {
@@ -134,7 +138,6 @@ const validateImageFile = async (file: File) => {
 }
 
 export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, locationSource = null, isMobileFullscreen = false }: DangerReportFormProps) {
-  const { supabase } = useSupabase()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState("")
@@ -931,63 +934,6 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     }
   }
 
-  // 画像アップロード処理
-  const uploadImage = async (file: File, type: "original" | "processed"): Promise<string | null> => {
-    try {
-      if (!supabase?.storage) {
-        toast({
-          title: "画像アップロードエラー",
-          description: "ストレージクライアントを初期化できませんでした。",
-          variant: "destructive",
-        })
-        return null
-      }
-      // ファイル名を一意にするために現在のタイムスタンプを追加
-      const timestamp = Date.now()
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${timestamp}-${Math.random().toString(36).substring(2, 15)}-${type}.${fileExt}`
-      const filePath = fileName
-
-      // アップロードの進捗を監視するためのコールバック
-      const onUploadProgress = (progress: number) => {
-        setUploadProgress(progress)
-      }
-
-      // 画像をアップロード
-      const { data, error } = await supabase.storage.from("danger-reports").upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || "image/jpeg",
-      })
-
-      if (error) {
-        console.error(`Error uploading ${type} image:`, error)
-        toast({
-          title: "画像アップロードエラー",
-          description: error.message,
-          variant: "destructive",
-        })
-        return null
-      }
-
-      // 公開URLを取得
-      const { data: publicUrlData } = supabase.storage.from("danger-reports").getPublicUrl(filePath)
-
-      // キャッシュバスターを追加
-      const publicUrl = `${publicUrlData.publicUrl}?t=${timestamp}`
-
-      return publicUrl
-    } catch (error) {
-      console.error(`Error in upload${type}Image:`, error)
-      toast({
-        title: "画像アップロードエラー",
-        description: "画像のアップロード中にエラーが発生しました。",
-        variant: "destructive",
-      })
-      return null
-    }
-  }
-
   // フォーム送信ハンドラー
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1024,41 +970,39 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     setUploadProgress(0)
 
     try {
-      // 報告データの準備
-      let uploadedProcessedImageUrls: (string | null)[] = []
+      // 送信前に圧縮して親へ渡す（実アップロードは API 側で実施）
+      let compressedProcessedFiles: File[] = []
       if (processedImageFiles.length > 0) {
-        const compressedFiles = await Promise.all(
+        compressedProcessedFiles = await Promise.all(
           processedImageFiles.map((file) =>
             compressImage(file, { maxDimension: 2048, jpegQuality: 0.82, targetMaxSize: 4.5 * 1024 * 1024 })
           )
         )
-        uploadedProcessedImageUrls = await Promise.all(
-          compressedFiles.map((file) => uploadImage(file, "processed"))
-        )
       }
 
-      const reportData: Partial<DangerReport> = {
+      let compressedOriginalFile: File | null = null
+      if (originalImageFile) {
+        compressedOriginalFile = await compressImage(originalImageFile, {
+          maxDimension: 2048,
+          jpegQuality: 0.85,
+          targetMaxSize: 4.5 * 1024 * 1024,
+        })
+      }
+
+      const reportData: DangerReportSubmitPayload = {
         title,
         description: description || null,
         danger_type: dangerType,
         danger_level: dangerLevel,
         latitude: selectedLocation[1],
         longitude: selectedLocation[0],
-        status: "published", // 認証ユーザーの投稿は即時公開
-        processed_image_urls: uploadedProcessedImageUrls.filter(Boolean) as string[],
+        status: "published",
       }
-
-      // 元画像がある場合は圧縮してアップロード
-      if (originalImageFile) {
-        const compressedOriginal = await compressImage(originalImageFile, {
-          maxDimension: 2048,
-          jpegQuality: 0.85,
-          targetMaxSize: 4.5 * 1024 * 1024,
-        })
-        const imageUrl = await uploadImage(compressedOriginal, "original")
-        if (imageUrl) {
-          reportData.image_url = imageUrl
-        }
+      if (compressedOriginalFile) {
+        reportData.originalImageFile = compressedOriginalFile
+      }
+      if (compressedProcessedFiles.length > 0) {
+        reportData.processedImageFiles = compressedProcessedFiles
       }
 
       // 親コンポーネントの送信ハンドラーを呼び出し、report IDとimage URLを取得
