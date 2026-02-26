@@ -8,6 +8,10 @@ import {
   StoreSection,
   SafeMagazine,
   HiyariHatReport,
+  DailyStreakBanner,
+  CommunityChallengeSection,
+  ContributionImpactSection,
+  WeeklyPhotoChallengeSection,
 } from "@/components/landing"
 
 export default function LandingPage() {
@@ -25,20 +29,32 @@ export default function LandingPage() {
           <HeroCarousel />
         </section>
 
+        {/* デイリーストリーク / 新規ユーザーCTA */}
+        <DailyStreakBanner />
+
         {/* 通学路の安全ニュース（リアルタイム） */}
         <SchoolRouteNewsSection />
 
+        {/* 今週の写真チャレンジ */}
+        <WeeklyPhotoChallengeSection />
+
         {/* 危険マップ誘導バナー */}
         <HazardMapBanner />
+
+        {/* みんなで達成！安全チャレンジ */}
+        <CommunityChallengeSection />
+
+        {/* みんなのヒヤリハット報告 */}
+        <HiyariHatReport />
+
+        {/* 貢献インパクト */}
+        <ContributionImpactSection />
 
         {/* 通学・見守りストア */}
         <StoreSection />
 
         {/* PathGuard Press */}
         <SafeMagazine />
-
-        {/* みんなのヒヤリハット報告 */}
-        <HiyariHatReport />
 
         {/* フッター（モバイルボトムナビの上に余白を確保） */}
         <footer className="mt-8 py-8 px-4 bg-gray-900 text-center">
