@@ -9,8 +9,10 @@ export const maxDuration = 60
 
 const ROUTE_TIMEOUT_MS = 55_000 // maxDuration(60s) - 5s バッファ
 
-const STANDARD_SCENARIO_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
-const DISASTER_PROMPT_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
+const STANDARD_SCENARIO_IMAGE_MODEL =
+  process.env.GEMINI_STANDARD_IMAGE_MODEL?.trim() || "gemini-3.1-flash-image-preview"
+const DISASTER_PROMPT_IMAGE_MODEL =
+  process.env.GEMINI_DISASTER_IMAGE_MODEL?.trim() || "gemini-3.1-flash-image-preview"
 
 export async function POST(req: NextRequest) {
   let modelName = getImageModel()
@@ -57,16 +59,21 @@ export async function POST(req: NextRequest) {
 
 
     let routeTimeoutId: ReturnType<typeof setTimeout> | undefined
-    const result = await Promise.race([
-      generateImageWithGeminiWithModel({ prompt, imageBase64, imageMimeType, model: requestedModel }),
-      new Promise<never>((_, reject) => {
-        routeTimeoutId = setTimeout(
-          () => reject(new Error('画像生成がタイムアウトしました。しばらく待ってから再度お試しください。')),
-          ROUTE_TIMEOUT_MS
-        )
-      }),
-    ])
-    if (routeTimeoutId !== undefined) clearTimeout(routeTimeoutId)
+    const result = await (async () => {
+      try {
+        return await Promise.race([
+          generateImageWithGeminiWithModel({ prompt, imageBase64, imageMimeType, model: requestedModel }),
+          new Promise<never>((_, reject) => {
+            routeTimeoutId = setTimeout(
+              () => reject(new Error("画像生成がタイムアウトしました。しばらく待ってから再度お試しください。")),
+              ROUTE_TIMEOUT_MS
+            )
+          }),
+        ])
+      } finally {
+        if (routeTimeoutId !== undefined) clearTimeout(routeTimeoutId)
+      }
+    })()
     modelName = result.model
 
     try {
