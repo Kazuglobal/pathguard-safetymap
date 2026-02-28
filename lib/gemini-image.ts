@@ -16,6 +16,7 @@ export type GenerateImageResult = {
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 import { getSanitizedGeminiApiKey } from "./gemini-util"
+export const FORCED_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 // Security: Allowed domains for file downloads (SSRF protection)
 const ALLOWED_DOWNLOAD_HOSTS = [
@@ -55,30 +56,36 @@ function sanitizeModelName(model: string): string {
   return model.replace(/[^a-zA-Z0-9._-]/g, '')
 }
 
-// Per-call timeout to prevent hanging on slow API responses
-const PER_CALL_TIMEOUT_MS = 25_000
-
-// Available image generation models (in order of preference)
-const IMAGE_GEN_MODELS = [
-  "gemini-2.5-pro-image-preview",     // Gemini 2.5 Pro Image Preview
-  "gemini-2.5-flash-image",           // Gemini 2.5 Flash Image (stable GA, fast)
-  "gemini-3-pro-image-preview",       // Gemini 3 Pro Image Preview (higher quality, preview)
-]
+// Per-call timeout to prevent hanging on slow API responses.
+const DEFAULT_PER_CALL_TIMEOUT_MS = 18_000
+const PRO_IMAGE_PER_CALL_TIMEOUT_MS = 40_000
+const REQUEST_TIMEOUT_BUDGET_MS = 55_000
+const MIN_CALL_TIMEOUT_MS = 5_000
 
 // Imagen models use the :predict endpoint; Gemini models use :generateContent
 function isImagenModel(model: string): boolean {
   return model.startsWith('imagen-')
 }
 
-export function getImageModel(): string {
-  const envModel = process.env.GEMINI_IMAGE_MODEL?.trim()
-  if (envModel && envModel.length > 0) {
-    return envModel
+function getPerCallTimeoutMs(model: string): number {
+  if (/pro-image-preview/i.test(model)) {
+    return PRO_IMAGE_PER_CALL_TIMEOUT_MS
   }
-  return IMAGE_GEN_MODELS[0]
+  return DEFAULT_PER_CALL_TIMEOUT_MS
 }
 
-async function tryImagesGenerate(apiKey: string, model: string, prompt: string, imageBase64?: string, imageMimeType?: string) {
+export function getImageModel(): string {
+  return FORCED_GEMINI_IMAGE_MODEL
+}
+
+async function tryImagesGenerate(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  timeoutMs: number,
+  imageBase64?: string,
+  imageMimeType?: string
+) {
   // Security: Sanitize model name to prevent URL injection
   const safeModel = sanitizeModelName(model)
 
@@ -103,7 +110,7 @@ async function tryImagesGenerate(apiKey: string, model: string, prompt: string, 
       "x-goog-api-key": apiKey
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   return res
 }
@@ -258,27 +265,32 @@ export async function generateImageWithGeminiWithModel({
   prompt,
   imageBase64,
   imageMimeType,
-  model,
+  model: _model,
 }: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Per-request model override takes priority; otherwise use env/default.
-  const requestedModel = typeof model === 'string' ? sanitizeModelName(model.trim()) : ''
-  const primaryModel = requestedModel.length > 0 ? requestedModel : getImageModel()
-
-  // Build list of models to try (primary first, then fallbacks)
-  const modelsToTry = [primaryModel, ...IMAGE_GEN_MODELS.filter(m => m !== primaryModel)]
+  // Product requirement: always use Gemini 3.1 flash image preview.
+  const primaryModel = getImageModel()
+  const modelsToTry = [primaryModel]
 
   const text = prompt || "Create an image using the provided reference."
   let lastError: Error | null = null
+  const startedAtMs = Date.now()
 
   for (const model of modelsToTry) {
     console.log(`[Gemini] Trying model: ${model}`)
+    const elapsedMs = Date.now() - startedAtMs
+    const remainingBudgetMs = REQUEST_TIMEOUT_BUDGET_MS - elapsedMs
+    if (remainingBudgetMs < MIN_CALL_TIMEOUT_MS) {
+      lastError = new Error(`${model}: タイムアウト予算不足 (${remainingBudgetMs}ms remaining)`)
+      break
+    }
+    const callTimeoutMs = Math.min(getPerCallTimeoutMs(model), remainingBudgetMs)
 
     // Imagen models use :predict endpoint
     if (isImagenModel(model)) {
       try {
-        const primary = await tryImagesGenerate(apiKey, model, text, imageBase64, imageMimeType)
+        const primary = await tryImagesGenerate(apiKey, model, text, callTimeoutMs, imageBase64, imageMimeType)
         if (primary.ok) {
           const payload = await primary.json()
           const primaryImages = await extractImagesFromAny(payload, apiKey)
@@ -286,19 +298,24 @@ export async function generateImageWithGeminiWithModel({
             console.log(`[Gemini] Success with model: ${model} via :predict`)
             return { images: primaryImages, model }
           }
+          lastError = new Error(`${model}: 画像データが返されませんでした`)
         } else {
           const errText = await primary.text()
           lastError = new Error(`${model}: ${primary.status} - ${errText}`)
           console.warn(`[Gemini] :predict failed for ${model}: ${errText}`)
         }
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
+        if (error instanceof DOMException && error.name === 'TimeoutError') {
+          lastError = new Error(`${model}: タイムアウト (${callTimeoutMs}ms)`)
+        } else {
+          lastError = error instanceof Error ? error : new Error(String(error))
+        }
         console.warn(`[Gemini] :predict error for ${model}:`, error)
       }
       continue
     }
 
-    // Gemini models use :generateContent with response_modalities
+    // Gemini models use :generateContent with responseModalities
     try {
       const safeModel = sanitizeModelName(model)
       const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
@@ -309,16 +326,16 @@ export async function generateImageWithGeminiWithModel({
             role: "user",
             parts: [
               ...(imageBase64 && safeMimeType
-                ? [{ inline_data: { mime_type: safeMimeType, data: imageBase64 } }]
+                ? [{ inlineData: { mimeType: safeMimeType, data: imageBase64 } }]
                 : []),
               { text },
             ],
           },
         ],
-        generation_config: {
+        generationConfig: {
           temperature: 0.4,
-          top_p: 0.9,
-          response_modalities: ["IMAGE", "TEXT"],
+          topP: 0.9,
+          responseModalities: ["IMAGE", "TEXT"],
         },
       }
 
@@ -328,7 +345,7 @@ export async function generateImageWithGeminiWithModel({
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
           body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
+          signal: AbortSignal.timeout(callTimeoutMs),
         }
       )
 
@@ -339,6 +356,7 @@ export async function generateImageWithGeminiWithModel({
           console.log(`[Gemini] Success with model: ${model} via generateContent`)
           return { images, model }
         }
+        lastError = new Error(`${model}: 画像データが返されませんでした`)
       } else {
         const errText = await res.text()
         lastError = new Error(`${model}: ${res.status} - ${errText.slice(0, 200)}`)
@@ -346,7 +364,7 @@ export async function generateImageWithGeminiWithModel({
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
-        lastError = new Error(`${model}: タイムアウト (${PER_CALL_TIMEOUT_MS}ms)`)
+        lastError = new Error(`${model}: タイムアウト (${callTimeoutMs}ms)`)
         console.warn(`[Gemini] generateContent timed out for ${model}`)
       } else {
         lastError = error instanceof Error ? error : new Error(String(error))

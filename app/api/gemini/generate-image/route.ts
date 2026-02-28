@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generateImageWithGeminiWithModel, getImageModel } from "@/lib/gemini-image"
+import { generateImageWithGeminiWithModel } from "@/lib/gemini-image"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
@@ -7,11 +7,11 @@ import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-const STANDARD_SCENARIO_IMAGE_MODEL = process.env.GEMINI_STANDARD_IMAGE_MODEL?.trim() || "gemini-2.5-pro-image-preview"
-const DISASTER_PROMPT_IMAGE_MODEL = process.env.GEMINI_DISASTER_IMAGE_MODEL?.trim() || "gemini-3-pro-image-preview"
+const ROUTE_TIMEOUT_MS = 55_000 // maxDuration(60s) - 5s バッファ
+const FORCED_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 export async function POST(req: NextRequest) {
-  let modelName = getImageModel()
+  let modelName = FORCED_IMAGE_MODEL
   try {
     // 認証チェック - ログインユーザーのみ使用可能
     const supabase = await createServerClient()
@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
     const form = await req.formData()
     const prompt = (form.get("prompt") as string) || undefined
     const file = form.get("image") as File | null
-    const generationMode = (form.get("generationMode") as string | null) || null
 
     let imageBase64: string | undefined
     let imageMimeType: string | undefined
@@ -46,20 +45,23 @@ export async function POST(req: NextRequest) {
       imageMimeType = file.type || "image/png"
     }
 
-    const requestedModel =
-      generationMode === "disaster"
-        ? DISASTER_PROMPT_IMAGE_MODEL
-        : generationMode === "standard"
-          ? STANDARD_SCENARIO_IMAGE_MODEL
-          : undefined
 
-
-    const result = await generateImageWithGeminiWithModel({
-      prompt,
-      imageBase64,
-      imageMimeType,
-      model: requestedModel,
-    })
+    let routeTimeoutId: ReturnType<typeof setTimeout> | undefined
+    const result = await (async () => {
+      try {
+        return await Promise.race([
+          generateImageWithGeminiWithModel({ prompt, imageBase64, imageMimeType, model: FORCED_IMAGE_MODEL }),
+          new Promise<never>((_, reject) => {
+            routeTimeoutId = setTimeout(
+              () => reject(new Error("画像生成がタイムアウトしました。しばらく待ってから再度お試しください。")),
+              ROUTE_TIMEOUT_MS
+            )
+          }),
+        ])
+      } finally {
+        if (routeTimeoutId !== undefined) clearTimeout(routeTimeoutId)
+      }
+    })()
     modelName = result.model
 
     try {
@@ -78,7 +80,11 @@ export async function POST(req: NextRequest) {
     try {
       logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: modelName, request_count: 1, estimated_cost_usd: 0, success: false, error_message: message })
     } catch { /* fire-and-forget */ }
-    // Graceful degrade: return empty result with warning so UI doesn't break
-    return NextResponse.json({ images: [], warning: message }, { status: 200 })
+    const statusCode = (() => {
+      if (/unauthorized|forbidden|api.?key|401|403/i.test(message)) return 401
+      if (/quota|rate.?limit|429/i.test(message)) return 429
+      return 500
+    })()
+    return NextResponse.json({ error: message }, { status: statusCode })
   }
 }
