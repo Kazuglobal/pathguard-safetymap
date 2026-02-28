@@ -16,6 +16,7 @@ export type GenerateImageResult = {
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 import { getSanitizedGeminiApiKey } from "./gemini-util"
+export const FORCED_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 // Security: Allowed domains for file downloads (SSRF protection)
 const ALLOWED_DOWNLOAD_HOSTS = [
@@ -60,13 +61,6 @@ const DEFAULT_PER_CALL_TIMEOUT_MS = 18_000
 const PRO_IMAGE_PER_CALL_TIMEOUT_MS = 40_000
 const REQUEST_TIMEOUT_BUDGET_MS = 55_000
 const MIN_CALL_TIMEOUT_MS = 5_000
-const MAX_MODEL_ATTEMPTS = 2
-
-// Available image generation models (in order of preference)
-const IMAGE_GEN_MODELS = [
-  "gemini-3.1-flash-image-preview",   // Gemini 3.1 Flash Image Preview
-  "gemini-2.5-flash-image",           // Gemini 2.5 Flash Image (stable GA, fast)
-]
 
 // Imagen models use the :predict endpoint; Gemini models use :generateContent
 function isImagenModel(model: string): boolean {
@@ -81,11 +75,7 @@ function getPerCallTimeoutMs(model: string): number {
 }
 
 export function getImageModel(): string {
-  const envModel = process.env.GEMINI_IMAGE_MODEL?.trim()
-  if (envModel && envModel.length > 0) {
-    return envModel
-  }
-  return IMAGE_GEN_MODELS[0]
+  return FORCED_GEMINI_IMAGE_MODEL
 }
 
 async function tryImagesGenerate(
@@ -275,16 +265,13 @@ export async function generateImageWithGeminiWithModel({
   prompt,
   imageBase64,
   imageMimeType,
-  model,
+  model: _model,
 }: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Per-request model override takes priority; otherwise use env/default.
-  const requestedModel = typeof model === 'string' ? sanitizeModelName(model.trim()) : ''
-  const primaryModel = requestedModel.length > 0 ? requestedModel : getImageModel()
-
-  // Build list of models to try (primary first, then fallbacks)
-  const modelsToTry = [primaryModel, ...IMAGE_GEN_MODELS.filter(m => m !== primaryModel)].slice(0, MAX_MODEL_ATTEMPTS)
+  // Product requirement: always use Gemini 3.1 flash image preview.
+  const primaryModel = getImageModel()
+  const modelsToTry = [primaryModel]
 
   const text = prompt || "Create an image using the provided reference."
   let lastError: Error | null = null

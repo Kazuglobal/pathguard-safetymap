@@ -53,9 +53,6 @@ function buildMultipartRequest(generationMode: "standard" | "disaster") {
 }
 
 describe("app/api/gemini/generate-image route", () => {
-  const originalStandardEnv = process.env.GEMINI_STANDARD_IMAGE_MODEL
-  const originalDisasterEnv = process.env.GEMINI_DISASTER_IMAGE_MODEL
-
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({
@@ -66,27 +63,25 @@ describe("app/api/gemini/generate-image route", () => {
       images: [],
       model: "gemini-3.1-flash-image-preview",
     })
-    process.env.GEMINI_STANDARD_IMAGE_MODEL = "env-standard-model"
-    process.env.GEMINI_DISASTER_IMAGE_MODEL = "env-disaster-model"
   })
 
-  it("uses standard env model when generationMode is standard", async () => {
+  it("always uses gemini-3.1-flash-image-preview when generationMode is standard", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("standard") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "env-standard-model" }),
+      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
     )
   })
 
-  it("uses disaster env model when generationMode is disaster", async () => {
+  it("always uses gemini-3.1-flash-image-preview when generationMode is disaster", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("disaster") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "env-disaster-model" }),
+      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
     )
   })
 
@@ -117,8 +112,19 @@ describe("app/api/gemini/generate-image route", () => {
     clearTimeoutSpy.mockRestore()
   })
 
-  afterEach(() => {
-    process.env.GEMINI_STANDARD_IMAGE_MODEL = originalStandardEnv
-    process.env.GEMINI_DISASTER_IMAGE_MODEL = originalDisasterEnv
+  it("always uses gemini-3.1-flash-image-preview when generationMode is omitted", async () => {
+    const { POST } = await loadRoute()
+    const form = new FormData()
+    form.append("prompt", "test prompt")
+    const request = new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    })
+    const res = await POST(request as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+    )
   })
 })
