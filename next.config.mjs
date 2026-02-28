@@ -32,9 +32,8 @@ const nextConfig = {
   // React 19 strict mode
   reactStrictMode: true,
 
-  // Use project-local writable build directory to avoid stale permission issues on .next.
-  // Allow overriding during verification to isolate ACL-locked directories.
-  distDir: process.env.NEXT_DIST_DIR || 'next-runtime-app',
+  // Keep Next.js build output in the default location Vercel expects.
+  distDir: '.next',
 
   // Enforce TypeScript type-checking during build
   typescript: {
@@ -150,8 +149,8 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com https://images.unsplash.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://api.jartic-open-traffic.org",
-              "worker-src blob:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://api.jartic-open-traffic.org https://tile.googleapis.com https://maps.googleapis.com",
+              "worker-src 'self' blob:",
               "frame-ancestors 'self'",
             ].join('; '),
           },
