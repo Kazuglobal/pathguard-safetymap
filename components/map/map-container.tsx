@@ -27,7 +27,10 @@ import ARView from "./ar-view"
 import { isAdminUser } from "@/lib/admin"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
-import { resolveInitialDangerReportStatus } from "@/lib/danger-report-status"
+import {
+  resolveInitialDangerReportStatus,
+  shouldRetryDangerReportInsertAsPending,
+} from "@/lib/danger-report-status"
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
@@ -1189,31 +1192,42 @@ export default function MapContainer() {
 
       const initialStatus = resolveInitialDangerReportStatus(reportDataToInsert.status);
 
-      const { data: insertedData, error: insertError } = await supabase
-      .from("danger_reports")
-      .insert({
-        ...reportDataToInsert, // imageFile を除外したデータ
-        user_id: user.id,
-        latitude: selectedLocation[1],
-        longitude: selectedLocation[0],
-        prefecture: locationDetails.prefecture,
-        city: locationDetails.city,
-        status: initialStatus,
-        title: reportDataToInsert.title || '無題の報告',
-        danger_type: reportDataToInsert.danger_type || 'other',
-        danger_level: reportDataToInsert.danger_level || 1,
-        // processed_image_urls は API 側で設定されるため、ここでは設定しない (NULL or default)
-        // processed_image_urls: [], // ← 削除
-      })
-      .select()
-      .single();
+      const insertReport = async (status: string) =>
+        supabase
+          .from("danger_reports")
+          .insert({
+            ...reportDataToInsert, // imageFile を除外したデータ
+            user_id: user.id,
+            latitude: selectedLocation[1],
+            longitude: selectedLocation[0],
+            prefecture: locationDetails.prefecture,
+            city: locationDetails.city,
+            status,
+            title: reportDataToInsert.title || '無題の報告',
+            danger_type: reportDataToInsert.danger_type || 'other',
+            danger_level: reportDataToInsert.danger_level || 1,
+            // processed_image_urls は API 側で設定されるため、ここでは設定しない (NULL or default)
+            // processed_image_urls: [], // ← 削除
+          })
+          .select()
+          .single();
+
+      let { data: insertedData, error: insertError } = await insertReport(initialStatus);
+
+      // Some environments enforce stricter insert checks for "published".
+      // Retry once as "pending" to avoid blocking report submissions.
+      if (shouldRetryDangerReportInsertAsPending(initialStatus, insertError)) {
+        console.warn("[danger_reports] insert blocked for published, retrying as pending", insertError);
+        const retryResult = await insertReport("pending");
+        insertedData = retryResult.data;
+        insertError = retryResult.error;
+      }
 
       if (insertError) throw insertError;
       if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
 
       const newReportId = insertedData.id;
       console.log(`Report inserted successfully with ID: ${newReportId}`);
-
       // 2. 画像があれば、画像処理 API を呼び出す（original / processed）
       let finalReportData = insertedData as DangerReport; // 型アサーション
       if (newReportId && (originalFileToUpload || processedFilesToUpload.length > 0)) {

@@ -31,6 +31,37 @@ const ALLOWED_ORIGINS = (() => {
 const ALLOWED_IMAGE_HOSTS = parseCsvEnv(Deno.env.get("VLM_ALLOWED_IMAGE_HOSTS")).map((host) =>
   host.toLowerCase()
 )
+const DEFAULT_ANTHROPIC_MODELS = [
+  "claude-3-5-haiku-latest",
+  "claude-3-5-haiku-20241022",
+  "claude-3-haiku-20240307",
+]
+const ANTHROPIC_MODEL_CANDIDATES = (() => {
+  const fromSingle = (Deno.env.get("ANTHROPIC_MODEL") ?? "").trim()
+  const fromList = parseCsvEnv(Deno.env.get("ANTHROPIC_MODEL_CANDIDATES"))
+  const merged = [
+    ...(fromSingle ? [fromSingle] : []),
+    ...fromList,
+    ...DEFAULT_ANTHROPIC_MODELS,
+  ]
+  return [...new Set(merged.filter((value) => value.length > 0))]
+})()
+const DEFAULT_MAX_ANALYSIS_IMAGE_BYTES = 5 * 1024 * 1024
+const MAX_ANALYSIS_IMAGE_BYTES = (() => {
+  const configured = Number(
+    Deno.env.get("VLM_MAX_ANALYSIS_IMAGE_BYTES") ?? String(DEFAULT_MAX_ANALYSIS_IMAGE_BYTES)
+  )
+  if (!Number.isFinite(configured) || configured <= 0) {
+    return DEFAULT_MAX_ANALYSIS_IMAGE_BYTES
+  }
+  return Math.floor(configured)
+})()
+const SUPPORTED_ANTHROPIC_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+])
 
 const HAZARD_CATEGORIES = new Set([
   "traffic",
@@ -245,6 +276,94 @@ function validateImageUrl(imageUrl: string): string | null {
   return null
 }
 
+function normalizeImageContentType(contentType: string | null): string | null {
+  if (!contentType) {
+    return null
+  }
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase()
+  if (!normalized) {
+    return null
+  }
+  const mediaType = normalized === "image/jpg" ? "image/jpeg" : normalized
+  return SUPPORTED_ANTHROPIC_IMAGE_TYPES.has(mediaType) ? mediaType : null
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000
+  let binary = ""
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize)
+    binary += String.fromCharCode(...chunk)
+  }
+  return btoa(binary)
+}
+
+async function prepareImageForAnthropic(
+  imageUrl: string,
+  signal: AbortSignal
+): Promise<
+  | { ok: true; image: PreparedImageForAnthropic }
+  | { ok: false; statusCode: number; error: string }
+> {
+  let imageResponse: Response
+  try {
+    imageResponse = await fetch(imageUrl, { method: "GET", signal })
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error
+    }
+    console.error("Failed to fetch image for analysis:", error)
+    return {
+      ok: false,
+      statusCode: 502,
+      error: "Failed to fetch image for AI analysis",
+    }
+  }
+
+  if (!imageResponse.ok) {
+    const statusCode = imageResponse.status >= 500 ? 502 : 400
+    return {
+      ok: false,
+      statusCode,
+      error: `image_url could not be fetched (${imageResponse.status})`,
+    }
+  }
+
+  const mediaType = normalizeImageContentType(imageResponse.headers.get("content-type"))
+  if (!mediaType) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: "Unsupported image format. Use JPEG, PNG, GIF, or WebP",
+    }
+  }
+
+  const bytes = new Uint8Array(await imageResponse.arrayBuffer())
+  if (bytes.length === 0) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: "Image data is empty",
+    }
+  }
+
+  if (bytes.length > MAX_ANALYSIS_IMAGE_BYTES) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: `Image is too large for AI analysis (max ${MAX_ANALYSIS_IMAGE_BYTES} bytes)`,
+    }
+  }
+
+  return {
+    ok: true,
+    image: {
+      mediaType,
+      data: bytesToBase64(bytes),
+    },
+  }
+}
+
 function isString(value: unknown, maxLength: number): value is string {
   return typeof value === "string" && value.length <= maxLength
 }
@@ -259,6 +378,46 @@ function isStringArray(value: unknown, maxItems: number, itemMaxLength: number):
 
 function isIntegerInRange(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max
+}
+
+function extractAnthropicErrorInfo(errorText: string): { type?: string; message?: string } {
+  try {
+    const parsed = JSON.parse(errorText) as Record<string, unknown>
+    const rootMessage = typeof parsed.message === "string" ? parsed.message : undefined
+    const inner = parsed.error
+    if (!inner || typeof inner !== "object") {
+      return { message: rootMessage }
+    }
+    const errorObj = inner as Record<string, unknown>
+    return {
+      type: typeof errorObj.type === "string" ? errorObj.type : undefined,
+      message: typeof errorObj.message === "string" ? errorObj.message : rootMessage,
+    }
+  } catch {
+    return {}
+  }
+}
+
+interface PreparedImageForAnthropic {
+  mediaType: string
+  data: string
+}
+
+function shouldRetryWithNextModel(status: number, errorText: string): boolean {
+  if (status !== 404) return false
+  const info = extractAnthropicErrorInfo(errorText)
+  const type = (info.type || "").toLowerCase()
+  const message = (info.message || errorText || "").toLowerCase()
+  return type.includes("not_found") || message.includes("model")
+}
+
+function buildAnthropicFailureMessage(status: number, errorText: string): string {
+  const info = extractAnthropicErrorInfo(errorText)
+  const detail = info.message?.trim()
+  if (detail) {
+    return `AI analysis failed (Anthropic ${status}): ${detail}`
+  }
+  return `AI analysis failed (Anthropic ${status})`
 }
 
 function validateAnalysisPayload(payload: unknown): payload is VlmAnalysisResultPayload {
@@ -459,10 +618,20 @@ serve(async (req) => {
 
     const abortController = new AbortController()
     const timeoutId = setTimeout(() => abortController.abort(), 25000)
-    let claudeResponse: Response
+    let claudeResponse: Response | null = null
+    let claudeErrorText = ""
+    let selectedModel = ""
 
     try {
-      claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      const preparedImage = await prepareImageForAnthropic(imageUrl, abortController.signal)
+      if (!preparedImage.ok) {
+        return jsonResponse({ error: preparedImage.error }, preparedImage.statusCode, corsHeaders)
+      }
+      const anthropicImage = preparedImage.image
+
+      for (const model of ANTHROPIC_MODEL_CANDIDATES) {
+        selectedModel = model
+        claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -471,7 +640,7 @@ serve(async (req) => {
         },
         signal: abortController.signal,
         body: JSON.stringify({
-          model: "claude-3-5-haiku-20241022",
+          model,
           max_tokens: 4096,
           messages: [
             {
@@ -480,8 +649,9 @@ serve(async (req) => {
                 {
                   type: "image",
                   source: {
-                    type: "url",
-                    url: imageUrl,
+                    type: "base64",
+                    media_type: anthropicImage.mediaType,
+                    data: anthropicImage.data,
                   },
                 },
                 {
@@ -533,18 +703,39 @@ JSON以外の文章は出力しないでください。`,
           ],
         }),
       })
+
+        if (claudeResponse.ok) {
+          break
+        }
+
+        claudeErrorText = await claudeResponse.text()
+        const willRetry = shouldRetryWithNextModel(claudeResponse.status, claudeErrorText)
+        console.error("Claude API error:", {
+          model,
+          status: claudeResponse.status,
+          retry_next_model: willRetry,
+          body: claudeErrorText.slice(0, 500),
+        })
+
+        if (!willRetry) {
+          break
+        }
+      }
     } finally {
       clearTimeout(timeoutId)
     }
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text()
-      console.error("Claude API error:", {
-        status: claudeResponse.status,
-        body: errorText.slice(0, 500),
+    if (!claudeResponse || !claudeResponse.ok) {
+      const status = claudeResponse?.status ?? 502
+      const message = buildAnthropicFailureMessage(status, claudeErrorText)
+      console.error("Claude API final failure:", {
+        selectedModel,
+        triedModels: ANTHROPIC_MODEL_CANDIDATES,
+        status,
+        message,
       })
       return jsonResponse(
-        { error: `AI analysis failed (Anthropic ${claudeResponse.status})` },
+        { error: message },
         502,
         corsHeaders
       )
