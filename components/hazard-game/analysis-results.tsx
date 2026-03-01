@@ -5,6 +5,7 @@ import { Lightbulb, Brain, AlertTriangle, Eye, ArrowUpRight, Target, CheckCircle
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { PipelineAnalysisResultWithComparison, UserMarkingResult, DetectionItem } from "@/lib/hazard-game-types"
+import { computeFallbackCell, findNonOverlappingLabelY } from "@/lib/hazard-game-overlay-layout"
 import { ScoreBreakdown } from "./score-breakdown"
 import { DetectionCategories } from "./detection-categories"
 import { SafetyReportCard } from "./safety-report"
@@ -93,28 +94,6 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
     }
 
     const placedLabels: Array<{x: number; y: number; w: number; h: number}> = []
-
-    const findNonOverlappingY = (
-      lbX: number, lbY: number, lbW: number, lbH: number, rectBottomY: number
-    ): number => {
-      let y = lbY
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const overlaps = placedLabels.some(p =>
-          lbX < p.x + p.w && lbX + lbW > p.x &&
-          y < p.y + p.h && y + lbH > p.y
-        )
-        if (!overlaps) return y
-        y += lbH + 2
-      }
-      // 全試行で重なった場合、矩形の下端に配置
-      const belowRect = rectBottomY + 2
-      if (belowRect + lbH < canvas.height) return belowRect
-      return Math.min(y, canvas.height - lbH - 2)
-    }
-
-    const gridCols = allDetections.length > 6 ? 3 : 2
-    const rows = Math.max(1, Math.ceil(allDetections.length / gridCols))
-    const minCellH = (fontSize + pad * 2) * 2 / canvas.height
     let idx = 0
 
     for (const item of allDetections) {
@@ -129,14 +108,17 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
         w = Math.max(0.05, Math.min(1, pos.width))
         hh = Math.max(0.05, Math.min(1, pos.height))
       } else {
-        const col = idx % gridCols
-        const row = Math.floor(idx / gridCols)
-        const cellW = (0.9 - 0.05 * (gridCols - 1)) / gridCols
-        const cellH = Math.max(minCellH, 1 / (rows + 1))
-        x = 0.05 + col * (cellW + 0.05)
-        y = 0.05 + row * cellH
-        w = cellW
-        hh = cellH * 0.8
+        const cell = computeFallbackCell(
+          idx,
+          allDetections.length,
+          canvas.height,
+          fontSize,
+          pad
+        )
+        x = cell.x
+        y = cell.y
+        w = cell.w
+        hh = cell.h
       }
       idx++
 
@@ -160,7 +142,15 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
       const lbH = Math.round(fontSize + lbPadY * 2)
       const lbX = rx + pad
       const initialLbY = Math.max(pad, ry + pad)
-      const lbY = findNonOverlappingY(lbX, initialLbY, lbW, lbH, ry + rh)
+      const lbY = findNonOverlappingLabelY({
+        lbX,
+        initialY: initialLbY,
+        lbW,
+        lbH,
+        rectBottomY: ry + rh,
+        canvasHeight: canvas.height,
+        placedLabels,
+      })
 
       placedLabels.push({ x: lbX, y: lbY, w: lbW, h: lbH })
 
