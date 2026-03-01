@@ -74,11 +74,47 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
     ctx.drawImage(img, 0, 0)
 
     const pad = Math.max(8, Math.round(Math.min(canvas.width, canvas.height) * 0.01))
-    const fontSize = Math.max(14, Math.round(Math.min(canvas.width, canvas.height) * 0.022))
+    const baseFontSize = Math.max(14, Math.round(Math.min(canvas.width, canvas.height) * 0.022))
+    const fontSize = allDetections.length > 10
+      ? Math.round(baseFontSize * 0.8)
+      : baseFontSize
     ctx.font = `${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI`
     ctx.textBaseline = 'top'
 
-    const rows = Math.max(1, Math.ceil(allDetections.length / 2))
+    const maxLabelWidth = Math.round(canvas.width * 0.4)
+
+    const truncateText = (text: string, maxW: number): string => {
+      if (ctx.measureText(text).width <= maxW) return text
+      let truncated = text
+      while (truncated.length > 0 && ctx.measureText(truncated + '…').width > maxW) {
+        truncated = truncated.slice(0, -1)
+      }
+      return truncated + '…'
+    }
+
+    const placedLabels: Array<{x: number; y: number; w: number; h: number}> = []
+
+    const findNonOverlappingY = (
+      lbX: number, lbY: number, lbW: number, lbH: number, rectBottomY: number
+    ): number => {
+      let y = lbY
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const overlaps = placedLabels.some(p =>
+          lbX < p.x + p.w && lbX + lbW > p.x &&
+          y < p.y + p.h && y + lbH > p.y
+        )
+        if (!overlaps) return y
+        y += lbH + 2
+      }
+      // 全試行で重なった場合、矩形の下端に配置
+      const belowRect = rectBottomY + 2
+      if (belowRect + lbH < canvas.height) return belowRect
+      return Math.min(y, canvas.height - lbH - 2)
+    }
+
+    const gridCols = allDetections.length > 6 ? 3 : 2
+    const rows = Math.max(1, Math.ceil(allDetections.length / gridCols))
+    const minCellH = (fontSize + pad * 2) * 2 / canvas.height
     let idx = 0
 
     for (const item of allDetections) {
@@ -93,10 +129,10 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
         w = Math.max(0.05, Math.min(1, pos.width))
         hh = Math.max(0.05, Math.min(1, pos.height))
       } else {
-        const col = idx % 2
-        const row = Math.floor(idx / 2)
-        const cellW = 0.45
-        const cellH = 1 / (rows + 1)
+        const col = idx % gridCols
+        const row = Math.floor(idx / gridCols)
+        const cellW = (0.9 - 0.05 * (gridCols - 1)) / gridCols
+        const cellH = Math.max(minCellH, 1 / (rows + 1))
         x = 0.05 + col * (cellW + 0.05)
         y = 0.05 + row * cellH
         w = cellW
@@ -115,16 +151,20 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
       ctx.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.004))
       ctx.strokeRect(rx, ry, rw, rh)
 
-      const label = `${item.description || item.label} / ${Math.round(item.confidence * 100)}%`
+      const rawLabel = `${item.description || item.label} / ${Math.round(item.confidence * 100)}%`
+      const label = truncateText(rawLabel, maxLabelWidth)
       const textW = ctx.measureText(label).width
       const lbPadX = Math.round(fontSize * 0.5)
       const lbPadY = Math.round(fontSize * 0.35)
       const lbW = Math.round(textW + lbPadX * 2)
       const lbH = Math.round(fontSize + lbPadY * 2)
       const lbX = rx + pad
-      const lbY = Math.max(pad, ry + pad)
+      const initialLbY = Math.max(pad, ry + pad)
+      const lbY = findNonOverlappingY(lbX, initialLbY, lbW, lbH, ry + rh)
 
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      placedLabels.push({ x: lbX, y: lbY, w: lbW, h: lbH })
+
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'
       ctx.fillRect(lbX, lbY, lbW, lbH)
       ctx.fillStyle = 'white'
       ctx.fillText(label, lbX + lbPadX, lbY + lbPadY)
