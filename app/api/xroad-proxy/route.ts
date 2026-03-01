@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
-import { apiRateLimiter } from '@/lib/rate-limiter';
+import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter';
 
 const XROAD_API_BASE_URL = 'https://api.jartic-open-traffic.org/geoserver';
 
@@ -34,16 +34,9 @@ export async function GET(request: Request) {
   }
 
   // レート制限
-  const limitResult = await apiRateLimiter.checkLimit(`xroad-proxy:${user.id}`);
-  if (!limitResult.allowed) {
-    const retryAfter = Math.max(1, Math.ceil((limitResult.resetTime - Date.now()) / 1000));
-    return NextResponse.json(
-      { error: 'リクエストが多すぎます。しばらく後にお試しください。' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(retryAfter) },
-      },
-    );
+  const limitResult = await checkApiRateLimit(`xroad-proxy:${user.id}`);
+  if (!limitResult.success) {
+    return rateLimitedResponse(limitResult.reset);
   }
 
   try {

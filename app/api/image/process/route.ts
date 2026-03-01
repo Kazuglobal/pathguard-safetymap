@@ -130,7 +130,11 @@ export async function POST(req: Request) {
     const rawExt = file.name.split(".").pop() || "bin";
     const safeExt = /^[a-zA-Z0-9]+$/.test(rawExt) ? rawExt : "bin";
     const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${safeExt}`;
-    const filePath = fileName;
+    // danger-reports bucket enforces owner-scoped folder policies:
+    // storage.foldername(name)[1] must match auth.uid().
+    // Store under the report owner's folder to satisfy RLS consistently.
+    const ownerFolder = existingReport.user_id;
+    const filePath = `${ownerFolder}/${reportId}/${fileName}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET_NAME)

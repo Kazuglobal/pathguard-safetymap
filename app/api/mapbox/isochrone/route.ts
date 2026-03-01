@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isochroneService } from '@/lib/routing/isochrone'
+import { createServerClient } from '@/lib/supabase-server'
+
+const MAX_BATCH_SIZE = 10
+
+async function requireAuth() {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  return user
+}
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { type, ...options } = body
@@ -23,7 +38,7 @@ export async function POST(request: NextRequest) {
         }
 
         const isochroneResult = await isochroneService.generateIsochrone(options)
-        
+
         if (!isochroneResult.success) {
           return NextResponse.json(
             { error: isochroneResult.error || 'Isochrone generation failed' },
@@ -41,6 +56,13 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        if (options.locations.length > MAX_BATCH_SIZE) {
+          return NextResponse.json(
+            { error: `Batch size must not exceed ${MAX_BATCH_SIZE}` },
+            { status: 400 }
+          )
+        }
+
         if (!options.contours || !Array.isArray(options.contours)) {
           return NextResponse.json(
             { error: 'Contours array is required' },
@@ -49,7 +71,7 @@ export async function POST(request: NextRequest) {
         }
 
         const batchResult = await isochroneService.batchGenerateIsochrones(options)
-        
+
         if (!batchResult.success) {
           return NextResponse.json(
             { error: batchResult.error || 'Batch isochrone generation failed' },
@@ -178,11 +200,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const centerParam = searchParams.get('center')
     const contoursParam = searchParams.get('contours')
-    
+
     if (!centerParam) {
       return NextResponse.json(
         { error: 'Center parameter is required' },
@@ -197,13 +224,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Parse center coordinates from query parameter
-    // Expected format: "lng,lat"
     const [lng, lat] = centerParam.split(',').map(Number)
     const center: [number, number] = [lng, lat]
-
-    // Parse contours from query parameter
-    // Expected format: "5,10,15,20"
     const contours = contoursParam.split(',').map(Number)
 
     const isochroneRequest = {
@@ -213,11 +235,11 @@ export async function GET(request: NextRequest) {
       colors: searchParams.get('colors')?.split(','),
       denoise: searchParams.get('denoise') ? parseFloat(searchParams.get('denoise')!) : undefined,
       generalize: searchParams.get('generalize') ? parseFloat(searchParams.get('generalize')!) : undefined,
-      polygons: searchParams.get('polygons') !== 'false'
+      polygons: searchParams.get('polygons') !== 'false',
     }
 
     const result = await isochroneService.generateIsochrone(isochroneRequest)
-    
+
     if (!result.success) {
       return NextResponse.json(
         { error: result.error || 'Isochrone generation failed' },

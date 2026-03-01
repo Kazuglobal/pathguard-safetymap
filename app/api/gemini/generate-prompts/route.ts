@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { generateDisasterPrompts } from "@/lib/gemini-prompts"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
+
+const CUSTOM_HAZARD_SCHEMA = z.string().trim().min(1).max(100)
+  .regex(/^[\w\s\-\u3040-\u9FFF\u30A0-\u30FF\uFF00-\uFFEF]+$/u)
+
+const MAX_CUSTOM_HAZARDS = 8
+
+function validateCustomHazards(raw: string[]): { valid: string[] } | { error: string } {
+  if (raw.length > MAX_CUSTOM_HAZARDS) {
+    return { error: `customHazards は最大 ${MAX_CUSTOM_HAZARDS} 件までです` }
+  }
+  const valid: string[] = []
+  for (const item of raw) {
+    const result = CUSTOM_HAZARD_SCHEMA.safeParse(item)
+    if (!result.success) {
+      return { error: `無効な customHazard 値: "${item.slice(0, 30)}"` }
+    }
+    valid.push(result.data)
+  }
+  return { valid }
+}
 
 export const runtime = "nodejs"
 
@@ -57,7 +78,13 @@ export async function POST(req: NextRequest) {
       const body = await req.json()
       imageBase64 = body?.imageBase64 || body?.imageDataUrl
       language = body?.language
-      customHazards = Array.isArray(body?.customHazards) ? body.customHazards : undefined
+      if (Array.isArray(body?.customHazards)) {
+        const validation = validateCustomHazards(body.customHazards)
+        if ("error" in validation) {
+          return NextResponse.json({ error: validation.error }, { status: 400 })
+        }
+        customHazards = validation.valid
+      }
     } else if (contentType.includes("multipart/form-data")) {
       const form = await req.formData()
       const file = form.get("image") as File | null
@@ -73,7 +100,12 @@ export async function POST(req: NextRequest) {
       }
       const hazardsRaw = form.get("customHazards") as string | null
       if (hazardsRaw) {
-        customHazards = hazardsRaw.split(",").map((item) => item.trim()).filter(Boolean)
+        const rawList = hazardsRaw.split(",").map((item) => item.trim()).filter(Boolean)
+        const validation = validateCustomHazards(rawList)
+        if ("error" in validation) {
+          return NextResponse.json({ error: validation.error }, { status: 400 })
+        }
+        customHazards = validation.valid
       }
     } else {
       return NextResponse.json({ error: "Use JSON or multipart/form-data" }, { status: 400 })

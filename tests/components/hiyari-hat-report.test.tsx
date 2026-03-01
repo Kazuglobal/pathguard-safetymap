@@ -121,6 +121,20 @@ describe("HiyariHatReport", () => {
     })
   })
 
+  it("danger_reports クエリはワイルドカードではなく必要カラムのみ取得する", async () => {
+    render(<HiyariHatReport />)
+
+    await waitFor(() => {
+      expect(mocks.select).toHaveBeenCalled()
+    })
+
+    const [projection] = mocks.select.mock.calls[0] as [string]
+    expect(projection).not.toContain("*")
+    expect(projection).toContain("id")
+    expect(projection).toContain("title")
+    expect(projection).toContain("danger_level")
+  })
+
   describe("詳細モーダル表示", () => {
     beforeEach(() => {
       mocks.limit.mockResolvedValue({
@@ -161,6 +175,20 @@ describe("HiyariHatReport", () => {
       fireEvent.click(card)
 
       expect(screen.getByRole("dialog")).toHaveTextContent("交差点の危険")
+    })
+
+    it("リアクションボタンで Enter を押してもモーダルは開かない", async () => {
+      const { container } = render(<HiyariHatReport />)
+
+      await waitFor(() => {
+        expect(container.querySelector('article[role="button"]')).toBeTruthy()
+      })
+
+      fireEvent.keyDown(screen.getByRole("button", { name: "参考になった" }), {
+        key: "Enter",
+      })
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     })
   })
 })

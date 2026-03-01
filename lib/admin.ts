@@ -2,17 +2,18 @@
  * 管理者メールアドレスの定義と判定ユーティリティ
  */
 
-const ADMIN_EMAILS: ReadonlyArray<string> = [
-  "globalbunny77@gmail.com",
-  "japanprofessionals@gmail.com",
-] as const
+function getAdminEmails(): ReadonlyArray<string> {
+  const envAdmins = process.env.ADMIN_EMAILS
+  if (!envAdmins) return []
+  return envAdmins.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+}
 
 /**
  * 指定されたメールアドレスが管理者かどうかを判定する
  */
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
-  return ADMIN_EMAILS.includes(email.toLowerCase())
+  return getAdminEmails().includes(email.toLowerCase())
 }
 
 /**

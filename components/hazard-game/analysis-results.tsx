@@ -5,6 +5,7 @@ import { Lightbulb, Brain, AlertTriangle, Eye, ArrowUpRight, Target, CheckCircle
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { PipelineAnalysisResultWithComparison, UserMarkingResult, DetectionItem } from "@/lib/hazard-game-types"
+import { computeFallbackCell, findNonOverlappingLabelY } from "@/lib/hazard-game-overlay-layout"
 import { ScoreBreakdown } from "./score-breakdown"
 import { DetectionCategories } from "./detection-categories"
 import { SafetyReportCard } from "./safety-report"
@@ -74,11 +75,25 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
     ctx.drawImage(img, 0, 0)
 
     const pad = Math.max(8, Math.round(Math.min(canvas.width, canvas.height) * 0.01))
-    const fontSize = Math.max(14, Math.round(Math.min(canvas.width, canvas.height) * 0.022))
+    const baseFontSize = Math.max(14, Math.round(Math.min(canvas.width, canvas.height) * 0.022))
+    const fontSize = allDetections.length > 10
+      ? Math.round(baseFontSize * 0.8)
+      : baseFontSize
     ctx.font = `${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI`
     ctx.textBaseline = 'top'
 
-    const rows = Math.max(1, Math.ceil(allDetections.length / 2))
+    const maxLabelWidth = Math.round(canvas.width * 0.4)
+
+    const truncateText = (text: string, maxW: number): string => {
+      if (ctx.measureText(text).width <= maxW) return text
+      let truncated = text
+      while (truncated.length > 0 && ctx.measureText(truncated + '…').width > maxW) {
+        truncated = truncated.slice(0, -1)
+      }
+      return truncated + '…'
+    }
+
+    const placedLabels: Array<{x: number; y: number; w: number; h: number}> = []
     let idx = 0
 
     for (const item of allDetections) {
@@ -93,14 +108,17 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
         w = Math.max(0.05, Math.min(1, pos.width))
         hh = Math.max(0.05, Math.min(1, pos.height))
       } else {
-        const col = idx % 2
-        const row = Math.floor(idx / 2)
-        const cellW = 0.45
-        const cellH = 1 / (rows + 1)
-        x = 0.05 + col * (cellW + 0.05)
-        y = 0.05 + row * cellH
-        w = cellW
-        hh = cellH * 0.8
+        const cell = computeFallbackCell(
+          idx,
+          allDetections.length,
+          canvas.height,
+          fontSize,
+          pad
+        )
+        x = cell.x
+        y = cell.y
+        w = cell.w
+        hh = cell.h
       }
       idx++
 
@@ -115,16 +133,28 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
       ctx.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.004))
       ctx.strokeRect(rx, ry, rw, rh)
 
-      const label = `${item.description || item.label} / ${Math.round(item.confidence * 100)}%`
+      const rawLabel = `${item.description || item.label} / ${Math.round(item.confidence * 100)}%`
+      const label = truncateText(rawLabel, maxLabelWidth)
       const textW = ctx.measureText(label).width
       const lbPadX = Math.round(fontSize * 0.5)
       const lbPadY = Math.round(fontSize * 0.35)
       const lbW = Math.round(textW + lbPadX * 2)
       const lbH = Math.round(fontSize + lbPadY * 2)
       const lbX = rx + pad
-      const lbY = Math.max(pad, ry + pad)
+      const initialLbY = Math.max(pad, ry + pad)
+      const lbY = findNonOverlappingLabelY({
+        lbX,
+        initialY: initialLbY,
+        lbW,
+        lbH,
+        rectBottomY: ry + rh,
+        canvasHeight: canvas.height,
+        placedLabels,
+      })
 
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      placedLabels.push({ x: lbX, y: lbY, w: lbW, h: lbH })
+
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'
       ctx.fillRect(lbX, lbY, lbW, lbH)
       ctx.fillStyle = 'white'
       ctx.fillText(label, lbX + lbPadX, lbY + lbPadY)

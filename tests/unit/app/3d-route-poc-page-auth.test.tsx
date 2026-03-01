@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockGetSession, mockRedirect } = vi.hoisted(() => ({
-  mockGetSession: vi.fn(),
-  mockRedirect: vi.fn(),
+const { mockGetUser, mockRedirect } = vi.hoisted(() => ({
+  mockGetUser: vi.fn(),
+  mockRedirect: vi.fn(() => {
+    throw new Error('NEXT_REDIRECT')
+  }),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -12,7 +14,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/supabase-server', () => ({
   createServerClient: vi.fn(async () => ({
     auth: {
-      getSession: mockGetSession,
+      getUser: mockGetUser,
     },
   })),
 }))
@@ -25,24 +27,24 @@ describe('3d-route-poc page auth guard', () => {
   })
 
   it('未認証時は /login にリダイレクトする', async () => {
-    mockGetSession.mockResolvedValueOnce({
-      data: { session: null },
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: null },
     })
 
-    await ThreeDRoutePocPage()
+    await expect(ThreeDRoutePocPage()).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockGetSession).toHaveBeenCalledTimes(1)
+    expect(mockGetUser).toHaveBeenCalledTimes(1)
     expect(mockRedirect).toHaveBeenCalledWith('/login')
   })
 
   it('認証済み時はリダイレクトしない', async () => {
-    mockGetSession.mockResolvedValueOnce({
-      data: { session: { user: { id: 'user-1' } } },
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: 'user-1' } },
     })
 
     await ThreeDRoutePocPage()
 
-    expect(mockGetSession).toHaveBeenCalledTimes(1)
+    expect(mockGetUser).toHaveBeenCalledTimes(1)
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 })

@@ -738,14 +738,22 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           } catch (e) {
             if (isActive()) {
               console.error('auto-generation failed', e)
-              setAutoGenError(e instanceof Error ? e.message : 'Unknown error occurred.')
+              const rawMsg = e instanceof Error ? e.message : 'Unknown error occurred.'
+              const displayMsg = /failed to fetch|network/i.test(rawMsg)
+                ? 'ネットワークエラーが発生しました。インターネット接続を確認して再度お試しください。'
+                : rawMsg
+              setAutoGenError(displayMsg)
             }
           }
         }
       } catch (error) {
         if (isActive()) {
           console.error('Error in auto-generation:', error)
-          setAutoGenError(error instanceof Error ? error.message : 'Unknown error occurred.')
+          const rawMsg = error instanceof Error ? error.message : 'Unknown error occurred.'
+          const displayMsg = /failed to fetch|network/i.test(rawMsg)
+            ? 'ネットワークエラーが発生しました。インターネット接続を確認して再度お試しください。'
+            : rawMsg
+          setAutoGenError(displayMsg)
         }
       } finally {
         if (isActive()) setAutoGenLoading(false)
@@ -1034,9 +1042,10 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       }
     } catch (error) {
       console.error("Error submitting report:", error)
+      const errorMessage = error instanceof Error ? error.message : "不明なエラー"
       toast({
         title: "エラー",
-        description: "報告の送信中にエラーが発生しました。",
+        description: `報告の送信中にエラーが発生しました: ${errorMessage}`,
         variant: "destructive",
       })
     } finally {

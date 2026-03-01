@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -80,7 +81,7 @@ export function ReportCommentSection({ reportId }: ReportCommentSectionProps) {
 
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setIsLoggedIn(!!session?.user)
     })
 

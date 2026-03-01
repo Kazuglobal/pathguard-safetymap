@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import type { AuthChangeEvent } from "@supabase/supabase-js"
 import { useSupabase } from "@/components/providers/supabase-provider"
 
 export interface Notification {
@@ -61,9 +62,9 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         return
       }
 
-      const notificationsList = data || []
+      const notificationsList: Notification[] = (data || []) as Notification[]
       setNotifications(notificationsList)
-      setUnreadCount(notificationsList.filter((n) => !n.is_read).length)
+      setUnreadCount(notificationsList.filter((n: Notification) => !n.is_read).length)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "通知の取得に失敗しました"
@@ -140,7 +141,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // Subscribe to auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === "SIGNED_IN") {
         fetchNotifications()
       } else if (event === "SIGNED_OUT") {

@@ -32,13 +32,27 @@ const nextConfig = {
   // React 19 strict mode
   reactStrictMode: true,
 
-  // Ignore TypeScript errors during build
+  // Keep Next.js build output in the default location Vercel expects.
+  distDir: '.next',
+
+  // Enforce TypeScript type-checking during build
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Turbopack configuration (Next.js 16 default)
-  turbopack: {},
+  turbopack: {
+    // Force project-local root to avoid picking parent lockfiles/workspaces.
+    root: process.cwd(),
+    // Some environments ship three without build/* artifacts.
+    // Resolve to source entry explicitly to keep Spark/Three revision checks stable.
+    resolveAlias: {
+      'three$': 'three/src/Three.js',
+    },
+  },
+
+  // Keep tracing root pinned to this repository when multiple lockfiles exist above cwd.
+  outputFileTracingRoot: process.cwd(),
 
   // Provide fallback environment values for public configuration
   // NOTE: Empty fallbacks will trigger offline/demo mode in supabase-provider.tsx
@@ -74,6 +88,12 @@ const nextConfig = {
   
   // Custom webpack configuration
   webpack: (config, { isServer }) => {
+    // Keep webpack and Turbopack behavior aligned for three resolution.
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'three$': path.resolve(process.cwd(), 'node_modules/three/src/Three.js'),
+    }
+
     // Prevent fs polyfill from being bundled client-side
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -101,6 +121,42 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+  },
+
+  // セキュリティヘッダー
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self)',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+          // CSP は Report-Only モードで動作確認中。問題がなければ Content-Security-Policy に切り替える。
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com https://events.mapbox.com",
+              "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com https://images.unsplash.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://api.jartic-open-traffic.org https://tile.googleapis.com https://maps.googleapis.com",
+              "worker-src 'self' blob:",
+              "frame-ancestors 'self'",
+            ].join('; '),
+          },
+        ],
+      },
+    ]
   },
 }
 
