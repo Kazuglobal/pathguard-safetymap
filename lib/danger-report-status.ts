@@ -1,5 +1,7 @@
 export type InitialDangerReportStatus = "pending" | "published"
 
+export const PUBLIC_DANGER_REPORT_STATUSES = ["approved", "published", "resolved"] as const
+
 export function resolveInitialDangerReportStatus(
   requestedStatus: string | null | undefined
 ): InitialDangerReportStatus {

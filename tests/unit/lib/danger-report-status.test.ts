@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest"
 import {
+  PUBLIC_DANGER_REPORT_STATUSES,
   resolveInitialDangerReportStatus,
   shouldRetryDangerReportInsertAsPending,
 } from "@/lib/danger-report-status"
+
+describe("PUBLIC_DANGER_REPORT_STATUSES", () => {
+  it("includes all statuses that must be visible in public map/report feeds", () => {
+    expect(PUBLIC_DANGER_REPORT_STATUSES).toEqual(["approved", "published", "resolved"])
+  })
+})
 
 describe("resolveInitialDangerReportStatus", () => {
   it("returns published when requested status is published", () => {

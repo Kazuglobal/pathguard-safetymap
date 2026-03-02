@@ -98,6 +98,33 @@ export interface ARHazardOptions {
   fov?: number // 視野角（度、デフォルト60度）
 }
 
+export interface ARVisibilityPolicyInput {
+  orientationPermission: boolean
+  maxDistance: number
+  fov: number
+}
+
+export function getARVisibilityOptions(
+  input: ARVisibilityPolicyInput
+): Required<Pick<ARHazardOptions, "maxDistance" | "maxAngle" | "showBehind" | "fov">> {
+  if (input.orientationPermission) {
+    return {
+      maxDistance: input.maxDistance,
+      maxAngle: MAX_ANGLE_DEGREES,
+      showBehind: false,
+      fov: input.fov,
+    }
+  }
+
+  // 方位センサーが使えない端末では、前方限定フィルタを外して近傍データを失わないようにする
+  return {
+    maxDistance: input.maxDistance,
+    maxAngle: 180,
+    showBehind: true,
+    fov: input.fov,
+  }
+}
+
 export function calculateARHazardData(
   userLat: number,
   userLon: number,
