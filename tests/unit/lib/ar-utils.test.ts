@@ -7,6 +7,7 @@ import {
   calculateDistance,
   calculateBearing,
   calculateARHazardData,
+  getARVisibilityOptions,
   formatDistance,
   formatBearing,
 } from "@/lib/ar-utils"
@@ -352,6 +353,38 @@ describe("calculateARHazardData - AR危険個所データ計算", () => {
         expect(hazard.relativeAngle).toBeGreaterThanOrEqual(-180)
         expect(hazard.relativeAngle).toBeLessThanOrEqual(180)
       }
+    })
+  })
+})
+
+describe("getARVisibilityOptions", () => {
+  it("uses front-only filtering when orientation permission is granted", () => {
+    expect(
+      getARVisibilityOptions({
+        orientationPermission: true,
+        maxDistance: 500,
+        fov: 60,
+      })
+    ).toEqual({
+      maxDistance: 500,
+      maxAngle: MAX_ANGLE_DEGREES,
+      showBehind: false,
+      fov: 60,
+    })
+  })
+
+  it("falls back to 360-degree visibility when orientation permission is unavailable", () => {
+    expect(
+      getARVisibilityOptions({
+        orientationPermission: false,
+        maxDistance: 500,
+        fov: 60,
+      })
+    ).toEqual({
+      maxDistance: 500,
+      maxAngle: 180,
+      showBehind: true,
+      fov: 60,
     })
   })
 })

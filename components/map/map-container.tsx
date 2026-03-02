@@ -28,6 +28,7 @@ import { isAdminUser } from "@/lib/admin"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
 import {
+  PUBLIC_DANGER_REPORT_STATUSES,
   resolveInitialDangerReportStatus,
   shouldRetryDangerReportInsertAsPending,
 } from "@/lib/danger-report-status"
@@ -945,11 +946,11 @@ export default function MapContainer() {
             const { data: sessionData } = await supabase.auth.getSession();
             const userId = sessionData.session?.user?.id;
 
-            // Base query for approved reports
+            // Base query for publicly visible reports
             let approvedQuery = supabase
               .from("danger_reports")
               .select(`*`) // Select を最初に戻す
-              .eq("status", "approved") // status filter は必須
+              .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
               .abortSignal(abortController.signal);
 
             // Filter by danger type

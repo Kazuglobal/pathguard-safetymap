@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { DangerReport } from "@/lib/types"
-import { calculateARHazardData } from "@/lib/ar-utils"
+import { calculateARHazardData, getARVisibilityOptions } from "@/lib/ar-utils"
 import { formatHeadingDisplay } from "@/lib/ar-display-utils"
 import { drawHazardOverlay } from "@/lib/ar-canvas-renderer"
 import {
@@ -22,7 +22,6 @@ import {
   CAMERA_IDEAL_WIDTH,
   CAMERA_IDEAL_HEIGHT,
   DRAW_TARGET_FPS,
-  MAX_ANGLE_DEGREES,
   WALKING_SPEED_KMH,
 } from "@/lib/ar-constants"
 import { useARCamera } from "@/hooks/use-ar-camera"
@@ -92,14 +91,13 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       userLocation.lon,
       userHeading,
       reports,
-      {
+      getARVisibilityOptions({
+        orientationPermission,
         maxDistance,
-        maxAngle: MAX_ANGLE_DEGREES,
-        showBehind: false,
         fov,
-      }
+      })
     )
-  }, [userLocation, userHeading, reports, maxDistance, fov])
+  }, [userLocation, userHeading, reports, orientationPermission, maxDistance, fov])
 
   const primaryHazard = useMemo(() => {
     return arHazards.length > 0 ? arHazards[0] : null

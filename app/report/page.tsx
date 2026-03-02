@@ -16,6 +16,7 @@ import SharedGallery3D from "@/components/report/shared-gallery-3d"
 import { LongPressZoomableImage } from "@/components/ui/long-press-zoomable-image"
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
 import { useReportInteractionsBatch } from "@/hooks/use-report-interactions"
+import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -46,8 +47,6 @@ const DANGER_TYPE_META: Record<string, { label: string; accent: string; badge: s
 }
 
 const DEFAULT_DANGER_META = DANGER_TYPE_META.other
-const APPROVED_STATUSES = ["approved", "published", "resolved"]
-
 type ShareFeedEntry = {
   report: PublicReport
   cover: string | null
@@ -103,7 +102,7 @@ export default function ReportHubPage() {
           .select(
             "id, title, description, danger_type, danger_level, latitude, longitude, status, image_url, processed_image_urls, created_at",
           )
-          .in("status", APPROVED_STATUSES)
+          .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
           .order("created_at", { ascending: false })
           .limit(60)
 
