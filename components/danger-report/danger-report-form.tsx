@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
 import type { DangerReport } from "@/lib/types"
 import { compressImage, fileToBase64 } from "@/lib/image-utils"
+import { urlOrDataUrlToBlob } from "@/lib/data-url-utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   promptCategories,
@@ -352,8 +353,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
   // Utilities for auto-generation
   const dataUrlToFile = async (dataUrl: string, filename: string, signal?: AbortSignal): Promise<File> => {
-    const res = await fetch(dataUrl, { signal })
-    const blob = await res.blob()
+    const blob = await urlOrDataUrlToBlob(dataUrl, signal)
     return new File([blob], filename, { type: blob.type || 'image/png' })
   }
 
@@ -361,8 +361,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
   // Blob URLs are short reference strings (~60 chars) vs multi-MB base64 data URLs,
   // drastically reducing React state size and re-render cost.
   const dataUrlToBlobUrl = async (dataUrl: string, signal?: AbortSignal): Promise<string> => {
-    const res = await fetch(dataUrl, { signal })
-    const blob = await res.blob()
+    const blob = await urlOrDataUrlToBlob(dataUrl, signal)
     const url = URL.createObjectURL(blob)
     registerBlobUrl(url)
     return url
@@ -375,8 +374,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
     filename: string,
     signal?: AbortSignal,
   ): Promise<{ file: File; blobUrl: string }> => {
-    const res = await fetch(dataUrl, { signal })
-    const blob = await res.blob()
+    const blob = await urlOrDataUrlToBlob(dataUrl, signal)
     const file = new File([blob], filename, { type: blob.type || 'image/png' })
     const blobUrl = URL.createObjectURL(blob)
     registerBlobUrl(blobUrl)
