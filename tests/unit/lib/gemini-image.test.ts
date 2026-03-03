@@ -96,7 +96,7 @@ describe("generateImageWithGeminiWithModel", () => {
     ).rejects.toThrow("500")
 
     expect(timeoutSpy).toHaveBeenCalled()
-    expect(timeoutSpy.mock.calls.some(([ms]) => Number(ms) === 18_000)).toBe(true)
+    expect(timeoutSpy.mock.calls.some(([ms]) => Number(ms) === 30_000)).toBe(true)
     timeoutSpy.mockRestore()
   })
 
@@ -166,5 +166,39 @@ describe("generateImageWithGeminiWithModel", () => {
 
     expect(firstBody?.generationConfig?.responseModalities).toEqual(["IMAGE", "TEXT"])
     expect(secondBody?.generationConfig?.responseModalities).toEqual(["IMAGE"])
+  })
+
+  it("retries once when the first generateContent call times out", async () => {
+    mockFetch
+      .mockRejectedValueOnce(new DOMException("The operation timed out.", "TimeoutError"))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: "image/png",
+                      data: "b".repeat(128),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+
+    const { generateImageWithGeminiWithModel } = await import("@/lib/gemini-image")
+
+    const result = await generateImageWithGeminiWithModel({
+      prompt: "test prompt",
+      model: "gemini-3.1-flash-image-preview",
+    })
+
+    expect(result.images).toHaveLength(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 })

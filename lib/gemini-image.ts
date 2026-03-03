@@ -57,7 +57,7 @@ function sanitizeModelName(model: string): string {
 }
 
 // Per-call timeout to prevent hanging on slow API responses.
-const DEFAULT_PER_CALL_TIMEOUT_MS = 18_000
+const DEFAULT_PER_CALL_TIMEOUT_MS = 30_000
 const PRO_IMAGE_PER_CALL_TIMEOUT_MS = 40_000
 const REQUEST_TIMEOUT_BUDGET_MS = 55_000
 const MIN_CALL_TIMEOUT_MS = 5_000
@@ -354,7 +354,15 @@ export async function generateImageWithGeminiWithModel({
       const safeModel = sanitizeModelName(model)
       const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
 
-      const tryGenerateContent = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
+      const getRemainingBudgetMs = () => REQUEST_TIMEOUT_BUDGET_MS - (Date.now() - startedAtMs)
+
+      const getAttemptTimeoutMs = (): number | null => {
+        const remaining = getRemainingBudgetMs()
+        if (remaining < MIN_CALL_TIMEOUT_MS) return null
+        return Math.min(getPerCallTimeoutMs(model), remaining)
+      }
+
+      const tryGenerateContent = async (imageOnly: boolean, timeoutMs: number): Promise<GeneratedImage[] | null> => {
         const requestBody = buildGenerateContentRequestBody({
           promptText: text,
           imageBase64,
@@ -368,7 +376,7 @@ export async function generateImageWithGeminiWithModel({
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
             body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(callTimeoutMs),
+            signal: AbortSignal.timeout(timeoutMs),
           }
         )
 
@@ -383,7 +391,29 @@ export async function generateImageWithGeminiWithModel({
         return extractImagesFromAny(data, apiKey)
       }
 
-      const firstImages = await tryGenerateContent(false)
+      const tryGenerateContentWithTimeoutRetry = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
+        const firstTimeoutMs = getAttemptTimeoutMs()
+        if (firstTimeoutMs === null) {
+          lastError = new Error(`${model}: タイムアウト予算不足`)
+          return null
+        }
+
+        try {
+          return await tryGenerateContent(imageOnly, firstTimeoutMs)
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === 'TimeoutError')) {
+            throw error
+          }
+          const retryTimeoutMs = getAttemptTimeoutMs()
+          if (retryTimeoutMs === null) {
+            throw error
+          }
+          console.warn(`[Gemini] generateContent timed out for ${model}; retrying once (${retryTimeoutMs}ms)`)
+          return tryGenerateContent(imageOnly, retryTimeoutMs)
+        }
+      }
+
+      const firstImages = await tryGenerateContentWithTimeoutRetry(false)
       if (firstImages && firstImages.length > 0) {
         console.log(`[Gemini] Success with model: ${model} via generateContent`)
         return { images: firstImages, model }
@@ -391,7 +421,7 @@ export async function generateImageWithGeminiWithModel({
 
       if (firstImages && firstImages.length === 0) {
         console.warn(`[Gemini] No image payload from ${model}; retrying once with IMAGE-only modality`)
-        const retryImages = await tryGenerateContent(true)
+        const retryImages = await tryGenerateContentWithTimeoutRetry(true)
         if (retryImages && retryImages.length > 0) {
           console.log(`[Gemini] Success with model: ${model} via generateContent retry`)
           return { images: retryImages, model }
