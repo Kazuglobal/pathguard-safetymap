@@ -120,4 +120,51 @@ describe("generateImageWithGeminiWithModel", () => {
     const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
     expect(url).toContain("models/gemini-3.1-flash-image-preview:generateContent")
   })
+
+  it("retries once with image-only modality when first successful response has no image data", async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: "I cannot provide image now." }] } }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: "image/png",
+                      data: "a".repeat(128),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+
+    const { generateImageWithGeminiWithModel } = await import("@/lib/gemini-image")
+
+    const result = await generateImageWithGeminiWithModel({
+      prompt: "test prompt",
+      model: "gemini-3.1-flash-image-preview",
+    })
+
+    expect(result.images).toHaveLength(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    const [, firstInit] = mockFetch.mock.calls[0] as [string, RequestInit]
+    const [, secondInit] = mockFetch.mock.calls[1] as [string, RequestInit]
+    const firstBody = JSON.parse(String(firstInit.body))
+    const secondBody = JSON.parse(String(secondInit.body))
+
+    expect(firstBody?.generationConfig?.responseModalities).toEqual(["IMAGE", "TEXT"])
+    expect(secondBody?.generationConfig?.responseModalities).toEqual(["IMAGE"])
+  })
 })
