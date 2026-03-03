@@ -61,6 +61,8 @@ const DEFAULT_PER_CALL_TIMEOUT_MS = 18_000
 const PRO_IMAGE_PER_CALL_TIMEOUT_MS = 40_000
 const REQUEST_TIMEOUT_BUDGET_MS = 55_000
 const MIN_CALL_TIMEOUT_MS = 5_000
+const IMAGE_ONLY_RETRY_INSTRUCTION =
+  "Strict output requirement: Return exactly one generated image and no text."
 
 // Imagen models use the :predict endpoint; Gemini models use :generateContent
 function isImagenModel(model: string): boolean {
@@ -76,6 +78,38 @@ function getPerCallTimeoutMs(model: string): number {
 
 export function getImageModel(): string {
   return FORCED_GEMINI_IMAGE_MODEL
+}
+
+function buildGenerateContentRequestBody({
+  promptText,
+  imageBase64,
+  imageMimeType,
+  imageOnly,
+}: {
+  promptText: string
+  imageBase64?: string
+  imageMimeType?: string | null
+  imageOnly: boolean
+}): Record<string, unknown> {
+  const fullPrompt = imageOnly ? `${promptText}\n\n${IMAGE_ONLY_RETRY_INSTRUCTION}` : promptText
+  return {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          ...(imageBase64 && imageMimeType
+            ? [{ inlineData: { mimeType: imageMimeType, data: imageBase64 } }]
+            : []),
+          { text: fullPrompt },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.4,
+      topP: 0.9,
+      responseModalities: imageOnly ? ["IMAGE"] : ["IMAGE", "TEXT"],
+    },
+  }
 }
 
 async function tryImagesGenerate(
@@ -320,47 +354,52 @@ export async function generateImageWithGeminiWithModel({
       const safeModel = sanitizeModelName(model)
       const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
 
-      const requestBody: Record<string, unknown> = {
-        contents: [
+      const tryGenerateContent = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
+        const requestBody = buildGenerateContentRequestBody({
+          promptText: text,
+          imageBase64,
+          imageMimeType: safeMimeType,
+          imageOnly,
+        })
+
+        const res = await fetch(
+          `${GEMINI_API_URL}/models/${encodeURIComponent(safeModel)}:generateContent`,
           {
-            role: "user",
-            parts: [
-              ...(imageBase64 && safeMimeType
-                ? [{ inlineData: { mimeType: safeMimeType, data: imageBase64 } }]
-                : []),
-              { text },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.4,
-          topP: 0.9,
-          responseModalities: ["IMAGE", "TEXT"],
-        },
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(callTimeoutMs),
+          }
+        )
+
+        if (!res.ok) {
+          const errText = await res.text()
+          lastError = new Error(`${model}: ${res.status} - ${errText.slice(0, 200)}`)
+          console.warn(`[Gemini] generateContent failed for ${model}: ${errText}`)
+          return null
+        }
+
+        const data = await res.json()
+        return extractImagesFromAny(data, apiKey)
       }
 
-      const res = await fetch(
-        `${GEMINI_API_URL}/models/${encodeURIComponent(safeModel)}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
-          body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(callTimeoutMs),
-        }
-      )
+      const firstImages = await tryGenerateContent(false)
+      if (firstImages && firstImages.length > 0) {
+        console.log(`[Gemini] Success with model: ${model} via generateContent`)
+        return { images: firstImages, model }
+      }
 
-      if (res.ok) {
-        const data = await res.json()
-        const images = await extractImagesFromAny(data, apiKey)
-        if (images.length > 0) {
-          console.log(`[Gemini] Success with model: ${model} via generateContent`)
-          return { images, model }
+      if (firstImages && firstImages.length === 0) {
+        console.warn(`[Gemini] No image payload from ${model}; retrying once with IMAGE-only modality`)
+        const retryImages = await tryGenerateContent(true)
+        if (retryImages && retryImages.length > 0) {
+          console.log(`[Gemini] Success with model: ${model} via generateContent retry`)
+          return { images: retryImages, model }
         }
+      }
+
+      if (!lastError) {
         lastError = new Error(`${model}: 画像データが返されませんでした`)
-      } else {
-        const errText = await res.text()
-        lastError = new Error(`${model}: ${res.status} - ${errText.slice(0, 200)}`)
-        console.warn(`[Gemini] generateContent failed for ${model}: ${errText}`)
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
