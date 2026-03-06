@@ -13,6 +13,8 @@ import {
   createReportSummary,
   generatePDFReport,
   generateImageReport,
+  getDangerImageOptions,
+  resolveDangerDisplayImageUrl,
 } from '@/lib/report-generation/route-danger-report'
 import { mockRoutes } from '../../../fixtures/routes'
 import {
@@ -259,6 +261,47 @@ describe('route-danger-report', () => {
 
       // Levels 1, 2, 3 from fixtures
       expect(Object.keys(summary.byLevel).length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('danger image selection', () => {
+    it('returns processed and original image options for selection', () => {
+      const options = getDangerImageOptions(mockDangerReportsNearRoute[0])
+
+      expect(options).toEqual([
+        {
+          label: '加工画像 1',
+          type: 'processed',
+          url: 'https://example.com/danger1_processed.jpg',
+        },
+        {
+          label: '報告画像',
+          type: 'original',
+          url: 'https://example.com/danger1.jpg',
+        },
+      ])
+    })
+
+    it('uses the user-selected image when it belongs to the danger', () => {
+      const selectedUrl = resolveDangerDisplayImageUrl(
+        mockDangerReportsNearRoute[0],
+        {
+          'danger-1': 'https://example.com/danger1.jpg',
+        }
+      )
+
+      expect(selectedUrl).toBe('https://example.com/danger1.jpg')
+    })
+
+    it('falls back to the preferred default when selected image is invalid', () => {
+      const selectedUrl = resolveDangerDisplayImageUrl(
+        mockDangerReportsNearRoute[0],
+        {
+          'danger-1': 'https://example.com/not-allowed.jpg',
+        }
+      )
+
+      expect(selectedUrl).toBe('https://example.com/danger1_processed.jpg')
     })
   })
 
