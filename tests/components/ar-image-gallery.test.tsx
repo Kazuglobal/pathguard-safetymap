@@ -228,7 +228,8 @@ describe('ARImageGallery', () => {
       )
 
       const image = screen.getByAltText('テスト画像')
-      fireEvent.click(image)
+      fireEvent.mouseDown(image)
+      fireEvent.mouseUp(image)
 
       expect(onClick).toHaveBeenCalledWith(0, 'https://example.com/image1.jpg')
     })

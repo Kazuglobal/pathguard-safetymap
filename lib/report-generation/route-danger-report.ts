@@ -309,7 +309,7 @@ export function getDangerImageOptions(danger: DangerReport): DangerImageOption[]
 
   const seenUrls = new Set<string>()
 
-  return [...processedOptions, ...originalOptions].filter((option) => {
+  return [...originalOptions, ...processedOptions].filter((option) => {
     if (seenUrls.has(option.url)) {
       return false
     }

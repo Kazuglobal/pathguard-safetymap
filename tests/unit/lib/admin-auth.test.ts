@@ -20,6 +20,7 @@ import { getCurrentUserAdminStatus, verifyAdminRequest } from '@/lib/admin-auth'
 describe('admin-auth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.ADMIN_EMAILS = 'globalbunny77@gmail.com'
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mockFrom.mockReturnValue({ select: mockSelect })
     mockSelect.mockReturnValue({ eq: mockEq })
@@ -27,6 +28,7 @@ describe('admin-auth', () => {
   })
 
   afterEach(() => {
+    delete process.env.ADMIN_EMAILS
     vi.restoreAllMocks()
   })
 

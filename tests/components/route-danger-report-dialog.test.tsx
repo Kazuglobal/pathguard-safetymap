@@ -231,6 +231,30 @@ describe('RouteDangerReportDialog', () => {
       expect(screen.getAllByRole('radio', { name: /報告画像/ }).length).toBeGreaterThan(0)
     })
 
+    it('defaults to the original report image when no image has been selected', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      const originalImageRadio = screen.getAllByRole('radio', { name: /報告画像/ })[0]
+      const processedImageRadio = screen.getByRole('radio', { name: /加工画像 1/ })
+
+      expect(originalImageRadio).toBeChecked()
+      expect(processedImageRadio).not.toBeChecked()
+    })
+
     it('passes the selected image map to report generation', async () => {
       const { useRouteDangers } = await import('@/hooks/use-route-dangers')
       vi.mocked(useRouteDangers).mockReturnValue({
@@ -252,7 +276,7 @@ describe('RouteDangerReportDialog', () => {
         />
       )
 
-      fireEvent.click(screen.getAllByRole('radio', { name: /報告画像/ })[0]!)
+      fireEvent.click(screen.getByRole('radio', { name: /加工画像 1/ }))
       fireEvent.click(screen.getByRole('button', { name: /ダウンロード/i }))
 
       await waitFor(() => {
@@ -262,7 +286,7 @@ describe('RouteDangerReportDialog', () => {
       expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledWith(
         expect.objectContaining({
           selectedImageUrls: {
-            'danger-1': 'https://example.com/danger1.jpg',
+            'danger-1': 'https://example.com/danger1_processed.jpg',
           },
         }),
         expect.any(String)

@@ -1,39 +1,20 @@
-/**
- * TDD Unit Tests: useReportComments Hook
- *
- * RED Phase: These tests should FAIL because the hook doesn't exist yet
- *
- * Target: hooks/use-report-comments.ts
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { useReportComments } from '@/hooks/use-report-comments'
 
-// Mock Supabase client
-vi.mock('@supabase/ssr', () => ({
-  createBrowserClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        })),
-      })),
-      insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
-    })),
-    auth: {
-      getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-    },
-  })),
+const mocks = vi.hoisted(() => ({
+  useSupabase: vi.fn(),
 }))
 
-// Mock user for authenticated tests
+vi.mock('@/components/providers/supabase-provider', () => ({
+  useSupabase: mocks.useSupabase,
+}))
+
 const mockUser = {
   id: 'test-user-id',
   email: 'test@example.com',
 }
 
-// Mock comment data
 const mockComments = [
   {
     id: 'comment-1',
@@ -46,7 +27,6 @@ const mockComments = [
     parent_comment_id: null,
     profiles: {
       display_name: 'Test User 1',
-      email: 'user1@example.com',
     },
   },
   {
@@ -60,14 +40,57 @@ const mockComments = [
     parent_comment_id: null,
     profiles: {
       display_name: 'Test User 2',
-      email: 'user2@example.com',
     },
   },
 ]
 
+function createSupabaseMock(options?: {
+  comments?: unknown[]
+  fetchError?: { message: string } | null
+  user?: typeof mockUser | null
+  insertError?: { message: string } | null
+  onFetch?: () => void
+}) {
+  const order = vi.fn(() => {
+    options?.onFetch?.()
+    return Promise.resolve({
+      data: options?.comments ?? [],
+      error: options?.fetchError ?? null,
+    })
+  })
+  const eq = vi.fn(() => ({ order }))
+  const select = vi.fn(() => ({ eq }))
+  const insert = vi.fn(() =>
+    Promise.resolve({
+      error: options?.insertError ?? null,
+    })
+  )
+  const from = vi.fn(() => ({ select, insert }))
+  const getUser = vi.fn(() =>
+    Promise.resolve({ data: { user: options?.user ?? null }, error: null })
+  )
+
+  return {
+    supabase: {
+      from,
+      auth: { getUser },
+    },
+    spies: {
+      from,
+      select,
+      eq,
+      order,
+      insert,
+      getUser,
+    },
+  }
+}
+
 describe('useReportComments Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    const { supabase } = createSupabaseMock()
+    mocks.useSupabase.mockReturnValue({ supabase })
   })
 
   afterEach(() => {
@@ -98,21 +121,8 @@ describe('useReportComments Hook', () => {
 
   describe('Fetching Comments', () => {
     it('fetches comments for a report', async () => {
-      // Mock successful fetch
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => Promise.resolve({ data: mockComments, error: null })),
-            })),
-          })),
-        })),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-        },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      const { supabase } = createSupabaseMock({ comments: mockComments })
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result } = renderHook(() => useReportComments('report-1'))
 
@@ -125,24 +135,10 @@ describe('useReportComments Hook', () => {
     })
 
     it('handles error when fetch fails', async () => {
-      // Mock failed fetch
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => Promise.resolve({
-                data: null,
-                error: { message: 'Database error' }
-              })),
-            })),
-          })),
-        })),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-        },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      const { supabase } = createSupabaseMock({
+        fetchError: { message: 'Database error' },
+      })
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result } = renderHook(() => useReportComments('report-1'))
 
@@ -150,29 +146,14 @@ describe('useReportComments Hook', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(result.current.error).toBeTruthy()
-      expect(result.current.error).toContain('error')
+      expect(result.current.error).toContain('Database error')
     })
   })
 
   describe('Adding Comments', () => {
     it('addComment adds new comment', async () => {
-      // Mock authenticated user
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => Promise.resolve({ data: [], error: null })),
-            })),
-          })),
-          insert: vi.fn(() => Promise.resolve({ data: { id: 'new-comment' }, error: null })),
-        })),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
-        },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      const { supabase, spies } = createSupabaseMock({ user: mockUser })
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result } = renderHook(() => useReportComments('report-1'))
 
@@ -181,30 +162,21 @@ describe('useReportComments Hook', () => {
       })
 
       await act(async () => {
-        await result.current.addComment('New test comment')
+        const success = await result.current.addComment('New test comment')
+        expect(success).toBe(true)
       })
 
-      // After adding, the hook should have called insert
-      expect(mockSupabase.from).toHaveBeenCalledWith('report_comments')
+      expect(spies.from).toHaveBeenCalledWith('report_comments')
+      expect(spies.insert).toHaveBeenCalledWith({
+        report_id: 'report-1',
+        user_id: mockUser.id,
+        content: 'New test comment',
+      })
     })
 
     it('addComment requires authentication', async () => {
-      // Mock unauthenticated user
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => Promise.resolve({ data: [], error: null })),
-            })),
-          })),
-          insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
-        })),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-        },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      const { supabase } = createSupabaseMock({ user: null })
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result } = renderHook(() => useReportComments('report-1'))
 
@@ -213,33 +185,22 @@ describe('useReportComments Hook', () => {
       })
 
       await act(async () => {
-        await result.current.addComment('Test comment')
+        const success = await result.current.addComment('Test comment')
+        expect(success).toBe(false)
       })
 
-      // Should have an authentication error
       expect(result.current.error).toContain('ログイン')
     })
 
     it('refreshes comments after adding', async () => {
       let fetchCount = 0
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => {
-                fetchCount++
-                return Promise.resolve({ data: [], error: null })
-              }),
-            })),
-          })),
-          insert: vi.fn(() => Promise.resolve({ data: { id: 'new' }, error: null })),
-        })),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
+      const { supabase } = createSupabaseMock({
+        user: mockUser,
+        onFetch: () => {
+          fetchCount += 1
         },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      })
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result } = renderHook(() => useReportComments('report-1'))
 
@@ -253,7 +214,6 @@ describe('useReportComments Hook', () => {
         await result.current.addComment('New comment')
       })
 
-      // Should have fetched again after adding
       expect(fetchCount).toBeGreaterThan(initialFetchCount)
     })
   })
@@ -262,10 +222,10 @@ describe('useReportComments Hook', () => {
     it('returns expected shape', async () => {
       const { result } = renderHook(() => useReportComments('report-1'))
 
-      // Check that the hook returns all expected properties
       expect(result.current).toHaveProperty('comments')
       expect(result.current).toHaveProperty('isLoading')
       expect(result.current).toHaveProperty('error')
+      expect(result.current).toHaveProperty('isSubmitting')
       expect(result.current).toHaveProperty('addComment')
       expect(result.current).toHaveProperty('refreshComments')
 
@@ -274,19 +234,10 @@ describe('useReportComments Hook', () => {
       })
     })
 
-    it('addComment is a function', async () => {
+    it('mutation functions are callable', async () => {
       const { result } = renderHook(() => useReportComments('report-1'))
 
       expect(typeof result.current.addComment).toBe('function')
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
-    })
-
-    it('refreshComments is a function', async () => {
-      const { result } = renderHook(() => useReportComments('report-1'))
-
       expect(typeof result.current.refreshComments).toBe('function')
 
       await waitFor(() => {
@@ -297,14 +248,8 @@ describe('useReportComments Hook', () => {
 
   describe('Report ID Validation', () => {
     it('does not fetch if reportId is empty', async () => {
-      const mockSupabase = {
-        from: vi.fn(),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-        },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      const { supabase, spies } = createSupabaseMock()
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result } = renderHook(() => useReportComments(''))
 
@@ -312,29 +257,17 @@ describe('useReportComments Hook', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      // Should not have called from() if reportId is empty
-      expect(mockSupabase.from).not.toHaveBeenCalled()
+      expect(spies.from).not.toHaveBeenCalled()
     })
 
     it('refetches when reportId changes', async () => {
       let fetchCount = 0
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => {
-                fetchCount++
-                return Promise.resolve({ data: [], error: null })
-              }),
-            })),
-          })),
-        })),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+      const { supabase } = createSupabaseMock({
+        onFetch: () => {
+          fetchCount += 1
         },
-      }
-
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      })
+      mocks.useSupabase.mockReturnValue({ supabase })
 
       const { result, rerender } = renderHook(
         ({ reportId }) => useReportComments(reportId),
@@ -347,7 +280,6 @@ describe('useReportComments Hook', () => {
 
       const countAfterFirstFetch = fetchCount
 
-      // Change reportId
       rerender({ reportId: 'report-2' })
 
       await waitFor(() => {
