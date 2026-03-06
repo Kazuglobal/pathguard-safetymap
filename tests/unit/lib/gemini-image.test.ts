@@ -167,7 +167,6 @@ describe("generateImageWithGeminiWithModel", () => {
     expect(firstBody?.generationConfig?.responseModalities).toEqual(["IMAGE", "TEXT"])
     expect(secondBody?.generationConfig?.responseModalities).toEqual(["IMAGE"])
   })
-
   it("retries once when the first generateContent call times out", async () => {
     mockFetch
       .mockRejectedValueOnce(new DOMException("The operation timed out.", "TimeoutError"))

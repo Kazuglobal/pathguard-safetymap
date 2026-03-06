@@ -29,6 +29,12 @@ interface BoundingBox {
   maxLat: number
 }
 
+export interface DangerImageOption {
+  label: string
+  type: 'original' | 'processed'
+  url: string
+}
+
 const DEFAULT_MAP_DIMENSIONS: MapDimensions = {
   width: 600,
   height: 400,
@@ -275,6 +281,61 @@ export function createReportSummary(dangers: DangerReport[]): RouteDangerSummary
   }
 }
 
+export function getDangerImageOptions(danger: DangerReport): DangerImageOption[] {
+  const processedOptions: DangerImageOption[] = []
+  for (const [index, url] of (danger.processed_image_urls ?? []).entries()) {
+    const safeUrl = sanitizeImageUrl(url)
+    if (!safeUrl) {
+      continue
+    }
+
+    processedOptions.push({
+      label: `加工画像 ${index + 1}`,
+      type: 'processed',
+      url: safeUrl,
+    })
+  }
+
+  const originalImageUrl = sanitizeImageUrl(danger.image_url)
+  const originalOptions = originalImageUrl
+    ? [
+        {
+          label: '報告画像',
+          type: 'original' as const,
+          url: originalImageUrl,
+        },
+      ]
+    : []
+
+  const seenUrls = new Set<string>()
+
+  return [...originalOptions, ...processedOptions].filter((option) => {
+    if (seenUrls.has(option.url)) {
+      return false
+    }
+
+    seenUrls.add(option.url)
+    return true
+  })
+}
+
+export function resolveDangerDisplayImageUrl(
+  danger: DangerReport,
+  selectedImageUrls?: Record<string, string>
+): string | null {
+  const options = getDangerImageOptions(danger)
+  if (options.length === 0) {
+    return null
+  }
+
+  const selectedImageUrl = selectedImageUrls?.[danger.id]
+  if (selectedImageUrl && options.some((option) => option.url === selectedImageUrl)) {
+    return selectedImageUrl
+  }
+
+  return options[0]?.url ?? null
+}
+
 /**
  * Generates a PDF report for the route dangers.
  * Uses html2canvas + jsPDF approach for proper Japanese font support.
@@ -412,7 +473,7 @@ function createReportHtmlContainer(
     mapImg.style.border = '1px solid #dbeafe'
     mapSection.appendChild(mapImg)
 
-    appendMapPhotoCallouts(mapSection, report.dangers)
+    appendMapPhotoCallouts(mapSection, report.dangers, report.selectedImageUrls)
     container.appendChild(mapSection)
   }
 
@@ -516,19 +577,12 @@ function createReportHtmlContainer(
         dangerItem.appendChild(locationEl)
       }
 
-      // Original image (if exists)
-      if (danger.image_url) {
-        appendImageSection(dangerItem, '報告画像:', [danger.image_url], 400)
-      }
-
-      // Processed images (if exist)
-      if (danger.processed_image_urls?.length) {
-        appendImageSection(
-          dangerItem,
-          '処理済み画像:',
-          danger.processed_image_urls,
-          300
-        )
+      const selectedImageUrl = resolveDangerDisplayImageUrl(
+        danger,
+        report.selectedImageUrls
+      )
+      if (selectedImageUrl) {
+        appendImageSection(dangerItem, '表示写真:', [selectedImageUrl], 320)
       }
 
       dangerListSection.appendChild(dangerItem)
@@ -603,7 +657,11 @@ function appendImageSection(
   parent.appendChild(section)
 }
 
-function appendMapPhotoCallouts(parent: HTMLElement, dangers: DangerReport[]): void {
+function appendMapPhotoCallouts(
+  parent: HTMLElement,
+  dangers: DangerReport[],
+  selectedImageUrls?: Record<string, string>
+): void {
   if (dangers.length === 0) {
     return
   }
@@ -667,7 +725,10 @@ function appendMapPhotoCallouts(parent: HTMLElement, dangers: DangerReport[]): v
 
     row.appendChild(textBlock)
 
-    const imageUrl = index < MAP_CALLOUT_THUMBNAIL_LIMIT ? getDangerPreviewImageUrl(danger) : null
+    const imageUrl =
+      index < MAP_CALLOUT_THUMBNAIL_LIMIT
+        ? resolveDangerDisplayImageUrl(danger, selectedImageUrls)
+        : null
     if (imageUrl) {
       const thumb = document.createElement('img')
       thumb.crossOrigin = 'anonymous'
@@ -693,16 +754,6 @@ function appendMapPhotoCallouts(parent: HTMLElement, dangers: DangerReport[]): v
   }
 
   parent.appendChild(calloutSection)
-}
-
-function getDangerPreviewImageUrl(danger: DangerReport): string | null {
-  if (danger.image_url) {
-    return sanitizeImageUrl(danger.image_url)
-  }
-  if (danger.processed_image_urls?.length) {
-    return sanitizeImageUrl(danger.processed_image_urls[0] ?? null)
-  }
-  return null
 }
 
 function sanitizeImageUrl(url: string | null): string | null {

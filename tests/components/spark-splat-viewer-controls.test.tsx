@@ -128,7 +128,9 @@ vi.mock("@sparkjsdev/spark", async () => {
 
     constructor(options?: { onLoad?: (mesh: unknown) => void }) {
       createdSplats.push(this)
-      options?.onLoad?.(this)
+      queueMicrotask(() => {
+        options?.onLoad?.(this)
+      })
     }
 
     getBoundingBox() {

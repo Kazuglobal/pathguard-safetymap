@@ -7,7 +7,7 @@
  * Phase: Route Danger Report Feature
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { RouteDangerReportDialog } from '@/components/routes/route-danger-report-dialog'
 import { mockRoutes } from '../fixtures/routes'
@@ -24,22 +24,39 @@ vi.mock('@/hooks/use-route-dangers', () => ({
 }))
 
 // Mock report generation
-vi.mock('@/lib/report-generation/route-danger-report', () => ({
-  generatePDFReport: vi.fn(() => Promise.resolve(new Blob(['pdf'], { type: 'application/pdf' }))),
-  generateImageReport: vi.fn(() => Promise.resolve(new Blob(['image'], { type: 'image/png' }))),
-  createReportSummary: vi.fn(() => ({
-    totalDangers: 0,
-    byType: {},
-    byLevel: {},
-  })),
-}))
+vi.mock('@/lib/report-generation/route-danger-report', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/report-generation/route-danger-report')>()
+
+  return {
+    ...actual,
+    generatePDFReport: vi.fn(() => Promise.resolve(new Blob(['pdf'], { type: 'application/pdf' }))),
+    generateImageReport: vi.fn(() => Promise.resolve(new Blob(['image'], { type: 'image/png' }))),
+    createReportSummary: vi.fn(() => ({
+      totalDangers: 0,
+      byType: {},
+      byLevel: {},
+    })),
+  }
+})
 
 describe('RouteDangerReportDialog', () => {
   const mockRoute = mockRoutes[0]
   const mockOnClose = vi.fn()
+  const originalCreateObjectUrl = URL.createObjectURL
+  const originalRevokeObjectUrl = URL.revokeObjectURL
+  const originalAnchorClick = HTMLAnchorElement.prototype.click
 
   beforeEach(() => {
     vi.clearAllMocks()
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url')
+    URL.revokeObjectURL = vi.fn()
+    HTMLAnchorElement.prototype.click = vi.fn()
+  })
+
+  afterEach(() => {
+    URL.createObjectURL = originalCreateObjectUrl
+    URL.revokeObjectURL = originalRevokeObjectUrl
+    HTMLAnchorElement.prototype.click = originalAnchorClick
   })
 
   describe('Basic Rendering', () => {
@@ -191,6 +208,92 @@ describe('RouteDangerReportDialog', () => {
     })
   })
 
+  describe('Photo Selection', () => {
+    it('shows photo options for dangers that have multiple images', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      expect(screen.getAllByText('表示写真の選択').length).toBeGreaterThan(0)
+      expect(screen.getByRole('radio', { name: /加工画像 1/ })).toBeInTheDocument()
+      expect(screen.getAllByRole('radio', { name: /報告画像/ }).length).toBeGreaterThan(0)
+    })
+
+    it('defaults to the original report image when no image has been selected', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      const originalImageRadio = screen.getAllByRole('radio', { name: /報告画像/ })[0]
+      const processedImageRadio = screen.getByRole('radio', { name: /加工画像 1/ })
+
+      expect(originalImageRadio).toBeChecked()
+      expect(processedImageRadio).not.toBeChecked()
+    })
+
+    it('passes the selected image map to report generation', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+
+      const reportGenerationModule = await import('@/lib/report-generation/route-danger-report')
+      const mapboxConfigModule = await import('@/lib/mapbox-config')
+      vi.spyOn(mapboxConfigModule, 'getMapboxToken').mockReturnValue('pk.test-token')
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      fireEvent.click(screen.getByRole('radio', { name: /加工画像 1/ }))
+      fireEvent.click(screen.getByRole('button', { name: /ダウンロード/i }))
+
+      await waitFor(() => {
+        expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledTimes(1)
+      })
+
+      expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectedImageUrls: {
+            'danger-1': 'https://example.com/danger1_processed.jpg',
+          },
+        }),
+        expect.any(String)
+      )
+    })
+  })
+
   describe('Download Functionality', () => {
     it('has download button', async () => {
       const { useRouteDangers } = await import('@/hooks/use-route-dangers')
@@ -220,6 +323,9 @@ describe('RouteDangerReportDialog', () => {
         error: null,
         refetch: vi.fn(),
       })
+      const reportGenerationModule = await import('@/lib/report-generation/route-danger-report')
+      const mapboxConfigModule = await import('@/lib/mapbox-config')
+      vi.spyOn(mapboxConfigModule, 'getMapboxToken').mockReturnValue('pk.test-token')
 
       render(
         <RouteDangerReportDialog
@@ -233,9 +339,11 @@ describe('RouteDangerReportDialog', () => {
       expect(downloadButton).toBeInTheDocument()
       expect(downloadButton).not.toBeDisabled()
 
-      // The PDF generation is tested at the unit level
-      // Here we just verify the button is clickable when dangers exist
       fireEvent.click(downloadButton)
+
+      await waitFor(() => {
+        expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('disables download button when no dangers', async () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,8 @@ import {
   generatePDFReport,
   generateImageReport,
   createReportSummary,
+  getDangerImageOptions,
+  resolveDangerDisplayImageUrl,
 } from "@/lib/report-generation/route-danger-report"
 import { getMapboxToken } from "@/lib/mapbox-config"
 import type { UserRoute, DangerReport, ReportExportFormat } from "@/lib/types"
@@ -56,9 +58,20 @@ function getDangerLevelLabel(level: number): string {
 interface DangerListItemProps {
   danger: DangerReport
   index: number
+  selectedImageUrl?: string
+  onImageSelectionChange: (dangerId: string, imageUrl: string) => void
 }
 
-function DangerListItem({ danger, index }: DangerListItemProps) {
+function DangerListItem({
+  danger,
+  index,
+  selectedImageUrl,
+  onImageSelectionChange,
+}: DangerListItemProps) {
+  const imageOptions = getDangerImageOptions(danger)
+  const activeImageUrl =
+    selectedImageUrl ?? resolveDangerDisplayImageUrl(danger) ?? undefined
+
   return (
     <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
       <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-primary/10 text-primary text-xs font-medium rounded-full">
@@ -77,6 +90,35 @@ function DangerListItem({ danger, index }: DangerListItemProps) {
             {danger.description}
           </p>
         )}
+        {imageOptions.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium text-foreground">表示写真の選択</p>
+            <RadioGroup
+              value={activeImageUrl}
+              onValueChange={(value) => onImageSelectionChange(danger.id, value)}
+              className="grid gap-2"
+            >
+              {imageOptions.map((option, optionIndex) => {
+                const optionId = `${danger.id}-image-${optionIndex}`
+                return (
+                  <label
+                    key={option.url}
+                    htmlFor={optionId}
+                    className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3 py-2"
+                  >
+                    <RadioGroupItem value={option.url} id={optionId} />
+                    <img
+                      src={option.url}
+                      alt={option.label}
+                      className="h-14 w-20 rounded-md object-cover"
+                    />
+                    <span className="text-xs font-medium text-foreground">{option.label}</span>
+                  </label>
+                )
+              })}
+            </RadioGroup>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -91,8 +133,47 @@ export function RouteDangerReportDialog({
   const [exportFormat, setExportFormat] = useState<ReportExportFormat>("pdf")
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [selectedImageUrls, setSelectedImageUrls] = useState<Record<string, string>>({})
 
   const summary = useMemo(() => createReportSummary(dangers), [dangers])
+
+  useEffect(() => {
+    setSelectedImageUrls((prev) => {
+      const next: Record<string, string> = {}
+      let hasChanges = false
+
+      for (const [dangerId, imageUrl] of Object.entries(prev)) {
+        const matchedDanger = dangers.find((danger) => danger.id === dangerId)
+        if (!matchedDanger) {
+          hasChanges = true
+          continue
+        }
+
+        const isStillValid = getDangerImageOptions(matchedDanger).some(
+          (option) => option.url === imageUrl
+        )
+        if (!isStillValid) {
+          hasChanges = true
+          continue
+        }
+
+        next[dangerId] = imageUrl
+      }
+
+      if (!hasChanges && Object.keys(next).length === Object.keys(prev).length) {
+        return prev
+      }
+
+      return next
+    })
+  }, [dangers])
+
+  const handleImageSelectionChange = useCallback((dangerId: string, imageUrl: string) => {
+    setSelectedImageUrls((prev) => ({
+      ...prev,
+      [dangerId]: imageUrl,
+    }))
+  }, [])
 
   const handleDownload = useCallback(async () => {
     setIsExporting(true)
@@ -110,6 +191,7 @@ export function RouteDangerReportDialog({
         bufferMeters: 100,
         generatedAt: new Date().toISOString(),
         summary,
+        selectedImageUrls,
       }
 
       let blob: Blob
@@ -137,7 +219,7 @@ export function RouteDangerReportDialog({
     } finally {
       setIsExporting(false)
     }
-  }, [route, dangers, summary, exportFormat])
+  }, [route, dangers, summary, exportFormat, selectedImageUrls])
 
   const handleRetry = useCallback(() => {
     refetch()
@@ -207,7 +289,13 @@ export function RouteDangerReportDialog({
                 <ScrollArea className="h-48">
                   <div className="space-y-2 pr-4">
                     {dangers.map((danger, index) => (
-                      <DangerListItem key={danger.id} danger={danger} index={index} />
+                      <DangerListItem
+                        key={danger.id}
+                        danger={danger}
+                        index={index}
+                        selectedImageUrl={selectedImageUrls[danger.id]}
+                        onImageSelectionChange={handleImageSelectionChange}
+                      />
                     ))}
                   </div>
                 </ScrollArea>

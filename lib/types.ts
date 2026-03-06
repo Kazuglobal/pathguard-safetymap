@@ -89,6 +89,7 @@ export interface RouteDangerReport {
   bufferMeters: number
   generatedAt: string
   summary: RouteDangerSummary
+  selectedImageUrls?: Record<string, string>
 }
 
 export interface RouteDangerSummary {
