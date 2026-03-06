@@ -112,17 +112,6 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   }, [arHazards, tourProgress])
 
   useEffect(() => {
-    setTourProgress((current) => {
-      const validIds = new Set(arHazards.map((hazard) => hazard.report.id))
-      const next = Object.fromEntries(
-        Object.entries(current).filter(([id]) => validIds.has(id))
-      ) as Record<string, ARLearningTourStatus>
-
-      return Object.keys(next).length === Object.keys(current).length ? current : next
-    })
-  }, [arHazards])
-
-  useEffect(() => {
     if (learningStops.length === 0) {
       setActiveStopId(null)
       return
@@ -303,19 +292,21 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     (status: ARLearningTourStatus) => {
       if (!activeStop) return
 
+      const nextStops = learningStops.map((stop) =>
+        stop.report.id === activeStop.report.id
+          ? { ...stop, status }
+          : stop
+      )
+
       setTourProgress((current) => ({
         ...current,
         [activeStop.report.id]: status,
       }))
 
-      const currentIndex = learningStops.findIndex((stop) => stop.report.id === activeStop.report.id)
-      const nextPending = learningStops
-        .slice(currentIndex + 1)
-        .find((stop) => stop.status === "pending")
-
-      if (nextPending) {
-        setActiveStopId(nextPending.report.id)
-      }
+      setActiveStopId(
+        nextStops.find((stop) => stop.status === "pending")?.report.id ??
+        activeStop.report.id
+      )
     },
     [activeStop, learningStops]
   )
