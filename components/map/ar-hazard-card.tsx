@@ -1,8 +1,9 @@
 "use client"
 
-import { MapPin, TreePine } from "lucide-react"
+import { CheckCircle2, BookmarkPlus, MapPin, TreePine } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { formatDistance, formatBearing, type ARHazardData } from "@/lib/ar-utils"
 import { getReportImages } from "@/lib/ar-image-utils"
 import {
@@ -10,16 +11,25 @@ import {
   getDangerLevelLabel,
   getDangerLevelColor,
 } from "@/lib/ar-display-utils"
+import type { ARLearningContent } from "@/lib/ar-learning-tour"
 import { ARImageGallery } from "./ar-image-gallery"
 
 interface ARPrimaryHazardCardProps {
   hazard: ARHazardData
   estimatedTimeMinutes: number
+  learningContent?: ARLearningContent
+  progressLabel?: string
+  onMarkReviewed?: () => void
+  onSaveForLater?: () => void
 }
 
 export function ARPrimaryHazardCard({
   hazard,
   estimatedTimeMinutes,
+  learningContent,
+  progressLabel,
+  onMarkReviewed,
+  onSaveForLater,
 }: ARPrimaryHazardCardProps) {
   return (
     <div
@@ -41,6 +51,15 @@ export function ARPrimaryHazardCard({
           />
 
           <div className="p-4">
+            {progressLabel && (
+              <div className="mb-3 flex items-center justify-between">
+                <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-semibold">
+                  学習ツアー
+                </Badge>
+                <span className="text-xs font-semibold text-slate-500">{progressLabel}</span>
+              </div>
+            )}
+
             <h3 className="text-lg font-bold text-gray-900 mb-2">
               {hazard.report.title}
             </h3>
@@ -61,6 +80,59 @@ export function ARPrimaryHazardCard({
             <p className="text-sm text-gray-600 mb-3">
               {formatDistance(hazard.distance)}先
             </p>
+
+            {learningContent && (
+              <div className="space-y-3 rounded-2xl bg-slate-50 p-3">
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-slate-500">学習ポイント</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{learningContent.summary}</p>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">確認すること</p>
+                  <ul className="space-y-1.5">
+                    {learningContent.checkpoints.map((checkpoint) => (
+                      <li key={checkpoint} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="mt-0.5 h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+                        <span>{checkpoint}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {learningContent.attentionTags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="rounded-full bg-slate-200/80 text-slate-700">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+
+                {(onMarkReviewed || onSaveForLater) && (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={onMarkReviewed}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      確認した
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={onSaveForLater}
+                    >
+                      <BookmarkPlus className="mr-2 h-4 w-4" />
+                      あとで見返す
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </Card>
 
