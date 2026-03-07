@@ -358,11 +358,12 @@ export async function generateImageWithGeminiWithModel({
       continue
     }
 
+    let lastGenerateTimeoutMs = initialCallTimeoutMs
+
     // Gemini models use :generateContent with responseModalities
     try {
       const safeModel = sanitizeModelName(model)
       const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
-      let lastGenerateTimeoutMs = initialCallTimeoutMs
 
       const tryGenerateContent = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
         const callTimeoutMs = getCallTimeoutMs(model)
