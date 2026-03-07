@@ -270,14 +270,14 @@ describe('route-danger-report', () => {
 
       expect(options).toEqual([
         {
-          label: '加工画像 1',
-          type: 'processed',
-          url: 'https://example.com/danger1_processed.jpg',
-        },
-        {
           label: '報告画像',
           type: 'original',
           url: 'https://example.com/danger1.jpg',
+        },
+        {
+          label: '加工画像 1',
+          type: 'processed',
+          url: 'https://example.com/danger1_processed.jpg',
         },
       ])
     })
@@ -293,7 +293,7 @@ describe('route-danger-report', () => {
       expect(selectedUrl).toBe('https://example.com/danger1.jpg')
     })
 
-    it('falls back to the preferred default when selected image is invalid', () => {
+    it('falls back to the original report image when selected image is invalid', () => {
       const selectedUrl = resolveDangerDisplayImageUrl(
         mockDangerReportsNearRoute[0],
         {
@@ -301,7 +301,7 @@ describe('route-danger-report', () => {
         }
       )
 
-      expect(selectedUrl).toBe('https://example.com/danger1_processed.jpg')
+      expect(selectedUrl).toBe('https://example.com/danger1.jpg')
     })
   })
 

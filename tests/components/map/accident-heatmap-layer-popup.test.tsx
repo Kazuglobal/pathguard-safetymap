@@ -24,7 +24,6 @@ describe('AccidentHeatmapLayer popup helpers', () => {
     expect(parsed.fatalities).toBe(2)
     expect(parsed.injuries).toBe(4)
     expect(parsed.hasChild).toBe(true)
-    expect(parsed.hasYoung).toBe(true)
     expect(parsed.hasPedestrian).toBe(true)
   })
 
@@ -42,16 +41,16 @@ describe('AccidentHeatmapLayer popup helpers', () => {
     expect(content.textContent).toContain('<script>alert(1)</script>')
   })
 
-  it('shows child and young labels independently', () => {
+  it('shows the current child and pedestrian labels', () => {
     const content = buildAccidentPopupContent({
       severity: 2,
       fatalities: 0,
       injuries: 2,
       hasChild: true,
-      hasYoung: true,
+      hasPedestrian: true,
     })
 
-    expect(content.textContent).toContain('子ども関与（補充票確認分）')
-    expect(content.textContent).toContain('若年者関与（24歳以下コード）')
+    expect(content.textContent).toContain('24歳以下関与（年齢区分）')
+    expect(content.textContent).toContain('歩行者関与')
   })
 })

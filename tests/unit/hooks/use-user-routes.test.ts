@@ -13,42 +13,45 @@ import { useUserRoutes } from '@/hooks/use-user-routes'
 import {
   mockUser,
   mockRoutes,
-  mockEmptyRoutes,
-  mockPrimaryRoute,
-  mockSingleRoute,
   mockCreateRouteInput,
   mockUpdateRouteInput,
   mockDatabaseError,
 } from '../../fixtures/routes'
 
-// Mock Supabase client
-vi.mock('@supabase/ssr', () => ({
-  createBrowserClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        })),
-      })),
-      insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
-      update: vi.fn(() => ({
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
-      })),
-    })),
-    auth: {
-      getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-    },
-  })),
+const mocks = vi.hoisted(() => ({
+  useSupabase: vi.fn(),
+}))
+
+vi.mock('@/components/providers/supabase-provider', () => ({
+  useSupabase: mocks.useSupabase,
 }))
 
 describe('useUserRoutes Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.useSupabase.mockReturnValue({
+      supabase: {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: [], error: null })),
+            })),
+          })),
+          insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          update: vi.fn(() => ({
+            eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+          delete: vi.fn(() => ({
+            eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+        })),
+        auth: {
+          getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+        },
+      },
+    })
   })
 
   afterEach(() => {
@@ -84,7 +87,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -112,7 +115,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -138,7 +141,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -168,7 +171,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -196,7 +199,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -227,7 +230,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -259,7 +262,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -291,7 +294,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -336,7 +339,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -372,7 +375,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -410,7 +413,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -446,7 +449,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -516,7 +519,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 
@@ -552,7 +555,7 @@ describe('useUserRoutes Hook', () => {
         },
       }
 
-      vi.mocked(await import('@supabase/ssr')).createBrowserClient.mockReturnValue(mockSupabase as any)
+      mocks.useSupabase.mockReturnValue({ supabase: mockSupabase } as any)
 
       const { result } = renderHook(() => useUserRoutes())
 

@@ -57,7 +57,7 @@ function sanitizeModelName(model: string): string {
 }
 
 // Per-call timeout to prevent hanging on slow API responses.
-const DEFAULT_PER_CALL_TIMEOUT_MS = 18_000
+const DEFAULT_PER_CALL_TIMEOUT_MS = 30_000
 const PRO_IMAGE_PER_CALL_TIMEOUT_MS = 40_000
 const REQUEST_TIMEOUT_BUDGET_MS = 55_000
 const MIN_CALL_TIMEOUT_MS = 5_000
@@ -396,7 +396,25 @@ export async function generateImageWithGeminiWithModel({
         return extractImagesFromAny(data, apiKey)
       }
 
-      const firstImages = await tryGenerateContent(false)
+      const tryGenerateContentWithTimeoutRetry = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
+        try {
+          return await tryGenerateContent(imageOnly)
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === 'TimeoutError')) {
+            throw error
+          }
+          let retryTimeoutMs: number
+          try {
+            retryTimeoutMs = getCallTimeoutMs(model)
+          } catch {
+            throw error
+          }
+          console.warn(`[Gemini] generateContent timed out for ${model}; retrying once (${retryTimeoutMs}ms)`)
+          return tryGenerateContent(imageOnly)
+        }
+      }
+
+      const firstImages = await tryGenerateContentWithTimeoutRetry(false)
       if (firstImages && firstImages.length > 0) {
         console.log(`[Gemini] Success with model: ${model} via generateContent`)
         return { images: firstImages, model }
@@ -404,7 +422,7 @@ export async function generateImageWithGeminiWithModel({
 
       if (firstImages && firstImages.length === 0) {
         console.warn(`[Gemini] No image payload from ${model}; retrying once with IMAGE-only modality`)
-        const retryImages = await tryGenerateContent(true)
+        const retryImages = await tryGenerateContentWithTimeoutRetry(true)
         if (retryImages && retryImages.length > 0) {
           console.log(`[Gemini] Success with model: ${model} via generateContent retry`)
           return { images: retryImages, model }

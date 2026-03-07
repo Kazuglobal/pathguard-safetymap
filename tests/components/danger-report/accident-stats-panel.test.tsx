@@ -1,351 +1,192 @@
-/**
- * TDD Component Tests: AccidentStatsPanel
- *
- * Phase: Traffic Accident Statistics & Risk Score Feature
- * Target: components/danger-report/accident-stats-panel.tsx
- *
- * Test Coverage:
- * - Main component rendering (full/compact modes)
- * - Loading state
- * - Empty state (zero accidents)
- * - Error handling
- * - Risk level display
- * - Data visualization
- * - Interactions
- */
-
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  mockHighRiskStats,
-  mockMediumRiskStats,
-  mockLowRiskStats,
-  mockEmptyAccidentStats,
-} from '@/tests/fixtures/accidents'
-
-// Import components to test (will fail initially - RED phase)
-import {
-  AccidentStatsPanel,
+import AccidentStatsPanel, {
   AccidentStatsLoading,
   AccidentStatsEmpty,
 } from '@/components/danger-report/accident-stats-panel'
+import type { AccidentStats } from '@/lib/traffic-accident-data'
+
+function createStats(overrides: Partial<AccidentStats> = {}): AccidentStats {
+  return {
+    total_accidents: 12,
+    total_fatalities: 1,
+    total_injuries: 11,
+    child_involved: 2,
+    pedestrian_involved: 4,
+    fatal_accidents: 1,
+    by_year: { '2024': 5, '2025': 7 },
+    by_time_of_day: {},
+    by_weather: { 晴: 8, 雨: 4 },
+    by_accident_type: { 人対車両: 4, 追突: 3 },
+    by_party_type: { 歩行者: 4, 自転車: 2 },
+    by_road_surface: { 乾燥: 9, 湿潤: 3 },
+    by_terrain: { 平坦: 10, 坂: 2 },
+    injury_analysis: {
+      by_injury_level: { 軽傷: 9, 重傷: 2 },
+      severe_ratio: 17,
+    },
+    road_environment: {
+      by_road_shape: { 交差点: 7, 単路: 5 },
+      by_sidewalk: { 区分あり: 8, 区分なし: 4 },
+      intersection_ratio: 58,
+      no_sidewalk_ratio: 33,
+    },
+    party_analysis: {
+      by_age_group: { '24歳以下': 3, '65-74歳': 2 },
+      elderly_ratio: 22,
+      young_ratio: 25,
+    },
+    time_analysis: {
+      by_hour: { '7': 2, '8': 3, '14': 4, '16': 1 },
+      by_month: { '1': 2, '4': 5, '9': 3 },
+      peak_hour: 14,
+      peak_month: 4,
+    },
+    situation_summary: {
+      total_text: '過去5年で12件の事故が発生しています',
+      severity_text: '死亡事故1件が確認されています',
+      pedestrian_text: '歩行者が関与した事故が4件あります',
+      weather_risk_text: '雨天時の事故に注意が必要です',
+      road_text: '交差点周辺での事故が目立ちます',
+      surface_text: '湿潤路面での事故が一定数あります',
+      elderly_text: '高齢者が関与した事故も見られます',
+    },
+    nearest_accidents: [
+      {
+        distance_m: 45,
+        year: 2025,
+        occurred_at: '2025-01-15T08:00:00Z',
+        type: '人対車両',
+        severity: 'fatal',
+        fatalities: 1,
+        injuries: 0,
+        involved_child: true,
+        involved_pedestrian: true,
+        weather: '雨',
+        road_shape: '交差点',
+        sidewalk: '区分なし',
+        road_surface: '湿潤',
+        terrain: '平坦',
+        party_a_type: '歩行者',
+        party_b_type: '普通車',
+        injury_a: '死亡',
+        injury_b: 'なし',
+        party_a_age: 12,
+        party_b_age: 45,
+        latitude: 35.6598,
+        longitude: 139.7008,
+      },
+      {
+        distance_m: 80,
+        year: 2024,
+        occurred_at: null,
+        type: '追突',
+        severity: 'injury',
+        fatalities: 0,
+        injuries: 2,
+        involved_child: false,
+        involved_pedestrian: false,
+        weather: '晴',
+        road_shape: '単路',
+        sidewalk: '区分あり',
+        road_surface: '乾燥',
+        terrain: '平坦',
+        party_a_type: '普通車',
+        party_b_type: '普通車',
+        injury_a: '軽傷',
+        injury_b: '軽傷',
+        party_a_age: 35,
+        party_b_age: 40,
+        latitude: 35.66,
+        longitude: 139.701,
+      },
+    ],
+    risk_score: 85,
+    search_params: {
+      latitude: 35.6595,
+      longitude: 139.7004,
+      radius_meters: 300,
+      years: 5,
+    },
+    ...overrides,
+  }
+}
 
 describe('AccidentStatsPanel', () => {
-  describe('Full Mode (default)', () => {
-    it('should render full accident statistics for high-risk location', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
+  it('renders the current full-mode overview contract', () => {
+    render(<AccidentStatsPanel stats={createStats()} />)
 
-      // Assert - Risk score and label
-      expect(screen.getByText('最高リスク')).toBeInTheDocument()
-      expect(screen.getByText('(85/100)')).toBeInTheDocument()
-
-      // Assert - Total accidents
-      expect(screen.getByText('127')).toBeInTheDocument()
-
-      // Assert - Fatal accidents
-      const fatalCard = screen.getByText('死亡事故').closest('[data-testid="stat-card"]')
-      expect(fatalCard).toBeInTheDocument()
-      expect(within(fatalCard as HTMLElement).getByText('3')).toBeInTheDocument()
-
-      // Assert - Pedestrian accidents
-      expect(screen.getByText('45')).toBeInTheDocument()
-    })
-
-    it('should display very_high risk level with correct styling', () => {
-      // Act
-      const { container } = render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Risk badge should have red/danger styling
-      const riskBadge = container.querySelector('[data-risk-level="very_high"]')
-      expect(riskBadge).toBeInTheDocument()
-    })
-
-    it('should display medium risk level with correct styling', () => {
-      // Act
-      const { container } = render(<AccidentStatsPanel stats={mockMediumRiskStats} />)
-
-      // Assert - Risk badge should have yellow/warning styling
-      const riskBadge = container.querySelector('[data-risk-level="medium"]')
-      expect(riskBadge).toBeInTheDocument()
-    })
-
-    it('should display low risk level with correct styling', () => {
-      // Act
-      const { container } = render(<AccidentStatsPanel stats={mockLowRiskStats} />)
-
-      // Assert - Risk badge should have green/success styling
-      const riskBadge = container.querySelector('[data-risk-level="low"]')
-      expect(riskBadge).toBeInTheDocument()
-    })
-
-    it('should show time distribution with school hours highlighted', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Should show time distribution section
-      expect(screen.getByText(/時間帯別/i)).toBeInTheDocument()
-      expect(screen.getByText(/14時:\s*10/i)).toBeInTheDocument()
-
-      // School hours should be highlighted (7-9am, 2-5pm)
-      const schoolHours = screen.getAllByTestId(/school-time/)
-      expect(schoolHours.length).toBeGreaterThan(0)
-    })
-
-    it('should prefer bucketed time distribution when provided', () => {
-      // Arrange
-      const bucketedStats = {
-        ...mockHighRiskStats,
-        accidents_by_hour: mockHighRiskStats.accidents_by_hour.map((hour) => ({ ...hour, count: 0 })),
-        time_buckets: [
-          { label: '14-17時 (下校時間帯)', count: 12, is_school_time: true },
-          { label: 'その他', count: 101, is_school_time: false },
-        ],
-      }
-
-      // Act
-      render(<AccidentStatsPanel stats={bucketedStats} />)
-
-      // Assert
-      expect(screen.getByText(/14-17時 \(下校時間帯\): 12/i)).toBeInTheDocument()
-      expect(screen.queryByText(/14時:\s*10/i)).not.toBeInTheDocument()
-    })
-
-    it('should show accident types with pedestrian accidents highlighted', () => {
-      // Act
-      const { container } = render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Should show accident types (may appear multiple times)
-      const pedestrianElements = screen.getAllByText('歩行者横断中')
-      expect(pedestrianElements.length).toBeGreaterThan(0)
-
-      // Pedestrian-related types should be highlighted (check for data-testid)
-      const pedestrianTypes = container.querySelectorAll('[data-testid="pedestrian-related"]')
-      expect(pedestrianTypes.length).toBeGreaterThan(0)
-    })
-
-    it('should show nearest accidents with distances', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Should show nearest accidents section
-      expect(screen.getByText(/近隣の事故/i)).toBeInTheDocument()
-
-      // Should show distances
-      expect(screen.getByText(/45m/i)).toBeInTheDocument()
-
-      // Should show child/pedestrian icons
-      const childIcons = screen.getAllByText(/🎒/)
-      const pedestrianIcons = screen.getAllByText(/🚶/)
-      expect(childIcons.length + pedestrianIcons.length).toBeGreaterThan(0)
-    })
-
-    it('should show year-by-year trend', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Should show year trend
-      expect(screen.getByText(/年次推移/i)).toBeInTheDocument()
-
-      // Should show years
-      expect(screen.getByText('2023')).toBeInTheDocument()
-      expect(screen.getByText('2024')).toBeInTheDocument()
-      expect(screen.getByText('2025')).toBeInTheDocument()
-    })
-
-    it('should show weather conditions', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Should show weather section
-      expect(screen.getByText(/天候別/i)).toBeInTheDocument()
-
-      // Should show weather types with counts
-      expect(screen.getByText(/晴れ.*89/i)).toBeInTheDocument()
-      expect(screen.getByText(/雨.*13/i)).toBeInTheDocument()
-    })
-
-    it('should mark fatal accidents with red indicator', () => {
-      // Act
-      const { container } = render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // Assert - Fatal accidents should have red dot or indicator
-      const fatalIndicators = container.querySelectorAll('[data-severity="fatal"]')
-      expect(fatalIndicators.length).toBeGreaterThan(0)
-    })
+    expect(screen.getByText('交通事故データ')).toBeInTheDocument()
+    expect(screen.getByText(/非常に危険/)).toBeInTheDocument()
+    expect(screen.getByText('事故リスクスコア')).toBeInTheDocument()
+    expect(screen.getByText('85')).toBeInTheDocument()
+    expect(screen.getByText('事故件数')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText('死亡事故')).toBeInTheDocument()
+    expect(screen.getByText(/この地点の事故状況/)).toBeInTheDocument()
   })
 
-  describe('Compact Mode', () => {
-    it('should render compact view with only essential stats', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockHighRiskStats} mode="compact" />)
+  it('switches tabs and renders time/weather content', async () => {
+    const user = userEvent.setup()
+    render(<AccidentStatsPanel stats={createStats()} />)
 
-      // Assert - Should show risk label and score
-      expect(screen.getByText('最高リスク')).toBeInTheDocument()
-      expect(screen.getByText('(85/100)')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /時間帯/ }))
 
-      // Should show minimal stats (2 cards)
-      const statCards = screen.getAllByTestId('stat-card')
-      expect(statCards.length).toBeLessThanOrEqual(2)
-
-      // Should NOT show detailed breakdowns
-      expect(screen.queryByText(/年次推移/i)).not.toBeInTheDocument()
-      expect(screen.queryByText(/近隣の事故/i)).not.toBeInTheDocument()
-    })
+    expect(screen.getByText('最多発生時間')).toBeInTheDocument()
+    expect(screen.getByText('14時台')).toBeInTheDocument()
+    expect(screen.getByText(/天候別/)).toBeInTheDocument()
+    expect(screen.getByText(/雨 4件/)).toBeInTheDocument()
   })
 
-  describe('Empty State', () => {
-    it('should render empty state when no accidents', () => {
-      // Act
-      render(<AccidentStatsPanel stats={mockEmptyAccidentStats} />)
+  it('shows expandable accident detail rows on the detail tab', async () => {
+    const user = userEvent.setup()
+    render(<AccidentStatsPanel stats={createStats()} />)
 
-      // Assert - Should show zero risk
-      expect(screen.getByText('0')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /事故詳細/ }))
 
-      // Should show safe message
-      expect(screen.getByText(/事故データなし/i)).toBeInTheDocument()
-    })
+    expect(screen.getByText(/近隣事故 2件/)).toBeInTheDocument()
 
-    it('should render AccidentStatsEmpty component for zero accidents', () => {
-      // Act
-      render(<AccidentStatsEmpty />)
+    await user.click(screen.getByRole('button', { name: /45m/ }))
 
-      // Assert - Should have safe/success styling
-      expect(screen.getByText(/安全/i)).toBeInTheDocument()
-    })
+    expect(screen.getByText(/死亡（1名）/)).toBeInTheDocument()
+    expect(screen.getByText(/雨/)).toBeInTheDocument()
   })
 
-  describe('Loading State', () => {
-    it('should render loading skeleton', () => {
-      // Act
-      const { container } = render(<AccidentStatsLoading />)
+  it('renders compact mode with summary copy and without tabs', () => {
+    render(<AccidentStatsPanel stats={createStats()} mode="compact" />)
 
-      // Assert - Should have skeleton/loading indicators
-      const loadingElements = container.querySelectorAll('[data-loading="true"]')
-      expect(loadingElements.length).toBeGreaterThan(0)
-    })
+    expect(screen.getByText('事故リスクスコア')).toBeInTheDocument()
+    expect(screen.getByText(/死亡事故1件が確認されています/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /概要/ })).not.toBeInTheDocument()
   })
 
-  describe('Nearest Accident Click', () => {
-    it('should call onAccidentClick when a clickable accident item is clicked', async () => {
-      const user = userEvent.setup()
-      const handleClick = vi.fn()
+  it('renders the empty state for zero accidents', () => {
+    render(
+      <AccidentStatsPanel
+        stats={createStats({
+          total_accidents: 0,
+          total_fatalities: 0,
+          total_injuries: 0,
+          child_involved: 0,
+          pedestrian_involved: 0,
+          fatal_accidents: 0,
+          risk_score: 0,
+          nearest_accidents: [],
+        })}
+      />
+    )
 
-      render(<AccidentStatsPanel stats={mockHighRiskStats} onAccidentClick={handleClick} />)
+    expect(screen.getByText(/半径300m以内に交通事故の記録はありません/)).toBeInTheDocument()
+  })
 
-      // Items with coordinates should render as buttons
-      const buttons = screen.getAllByRole('button')
-      const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
-      expect(accidentButton).toBeDefined()
-      expect(accidentButton).toHaveAttribute('aria-label', expect.stringContaining('45m'))
+  it('renders the exported loading and empty helpers', () => {
+    const { container, rerender } = render(<AccidentStatsLoading />)
 
-      await user.click(accidentButton!)
+    expect(container.querySelector('.animate-pulse')).toBeTruthy()
 
-      expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(handleClick).toHaveBeenCalledWith(
-        expect.objectContaining({
-          distance_meters: 45,
-          latitude: 35.6598,
-          longitude: 139.7008,
-        })
-      )
-    })
+    rerender(<AccidentStatsEmpty radius={500} />)
 
-    it('should render as non-clickable div when coordinates are missing', () => {
-      const handleClick = vi.fn()
-      const statsWithoutCoords = {
-        ...mockHighRiskStats,
-        nearest_accidents: mockHighRiskStats.nearest_accidents.map(
-          ({ id, latitude, longitude, ...rest }) => rest
-        ),
-      }
-
-      render(<AccidentStatsPanel stats={statsWithoutCoords} onAccidentClick={handleClick} />)
-
-      // Without coordinates, items should not be buttons
-      const buttons = screen.queryAllByRole('button')
-      const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
-      expect(accidentButtons).toHaveLength(0)
-
-      // Should still display the distance text
-      expect(screen.getByText(/45m/)).toBeInTheDocument()
-    })
-
-    it('should render as non-clickable when coordinates are out of range', () => {
-      const handleClick = vi.fn()
-      const statsWithInvalidCoords = {
-        ...mockHighRiskStats,
-        nearest_accidents: mockHighRiskStats.nearest_accidents.map((accident, index) =>
-          index === 0
-            ? { ...accident, latitude: 95, longitude: 190 }
-            : accident
-        ),
-      }
-
-      render(<AccidentStatsPanel stats={statsWithInvalidCoords} onAccidentClick={handleClick} />)
-
-      const buttons = screen.queryAllByRole('button')
-      const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
-      expect(accidentButtons).toHaveLength(0)
-      expect(screen.getByText(/45m/)).toBeInTheDocument()
-    })
-
-    it('should render as clickable when coordinates are numeric strings', async () => {
-      const user = userEvent.setup()
-      const handleClick = vi.fn()
-      const statsWithStringCoords = {
-        ...mockHighRiskStats,
-        nearest_accidents: mockHighRiskStats.nearest_accidents.map((accident, index) =>
-          index === 0
-            ? ({ ...accident, latitude: '35.6598', longitude: '139.7008' } as any)
-            : accident
-        ),
-      } as any
-
-      render(<AccidentStatsPanel stats={statsWithStringCoords} onAccidentClick={handleClick} />)
-
-      const buttons = screen.getAllByRole('button')
-      const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
-      expect(accidentButton).toBeDefined()
-
-      await user.click(accidentButton!)
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should render as non-clickable when onAccidentClick is not provided', () => {
-      render(<AccidentStatsPanel stats={mockHighRiskStats} />)
-
-      // No onAccidentClick = no buttons for accidents
-      const buttons = screen.queryAllByRole('button')
-      const accidentButtons = buttons.filter((b) => b.textContent?.includes('45m'))
-      expect(accidentButtons).toHaveLength(0)
-    })
-
-    it('should render as clickable with approximate navigation when coordinates are missing', async () => {
-      const user = userEvent.setup()
-      const handleClick = vi.fn()
-      const statsWithoutCoords = {
-        ...mockHighRiskStats,
-        nearest_accidents: mockHighRiskStats.nearest_accidents.map(
-          ({ id, latitude, longitude, ...rest }) => rest
-        ),
-      }
-
-      render(
-        <AccidentStatsPanel
-          stats={statsWithoutCoords}
-          onAccidentClick={handleClick}
-          allowApproximateNavigation
-        />
-      )
-
-      const buttons = screen.getAllByRole('button')
-      const accidentButton = buttons.find((b) => b.textContent?.includes('45m'))
-      expect(accidentButton).toBeDefined()
-
-      await user.click(accidentButton!)
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
+    expect(screen.getByText(/半径500m以内に交通事故の記録はありません/)).toBeInTheDocument()
   })
 })

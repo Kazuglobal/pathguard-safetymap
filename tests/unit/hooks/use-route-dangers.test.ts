@@ -14,20 +14,20 @@ import {
   mockAllDangerReports,
 } from '../../fixtures/dangers'
 
-// Mock createBrowserClient at module level
-const mockFrom = vi.fn()
+const mocks = vi.hoisted(() => ({
+  useSupabase: vi.fn(),
+  from: vi.fn(),
+}))
 
-vi.mock('@supabase/ssr', () => ({
-  createBrowserClient: vi.fn(() => ({
-    from: mockFrom,
-  })),
+vi.mock('@/components/providers/supabase-provider', () => ({
+  useSupabase: mocks.useSupabase,
 }))
 
 describe('useRouteDangers Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset to default mock that returns empty
-    mockFrom.mockImplementation(() => ({
+    mocks.from.mockImplementation(() => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn(() => Promise.resolve({ data: null, error: { message: 'Not found' } })),
@@ -35,6 +35,11 @@ describe('useRouteDangers Hook', () => {
         order: vi.fn(() => Promise.resolve({ data: [], error: null })),
       })),
     }))
+    mocks.useSupabase.mockReturnValue({
+      supabase: {
+        from: mocks.from,
+      },
+    })
   })
 
   afterEach(() => {
@@ -67,7 +72,7 @@ describe('useRouteDangers Hook', () => {
     it('fetches dangers near the specified route', async () => {
       const mockRoute = mockRoutes[0] // Has route_geometry
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -98,7 +103,7 @@ describe('useRouteDangers Hook', () => {
     it('returns empty array when route has no geometry', async () => {
       const mockRouteNoGeometry = mockRoutes[2] // route_geometry is null
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -128,7 +133,7 @@ describe('useRouteDangers Hook', () => {
     it('returns sorted dangers by route position', async () => {
       const mockRoute = mockRoutes[0]
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -165,7 +170,7 @@ describe('useRouteDangers Hook', () => {
     it('uses custom buffer meters when specified', async () => {
       const mockRoute = mockRoutes[0]
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -196,7 +201,7 @@ describe('useRouteDangers Hook', () => {
     it('defaults to 100m buffer', async () => {
       const mockRoute = mockRoutes[0]
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -226,7 +231,7 @@ describe('useRouteDangers Hook', () => {
 
   describe('Error Handling', () => {
     it('handles route fetch error', async () => {
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -259,7 +264,7 @@ describe('useRouteDangers Hook', () => {
     it('handles danger reports fetch error', async () => {
       const mockRoute = mockRoutes[0]
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -314,7 +319,7 @@ describe('useRouteDangers Hook', () => {
       let fetchCount = 0
       const mockRoute = mockRoutes[0]
 
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -385,7 +390,7 @@ describe('useRouteDangers Hook', () => {
       const mockRoute2 = mockRoutes[1]
 
       let currentRouteId = 'route-1'
-      mockFrom.mockImplementation((table: string) => {
+      mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
           return {
             select: vi.fn(() => ({
@@ -423,7 +428,7 @@ describe('useRouteDangers Hook', () => {
       })
 
       // Verify it fetched again (the mock was called with different route)
-      expect(mockFrom).toHaveBeenCalled()
+      expect(mocks.from).toHaveBeenCalled()
     })
   })
 })

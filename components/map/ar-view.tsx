@@ -10,10 +10,16 @@ import {
   RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import type { DangerReport } from "@/lib/types"
 import { calculateARHazardData, getARVisibilityOptions } from "@/lib/ar-utils"
 import { formatHeadingDisplay } from "@/lib/ar-display-utils"
+import {
+  buildARLearningTourStops,
+  summarizeARLearningTour,
+  type ARLearningTourStatus,
+} from "@/lib/ar-learning-tour"
 import { drawHazardOverlay } from "@/lib/ar-canvas-renderer"
 import {
   type ARError,
@@ -63,6 +69,8 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   const [maxDistance, setMaxDistance] = useState<number>(DEFAULT_MAX_DISTANCE)
   const [showSettings, setShowSettings] = useState(false)
   const [fov, setFov] = useState<number>(DEFAULT_FOV)
+  const [tourProgress, setTourProgress] = useState<Record<string, ARLearningTourStatus>>({})
+  const [activeStopId, setActiveStopId] = useState<string | null>(null)
 
   // エラー集約: カメラエラーを優先
   const arError: ARError | null = cameraError ?? locationError ?? null
@@ -99,13 +107,45 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     )
   }, [userLocation, userHeading, reports, orientationPermission, maxDistance, fov])
 
-  const primaryHazard = useMemo(() => {
-    return arHazards.length > 0 ? arHazards[0] : null
-  }, [arHazards])
+  const learningStops = useMemo(() => {
+    return buildARLearningTourStops(arHazards, tourProgress)
+  }, [arHazards, tourProgress])
 
-  const secondaryHazard = useMemo(() => {
-    return arHazards.length > 1 ? arHazards[1] : null
-  }, [arHazards])
+  useEffect(() => {
+    if (learningStops.length === 0) {
+      setActiveStopId(null)
+      return
+    }
+
+    if (activeStopId && learningStops.some((stop) => stop.report.id === activeStopId)) {
+      return
+    }
+
+    const nextPendingStop = learningStops.find((stop) => stop.status === "pending")
+    setActiveStopId(nextPendingStop?.report.id ?? learningStops[0].report.id)
+  }, [activeStopId, learningStops])
+
+  const activeStop = useMemo(() => {
+    if (learningStops.length === 0) return null
+    return (
+      learningStops.find((stop) => stop.report.id === activeStopId) ??
+      learningStops.find((stop) => stop.status === "pending") ??
+      learningStops[0]
+    )
+  }, [activeStopId, learningStops])
+
+  const activeStopIndex = useMemo(() => {
+    if (!activeStop) return -1
+    return learningStops.findIndex((stop) => stop.report.id === activeStop.report.id)
+  }, [activeStop, learningStops])
+
+  const nextStop = useMemo(() => {
+    if (activeStopIndex === -1) return null
+    return learningStops[activeStopIndex + 1] ?? null
+  }, [activeStopIndex, learningStops])
+
+  const learningSummary = useMemo(() => summarizeARLearningTour(learningStops), [learningStops])
+  const isTourComplete = learningStops.length > 0 && learningStops.every((stop) => stop.status !== "pending")
 
   // Canvas描画エラーハンドラー
   const handleCanvasError = useCallback((message: string) => {
@@ -248,6 +288,34 @@ export default function ARView({ reports, onClose }: ARViewProps) {
     }
   }, [arError, retryCamera, retryLocation, retryOrientation])
 
+  const updateTourStatus = useCallback(
+    (status: ARLearningTourStatus) => {
+      if (!activeStop) return
+
+      const nextStops = learningStops.map((stop) =>
+        stop.report.id === activeStop.report.id
+          ? { ...stop, status }
+          : stop
+      )
+
+      setTourProgress((current) => ({
+        ...current,
+        [activeStop.report.id]: status,
+      }))
+
+      setActiveStopId(
+        nextStops.find((stop) => stop.status === "pending")?.report.id ??
+        activeStop.report.id
+      )
+    },
+    [activeStop, learningStops]
+  )
+
+  const handleRestartTour = useCallback(() => {
+    setTourProgress({})
+    setActiveStopId(learningStops[0]?.report.id ?? null)
+  }, [learningStops])
+
   return (
     <div
       ref={dialogRef}
@@ -379,16 +447,20 @@ export default function ARView({ reports, onClose }: ARViewProps) {
         )}
 
         {/* 主要危険地点カード */}
-        {!arError && isCameraActive && userLocation && primaryHazard && (
+        {!arError && isCameraActive && userLocation && activeStop && (
           <ARPrimaryHazardCard
-            hazard={primaryHazard}
-            estimatedTimeMinutes={calculateEstimatedTime(primaryHazard.distance)}
+            hazard={activeStop.hazard}
+            estimatedTimeMinutes={calculateEstimatedTime(activeStop.hazard.distance)}
+            learningContent={activeStop.content}
+            progressLabel={`${Math.max(activeStopIndex + 1, 1)} / ${learningStops.length}`}
+            onMarkReviewed={() => updateTourStatus("reviewed")}
+            onSaveForLater={() => updateTourStatus("saved")}
           />
         )}
 
         {/* 次の危険地点カード */}
-        {!arError && isCameraActive && userLocation && secondaryHazard && (
-          <ARSecondaryHazardCard hazard={secondaryHazard} />
+        {!arError && isCameraActive && userLocation && nextStop && !isTourComplete && (
+          <ARSecondaryHazardCard hazard={nextStop.hazard} />
         )}
 
         {/* 危険地点がない場合 */}
@@ -398,6 +470,61 @@ export default function ARView({ reports, onClose }: ARViewProps) {
               <div className="p-6 text-center">
                 <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600">近くに危険個所はありません</p>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {!arError && isCameraActive && userLocation && isTourComplete && (
+          <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-none">
+            <Card className="pointer-events-auto rounded-3xl bg-white/95 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.2em] text-emerald-600">TOUR SUMMARY</p>
+                  <h3 className="text-lg font-bold text-slate-900">通学路の振り返り</h3>
+                </div>
+                <Badge className="rounded-full bg-emerald-600 text-white">
+                  {learningSummary.reviewedCount + learningSummary.savedCount}/{learningSummary.totalCount}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-2xl bg-slate-100 px-3 py-3">
+                  <p className="text-xs text-slate-500">確認済み</p>
+                  <p className="text-lg font-bold text-slate-900">{learningSummary.reviewedCount}</p>
+                </div>
+                <div className="rounded-2xl bg-amber-50 px-3 py-3">
+                  <p className="text-xs text-amber-700">見返し</p>
+                  <p className="text-lg font-bold text-amber-900">{learningSummary.savedCount}</p>
+                </div>
+                <div className="rounded-2xl bg-rose-50 px-3 py-3">
+                  <p className="text-xs text-rose-700">最重要</p>
+                  <p className="text-sm font-bold text-rose-900">
+                    {learningSummary.highestRiskStop?.report.title ?? "なし"}
+                  </p>
+                </div>
+              </div>
+
+              {learningSummary.revisitStops.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">あとで見返す地点</p>
+                  <div className="flex flex-wrap gap-2">
+                    {learningSummary.revisitStops.map((stop) => (
+                      <Badge key={stop.report.id} variant="secondary" className="rounded-full">
+                        {stop.report.title}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 flex gap-2">
+                <Button type="button" className="flex-1 rounded-2xl" onClick={handleRestartTour}>
+                  もう一度見る
+                </Button>
+                <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={handleClose}>
+                  閉じる
+                </Button>
               </div>
             </Card>
           </div>
