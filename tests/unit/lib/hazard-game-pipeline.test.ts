@@ -13,6 +13,8 @@ import {
   parseContextualRisks,
   clampNum,
   parseBbox,
+  getPromptByType,
+  getPipelinePromptByType,
 } from '@/lib/gemini-hazard'
 
 describe('hazard-game-pipeline parser', () => {
@@ -203,6 +205,20 @@ describe('hazard-game-pipeline parser', () => {
       ])
 
       expect(risks[0].severity).toBe('medium')
+    })
+  })
+
+  describe('child prompt safety wording', () => {
+    it('does not mention kodomo 110 houses in hazard-game child prompts', () => {
+      const legacyPrompt = getPromptByType('child')
+      const pipelinePrompt = getPipelinePromptByType('child')
+
+      expect(legacyPrompt).not.toContain('子ども110番')
+      expect(legacyPrompt).not.toContain('こども110番')
+      expect(legacyPrompt).not.toContain('110番の家')
+      expect(pipelinePrompt).not.toContain('子ども110番')
+      expect(pipelinePrompt).not.toContain('こども110番')
+      expect(pipelinePrompt).not.toContain('110番の家')
     })
   })
 })

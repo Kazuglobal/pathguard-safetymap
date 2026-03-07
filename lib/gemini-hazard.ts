@@ -136,7 +136,7 @@ const PIPELINE_JSON_SCHEMA = `{
   "educational_tips": ["ひび割れたブロック塀の近くを歩かないようにしましょう", "横断歩道では左右を確認してから渡りましょう", "雑草で見通しが悪い場所では立ち止まって確認しましょう"]
 }`
 
-function getPipelinePromptByType(
+export function getPipelinePromptByType(
   promptType: PromptType,
   userMarkers?: readonly UserMarker[]
 ): string {
@@ -400,7 +400,7 @@ export async function analyzeImagePipeline(
 // Legacy: 旧 API 互換関数（既存コンポーネント向け）
 // ===========================================================
 
-function getPromptByType(
+export function getPromptByType(
   promptType: PromptType,
   userDetectedHazards?: string[]
 ): string {

@@ -358,6 +358,8 @@ export async function generateImageWithGeminiWithModel({
       continue
     }
 
+    let lastGenerateTimeoutMs = initialCallTimeoutMs
+
     // Gemini models use :generateContent with responseModalities
     try {
       const safeModel = sanitizeModelName(model)
@@ -365,6 +367,7 @@ export async function generateImageWithGeminiWithModel({
 
       const tryGenerateContent = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
         const callTimeoutMs = getCallTimeoutMs(model)
+        lastGenerateTimeoutMs = callTimeoutMs
         const requestBody = buildGenerateContentRequestBody({
           promptText: text,
           imageBase64,
@@ -413,7 +416,7 @@ export async function generateImageWithGeminiWithModel({
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
-        lastError = new Error(`${model}: タイムアウト (${callTimeoutMs}ms)`)
+        lastError = new Error(`${model}: タイムアウト (${lastGenerateTimeoutMs}ms)`)
         console.warn(`[Gemini] generateContent timed out for ${model}`)
       } else {
         lastError = error instanceof Error ? error : new Error(String(error))
