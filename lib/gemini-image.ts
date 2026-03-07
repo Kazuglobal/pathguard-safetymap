@@ -319,7 +319,8 @@ export async function generateImageWithGeminiWithModel({
       lastError = new Error(`${model}: タイムアウト予算不足 (${remainingBudgetMs}ms remaining)`)
       break
     }
-    const callTimeoutMs = Math.min(getPerCallTimeoutMs(model), remainingBudgetMs)
+    const baseTimeoutMs = imageBase64 ? PRO_IMAGE_PER_CALL_TIMEOUT_MS : getPerCallTimeoutMs(model)
+    const callTimeoutMs = Math.min(baseTimeoutMs, remainingBudgetMs)
 
     // Imagen models use :predict endpoint
     if (isImagenModel(model)) {
