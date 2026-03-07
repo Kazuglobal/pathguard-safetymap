@@ -19,6 +19,7 @@ export function handleError(error: unknown, fallback: string): string {
       message.includes('fetch') ||
       message.includes('ネットワーク') ||
       message.includes('failed to fetch') ||
+      message.includes('load failed') ||
       message.includes('connection')
     ) {
       return 'ネットワークエラーが発生しました。インターネット接続を確認してください。'

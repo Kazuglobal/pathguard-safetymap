@@ -29,6 +29,7 @@ import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
+import { handleError } from "@/lib/error-handler"
 
 interface DangerReportFormProps {
   onSubmit: (data: DangerReportSubmitPayload) => Promise<{ reportId: string; imageUrl: string | null }>
@@ -736,22 +737,14 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
           } catch (e) {
             if (isActive()) {
               console.error('auto-generation failed', e)
-              const rawMsg = e instanceof Error ? e.message : 'Unknown error occurred.'
-              const displayMsg = /failed to fetch|network/i.test(rawMsg)
-                ? 'ネットワークエラーが発生しました。インターネット接続を確認して再度お試しください。'
-                : rawMsg
-              setAutoGenError(displayMsg)
+              setAutoGenError(handleError(e, '自動生成に失敗しました。時間をおいて再度お試しください。'))
             }
           }
         }
       } catch (error) {
         if (isActive()) {
           console.error('Error in auto-generation:', error)
-          const rawMsg = error instanceof Error ? error.message : 'Unknown error occurred.'
-          const displayMsg = /failed to fetch|network/i.test(rawMsg)
-            ? 'ネットワークエラーが発生しました。インターネット接続を確認して再度お試しください。'
-            : rawMsg
-          setAutoGenError(displayMsg)
+          setAutoGenError(handleError(error, '自動生成に失敗しました。時間をおいて再度お試しください。'))
         }
       } finally {
         if (isActive()) setAutoGenLoading(false)
@@ -872,7 +865,7 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
 
       setActiveImageTab('processed')
     } catch (error) {
-      setAutoGenError(error instanceof Error ? error.message : '不明なエラーが発生しました。')
+      setAutoGenError(handleError(error, '不明なエラーが発生しました。'))
     } finally {
       setRegenLoading(false)
     }

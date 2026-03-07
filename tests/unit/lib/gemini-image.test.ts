@@ -100,6 +100,33 @@ describe("generateImageWithGeminiWithModel", () => {
     timeoutSpy.mockRestore()
   })
 
+  it("uses a longer timeout budget for image-to-image generation", async () => {
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => new AbortController().signal)
+
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => "upstream error",
+    })
+
+    const { generateImageWithGeminiWithModel } = await import("@/lib/gemini-image")
+
+    await expect(
+      generateImageWithGeminiWithModel({
+        prompt: "test prompt",
+        model: "gemini-3.1-flash-image-preview",
+        imageBase64: "dGVzdA==",
+        imageMimeType: "image/png",
+      })
+    ).rejects.toThrow("500")
+
+    expect(timeoutSpy).toHaveBeenCalled()
+    expect(timeoutSpy.mock.calls.some(([ms]) => Number(ms) === 40_000)).toBe(true)
+    timeoutSpy.mockRestore()
+  })
+
   it("always uses gemini-3.1-flash-image-preview even when another model is requested", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
@@ -199,5 +226,60 @@ describe("generateImageWithGeminiWithModel", () => {
 
     expect(result.images).toHaveLength(1)
     expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("recomputes retry timeout from the remaining request budget for image-to-image generation", async () => {
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => new AbortController().signal)
+
+    let now = 0
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => {
+          now = 39_000
+          return {
+            candidates: [{ content: { parts: [{ text: "I cannot provide image now." }] } }],
+          }
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: "image/png",
+                      data: "a".repeat(128),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+
+    const { generateImageWithGeminiWithModel } = await import("@/lib/gemini-image")
+
+    await generateImageWithGeminiWithModel({
+      prompt: "test prompt",
+      model: "gemini-3.1-flash-image-preview",
+      imageBase64: "dGVzdA==",
+      imageMimeType: "image/png",
+    })
+
+    expect(timeoutSpy.mock.calls).toHaveLength(2)
+    expect(timeoutSpy.mock.calls[0]?.[0]).toBe(40_000)
+    expect(timeoutSpy.mock.calls[1]?.[0]).toBe(16_000)
+
+    nowSpy.mockRestore()
+    timeoutSpy.mockRestore()
   })
 })
