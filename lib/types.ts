@@ -25,6 +25,9 @@ export interface DangerReport {
   address_hash: string | null
   created_at: string | null
   updated_at: string | null
+  learning_summary?: string | null
+  learning_checkpoints?: string[] | null
+  attention_tags?: string[] | null
 }
 
 export interface FilterOptions {
