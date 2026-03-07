@@ -102,3 +102,46 @@ export interface RouteDangerSummary {
 }
 
 export type ReportExportFormat = 'pdf' | 'png' | 'jpeg'
+
+export type HazardType = "flood" | "tsunami"
+
+export type HazardAreaContext =
+  | "residential-school-route"
+  | "riverside"
+  | "coastal"
+
+export interface HazardScenarioOption {
+  key: string
+  label: string
+  description: string
+  hazardTypes: HazardType[]
+  allowedAreaContexts: HazardAreaContext[]
+}
+
+export interface RouteHazardMarker {
+  id: string
+  route_id?: string
+  hazard_type: HazardType
+  source_layer?: string | null
+  risk_level: number
+  depth_min_m: number | null
+  depth_max_m: number | null
+  depth_label: string
+  area_context: HazardAreaContext
+  area_label: string
+  title: string
+  summary: string
+  explanation: string
+  evacuation_points: string[]
+  coordinates: [number, number]
+  scenario_options: HazardScenarioOption[]
+  scenario_key: string
+}
+
+export interface HazardImageResult {
+  imageUrl: string
+  prompt: string
+  cached: boolean
+  generatedAt: string
+  scenarioKey: string
+}

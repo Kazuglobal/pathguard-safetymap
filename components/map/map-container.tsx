@@ -38,6 +38,17 @@ import { AccidentHeatmapControls } from "./accident-heatmap-controls"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
 import { X } from "lucide-react"
+import { useUserRoutes } from "@/hooks/use-user-routes"
+import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
+import { HazardImageModal } from "@/components/map/hazard-image-modal"
+import { classifyMapboxError } from "@/lib/mapbox-error-utils"
+import {
+  HAZARD_TILE_CONFIG,
+  buildHazardExplanation,
+  getHazardAreaLabel,
+  getHazardEvacuationPoints,
+} from "@/lib/hazard-scenarios"
+import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -267,6 +278,28 @@ export default function MapContainer() {
   const mapImagePopupRootRefs = useRef<Map<string, ReturnType<typeof createRoot>>>(new Map())
   const accidentMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const accidentMarkerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const routeHazardMarkersRef = useRef<mapboxgl.Marker[]>([])
+  const routeHazardPopupRef = useRef<mapboxgl.Popup | null>(null)
+
+  const {
+    routes: userRoutes,
+    primaryRoute,
+  } = useUserRoutes()
+  const [selectedUserRouteId, setSelectedUserRouteId] = useState<string | null>(null)
+  const [hazardLayerVisibility, setHazardLayerVisibility] = useState<Record<HazardType, boolean>>({
+    flood: false,
+    tsunami: false,
+  })
+  const [routeHazards, setRouteHazards] = useState<RouteHazardMarker[]>([])
+  const [isRouteHazardsLoading, setIsRouteHazardsLoading] = useState(false)
+  const [routeHazardError, setRouteHazardError] = useState<string | null>(null)
+  const [activeHazardMarker, setActiveHazardMarker] = useState<RouteHazardMarker | null>(null)
+  const [isHazardModalOpen, setIsHazardModalOpen] = useState(false)
+  const [selectedHazardScenarioKey, setSelectedHazardScenarioKey] = useState<string | null>(null)
+  const [hazardImageResult, setHazardImageResult] = useState<HazardImageResult | null>(null)
+  const [hazardImageError, setHazardImageError] = useState<string | null>(null)
+  const [isHazardImageLoading, setIsHazardImageLoading] = useState(false)
+  const [mapStyleSyncToken, setMapStyleSyncToken] = useState(0)
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
@@ -292,6 +325,29 @@ export default function MapContainer() {
       popup.remove()
     })
     popupRefs.clear()
+  }, [])
+
+  const clearRouteHazardMarkers = useCallback(() => {
+    routeHazardMarkersRef.current.forEach((marker) => marker.remove())
+    routeHazardMarkersRef.current = []
+  }, [])
+
+  const clearRouteHazardPopup = useCallback(() => {
+    routeHazardPopupRef.current?.remove()
+    routeHazardPopupRef.current = null
+  }, [])
+
+  const fitRouteBounds = useCallback((route: UserRoute) => {
+    if (!map.current || !route.route_geometry?.coordinates?.length) return
+
+    const bounds = new mapboxgl.LngLatBounds()
+    route.route_geometry.coordinates.forEach((coordinate) => {
+      bounds.extend(coordinate as [number, number])
+    })
+
+    if (!bounds.isEmpty()) {
+      map.current.fitBounds(bounds, { padding: 80, duration: 800 })
+    }
   }, [])
 
   // 送信された報告の情報を保持する状態 (型を更新)
@@ -407,6 +463,14 @@ export default function MapContainer() {
   const mapCanvasClassName = `absolute inset-0${isMobile ? " rounded-3xl overflow-hidden ring-1 ring-blue-100/60" : ""}`;
 
   const combinedReports = useMemo(() => [...dangerReports, ...pendingReports], [dangerReports, pendingReports]);
+  const selectedUserRoute = useMemo<UserRoute | null>(() => {
+    if (!selectedUserRouteId) return null
+    return userRoutes.find((route) => route.id === selectedUserRouteId) ?? null
+  }, [selectedUserRouteId, userRoutes])
+  const visibleRouteHazards = useMemo(
+    () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
+    [hazardLayerVisibility, routeHazards],
+  )
 
   useEffect(() => {
     setMapImageOverlays((prev) => {
@@ -417,6 +481,11 @@ export default function MapContainer() {
       return filtered.length === prev.length ? prev : filtered
     })
   }, [combinedReports])
+
+  useEffect(() => {
+    if (selectedUserRouteId || !primaryRoute) return
+    setSelectedUserRouteId(primaryRoute.id)
+  }, [primaryRoute, selectedUserRouteId])
 
   useEffect(() => {
     if (!map.current) return
@@ -753,16 +822,27 @@ export default function MapContainer() {
         attributionControl: true,
       });
 
-      map.current.on("error", (e) => { 
-        console.error("Mapbox error:", e.error || e); 
-        const errorMessage = (e.error as Error | undefined)?.message || "不明なエラー";
-        setMapError(`マップエラー: ${errorMessage}`); 
+      map.current.on("error", (e) => {
+        const classifiedError = classifyMapboxError({
+          error: e.error || e,
+          sourceId: (e as { sourceId?: string }).sourceId,
+        })
+
+        if (classifiedError.severity === "overlay") {
+          console.warn("Hazard overlay error:", e.error || e)
+          setRouteHazardError((current) => current ?? classifiedError.message)
+          return
+        }
+
+        console.error("Mapbox error:", e.error || e)
+        setMapError(`マップエラー: ${classifiedError.message}`)
       });
 
       map.current.on("load", () => {
         mapInitialized.current = true;
         addClickListener();
         setIsLoading(false);
+        setMapStyleSyncToken((prev) => prev + 1)
         // Add controls after load
         map.current?.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
         map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
@@ -778,6 +858,8 @@ export default function MapContainer() {
       accidentMarkerRef.current = null
       if (accidentMarkerTimerRef.current) clearTimeout(accidentMarkerTimerRef.current)
       accidentMarkerTimerRef.current = null
+      clearRouteHazardMarkers()
+      clearRouteHazardPopup()
       if (map.current) {
         if (mapClickHandler.current) map.current.off("click", mapClickHandler.current);
         map.current.remove(); map.current = null;
@@ -856,6 +938,7 @@ export default function MapContainer() {
       map.current.once("style.load", () => {
         if (!map.current) return;
         addClickListener(); // Re-add listener after style load
+        setMapStyleSyncToken((prev) => prev + 1)
         if (was3DEnabled) {
           setTimeout(() => { // Delay slightly to ensure resources are ready
             if (map.current && is3DEnabled) { // Check state again before enabling
@@ -874,6 +957,165 @@ export default function MapContainer() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]); // Removed is3DEnabled from dependency array to prevent loop
+
+  useEffect(() => {
+    if (!map.current || !mapInitialized.current) return
+
+    const mapInstance = map.current
+
+    const syncLayer = (hazardType: HazardType) => {
+      const config = HAZARD_TILE_CONFIG[hazardType]
+      const sourceId = `${config.id}-source`
+      const layerId = `${config.id}-layer`
+
+      if (!hazardLayerVisibility[hazardType]) {
+        safeRemoveLayer(mapInstance, layerId)
+        if (sourceExists(mapInstance, sourceId)) {
+          try {
+            mapInstance.removeSource(sourceId)
+          } catch (error) {
+            console.error(`Error removing source ${sourceId}:`, error)
+          }
+        }
+        return
+      }
+
+      if (!sourceExists(mapInstance, sourceId)) {
+        safeAddSource(mapInstance, sourceId, {
+          type: "raster",
+          tiles: [config.tileUrl],
+          tileSize: 256,
+          attribution: "国土交通省 重ねるハザードマップ",
+        })
+      }
+
+      if (!layerExists(mapInstance, layerId)) {
+        safeAddLayer(mapInstance, layerId, {
+          id: layerId,
+          type: "raster",
+          source: sourceId,
+          paint: {
+            "raster-opacity": hazardType === "flood" ? 0.72 : 0.78,
+          },
+        })
+      }
+    }
+
+    syncLayer("flood")
+    syncLayer("tsunami")
+  }, [hazardLayerVisibility, mapStyleSyncToken])
+
+  useEffect(() => {
+    if (!map.current || !mapInitialized.current) return
+
+    const mapInstance = map.current
+    const sourceId = "selected-user-route-source"
+    const layerId = "selected-user-route-layer"
+
+    safeRemoveLayer(mapInstance, layerId)
+    if (sourceExists(mapInstance, sourceId)) {
+      try {
+        mapInstance.removeSource(sourceId)
+      } catch (error) {
+        console.error(`Error removing source ${sourceId}:`, error)
+      }
+    }
+
+    if (!selectedUserRoute?.route_geometry?.coordinates?.length) return
+
+    safeAddSource(mapInstance, sourceId, {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        properties: {},
+        geometry: selectedUserRoute.route_geometry,
+      },
+    })
+
+    safeAddLayer(mapInstance, layerId, {
+      id: layerId,
+      type: "line",
+      source: sourceId,
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#1d4ed8",
+        "line-width": 5,
+        "line-opacity": 0.88,
+      },
+    })
+  }, [mapStyleSyncToken, selectedUserRoute])
+
+  useEffect(() => {
+    if (!selectedUserRoute?.route_geometry) {
+      setRouteHazards([])
+      setRouteHazardError(null)
+      return
+    }
+
+    const shouldFetchHazards =
+      hazardLayerVisibility.flood || hazardLayerVisibility.tsunami
+    if (!shouldFetchHazards) {
+      setRouteHazardError(null)
+      return
+    }
+
+    let cancelled = false
+    setIsRouteHazardsLoading(true)
+    setRouteHazardError(null)
+
+    fetch(`/api/hazard/route-risks?routeId=${encodeURIComponent(selectedUserRoute.id)}`)
+      .then(async (response) => {
+        const body = await response.json()
+        if (!response.ok) {
+          throw new Error(body.error || "危険箇所の取得に失敗しました")
+        }
+        return body
+      })
+      .then((body) => {
+        if (cancelled) return
+        const markers = Array.isArray(body.markers)
+          ? body.markers.map((marker: RouteHazardMarker) => ({
+              ...marker,
+              area_label: marker.area_label ?? getHazardAreaLabel(marker.area_context),
+              explanation:
+                marker.explanation ??
+                buildHazardExplanation({
+                  hazardType: marker.hazard_type,
+                  depthLabel: marker.depth_label,
+                }),
+              evacuation_points:
+                marker.evacuation_points?.length
+                  ? marker.evacuation_points
+                  : getHazardEvacuationPoints(marker.hazard_type),
+            }))
+          : []
+        setRouteHazards(markers)
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        const message =
+          error instanceof Error ? error.message : "危険箇所の取得に失敗しました"
+        setRouteHazardError(message)
+        setRouteHazards([])
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsRouteHazardsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [hazardLayerVisibility.flood, hazardLayerVisibility.tsunami, selectedUserRoute])
+
+  useEffect(() => {
+    if (!selectedUserRoute) return
+    fitRouteBounds(selectedUserRoute)
+  }, [fitRouteBounds, selectedUserRoute])
 
   // --- Accident Heatmap: fetch data on map move ---
   useEffect(() => {
@@ -1116,6 +1358,90 @@ export default function MapContainer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dangerReports, pendingReports, filterOptions.showPending, mapInitialized.current]); // Removed mapStyle, is3DEnabled, selectedLocation
 
+  useEffect(() => {
+    if (!map.current || !mapInitialized.current) return
+
+    clearRouteHazardMarkers()
+    clearRouteHazardPopup()
+
+    visibleRouteHazards.forEach((hazard) => {
+      const markerElement = document.createElement("button")
+      markerElement.type = "button"
+      markerElement.className = "route-hazard-marker"
+      markerElement.style.width = "30px"
+      markerElement.style.height = "30px"
+      markerElement.style.borderRadius = "9999px"
+      markerElement.style.border = "2px solid white"
+      markerElement.style.background = hazard.hazard_type === "tsunami" ? "#1d4ed8" : "#f97316"
+      markerElement.style.color = "white"
+      markerElement.style.boxShadow = "0 6px 16px rgba(15,23,42,0.28)"
+      markerElement.style.cursor = "pointer"
+
+      const root = createRoot(markerElement)
+      root.render(<AlertTriangle className="h-4 w-4" />)
+
+      const markerInstance = new mapboxgl.Marker(markerElement)
+        .setLngLat(hazard.coordinates)
+        .addTo(map.current!)
+
+      markerElement.addEventListener("click", (event) => {
+        event.stopPropagation()
+        clearRouteHazardPopup()
+
+        const popupContent = document.createElement("div")
+        popupContent.className = "space-y-3 p-1"
+
+        const title = document.createElement("div")
+        title.innerHTML = `<div style="font-weight:700;font-size:14px;">${hazard.title}</div><div style="font-size:12px;color:#475569;">${hazard.summary}</div>`
+        popupContent.appendChild(title)
+
+        const meta = document.createElement("div")
+        meta.style.fontSize = "12px"
+        meta.style.color = "#334155"
+        meta.textContent = `${hazard.area_label} / ${hazard.depth_label}`
+        popupContent.appendChild(meta)
+
+        const button = document.createElement("button")
+        button.type = "button"
+        button.textContent = "災害イメージを見る"
+        button.style.width = "100%"
+        button.style.borderRadius = "8px"
+        button.style.border = "0"
+        button.style.padding = "8px 12px"
+        button.style.background = "#0f172a"
+        button.style.color = "#fff"
+        button.style.fontSize = "12px"
+        button.style.fontWeight = "600"
+        button.style.cursor = "pointer"
+        button.addEventListener("click", () => {
+          setActiveHazardMarker(hazard)
+          setSelectedHazardScenarioKey(hazard.scenario_key)
+          setHazardImageResult(null)
+          setHazardImageError(null)
+          setIsHazardModalOpen(true)
+        })
+        popupContent.appendChild(button)
+
+        routeHazardPopupRef.current = new mapboxgl.Popup({
+          closeButton: true,
+          closeOnClick: false,
+          offset: 16,
+          maxWidth: "280px",
+        })
+          .setLngLat(hazard.coordinates)
+          .setDOMContent(popupContent)
+          .addTo(map.current!)
+      })
+
+      routeHazardMarkersRef.current.push(markerInstance)
+    })
+
+    return () => {
+      clearRouteHazardMarkers()
+      clearRouteHazardPopup()
+    }
+  }, [clearRouteHazardMarkers, clearRouteHazardPopup, visibleRouteHazards])
+
   // --- Helper Labels/Colors (Consider moving to utils) ---
   const getDangerTypeLabel = (type: string) => {
     switch (type) {
@@ -1132,6 +1458,61 @@ export default function MapContainer() {
   };
 
   // --- Event Handlers ---
+  const handleRouteSelectionChange = useCallback((routeId: string) => {
+    setSelectedUserRouteId(routeId)
+    setRouteHazardError(null)
+    setRouteHazards([])
+    setActiveHazardMarker(null)
+    setHazardImageResult(null)
+    setHazardImageError(null)
+  }, [])
+
+  const handleHazardLayerToggle = useCallback((hazardType: HazardType, checked: boolean) => {
+    setHazardLayerVisibility((prev) => ({ ...prev, [hazardType]: checked }))
+  }, [])
+
+  const handleGenerateHazardImage = useCallback(async () => {
+    if (!activeHazardMarker) return
+
+    const scenarioKey = selectedHazardScenarioKey ?? activeHazardMarker.scenario_key
+    setIsHazardImageLoading(true)
+    setHazardImageError(null)
+
+    try {
+      const response = await fetch("/api/hazard/image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          hazardType: activeHazardMarker.hazard_type,
+          riskLevel: activeHazardMarker.risk_level,
+          depthMinMeters: activeHazardMarker.depth_min_m,
+          depthMaxMeters: activeHazardMarker.depth_max_m,
+          areaContext: activeHazardMarker.area_context,
+          scenarioKey,
+          locationLabel: `${activeHazardMarker.area_label} in Japan`,
+        }),
+      })
+
+      const body = await response.json()
+      if (!response.ok) {
+        throw new Error(body.error || "災害イメージの生成に失敗しました")
+      }
+
+      setHazardImageResult(body)
+      setActiveHazardMarker((prev) =>
+        prev ? { ...prev, scenario_key: scenarioKey } : prev,
+      )
+    } catch (error) {
+      setHazardImageError(
+        error instanceof Error ? error.message : "災害イメージの生成に失敗しました",
+      )
+    } finally {
+      setIsHazardImageLoading(false)
+    }
+  }, [activeHazardMarker, selectedHazardScenarioKey])
+
   const handleFilterChange = (newFilters: Partial<typeof filterOptions>) => {
     setFilterOptions((prev) => {
       const next = { ...prev, ...newFilters }
@@ -1495,6 +1876,22 @@ export default function MapContainer() {
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
         />
+
+        <RouteHazardPanel
+          routes={userRoutes}
+          selectedRouteId={selectedUserRouteId}
+          selectedHazardsCount={visibleRouteHazards.length}
+          toggles={hazardLayerVisibility}
+          isLoading={isRouteHazardsLoading}
+          onRouteChange={handleRouteSelectionChange}
+          onToggleChange={handleHazardLayerToggle}
+        />
+
+        {routeHazardError && (
+          <div className="absolute left-3 top-[calc(env(safe-area-inset-top,0px)+24rem)] z-20 w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-red-200 bg-white/95 px-4 py-3 text-sm text-red-600 shadow-lg backdrop-blur-sm">
+            {routeHazardError}
+          </div>
+        )}
 
         {/* 事故統計パネル - 地図クリック時に表示 */}
         {clickedLocationStatsStatus !== 'idle' && !awaitingLocationSelection && !isReportFormOpen && (
@@ -2040,6 +2437,26 @@ export default function MapContainer() {
             onClose={() => setIsARMode(false)}
           />
         )}
+        <HazardImageModal
+          open={isHazardModalOpen}
+          marker={activeHazardMarker}
+          imageResult={hazardImageResult}
+          imageError={hazardImageError}
+          isLoading={isHazardImageLoading}
+          selectedScenarioKey={selectedHazardScenarioKey}
+          onOpenChange={(open) => {
+            setIsHazardModalOpen(open)
+            if (!open) {
+              setHazardImageError(null)
+            }
+          }}
+          onScenarioChange={(scenarioKey) => {
+            setSelectedHazardScenarioKey(scenarioKey)
+            setHazardImageResult(null)
+            setHazardImageError(null)
+          }}
+          onGenerate={handleGenerateHazardImage}
+        />
       </div>
     </div>
   )
