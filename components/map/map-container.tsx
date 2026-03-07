@@ -1888,10 +1888,25 @@ export default function MapContainer() {
           isLoading={isRouteHazardsLoading}
           onRouteChange={handleRouteSelectionChange}
           onToggleChange={handleHazardLayerToggle}
+          isMobile={isMobile}
+          mapStyle={mapStyle}
+          onMapStyleChange={setMapStyle}
+          is3DEnabled={is3DEnabled}
+          onToggle3D={toggle3DMode}
+          onToggleAR={() => setIsARMode(!isARMode)}
+          isARMode={isARMode}
+          onToggleHeatmap={accidentHeatmap.toggleVisibility}
+          isHeatmapVisible={accidentHeatmap.isVisible}
         />
 
         {routeHazardError && (
-          <div className="absolute left-3 top-[calc(env(safe-area-inset-top,0px)+24rem)] z-20 w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-red-200 bg-white/95 px-4 py-3 text-sm text-red-600 shadow-lg backdrop-blur-sm">
+          <div
+            className={`absolute left-3 z-20 w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-red-200 bg-white/95 px-4 py-3 text-sm text-red-600 shadow-lg backdrop-blur-sm ${
+              isMobile
+                ? "top-[calc(env(safe-area-inset-top,0px)+7.5rem)]"
+                : "top-[calc(env(safe-area-inset-top,0px)+24rem)]"
+            }`}
+          >
             {routeHazardError}
           </div>
         )}

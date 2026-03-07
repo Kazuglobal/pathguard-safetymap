@@ -42,6 +42,19 @@ function renderControls(overrides: Partial<ComponentProps<typeof MapFloatingCont
 }
 
 describe('MapFloatingControls mobile layout', () => {
+  it('shows desktop display controls cluster when not mobile', () => {
+    renderControls({ isMobile: false })
+
+    expect(screen.getByTestId('desktop-display-controls')).toBeInTheDocument()
+    expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
+  })
+
+  it('does not render the persistent map style selector on mobile', () => {
+    renderControls()
+
+    expect(screen.queryByTestId('map-style-selector')).not.toBeInTheDocument()
+  })
+
   it('shows bottom-right mobile action dock in normal state', () => {
     renderControls()
 
