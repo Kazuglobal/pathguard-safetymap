@@ -1,6 +1,7 @@
 import { withSentryConfig } from '@sentry/nextjs'
 import fs from 'fs'
 import path from 'path'
+import { buildContentSecurityPolicy } from './lib/content-security-policy.mjs'
 
 const defaultsPath = path.join(process.cwd(), 'env.defaults.json')
 let envDefaults = {}
@@ -144,16 +145,7 @@ const nextConfig = {
           // CSP は Report-Only モードで動作確認中。問題がなければ Content-Security-Policy に切り替える。
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com https://events.mapbox.com",
-              "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com https://images.unsplash.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://api.jartic-open-traffic.org https://tile.googleapis.com https://maps.googleapis.com",
-              "worker-src 'self' blob:",
-              "frame-ancestors 'self'",
-            ].join('; '),
+            value: buildContentSecurityPolicy(),
           },
         ],
       },
@@ -168,6 +160,8 @@ export default withSentryConfig(nextConfig, {
   tunnelRoute: '/monitoring',
   hideSourceMaps: true,
   silent: !process.env.CI,
-  reactComponentAnnotation: { enabled: true },
-  automaticVercelMonitors: false,
+  webpack: {
+    reactComponentAnnotation: { enabled: true },
+    automaticVercelMonitors: false,
+  },
 })
