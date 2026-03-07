@@ -310,22 +310,30 @@ export async function generateImageWithGeminiWithModel({
   const text = prompt || "Create an image using the provided reference."
   let lastError: Error | null = null
   const startedAtMs = Date.now()
-
-  for (const model of modelsToTry) {
-    console.log(`[Gemini] Trying model: ${model}`)
+  const getCallTimeoutMs = (model: string): number => {
     const elapsedMs = Date.now() - startedAtMs
     const remainingBudgetMs = REQUEST_TIMEOUT_BUDGET_MS - elapsedMs
     if (remainingBudgetMs < MIN_CALL_TIMEOUT_MS) {
-      lastError = new Error(`${model}: タイムアウト予算不足 (${remainingBudgetMs}ms remaining)`)
-      break
+      throw new Error(`${model}: タイムアウト予算不足 (${remainingBudgetMs}ms remaining)`)
     }
     const baseTimeoutMs = imageBase64 ? PRO_IMAGE_PER_CALL_TIMEOUT_MS : getPerCallTimeoutMs(model)
-    const callTimeoutMs = Math.min(baseTimeoutMs, remainingBudgetMs)
+    return Math.min(baseTimeoutMs, remainingBudgetMs)
+  }
+
+  for (const model of modelsToTry) {
+    console.log(`[Gemini] Trying model: ${model}`)
+    let initialCallTimeoutMs: number
+    try {
+      initialCallTimeoutMs = getCallTimeoutMs(model)
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      break
+    }
 
     // Imagen models use :predict endpoint
     if (isImagenModel(model)) {
       try {
-        const primary = await tryImagesGenerate(apiKey, model, text, callTimeoutMs, imageBase64, imageMimeType)
+        const primary = await tryImagesGenerate(apiKey, model, text, initialCallTimeoutMs, imageBase64, imageMimeType)
         if (primary.ok) {
           const payload = await primary.json()
           const primaryImages = await extractImagesFromAny(payload, apiKey)
@@ -341,7 +349,7 @@ export async function generateImageWithGeminiWithModel({
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'TimeoutError') {
-          lastError = new Error(`${model}: タイムアウト (${callTimeoutMs}ms)`)
+          lastError = new Error(`${model}: タイムアウト (${initialCallTimeoutMs}ms)`)
         } else {
           lastError = error instanceof Error ? error : new Error(String(error))
         }
@@ -356,6 +364,7 @@ export async function generateImageWithGeminiWithModel({
       const safeMimeType = imageMimeType ? sanitizeMimeType(imageMimeType) : null
 
       const tryGenerateContent = async (imageOnly: boolean): Promise<GeneratedImage[] | null> => {
+        const callTimeoutMs = getCallTimeoutMs(model)
         const requestBody = buildGenerateContentRequestBody({
           promptText: text,
           imageBase64,
