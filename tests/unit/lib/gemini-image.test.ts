@@ -208,7 +208,6 @@ describe("generateImageWithGeminiWithModel", () => {
                     inlineData: {
                       mimeType: "image/png",
                       data: "b".repeat(128),
-                      data: "b".repeat(128),
                     },
                   },
                 ],
