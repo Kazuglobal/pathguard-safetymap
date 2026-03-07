@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createHash } from "node:crypto"
 
 import { generateImageWithGeminiWithModel } from "@/lib/gemini-image"
 import {
@@ -15,6 +16,10 @@ export const maxDuration = 60
 
 const BUCKET_NAME = "hazard-simulations"
 const MODEL_NAME = "gemini-3.1-flash-image-preview"
+
+function createPromptSignature(prompt: string): string {
+  return createHash("md5").update(prompt).digest("hex")
+}
 
 type HazardImageRequest = {
   hazardType: HazardType
@@ -105,6 +110,16 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = parseRequestBody(await req.json())
+    const prompt = buildHazardImagePrompt({
+      hazardType: payload.hazardType,
+      riskLevel: payload.riskLevel,
+      depthMinMeters: payload.depthMinMeters ?? null,
+      depthMaxMeters: payload.depthMaxMeters ?? null,
+      areaContext: payload.areaContext,
+      scenarioKey: payload.scenarioKey,
+      locationLabel: payload.locationLabel,
+    })
+    const promptSignature = createPromptSignature(prompt)
     const admin = getSupabaseAdmin() as any
 
     const { data: cachedEntry, error: cacheError } = await admin
@@ -114,6 +129,7 @@ export async function POST(req: NextRequest) {
       .eq("risk_level", payload.riskLevel)
       .eq("area_context", payload.areaContext)
       .eq("scenario_key", payload.scenarioKey)
+      .eq("prompt_signature", promptSignature)
       .maybeSingle()
 
     if (cacheError) {
@@ -129,16 +145,6 @@ export async function POST(req: NextRequest) {
         scenarioKey: cachedEntry.scenario_key,
       })
     }
-
-    const prompt = buildHazardImagePrompt({
-      hazardType: payload.hazardType,
-      riskLevel: payload.riskLevel,
-      depthMinMeters: payload.depthMinMeters ?? null,
-      depthMaxMeters: payload.depthMaxMeters ?? null,
-      areaContext: payload.areaContext,
-      scenarioKey: payload.scenarioKey,
-      locationLabel: payload.locationLabel,
-    })
 
     const generated = await generateImageWithGeminiWithModel({
       prompt,
@@ -181,12 +187,15 @@ export async function POST(req: NextRequest) {
       area_context: payload.areaContext,
       scenario_key: payload.scenarioKey,
       provider: "gemini",
+      prompt_signature: promptSignature,
       prompt_en: prompt,
       depth_label: depthLabel,
       storage_path: objectPath,
       public_url: publicUrl,
       status: "ready",
       generated_at: generatedAt,
+    }, {
+      onConflict: "hazard_type,risk_level,area_context,scenario_key,provider,prompt_signature",
     })
 
     if (upsertError) {
