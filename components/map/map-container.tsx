@@ -42,6 +42,7 @@ import { useUserRoutes } from "@/hooks/use-user-routes"
 import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
 import { classifyMapboxError } from "@/lib/mapbox-error-utils"
+import { getRouteHazardRequestState } from "@/lib/route-hazard-request-state"
 import {
   HAZARD_TILE_CONFIG,
   buildHazardExplanation,
@@ -1049,21 +1050,23 @@ export default function MapContainer() {
   }, [mapStyleSyncToken, selectedUserRoute])
 
   useEffect(() => {
-    if (!selectedUserRoute?.route_geometry) {
+    const requestState = getRouteHazardRequestState(selectedUserRoute, hazardLayerVisibility)
+
+    if (!selectedUserRoute?.route_geometry?.coordinates?.length) {
       setRouteHazards([])
       setRouteHazardError(null)
+      setIsRouteHazardsLoading(requestState.isLoading)
       return
     }
 
-    const shouldFetchHazards =
-      hazardLayerVisibility.flood || hazardLayerVisibility.tsunami
-    if (!shouldFetchHazards) {
+    if (!requestState.shouldFetch) {
       setRouteHazardError(null)
+      setIsRouteHazardsLoading(requestState.isLoading)
       return
     }
 
     let cancelled = false
-    setIsRouteHazardsLoading(true)
+    setIsRouteHazardsLoading(requestState.isLoading)
     setRouteHazardError(null)
 
     fetch(`/api/hazard/route-risks?routeId=${encodeURIComponent(selectedUserRoute.id)}`)
@@ -1110,7 +1113,7 @@ export default function MapContainer() {
     return () => {
       cancelled = true
     }
-  }, [hazardLayerVisibility.flood, hazardLayerVisibility.tsunami, selectedUserRoute])
+  }, [hazardLayerVisibility, selectedUserRoute])
 
   useEffect(() => {
     if (!selectedUserRoute) return

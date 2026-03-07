@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createHash } from "node:crypto"
 
 const mocks = vi.hoisted(() => {
   const mockGetUser = vi.fn()
@@ -15,18 +16,17 @@ const mocks = vi.hoisted(() => {
 
   const from = vi.fn((table: string) => {
     if (table === "hazard_image_cache") {
+      const filters: Record<string, unknown> = {}
+      const chain = {
+        eq: vi.fn((column: string, value: unknown) => {
+          filters[column] = value
+          return chain
+        }),
+        maybeSingle: vi.fn(() => mockMaybeSingle(filters)),
+      }
+
       return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                eq: vi.fn(() => ({
-                  maybeSingle: mockMaybeSingle,
-                })),
-              })),
-            })),
-          })),
-        })),
+        select: vi.fn(() => chain),
         upsert: mockUpsert,
       }
     }
@@ -85,6 +85,10 @@ function buildRequestBody(overrides?: Record<string, unknown>) {
   }
 }
 
+function createPromptSignature(value: string) {
+  return createHash("md5").update(value).digest("hex")
+}
+
 describe("app/api/hazard/image route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -131,6 +135,49 @@ describe("app/api/hazard/image route", () => {
     expect(body.cached).toBe(true)
     expect(body.imageUrl).toContain("cached.png")
     expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("does not reuse cache entries for a different prompt signature", async () => {
+    const cachedPrompt = "cached prompt for shallow flooding"
+    const cachedSignature = createPromptSignature(cachedPrompt)
+
+    mocks.mockMaybeSingle.mockImplementation(async (filters?: Record<string, unknown>) => {
+      if (!filters?.prompt_signature || filters.prompt_signature === cachedSignature) {
+        return {
+          data: {
+            public_url:
+              "https://example.supabase.co/storage/v1/object/public/hazard-simulations/cached.png",
+            prompt_en: cachedPrompt,
+            scenario_key: "standard-residential",
+            generated_at: "2026-03-07T00:00:00.000Z",
+          },
+          error: null,
+        }
+      }
+
+      return { data: null, error: null }
+    })
+
+    const { POST } = await loadRoute()
+    const res = await POST(
+      new Request("http://localhost/api/hazard/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          buildRequestBody({
+            depthMinMeters: 2,
+            depthMaxMeters: 5,
+            locationLabel: "deep flood zone in Japan",
+          }),
+        ),
+      }) as any,
+    )
+
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.cached).toBe(false)
+    expect(mocks.mockGenerateImage).toHaveBeenCalledTimes(1)
   })
 
   it("generates, uploads, and caches when no cached image exists", async () => {
