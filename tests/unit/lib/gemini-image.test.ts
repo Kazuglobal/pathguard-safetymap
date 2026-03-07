@@ -127,6 +127,33 @@ describe("generateImageWithGeminiWithModel", () => {
     timeoutSpy.mockRestore()
   })
 
+  it("uses a longer timeout budget for image-to-image generation", async () => {
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => new AbortController().signal)
+
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => "upstream error",
+    })
+
+    const { generateImageWithGeminiWithModel } = await import("@/lib/gemini-image")
+
+    await expect(
+      generateImageWithGeminiWithModel({
+        prompt: "test prompt",
+        model: "gemini-3.1-flash-image-preview",
+        imageBase64: "dGVzdA==",
+        imageMimeType: "image/png",
+      })
+    ).rejects.toThrow("500")
+
+    expect(timeoutSpy).toHaveBeenCalled()
+    expect(timeoutSpy.mock.calls.some(([ms]) => Number(ms) === 40_000)).toBe(true)
+    timeoutSpy.mockRestore()
+  })
+
   it("always uses gemini-3.1-flash-image-preview even when another model is requested", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
