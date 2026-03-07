@@ -54,73 +54,68 @@ export default function MapFloatingControls({
   }
   const showMobileActionDock = isMobile && !isSelecting && !isReportFormOpen && !isHeatmapVisible
   const showLegend = !isMobile || (!isSelecting && !isHeatmapVisible)
+  const showDesktopDisplayControls = !isMobile
 
   return (
     <>
-      {/* 左上: 地図スタイル切り替えボタン群（検索バーの下） */}
+      {/* 右上: 地図表示コントロールとユーティリティ */}
       <div
-        className="absolute left-3 z-20 flex flex-col gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
+        className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
-        {/* 地図スタイルセレクター */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
-          <MapStyleSelector currentStyle={mapStyle} onChange={setMapStyle} />
-        </div>
+        {showDesktopDisplayControls && (
+          <div data-testid="desktop-display-controls" className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
+              <MapStyleSelector currentStyle={mapStyle} onChange={setMapStyle} />
+            </div>
 
-        {/* 3DとARボタン - モバイルではコンパクト */}
-        <div className="flex gap-1.5 sm:gap-2">
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
-            <Map3DToggle
-              is3DEnabled={is3DEnabled}
-              onToggle={toggle3DMode}
-              size="sm"
-              className="h-9 sm:h-10 px-3 sm:px-4"
-            />
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
+              <Map3DToggle
+                is3DEnabled={is3DEnabled}
+                onToggle={toggle3DMode}
+                size="sm"
+                className="h-9 sm:h-10 px-3 sm:px-4"
+              />
+            </div>
+
+            {onToggleAR && (
+              <Button
+                onClick={onToggleAR}
+                variant={isARMode ? "default" : "outline"}
+                size="sm"
+                aria-pressed={isARMode}
+                className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
+                  isARMode
+                    ? "bg-sky-600 text-white border-sky-600 hover:bg-sky-700"
+                    : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
+                }`}
+                aria-label="ARビューを開く"
+              >
+                <Navigation className="h-4 w-4 mr-1" />
+                AR
+              </Button>
+            )}
+
+            {onToggleHeatmap && (
+              <Button
+                onClick={onToggleHeatmap}
+                variant={isHeatmapVisible ? "default" : "outline"}
+                size="sm"
+                aria-pressed={isHeatmapVisible}
+                className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
+                  isHeatmapVisible
+                    ? "bg-red-600 text-white border-red-600 hover:bg-red-700"
+                    : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
+                }`}
+                aria-label="事故ヒートマップ表示切替"
+              >
+                <Flame className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">事故</span>
+              </Button>
+            )}
           </div>
+        )}
 
-          {/* ARボタン */}
-          {onToggleAR && (
-            <Button
-              onClick={onToggleAR}
-              variant={isARMode ? "default" : "outline"}
-              size="sm"
-              aria-pressed={isARMode}
-              className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
-                isARMode
-                  ? "bg-sky-600 text-white border-sky-600 hover:bg-sky-700"
-                  : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
-              }`}
-              aria-label="ARビューを開く"
-            >
-              <Navigation className="h-4 w-4 mr-1" />
-              AR
-            </Button>
-          )}
-
-          {/* 事故ヒートマップトグル */}
-          {onToggleHeatmap && (
-            <Button
-              onClick={onToggleHeatmap}
-              variant={isHeatmapVisible ? "default" : "outline"}
-              size="sm"
-              aria-pressed={isHeatmapVisible}
-              className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
-                isHeatmapVisible
-                  ? "bg-red-600 text-white border-red-600 hover:bg-red-700"
-                  : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
-              }`}
-              aria-label="事故ヒートマップ表示切替"
-            >
-              <Flame className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">事故</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* 右上: ユーザー情報とヘルプ */}
-      <div
-        className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
-      >
+        <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
         {/* ポイント・レベル表示 - モバイルではコンパクト表示 */}
         <div className="flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1.5 sm:py-2 shadow-lg border border-gray-200/80">
           <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-500" />
@@ -155,7 +150,7 @@ export default function MapFloatingControls({
             <HelpCircle className="h-4 w-4" />
           </Button>
         </HelpDialog>
-
+        </div>
       </div>
 
       {/* 右下: モバイル主要アクションドック */}

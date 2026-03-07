@@ -14,9 +14,20 @@ import { Layers } from "lucide-react"
 interface MapStyleSelectorProps {
   currentStyle: string
   onChange: (style: string) => void
+  buttonClassName?: string
+  contentAlign?: "start" | "center" | "end"
+  compactLabel?: boolean
+  buttonLabel?: string
 }
 
-export default function MapStyleSelector({ currentStyle, onChange }: MapStyleSelectorProps) {
+export default function MapStyleSelector({
+  currentStyle,
+  onChange,
+  buttonClassName,
+  contentAlign = "end",
+  compactLabel = true,
+  buttonLabel = "地図スタイル",
+}: MapStyleSelectorProps) {
   const mapStyles = [
     { id: "streets-v12", name: "標準地図" },
     { id: "satellite-v9", name: "航空写真" },
@@ -30,12 +41,16 @@ export default function MapStyleSelector({ currentStyle, onChange }: MapStyleSel
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center h-9 sm:h-10 px-2.5 sm:px-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className={`flex items-center h-9 sm:h-10 px-2.5 sm:px-3 ${buttonClassName ?? ""}`.trim()}
+        >
           <Layers className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">地図スタイル</span>
+          <span className={compactLabel ? "hidden sm:inline" : ""}>{buttonLabel}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align={contentAlign}>
         <DropdownMenuLabel>地図スタイルを選択</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {mapStyles.map((style) => (

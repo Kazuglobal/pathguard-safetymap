@@ -26,6 +26,7 @@ export default function Map3DToggle({
       size={size}
       onClick={onToggle}
       aria-pressed={is3DEnabled}
+      aria-label="3D表示切替"
       className={cn(
         "backdrop-blur-sm shadow-sm transition-colors font-semibold",
         isActive
