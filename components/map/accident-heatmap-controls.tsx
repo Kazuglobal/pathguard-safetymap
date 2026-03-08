@@ -145,12 +145,12 @@ export function AccidentHeatmapControls({
             </Select>
           </div>
 
-          {/* Age-group (24 and under) involvement */}
+          {/* Child involvement */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Baby className="h-3.5 w-3.5 text-pink-500" />
               <Label htmlFor="child-filter" className="text-xs text-gray-600 cursor-pointer">
-                24歳以下関与のみ
+                子ども関与のみ
               </Label>
             </div>
             <Switch
@@ -161,7 +161,7 @@ export function AccidentHeatmapControls({
             />
           </div>
           <p className="text-[10px] text-gray-400 -mt-2 leading-tight">
-            ※ 年齢は警察庁オープンデータの年齢区分（24歳以下）で判定
+            ※ 子ども関与は補充票確認分で判定
           </p>
 
           {/* Pedestrian involvement */}

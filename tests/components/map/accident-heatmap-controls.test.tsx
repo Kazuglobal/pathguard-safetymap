@@ -53,4 +53,22 @@ describe('AccidentHeatmapControls', () => {
     expect(screen.getByText('128件表示中')).toBeInTheDocument()
     expect(screen.getByText('取得エラー')).toBeInTheDocument()
   })
+
+  it('describes the child filter using child involvement wording', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+      />,
+    )
+
+    expect(screen.getByText('子ども関与のみ')).toBeInTheDocument()
+    expect(screen.getByText('※ 子ども関与は補充票確認分で判定')).toBeInTheDocument()
+    expect(screen.queryByText('24歳以下関与のみ')).not.toBeInTheDocument()
+  })
 })
