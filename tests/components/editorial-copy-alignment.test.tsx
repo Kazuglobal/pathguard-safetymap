@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import SchoolRouteNewsPage from "@/app/school-route-news/page"
+import NewsDetailPage from "@/app/school-route-news/[slug]/page"
 import SafeMagazinePage from "@/app/safe-magazine/page"
 import { SchoolRouteNewsSection } from "@/components/landing/SchoolRouteNewsSection"
 
 vi.mock("next/image", () => ({
-  default: ({ fill: _fill, ...props }: any) => <img {...props} />,
+  default: ({ fill: _fill, priority: _priority, ...props }: any) => <img {...props} />,
 }))
 
 vi.mock("next/link", () => ({
@@ -33,6 +34,17 @@ describe("editorial copy alignment", () => {
 
   it("relabels breaking badges as curated highlights instead of速報", () => {
     render(<SchoolRouteNewsPage />)
+
+    expect(screen.getByText("注目")).toBeInTheDocument()
+    expect(screen.queryByText("速報")).not.toBeInTheDocument()
+  })
+
+  it("keeps the curated highlight label on the school route news detail page", async () => {
+    render(
+      await NewsDetailPage({
+        params: Promise.resolve({ slug: "fukuoka-asakura-bicycle-accident-20260119" }),
+      })
+    )
 
     expect(screen.getByText("注目")).toBeInTheDocument()
     expect(screen.queryByText("速報")).not.toBeInTheDocument()

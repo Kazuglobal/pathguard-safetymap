@@ -76,7 +76,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
           </div>
           {item.isBreaking && (
             <span className="px-3 py-1 text-xs font-bold bg-red-500 text-white rounded-full">
-              速報
+              注目
             </span>
           )}
           <div className="flex items-center gap-1 text-xs text-gray-500">
