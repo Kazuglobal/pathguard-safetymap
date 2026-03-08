@@ -37,6 +37,7 @@ export interface AccidentFeatureProperties {
   year: number
   type: string | null
   hasChild: boolean | null
+  hasYoung: boolean | null
   hasPedestrian: boolean | null
   date: string | null
   weather: string | null
