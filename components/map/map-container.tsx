@@ -2011,8 +2011,8 @@ export default function MapContainer() {
         />
 
         {/* 事故ヒートマップコントロール */}
-        {((!isMobile && !awaitingLocationSelection) || (isMobile && accidentHeatmap.isVisible && !awaitingLocationSelection && !isReportFormOpen)) && (
-          <div className="absolute left-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] sm:left-auto sm:right-3 sm:bottom-6">
+        {((!isMobile && !awaitingLocationSelection) || (isMobile && !awaitingLocationSelection && !isReportFormOpen)) && (
+          <div className={isMobile ? "absolute left-3 z-20 top-[calc(env(safe-area-inset-top,0px)+4.25rem)]" : "absolute left-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] sm:left-auto sm:right-3 sm:bottom-6"}>
             <AccidentHeatmapControls
               filters={accidentHeatmap.filters}
               onFiltersChange={accidentHeatmap.setFilters}
@@ -2021,6 +2021,7 @@ export default function MapContainer() {
               isLoading={accidentHeatmap.isLoading}
               featureCount={accidentHeatmap.featureCount}
               error={accidentHeatmap.error}
+              isMobile={isMobile}
             />
           </div>
         )}
