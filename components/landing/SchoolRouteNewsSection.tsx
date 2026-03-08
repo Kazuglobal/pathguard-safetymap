@@ -26,7 +26,7 @@ export function SchoolRouteNewsSection() {
             <Zap className="w-5 h-5 text-red-500" />
             <h2 className="text-lg md:text-xl font-bold text-gray-900">通学路の安全ニュース</h2>
             <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-600 rounded-full">
-              リアルタイム
+              編集部選定
             </span>
           </div>
           <Link
@@ -76,7 +76,7 @@ export function SchoolRouteNewsSection() {
                     )}
                     {item.isBreaking && (
                       <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded">
-                        速報
+                        注目
                       </span>
                     )}
                   </div>
