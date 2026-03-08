@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { getAccidentHeatmapControlContainerClass } from '@/components/map/accident-heatmap-control-layout'
 import { AccidentHeatmapControls } from '@/components/map/accident-heatmap-controls'
 import { DEFAULT_HEATMAP_FILTERS } from '@/lib/traffic-accident-heatmap'
 
@@ -149,5 +150,31 @@ describe('AccidentHeatmapControls', () => {
     )
 
     expect(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' })).toBeInTheDocument()
+  })
+
+  it('does not show stale count or error while the mobile heatmap is hidden', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={false}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error="取得エラー"
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+
+    expect(screen.getByText('ヒートマップは非表示です')).toBeInTheDocument()
+    expect(screen.queryByText('128件表示中')).not.toBeInTheDocument()
+    expect(screen.queryByText('取得エラー')).not.toBeInTheDocument()
+  })
+
+  it('keeps the mobile trigger below sidebar overlays', () => {
+    expect(getAccidentHeatmapControlContainerClass(true)).toContain('z-10')
+    expect(getAccidentHeatmapControlContainerClass(false)).toContain('sm:right-3')
   })
 })

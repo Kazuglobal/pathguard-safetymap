@@ -69,17 +69,20 @@ function countActiveFilters(filters: AccidentHeatmapFilters) {
 function HeatmapFilterBody({
   filters,
   onFiltersChange,
+  isVisible,
   isLoading,
   featureCount,
   error,
 }: Pick<
   AccidentHeatmapControlsProps,
-  'filters' | 'onFiltersChange' | 'isLoading' | 'featureCount' | 'error'
+  'filters' | 'onFiltersChange' | 'isVisible' | 'isLoading' | 'featureCount' | 'error'
 >) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs text-gray-500">
-        {isLoading ? (
+        {!isVisible ? (
+          <span>ヒートマップは非表示です</span>
+        ) : isLoading ? (
           <div className="flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span>読み込み中...</span>
@@ -89,7 +92,7 @@ function HeatmapFilterBody({
         )}
       </div>
 
-      {error && (
+      {isVisible && error && (
         <div className="flex items-start gap-1.5 rounded-md bg-red-50 p-2 text-xs text-red-600">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span className="line-clamp-2">{error}</span>
@@ -289,6 +292,7 @@ export function AccidentHeatmapControls({
               <HeatmapFilterBody
                 filters={filters}
                 onFiltersChange={onFiltersChange}
+                isVisible={isVisible}
                 isLoading={isLoading}
                 featureCount={featureCount}
                 error={error}
@@ -328,6 +332,7 @@ export function AccidentHeatmapControls({
           <HeatmapFilterBody
             filters={filters}
             onFiltersChange={onFiltersChange}
+            isVisible={isVisible}
             isLoading={isLoading}
             featureCount={featureCount}
             error={error}
