@@ -45,6 +45,7 @@ describe('traffic-accident-heatmap', () => {
         maxYear: 2020,
         severityFilter: 'all',
         childFilter: false,
+        youngFilter: true,
         pedestrianFilter: true,
       },
     )
@@ -60,6 +61,7 @@ describe('traffic-accident-heatmap', () => {
       p_max_year: 2024,
       p_severity_filter: 'all',
       p_child_filter: null,
+      p_young_filter: true,
       p_pedestrian_filter: true,
     })
   })
@@ -143,7 +145,29 @@ describe('traffic-accident-heatmap', () => {
 
     const [, params] = vi.mocked(supabase.rpc).mock.calls[0]
     expect(params.p_child_filter).toBe(true)
+    expect(params.p_young_filter).toBeNull()
     expect(params.p_limit).toBe(5000)
+  })
+
+  it('passes both child and young filters together for AND semantics', async () => {
+    const supabase = createSupabaseRpcMock(async () => ({
+      data: { type: 'FeatureCollection', features: [] },
+      error: null,
+    }))
+
+    await fetchAccidentsInBounds(
+      supabase,
+      { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+      {
+        ...DEFAULT_HEATMAP_FILTERS,
+        childFilter: true,
+        youngFilter: true,
+      },
+    )
+
+    const [, params] = vi.mocked(supabase.rpc).mock.calls[0]
+    expect(params.p_child_filter).toBe(true)
+    expect(params.p_young_filter).toBe(true)
   })
 
   it('surfaces canceling statement errors when request is not aborted by client', async () => {

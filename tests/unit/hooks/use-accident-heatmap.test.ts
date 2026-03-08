@@ -146,6 +146,17 @@ describe('useAccidentHeatmap', () => {
     expect(fetchAccidentsInBounds).toHaveBeenCalledTimes(1)
   })
 
+  it('stores the young filter independently from the child filter', () => {
+    const { result } = renderHook(() => useAccidentHeatmap())
+
+    act(() => {
+      result.current.setFilters({ childFilter: true, youngFilter: true })
+    })
+
+    expect(result.current.filters.childFilter).toBe(true)
+    expect(result.current.filters.youngFilter).toBe(true)
+  })
+
   it('skips fetchForViewport while hidden', async () => {
     vi.mocked(fetchAccidentsInBounds).mockResolvedValue({
       type: 'FeatureCollection',
