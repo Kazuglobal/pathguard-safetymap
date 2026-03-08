@@ -366,20 +366,7 @@ export function getLatestNews(count: number = 5): SchoolRouteNewsItem[] {
 // 日付をフォーマット
 export function formatNewsDate(dateString: string): string {
   const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  if (diffHours < 1) {
-    return "たった今"
-  } else if (diffHours < 24) {
-    return `${diffHours}時間前`
-  } else if (diffDays < 7) {
-    return `${diffDays}日前`
-  } else {
-    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
-  }
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
 }
 
 // 相対時間を取得

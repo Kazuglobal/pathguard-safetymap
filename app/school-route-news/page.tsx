@@ -31,7 +31,7 @@ export default function SchoolRouteNewsPage() {
                 <Zap className="w-5 h-5 text-red-500" />
                 <h1 className="text-xl font-bold text-gray-900">通学路の安全ニュース</h1>
               </div>
-              <p className="text-sm text-gray-500">全国の通学路に関するリアルタイムニュース</p>
+              <p className="text-sm text-gray-500">編集部が選んだ通学路の安全トピック</p>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function SchoolRouteNewsPage() {
                     )}
                     {item.isBreaking && (
                       <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded">
-                        速報
+                        注目
                       </span>
                     )}
                   </div>
