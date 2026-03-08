@@ -1,8 +1,6 @@
 import { expect, test, type Page, type Request } from '@playwright/test'
 import { MapPageObject } from '../page-objects/map'
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3010'
-
 function isHeatmapRpc(request: Request): boolean {
   return (
     request.method() === 'POST' &&
@@ -19,7 +17,7 @@ function readRpcBody(request: Request): Record<string, unknown> | null {
 }
 
 async function login(page: Page) {
-  await page.goto(`${BASE_URL}/login`)
+  await page.goto('/login')
   await page.locator('input#email, input[type="email"]').fill(process.env.E2E_REGULAR_EMAIL ?? 'user@test.com')
   await page.locator('input#password, input[type="password"]').fill(process.env.E2E_REGULAR_PASSWORD ?? 'testpassword123')
   await page.locator('button[type="submit"]').click()
@@ -34,14 +32,21 @@ async function dismissWelcomeDialog(page: Page) {
   }
 }
 
+const SNAPSHOT_PROJECT = 'Desktop - Chrome 1366x768'
+
 test.describe('Accident heatmap filters', () => {
   test.setTimeout(120000)
 
-  test('shows separated child and young filters and sends both RPC params', async ({ page }) => {
+  test('shows separated child and young filters and sends both RPC params', async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== SNAPSHOT_PROJECT,
+      `This integration check is recorded only in ${SNAPSHOT_PROJECT}`,
+    )
+
     const mapPage = new MapPageObject(page)
 
     await login(page)
-    await page.goto(`${BASE_URL}/map`)
+    await page.goto('/map')
     await mapPage.waitForMapLoad()
     await dismissWelcomeDialog(page)
 

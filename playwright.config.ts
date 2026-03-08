@@ -111,7 +111,7 @@ export default defineConfig({
     command: webServerCommand,
     url: playwrightBaseURL,
     reuseExistingServer:
-      !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING === 'true',
+      !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING !== 'false',
     timeout: 120 * 1000,
   },
 
