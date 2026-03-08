@@ -53,4 +53,44 @@ describe('AccidentHeatmapControls', () => {
     expect(screen.getByText('128件表示中')).toBeInTheDocument()
     expect(screen.getByText('取得エラー')).toBeInTheDocument()
   })
+
+  it('describes child and young filters with explicit semantics', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+      />,
+    )
+
+    expect(screen.getByText('子ども関与（補充票確認分）のみ')).toBeInTheDocument()
+    expect(screen.getByText('※ 子ども関与は補充票確認分で判定')).toBeInTheDocument()
+    expect(screen.getByText('若年者関与（24歳以下コード）のみ')).toBeInTheDocument()
+    expect(screen.getByText('※ 若年者関与は警察庁オープンデータの年齢区分コードで判定')).toBeInTheDocument()
+    expect(screen.getByText('※ 同時選択時は両方の条件に一致する事故のみ表示')).toBeInTheDocument()
+    expect(screen.queryByText('24歳以下関与のみ')).not.toBeInTheDocument()
+  })
+
+  it('updates the young filter independently', () => {
+    const onFiltersChange = vi.fn()
+
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={onFiltersChange}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('若年者関与（24歳以下コード）のみ'))
+    expect(onFiltersChange).toHaveBeenCalledWith({ youngFilter: true })
+  })
 })

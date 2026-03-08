@@ -1,6 +1,6 @@
 "use client"
 
-import { Flame, Loader2, AlertCircle, Baby, Footprints } from 'lucide-react'
+import { Flame, Loader2, AlertCircle, Baby, Footprints, Users } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {
@@ -38,7 +38,7 @@ const YEAR_OPTIONS = [2018, 2019, 2020, 2021, 2022, 2023]
 
 /**
  * Floating control panel for the accident heatmap.
- * Shows toggle, filters (year range, severity, child/pedestrian), and status.
+ * Shows toggle, filters (year range, severity, child/young/pedestrian), and status.
  */
 export function AccidentHeatmapControls({
   filters,
@@ -145,12 +145,12 @@ export function AccidentHeatmapControls({
             </Select>
           </div>
 
-          {/* Age-group (24 and under) involvement */}
+          {/* Child involvement */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Baby className="h-3.5 w-3.5 text-pink-500" />
               <Label htmlFor="child-filter" className="text-xs text-gray-600 cursor-pointer">
-                24歳以下関与のみ
+                子ども関与（補充票確認分）のみ
               </Label>
             </div>
             <Switch
@@ -161,7 +161,30 @@ export function AccidentHeatmapControls({
             />
           </div>
           <p className="text-[10px] text-gray-400 -mt-2 leading-tight">
-            ※ 年齢は警察庁オープンデータの年齢区分（24歳以下）で判定
+            ※ 子ども関与は補充票確認分で判定
+          </p>
+
+          {/* Young involvement */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-orange-500" />
+              <Label htmlFor="young-filter" className="text-xs text-gray-600 cursor-pointer">
+                若年者関与（24歳以下コード）のみ
+              </Label>
+            </div>
+            <Switch
+              id="young-filter"
+              checked={filters.youngFilter === true}
+              onCheckedChange={(checked) => onFiltersChange({ youngFilter: checked ? true : null })}
+              className="scale-90"
+            />
+          </div>
+          <p className="text-[10px] text-gray-400 -mt-2 leading-tight">
+            ※ 若年者関与は警察庁オープンデータの年齢区分コードで判定
+          </p>
+
+          <p className="text-[10px] text-gray-400 -mt-2 leading-tight">
+            ※ 同時選択時は両方の条件に一致する事故のみ表示
           </p>
 
           {/* Pedestrian involvement */}

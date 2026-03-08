@@ -53,4 +53,30 @@ describe('AccidentHeatmapLayer popup helpers', () => {
     expect(content.textContent).toContain('24歳以下関与（年齢区分）')
     expect(content.textContent).toContain('歩行者関与')
   })
+
+  it('shows only the child label when only child involvement is present', () => {
+    const content = buildAccidentPopupContent({
+      severity: 2,
+      fatalities: 0,
+      injuries: 1,
+      hasChild: true,
+      hasYoung: false,
+    })
+
+    expect(content.textContent).toContain('子ども関与（補充票確認分）')
+    expect(content.textContent).not.toContain('若年者関与（24歳以下コード）')
+  })
+
+  it('shows only the young label when only young involvement is present', () => {
+    const content = buildAccidentPopupContent({
+      severity: 2,
+      fatalities: 0,
+      injuries: 1,
+      hasChild: false,
+      hasYoung: true,
+    })
+
+    expect(content.textContent).not.toContain('子ども関与（補充票確認分）')
+    expect(content.textContent).toContain('若年者関与（24歳以下コード）')
+  })
 })

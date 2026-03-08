@@ -1,11 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const playwrightPort = process.env.PLAYWRIGHT_PORT || process.env.PORT || '3000';
+const playwrightPort = process.env.PLAYWRIGHT_PORT || '3010';
 const playwrightBaseURL =
   process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${playwrightPort}`;
 const webServerCommand =
   process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ||
-  `npm run dev -- -p ${playwrightPort}`;
+  `node node_modules/next/dist/bin/next dev --webpack -p ${playwrightPort}`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.

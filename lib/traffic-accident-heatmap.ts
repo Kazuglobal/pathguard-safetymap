@@ -13,6 +13,7 @@ export interface AccidentHeatmapFilters {
   maxYear: number
   severityFilter: 'all' | 'fatal'
   childFilter: boolean | null
+  youngFilter: boolean | null
   pedestrianFilter: boolean | null
 }
 
@@ -37,6 +38,7 @@ export interface AccidentFeatureProperties {
   year: number
   type: string | null
   hasChild: boolean | null
+  hasYoung: boolean | null
   hasPedestrian: boolean | null
   date: string | null
   weather: string | null
@@ -69,6 +71,7 @@ export const DEFAULT_HEATMAP_FILTERS: AccidentHeatmapFilters = {
   maxYear: 2023,
   severityFilter: 'all',
   childFilter: null,
+  youngFilter: null,
   pedestrianFilter: null,
 }
 
@@ -115,6 +118,7 @@ function normalizeFilters(filters: AccidentHeatmapFilters): AccidentHeatmapFilte
     maxYear: Math.max(minYear, maxYear),
     severityFilter: filters.severityFilter === 'fatal' ? 'fatal' : 'all',
     childFilter: filters.childFilter === true ? true : null,
+    youngFilter: filters.youngFilter === true ? true : null,
     pedestrianFilter: filters.pedestrianFilter === true ? true : null,
   }
 }
@@ -178,6 +182,7 @@ export async function fetchAccidentsInBounds(
       p_max_year: normalizedFilters.maxYear,
       p_severity_filter: normalizedFilters.severityFilter,
       p_child_filter: normalizedFilters.childFilter,
+      p_young_filter: normalizedFilters.youngFilter,
       p_pedestrian_filter: normalizedFilters.pedestrianFilter,
       p_limit: limit,
     })
