@@ -35,6 +35,10 @@ import {
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
+import {
+  getAccidentHeatmapControlContainerClass,
+  shouldRenderAccidentHeatmapControl,
+} from "./accident-heatmap-control-layout"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
 import { X } from "lucide-react"
@@ -2011,8 +2015,12 @@ export default function MapContainer() {
         />
 
         {/* 事故ヒートマップコントロール */}
-        {((!isMobile && !awaitingLocationSelection) || (isMobile && accidentHeatmap.isVisible && !awaitingLocationSelection && !isReportFormOpen)) && (
-          <div className="absolute left-3 z-10 bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] sm:left-auto sm:right-3 sm:bottom-6">
+        {shouldRenderAccidentHeatmapControl({
+          isMobile,
+          awaitingLocationSelection,
+          isReportFormOpen,
+        }) && (
+          <div className={getAccidentHeatmapControlContainerClass(isMobile)}>
             <AccidentHeatmapControls
               filters={accidentHeatmap.filters}
               onFiltersChange={accidentHeatmap.setFilters}
@@ -2021,6 +2029,7 @@ export default function MapContainer() {
               isLoading={accidentHeatmap.isLoading}
               featureCount={accidentHeatmap.featureCount}
               error={accidentHeatmap.error}
+              isMobile={isMobile}
             />
           </div>
         )}

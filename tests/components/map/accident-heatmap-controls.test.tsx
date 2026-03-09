@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import {
+  getAccidentHeatmapControlContainerClass,
+  shouldRenderAccidentHeatmapControl,
+} from '@/components/map/accident-heatmap-control-layout'
 import { AccidentHeatmapControls } from '@/components/map/accident-heatmap-controls'
 import { DEFAULT_HEATMAP_FILTERS } from '@/lib/traffic-accident-heatmap'
 
@@ -92,5 +96,141 @@ describe('AccidentHeatmapControls', () => {
 
     fireEvent.click(screen.getByLabelText('若年者関与（24歳以下コード）のみ'))
     expect(onFiltersChange).toHaveBeenCalledWith({ youngFilter: true })
+  })
+
+  it('renders a compact mobile trigger instead of the desktop card shell', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={false}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={0}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' })).toBeInTheDocument()
+    expect(screen.queryByText('対象期間')).not.toBeInTheDocument()
+  })
+
+  it('opens the mobile drawer and exposes the same filter controls', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={{ ...DEFAULT_HEATMAP_FILTERS, childFilter: true }}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+
+    expect(screen.getByText('対象期間')).toBeInTheDocument()
+    expect(screen.getByText('128件表示中')).toBeInTheDocument()
+    expect(screen.getByText('子ども関与（補充票確認分）のみ')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('keeps the mobile trigger available even when the heatmap is hidden', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={false}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={0}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' })).toBeInTheDocument()
+  })
+
+  it('does not show stale count or error while the mobile heatmap is hidden', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={false}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error="取得エラー"
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+
+    expect(screen.getByText('ヒートマップは非表示です')).toBeInTheDocument()
+    expect(screen.queryByText('128件表示中')).not.toBeInTheDocument()
+    expect(screen.queryByText('取得エラー')).not.toBeInTheDocument()
+  })
+
+  it('keeps the mobile trigger below sidebar overlays', () => {
+    expect(getAccidentHeatmapControlContainerClass(true)).toContain('z-10')
+    expect(getAccidentHeatmapControlContainerClass(true)).toContain('top-[calc(env(safe-area-inset-top,0px)+7.5rem)]')
+    expect(getAccidentHeatmapControlContainerClass(false)).toContain('sm:right-3')
+  })
+
+  it('keeps the mobile trigger visible during location selection', () => {
+    expect(
+      shouldRenderAccidentHeatmapControl({
+        isMobile: true,
+        awaitingLocationSelection: true,
+        isReportFormOpen: false,
+      }),
+    ).toBe(true)
+  })
+
+  it('shows the severity options directly in the mobile drawer', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+
+    expect(screen.getByRole('button', { name: 'すべての事故' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '死亡事故のみ' })).toBeInTheDocument()
+  })
+
+  it('updates severity from the mobile inline control', () => {
+    const onFiltersChange = vi.fn()
+
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={onFiltersChange}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+    fireEvent.click(screen.getByRole('button', { name: '死亡事故のみ' }))
+
+    expect(onFiltersChange).toHaveBeenCalledWith({ severityFilter: 'fatal' })
   })
 })
