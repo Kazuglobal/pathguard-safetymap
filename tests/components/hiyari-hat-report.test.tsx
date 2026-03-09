@@ -10,10 +10,16 @@ const mocks = vi.hoisted(() => ({
   inFilter: vi.fn(),
   select: vi.fn(),
   from: vi.fn(),
+  useLandingReportReactions: vi.fn(),
+  toggleLandingReaction: vi.fn(),
 }))
 
 vi.mock("@supabase/ssr", () => ({
   createBrowserClient: mocks.createBrowserClient,
+}))
+
+vi.mock("@/hooks/use-landing-report-reactions", () => ({
+  useLandingReportReactions: mocks.useLandingReportReactions,
 }))
 
 vi.mock("next/image", () => ({
@@ -111,6 +117,11 @@ describe("HiyariHatReport", () => {
     mocks.select.mockReturnValue({ in: mocks.inFilter })
     mocks.from.mockReturnValue({ select: mocks.select })
     mocks.createBrowserClient.mockReturnValue({ from: mocks.from })
+    mocks.useLandingReportReactions.mockReturnValue({
+      reactions: {},
+      isLoading: false,
+      toggleReaction: mocks.toggleLandingReaction,
+    })
   })
 
   it("renders coordinates even when latitude and longitude are zero", async () => {
@@ -133,6 +144,42 @@ describe("HiyariHatReport", () => {
     expect(projection).toContain("id")
     expect(projection).toContain("title")
     expect(projection).toContain("danger_level")
+  })
+
+  it("永続化された helpful リアクションを active 状態で描画する", async () => {
+    mocks.limit.mockResolvedValue({
+      data: [clickableReport],
+      error: null,
+    })
+    mocks.useLandingReportReactions.mockReturnValue({
+      reactions: {
+        [clickableReport.id]: {
+          helpful: true,
+          caution: false,
+        },
+      },
+      isLoading: false,
+      toggleReaction: mocks.toggleLandingReaction,
+    })
+
+    render(<HiyariHatReport />)
+
+    const button = await screen.findByRole("button", { name: "参考になった" })
+    expect(button).toHaveClass("bg-blue-100")
+    expect(button).toHaveClass("text-blue-600")
+  })
+
+  it("リアクションボタン押下で永続化トグルを呼ぶ", async () => {
+    mocks.limit.mockResolvedValue({
+      data: [clickableReport],
+      error: null,
+    })
+
+    render(<HiyariHatReport />)
+
+    fireEvent.click(await screen.findByRole("button", { name: "参考になった" }))
+
+    expect(mocks.toggleLandingReaction).toHaveBeenCalledWith(clickableReport.id, "helpful")
   })
 
   describe("詳細モーダル表示", () => {

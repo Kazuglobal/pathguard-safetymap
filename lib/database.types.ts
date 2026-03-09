@@ -943,6 +943,52 @@ export type Database = {
           },
         ]
       }
+      danger_report_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          reaction_type: string
+          report_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reaction_type: string
+          report_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reaction_type?: string
+          report_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "danger_report_reactions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "danger_report_reactions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "public_reports_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "danger_report_reactions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "report_stats"
+            referencedColumns: ["report_id"]
+          },
+        ]
+      }
       report_comments: {
         Row: {
           content: string
