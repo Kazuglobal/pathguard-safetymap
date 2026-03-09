@@ -69,13 +69,14 @@ function countActiveFilters(filters: AccidentHeatmapFilters) {
 function HeatmapFilterBody({
   filters,
   onFiltersChange,
+  isMobile,
   isVisible,
   isLoading,
   featureCount,
   error,
 }: Pick<
   AccidentHeatmapControlsProps,
-  'filters' | 'onFiltersChange' | 'isVisible' | 'isLoading' | 'featureCount' | 'error'
+  'filters' | 'onFiltersChange' | 'isMobile' | 'isVisible' | 'isLoading' | 'featureCount' | 'error'
 >) {
   return (
     <div className="space-y-3">
@@ -134,18 +135,41 @@ function HeatmapFilterBody({
 
       <div className="space-y-1.5">
         <Label className="text-xs text-gray-500">重大度</Label>
-        <Select
-          value={filters.severityFilter}
-          onValueChange={(v: 'all' | 'fatal') => onFiltersChange({ severityFilter: v })}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">すべての事故</SelectItem>
-            <SelectItem value="fatal" className="text-xs">死亡事故のみ</SelectItem>
-          </SelectContent>
-        </Select>
+        {isMobile ? (
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="重大度">
+            <Button
+              type="button"
+              variant={filters.severityFilter === 'all' ? 'default' : 'outline'}
+              className="h-9 text-xs"
+              aria-pressed={filters.severityFilter === 'all'}
+              onClick={() => onFiltersChange({ severityFilter: 'all' })}
+            >
+              すべての事故
+            </Button>
+            <Button
+              type="button"
+              variant={filters.severityFilter === 'fatal' ? 'default' : 'outline'}
+              className="h-9 text-xs"
+              aria-pressed={filters.severityFilter === 'fatal'}
+              onClick={() => onFiltersChange({ severityFilter: 'fatal' })}
+            >
+              死亡事故のみ
+            </Button>
+          </div>
+        ) : (
+          <Select
+            value={filters.severityFilter}
+            onValueChange={(v: 'all' | 'fatal') => onFiltersChange({ severityFilter: v })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">すべての事故</SelectItem>
+              <SelectItem value="fatal" className="text-xs">死亡事故のみ</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
@@ -292,6 +316,7 @@ export function AccidentHeatmapControls({
               <HeatmapFilterBody
                 filters={filters}
                 onFiltersChange={onFiltersChange}
+                isMobile={isMobile}
                 isVisible={isVisible}
                 isLoading={isLoading}
                 featureCount={featureCount}
@@ -332,6 +357,7 @@ export function AccidentHeatmapControls({
           <HeatmapFilterBody
             filters={filters}
             onFiltersChange={onFiltersChange}
+            isMobile={isMobile}
             isVisible={isVisible}
             isLoading={isLoading}
             featureCount={featureCount}

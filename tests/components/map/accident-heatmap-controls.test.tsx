@@ -177,4 +177,46 @@ describe('AccidentHeatmapControls', () => {
     expect(getAccidentHeatmapControlContainerClass(true)).toContain('z-10')
     expect(getAccidentHeatmapControlContainerClass(false)).toContain('sm:right-3')
   })
+
+  it('shows the severity options directly in the mobile drawer', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+
+    expect(screen.getByRole('button', { name: 'すべての事故' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '死亡事故のみ' })).toBeInTheDocument()
+  })
+
+  it('updates severity from the mobile inline control', () => {
+    const onFiltersChange = vi.fn()
+
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={onFiltersChange}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+        isMobile={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '事故ヒートマップ設定を開く' }))
+    fireEvent.click(screen.getByRole('button', { name: '死亡事故のみ' }))
+
+    expect(onFiltersChange).toHaveBeenCalledWith({ severityFilter: 'fatal' })
+  })
 })
