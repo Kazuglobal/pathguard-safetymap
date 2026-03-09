@@ -21,16 +21,16 @@ ALTER TABLE public.danger_report_reactions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own danger report reactions" ON public.danger_report_reactions;
 CREATE POLICY "Users can view their own danger report reactions"
     ON public.danger_report_reactions FOR SELECT
-    USING (auth.uid() = user_id);
+    USING (user_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "Users can create their own danger report reactions" ON public.danger_report_reactions;
 CREATE POLICY "Users can create their own danger report reactions"
     ON public.danger_report_reactions FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (user_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "Users can delete their own danger report reactions" ON public.danger_report_reactions;
 CREATE POLICY "Users can delete their own danger report reactions"
     ON public.danger_report_reactions FOR DELETE
-    USING (auth.uid() = user_id);
+    USING (user_id = (SELECT auth.uid()));
 
 COMMIT;

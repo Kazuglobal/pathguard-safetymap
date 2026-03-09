@@ -26,16 +26,33 @@ export function useLandingReportReactions(reportIds: string[]) {
   const { toast } = useToast()
   const [reactions, setReactions] = React.useState<Record<string, LandingReactionState>>({})
   const [isLoading, setIsLoading] = React.useState(false)
+  const reactionsRef = React.useRef<Record<string, LandingReactionState>>({})
+  const hasLoadedInitialStateRef = React.useRef(false)
+  const pendingOptimisticKeysRef = React.useRef(new Set<string>())
+  const inFlightToggleKeysRef = React.useRef(new Set<string>())
 
   const reportIdsKey = React.useMemo(() => reportIds.join(","), [reportIds])
   const stableReportIds = React.useMemo(() => reportIds.slice(), [reportIdsKey])
+  const updateReactions = React.useCallback((
+    updater: Record<string, LandingReactionState> | ((prev: Record<string, LandingReactionState>) => Record<string, LandingReactionState>)
+  ) => {
+    setReactions((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater
+      reactionsRef.current = next
+      return next
+    })
+  }, [])
 
   React.useEffect(() => {
     let cancelled = false
+    hasLoadedInitialStateRef.current = false
+    pendingOptimisticKeysRef.current.clear()
 
     async function loadReactions() {
       if (!stableReportIds.length) {
-        setReactions({})
+        updateReactions({})
+        hasLoadedInitialStateRef.current = true
+        setIsLoading(false)
         return
       }
 
@@ -44,7 +61,10 @@ export function useLandingReportReactions(reportIds: string[]) {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          if (!cancelled) setReactions({})
+          if (!cancelled) {
+            updateReactions({})
+            hasLoadedInitialStateRef.current = true
+          }
           return
         }
 
@@ -69,12 +89,26 @@ export function useLandingReportReactions(reportIds: string[]) {
         })
 
         if (!cancelled) {
-          setReactions(nextReactions)
+          const pendingOptimisticKeys = Array.from(pendingOptimisticKeysRef.current)
+
+          updateReactions((prev) => {
+            const mergedReactions = { ...nextReactions }
+
+            pendingOptimisticKeys.forEach((key) => {
+              const [reportId, reactionType] = key.split(":") as [string, LandingReactionType]
+              mergedReactions[reportId] = {
+                ...(mergedReactions[reportId] ?? emptyReactionState()),
+                [reactionType]: prev[reportId]?.[reactionType] ?? false,
+              }
+            })
+
+            return mergedReactions
+          })
+          hasLoadedInitialStateRef.current = true
+          pendingOptimisticKeysRef.current.clear()
         }
       } catch {
-        if (!cancelled) {
-          setReactions({})
-        }
+        if (!cancelled) hasLoadedInitialStateRef.current = true
       } finally {
         if (!cancelled) {
           setIsLoading(false)
@@ -87,31 +121,42 @@ export function useLandingReportReactions(reportIds: string[]) {
     return () => {
       cancelled = true
     }
-  }, [reportIdsKey, stableReportIds, supabase])
+  }, [reportIdsKey, stableReportIds, supabase, updateReactions])
 
   const toggleReaction = React.useCallback(async (reportId: string, reactionType: LandingReactionType) => {
-    const current = reactions[reportId] ?? emptyReactionState()
-    const wasActive = current[reactionType]
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      toast({
-        title: "ログインが必要です",
-        description: "リアクションするにはログインしてください",
-        variant: "destructive",
-      })
+    const reactionKey = `${reportId}:${reactionType}`
+    if (inFlightToggleKeysRef.current.has(reactionKey)) {
       return
     }
 
-    setReactions((prev) => ({
-      ...prev,
-      [reportId]: {
-        ...(prev[reportId] ?? emptyReactionState()),
-        [reactionType]: !wasActive,
-      },
-    }))
+    inFlightToggleKeysRef.current.add(reactionKey)
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast({
+          title: "ログインが必要です",
+          description: "リアクションするにはログインしてください",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const current = reactionsRef.current[reportId] ?? emptyReactionState()
+      const wasActive = current[reactionType]
+
+      if (!hasLoadedInitialStateRef.current) {
+        pendingOptimisticKeysRef.current.add(reactionKey)
+      }
+
+      updateReactions((prev) => ({
+        ...prev,
+        [reportId]: {
+          ...(prev[reportId] ?? emptyReactionState()),
+          [reactionType]: !wasActive,
+        },
+      }))
+
       if (wasActive) {
         const { error } = await supabase
           .from("danger_report_reactions")
@@ -133,11 +178,14 @@ export function useLandingReportReactions(reportIds: string[]) {
         if (error) throw error
       }
     } catch {
-      setReactions((prev) => ({
+      const current = reactionsRef.current[reportId] ?? emptyReactionState()
+      const revertedValue = !current[reactionType]
+
+      updateReactions((prev) => ({
         ...prev,
         [reportId]: {
           ...(prev[reportId] ?? emptyReactionState()),
-          [reactionType]: wasActive,
+          [reactionType]: revertedValue,
         },
       }))
       toast({
@@ -145,8 +193,13 @@ export function useLandingReportReactions(reportIds: string[]) {
         description: "リアクションの更新に失敗しました",
         variant: "destructive",
       })
+    } finally {
+      inFlightToggleKeysRef.current.delete(reactionKey)
+      if (hasLoadedInitialStateRef.current) {
+        pendingOptimisticKeysRef.current.delete(reactionKey)
+      }
     }
-  }, [reactions, supabase, toast])
+  }, [supabase, toast, updateReactions])
 
   return {
     reactions,

@@ -25,6 +25,16 @@ const mocks = vi.hoisted(() => ({
 mocks.supabase.auth.getUser = mocks.getUser
 mocks.supabase.from = mocks.from
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 vi.mock("@/components/providers/supabase-provider", () => ({
   useSupabase: () => ({
     supabase: mocks.supabase,
@@ -99,5 +109,69 @@ describe("useLandingReportReactions", () => {
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({
       title: "ログインが必要です",
     }))
+  })
+
+  it("初回ロード前のトグルが遅延ロードで上書きされない", async () => {
+    const selectDeferred = deferred<{ data: Array<{ report_id: string; reaction_type: "helpful" | "caution" }>; error: null }>()
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
+    mocks.selectIn.mockReturnValue(selectDeferred.promise)
+
+    const { result } = renderHook(() => useLandingReportReactions(["report-1"]))
+
+    await waitFor(() => {
+      expect(mocks.selectIn).toHaveBeenCalled()
+    })
+
+    await act(async () => {
+      await result.current.toggleReaction("report-1", "helpful")
+    })
+
+    expect(result.current.reactions["report-1"]).toEqual({
+      helpful: true,
+      caution: false,
+    })
+
+    await act(async () => {
+      selectDeferred.resolve({ data: [], error: null })
+      await selectDeferred.promise
+    })
+
+    await waitFor(() => {
+      expect(result.current.reactions["report-1"]).toEqual({
+        helpful: true,
+        caution: false,
+      })
+    })
+  })
+
+  it("同じリアクションの連打では重複書き込みしない", async () => {
+    const insertDeferred = deferred<{ error: null }>()
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
+    mocks.insert.mockReturnValue(insertDeferred.promise)
+
+    const { result } = renderHook(() => useLandingReportReactions(["report-1"]))
+
+    await waitFor(() => {
+      expect(result.current.reactions["report-1"]).toEqual({
+        helpful: false,
+        caution: false,
+      })
+    })
+
+    await act(async () => {
+      const first = result.current.toggleReaction("report-1", "helpful")
+      const second = result.current.toggleReaction("report-1", "helpful")
+
+      await Promise.resolve()
+      expect(mocks.insert).toHaveBeenCalledTimes(1)
+
+      insertDeferred.resolve({ error: null })
+      await Promise.all([first, second])
+    })
+
+    expect(result.current.reactions["report-1"]).toEqual({
+      helpful: true,
+      caution: false,
+    })
   })
 })
