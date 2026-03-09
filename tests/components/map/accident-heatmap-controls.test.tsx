@@ -178,6 +178,7 @@ describe('AccidentHeatmapControls', () => {
 
   it('keeps the mobile trigger below sidebar overlays', () => {
     expect(getAccidentHeatmapControlContainerClass(true)).toContain('z-10')
+    expect(getAccidentHeatmapControlContainerClass(true)).toContain('top-[calc(env(safe-area-inset-top,0px)+7.5rem)]')
     expect(getAccidentHeatmapControlContainerClass(false)).toContain('sm:right-3')
   })
 
