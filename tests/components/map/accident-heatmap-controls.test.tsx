@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { getAccidentHeatmapControlContainerClass } from '@/components/map/accident-heatmap-control-layout'
+import {
+  getAccidentHeatmapControlContainerClass,
+  shouldRenderAccidentHeatmapControl,
+} from '@/components/map/accident-heatmap-control-layout'
 import { AccidentHeatmapControls } from '@/components/map/accident-heatmap-controls'
 import { DEFAULT_HEATMAP_FILTERS } from '@/lib/traffic-accident-heatmap'
 
@@ -176,6 +179,16 @@ describe('AccidentHeatmapControls', () => {
   it('keeps the mobile trigger below sidebar overlays', () => {
     expect(getAccidentHeatmapControlContainerClass(true)).toContain('z-10')
     expect(getAccidentHeatmapControlContainerClass(false)).toContain('sm:right-3')
+  })
+
+  it('keeps the mobile trigger visible during location selection', () => {
+    expect(
+      shouldRenderAccidentHeatmapControl({
+        isMobile: true,
+        awaitingLocationSelection: true,
+        isReportFormOpen: false,
+      }),
+    ).toBe(true)
   })
 
   it('shows the severity options directly in the mobile drawer', () => {
