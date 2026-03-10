@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { createBrowserClient } from "@supabase/ssr"
 import type { DangerReport } from "@/lib/types"
 import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
+import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -52,9 +53,10 @@ const LANDING_REPORT_SELECT_COLUMNS = [
 export function HiyariHatReport() {
   const [reports, setReports] = React.useState<DangerReport[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [reactions, setReactions] = React.useState<Record<string, { helpful: boolean; caution: boolean }>>({})
   const [selectedReport, setSelectedReport] = React.useState<DangerReport | null>(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const reportIds = React.useMemo(() => reports.map((report) => report.id), [reports])
+  const { reactions, toggleReaction } = useLandingReportReactions(reportIds)
   const openReportModal = React.useCallback((report: DangerReport) => {
     setSelectedReport(report)
     setIsModalOpen(true)
@@ -86,16 +88,6 @@ export function HiyariHatReport() {
 
     fetchReports()
   }, [])
-
-  const toggleReaction = (postId: string, type: "helpful" | "caution") => {
-    setReactions((prev) => ({
-      ...prev,
-      [postId]: {
-        helpful: type === "helpful" ? !prev[postId]?.helpful : (prev[postId]?.helpful || false),
-        caution: type === "caution" ? !prev[postId]?.caution : (prev[postId]?.caution || false),
-      },
-    }))
-  }
 
   const thumbnailUrl = (report: DangerReport): string | undefined => {
     if (report.processed_image_urls && report.processed_image_urls.length > 0) {
