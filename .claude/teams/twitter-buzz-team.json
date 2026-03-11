@@ -1,0 +1,156 @@
+{
+  "name": "地震・津波バズツイートチーム",
+  "description": "地震・津波・防災に関するバズツイートを自動生成するエージェントチーム。東日本大震災記念日等の重要な日に合わせた防災啓発ツイートを作成します。",
+  "version": "1.0.0",
+  "agents": [
+    {
+      "id": "tweet-researcher",
+      "name": "ツイートリサーチャー",
+      "role": "防災情報・トレンド調査担当",
+      "description": "地震・津波・防災に関する最新情報とSNSトレンドを収集・分析する",
+      "responsibilities": [
+        "最新地震・津波情報の収集",
+        "記念日・周年情報の確認",
+        "SNSトレンドハッシュタグの分析",
+        "バズりやすいコンテンツパターンの特定",
+        "信頼できるソースからの事実収集",
+        "感情的フックとなるエピソードの発見"
+      ],
+      "tools": ["WebSearch", "WebFetch"],
+      "output_format": {
+        "type": "research_report",
+        "fields": ["topic", "key_facts", "trending_angle", "emotional_hook", "hashtags", "source_url", "urgency_level"]
+      }
+    },
+    {
+      "id": "tweet-writer",
+      "name": "ツイートライター",
+      "role": "バズツイート作成担当",
+      "description": "リサーチ情報を基に高エンゲージメントツイートを作成する",
+      "responsibilities": [
+        "防災啓発ツイートの作成",
+        "記念日ツイートの作成",
+        "スレッドツイートの構成",
+        "ハッシュタグ最適化",
+        "CTA（行動喚起）の組み込み",
+        "140文字制限内での情報凝縮"
+      ],
+      "tools": ["Write", "Edit", "Read"],
+      "input_from": ["tweet-researcher"],
+      "output_format": {
+        "type": "tweet_content",
+        "fields": ["type", "main_tweet", "thread_tweets", "hashtags", "estimated_engagement", "best_posting_time", "target_emotion"]
+      }
+    },
+    {
+      "id": "tweet-analyzer",
+      "name": "ツイートアナライザー",
+      "role": "エンゲージメント分析・最適化担当",
+      "description": "作成されたツイートのバズ可能性を評価し改善案を提供する",
+      "responsibilities": [
+        "エンゲージメントスコアの算出",
+        "フック強度の評価",
+        "ハッシュタグ効果の分析",
+        "投稿時間の最適化",
+        "ツイート改善案の提案",
+        "スケジュール計画の作成"
+      ],
+      "tools": ["Write", "Edit", "Read"],
+      "input_from": ["tweet-writer"],
+      "output_format": {
+        "type": "analysis_report",
+        "fields": ["engagement_score", "score_breakdown", "prediction", "improvements", "optimized_tweet", "posting_schedule"]
+      }
+    }
+  ],
+  "workflow": {
+    "trigger": "manual",
+    "schedule": "event-driven",
+    "trigger_events": [
+      "3月11日（東日本大震災記念日）",
+      "1月17日（阪神・淡路大震災記念日）",
+      "9月1日（防災の日）",
+      "大規模地震発生時",
+      "津波警報発令時"
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "agent": "tweet-researcher",
+        "action": "collect_disaster_info",
+        "timeout": "5m",
+        "description": "地震・津波・防災の最新情報とトレンドを収集"
+      },
+      {
+        "step": 2,
+        "agent": "tweet-writer",
+        "action": "create_buzz_tweets",
+        "timeout": "10m",
+        "depends_on": [1],
+        "description": "バズツイートを複数パターン作成"
+      },
+      {
+        "step": 3,
+        "agent": "tweet-analyzer",
+        "action": "analyze_and_optimize",
+        "timeout": "5m",
+        "depends_on": [2],
+        "description": "ツイートを評価・最適化してスケジュールを作成"
+      }
+    ]
+  },
+  "tweet_categories": [
+    {
+      "id": "earthquake-awareness",
+      "name": "地震啓発",
+      "description": "地震の仕組み・対策・備えに関する啓発ツイート"
+    },
+    {
+      "id": "tsunami-safety",
+      "name": "津波安全",
+      "description": "津波からの避難行動・安全確保に関するツイート"
+    },
+    {
+      "id": "anniversary-memorial",
+      "name": "記念日・追悼",
+      "description": "震災記念日の追悼・教訓伝承ツイート"
+    },
+    {
+      "id": "disaster-prep",
+      "name": "防災準備",
+      "description": "家族の防災計画・非常袋・避難訓練に関するツイート"
+    },
+    {
+      "id": "emergency-info",
+      "name": "緊急情報",
+      "description": "地震・津波発生時の速報・避難情報ツイート"
+    }
+  ],
+  "content_guidelines": {
+    "tone": "信頼性のある、落ち着いた、しかし緊急性を伝える口調",
+    "avoid": [
+      "パニックを煽る過度な表現",
+      "未確認情報の拡散",
+      "特定の人・地域への差別的表現",
+      "デマ・誤情報"
+    ],
+    "must_include": [
+      "正確な情報源の明示",
+      "実践的な行動指針",
+      "希望・復興・絆のメッセージ"
+    ]
+  },
+  "hashtag_strategy": {
+    "primary": ["#地震", "#津波", "#防災", "#震災"],
+    "secondary": ["#緊急地震速報", "#避難", "#311", "#防災の日"],
+    "contextual": ["#東日本大震災", "#阪神大震災", "#命を守る行動", "#今すぐできる防災"],
+    "max_per_tweet": 5
+  },
+  "output_directory": "content/tweets/earthquake-tsunami",
+  "metadata": {
+    "language": "ja",
+    "platform": "Twitter/X",
+    "update_frequency": "event-driven",
+    "retention_days": 365
+  }
+}
