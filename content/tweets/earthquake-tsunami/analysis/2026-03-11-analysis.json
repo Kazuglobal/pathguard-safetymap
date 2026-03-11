@@ -1,0 +1,126 @@
+{
+  "analysis_date": "2026-03-11",
+  "generated_by": "tweet-analyzer",
+  "analyses": [
+    {
+      "analysis_id": "an-001",
+      "tweet_id": "tw-001",
+      "tweet_preview": "2011年3月11日14時46分。あの日から今日で15年...",
+      "engagement_score": 92,
+      "score_breakdown": {
+        "hook_strength": 24,
+        "info_value": 20,
+        "emotional_impact": 25,
+        "share_motivation": 23
+      },
+      "prediction": "high_viral",
+      "strengths": [
+        "14:46という具体的な時刻が強い時間的フック",
+        "15年という節目の数字",
+        "「忘れない」から「行動する」への転換メッセージ",
+        "投稿時刻（14:46）とのシンクロ効果"
+      ],
+      "improvements": [
+        "改善不要 - このままの形が最大効果"
+      ],
+      "optimized_tweet": "2011年3月11日14時46分。\n\nあの日から今日で15年。\n\n22,000人を超える命が失われた。\n\n「忘れない」では足りない。\n今日、家族と避難場所を確認してほしい。\n\nあの日の教訓を、行動に変えよう。\n\n#311 #震災15年 #東日本大震災 #防災",
+      "posting_schedule": [
+        {"time": "14:46", "reason": "震災発生と同じ時刻に投稿することで最大のインパクト"}
+      ]
+    },
+    {
+      "analysis_id": "an-002",
+      "tweet_id": "tw-002",
+      "tweet_preview": "【保存版】津波から命を守る3つの行動...",
+      "engagement_score": 88,
+      "score_breakdown": {
+        "hook_strength": 22,
+        "info_value": 25,
+        "emotional_impact": 20,
+        "share_motivation": 21
+      },
+      "prediction": "viral",
+      "strengths": [
+        "「保存版」という言葉がブックマーク行動を促進",
+        "3つという具体的な数字",
+        "正常性バイアスという専門用語の使用で権威感",
+        "実践的な情報で共有意欲が高い"
+      ],
+      "improvements": [
+        "「✅」チェックマーク絵文字を各項目に追加すると視認性UP"
+      ],
+      "optimized_tweet": "【保存版】津波から命を守る3つの行動\n\n✅ 大きな揺れを感じたら\n→ すぐに高台へ走る\n\n✅「まだ大丈夫」は命取り\n→ 正常性バイアスに注意\n\n✅ 第一波より第二波が大きい\n→ 警報解除まで戻らない\n\nこれを覚えるだけで生存率が変わる。\n\n#津波 #防災 #命を守る行動",
+      "posting_schedule": [
+        {"time": "07:00", "reason": "朝の通勤・通学時間帯で多くの人にリーチ"},
+        {"time": "18:00", "reason": "帰宅時間帯の二次拡散効果"}
+      ]
+    },
+    {
+      "analysis_id": "an-003",
+      "tweet_id": "tw-003",
+      "tweet_preview": "釜石の奇跡を知ってほしい...",
+      "engagement_score": 90,
+      "score_breakdown": {
+        "hook_strength": 23,
+        "info_value": 22,
+        "emotional_impact": 24,
+        "share_motivation": 21
+      },
+      "prediction": "high_viral",
+      "strengths": [
+        "「知ってほしい」という直接的な訴えかけ",
+        "2,900人という具体的な数字",
+        "感動的な実話で拡散意欲が高い",
+        "「今日から始められる」行動へのつながり"
+      ],
+      "improvements": [
+        "「釜石の奇跡」の説明をもう少し具体的に"
+      ],
+      "optimized_tweet": "釜石の奇跡を知ってほしい。\n\n2011年3月11日、釜石市の小中学生2,900人がほぼ全員自力避難。\n\n子どもたちが率先して逃げ、大人たちもついて行った。\n\n10年間の防災教育が命を救った。\n\n今日から子どもに防災を教えよう。\n\n#釜石の奇跡 #防災教育 #311 #震災の教訓",
+      "posting_schedule": [
+        {"time": "12:00", "reason": "ランチタイムの感動的コンテンツは高拡散"},
+        {"time": "20:00", "reason": "夜の感動シェア習慣に合わせた投稿"}
+      ]
+    },
+    {
+      "analysis_id": "an-006",
+      "tweet_id": "tw-006",
+      "tweet_preview": "【津波 生死を分ける判断】スレッド...",
+      "engagement_score": 95,
+      "score_breakdown": {
+        "hook_strength": 24,
+        "info_value": 25,
+        "emotional_impact": 23,
+        "share_motivation": 23
+      },
+      "prediction": "high_viral",
+      "strengths": [
+        "スレッド形式で深く読み込まれやすい",
+        "「生死を分ける」という強烈なフック",
+        "生存者の言葉を引用した強いメッセージ",
+        "「このスレッドを保存して、家族に送ってほしい」という明確なCTA"
+      ],
+      "improvements": [
+        "ピン留めしてプロフィールへの誘導を増やすと効果的"
+      ],
+      "optimized_tweet": "（変更不要）",
+      "posting_schedule": [
+        {"time": "12:00", "reason": "スレッドはランチタイムじっくり読まれる"},
+        {"time": "21:00", "reason": "就寝前のシェア習慣、翌日の会話のきっかけに"}
+      ]
+    }
+  ],
+  "overall_assessment": {
+    "average_engagement_score": 91,
+    "high_viral_tweets": ["tw-001", "tw-003", "tw-006"],
+    "viral_tweets": ["tw-002", "tw-004", "tw-005", "tw-007", "tw-008", "tw-009", "tw-010"],
+    "recommended_priority": ["tw-001", "tw-006", "tw-003", "tw-002"],
+    "campaign_recommendations": [
+      "14:46の投稿（tw-001）を最優先でスケジュール",
+      "スレッド（tw-006）は午前中から予告ツイートを出すと効果的",
+      "ハッシュタグ #311 #震災15年 を全投稿で統一すると検索流入増加",
+      "各ツイートにPathGuardianのリンクを追加して防災情報へ誘導",
+      "投稿後のエンゲージメントをモニタリングして反応の良いものをリポスト"
+    ]
+  }
+}

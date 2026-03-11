@@ -1,0 +1,188 @@
+{
+  "generated_date": "2026-03-11",
+  "generated_by": "tweet-writer",
+  "theme": "東日本大震災15周年・地震津波防災啓発",
+  "tweets": [
+    {
+      "tweet_id": "tw-001",
+      "type": "anniversary",
+      "category": "anniversary-memorial",
+      "main_tweet": "2011年3月11日14時46分。\n\nあの日から今日で15年。\n\n22,000人を超える命が失われた。\n\n「忘れない」では足りない。\n今日、家族と避難場所を確認してほしい。\n\nあの日の教訓を、行動に変えよう。\n\n#311 #震災15年 #東日本大震災 #防災",
+      "character_count": 100,
+      "hashtags": ["#311", "#震災15年", "#東日本大震災", "#防災"],
+      "estimated_engagement": "high",
+      "best_posting_time": "14:46",
+      "target_emotion": "追悼・使命感・希望",
+      "media_suggestion": "東日本大震災の復興を伝える画像、または時計が14:46を指している画像",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-002",
+      "type": "education",
+      "category": "tsunami-safety",
+      "main_tweet": "【保存版】津波から命を守る3つの行動\n\n①大きな揺れを感じたら\n→ すぐに高台へ走る\n\n②「まだ大丈夫」は命取り\n→ 正常性バイアスに注意\n\n③第一波より第二波が大きい\n→ 警報解除まで戻らない\n\nこれを覚えるだけで生存率が変わる。\n\n#津波 #防災 #命を守る行動",
+      "character_count": 131,
+      "hashtags": ["#津波", "#防災", "#命を守る行動"],
+      "estimated_engagement": "high",
+      "best_posting_time": "07:00",
+      "target_emotion": "緊張感・使命感",
+      "media_suggestion": "津波避難のインフォグラフィック",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-003",
+      "type": "awareness",
+      "category": "earthquake-awareness",
+      "main_tweet": "釜石の奇跡を知ってほしい。\n\n2011年3月11日、釜石市の小中学生2,900人がほぼ全員自力避難。\n\n子どもたちが率先して逃げ、大人たちもついて行った。\n\n10年間の防災教育が命を救った。\n\n今日から子どもに防災を教えよう。\n\n#釜石の奇跡 #防災教育 #311 #震災の教訓",
+      "character_count": 120,
+      "hashtags": ["#釜石の奇跡", "#防災教育", "#311", "#震災の教訓"],
+      "estimated_engagement": "high",
+      "best_posting_time": "12:00",
+      "target_emotion": "感動・希望・使命感",
+      "media_suggestion": "釜石市の風景または子どもたちの避難訓練の写真",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-004",
+      "type": "awareness",
+      "category": "disaster-prep",
+      "main_tweet": "あなたの家の非常袋、\n最後に確認したのはいつ？\n\n今日、3月11日に\n家族全員で確認してほしい。\n\n✅ 水（1人9リットル以上）\n✅ 食料（3日分）\n✅ 充電式ライト・モバイルバッテリー\n✅ 家族の集合場所\n\n「備えあれば憂いなし」\n\n#防災 #非常袋 #今すぐできる防災",
+      "character_count": 130,
+      "hashtags": ["#防災", "#非常袋", "#今すぐできる防災"],
+      "estimated_engagement": "high",
+      "best_posting_time": "18:00",
+      "target_emotion": "共感・使命感・安心",
+      "media_suggestion": "非常袋の中身一覧のインフォグラフィック",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-005",
+      "type": "awareness",
+      "category": "earthquake-awareness",
+      "main_tweet": "知らなかった人はRTしてほしい。\n\n南海トラフ巨大地震は\n今後30年以内に70〜80%の確率で来る。\n\n津波まで最短2〜3分の地域がある。\n\nでも正しく備えれば\n死者数を8割削減できると試算されている。\n\n今日から始めよう。\n\n#南海トラフ #地震 #防災",
+      "character_count": 120,
+      "hashtags": ["#南海トラフ", "#地震", "#防災"],
+      "estimated_engagement": "high",
+      "best_posting_time": "21:00",
+      "target_emotion": "驚き・緊張感・希望",
+      "media_suggestion": "南海トラフ地震の想定震源域マップ",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-006",
+      "type": "thread",
+      "category": "tsunami-safety",
+      "main_tweet": "【津波 生死を分ける判断】\n\n東日本大震災で生き残った人が語る言葉。\n\n「逃げるのに十分な理由はない。\n　逃げないのに十分な理由もない。」\n\n揺れを感じたら、考える前に走れ。\n\n続きはスレッドで👇\n\n#津波 #地震 #311 #東日本大震災",
+      "thread_tweets": [
+        "【2/5】\n津波の怖さは「見えない」こと。\n\n沖合では波高わずか数十cm。\n気づいた時には岸辺で数メートルに。\n\n「引き波」が来たら逃げろのサイン。\n海が急に引いた→すぐ高台へ。\n\nでも引き波が来ない津波もある。\n揺れたら即避難が鉄則。\n\n#津波 #防災",
+        "【3/5】\n「車で逃げれば早い」は間違い。\n\n東日本大震災の渋滞映像を覚えていますか？\n\n大規模地震では道路が崩壊・渋滞。\n車は走れなくなる。\n\n基本は徒歩避難。\n事前に高台への歩行ルートを確認しておこう。\n\n#津波 #避難 #防災",
+        "【4/5】\n「てんでんこ」という言葉。\n\n三陸地方に伝わる津波避難の教え。\n「てんでんばらばらに逃げろ」という意味。\n\n家族を探しに戻る→死亡率が上がる。\n\n非情に聞こえるが、\n自分が生きることが他の人を救う。\n\n事前に集合場所を決めておこう。\n\n#津波 #防災 #命を守る行動",
+        "【5/5】\n最後に。\n\n警報が解除されるまで戻るな。\n第一波より第二波・第三波が大きい。\n\n「もう大丈夫」と戻って亡くなった方が多くいた。\n\nこのスレッドを保存して、\n家族に送ってほしい。\n\nあなたの行動が命を救う。\n\n#津波 #地震 #防災 #311"
+      ],
+      "character_count": 128,
+      "hashtags": ["#津波", "#地震", "#311", "#東日本大震災"],
+      "estimated_engagement": "very_high",
+      "best_posting_time": "12:00",
+      "target_emotion": "緊張感・使命感・希望",
+      "media_suggestion": "津波避難マップまたは避難タイムラインのインフォグラフィック",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-007",
+      "type": "anniversary",
+      "category": "anniversary-memorial",
+      "main_tweet": "15年前の今日、\n14時46分に時間が止まった場所がある。\n\nでも被災地は止まっていない。\n\n復興した商店街、戻ってきた笑顔、\n芽吹いた防潮林。\n\n被災地の今を見てほしい。\n支援は続いている。\n記憶は続いている。\n\n#震災15年 #311 #東北 #復興",
+      "character_count": 107,
+      "hashtags": ["#震災15年", "#311", "#東北", "#復興"],
+      "estimated_engagement": "high",
+      "best_posting_time": "08:00",
+      "target_emotion": "感動・希望・共感",
+      "media_suggestion": "被災地の「震災前・15年後」の比較写真",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-008",
+      "type": "education",
+      "category": "disaster-prep",
+      "main_tweet": "【保存版】地震発生直後にやること\n\n①頭を守る（テーブル下や壁際）\n②火を止める（揺れが収まってから）\n③玄関ドアを開ける（脱出経路確保）\n④スリッパや靴を履く（ガラス対策）\n⑤ラジオ・テレビで情報収集\n\n「揺れたら机の下」は古い。\nまず自分を守る行動を。\n\n#地震 #防災",
+      "character_count": 127,
+      "hashtags": ["#地震", "#防災"],
+      "estimated_engagement": "high",
+      "best_posting_time": "07:00",
+      "target_emotion": "使命感・安心感",
+      "media_suggestion": "地震発生時の行動フロー図",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-009",
+      "type": "awareness",
+      "category": "earthquake-awareness",
+      "main_tweet": "阪神大震災で学んだ事実。\n\n生き埋めになった人の\n約80%が、家族や近所の人に救助された。\n\n消防・警察・自衛隊ではない。\n\n「自助・共助」が命を救う。\n\n今日、隣の人の顔を知っていますか？\n\n#地震 #防災 #阪神大震災 #共助",
+      "character_count": 107,
+      "hashtags": ["#地震", "#防災", "#阪神大震災", "#共助"],
+      "estimated_engagement": "high",
+      "best_posting_time": "21:00",
+      "target_emotion": "驚き・共感・使命感",
+      "media_suggestion": "コミュニティ防災活動のイメージ写真",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    },
+    {
+      "tweet_id": "tw-010",
+      "type": "awareness",
+      "category": "disaster-prep",
+      "main_tweet": "子どもに教えてほしい\n津波からの逃げ方。\n\n「おかしいと思ったら逃げろ」\n「大人の言うことを聞かなくてもいい」\n「高いところへ走れ」\n\n釜石の子どもたちはこれで生き残った。\n\n子どもが親に教えてもいい。\n命を守る知識に年齢は関係ない。\n\n#子どもの防災 #釜石の奇跡 #311",
+      "character_count": 129,
+      "hashtags": ["#子どもの防災", "#釜石の奇跡", "#311"],
+      "estimated_engagement": "high",
+      "best_posting_time": "18:00",
+      "target_emotion": "感動・共感・使命感",
+      "media_suggestion": "子どもと一緒に防災訓練している写真",
+      "created_at": "2026-03-11T00:00:00+09:00"
+    }
+  ],
+  "posting_schedule": [
+    {
+      "time": "07:00",
+      "tweet_ids": ["tw-008", "tw-002"],
+      "reason": "通勤・通学時間帯、防災情報を読む人が多い"
+    },
+    {
+      "time": "08:00",
+      "tweet_ids": ["tw-007"],
+      "reason": "朝の追悼ツイート、共感を呼びやすい"
+    },
+    {
+      "time": "12:00",
+      "tweet_ids": ["tw-003", "tw-006"],
+      "reason": "ランチタイム、スレッドをじっくり読める時間"
+    },
+    {
+      "time": "14:46",
+      "tweet_ids": ["tw-001"],
+      "reason": "震災発生時刻、最もインパクトのある瞬間"
+    },
+    {
+      "time": "18:00",
+      "tweet_ids": ["tw-004", "tw-010"],
+      "reason": "帰宅時間、家族との防災確認を促せる"
+    },
+    {
+      "time": "21:00",
+      "tweet_ids": ["tw-005", "tw-009"],
+      "reason": "就寝前、じっくり読まれ翌日行動につながる"
+    }
+  ],
+  "summary": {
+    "total_tweets": 10,
+    "thread_tweets": 1,
+    "single_tweets": 9,
+    "categories": {
+      "anniversary-memorial": 2,
+      "tsunami-safety": 3,
+      "earthquake-awareness": 3,
+      "disaster-prep": 2
+    },
+    "estimated_total_reach": "high",
+    "key_hashtags": ["#311", "#震災15年", "#東日本大震災", "#防災", "#地震", "#津波"]
+  }
+}
