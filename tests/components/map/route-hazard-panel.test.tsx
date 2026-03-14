@@ -154,4 +154,14 @@ describe("RouteHazardPanel", () => {
 
     expect(onHazardSelect).toHaveBeenCalledWith(mockHazards[0])
   })
+
+  it("inline variant では絶対配置やドロワートリガーなしで設定内容を埋め込める", () => {
+    const { container } = render(<RouteHazardPanel {...defaultProps} variant="inline" />)
+
+    expect(screen.getByText("通学ルートハザード")).toBeInTheDocument()
+    expect(screen.getByText("洪水浸水想定")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "通学路の注意点を開く" })).not.toBeInTheDocument()
+    expect(screen.queryByTestId("map-style-selector")).not.toBeInTheDocument()
+    expect(container.firstElementChild).not.toHaveClass("absolute")
+  })
 })
