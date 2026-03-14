@@ -46,6 +46,9 @@ describe('MapFloatingControls mobile layout', () => {
     renderControls({ isMobile: false })
 
     expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
+    expect(screen.getByTestId('map-display-dock')).toHaveStyle({
+      bottom: '5.75rem',
+    })
     expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
   })
 
@@ -53,6 +56,9 @@ describe('MapFloatingControls mobile layout', () => {
     renderControls()
 
     expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
+    expect(screen.getByTestId('map-display-dock')).toHaveStyle({
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10.5rem)',
+    })
     expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
   })
 

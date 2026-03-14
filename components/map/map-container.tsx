@@ -55,6 +55,7 @@ import { buildRouteSafetySummary } from "@/lib/safety-scoring/route-safety-score
 import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety-scorer"
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
+import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -784,6 +785,10 @@ export default function MapContainer() {
   const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
     const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
     console.log(`Map clicked at: ${coordinates}. isMobile=${isMobile}, awaitingLocationSelection=${awaitingLocationSelection}, isReportFormOpen=${isReportFormOpen}`);
+    dismissTransientMapUi({
+      setActiveTopPanel,
+      setDismissSearchResultsSignal,
+    })
 
     if (awaitingLocationSelection) {
       // 地点選択モード：位置を選択
@@ -818,8 +823,6 @@ export default function MapContainer() {
     } else {
       // 通常の地図クリック時に事故統計を取得・表示
       console.log("Normal map click: Fetching accident statistics");
-      setActiveTopPanel(null)
-      setDismissSearchResultsSignal((prev) => prev + 1)
       fetchClickedLocationStats({
         latitude: coordinates[1],
         longitude: coordinates[0],

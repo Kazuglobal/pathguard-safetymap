@@ -5,6 +5,7 @@ import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Lis
 import MapStyleSelector from "./map-style-selector"
 import HelpDialog from "./help-dialog"
 import { useGamification } from "@/hooks/use-gamification"
+import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
 
 interface MapFloatingControlsProps {
   onAddReport: () => void
@@ -49,7 +50,7 @@ export default function MapFloatingControls({
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
   const displayDockBottomStyle = {
-    bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10.5rem)" : "1.5rem",
+    bottom: getMapDisplayDockBottomOffset(isMobile),
   }
   const legendBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
