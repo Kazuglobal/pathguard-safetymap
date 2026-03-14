@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useSupabase } from "@/components/providers/supabase-provider"
-import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
+import type {
+  UserRoute,
+  CreateRouteInput,
+  UpdateRouteInput,
+  RouteChildProfile,
+} from "@/lib/types"
 
 export function useUserRoutes() {
   const [routes, setRoutes] = useState<UserRoute[]>([])
@@ -18,6 +23,40 @@ export function useUserRoutes() {
 
   const primaryRoute = useMemo(() => {
     return routes.find((r) => r.is_favorite) || null
+  }, [routes])
+
+  const childProfiles = useMemo<RouteChildProfile[]>(() => {
+    const groupedProfiles = new Map<string, RouteChildProfile>()
+
+    for (const route of routes) {
+      const profileId = route.child_id ?? "shared"
+      const profileLabel = route.child_name?.trim() || "共通"
+      const existingProfile = groupedProfiles.get(profileId)
+
+      if (existingProfile) {
+        existingProfile.routeCount += 1
+        continue
+      }
+
+      groupedProfiles.set(profileId, {
+        id: profileId,
+        label: profileLabel,
+        routeCount: 1,
+      })
+    }
+
+    return [
+      { id: "all", label: "すべて", routeCount: routes.length },
+      ...Array.from(groupedProfiles.values()).sort((left, right) => {
+        if (left.id === "shared") {
+          return 1
+        }
+        if (right.id === "shared") {
+          return -1
+        }
+        return left.label.localeCompare(right.label, "ja")
+      }),
+    ]
   }, [routes])
 
   const checkAuth = useCallback(async () => {
@@ -121,6 +160,8 @@ export function useUserRoutes() {
             user_id: user.id,
             name: input.name.trim(),
             description: input.description?.trim() || null,
+            child_id: input.child_id ?? null,
+            child_name: input.child_name?.trim() || null,
             start_lat: input.start_lat,
             start_lng: input.start_lng,
             end_lat: input.end_lat,
@@ -172,6 +213,12 @@ export function useUserRoutes() {
         }
         if (input.description !== undefined) {
           updateData.description = input.description?.trim() || null
+        }
+        if (input.child_id !== undefined) {
+          updateData.child_id = input.child_id
+        }
+        if (input.child_name !== undefined) {
+          updateData.child_name = input.child_name?.trim() || null
         }
         if (input.start_lat !== undefined) {
           updateData.start_lat = input.start_lat
@@ -320,6 +367,7 @@ export function useUserRoutes() {
 
   return {
     routes,
+    childProfiles,
     primaryRoute,
     isLoading,
     error,

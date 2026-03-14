@@ -399,6 +399,23 @@ export default function ReportHubPage() {
           </CardContent>
         </Card>
 
+        <Card className="border-sky-100 bg-white/90 shadow-sm">
+          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-sky-700">
+                <MapPin className="h-4 w-4" />
+                通学路ごとの見直しはマップから
+              </div>
+              <p className="text-sm leading-6 text-slate-600">
+                通学路を選んだ状態で危険報告すると、あとで通知から家族と同じルートを見直しやすくなります。
+              </p>
+            </div>
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="/map">マップで通学路を開く</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="gallery" className="w-full">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

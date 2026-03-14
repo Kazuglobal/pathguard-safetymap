@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
 import { RouteManager } from '@/components/map/route-manager'
 import {
   mockRoutes,
@@ -39,6 +40,27 @@ vi.mock('@/components/ui/use-toast', () => ({
   useToast: vi.fn(() => ({
     toast: vi.fn(),
   })),
+}))
+
+vi.mock('react-map-gl/mapbox', () => ({
+  default: forwardRef(function MockMap(
+    { children }: { children?: ReactNode },
+    ref
+  ) {
+    useImperativeHandle(ref, () => ({
+      flyTo: vi.fn(),
+      getMap: () => ({
+        dragPan: {
+          disable: vi.fn(),
+          enable: vi.fn(),
+        },
+      }),
+    }))
+
+    return <div data-testid="mock-map">{children}</div>
+  }),
+  Layer: () => null,
+  Source: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }))
 
 describe('RouteManager Component', () => {
@@ -218,8 +240,95 @@ describe('RouteManager Component', () => {
 
       // Default mode is auto-route
       expect(
-        screen.getByText(/開始地点と終了地点をタップすると、道路に沿ったルートを自動生成します/i)
+        screen.getByText(/住所検索または地図タップで開始地点と終了地点を決めると、自動で通学路を作成できます/i)
       ).toBeInTheDocument()
+    })
+
+    it('allows creating a route from searched addresses and saves the address labels', async () => {
+      const mockAddRoute = vi.fn().mockResolvedValue(true)
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => [
+            {
+              id: 'school',
+              place_name: '東京都千代田区立テスト小学校',
+              center: [139.75, 35.68],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => [
+            {
+              id: 'home',
+              place_name: '東京都千代田区テスト1-2-3',
+              center: [139.76, 35.69],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            routes: [
+              {
+                geometry: {
+                  coordinates: [
+                    [139.75, 35.68],
+                    [139.755, 35.685],
+                    [139.76, 35.69],
+                  ],
+                },
+              },
+            ],
+          }),
+        })
+
+      const { useUserRoutes } = await import('@/hooks/use-user-routes')
+      vi.mocked(useUserRoutes).mockReturnValue({
+        routes: [],
+        primaryRoute: null,
+        isLoading: false,
+        error: null,
+        addRoute: mockAddRoute,
+        updateRoute: vi.fn(),
+        deleteRoute: vi.fn(),
+        setPrimaryRoute: vi.fn(),
+        refreshRoutes: vi.fn(),
+      })
+
+      render(<RouteManager />)
+
+      await userEvent.click(screen.getByTestId('add-route-button'))
+      await userEvent.type(screen.getByTestId('route-name-input'), '見守りルート')
+
+      const searchInput = screen.getByPlaceholderText('学校名や住所を検索')
+
+      await userEvent.type(searchInput, 'テスト小学校')
+      fireEvent.submit(searchInput.closest('form')!)
+      await userEvent.click(await screen.findByText('東京都千代田区立テスト小学校'))
+
+      await userEvent.clear(searchInput)
+      await userEvent.type(searchInput, 'テスト1-2-3')
+      fireEvent.submit(searchInput.closest('form')!)
+      await userEvent.click(await screen.findByText('東京都千代田区テスト1-2-3'))
+
+      expect(screen.getByTestId('route-start-summary')).toHaveTextContent('東京都千代田区立テスト小学校')
+      expect(screen.getByTestId('route-end-summary')).toHaveTextContent('東京都千代田区テスト1-2-3')
+
+      await userEvent.click(screen.getByTestId('save-route-button'))
+
+      await waitFor(() => {
+        expect(mockAddRoute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            start_address: '東京都千代田区立テスト小学校',
+            end_address: '東京都千代田区テスト1-2-3',
+          })
+        )
+      })
     })
 
     it('allows entering route name', async () => {
@@ -537,6 +646,20 @@ describe('RouteManager Component', () => {
       // Check for validation error
       await waitFor(() => {
         expect(screen.getByText(/ルート名を入力/i)).toBeInTheDocument()
+      })
+    })
+
+    it('shows a next-step hint when route points are missing in auto-route mode', async () => {
+      render(<RouteManager />)
+
+      await userEvent.click(screen.getByTestId('add-route-button'))
+      await userEvent.type(screen.getByTestId('route-name-input'), 'テストルート')
+      await userEvent.click(screen.getByTestId('save-route-button'))
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/開始地点と終了地点を設定してください。住所検索か地図タップが使えます/i)
+        ).toBeInTheDocument()
       })
     })
 

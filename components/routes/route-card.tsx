@@ -4,9 +4,10 @@ import * as React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Pencil, Trash2, Star, Clock, MapPin, FileText } from "lucide-react"
+import { Pencil, Trash2, Star, Clock, MapPin, FileText, GitCompareArrows } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { UserRoute } from "@/lib/types"
+import { RouteShareActions } from "@/components/routes/route-share-actions"
 
 export interface RouteCardProps {
   route: UserRoute
@@ -16,6 +17,10 @@ export interface RouteCardProps {
   onDelete: (route: UserRoute) => void
   onSetPrimary: (route: UserRoute) => void
   onGenerateReport?: (route: UserRoute) => void
+  onShare?: (route: UserRoute) => void
+  showCompareToggle?: boolean
+  isComparisonSelected?: boolean
+  onToggleCompare?: (route: UserRoute) => void
 }
 
 function formatDistance(meters: number | null): string {
@@ -43,6 +48,10 @@ export function RouteCard({
   onDelete,
   onSetPrimary,
   onGenerateReport,
+  onShare,
+  showCompareToggle = false,
+  isComparisonSelected = false,
+  onToggleCompare,
 }: RouteCardProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -71,6 +80,11 @@ export function RouteCard({
     onGenerateReport?.(route)
   }
 
+  const handleCompareToggleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onToggleCompare?.(route)
+  }
+
   return (
     <Card
       data-testid="route-card"
@@ -84,15 +98,22 @@ export function RouteCard({
       onKeyDown={handleKeyDown}
     >
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
               <h3
                 data-testid="route-name"
-                className="font-semibold text-base truncate"
+                className="min-w-0 flex-1 text-base font-semibold"
               >
                 {route.name}
               </h3>
+              <Badge
+                data-testid="route-child-badge"
+                variant="outline"
+                className="shrink-0"
+              >
+                {route.child_name?.trim() || "共通"}
+              </Badge>
               {route.is_favorite && (
                 <Badge
                   data-testid="primary-badge"
@@ -130,7 +151,21 @@ export function RouteCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 self-end shrink-0 sm:self-start">
+            {showCompareToggle && onToggleCompare && (
+              <Button
+                data-testid="compare-route-button"
+                variant={isComparisonSelected ? "default" : "ghost"}
+                size="icon"
+                className={cn("h-8 w-8", isComparisonSelected && "bg-sky-600 hover:bg-sky-700")}
+                onClick={handleCompareToggleClick}
+                aria-label={isComparisonSelected ? "比較対象から外す" : "比較対象に追加"}
+                aria-pressed={isComparisonSelected}
+              >
+                <GitCompareArrows className="w-4 h-4" />
+              </Button>
+            )}
+            {onShare && <RouteShareActions route={route} onShare={onShare} />}
             {!route.is_favorite && (
               <Button
                 data-testid="set-primary-button"

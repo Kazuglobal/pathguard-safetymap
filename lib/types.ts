@@ -44,6 +44,8 @@ export interface UserRoute {
   user_id: string
   name: string
   description: string | null
+  child_id: string | null
+  child_name: string | null
   start_lat: number
   start_lng: number
   end_lat: number
@@ -61,6 +63,8 @@ export interface UserRoute {
 export interface CreateRouteInput {
   name: string
   description?: string
+  child_id?: string | null
+  child_name?: string | null
   start_lat: number
   start_lng: number
   end_lat: number
@@ -73,6 +77,8 @@ export interface CreateRouteInput {
 export interface UpdateRouteInput {
   name?: string
   description?: string
+  child_id?: string | null
+  child_name?: string | null
   start_lat?: number
   start_lng?: number
   end_lat?: number
@@ -81,6 +87,19 @@ export interface UpdateRouteInput {
   end_address?: string
   route_geometry?: GeoJSON.LineString
   is_favorite?: boolean
+}
+
+export interface RouteSharePayload {
+  routeId: string
+  title: string
+  text: string
+  updatedAtLabel: string
+}
+
+export interface RouteChildProfile {
+  id: string
+  label: string
+  routeCount: number
 }
 
 /**

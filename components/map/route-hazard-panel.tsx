@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react"
 import { AlertTriangle, Flame, Layers, Navigation, Route as RouteIcon, Waves } from "lucide-react"
 
+import { HazardReasonList } from "@/components/map/hazard-reason-list"
+import { RouteHazardList } from "@/components/map/route-hazard-list"
 import Map3DToggle from "@/components/map/map-3d-toggle"
+import { RouteSafetySummaryCard } from "@/components/map/route-safety-summary-card"
 import MapStyleSelector from "@/components/map/map-style-selector"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,16 +21,21 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { HazardType, UserRoute } from "@/lib/types"
+import type { HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
+import type { RouteSafetyEvidenceItem, RouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
 
 interface RouteHazardPanelProps {
   routes: UserRoute[]
   selectedRouteId: string | null
   selectedHazardsCount: number
+  summary?: RouteSafetySummary
+  evidenceItems?: RouteSafetyEvidenceItem[]
+  hazards?: RouteHazardMarker[]
   toggles: Record<HazardType, boolean>
   isLoading: boolean
   onRouteChange: (routeId: string) => void
   onToggleChange: (hazardType: HazardType, checked: boolean) => void
+  onHazardSelect?: (hazard: RouteHazardMarker) => void
   isMobile?: boolean
   mapStyle?: string
   onMapStyleChange?: (style: string) => void
@@ -39,6 +47,16 @@ interface RouteHazardPanelProps {
   isHeatmapVisible?: boolean
 }
 
+interface HazardPanelContentProps {
+  routes: UserRoute[]
+  selectedRouteId: string | null
+  selectedHazardsCount: number
+  toggles: Record<HazardType, boolean>
+  isLoading: boolean
+  onRouteChange: (routeId: string) => void
+  onToggleChange: (hazardType: HazardType, checked: boolean) => void
+}
+
 function HazardPanelContent({
   routes,
   selectedRouteId,
@@ -47,7 +65,7 @@ function HazardPanelContent({
   isLoading,
   onRouteChange,
   onToggleChange,
-}: RouteHazardPanelProps) {
+}: HazardPanelContentProps) {
   return (
     <>
       <div className="space-y-2">
@@ -114,10 +132,14 @@ export function RouteHazardPanel({
   routes,
   selectedRouteId,
   selectedHazardsCount,
+  summary,
+  evidenceItems = [],
+  hazards = [],
   toggles,
   isLoading,
   onRouteChange,
   onToggleChange,
+  onHazardSelect,
   isMobile = false,
   mapStyle,
   onMapStyleChange,
@@ -198,16 +220,17 @@ export function RouteHazardPanel({
   if (isMobile) {
     return (
       <>
-        <div className="absolute left-3 z-20 top-[calc(env(safe-area-inset-top,0px)+4.25rem)]">
+        <div className="absolute left-3 right-3 z-20 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] space-y-2">
+          {summary && <RouteSafetySummaryCard summary={summary} compact={true} />}
           <Button
             type="button"
             variant="outline"
             onClick={() => setIsDrawerOpen(true)}
             className="h-10 gap-2 rounded-full border-gray-200/80 bg-white/95 px-3 shadow-lg backdrop-blur-sm hover:bg-white"
-            aria-label="ハザード・地図設定を開く"
+            aria-label="通学路の注意点を開く"
           >
             <Layers className="h-4 w-4 text-sky-700" />
-            <span>ハザード・地図</span>
+            <span>通学路の注意点</span>
             <Badge variant="secondary" className="bg-sky-50 text-sky-900">
               {selectedHazardsCount}
             </Badge>
@@ -217,14 +240,17 @@ export function RouteHazardPanel({
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerContent className="max-h-[85vh] rounded-t-3xl px-0 pb-6">
             <DrawerHeader className="px-4 text-left">
-              <DrawerTitle>ハザード・地図設定</DrawerTitle>
+              <DrawerTitle>通学路の注意点</DrawerTitle>
               <DrawerDescription>
-                ハザード表示と地図の見え方をまとめて切り替えます
+                安全確認に必要な注意点を先に見て、必要なときだけ地図設定を切り替えます
               </DrawerDescription>
             </DrawerHeader>
 
             <div className="space-y-4 overflow-y-auto px-4">
               <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+                {summary && <RouteSafetySummaryCard summary={summary} />}
+                <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+                <HazardReasonList items={evidenceItems} />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
                   <p className="text-xs text-muted-foreground">
@@ -262,6 +288,9 @@ export function RouteHazardPanel({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {summary && <RouteSafetySummaryCard summary={summary} />}
+        <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+        <HazardReasonList items={evidenceItems} />
         <HazardPanelContent
           routes={routes}
           selectedRouteId={selectedRouteId}

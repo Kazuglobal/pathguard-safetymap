@@ -19,7 +19,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { RouteCard } from "@/components/routes/route-card"
+import { ChildSelector } from "@/components/routes/child-selector"
+import { RouteComparisonTable } from "@/components/routes/route-comparison-table"
 import { RouteDangerReportDialog } from "@/components/routes/route-danger-report-dialog"
+import { useToast } from "@/components/ui/use-toast"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 import {
   Plus,
@@ -35,7 +38,12 @@ import {
   Loader2,
   Search,
 } from "lucide-react"
-import type { UserRoute, CreateRouteInput, UpdateRouteInput } from "@/lib/types"
+import type {
+  UserRoute,
+  CreateRouteInput,
+  UpdateRouteInput,
+  RouteSharePayload,
+} from "@/lib/types"
 import { DEFAULT_MAPBOX_STYLE, getMapboxToken } from "@/lib/mapbox-config"
 
 type InputMode = "click" | "draw" | "route"
@@ -55,19 +63,23 @@ interface RouteManagerProps {
 interface RouteFormFieldsProps {
   routeName: string
   routeDescription: string
+  childName: string
   validationError: string | null
   error: string | null
   onRouteNameChange: (value: string) => void
   onRouteDescriptionChange: (value: string) => void
+  onChildNameChange: (value: string) => void
 }
 
 function RouteFormFields({
   routeName,
   routeDescription,
+  childName,
   validationError,
   error,
   onRouteNameChange,
   onRouteDescriptionChange,
+  onChildNameChange,
 }: RouteFormFieldsProps) {
   return (
     <>
@@ -91,6 +103,20 @@ function RouteFormFields({
           placeholder="ルートの説明を入力"
           rows={2}
         />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">対象の子ども（任意）</label>
+        <Input
+          data-testid="child-name-input"
+          value={childName}
+          onChange={(e) => onChildNameChange(e.target.value)}
+          placeholder="例：さくら"
+          maxLength={40}
+        />
+        <p className="text-xs text-muted-foreground">
+          空欄の場合は家族共通の通学路として扱います。
+        </p>
       </div>
 
       {(validationError || error) && (
@@ -123,6 +149,8 @@ function RouteFormActions({ onCancel, onSave }: RouteFormActionsProps) {
 }
 
 export function RouteManager({ onRouteSelect }: RouteManagerProps) {
+  const { toast } = useToast()
+  const userRoutes = useUserRoutes()
   const {
     routes,
     isLoading,
@@ -132,12 +160,15 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     deleteRoute,
     setPrimaryRoute,
     refreshRoutes,
-  } = useUserRoutes()
+  } = userRoutes
+  const childProfiles = userRoutes.childProfiles ?? [{ id: "all", label: "すべて", routeCount: routes.length }]
 
   const mapToken = useMemo(() => getMapboxToken(), [])
 
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [selectedChildId, setSelectedChildId] = useState("all")
+  const [comparisonRouteIds, setComparisonRouteIds] = useState<string[]>([])
   const [editingRoute, setEditingRoute] = useState<UserRoute | null>(null)
   const [routeToDelete, setRouteToDelete] = useState<UserRoute | null>(null)
   const [routeForReport, setRouteForReport] = useState<UserRoute | null>(null)
@@ -145,6 +176,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   // Form state
   const [routeName, setRouteName] = useState("")
   const [routeDescription, setRouteDescription] = useState("")
+  const [childName, setChildName] = useState("")
   const [creationPoints, setCreationPoints] = useState<[number, number][]>([])
   const [validationError, setValidationError] = useState<string | null>(null)
   const [pointLat, setPointLat] = useState("")
@@ -159,6 +191,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   // Route search mode state
   const [startPoint, setStartPoint] = useState<[number, number] | null>(null)
   const [endPoint, setEndPoint] = useState<[number, number] | null>(null)
+  const [startAddressLabel, setStartAddressLabel] = useState<string | null>(null)
+  const [endAddressLabel, setEndAddressLabel] = useState<string | null>(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
 
   // Location search state
@@ -221,19 +255,6 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     }
   }, [searchQuery])
 
-  // Handle search result click - move map to location
-  const handleSearchResultClick = useCallback((result: { center: [number, number]; place_name: string }) => {
-    if (mapRef.current) {
-      mapRef.current.flyTo({
-        center: result.center,
-        zoom: 14,
-        duration: 1500,
-      })
-    }
-    setShowSearchResults(false)
-    setSearchQuery(result.place_name)
-  }, [])
-
   const pointsGeoJson = useMemo((): GeoJSON.FeatureCollection => {
     return {
       type: "FeatureCollection" as const,
@@ -267,9 +288,85 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     }
   }, [creationPoints])
 
+  const formatPointLabel = useCallback((point: [number, number]) => {
+    return `${point[1].toFixed(4)}, ${point[0].toFixed(4)}`
+  }, [])
+
+  const formatRouteDistance = useCallback((meters: number | null) => {
+    if (meters === null) {
+      return "距離情報なし"
+    }
+    if (meters < 1000) {
+      return `${meters}m`
+    }
+    return `${(meters / 1000).toFixed(1)}km`
+  }, [])
+
+  const formatRouteTime = useCallback((minutes: number | null) => {
+    if (minutes === null) {
+      return "時間情報なし"
+    }
+    return `${minutes}分`
+  }, [])
+
+  const formatUpdatedAtLabel = useCallback((updatedAt: string) => {
+    const parsedDate = new Date(updatedAt)
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "更新日時不明"
+    }
+
+    return new Intl.DateTimeFormat("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(parsedDate)
+  }, [])
+
+  const buildRouteSharePayload = useCallback(
+    (route: UserRoute): RouteSharePayload => {
+      const updatedAtLabel = formatUpdatedAtLabel(route.updated_at)
+      const cautionText = route.description?.trim() || "要注意点はアプリで確認してください"
+
+      return {
+        routeId: route.id,
+        title: route.name,
+        updatedAtLabel,
+        text: [
+          `${route.name}`,
+          `出発地: ${route.start_address}`,
+          `到着地: ${route.end_address}`,
+          `距離: ${formatRouteDistance(route.distance_meters)}`,
+          `所要時間: ${formatRouteTime(route.estimated_time_minutes)}`,
+          `要注意点: ${cautionText}`,
+          `更新日時: ${updatedAtLabel}`,
+        ].join("\n"),
+      }
+    },
+    [formatRouteDistance, formatRouteTime, formatUpdatedAtLabel]
+  )
+
+  const buildRouteChildFields = useCallback((rawChildName: string) => {
+    const normalizedChildName = rawChildName.trim()
+
+    if (!normalizedChildName) {
+      return {
+        child_id: null,
+        child_name: null,
+      }
+    }
+
+    return {
+      child_id: `child-${normalizedChildName.toLowerCase()}`,
+      child_name: normalizedChildName,
+    }
+  }, [])
+
   const resetFormState = useCallback(() => {
     setRouteName("")
     setRouteDescription("")
+    setChildName("")
     setCreationPoints([])
     setValidationError(null)
     setEditingRoute(null)
@@ -279,7 +376,12 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     lastPointRef.current = null
     setStartPoint(null)
     setEndPoint(null)
+    setStartAddressLabel(null)
+    setEndAddressLabel(null)
     setIsLoadingRoute(false)
+    setSearchQuery("")
+    setSearchResults([])
+    setShowSearchResults(false)
   }, [])
 
   const handleRouteClick = useCallback(
@@ -290,15 +392,28 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     [onRouteSelect]
   )
 
+  const handleToggleCompareRoute = useCallback((route: UserRoute) => {
+    setComparisonRouteIds((prev) =>
+      prev.includes(route.id)
+        ? prev.filter((routeId) => routeId !== route.id)
+        : [...prev, route.id].slice(-3)
+    )
+  }, [])
+
   const handleAddRouteClick = useCallback(() => {
     resetFormState()
+    if (selectedChildId !== "all" && selectedChildId !== "shared") {
+      const selectedChild = childProfiles.find((profile) => profile.id === selectedChildId)
+      setChildName(selectedChild?.label ?? "")
+    }
     setViewMode("creation")
-  }, [resetFormState])
+  }, [childProfiles, resetFormState, selectedChildId])
 
   const handleEditClick = useCallback((route: UserRoute) => {
     setEditingRoute(route)
     setRouteName(route.name)
     setRouteDescription(route.description || "")
+    setChildName(route.child_name || "")
     setValidationError(null)
     setViewMode("edit")
   }, [])
@@ -307,9 +422,83 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setRouteToDelete(route)
   }, [])
 
+  const filteredRoutes = useMemo(() => {
+    if (selectedChildId === "all") {
+      return routes
+    }
+
+    return routes.filter((route) => (route.child_id ?? "shared") === selectedChildId)
+  }, [routes, selectedChildId])
+
+  const comparisonRoutes = useMemo(
+    () => filteredRoutes.filter((route) => comparisonRouteIds.includes(route.id)),
+    [comparisonRouteIds, filteredRoutes]
+  )
+
+  useEffect(() => {
+    setComparisonRouteIds((prev) =>
+      prev.filter((routeId) => filteredRoutes.some((route) => route.id === routeId))
+    )
+    setSelectedRouteId((prev) =>
+      prev && !filteredRoutes.some((route) => route.id === prev) ? null : prev
+    )
+  }, [filteredRoutes])
+
+  useEffect(() => {
+    if (!childProfiles.some((profile) => profile.id === selectedChildId)) {
+      setSelectedChildId("all")
+    }
+  }, [childProfiles, selectedChildId])
+
   const handleGenerateReportClick = useCallback((route: UserRoute) => {
     setRouteForReport(route)
   }, [])
+
+  const handleShareRoute = useCallback(
+    async (route: UserRoute) => {
+      const payload = buildRouteSharePayload(route)
+
+      try {
+        if (typeof navigator.share === "function") {
+          await navigator.share({
+            title: payload.title,
+            text: payload.text,
+          })
+          toast({
+            title: "共有シートを開きました",
+            description: "家族向けに通学路情報を共有できます。",
+          })
+          return
+        }
+
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(payload.text)
+          toast({
+            title: "共有内容をコピーしました",
+            description: "家族向けメッセージを貼り付けて共有できます。",
+          })
+          return
+        }
+
+        toast({
+          title: "共有できませんでした",
+          description: "この端末では共有機能が利用できません。",
+          variant: "destructive",
+        })
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return
+        }
+
+        toast({
+          title: "共有できませんでした",
+          description: "時間をおいて再度お試しください。",
+          variant: "destructive",
+        })
+      }
+    },
+    [buildRouteSharePayload, toast]
+  )
 
   const handleCloseReportDialog = useCallback(() => {
     setRouteForReport(null)
@@ -403,6 +592,36 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     []
   )
 
+  // Handle search result click. In auto-route mode, use results as start/end points.
+  const handleSearchResultClick = useCallback(
+    (result: { center: [number, number]; place_name: string }) => {
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: result.center,
+          zoom: 14,
+          duration: 1500,
+        })
+      }
+
+      if (viewMode === "creation" && inputMode === "route") {
+        if (!startPoint) {
+          setStartPoint(result.center)
+          setStartAddressLabel(result.place_name)
+          setCreationPoints([result.center])
+          setValidationError(null)
+        } else if (!endPoint) {
+          setEndPoint(result.center)
+          setEndAddressLabel(result.place_name)
+          void fetchRouteFromAPI(startPoint, result.center)
+        }
+      }
+
+      setShowSearchResults(false)
+      setSearchQuery(result.place_name)
+    },
+    [endPoint, fetchRouteFromAPI, inputMode, startPoint, viewMode]
+  )
+
   // Handle map click for route mode (set start/end points)
   const handleRoutePointClick = useCallback(
     (event: MapMouseEvent) => {
@@ -414,10 +633,12 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
 
       if (!startPoint) {
         setStartPoint(clickedPoint)
+        setStartAddressLabel(null)
         setCreationPoints([clickedPoint])
         setValidationError(null)
       } else if (!endPoint) {
         setEndPoint(clickedPoint)
+        setEndAddressLabel(null)
         // Fetch route when both points are set
         fetchRouteFromAPI(startPoint, clickedPoint)
       }
@@ -429,6 +650,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const handleResetRoutePoints = useCallback(() => {
     setStartPoint(null)
     setEndPoint(null)
+    setStartAddressLabel(null)
+    setEndAddressLabel(null)
     setCreationPoints([])
     setValidationError(null)
   }, [])
@@ -567,6 +790,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     // Reset route mode state when switching modes
     setStartPoint(null)
     setEndPoint(null)
+    setStartAddressLabel(null)
+    setEndAddressLabel(null)
     setCreationPoints([])
     setValidationError(null)
   }, [])
@@ -630,17 +855,23 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       return false
     }
     if (viewMode === "creation" && creationPoints.length < 2) {
-      setValidationError("ルートには2つ以上のポイントが必要です")
+      setValidationError(
+        inputMode === "route"
+          ? "開始地点と終了地点を設定してください。住所検索か地図タップが使えます"
+          : "ルートには2つ以上のポイントが必要です"
+      )
       return false
     }
     setValidationError(null)
     return true
-  }, [routeName, viewMode, creationPoints])
+  }, [routeName, viewMode, creationPoints, inputMode])
 
   const handleSaveRoute = useCallback(async () => {
     if (!validateForm()) {
       return
     }
+
+    const childFields = buildRouteChildFields(childName)
 
     if (viewMode === "creation") {
       const [startLng, startLat] = creationPoints[0]!
@@ -648,12 +879,14 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       const input: CreateRouteInput = {
         name: routeName.trim(),
         description: routeDescription.trim() || undefined,
+        ...childFields,
         start_lat: startLat,
         start_lng: startLng,
         end_lat: endLat,
         end_lng: endLng,
-        start_address: "起点",
-        end_address: "終点",
+        start_address: startAddressLabel || formatPointLabel(creationPoints[0]!),
+        end_address:
+          endAddressLabel || formatPointLabel(creationPoints[creationPoints.length - 1]!),
         route_geometry:
           creationPoints.length >= 2
             ? {
@@ -672,6 +905,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       const input: UpdateRouteInput = {
         name: routeName.trim(),
         description: routeDescription.trim() || undefined,
+        ...childFields,
       }
 
       const success = await updateRoute(editingRoute.id, input)
@@ -685,11 +919,16 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     viewMode,
     routeName,
     routeDescription,
+    childName,
     creationPoints,
+    startAddressLabel,
+    endAddressLabel,
     editingRoute,
     addRoute,
     updateRoute,
+    buildRouteChildFields,
     resetFormState,
+    formatPointLabel,
   ])
 
   const handleConfirmDelete = useCallback(async () => {
@@ -815,7 +1054,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
 
             <p className="text-sm text-muted-foreground">
               {inputMode === "route"
-                ? "開始地点と終了地点をタップすると、道路に沿ったルートを自動生成します"
+                ? "住所検索または地図タップで開始地点と終了地点を決めると、自動で通学路を作成できます"
                 : inputMode === "draw"
                   ? "地図上で通学路をなぞって描画してください"
                   : "地図をクリック（または座標入力）してポイントを追加してください"}
@@ -824,26 +1063,92 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             {/* Route mode: show start/end points status */}
             {inputMode === "route" && (
               <div className="space-y-2 rounded-md border p-3 bg-muted/50">
+                <div ref={searchRef} className="space-y-2">
+                  <label className="text-sm font-medium">学校名や住所から探す</label>
+                  <form onSubmit={handleLocationSearch} className="relative">
+                    <Input
+                      type="text"
+                      placeholder="学校名や住所を検索"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      variant="ghost"
+                      className="absolute right-1 top-1 h-8 w-8"
+                      disabled={isSearching}
+                    >
+                      {isSearching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </form>
+                  {showSearchResults && searchResults.length > 0 && (
+                    <Card className="max-h-48 overflow-auto border bg-background shadow-sm">
+                      <ul className="py-1">
+                        {searchResults.map((result) => (
+                          <li
+                            key={result.id}
+                            className="px-3 py-2 hover:bg-muted cursor-pointer flex items-start text-sm"
+                            onClick={() => handleSearchResultClick(result)}
+                          >
+                            <MapPin className="h-3 w-3 mr-2 mt-0.5 shrink-0 text-muted-foreground" />
+                            <span className="line-clamp-2">{result.place_name}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+                  {showSearchResults && searchResults.length === 0 && !isSearching && searchQuery && (
+                    <Card className="border bg-background shadow-sm">
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        検索結果が見つかりませんでした
+                      </div>
+                    </Card>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    1回目の選択で開始地点、2回目の選択で終了地点を設定します。
+                  </p>
+                </div>
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-green-600" />
                   <span>開始地点：</span>
                   {startPoint ? (
-                    <span className="text-green-600">設定済み</span>
+                    <span
+                      data-testid="route-start-summary"
+                      className="text-green-600 line-clamp-1"
+                    >
+                      {startAddressLabel || formatPointLabel(startPoint)}
+                    </span>
                   ) : (
-                    <span className="text-muted-foreground">地図をタップ</span>
+                    <span className="text-muted-foreground">住所検索か地図で設定</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-red-600" />
                   <span>終了地点：</span>
                   {endPoint ? (
-                    <span className="text-red-600">設定済み</span>
+                    <span
+                      data-testid="route-end-summary"
+                      className="text-red-600 line-clamp-1"
+                    >
+                      {endAddressLabel || formatPointLabel(endPoint)}
+                    </span>
                   ) : startPoint ? (
-                    <span className="text-muted-foreground">地図をタップ</span>
+                    <span className="text-muted-foreground">住所検索か地図で設定</span>
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}
                 </div>
+                {creationPoints.length >= 2 && (
+                  <div className="rounded-md bg-background px-3 py-2 text-sm text-muted-foreground">
+                    保存前の確認: {creationPoints.length}ポイントで通学路を作成しています
+                  </div>
+                )}
                 {isLoadingRoute && (
                   <div className="flex items-center gap-2 text-sm text-blue-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -867,10 +1172,12 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             <RouteFormFields
               routeName={routeName}
               routeDescription={routeDescription}
+              childName={childName}
               validationError={validationError}
               error={error}
               onRouteNameChange={setRouteName}
               onRouteDescriptionChange={setRouteDescription}
+              onChildNameChange={setChildName}
             />
 
             {inputMode === "click" && (
@@ -938,10 +1245,12 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             <RouteFormFields
               routeName={routeName}
               routeDescription={routeDescription}
+              childName={childName}
               validationError={validationError}
               error={error}
               onRouteNameChange={setRouteName}
               onRouteDescriptionChange={setRouteDescription}
+              onChildNameChange={setChildName}
             />
 
             <RouteFormActions
@@ -970,7 +1279,18 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             </div>
           ) : (
             <div data-testid="route-list" className="space-y-3">
-              {routes.map((route) => (
+              <ChildSelector
+                options={childProfiles}
+                selectedChildId={selectedChildId}
+                onSelectChild={setSelectedChildId}
+              />
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                比較したいルートを2つ以上選ぶと、距離と所要時間をまとめて見比べられます。
+              </div>
+              {comparisonRoutes.length >= 2 && (
+                <RouteComparisonTable routes={comparisonRoutes} />
+              )}
+              {filteredRoutes.map((route) => (
                 <RouteCard
                   key={route.id}
                   route={route}
@@ -980,8 +1300,17 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   onDelete={handleDeleteClick}
                   onSetPrimary={handleSetPrimaryClick}
                   onGenerateReport={handleGenerateReportClick}
+                  onShare={handleShareRoute}
+                  showCompareToggle={filteredRoutes.length > 1}
+                  isComparisonSelected={comparisonRouteIds.includes(route.id)}
+                  onToggleCompare={handleToggleCompareRoute}
                 />
               ))}
+              {filteredRoutes.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-600">
+                  選択した子どもに紐づく通学路はまだありません。
+                </div>
+              )}
             </div>
           )}
         </>
@@ -1163,7 +1492,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
           </div>
         )}
         {/* Location Search Box */}
-        {mapToken && (
+        {mapToken && !(viewMode === "creation" && inputMode === "route") && (
           <div
             ref={searchRef}
             className="absolute right-3 top-3 z-10"
