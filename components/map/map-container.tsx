@@ -35,10 +35,6 @@ import {
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
-import {
-  getAccidentHeatmapControlContainerClass,
-  shouldRenderAccidentHeatmapControl,
-} from "./accident-heatmap-control-layout"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
@@ -58,6 +54,8 @@ import {
 import { buildRouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
 import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety-scorer"
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
+import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
+import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -272,6 +270,8 @@ export default function MapContainer() {
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [is3DEnabled, setIs3DEnabled] = useState(false)
   const [isARMode, setIsARMode] = useState(false)
+  const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
+  const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -785,6 +785,10 @@ export default function MapContainer() {
   const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
     const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
     console.log(`Map clicked at: ${coordinates}. isMobile=${isMobile}, awaitingLocationSelection=${awaitingLocationSelection}, isReportFormOpen=${isReportFormOpen}`);
+    dismissTransientMapUi({
+      setActiveTopPanel,
+      setDismissSearchResultsSignal,
+    })
 
     if (awaitingLocationSelection) {
       // 地点選択モード：位置を選択
@@ -1502,6 +1506,10 @@ export default function MapContainer() {
     }
   };
 
+  const toggleARMode = useCallback(() => {
+    setIsARMode((prev) => !prev)
+  }, [])
+
   // --- Event Handlers ---
   const handleRouteSelectionChange = useCallback((routeId: string) => {
     setSelectedUserRouteId(routeId)
@@ -1942,7 +1950,7 @@ export default function MapContainer() {
           is3DEnabled={is3DEnabled}
           toggle3DMode={toggle3DMode}
           isSelectingLocation={isMobile && awaitingLocationSelection}
-          onToggleAR={() => setIsARMode(!isARMode)}
+          onToggleAR={toggleARMode}
           isARMode={isARMode}
           onToggleSidebar={toggleSidebar}
           isMobile={isMobile}
@@ -1952,28 +1960,90 @@ export default function MapContainer() {
           isHeatmapVisible={accidentHeatmap.isVisible}
         />
 
-        <RouteHazardPanel
-          routes={userRoutes}
-          selectedRouteId={selectedUserRouteId}
-          selectedHazardsCount={visibleRouteHazards.length}
-          summary={selectedUserRouteId ? routeSafetySummary : undefined}
-          evidenceItems={selectedUserRouteId ? routeSafetyEvidenceItems : []}
-          hazards={visibleRouteHazards}
-          toggles={hazardLayerVisibility}
-          isLoading={isRouteHazardsLoading}
-          onRouteChange={handleRouteSelectionChange}
-          onToggleChange={handleHazardLayerToggle}
-          onHazardSelect={handleRouteHazardSelect}
-          isMobile={isMobile}
-          mapStyle={mapStyle}
-          onMapStyleChange={setMapStyle}
-          is3DEnabled={is3DEnabled}
-          onToggle3D={toggle3DMode}
-          onToggleAR={() => setIsARMode(!isARMode)}
-          isARMode={isARMode}
-          onToggleHeatmap={accidentHeatmap.toggleVisibility}
-          isHeatmapVisible={accidentHeatmap.isVisible}
-        />
+        {!awaitingLocationSelection && (
+          <MapTopOverlay
+            activePanel={activeTopPanel}
+            is3DEnabled={is3DEnabled}
+            isARMode={isARMode}
+            isHeatmapVisible={accidentHeatmap.isVisible}
+            onPanelChange={setActiveTopPanel}
+            onToggle3D={toggle3DMode}
+            onToggleAR={toggleARMode}
+            onToggleHeatmap={accidentHeatmap.toggleVisibility}
+            searchSlot={
+              <MapSearch
+                map={map.current}
+                dismissResultsSignal={dismissSearchResultsSignal}
+                className="rounded-[1.75rem]"
+                inputClassName="h-14 border-0 bg-transparent pl-5 pr-12 text-base shadow-none focus-visible:ring-0"
+                onSelectLocation={(coords) => {
+                  if (isReportFormOpen) {
+                    setSelectedLocation(coords)
+                    setLocationSelectionSource("manual")
+                    flyToLocation(coords[0], coords[1])
+                  }
+                }}
+              />
+            }
+            threeDPanelSlot={
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-900">3D表示</p>
+                  <p className="text-xs text-slate-500">建物と地形を立体表示して周辺の見通しを確認できます。</p>
+                </div>
+                <Map3DToggle
+                  is3DEnabled={is3DEnabled}
+                  onToggle={toggle3DMode}
+                  className="h-11 w-full justify-center border border-slate-200 bg-white"
+                />
+              </div>
+            }
+            arPanelSlot={
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-900">AR表示</p>
+                  <p className="text-xs text-slate-500">周辺の危険報告を現地視点で重ねて確認できます。</p>
+                </div>
+                <Button
+                  type="button"
+                  variant={isARMode ? "default" : "outline"}
+                  className="h-11 w-full justify-center"
+                  onClick={toggleARMode}
+                >
+                  {isARMode ? "ARを閉じる" : "ARを開く"}
+                </Button>
+              </div>
+            }
+            heatmapPanelSlot={
+              <AccidentHeatmapControls
+                filters={accidentHeatmap.filters}
+                onFiltersChange={accidentHeatmap.setFilters}
+                isVisible={accidentHeatmap.isVisible}
+                onToggleVisibility={accidentHeatmap.toggleVisibility}
+                isLoading={accidentHeatmap.isLoading}
+                featureCount={accidentHeatmap.featureCount}
+                error={accidentHeatmap.error}
+                isMobile={false}
+              />
+            }
+            hazardPanelSlot={
+              <RouteHazardPanel
+                routes={userRoutes}
+                selectedRouteId={selectedUserRouteId}
+                selectedHazardsCount={visibleRouteHazards.length}
+                summary={selectedUserRouteId ? routeSafetySummary : undefined}
+                evidenceItems={selectedUserRouteId ? routeSafetyEvidenceItems : []}
+                hazards={visibleRouteHazards}
+                toggles={hazardLayerVisibility}
+                isLoading={isRouteHazardsLoading}
+                onRouteChange={handleRouteSelectionChange}
+                onToggleChange={handleHazardLayerToggle}
+                onHazardSelect={handleRouteHazardSelect}
+                variant="inline"
+              />
+            }
+          />
+        )}
 
         {routeHazardError && (
           <div
@@ -2033,21 +2103,6 @@ export default function MapContainer() {
           </div>
         )}
 
-        {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
-        {!awaitingLocationSelection && (
-          <div
-            className={`absolute left-0 right-0 px-3 sm:px-4 ${
-              isMobile
-                ? "top-[calc(env(safe-area-inset-top,0px)+9.5rem)] z-20"
-                : "z-30 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
-            }`}
-          >
-            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
-              <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); setLocationSelectionSource("manual"); flyToLocation(coords[0], coords[1]); } }} />
-            </div>
-          </div>
-        )}
-        
         {/* Sidebar (フローティング) */}
         <div className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ${!isSidebarOpen ? '-translate-x-full' : ''}`}>
           <MapSidebar
@@ -2089,26 +2144,6 @@ export default function MapContainer() {
           geoJSON={accidentHeatmap.geoJSON}
           isVisible={accidentHeatmap.isVisible}
         />
-
-        {/* 事故ヒートマップコントロール */}
-        {shouldRenderAccidentHeatmapControl({
-          isMobile,
-          awaitingLocationSelection,
-          isReportFormOpen,
-        }) && (
-          <div className={getAccidentHeatmapControlContainerClass(isMobile)}>
-            <AccidentHeatmapControls
-              filters={accidentHeatmap.filters}
-              onFiltersChange={accidentHeatmap.setFilters}
-              isVisible={accidentHeatmap.isVisible}
-              onToggleVisibility={accidentHeatmap.toggleVisibility}
-              isLoading={accidentHeatmap.isLoading}
-              featureCount={accidentHeatmap.featureCount}
-              error={accidentHeatmap.error}
-              isMobile={isMobile}
-            />
-          </div>
-        )}
 
         {/* モバイルマップヒント */}
         {showMobileMapHint && (

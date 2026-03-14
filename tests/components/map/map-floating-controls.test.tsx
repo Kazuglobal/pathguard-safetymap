@@ -42,17 +42,24 @@ function renderControls(overrides: Partial<ComponentProps<typeof MapFloatingCont
 }
 
 describe('MapFloatingControls mobile layout', () => {
-  it('shows desktop display controls cluster when not mobile', () => {
+  it('shows a lower-right display dock when not mobile', () => {
     renderControls({ isMobile: false })
 
-    expect(screen.getByTestId('desktop-display-controls')).toBeInTheDocument()
+    expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
+    expect(screen.getByTestId('map-display-dock')).toHaveStyle({
+      bottom: '5.75rem',
+    })
     expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
   })
 
-  it('does not render the persistent map style selector on mobile', () => {
+  it('keeps the map style selector available on mobile', () => {
     renderControls()
 
-    expect(screen.queryByTestId('map-style-selector')).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
+    expect(screen.getByTestId('map-display-dock')).toHaveStyle({
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10.5rem)',
+    })
+    expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
   })
 
   it('shows bottom-right mobile action dock in normal state', () => {

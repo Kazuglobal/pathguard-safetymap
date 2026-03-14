@@ -1,11 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, Navigation, List, Loader2, Crosshair, Flame } from "lucide-react"
+import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
-import Map3DToggle from "./map-3d-toggle"
 import HelpDialog from "./help-dialog"
 import { useGamification } from "@/hooks/use-gamification"
+import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
 
 interface MapFloatingControlsProps {
   onAddReport: () => void
@@ -49,72 +49,21 @@ export default function MapFloatingControls({
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
+  const displayDockBottomStyle = {
+    bottom: getMapDisplayDockBottomOffset(isMobile),
+  }
   const legendBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
   }
   const showMobileActionDock = isMobile && !isSelecting && !isReportFormOpen && !isHeatmapVisible
   const showLegend = !isMobile
-  const showDesktopDisplayControls = !isMobile
 
   return (
     <>
-      {/* 右上: 地図表示コントロールとユーティリティ */}
+      {/* 右上: ユーティリティ */}
       <div
         className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
-        {showDesktopDisplayControls && (
-          <div data-testid="desktop-display-controls" className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
-            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80 overflow-hidden">
-              <MapStyleSelector currentStyle={mapStyle} onChange={setMapStyle} />
-            </div>
-
-            <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
-              <Map3DToggle
-                is3DEnabled={is3DEnabled}
-                onToggle={toggle3DMode}
-                size="sm"
-                className="h-9 sm:h-10 px-3 sm:px-4"
-              />
-            </div>
-
-            {onToggleAR && (
-              <Button
-                onClick={onToggleAR}
-                variant={isARMode ? "default" : "outline"}
-                size="sm"
-                aria-pressed={isARMode}
-                className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
-                  isARMode
-                    ? "bg-sky-600 text-white border-sky-600 hover:bg-sky-700"
-                    : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
-                }`}
-                aria-label="ARビューを開く"
-              >
-                <Navigation className="h-4 w-4 mr-1" />
-                AR
-              </Button>
-            )}
-
-            {onToggleHeatmap && (
-              <Button
-                onClick={onToggleHeatmap}
-                variant={isHeatmapVisible ? "default" : "outline"}
-                size="sm"
-                aria-pressed={isHeatmapVisible}
-                className={`h-9 sm:h-10 px-2.5 sm:px-4 backdrop-blur-sm shadow-lg border ${
-                  isHeatmapVisible
-                    ? "bg-red-600 text-white border-red-600 hover:bg-red-700"
-                    : "bg-white/95 border-gray-200/80 hover:bg-gray-50"
-                }`}
-                aria-label="事故ヒートマップ表示切替"
-              >
-                <Flame className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">事故</span>
-              </Button>
-            )}
-          </div>
-        )}
-
         <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
         {/* ポイント・レベル表示 - モバイルではコンパクト表示 */}
         <div className="flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1.5 sm:py-2 shadow-lg border border-gray-200/80">
@@ -138,6 +87,21 @@ export default function MapFloatingControls({
             </Button>
           </HelpDialog>
         )}
+        </div>
+      </div>
+
+      {/* 右下: 地図表示ドック */}
+      <div
+        data-testid="map-display-dock"
+        className="absolute right-3 z-20"
+        style={displayDockBottomStyle}
+      >
+        <div className="overflow-hidden rounded-full border border-gray-200/80 bg-white/95 shadow-lg backdrop-blur-sm">
+          <MapStyleSelector
+            currentStyle={mapStyle}
+            onChange={setMapStyle}
+            buttonClassName="h-11 w-11 rounded-full border-0 p-0 shadow-none"
+          />
         </div>
       </div>
 

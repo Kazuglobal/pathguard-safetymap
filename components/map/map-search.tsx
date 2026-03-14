@@ -11,6 +11,9 @@ import mapboxgl from "mapbox-gl"
 interface MapSearchProps {
   map: mapboxgl.Map | null
   onSelectLocation?: (coordinates: [number, number]) => void
+  className?: string
+  inputClassName?: string
+  dismissResultsSignal?: number
 }
 
 interface SearchResult {
@@ -19,7 +22,13 @@ interface SearchResult {
   center: [number, number]
 }
 
-export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
+export default function MapSearch({
+  map,
+  onSelectLocation,
+  className,
+  inputClassName,
+  dismissResultsSignal,
+}: MapSearchProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -41,6 +50,10 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
+
+  useEffect(() => {
+    setShowResults(false)
+  }, [dismissResultsSignal])
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -114,14 +127,18 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
   }
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-none">
+    <div
+      ref={searchRef}
+      data-testid="map-search-root"
+      className={`relative w-full max-w-none ${className ?? ""}`.trim()}
+    >
       <form onSubmit={handleSearch} className="relative">
         <Input
           type="text"
           placeholder="住所や場所を検索..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pr-10 bg-white"
+          className={`pr-10 bg-white ${inputClassName ?? ""}`.trim()}
         />
         <Button
           type="submit"
@@ -129,6 +146,7 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
           variant="ghost"
           className="absolute right-0 top-0 h-full"
           disabled={isSearching}
+          aria-label="search"
         >
           {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>

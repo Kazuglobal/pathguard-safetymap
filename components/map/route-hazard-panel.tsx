@@ -45,6 +45,7 @@ interface RouteHazardPanelProps {
   isARMode?: boolean
   onToggleHeatmap?: () => void
   isHeatmapVisible?: boolean
+  variant?: "default" | "inline"
 }
 
 interface HazardPanelContentProps {
@@ -149,6 +150,7 @@ export function RouteHazardPanel({
   isARMode = false,
   onToggleHeatmap,
   isHeatmapVisible = false,
+  variant = "default",
 }: RouteHazardPanelProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
@@ -216,6 +218,31 @@ export function RouteHazardPanel({
       </div>
     </div>
   ) : null
+
+  if (variant === "inline") {
+    return (
+      <div className="space-y-4">
+        {summary && <RouteSafetySummaryCard summary={summary} />}
+        <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+        <HazardReasonList items={evidenceItems} />
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
+          <p className="text-xs text-muted-foreground">
+            選択した通学ルートだけにハザード判定を重ねて表示します
+          </p>
+        </div>
+        <HazardPanelContent
+          routes={routes}
+          selectedRouteId={selectedRouteId}
+          selectedHazardsCount={selectedHazardsCount}
+          toggles={toggles}
+          isLoading={isLoading}
+          onRouteChange={onRouteChange}
+          onToggleChange={onToggleChange}
+        />
+      </div>
+    )
+  }
 
   if (isMobile) {
     return (
