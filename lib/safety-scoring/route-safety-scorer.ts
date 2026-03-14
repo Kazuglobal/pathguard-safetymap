@@ -3,6 +3,8 @@
  * xROADデータとユーザー報告を組み合わせて安全度を評価
  */
 
+import type { DangerReport, RouteHazardMarker } from "@/lib/types"
+
 // 安全度スコアの重み付け係数
 const WEIGHT_TRAFFIC_VOLUME = 0.4; // 交通量の重み
 const WEIGHT_RESTRICTIONS = 0.2;   // 規制情報の重み
@@ -52,6 +54,33 @@ export interface SafetyScore {
     };
   }[];
   recommendations: string[];
+}
+
+export interface RouteSafetySummaryInput {
+  routeName?: string | null
+  routeHazards?: Pick<RouteHazardMarker, "id" | "hazard_type" | "risk_level" | "title" | "summary">[]
+  routeDangers?: Pick<DangerReport, "id" | "danger_level" | "danger_type" | "title">[]
+  isLoading?: boolean
+}
+
+export interface RouteSafetySummary {
+  status: "loading" | "safe" | "caution" | "danger"
+  label: string
+  headline: string
+  detail: string
+  reasons: string[]
+  score: number | null
+  hazardCount: number
+  dangerCount: number
+}
+
+export interface RouteSafetyEvidenceItem {
+  id: string
+  kind: "hazard" | "danger"
+  title: string
+  reason: string
+  source: string
+  updatedLabel: string
 }
 
 /**
@@ -292,7 +321,132 @@ function generateSafetyRecommendations(segmentScores: any[], timeOfDay: string):
   return recommendations;
 }
 
+const HAZARD_TYPE_LABELS: Record<string, string> = {
+  flood: "洪水ハザード",
+  tsunami: "津波ハザード",
+}
+
+function getDistinctHazardLabels(routeHazards: NonNullable<RouteSafetySummaryInput["routeHazards"]>) {
+  return Array.from(
+    new Set(routeHazards.map((hazard) => HAZARD_TYPE_LABELS[hazard.hazard_type] ?? "ハザード")),
+  )
+}
+
+function formatEvidenceDate(value?: string | null) {
+  if (!value) {
+    return "日時不明"
+  }
+
+  return value.replace("T", " ").slice(0, 16)
+}
+
+export function buildRouteSafetyEvidenceItems({
+  routeHazards = [],
+  routeDangers = [],
+  hazardFetchedAt,
+}: {
+  routeHazards?: Pick<RouteHazardMarker, "id" | "hazard_type" | "title" | "summary">[]
+  routeDangers?: Pick<DangerReport, "id" | "title" | "description" | "updated_at" | "created_at">[]
+  hazardFetchedAt?: string | null
+}): RouteSafetyEvidenceItem[] {
+  const hazardItems = routeHazards.map((hazard) => ({
+    id: hazard.id,
+    kind: "hazard" as const,
+    title: hazard.title,
+    reason: hazard.summary || "通学路付近でハザードが検出されました",
+    source: hazard.hazard_type === "tsunami" ? "津波浸水想定区域" : "洪水浸水想定区域",
+    updatedLabel: formatEvidenceDate(hazardFetchedAt),
+  }))
+
+  const dangerItems = routeDangers.map((danger) => ({
+    id: danger.id,
+    kind: "danger" as const,
+    title: danger.title,
+    reason: danger.description || "保護者から危険箇所の報告があります",
+    source: "保護者の危険報告",
+    updatedLabel: formatEvidenceDate(danger.updated_at || danger.created_at),
+  }))
+
+  return [...hazardItems, ...dangerItems].slice(0, 4)
+}
+
+export function buildRouteSafetySummary({
+  routeName,
+  routeHazards = [],
+  routeDangers = [],
+  isLoading = false,
+}: RouteSafetySummaryInput): RouteSafetySummary {
+  const normalizedRouteName = routeName?.trim() || "この通学路"
+  const hazardCount = routeHazards.length
+  const dangerCount = routeDangers.length
+
+  if (isLoading) {
+    return {
+      status: "loading",
+      label: "判定中",
+      headline: `${normalizedRouteName}の安全状況を確認しています`,
+      detail: "危険箇所とハザード情報を集めています。",
+      reasons: [],
+      score: null,
+      hazardCount,
+      dangerCount,
+    }
+  }
+
+  const hazardScore = routeHazards.reduce((sum, hazard) => sum + hazard.risk_level * 12, 0)
+  const dangerScore = routeDangers.reduce((sum, danger) => sum + danger.danger_level * 10, 0)
+  const score = Math.min(hazardScore + dangerScore, 100)
+
+  const reasons: string[] = []
+  const hazardLabels = getDistinctHazardLabels(routeHazards)
+  if (hazardLabels.length > 0) {
+    reasons.push(...hazardLabels.map((label) => `${label}が${hazardCount}件あります`))
+  }
+  if (dangerCount > 0) {
+    reasons.push(`危険報告が${dangerCount}件あります`)
+  }
+
+  if (score >= 70 || routeDangers.some((danger) => danger.danger_level >= 3) || routeHazards.some((hazard) => hazard.risk_level >= 4)) {
+    return {
+      status: "danger",
+      label: "要確認",
+      headline: `${normalizedRouteName}は注意が必要です`,
+      detail: "登校前に危険箇所の位置と内容を確認してください。",
+      reasons,
+      score,
+      hazardCount,
+      dangerCount,
+    }
+  }
+
+  if (score >= 25 || hazardCount > 0 || dangerCount > 0) {
+    return {
+      status: "caution",
+      label: "注意",
+      headline: `${normalizedRouteName}は注意が必要です`,
+      detail: "大きな危険ではありませんが、気になる地点があります。",
+      reasons,
+      score,
+      hazardCount,
+      dangerCount,
+    }
+  }
+
+  return {
+    status: "safe",
+    label: "安全",
+    headline: `${normalizedRouteName}は比較的安全です`,
+    detail: "現在確認できる大きな危険情報は見つかっていません。",
+    reasons: ["現在確認できる大きな危険情報は見つかっていません"],
+    score,
+    hazardCount,
+    dangerCount,
+  }
+}
+
 const routeSafetyScorer = {
+  buildRouteSafetyEvidenceItems,
+  buildRouteSafetySummary,
   calculateRouteSafetyScore,
 };
 

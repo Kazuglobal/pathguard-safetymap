@@ -1557,6 +1557,8 @@ export type Database = {
       }
       user_routes: {
         Row: {
+          child_id: string | null
+          child_name: string | null
           created_at: string
           description: string | null
           distance_meters: number | null
@@ -1575,6 +1577,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          child_id?: string | null
+          child_name?: string | null
           created_at?: string
           description?: string | null
           distance_meters?: number | null
@@ -1593,6 +1597,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          child_id?: string | null
+          child_name?: string | null
           created_at?: string
           description?: string | null
           distance_meters?: number | null

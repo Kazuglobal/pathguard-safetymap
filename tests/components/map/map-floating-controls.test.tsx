@@ -59,8 +59,9 @@ describe('MapFloatingControls mobile layout', () => {
     renderControls()
 
     expect(screen.getByTestId('mobile-action-dock')).toHaveStyle({
-      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6rem)',
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)',
     })
+    expect(screen.getByRole('button', { name: '危険地点一覧を開く' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
   })
@@ -79,8 +80,8 @@ describe('MapFloatingControls mobile layout', () => {
     expect(screen.queryByRole('button', { name: '現在地で報告' })).not.toBeInTheDocument()
   })
 
-  it('hides bottom legend when heatmap is visible on mobile', () => {
-    renderControls({ isHeatmapVisible: true })
+  it('does not render the bottom legend on mobile', () => {
+    renderControls()
 
     expect(screen.queryByTitle('交通危険')).not.toBeInTheDocument()
   })

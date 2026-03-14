@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { CheckCheck, Bell, X } from "lucide-react"
-import type { Notification } from "@/hooks/use-notifications"
+import { getNotificationTypeLabel, type Notification } from "@/hooks/use-notifications"
 
 interface NotificationListProps {
   notifications: Notification[]
@@ -113,16 +113,26 @@ export function NotificationList({
               data-read={notification.is_read}
             >
               <div className="flex items-start justify-between gap-2">
-                <h4
-                  className={`text-sm ${
-                    !notification.is_read
-                      ? "font-semibold text-gray-900"
-                      : "font-normal text-gray-700"
-                  }`}
-                  data-testid="notification-title"
-                >
-                  {notification.title}
-                </h4>
+                <div className="space-y-1">
+                  {getNotificationTypeLabel(notification.type) && (
+                    <span
+                      data-testid="notification-type-badge"
+                      className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-800"
+                    >
+                      {getNotificationTypeLabel(notification.type)}
+                    </span>
+                  )}
+                  <h4
+                    className={`text-sm ${
+                      !notification.is_read
+                        ? "font-semibold text-gray-900"
+                        : "font-normal text-gray-700"
+                    }`}
+                    data-testid="notification-title"
+                  >
+                    {notification.title}
+                  </h4>
+                </div>
                 {!notification.is_read && (
                   <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />
                 )}

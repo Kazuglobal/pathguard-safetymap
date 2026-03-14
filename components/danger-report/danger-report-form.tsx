@@ -36,12 +36,16 @@ interface DangerReportFormProps {
   onCancel: () => void
   selectedLocation: [number, number] | null
   locationSource?: "manual" | "gps" | null
+  selectedRouteId?: string | null
+  selectedRouteName?: string | null
   isMobileFullscreen?: boolean
 }
 
 export type DangerReportSubmitPayload = Partial<DangerReport> & {
   originalImageFile?: File | null
   processedImageFiles?: File[]
+  route_context_id?: string | null
+  route_context_name?: string | null
 }
 
 type HazardBBox = {
@@ -139,7 +143,15 @@ const validateImageFile = async (file: File) => {
   return { ok: true, mime: sniffed }
 }
 
-export default function DangerReportForm({ onSubmit, onCancel, selectedLocation, locationSource = null, isMobileFullscreen = false }: DangerReportFormProps) {
+export default function DangerReportForm({
+  onSubmit,
+  onCancel,
+  selectedLocation,
+  locationSource = null,
+  selectedRouteId = null,
+  selectedRouteName = null,
+  isMobileFullscreen = false,
+}: DangerReportFormProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState("")
@@ -996,6 +1008,8 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
         latitude: selectedLocation[1],
         longitude: selectedLocation[0],
         status: "published",
+        route_context_id: selectedRouteId,
+        route_context_name: selectedRouteName,
       }
       if (compressedOriginalFile) {
         reportData.originalImageFile = compressedOriginalFile
@@ -1106,6 +1120,15 @@ export default function DangerReportForm({ onSubmit, onCancel, selectedLocation,
       )}
 
       <form onSubmit={handleFormSubmit} className={isMobileFullscreen ? "space-y-4" : "space-y-3"}>
+        {selectedRouteName && (
+          <div
+            data-testid="route-report-context"
+            className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900"
+          >
+            <p className="font-medium">通学路の文脈で報告します</p>
+            <p className="text-xs text-sky-800">{selectedRouteName} に紐づく注意情報として扱います。</p>
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="title">タイトル</Label>
           <Input

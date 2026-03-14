@@ -40,8 +40,10 @@ import {
   shouldRenderAccidentHeatmapControl,
 } from "./accident-heatmap-control-layout"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
+import { useRouteDangers } from "@/hooks/use-route-dangers"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
 import { X } from "lucide-react"
+import { buildRouteReportNotification } from "@/hooks/use-notifications"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
@@ -53,6 +55,8 @@ import {
   getHazardAreaLabel,
   getHazardEvacuationPoints,
 } from "@/lib/hazard-scenarios"
+import { buildRouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
+import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety-scorer"
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 
 // Mapboxのアクセストークンを設定
@@ -298,6 +302,7 @@ export default function MapContainer() {
   const [routeHazards, setRouteHazards] = useState<RouteHazardMarker[]>([])
   const [isRouteHazardsLoading, setIsRouteHazardsLoading] = useState(false)
   const [routeHazardError, setRouteHazardError] = useState<string | null>(null)
+  const [routeHazardsFetchedAt, setRouteHazardsFetchedAt] = useState<string | null>(null)
   const [activeHazardMarker, setActiveHazardMarker] = useState<RouteHazardMarker | null>(null)
   const [isHazardModalOpen, setIsHazardModalOpen] = useState(false)
   const [selectedHazardScenarioKey, setSelectedHazardScenarioKey] = useState<string | null>(null)
@@ -475,6 +480,36 @@ export default function MapContainer() {
   const visibleRouteHazards = useMemo(
     () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
     [hazardLayerVisibility, routeHazards],
+  )
+  const {
+    dangers: routeDangers,
+    isLoading: isRouteDangersLoading,
+  } = useRouteDangers(selectedUserRouteId ?? "")
+  const routeSafetySummary = useMemo(
+    () =>
+      buildRouteSafetySummary({
+        routeName: selectedUserRoute?.name,
+        routeHazards: visibleRouteHazards,
+        routeDangers,
+        isLoading: Boolean(selectedUserRouteId) && (isRouteHazardsLoading || isRouteDangersLoading),
+      }),
+    [
+      isRouteDangersLoading,
+      isRouteHazardsLoading,
+      routeDangers,
+      selectedUserRoute?.name,
+      selectedUserRouteId,
+      visibleRouteHazards,
+    ],
+  )
+  const routeSafetyEvidenceItems = useMemo(
+    () =>
+      buildRouteSafetyEvidenceItems({
+        routeHazards: visibleRouteHazards,
+        routeDangers,
+        hazardFetchedAt: routeHazardsFetchedAt,
+      }),
+    [routeDangers, routeHazardsFetchedAt, visibleRouteHazards],
   )
 
   useEffect(() => {
@@ -1059,6 +1094,7 @@ export default function MapContainer() {
     if (!selectedUserRoute?.route_geometry?.coordinates?.length) {
       setRouteHazards([])
       setRouteHazardError(null)
+      setRouteHazardsFetchedAt(null)
       setIsRouteHazardsLoading(requestState.isLoading)
       return
     }
@@ -1100,6 +1136,7 @@ export default function MapContainer() {
             }))
           : []
         setRouteHazards(markers)
+        setRouteHazardsFetchedAt(new Date().toISOString())
       })
       .catch((error: unknown) => {
         if (cancelled) return
@@ -1107,6 +1144,7 @@ export default function MapContainer() {
           error instanceof Error ? error.message : "危険箇所の取得に失敗しました"
         setRouteHazardError(message)
         setRouteHazards([])
+        setRouteHazardsFetchedAt(null)
       })
       .finally(() => {
         if (!cancelled) {
@@ -1469,6 +1507,7 @@ export default function MapContainer() {
     setSelectedUserRouteId(routeId)
     setRouteHazardError(null)
     setRouteHazards([])
+    setRouteHazardsFetchedAt(null)
     setActiveHazardMarker(null)
     setHazardImageResult(null)
     setHazardImageError(null)
@@ -1476,6 +1515,15 @@ export default function MapContainer() {
 
   const handleHazardLayerToggle = useCallback((hazardType: HazardType, checked: boolean) => {
     setHazardLayerVisibility((prev) => ({ ...prev, [hazardType]: checked }))
+  }, [])
+
+  const handleRouteHazardSelect = useCallback((hazard: RouteHazardMarker) => {
+    setActiveHazardMarker(hazard)
+    setSelectedHazardScenarioKey(hazard.scenario_key)
+    setHazardImageResult(null)
+    setHazardImageError(null)
+    setIsHazardModalOpen(true)
+    flyToLocation(hazard.coordinates[0], hazard.coordinates[1], 16)
   }, [])
 
   const handleGenerateHazardImage = useCallback(async () => {
@@ -1553,6 +1601,8 @@ export default function MapContainer() {
       imageFile: legacyImageFile,
       originalImageFile,
       processedImageFiles,
+      route_context_id,
+      route_context_name,
       image_url: _ignoredImageUrl,
       processed_image_urls: _ignoredProcessedImageUrls,
       ...reportDataToInsert
@@ -1617,6 +1667,24 @@ export default function MapContainer() {
 
       const newReportId = insertedData.id;
       console.log(`Report inserted successfully with ID: ${newReportId}`);
+
+      if (route_context_name) {
+        const routeNotification = buildRouteReportNotification({
+          userId: user.id,
+          reportId: newReportId,
+          reportTitle: reportDataToInsert.title || "無題の報告",
+          routeId: route_context_id,
+          routeName: route_context_name,
+        })
+
+        const { error: notificationError } = await supabase
+          .from("notifications")
+          .insert(routeNotification)
+
+        if (notificationError) {
+          console.warn("route notification insert failed", notificationError)
+        }
+      }
 
       // 2. 画像があれば、画像処理 API を呼び出す（original / processed）
       let finalReportData = insertedData as DangerReport; // 型アサーション
@@ -1888,10 +1956,14 @@ export default function MapContainer() {
           routes={userRoutes}
           selectedRouteId={selectedUserRouteId}
           selectedHazardsCount={visibleRouteHazards.length}
+          summary={selectedUserRouteId ? routeSafetySummary : undefined}
+          evidenceItems={selectedUserRouteId ? routeSafetyEvidenceItems : []}
+          hazards={visibleRouteHazards}
           toggles={hazardLayerVisibility}
           isLoading={isRouteHazardsLoading}
           onRouteChange={handleRouteSelectionChange}
           onToggleChange={handleHazardLayerToggle}
+          onHazardSelect={handleRouteHazardSelect}
           isMobile={isMobile}
           mapStyle={mapStyle}
           onMapStyleChange={setMapStyle}
@@ -1907,7 +1979,7 @@ export default function MapContainer() {
           <div
             className={`absolute left-3 z-20 w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-red-200 bg-white/95 px-4 py-3 text-sm text-red-600 shadow-lg backdrop-blur-sm ${
               isMobile
-                ? "top-[calc(env(safe-area-inset-top,0px)+7.5rem)]"
+                ? "top-[calc(env(safe-area-inset-top,0px)+12.5rem)]"
                 : "top-[calc(env(safe-area-inset-top,0px)+24rem)]"
             }`}
           >
@@ -1964,7 +2036,11 @@ export default function MapContainer() {
         {/* 検索バー - 最上部に配置（デスクトップはヘッダー下）、地点選択モード中は非表示 */}
         {!awaitingLocationSelection && (
           <div
-            className="absolute left-0 right-0 z-30 px-3 sm:px-4 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
+            className={`absolute left-0 right-0 px-3 sm:px-4 ${
+              isMobile
+                ? "top-[calc(env(safe-area-inset-top,0px)+9.5rem)] z-20"
+                : "z-30 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
+            }`}
           >
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/80">
               <MapSearch map={map.current} onSelectLocation={(coords) => { if (isReportFormOpen) { setSelectedLocation(coords); setLocationSelectionSource("manual"); flyToLocation(coords[0], coords[1]); } }} />
@@ -2089,6 +2165,8 @@ export default function MapContainer() {
                 onCancel={() => setIsReportFormOpen(false)}
                 selectedLocation={selectedLocation}
                 locationSource={locationSelectionSource}
+                selectedRouteId={selectedUserRoute?.id ?? null}
+                selectedRouteName={selectedUserRoute?.name ?? null}
               />
             </div>
           )}
@@ -2176,6 +2254,8 @@ export default function MapContainer() {
                   }}
                   selectedLocation={selectedLocation}
                   locationSource={locationSelectionSource}
+                  selectedRouteId={selectedUserRoute?.id ?? null}
+                  selectedRouteName={selectedUserRoute?.name ?? null}
                   isMobileFullscreen={true}
                 />
               </div>

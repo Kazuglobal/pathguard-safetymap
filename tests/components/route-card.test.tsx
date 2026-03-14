@@ -26,6 +26,7 @@ describe('RouteCard Component', () => {
     onEdit: vi.fn(),
     onDelete: vi.fn(),
     onSetPrimary: vi.fn(),
+    showCompareToggle: false,
   }
 
   beforeEach(() => {
@@ -37,6 +38,21 @@ describe('RouteCard Component', () => {
       render(<RouteCard {...defaultProps} />)
 
       expect(screen.getByTestId('route-name')).toHaveTextContent(mockSingleRoute.name)
+    })
+
+    it('keeps the route name area flexible when badges and actions are present', () => {
+      render(
+        <RouteCard
+          {...defaultProps}
+          route={mockPrimaryRoute}
+          onShare={vi.fn()}
+          showCompareToggle={true}
+          onToggleCompare={vi.fn()}
+          isComparisonSelected={true}
+        />
+      )
+
+      expect(screen.getByTestId('route-name')).toHaveClass('flex-1', 'min-w-0')
     })
 
     it('displays route description', () => {
@@ -157,6 +173,38 @@ describe('RouteCard Component', () => {
       await userEvent.click(screen.getByTestId('delete-route-button'))
 
       expect(onDelete).toHaveBeenCalledTimes(1)
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('calls onToggleCompare when compare button clicked', async () => {
+      const onClick = vi.fn()
+      const onToggleCompare = vi.fn()
+      render(
+        <RouteCard
+          {...defaultProps}
+          onClick={onClick}
+          showCompareToggle={true}
+          onToggleCompare={onToggleCompare}
+          isComparisonSelected={false}
+        />
+      )
+
+      await userEvent.click(screen.getByTestId('compare-route-button'))
+
+      expect(onToggleCompare).toHaveBeenCalledTimes(1)
+      expect(onToggleCompare).toHaveBeenCalledWith(mockSingleRoute)
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('calls onShare when share button clicked without selecting the card', async () => {
+      const onClick = vi.fn()
+      const onShare = vi.fn()
+      render(<RouteCard {...defaultProps} onClick={onClick} onShare={onShare} />)
+
+      await userEvent.click(screen.getByTestId('share-route-button'))
+
+      expect(onShare).toHaveBeenCalledTimes(1)
+      expect(onShare).toHaveBeenCalledWith(mockSingleRoute)
       expect(onClick).not.toHaveBeenCalled()
     })
   })

@@ -124,4 +124,33 @@ describe("DangerReportForm", () => {
     expect(screen.queryByTestId("accident-loading")).not.toBeInTheDocument()
     expect(screen.getByTestId("accident-panel")).toBeInTheDocument()
   })
+
+  it("selected route context is shown and included in submit payload", async () => {
+    const onSubmit = vi.fn(async () => ({ reportId: "report-456", imageUrl: null }))
+    const user = userEvent.setup()
+
+    render(
+      <DangerReportForm
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+        selectedRouteId="route-1"
+        selectedRouteName="さくらの通学路"
+      />
+    )
+
+    expect(screen.getByTestId("route-report-context")).toHaveTextContent("さくらの通学路")
+
+    await user.type(screen.getByLabelText("タイトル"), "見通しの悪い角")
+    await user.click(screen.getByRole("button", { name: "報告を送信" }))
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          route_context_id: "route-1",
+          route_context_name: "さくらの通学路",
+        })
+      )
+    })
+  })
 })

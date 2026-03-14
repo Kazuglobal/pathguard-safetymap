@@ -45,7 +45,7 @@ export default function MapFloatingControls({
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile
-  const mobileBottomNavClearance = "calc(env(safe-area-inset-bottom, 0px) + 6rem)"
+  const mobileBottomNavClearance = "calc(env(safe-area-inset-bottom, 0px) + 5rem)"
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -53,7 +53,7 @@ export default function MapFloatingControls({
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
   }
   const showMobileActionDock = isMobile && !isSelecting && !isReportFormOpen && !isHeatmapVisible
-  const showLegend = !isMobile || (!isSelecting && !isHeatmapVisible)
+  const showLegend = !isMobile
   const showDesktopDisplayControls = !isMobile
 
   return (
@@ -125,73 +125,81 @@ export default function MapFloatingControls({
           </div>
         </div>
 
-        {/* 一覧ボタン（モバイル用）- テキストなしでアイコンのみ */}
-        {isMobile && onToggleSidebar && (
-          <Button
-            onClick={onToggleSidebar}
-            variant="outline"
-            size="sm"
-            className="h-9 w-9 sm:h-10 sm:w-auto sm:px-3 p-0 sm:p-2 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
-            aria-label="危険箇所一覧を表示"
-          >
-            <List className="h-4 w-4" />
-            <span className="hidden sm:inline ml-1">一覧</span>
-          </Button>
-        )}
-
         {/* ヘルプボタン */}
-        <HelpDialog>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 w-9 sm:h-10 sm:w-10 p-0 rounded-full bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
-            aria-label="アプリの使い方を表示"
-          >
-            <HelpCircle className="h-4 w-4" />
-          </Button>
-        </HelpDialog>
+        {!isMobile && (
+          <HelpDialog>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 w-9 sm:h-10 sm:w-10 p-0 rounded-full bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
+              aria-label="アプリの使い方を表示"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </HelpDialog>
+        )}
         </div>
       </div>
 
-      {/* 右下: モバイル主要アクションドック */}
+      {/* 下部: モバイル主要アクションドック */}
       {showMobileActionDock && (
         <div
           data-testid="mobile-action-dock"
-          className="absolute right-3 z-20 flex flex-col items-end gap-2"
+          className="absolute inset-x-3 z-20"
           style={{ bottom: mobileBottomNavClearance }}
         >
-          {onReportAtCurrentLocation && (
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-gray-200/80 bg-white/95 p-2 shadow-xl backdrop-blur-sm">
+            {onToggleSidebar ? (
+              <Button
+                onClick={onToggleSidebar}
+                variant="outline"
+                size="sm"
+                className="h-12 border-gray-200 bg-white hover:bg-gray-50"
+                aria-label="危険地点一覧を開く"
+              >
+                <List className="mr-1.5 h-4 w-4" />
+                一覧
+              </Button>
+            ) : (
+              <div />
+            )}
+
+            {onReportAtCurrentLocation ? (
+              <Button
+                onClick={onReportAtCurrentLocation}
+                disabled={isAcquiringGPS}
+                variant="outline"
+                size="sm"
+                className="h-12 border-green-200 bg-white hover:bg-green-50"
+                aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
+              >
+                {isAcquiringGPS ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    取得中
+                  </>
+                ) : (
+                  <>
+                    <Crosshair className="mr-1.5 h-4 w-4 text-green-600" />
+                    現在地
+                  </>
+                )}
+              </Button>
+            ) : (
+              <div />
+            )}
+
             <Button
-              onClick={onReportAtCurrentLocation}
-              disabled={isAcquiringGPS}
-              variant="outline"
+              onClick={onAddReport}
+              variant="default"
               size="sm"
-              className="h-9 px-3 shadow-lg border bg-white/95 backdrop-blur-sm border-green-200 hover:bg-green-50"
-              aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
+              className="h-12 border-transparent bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
+              aria-label="危険箇所を報告する"
             >
-              {isAcquiringGPS ? (
-                <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  位置取得中
-                </>
-              ) : (
-                <>
-                  <Crosshair className="mr-1.5 h-4 w-4 text-green-600" />
-                  現在地で報告
-                </>
-              )}
+              <PlusCircle className="mr-1.5 h-4 w-4" />
+              危険を報告
             </Button>
-          )}
-          <Button
-            onClick={onAddReport}
-            variant="default"
-            size="sm"
-            className="h-9 px-3 shadow-lg border bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-transparent"
-            aria-label="危険箇所を報告する"
-          >
-            <PlusCircle className="mr-1.5 h-4 w-4" />
-            報告
-          </Button>
+          </div>
         </div>
       )}
 
