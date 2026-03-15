@@ -10,18 +10,18 @@ import {
   Shield,
   Map,
   User,
-  Award,
-  Trophy,
   LogOut,
-  BarChart3,
   UserCheck,
-  Gamepad2,
   Home,
   Route,
+  PlusCircle,
+  Newspaper,
+  BarChart3,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { isAdminUser } from "@/lib/admin"
+import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
 
 interface NavigationProps {
   user?: any
@@ -39,6 +39,7 @@ type NavItem = {
   icon: LucideIcon
   description?: string
   emphasize?: boolean
+  isAction?: boolean
 }
 
 export function Navigation({
@@ -50,14 +51,15 @@ export function Navigation({
 }: NavigationProps) {
   const pathname = usePathname()
   const isAdmin = isAdminUser(user)
+  const [isReportOpen, setIsReportOpen] = React.useState(false)
 
   const mainNavItems: NavItem[] = [
     {
       key: "home",
       href: "/landing",
       label: "ホーム",
-      icon: Home,
-      description: "トップコンテンツ",
+      icon: Newspaper,
+      description: "ヒヤリハット・ニュースフィード",
     },
     {
       key: "map",
@@ -67,6 +69,15 @@ export function Navigation({
       description: "危険箇所を地図で確認",
     },
     {
+      key: "report-action",
+      href: "#report",
+      label: "報告",
+      icon: PlusCircle,
+      description: "危険を今すぐ報告",
+      emphasize: true,
+      isAction: true,
+    },
+    {
       key: "routes",
       href: "/routes",
       label: "通学路",
@@ -74,44 +85,21 @@ export function Navigation({
       description: "通学路を管理",
     },
     {
-      key: "hazard-game",
-      href: "/hazard-game",
-      label: "発見",
-      icon: Gamepad2,
-      description: "ゲームで危険感度を向上",
-      emphasize: true,
-    },
-    {
-      key: "dashboard",
-      href: "/report",
-      label: "報告",
-      icon: BarChart3,
-      description: "最新レポートと統計",
-    },
-    {
-      key: "mypage",
+      key: "activity",
       href: "/mypage",
-      label: "マイページ",
-      mobileLabel: "マイ",
+      label: "活動",
       icon: User,
-      description: "ミッションやコレクション",
+      description: "プロフィール・ミッション・設定",
     },
   ]
 
   const secondaryNavItems: NavItem[] = [
     {
-      key: "missions",
-      href: "/missions",
-      label: "ミッション",
-      icon: Award,
-      description: "挑戦中のタスク",
-    },
-    {
-      key: "leaderboard",
-      href: "/leaderboard",
-      label: "ランキング",
-      icon: Trophy,
-      description: "スコアを確認",
+      key: "report-stats",
+      href: "/report",
+      label: "報告一覧",
+      icon: BarChart3,
+      description: "危険報告の統計",
     },
   ]
 
@@ -127,14 +115,22 @@ export function Navigation({
       ]
     : []
 
-  const desktopNavItems = [...mainNavItems, ...secondaryNavItems, ...adminNavItems]
+  const desktopNavItems = [...mainNavItems.filter((i) => !i.isAction), ...secondaryNavItems, ...adminNavItems]
   const bottomNavItems = mainNavItems
 
-  const isActivePath = (href: string) => {
-    if (href === "/landing" && pathname === "/") {
+  // /hazard-game, /missions, /leaderboard はすべて「活動」タブをアクティブにする
+  const activityPaths = ["/mypage", "/hazard-game", "/missions", "/leaderboard", "/badges"]
+
+  const isActivePath = (item: NavItem) => {
+    if (item.isAction) return false
+
+    if (item.key === "activity") {
+      return activityPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+    }
+    if (item.href === "/landing" && pathname === "/") {
       return true
     }
-    return pathname === href || pathname.startsWith(`${href}/`)
+    return pathname === item.href || pathname.startsWith(`${item.href}/`)
   }
 
   const topNavClass = cn(
@@ -165,7 +161,7 @@ export function Navigation({
             <div className="hidden lg:flex items-center space-x-1">
               {desktopNavItems.map((item) => {
                 const Icon = item.icon
-                const active = isActivePath(item.href)
+                const active = isActivePath(item)
                 return (
                   <Link key={item.href} href={item.href}>
                     <Button
@@ -196,6 +192,15 @@ export function Navigation({
                   </Link>
                 )
               })}
+              {/* デスクトップ: 報告ボタン */}
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-orange-400 to-rose-500 text-white hover:from-orange-500 hover:to-rose-600 ml-2"
+                onClick={() => setIsReportOpen(true)}
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                報告する
+              </Button>
             </div>
 
             {/* 右側アクション */}
@@ -236,11 +241,9 @@ export function Navigation({
                   </Link>
                 </div>
               )}
-
             </div>
           </div>
         </div>
-
       </nav>
 
       {/* モバイルボトムナビ */}
@@ -256,8 +259,28 @@ export function Navigation({
         >
           {bottomNavItems.map((item) => {
             const Icon = item.icon
-            const active = isActivePath(item.href)
+            const active = isActivePath(item)
             const isEmphasized = item.emphasize
+
+            if (item.isAction) {
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all text-slate-500"
+                  aria-label={item.label}
+                  onClick={() => setIsReportOpen(true)}
+                >
+                  <span className="flex h-14 w-14 -mt-2 items-center justify-center rounded-full border-none bg-gradient-to-br from-orange-400 to-rose-500 text-white shadow-lg transition-all">
+                    <Icon className="h-6 w-6" />
+                  </span>
+                  <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
+                    {item.label}
+                  </span>
+                </button>
+              )
+            }
+
             return (
               <Link
                 key={item.href}
@@ -272,13 +295,11 @@ export function Navigation({
                 <span
                   className={cn(
                     "flex items-center justify-center rounded-full border bg-white shadow-sm transition-all",
-                    isEmphasized
-                      ? "h-14 w-14 -mt-2 border-none bg-gradient-to-br from-orange-400 to-rose-500 text-white shadow-lg"
-                      : "h-10 w-10 border-transparent",
-                    active && !isEmphasized && "border-sky-200 bg-sky-50"
+                    "h-10 w-10 border-transparent",
+                    active && "border-sky-200 bg-sky-50"
                   )}
                 >
-                  <Icon className={cn(isEmphasized ? "h-6 w-6" : "h-5 w-5")} />
+                  <Icon className="h-5 w-5" />
                 </span>
                 <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
                   {item.mobileLabel ?? item.label}
@@ -289,6 +310,8 @@ export function Navigation({
         </div>
       </nav>
 
+      {/* 報告BottomSheet */}
+      <ReportBottomSheet open={isReportOpen} onOpenChange={setIsReportOpen} />
     </>
   )
 }

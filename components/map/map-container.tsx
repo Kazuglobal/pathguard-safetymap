@@ -248,7 +248,11 @@ function sleep(ms: number) {
 }
 
 // MapContainer コンポーネント
-export default function MapContainer() {
+interface MapContainerProps {
+  autoOpenReport?: boolean
+}
+
+export default function MapContainer({ autoOpenReport = false }: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -912,6 +916,17 @@ export default function MapContainer() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]); // Add supabase dependency
+
+  // autoOpenReport: ナビの報告CTAから遷移したとき自動でフォームを開く
+  useEffect(() => {
+    if (!autoOpenReport || isLoading) return
+    if (isMobile) {
+      setAwaitingLocationSelection(true)
+    } else {
+      setIsReportFormOpen(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenReport, isLoading])
 
   // --- Report Form Logic ---
   useEffect(() => {

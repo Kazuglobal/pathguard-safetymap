@@ -32,6 +32,8 @@ import {
   Clock,
   Edit,
   LogOut,
+  Gamepad2,
+  Award,
 } from "lucide-react"
 
 interface ReportSummary extends Pick<
@@ -466,6 +468,61 @@ export default function MyPage() {
               <Button asChild variant="outline" size="sm">
                 <Link href="/dashboard">
                   画像を管理する
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>キケン発見ゲーム</CardTitle>
+                  <CardDescription>ゲームで危険感度を向上させよう</CardDescription>
+                </div>
+                <CardIcon icon={<Gamepad2 className="h-5 w-5" />} color="warning" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-600">
+                写真から危険箇所を発見するトレーニングゲーム。プレイするたびにポイントを獲得できます。
+              </p>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/hazard-game">
+                  ゲームをプレイ
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>バッジ・ランキング</CardTitle>
+                  <CardDescription>獲得バッジとスコアを確認</CardDescription>
+                </div>
+                <CardIcon icon={<Award className="h-5 w-5" />} color="info" />
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/leaderboard">ランキングを見る</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/badges">バッジコレクション</Link>
+              </Button>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/missions">
+                  全ミッションを見る
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

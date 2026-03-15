@@ -48,6 +48,11 @@ vi.mock('@/components/notifications/notification-bell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }))
 
+// Mock ReportBottomSheet
+vi.mock('@/components/report/report-bottom-sheet', () => ({
+  ReportBottomSheet: ({ open }: any) => open ? <div data-testid="report-bottom-sheet" /> : null,
+}))
+
 // Mock admin check
 vi.mock('@/lib/admin', () => ({
   isAdminUser: () => false,
@@ -128,13 +133,12 @@ describe('Navigation Logout Functionality', () => {
   })
 
   describe('Mobile bottom nav labels', () => {
-    it('uses mobileLabel when provided while keeping full aria label', () => {
+    it('renders the activity tab link', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const mypageBottomLink = container.querySelector('a[aria-label="マイページ"]')
-      expect(mypageBottomLink).toBeInTheDocument()
-      expect(mypageBottomLink).toHaveTextContent('マイ')
-      expect(mypageBottomLink).not.toHaveTextContent('マイページ')
+      const activityBottomLink = container.querySelector('a[aria-label="活動"]')
+      expect(activityBottomLink).toBeInTheDocument()
+      expect(activityBottomLink).toHaveTextContent('活動')
     })
 
     it('falls back to label when mobileLabel is not provided', () => {
@@ -148,11 +152,18 @@ describe('Navigation Logout Functionality', () => {
     it('applies one-line truncation styles to bottom nav labels', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const mypageBottomLink = container.querySelector('a[aria-label="マイページ"]')
-      const label = mypageBottomLink?.querySelector('span:last-child')
+      const activityBottomLink = container.querySelector('a[aria-label="活動"]')
+      const label = activityBottomLink?.querySelector('span:last-child')
       expect(label).toBeInTheDocument()
-      expect(mypageBottomLink).toHaveClass('min-w-0')
+      expect(activityBottomLink).toHaveClass('min-w-0')
       expect(label).toHaveClass('block', 'max-w-[72px]', 'truncate', 'whitespace-nowrap', 'text-center')
+    })
+
+    it('renders report action button (not a link) in bottom nav', () => {
+      const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const reportButton = container.querySelector('button[aria-label="報告"]')
+      expect(reportButton).toBeInTheDocument()
     })
   })
 })
