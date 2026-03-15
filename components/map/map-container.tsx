@@ -1956,13 +1956,19 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
     () =>
       buildMapDisplayOverlayOptions({
         isHeatmapVisible: accidentHeatmap.isVisible,
-        isHazardPanelOpen: activeTopPanel === "hazard",
+        isFloodVisible: hazardLayerVisibility.flood,
+        isTsunamiVisible: hazardLayerVisibility.tsunami,
         onToggleHeatmap: accidentHeatmap.toggleVisibility,
-        onToggleHazard: () => {
-          setActiveTopPanel((current) => (current === "hazard" ? null : "hazard"))
-        },
+        onToggleFlood: () => handleHazardLayerToggle("flood", !hazardLayerVisibility.flood),
+        onToggleTsunami: () => handleHazardLayerToggle("tsunami", !hazardLayerVisibility.tsunami),
       }),
-    [accidentHeatmap.isVisible, accidentHeatmap.toggleVisibility, activeTopPanel],
+    [
+      accidentHeatmap.isVisible,
+      accidentHeatmap.toggleVisibility,
+      handleHazardLayerToggle,
+      hazardLayerVisibility.flood,
+      hazardLayerVisibility.tsunami,
+    ],
   )
 
   // --- Render ---

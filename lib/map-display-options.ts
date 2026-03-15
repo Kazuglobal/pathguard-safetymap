@@ -8,16 +8,20 @@ export interface MapDisplayOption {
 
 interface BuildMapDisplayOverlayOptionsParams {
   isHeatmapVisible: boolean
-  isHazardPanelOpen: boolean
+  isFloodVisible: boolean
+  isTsunamiVisible: boolean
   onToggleHeatmap: () => void
-  onToggleHazard: () => void
+  onToggleFlood: () => void
+  onToggleTsunami: () => void
 }
 
 export function buildMapDisplayOverlayOptions({
   isHeatmapVisible,
-  isHazardPanelOpen,
+  isFloodVisible,
+  isTsunamiVisible,
   onToggleHeatmap,
-  onToggleHazard,
+  onToggleFlood,
+  onToggleTsunami,
 }: BuildMapDisplayOverlayOptionsParams): MapDisplayOption[] {
   return [
     {
@@ -28,11 +32,18 @@ export function buildMapDisplayOverlayOptions({
       onSelect: onToggleHeatmap,
     },
     {
-      id: "hazard",
-      label: "危険・注意",
-      description: "通学路上の注意点を確認します",
-      selected: isHazardPanelOpen,
-      onSelect: onToggleHazard,
+      id: "flood",
+      label: "浸水",
+      description: "浸水想定区域を地図に重ねて表示します",
+      selected: isFloodVisible,
+      onSelect: onToggleFlood,
+    },
+    {
+      id: "tsunami",
+      label: "津波",
+      description: "津波想定区域を地図に重ねて表示します",
+      selected: isTsunamiVisible,
+      onSelect: onToggleTsunami,
     },
   ]
 }
