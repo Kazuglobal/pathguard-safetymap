@@ -13,6 +13,10 @@ vi.mock("@/hooks/use-gamification", () => ({
   useGamification: () => ({ points: 100, level: 3 }),
 }))
 
+vi.mock("@/components/map/map-style-selector", () => ({
+  default: () => <div data-testid="map-style-selector" />,
+}))
+
 const defaultProps = {
   onAddReport: vi.fn(),
   isReportFormOpen: false,
