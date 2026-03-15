@@ -1,6 +1,16 @@
 "use client"
 
+import { useState } from "react"
+
 import { Button } from "@/components/ui/button"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Layers } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import type { MapDisplayOption } from "@/lib/map-display-options"
+import { cn } from "@/lib/utils"
+import { Check, Layers } from "lucide-react"
+
+const MAP_STYLES = [
+  { id: "streets-v12", name: "標準地図", shortName: "標準", description: "道路と施設を見やすく表示します" },
+  { id: "satellite-v9", name: "航空写真", shortName: "衛星写真", description: "写真ベースで周辺状況を確認します" },
+  { id: "satellite-streets-v12", name: "航空写真+道路", shortName: "衛星+道路", description: "写真と道路名を重ねて表示します" },
+  { id: "navigation-day-v1", name: "ナビゲーション", shortName: "ナビ", description: "道順を追いやすい配色で表示します" },
+  { id: "light-v11", name: "ライトモード", shortName: "ライト", description: "情報を淡い配色で表示します" },
+  { id: "dark-v11", name: "ダークモード", shortName: "ダーク", description: "暗い背景で情報を見やすく表示します" },
+  { id: "outdoors-v12", name: "アウトドア", shortName: "アウトドア", description: "地形を含めて周辺を確認します" },
+] as const
 
 interface MapStyleSelectorProps {
   currentStyle: string
@@ -18,6 +41,8 @@ interface MapStyleSelectorProps {
   contentAlign?: "start" | "center" | "end"
   compactLabel?: boolean
   buttonLabel?: string
+  isMobile?: boolean
+  overlayOptions?: MapDisplayOption[]
 }
 
 export default function MapStyleSelector({
@@ -27,33 +52,137 @@ export default function MapStyleSelector({
   contentAlign = "end",
   compactLabel = true,
   buttonLabel = "地図スタイル",
+  isMobile = false,
+  overlayOptions,
 }: MapStyleSelectorProps) {
-  const mapStyles = [
-    { id: "streets-v12", name: "標準地図" },
-    { id: "satellite-v9", name: "航空写真" },
-    { id: "satellite-streets-v12", name: "航空写真+道路" },
-    { id: "navigation-day-v1", name: "ナビゲーション" },
-    { id: "light-v11", name: "ライトモード" },
-    { id: "dark-v11", name: "ダークモード" },
-    { id: "outdoors-v12", name: "アウトドア" },
-  ]
+  const [isDisplaySheetOpen, setIsDisplaySheetOpen] = useState(false)
+  const hasOverlayOptions = Boolean(overlayOptions?.length)
+
+  const trigger = (
+    <Button
+      variant="outline"
+      size="sm"
+      className={`flex items-center h-9 sm:h-10 px-2.5 sm:px-3 ${buttonClassName ?? ""}`.trim()}
+      aria-label={buttonLabel}
+    >
+      <Layers className="h-4 w-4 sm:mr-2" />
+      <span className={compactLabel ? "hidden sm:inline" : ""}>{buttonLabel}</span>
+    </Button>
+  )
+
+  if (hasOverlayOptions) {
+    const displayContent = (
+      <div className="space-y-5">
+        <section className="space-y-3">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-slate-900">地図の見た目</h3>
+            <p className="text-xs text-slate-500">背景の見え方を選びます</p>
+          </div>
+          <div className="grid gap-2">
+            {MAP_STYLES.map((style) => {
+              const isSelected = currentStyle === style.id
+
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  className={cn(
+                    "flex w-full items-start justify-between rounded-2xl border px-4 py-3 text-left transition-colors",
+                    isSelected
+                      ? "border-sky-300 bg-sky-50 text-sky-950"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                  )}
+                  onClick={() => onChange(style.id)}
+                >
+                  <span className="space-y-1">
+                    <span className="block text-sm font-semibold">{style.shortName}</span>
+                    <span className="block text-xs text-slate-500">{style.description}</span>
+                  </span>
+                  {isSelected ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-1 text-[11px] font-semibold text-white">
+                      <Check className="h-3.5 w-3.5" />
+                      表示中
+                    </span>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-slate-900">地図に重ねる情報</h3>
+            <p className="text-xs text-slate-500">必要な情報だけを追加表示します</p>
+          </div>
+          <div className="grid gap-2">
+            {overlayOptions?.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={cn(
+                  "flex w-full items-start justify-between rounded-2xl border px-4 py-3 text-left transition-colors",
+                  option.selected
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                )}
+                onClick={option.onSelect}
+              >
+                <span className="space-y-1">
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span className="block text-xs text-slate-500">{option.description}</span>
+                </span>
+                {option.selected ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white">
+                    <Check className="h-3.5 w-3.5" />
+                    表示中
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    )
+
+    if (isMobile) {
+      return (
+        <Drawer open={isDisplaySheetOpen} onOpenChange={setIsDisplaySheetOpen}>
+          <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+          <DrawerContent className="max-h-[82svh] rounded-t-[1.75rem] px-0 pb-6">
+            <DrawerHeader className="px-4 text-left">
+              <DrawerTitle>表示する情報</DrawerTitle>
+              <DrawerDescription>地図の見た目と、重ねて確認する情報を選べます。</DrawerDescription>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 pb-2">{displayContent}</div>
+          </DrawerContent>
+        </Drawer>
+      )
+    }
+
+    return (
+      <Popover open={isDisplaySheetOpen} onOpenChange={setIsDisplaySheetOpen}>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent align={contentAlign} className="w-[24rem] rounded-2xl p-4">
+          <div className="mb-4 space-y-1">
+            <p className="text-base font-semibold text-slate-950">表示する情報</p>
+            <p className="text-xs text-slate-500">地図の見た目と重ねる情報を選択します。</p>
+          </div>
+          {displayContent}
+        </PopoverContent>
+      </Popover>
+    )
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={`flex items-center h-9 sm:h-10 px-2.5 sm:px-3 ${buttonClassName ?? ""}`.trim()}
-        >
-          <Layers className="h-4 w-4 sm:mr-2" />
-          <span className={compactLabel ? "hidden sm:inline" : ""}>{buttonLabel}</span>
-        </Button>
+        {trigger}
       </DropdownMenuTrigger>
       <DropdownMenuContent align={contentAlign}>
         <DropdownMenuLabel>地図スタイルを選択</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {mapStyles.map((style) => (
+        {MAP_STYLES.map((style) => (
           <DropdownMenuItem
             key={style.id}
             onClick={() => onChange(style.id)}

@@ -13,6 +13,10 @@ vi.mock("@/hooks/use-gamification", () => ({
   useGamification: () => ({ points: 100, level: 3 }),
 }))
 
+vi.mock("@/components/map/map-style-selector", () => ({
+  default: () => <div data-testid="map-style-selector" />,
+}))
+
 const defaultProps = {
   onAddReport: vi.fn(),
   isReportFormOpen: false,
@@ -92,6 +96,7 @@ describe("MapFloatingControls - 現在地で報告ボタン", () => {
       expect(
         screen.getByRole("button", { name: /現在地で報告/ })
       ).toBeInTheDocument()
+      expect(screen.getByText("現在地")).toBeInTheDocument()
     })
 
     it("モバイルで isAcquiringGPS=true の場合、ローディング表示になること", () => {
