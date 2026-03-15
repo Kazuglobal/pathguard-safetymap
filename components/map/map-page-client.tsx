@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HelpCircle } from "lucide-react"
 
 import MapContainer from "@/components/map/map-container"
@@ -11,6 +11,8 @@ import { shouldShowTutorial } from "@/lib/tutorial-storage"
 
 export default function MapPageClient() {
   const [showTutorial, setShowTutorial] = useState(false)
+  const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const autoOpenReport = searchParams.get("report") === "open"
 
@@ -22,6 +24,17 @@ export default function MapPageClient() {
       return () => clearTimeout(timer)
     }
   }, [])
+
+  useEffect(() => {
+    if (!autoOpenReport) return
+
+    const nextParams = new URLSearchParams(searchParams.toString())
+    nextParams.delete("report")
+    const nextQuery = nextParams.toString()
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+
+    router.replace(nextUrl, { scroll: false })
+  }, [autoOpenReport, pathname, router, searchParams])
 
   return (
     <>

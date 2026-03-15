@@ -65,8 +65,8 @@ export function ReportBottomSheet({ open, onOpenChange }: ReportBottomSheetProps
               <Camera className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">写真で報告</p>
-              <p className="text-xs text-gray-500">現場の写真を撮って報告する</p>
+              <p className="font-semibold text-gray-900">写真付きで報告</p>
+              <p className="text-xs text-gray-500">地図で場所を選んだあと写真を追加</p>
             </div>
           </Button>
         </div>
