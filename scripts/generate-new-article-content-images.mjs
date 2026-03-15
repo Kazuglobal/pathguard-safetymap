@@ -4,13 +4,20 @@
 
 import fs from "fs"
 import path from "path"
+import dotenv from "dotenv"
 import { fileURLToPath } from "url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, "..")
 
-const GEMINI_API_KEY = "AIzaSyCScOfZ8dbQWmfzDuKl5Y9ydVB5Zy-vPqg"
+dotenv.config({ path: path.join(ROOT, ".env.local") })
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 const GEMINI_MODEL = "gemini-3.1-flash-image-preview"
+
+if (!GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not set. Add it to .env.local before running this script.")
+}
 
 const QUALITY_SUFFIX = `
 Technical specifications:
@@ -153,7 +160,7 @@ ${QUALITY_SUFFIX}`
     articleSlug: "ai-camera-kakogawa",
     id: "crime-reduction",
     description: "刑法犯認知件数の推移（6年で4割減）",
-    prompt: `Create a Japanese infographic showing crime reduction statistics for Kakogawa city due to AI cameras.
+    prompt: `Create a Japanese infographic showing crime reduction statistics related to Kakogawa city's watch-over camera program.
 
 Visual design: Bar chart or area graph
 
@@ -181,8 +188,8 @@ ${QUALITY_SUFFIX}`
   {
     articleSlug: "ai-camera-kakogawa",
     id: "ai-features",
-    description: "AIカメラの3つの機能説明図",
-    prompt: `Create a Japanese educational illustration showing 3 key AI camera features in a clean layout.
+    description: "高度化見守りカメラの主な機能",
+    prompt: `Create a Japanese educational illustration showing the key features of Kakogawa city's advanced watch-over cameras.
 
 Three feature panels arranged vertically or in a 3-column grid:
 
@@ -193,7 +200,7 @@ FEATURE 1 - 異常音検知 (Abnormal Sound Detection):
 - Color: Blue/cyan theme
 - Label: 悲鳴・異常音を自動検知
 
-FEATURE 2 - 危険接近検知 (Dangerous Approach Detection):
+FEATURE 2 - 車両接近検知 (Dangerous Vehicle Approach Detection):
 - Car approaching pedestrian with warning lines
 - Distance measurement indicator
 - Speaker and rotating light activating
@@ -221,56 +228,23 @@ ${QUALITY_SUFFIX}`
 Visual design: Clock or bar chart showing time distribution
 
 Key data:
-- 15:00-16:00: 26.7% (MOST COMMON - highlighted)
-- 16:00-17:00: ~20%
-- 14:00-15:00: ~15%
+- 15時台: 23.9% (MOST COMMON - highlighted)
+- 16時台: 15.7%
+- 14時台: 14.1%
 - Other times: smaller percentages
 
 Design elements:
 - Large analog clock face or timeline as main visual
-- The 3PM-4PM sector highlighted in warning orange/red
+- The 15時台 sector highlighted in warning orange/red
 - Other sectors in lighter colors
 - "下校時間帯" label over the 14:00-17:00 range
 - Japanese elementary school children icon at peak time
-- Warning badge: "最多 26.7%"
+- Warning badge: "最多 23.9%"
 - Source citation: 千葉県警察データ
 
 Background: Soft gradient from day to evening colors
 
 Style: Clean Japanese data infographic, educational and clear
-${QUALITY_SUFFIX}`
-  },
-  {
-    articleSlug: "suspicious-person-statistics",
-    id: "location-chart",
-    description: "発生場所の内訳（路上65.5%）",
-    prompt: `Create a Japanese infographic showing where suspicious approach incidents occur (location breakdown).
-
-Visual design: Donut/pie chart with location icons
-
-Data:
-- 路上 (Road/Street): 65.5% - DOMINANT - shown in warning orange
-- 公園・広場 (Parks): ~10-15% - shown in green
-- 駐車場・駐輪場 (Parking lots): ~5% - shown in gray
-- 店舗内 (Inside stores): ~5% - shown in blue
-- その他 (Other): remaining - shown in light gray
-
-Design elements:
-- Large donut chart as main visual
-- Each segment labeled with Japanese text and percentage
-- Icon for each location type:
-  - Road: street/sidewalk icon
-  - Park: tree icon
-  - Parking: P sign icon
-  - Store: shopping bag icon
-- Center of donut: warning shield icon
-- Prominent callout: "路上での発生が 65.5%"
-
-Right side: Simple map showing typical route between school and home
-- Route marked in orange (highest risk)
-- School and home icons
-
-Style: Clean Japanese statistical infographic, clear visual hierarchy
 ${QUALITY_SUFFIX}`
   }
 ]

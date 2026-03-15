@@ -263,7 +263,7 @@ ${QUALITY_SUFFIX}`,
         description: "防犯合言葉「はちみつじまん」"
       }
     ]
-  }
+  },
   {
     articleId: "2026-03-15-bicycle-blue-ticket",
     articleSlug: "bicycle-blue-ticket",
@@ -322,23 +322,23 @@ ${QUALITY_SUFFIX}`,
     articleId: "2026-03-15-ai-camera-kakogawa",
     articleSlug: "ai-camera-kakogawa",
     category: "safety-tips",
-    title: "加古川市AIカメラ見守りシステム",
-    thumbnailPrompt: `Create a Japanese illustration showing an AI-powered surveillance camera system protecting a school commute route.
+    title: "加古川市高度化見守りカメラ",
+    thumbnailPrompt: `Create a Japanese illustration showing Kakogawa city's school-route safety camera program.
 
 Scene elements:
-- Modern AI security camera mounted on a pole in a Japanese neighborhood
-- Camera has a glowing blue/cyan AI indicator light suggesting smart technology
+- A neighborhood map or streetscape suggesting roughly 1,500 watch-over camera locations across the city
+- One highlighted advanced safety camera mounted on a pole in a Japanese neighborhood
+- The advanced camera has a glowing blue/cyan indicator light suggesting smart detection features
 - Japanese elementary school children (yellow safety caps, randoseru) walking safely below
 - Semi-transparent digital overlay showing AI detection:
-  - Bounding boxes around children
   - Sound wave indicator (for audio detection)
   - Car proximity alert visual
 - Japanese residential street in Kakogawa city style
 - Community safety atmosphere
 
 Technology visualization:
-- Futuristic but approachable AI camera design
-- Digital detection lines showing the camera's AI capabilities
+- Futuristic but approachable advanced camera design
+- Small label suggesting "150台の高度化見守りカメラ"
 - Warning speaker/rotating light system on the pole
 
 Style: Japanese technology + safety illustration, clean tech aesthetic meets warm community feel
@@ -351,16 +351,15 @@ ${QUALITY_SUFFIX}`,
     articleId: "2026-03-15-suspicious-person-statistics",
     articleSlug: "suspicious-person-statistics",
     category: "safety-tips",
-    title: "声かけ事案の統計と対策",
-    thumbnailPrompt: `Create a Japanese safety awareness illustration about protecting children from suspicious approaches during school commute.
+    title: "声かけ事案の時間帯統計と対策",
+    thumbnailPrompt: `Create a Japanese safety awareness illustration about suspicious-approach prevention during school commute hours.
 
 Scene elements:
-- Japanese elementary school children walking home in the afternoon (3-4pm setting, warm light)
+- Japanese elementary school children walking home in the afternoon around 3pm (warm light)
 - Children walking in a group (group safety concept)
 - A "子ども110番の家" (Child 110 emergency house) visible with its yellow triangle sign
 - Statistical visualization overlay:
   - Clock showing 3PM with warning indicator
-  - Map pin on "road/street" location
   - Shield symbol showing protection
 - Defense action: children running toward safety/adult
 - Bright prevention buzzer (防犯ブザー) on a randoseru strap
@@ -368,7 +367,7 @@ Scene elements:
 Key safety message visual elements:
 - Group walking = safer
 - 子ども110番の家 as a refuge
-- Afternoon warning time (3-4pm)
+- Afternoon warning time (15時台)
 
 Style: Clear Japanese safety education illustration, serious but not frightening
 Color palette: Afternoon warm orange light, warning yellows, safe greens
