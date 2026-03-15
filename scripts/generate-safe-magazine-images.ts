@@ -264,6 +264,118 @@ ${QUALITY_SUFFIX}`,
       }
     ]
   }
+  {
+    articleId: "2026-03-15-bicycle-blue-ticket",
+    articleSlug: "bicycle-blue-ticket",
+    category: "policy-update",
+    title: "自転車青切符制度",
+    thumbnailPrompt: `Create a Japanese educational illustration about bicycle traffic rules for middle and high school students.
+
+Scene elements:
+- Japanese middle/high school student (16+ years old) riding a bicycle on a school commute route
+- Wearing school uniform (gakuran or blazer), school bag on back
+- A police officer issuing a traffic violation ticket (青切符) - blue colored slip
+- Japanese street scene with bicycle lane markings
+- Warning signs visible: no smartphone while riding, stop signs, signal lights
+- Other students watching and learning from the scene
+
+Key visual elements:
+- A blue ticket/slip (青切符) prominently displayed
+- Bicycle with proper safety equipment (light, reflector)
+- Japanese road markings and signs
+- School route environment
+
+Style: Clear Japanese editorial illustration, slightly serious but educational tone
+Color palette: Blue accents (for 青切符), school uniform colors, Japanese street elements
+Mood: Informational, slightly cautionary
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
+    articleId: "2026-03-15-30kmh-speed-limit",
+    articleSlug: "30kmh-speed-limit",
+    category: "policy-update",
+    title: "生活道路30km/h制限",
+    thumbnailPrompt: `Create a Japanese illustration showing a residential street with a new 30km/h speed limit sign.
+
+Scene elements:
+- Narrow Japanese residential street (生活道路) in a suburban neighborhood
+- A prominent new speed limit sign showing "30" in a red circle
+- Japanese elementary school children (yellow caps, randoseru) walking safely on the sidewalk
+- Cars driving slowly past, respecting the new speed limit
+- Traditional Japanese houses lining both sides of the street
+- Green belt markings (グリーンベルト) on the road edge
+- Before/after implication: safe walking environment
+
+Visual contrast element:
+- Show the "30" speed limit sign as the focal point
+- Children feeling safe on the pavement
+- Peaceful residential atmosphere
+
+Style: Warm Japanese neighborhood illustration, slice-of-life aesthetic
+Color palette: Warm residential tones, red speed limit sign, yellow safety accents
+Mood: Safe, protective, community-oriented
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
+    articleId: "2026-03-15-ai-camera-kakogawa",
+    articleSlug: "ai-camera-kakogawa",
+    category: "safety-tips",
+    title: "加古川市AIカメラ見守りシステム",
+    thumbnailPrompt: `Create a Japanese illustration showing an AI-powered surveillance camera system protecting a school commute route.
+
+Scene elements:
+- Modern AI security camera mounted on a pole in a Japanese neighborhood
+- Camera has a glowing blue/cyan AI indicator light suggesting smart technology
+- Japanese elementary school children (yellow safety caps, randoseru) walking safely below
+- Semi-transparent digital overlay showing AI detection:
+  - Bounding boxes around children
+  - Sound wave indicator (for audio detection)
+  - Car proximity alert visual
+- Japanese residential street in Kakogawa city style
+- Community safety atmosphere
+
+Technology visualization:
+- Futuristic but approachable AI camera design
+- Digital detection lines showing the camera's AI capabilities
+- Warning speaker/rotating light system on the pole
+
+Style: Japanese technology + safety illustration, clean tech aesthetic meets warm community feel
+Color palette: Tech blue/cyan for AI elements, warm tones for neighborhood, yellow for children
+Mood: Protected, technologically advanced, community safety
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
+    articleId: "2026-03-15-suspicious-person-statistics",
+    articleSlug: "suspicious-person-statistics",
+    category: "safety-tips",
+    title: "声かけ事案の統計と対策",
+    thumbnailPrompt: `Create a Japanese safety awareness illustration about protecting children from suspicious approaches during school commute.
+
+Scene elements:
+- Japanese elementary school children walking home in the afternoon (3-4pm setting, warm light)
+- Children walking in a group (group safety concept)
+- A "子ども110番の家" (Child 110 emergency house) visible with its yellow triangle sign
+- Statistical visualization overlay:
+  - Clock showing 3PM with warning indicator
+  - Map pin on "road/street" location
+  - Shield symbol showing protection
+- Defense action: children running toward safety/adult
+- Bright prevention buzzer (防犯ブザー) on a randoseru strap
+
+Key safety message visual elements:
+- Group walking = safer
+- 子ども110番の家 as a refuge
+- Afternoon warning time (3-4pm)
+
+Style: Clear Japanese safety education illustration, serious but not frightening
+Color palette: Afternoon warm orange light, warning yellows, safe greens
+Mood: Alert but empowering, children as active participants in their own safety
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  }
 ]
 
 async function generateImage(prompt: string, outputPath: string): Promise<boolean> {
