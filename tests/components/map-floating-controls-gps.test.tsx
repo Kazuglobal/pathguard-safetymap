@@ -96,6 +96,7 @@ describe("MapFloatingControls - 現在地で報告ボタン", () => {
       expect(
         screen.getByRole("button", { name: /現在地で報告/ })
       ).toBeInTheDocument()
+      expect(screen.getByText("現在地")).toBeInTheDocument()
     })
 
     it("モバイルで isAcquiringGPS=true の場合、ローディング表示になること", () => {

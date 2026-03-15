@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
-import MapStyleSelector from "./map-style-selector"
+import MapStyleSelector, { type MapDisplayOption } from "./map-style-selector"
 import HelpDialog from "./help-dialog"
 import { useGamification } from "@/hooks/use-gamification"
 import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
@@ -23,6 +23,7 @@ interface MapFloatingControlsProps {
   isAcquiringGPS?: boolean
   onToggleHeatmap?: () => void
   isHeatmapVisible?: boolean
+  displayOverlayOptions?: MapDisplayOption[]
 }
 
 export default function MapFloatingControls({
@@ -41,6 +42,7 @@ export default function MapFloatingControls({
   isAcquiringGPS = false,
   onToggleHeatmap,
   isHeatmapVisible = false,
+  displayOverlayOptions,
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
@@ -55,7 +57,8 @@ export default function MapFloatingControls({
   const legendBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
   }
-  const showMobileActionDock = isMobile && !isSelecting && !isReportFormOpen && !isHeatmapVisible
+  const showMobileFocusedDock = isMobile && (isSelecting || isReportFormOpen)
+  const showMobileActionDock = isMobile && !showMobileFocusedDock
   const showLegend = !isMobile
 
   return (
@@ -100,7 +103,11 @@ export default function MapFloatingControls({
           <MapStyleSelector
             currentStyle={mapStyle}
             onChange={setMapStyle}
-            buttonClassName="h-11 w-11 rounded-full border-0 p-0 shadow-none"
+            buttonClassName="h-11 rounded-full border-0 px-4 shadow-none"
+            compactLabel={false}
+            buttonLabel="表示"
+            isMobile={isMobile}
+            overlayOptions={displayOverlayOptions}
           />
         </div>
       </div>
@@ -163,6 +170,25 @@ export default function MapFloatingControls({
               <PlusCircle className="mr-1.5 h-4 w-4" />
               危険を報告
             </Button>
+          </div>
+        </div>
+      )}
+
+      {showMobileFocusedDock && (
+        <div
+          data-testid="mobile-focused-dock"
+          className="absolute inset-x-3 z-20"
+          style={{ bottom: mobileBottomNavClearance }}
+        >
+          <div className="rounded-2xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+            <p className="text-sm font-semibold text-slate-900">
+              {isSelecting ? "地点選択中" : "報告入力中"}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {isSelecting
+                ? "地図をタップして地点を決めてください"
+                : "内容を確認して送信してください"}
+            </p>
           </div>
         </div>
       )}

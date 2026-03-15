@@ -12,7 +12,11 @@ vi.mock('@/components/map/help-dialog', () => ({
 }))
 
 vi.mock('@/components/map/map-style-selector', () => ({
-  default: () => <div data-testid="map-style-selector" />,
+  default: ({ buttonLabel = '地図スタイル' }: { buttonLabel?: string }) => (
+    <button type="button" data-testid="map-style-selector">
+      {buttonLabel}
+    </button>
+  ),
 }))
 
 vi.mock('@/components/map/map-3d-toggle', () => ({
@@ -59,7 +63,7 @@ describe('MapFloatingControls mobile layout', () => {
     expect(screen.getByTestId('map-display-dock')).toHaveStyle({
       bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10.5rem)',
     })
-    expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '表示' })).toBeInTheDocument()
   })
 
   it('shows bottom-right mobile action dock in normal state', () => {
@@ -71,20 +75,25 @@ describe('MapFloatingControls mobile layout', () => {
     expect(screen.getByRole('button', { name: '危険地点一覧を開く' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toHaveTextContent('危険を報告')
   })
 
-  it('hides mobile action dock while location selection is active', () => {
+  it('shows a focused dock while location selection is active', () => {
     renderControls({ isSelectingLocation: true })
 
+    expect(screen.getByTestId('mobile-focused-dock')).toBeInTheDocument()
+    expect(screen.getByText('地点選択中')).toBeInTheDocument()
+    expect(screen.getByText('地図をタップして地点を決めてください')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '危険箇所を報告する' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '現在地で報告' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '危険地点一覧を開く' })).not.toBeInTheDocument()
   })
 
-  it('hides mobile action dock when heatmap is visible', () => {
+  it('keeps mobile actions available when heatmap is visible', () => {
     renderControls({ isHeatmapVisible: true })
 
-    expect(screen.queryByRole('button', { name: '危険箇所を報告する' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '現在地で報告' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-action-dock')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
   })
 
   it('does not render the bottom legend on mobile', () => {
