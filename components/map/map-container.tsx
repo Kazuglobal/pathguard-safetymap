@@ -56,6 +56,7 @@ import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
 import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
+import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -1951,6 +1952,19 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
   }, [gpsLocation])
   // --- ▲▲▲ 現在地で報告ハンドラー ▲▲▲ ---
 
+  const mapDisplayOverlayOptions = useMemo(
+    () =>
+      buildMapDisplayOverlayOptions({
+        isHeatmapVisible: accidentHeatmap.isVisible,
+        isHazardPanelOpen: activeTopPanel === "hazard",
+        onToggleHeatmap: accidentHeatmap.toggleVisibility,
+        onToggleHazard: () => {
+          setActiveTopPanel((current) => (current === "hazard" ? null : "hazard"))
+        },
+      }),
+    [accidentHeatmap.isVisible, accidentHeatmap.toggleVisibility, activeTopPanel],
+  )
+
   // --- Render ---
   return (
     <div className="fullscreen-map-container">
@@ -1973,6 +1987,7 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
           isAcquiringGPS={isAcquiringGPS}
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
+          displayOverlayOptions={mapDisplayOverlayOptions}
         />
 
         {!awaitingLocationSelection && (

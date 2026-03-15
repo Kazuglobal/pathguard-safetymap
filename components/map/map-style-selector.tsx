@@ -19,16 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import type { MapDisplayOption } from "@/lib/map-display-options"
 import { cn } from "@/lib/utils"
 import { Check, Layers } from "lucide-react"
-
-export interface MapDisplayOption {
-  id: string
-  label: string
-  description: string
-  selected: boolean
-  onSelect: () => void
-}
 
 const MAP_STYLES = [
   { id: "streets-v12", name: "標準地図", shortName: "標準", description: "道路と施設を見やすく表示します" },

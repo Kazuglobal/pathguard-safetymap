@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import type { MapDisplayOption } from "@/lib/map-display-options"
 import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
-import MapStyleSelector, { type MapDisplayOption } from "./map-style-selector"
+import MapStyleSelector from "./map-style-selector"
 import HelpDialog from "./help-dialog"
 import { useGamification } from "@/hooks/use-gamification"
 import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
