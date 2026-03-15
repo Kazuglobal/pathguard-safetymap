@@ -1,0 +1,121 @@
+{
+  "research_date": "2026-03-15",
+  "total_items": 7,
+  "items": [
+    {
+      "id": "news-001",
+      "title": "令和8年 春の全国交通安全運動（2026年4月6日〜15日）実施",
+      "summary": "2026年4月6日〜15日に春の全国交通安全運動が実施される。重点項目に「通学路・生活道路における歩行者の安全確保」「ながらスマホ根絶」「自転車の交通ルール遵守」が明記された。4月10日は「交通事故死ゼロを目指す日」に設定。",
+      "source_urls": [
+        "https://www8.cao.go.jp/koutu/keihatsu/undou/r08_haru/youkou.html"
+      ],
+      "published_date": "2026-02-01",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 9,
+      "keywords": ["交通安全運動", "通学路", "2026年", "春"]
+    },
+    {
+      "id": "news-002",
+      "title": "自転車への青切符制度、2026年4月1日より施行",
+      "summary": "2026年4月より16歳以上の自転車利用者に青切符（交通反則通告制度）が適用開始。信号無視・一時不停止・逆走・ながらスマホ等113項目が対象。中高生の通学自転車も含まれ、学校の安全教育対応が求められている。",
+      "source_urls": [
+        "https://jafmate.jp/safety/kantei_20260209.html",
+        "https://www.gov-online.go.jp/article/202410/entry-6604.html"
+      ],
+      "published_date": "2026-02-09",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 9,
+      "keywords": ["自転車", "青切符", "交通違反", "中高生", "通学"]
+    },
+    {
+      "id": "news-003",
+      "title": "生活道路・通学路の法定速度が30km/hに引き下げ（2026年9月施行）",
+      "summary": "2026年9月1日から生活道路・住宅街の法定速度が60km/hから30km/hに自動引き下げ。通学路を含む無標識の住宅道路が対象となり、子どもの歩行安全向上が期待される。ゾーン30プラスとの組み合わせで面的安全対策として機能。",
+      "source_urls": [
+        "https://alcoms.jp/column/19809",
+        "https://jaf-training.jp/column/2026-law-amendment/"
+      ],
+      "published_date": "2026-01-01",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 9,
+      "keywords": ["法定速度", "30km/h", "生活道路", "通学路", "道路交通法改正"]
+    },
+    {
+      "id": "news-004",
+      "title": "2026年1月 登下校中の児童が車にはねられる事故が連続発生、文科省が緊急通知",
+      "summary": "2026年1月に大阪市西成区（1日）、埼玉県三郷市（14日）、福岡県筑紫野市（19日）で登下校中の児童が相次いで車にはねられる事故が発生。文科省・阿部俊子大臣が「前例のない事態」として全国教育委員会に注意喚起を発した。",
+      "source_urls": [
+        "https://www.kyoiku-press.com/post-295502/"
+      ],
+      "published_date": "2026-01-20",
+      "category": "accident-news",
+      "location": {
+        "prefecture": "複数県",
+        "city": null
+      },
+      "relevance_score": 10,
+      "keywords": ["登下校", "事故", "文科省", "緊急通知", "小学生"]
+    },
+    {
+      "id": "news-005",
+      "title": "「安全」通学路で小1が死亡——2か月前にも同地点で事故",
+      "summary": "「安全」に指定されていた通学路の交差点で小学1年生が死亡。約2か月前にも同交差点近辺で死傷事故が発生しており、危険情報の共有・対処が機能していなかった実態が明らかに。複数機関間の情報連携の欠如が問題視された。",
+      "source_urls": [
+        "https://www.tokyo-np.co.jp/article/375546"
+      ],
+      "published_date": "2026-01-15",
+      "category": "accident-news",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 10,
+      "keywords": ["通学路", "小学1年生", "交差点事故", "情報連携", "データ活用"]
+    },
+    {
+      "id": "news-006",
+      "title": "国土交通省：通学路の対策箇所91.2%が完了、約6,300か所が残存",
+      "summary": "2021年の千葉県八街市事故を機に実施した合同点検で抽出された72,568か所のうち、2023年末時点で66,203か所（91.2%）で対策が完了。未完了約6,300か所は道路管理者・警察対応分が大半を占め、2026年の重点課題に。",
+      "source_urls": [
+        "https://www.mlit.go.jp/report/press/road01_hh_001898.html"
+      ],
+      "published_date": "2024-01-01",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 8,
+      "keywords": ["国土交通省", "通学路対策", "危険箇所", "進捗"]
+    },
+    {
+      "id": "news-007",
+      "title": "通学路見守りの担い手不足が深刻化——「負担大きい」「やる人いない」",
+      "summary": "少子高齢化・人口減少により地域の見守りボランティアの担い手が急減。スクールガード・子ども見守り隊の高齢化・人員減が全国的課題。AIカメラ・見守りアプリなどテクノロジー活用による補完が進行中。",
+      "source_urls": [
+        "https://anzenkyouiku.mext.go.jp/tougekoumimamori/index.html",
+        "https://www.kobe-np.co.jp/news/sougou/202112/0014902470.shtml"
+      ],
+      "published_date": "2026-01-01",
+      "category": "volunteer-activity",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 7,
+      "keywords": ["見守り", "ボランティア", "担い手不足", "高齢化", "テクノロジー"]
+    }
+  ]
+}
