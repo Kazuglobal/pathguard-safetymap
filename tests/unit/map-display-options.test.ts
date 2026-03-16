@@ -21,16 +21,25 @@ describe("buildMapDisplayOverlayOptions", () => {
       expect.objectContaining({
         id: "heatmap",
         label: "事故ヒートマップ",
+        description: "事故の集中地点を重ねて表示します",
+        previewImage: "/images/map-style-previews/heat-map.png",
+        previewAlt: "事故ヒートマップのプレビュー",
         selected: true,
       }),
       expect.objectContaining({
         id: "flood",
-        label: "浸水",
+        label: "洪水",
+        description: "洪水リスクのある地域を重ねて表示します",
+        previewImage: "/images/map-style-previews/flood-hazard.png",
+        previewAlt: "洪水ハザードのプレビュー",
         selected: false,
       }),
       expect.objectContaining({
         id: "tsunami",
         label: "津波",
+        description: "津波浸水想定区域を重ねて表示します",
+        previewImage: "/images/map-style-previews/tunami-hazard.png",
+        previewAlt: "津波ハザードのプレビュー",
         selected: true,
       }),
     ])
