@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,13 +26,62 @@ import { cn } from "@/lib/utils"
 import { Check, Layers } from "lucide-react"
 
 const MAP_STYLES = [
-  { id: "streets-v12", name: "標準地図", shortName: "標準", description: "道路と施設を見やすく表示します" },
-  { id: "satellite-v9", name: "航空写真", shortName: "衛星写真", description: "写真ベースで周辺状況を確認します" },
-  { id: "satellite-streets-v12", name: "航空写真+道路", shortName: "衛星+道路", description: "写真と道路名を重ねて表示します" },
-  { id: "navigation-day-v1", name: "ナビゲーション", shortName: "ナビ", description: "道順を追いやすい配色で表示します" },
-  { id: "light-v11", name: "ライトモード", shortName: "ライト", description: "情報を淡い配色で表示します" },
-  { id: "dark-v11", name: "ダークモード", shortName: "ダーク", description: "暗い背景で情報を見やすく表示します" },
-  { id: "outdoors-v12", name: "アウトドア", shortName: "アウトドア", description: "地形を含めて周辺を確認します" },
+  {
+    id: "streets-v12",
+    name: "標準地図",
+    shortName: "標準",
+    description: "道路と施設を見やすく表示します",
+    previewImage: "/images/map-style-previews/streets.png",
+    previewAlt: "標準のプレビュー",
+  },
+  {
+    id: "satellite-v9",
+    name: "航空写真",
+    shortName: "衛星写真",
+    description: "写真ベースで周辺状況を確認します",
+    previewImage: "/images/map-style-previews/satellite.png",
+    previewAlt: "衛星写真のプレビュー",
+  },
+  {
+    id: "satellite-streets-v12",
+    name: "航空写真+道路",
+    shortName: "衛星+道路",
+    description: "写真と道路名を重ねて表示します",
+    previewImage: "/images/map-style-previews/satellite-streets.png",
+    previewAlt: "衛星+道路のプレビュー",
+  },
+  {
+    id: "navigation-day-v1",
+    name: "ナビゲーション",
+    shortName: "ナビ",
+    description: "道順を追いやすい配色で表示します",
+    previewImage: "/images/map-style-previews/navigation-day.png",
+    previewAlt: "ナビのプレビュー",
+  },
+  {
+    id: "light-v11",
+    name: "ライトモード",
+    shortName: "ライト",
+    description: "情報を淡い配色で表示します",
+    previewImage: "/images/map-style-previews/light.png",
+    previewAlt: "ライトのプレビュー",
+  },
+  {
+    id: "dark-v11",
+    name: "ダークモード",
+    shortName: "ダーク",
+    description: "暗い背景で情報を見やすく表示します",
+    previewImage: "/images/map-style-previews/dark.png",
+    previewAlt: "ダークのプレビュー",
+  },
+  {
+    id: "outdoors-v12",
+    name: "アウトドア",
+    shortName: "アウトドア",
+    description: "地形を含めて周辺を確認します",
+    previewImage: "/images/map-style-previews/outdoors.png",
+    previewAlt: "アウトドアのプレビュー",
+  },
 ] as const
 
 interface MapStyleSelectorProps {
@@ -87,20 +137,31 @@ export default function MapStyleSelector({
                   key={style.id}
                   type="button"
                   className={cn(
-                    "flex w-full items-start justify-between rounded-2xl border px-4 py-3 text-left transition-colors",
+                    "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors",
                     isSelected
                       ? "border-sky-300 bg-sky-50 text-sky-950"
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                   )}
                   onClick={() => onChange(style.id)}
                 >
-                  <span className="space-y-1">
-                    <span className="block text-sm font-semibold">{style.shortName}</span>
-                    <span className="block text-xs text-slate-500">{style.description}</span>
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                      <Image
+                        src={style.previewImage}
+                        alt={style.previewAlt}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </span>
+                    <span className="min-w-0 space-y-1">
+                      <span className="block text-sm font-semibold">{style.shortName}</span>
+                      <span className="block text-xs text-slate-500">{style.description}</span>
+                    </span>
                   </span>
                   {isSelected ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-1 text-[11px] font-semibold text-white">
-                      <Check className="h-3.5 w-3.5" />
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                      <Check className="h-3 w-3" />
                       表示中
                     </span>
                   ) : null}
@@ -121,20 +182,33 @@ export default function MapStyleSelector({
                 key={option.id}
                 type="button"
                 className={cn(
-                  "flex w-full items-start justify-between rounded-2xl border px-4 py-3 text-left transition-colors",
+                  "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors",
                   option.selected
                     ? "border-emerald-300 bg-emerald-50 text-emerald-950"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 )}
                 onClick={option.onSelect}
               >
-                <span className="space-y-1">
-                  <span className="block text-sm font-semibold">{option.label}</span>
-                  <span className="block text-xs text-slate-500">{option.description}</span>
+                <span className="flex min-w-0 items-center gap-3">
+                  {option.previewImage ? (
+                    <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                      <Image
+                        src={option.previewImage}
+                        alt={option.previewAlt ?? option.label}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 space-y-1">
+                    <span className="block text-sm font-semibold">{option.label}</span>
+                    <span className="block text-xs text-slate-500">{option.description}</span>
+                  </span>
                 </span>
                 {option.selected ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white">
-                    <Check className="h-3.5 w-3.5" />
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                    <Check className="h-3 w-3" />
                     表示中
                   </span>
                 ) : null}
