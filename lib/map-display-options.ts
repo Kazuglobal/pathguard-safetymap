@@ -4,6 +4,8 @@ export interface MapDisplayOption {
   description: string
   selected: boolean
   onSelect: () => void
+  previewImage?: string
+  previewAlt?: string
 }
 
 interface BuildMapDisplayOverlayOptionsParams {
@@ -30,20 +32,26 @@ export function buildMapDisplayOverlayOptions({
       description: "事故の集中地点を重ねて表示します",
       selected: isHeatmapVisible,
       onSelect: onToggleHeatmap,
+      previewImage: "/images/map-style-previews/heat-map.png",
+      previewAlt: "事故ヒートマップのプレビュー",
     },
     {
       id: "flood",
-      label: "浸水",
-      description: "浸水想定区域を地図に重ねて表示します",
+      label: "洪水",
+      description: "洪水リスクのある地域を重ねて表示します",
       selected: isFloodVisible,
       onSelect: onToggleFlood,
+      previewImage: "/images/map-style-previews/flood-hazard.png",
+      previewAlt: "洪水ハザードのプレビュー",
     },
     {
       id: "tsunami",
       label: "津波",
-      description: "津波想定区域を地図に重ねて表示します",
+      description: "津波浸水想定区域を重ねて表示します",
       selected: isTsunamiVisible,
       onSelect: onToggleTsunami,
+      previewImage: "/images/map-style-previews/tunami-hazard.png",
+      previewAlt: "津波ハザードのプレビュー",
     },
   ]
 }
