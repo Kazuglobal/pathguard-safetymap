@@ -44,6 +44,7 @@ import { useUserRoutes } from "@/hooks/use-user-routes"
 import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
 import { classifyMapboxError } from "@/lib/mapbox-error-utils"
+import { shouldShowMapNavigationControl } from "@/lib/mapbox-controls"
 import { getRouteHazardRequestState } from "@/lib/route-hazard-request-state"
 import {
   HAZARD_TILE_CONFIG,
@@ -863,6 +864,12 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
     }
 
     try {
+      const shouldRenderNavigationControl = shouldShowMapNavigationControl(
+        typeof window !== "undefined" && typeof window.matchMedia === "function"
+          ? window.matchMedia("(max-width: 768px)").matches
+          : isMobile,
+      )
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: `mapbox://styles/mapbox/${mapStyle}`, // Initial style from state
@@ -893,7 +900,9 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
         setIsLoading(false);
         setMapStyleSyncToken((prev) => prev + 1)
         // Add controls after load
-        map.current?.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+        if (shouldRenderNavigationControl) {
+          map.current?.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+        }
         map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
       });
     } catch (error: any) {
