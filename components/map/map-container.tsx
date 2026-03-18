@@ -44,6 +44,7 @@ import { useUserRoutes } from "@/hooks/use-user-routes"
 import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
 import { classifyMapboxError } from "@/lib/mapbox-error-utils"
+import { shouldShowMapNavigationControl, syncMapNavigationControl } from "@/lib/mapbox-controls"
 import { getRouteHazardRequestState } from "@/lib/route-hazard-request-state"
 import {
   HAZARD_TILE_CONFIG,
@@ -278,6 +279,7 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
   const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
+  const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [mapImageOverlays, setMapImageOverlays] = useState<MapImageOverlayEntry[]>([])
@@ -863,6 +865,15 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
     }
 
     try {
+      const shouldRenderNavigationControl = shouldShowMapNavigationControl(
+        typeof window !== "undefined" && typeof window.matchMedia === "function"
+          ? window.matchMedia("(max-width: 768px)").matches
+          : isMobile,
+      )
+      if (!navigationControlRef.current) {
+        navigationControlRef.current = new mapboxgl.NavigationControl({ showCompass: false })
+      }
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: `mapbox://styles/mapbox/${mapStyle}`, // Initial style from state
@@ -893,7 +904,13 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
         setIsLoading(false);
         setMapStyleSyncToken((prev) => prev + 1)
         // Add controls after load
-        map.current?.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+        if (map.current && navigationControlRef.current) {
+          syncMapNavigationControl({
+            map: map.current,
+            control: navigationControlRef.current,
+            shouldShow: shouldRenderNavigationControl,
+          })
+        }
         map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
       });
     } catch (error: any) {
@@ -912,11 +929,22 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
       if (map.current) {
         if (mapClickHandler.current) map.current.off("click", mapClickHandler.current);
         map.current.remove(); map.current = null;
+        navigationControlRef.current = null
         mapInitialized.current = false; clickListenerAdded.current = false; mapClickHandler.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]); // Add supabase dependency
+
+  useEffect(() => {
+    if (!map.current || !mapInitialized.current || !navigationControlRef.current) return
+
+    syncMapNavigationControl({
+      map: map.current,
+      control: navigationControlRef.current,
+      shouldShow: shouldShowMapNavigationControl(isMobile),
+    })
+  }, [isMobile])
 
   // autoOpenReport: ナビの報告CTAから遷移したとき自動でフォームを開く
   useEffect(() => {
