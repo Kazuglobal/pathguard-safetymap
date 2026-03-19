@@ -110,9 +110,6 @@ importers:
       '@sentry/nextjs':
         specifier: ^8.55.0
         version: 8.55.0(@opentelemetry/context-async-hooks@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.57.2(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(webpack@5.105.3)
-      '@sparkjsdev/spark':
-        specifier: github:sparkjsdev/spark#v2.0.0-preview
-        version: https://codeload.github.com/sparkjsdev/spark/tar.gz/9f999f6808b288fd57c3888a221eb75e0f9c962e
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.97.0)
@@ -2233,10 +2230,6 @@ packages:
     engines: {node: '>= 14'}
     peerDependencies:
       webpack: '>=4.40.0'
-
-  '@sparkjsdev/spark@https://codeload.github.com/sparkjsdev/spark/tar.gz/9f999f6808b288fd57c3888a221eb75e0f9c962e':
-    resolution: {tarball: https://codeload.github.com/sparkjsdev/spark/tar.gz/9f999f6808b288fd57c3888a221eb75e0f9c962e}
-    version: 0.1.9
 
   '@spz-loader/core@0.3.0':
     resolution: {integrity: sha512-sbStwMHb/MIE29st7rRuMYWqhX1UmLSFzdpyGtUZUXLkFNIuYKblzjQdtiet8bau8sUf21uL1DQ451zuySGmcA==}
@@ -8332,10 +8325,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
-
-  '@sparkjsdev/spark@https://codeload.github.com/sparkjsdev/spark/tar.gz/9f999f6808b288fd57c3888a221eb75e0f9c962e':
-    dependencies:
-      fflate: 0.8.2
 
   '@spz-loader/core@0.3.0': {}
 
