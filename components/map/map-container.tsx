@@ -58,6 +58,8 @@ import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
 import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
+import QuickCaptureFAB from "@/components/map/quick-capture-fab"
+import UploadRewardAnimation from "@/components/reward/upload-reward-animation"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -317,6 +319,20 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
   const [hazardImageError, setHazardImageError] = useState<string | null>(null)
   const [isHazardImageLoading, setIsHazardImageLoading] = useState(false)
   const [mapStyleSyncToken, setMapStyleSyncToken] = useState(0)
+
+  // --- Reward Animation ---
+  const [isRewardVisible, setIsRewardVisible] = useState(false)
+  const [rewardData, setRewardData] = useState({
+    pointsEarned: 0,
+    totalPoints: 0,
+    currentLevel: 1,
+    leveledUp: false,
+    newBadge: null as string | null,
+    pointsToNextLevel: 0,
+  })
+
+  // --- Quick Capture ---
+  const [quickCaptureFile, setQuickCaptureFile] = useState<File | null>(null)
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
@@ -1800,11 +1816,28 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
       // 3. 後続処理 (トースト、ポイント、プレビュー、ローカル状態更新)
       toast({ title: "報告完了", description: "危険箇所報告が送信されました。" }); // 最終的な完了トースト
 
-      // Gamification (エラーがあっても続行)
+      // Gamification (エラーがあっても続行) + Reward Animation
       try {
         if (user?.id) { // user.id が存在するか確認
            await addPoints(supabase, user.id, 20);
-           toast({ title: "ポイント獲得", description: "報告送信で +20pt 獲得しました。" });
+           // Show reward animation instead of plain toast
+           const { data: userPointsData } = await supabase
+             .from("user_points")
+             .select("points, level")
+             .eq("user_id", user.id)
+             .maybeSingle();
+           const currentPoints = userPointsData?.points ?? 20;
+           const currentLevel = userPointsData?.level ?? 1;
+           const prevLevel = Math.floor((currentPoints - 20) / 500) + 1;
+           setRewardData({
+             pointsEarned: 20,
+             totalPoints: currentPoints,
+             currentLevel,
+             leveledUp: currentLevel > prevLevel,
+             newBadge: null,
+             pointsToNextLevel: Math.max(currentLevel * 500 - currentPoints, 0),
+           });
+           setIsRewardVisible(true);
         } else {
            console.warn("User ID not found for gamification points.");
         }
@@ -2662,6 +2695,48 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
             setHazardImageError(null)
           }}
           onGenerate={handleGenerateHazardImage}
+        />
+
+        {/* Quick Capture FAB */}
+        <QuickCaptureFAB
+          onCaptureComplete={(file) => {
+            setQuickCaptureFile(file)
+            // Trigger report form with the captured image
+            handleAddReportClick()
+          }}
+          isReportFormOpen={isReportFormOpen}
+          isSelectingLocation={!!awaitingLocationSelection}
+          isMobile={isMobile}
+        />
+
+        {/* Upload Reward Animation */}
+        <UploadRewardAnimation
+          isVisible={isRewardVisible}
+          pointsEarned={rewardData.pointsEarned}
+          totalPoints={rewardData.totalPoints}
+          currentLevel={rewardData.currentLevel}
+          leveledUp={rewardData.leveledUp}
+          newBadge={rewardData.newBadge}
+          pointsToNextLevel={rewardData.pointsToNextLevel}
+          onClose={() => setIsRewardVisible(false)}
+          onShare={() => {
+            setIsRewardVisible(false)
+            // Copy share link
+            if (typeof navigator !== 'undefined' && navigator.share) {
+              navigator.share({
+                title: 'PathGuard SafetyMap - 通学路の安全を守ろう',
+                text: `通学路の危険箇所を報告しました！あなたも一緒に地域の安全を守りませんか？`,
+                url: window.location.origin,
+              }).catch(() => {})
+            } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+              navigator.clipboard.writeText(window.location.origin)
+              toast({ title: "リンクをコピーしました", description: "友達にシェアしよう！" })
+            }
+          }}
+          onCaptureAnother={() => {
+            setIsRewardVisible(false)
+            handleAddReportClick()
+          }}
         />
       </div>
     </div>

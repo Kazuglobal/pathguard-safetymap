@@ -1,5 +1,7 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useSupabase } from "@/components/providers/supabase-provider"
 import {
   StickyHeader,
   HeroCarousel,
@@ -8,10 +10,33 @@ import {
   StoreSection,
   SafeMagazine,
   HiyariHatReport,
+  SafetyScoreDashboard,
 } from "@/components/landing"
 
 export default function LandingPage() {
   const currentYear = new Date().getFullYear()
+  const { supabase } = useSupabase()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    if (!supabase) return
+    let isMounted = true
+
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (isMounted) setIsLoggedIn(!!user)
+    }
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      if (isMounted) setIsLoggedIn(!!session?.user)
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [supabase])
 
   return (
     <div className="min-h-screen bg-white">
@@ -20,6 +45,9 @@ export default function LandingPage() {
 
       {/* メインコンテンツ */}
       <main className="pt-[104px] md:pt-4 pb-24 md:pb-8">
+        {/* パーソナライズダッシュボード（安全スコア・ミッション・CTA） */}
+        <SafetyScoreDashboard isLoggedIn={isLoggedIn} />
+
         {/* ヒーローカルーセル */}
         <section className="py-4">
           <HeroCarousel />
