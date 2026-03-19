@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import {
   Dialog,
@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, ImageIcon } from "lucide-react"
+import { X, ImageIcon, Loader2, Share2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import FamilyShareCard, { type FamilyShareCardProps } from "@/components/report/family-share-card"
+import { shareFamilyShareCard } from "@/lib/report-generation/family-share-card"
 
 /* ===== 型定義 ===== */
 interface SubmittedReportPreviewProps {
@@ -20,6 +23,7 @@ interface SubmittedReportPreviewProps {
   onClose: () => void
   originalImage: string | null
   processedImages: string[] // ← 複数 URL を受け取る
+  shareCard?: FamilyShareCardProps | null
 }
 
 /* ===== コンポーネント ===== */
@@ -28,9 +32,13 @@ export default function SubmittedReportPreview({
   onClose,
   originalImage,
   processedImages,
+  shareCard = null,
 }: SubmittedReportPreviewProps) {
+  const { toast } = useToast()
   /* --- タブ状態 --- */
   const [activeTab, setActiveTab] = useState<string>("original")
+  const [isSharing, setIsSharing] = useState(false)
+  const shareCardRef = useRef<HTMLDivElement | null>(null)
 
   /* --- 元画像用 state --- */
   const [originalSrc, setOriginalSrc] = useState<string | null>(null)
@@ -57,6 +65,45 @@ export default function SubmittedReportPreview({
     if (!url) return null
     const sep = url.includes("?") ? "&" : "?"
     return `${url}${sep}t=${Date.now()}`
+  }
+
+  const handleShare = async () => {
+    if (!shareCard || !shareCardRef.current) {
+      return
+    }
+
+    setIsSharing(true)
+    try {
+      const result = await shareFamilyShareCard({
+        cardElement: shareCardRef.current,
+        card: shareCard,
+      })
+
+      if (result.mode === "share") {
+        toast({
+          title: "共有シートを開きました",
+          description: "家族向けカードをそのまま共有できます。",
+        })
+        return
+      }
+
+      toast({
+        title: "共有カードを保存しました",
+        description: "画像を保存し、共有文面もコピーしました。",
+      })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return
+      }
+
+      toast({
+        title: "共有に失敗しました",
+        description: "時間をおいて再度お試しください。",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSharing(false)
+    }
   }
 
   /* ===== JSX ===== */
@@ -197,6 +244,35 @@ export default function SubmittedReportPreview({
               報告が送信されました。管理者の承認後に地図上に表示されます。
             </p>
           </div>
+
+          {shareCard ? (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">家族向け共有カード</p>
+                  <p className="text-xs text-slate-500">
+                    LINEやメッセージでそのまま送りやすい形に整えています。
+                  </p>
+                </div>
+                <Button type="button" onClick={handleShare} disabled={isSharing} className="shrink-0">
+                  {isSharing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="mr-2 h-4 w-4" />
+                  )}
+                  家族に共有
+                </Button>
+              </div>
+              <FamilyShareCard
+                ref={shareCardRef}
+                title={shareCard.title}
+                summary={shareCard.summary}
+                action={shareCard.action}
+                mapLabel={shareCard.mapLabel}
+                imageUrl={shareCard.imageUrl}
+              />
+            </div>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

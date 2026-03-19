@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import Link from "next/link"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import type { DangerReport } from "@/lib/types"
@@ -16,10 +16,30 @@ import { LongPressZoomableImage } from "@/components/ui/long-press-zoomable-imag
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
 import { useReportInteractionsBatch } from "@/hooks/use-report-interactions"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
+import FamilyShareCard from "@/components/report/family-share-card"
+import {
+  buildFamilyShareAction,
+  buildFamilyShareMapLabel,
+  buildFamilyShareSummary,
+  shareFamilyShareCard,
+} from "@/lib/report-generation/family-share-card"
 
 interface PublicReport extends Pick<
   DangerReport,
-  "id" | "title" | "description" | "danger_type" | "danger_level" | "latitude" | "longitude" | "status" | "image_url" | "processed_image_urls" | "created_at"
+  | "id"
+  | "title"
+  | "description"
+  | "danger_type"
+  | "danger_level"
+  | "latitude"
+  | "longitude"
+  | "status"
+  | "image_url"
+  | "processed_image_urls"
+  | "created_at"
+  | "prefecture"
+  | "city"
+  | "town"
 > {}
 
 const DANGER_TYPE_META: Record<string, { label: string; accent: string; badge: string }> = {
@@ -87,6 +107,8 @@ export default function ReportHubPage() {
   const [selectedReport, setSelectedReport] = useState<PublicReport | null>(null)
   const [isReportDetailOpen, setIsReportDetailOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isSharingDetailCard, setIsSharingDetailCard] = useState(false)
+  const detailShareCardRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -99,7 +121,7 @@ export default function ReportHubPage() {
         const { data, error } = await supabase
           .from("danger_reports")
           .select(
-            "id, title, description, danger_type, danger_level, latitude, longitude, status, image_url, processed_image_urls, created_at",
+            "id, title, description, danger_type, danger_level, latitude, longitude, status, image_url, processed_image_urls, created_at, prefecture, city, town",
           )
           .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
           .order("created_at", { ascending: false })
@@ -273,6 +295,31 @@ export default function ReportHubPage() {
     setSelectedReport(report)
     setIsReportDetailOpen(true)
   }
+
+  const handleShareSelectedReport = useCallback(async () => {
+    if (!selectedReport || !detailShareCardRef.current) {
+      return
+    }
+
+    setIsSharingDetailCard(true)
+    try {
+      await shareFamilyShareCard({
+        cardElement: detailShareCardRef.current,
+        card: {
+          title: selectedReport.title || "無題の報告",
+          summary: buildFamilyShareSummary(selectedReport.description, selectedReport.title),
+          action: buildFamilyShareAction(undefined, "通学路で待機位置と声かけを家族で確認する"),
+          mapLabel: buildFamilyShareMapLabel(
+            [selectedReport.prefecture, selectedReport.city, selectedReport.town],
+            [selectedReport.longitude, selectedReport.latitude],
+          ),
+          imageUrl: getCoverImage(selectedReport),
+        },
+      })
+    } finally {
+      setIsSharingDetailCard(false)
+    }
+  }, [selectedReport])
 
   const renderShareCard = ({ report, cover, meta, tags, coordinates }: ShareFeedEntry) => {
     const interaction = interactions.get(report.id) ?? { liked: false, likeCount: 0, saved: false, saveCount: 0 }
@@ -578,6 +625,42 @@ export default function ReportHubPage() {
                   {selectedReport.description && (
                     <p className="text-sm leading-relaxed text-slate-600">{selectedReport.description}</p>
                   )}
+
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">家族向け共有カード</p>
+                        <p className="text-xs text-slate-500">
+                          要点だけに絞った共有カードをその場で送れます。
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleShareSelectedReport}
+                        disabled={isSharingDetailCard}
+                      >
+                        {isSharingDetailCard ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        家族に共有
+                      </Button>
+                    </div>
+                    <FamilyShareCard
+                      ref={detailShareCardRef}
+                      title={selectedReport.title || "無題の報告"}
+                      summary={buildFamilyShareSummary(selectedReport.description, selectedReport.title)}
+                      action={buildFamilyShareAction(
+                        undefined,
+                        "通学路で待機位置と声かけを家族で確認する",
+                      )}
+                      mapLabel={buildFamilyShareMapLabel(
+                        [selectedReport.prefecture, selectedReport.city, selectedReport.town],
+                        [selectedReport.longitude, selectedReport.latitude],
+                      )}
+                      imageUrl={getCoverImage(selectedReport)}
+                    />
+                  </div>
 
                   {/* 危険タイプとレベル */}
                   <div className="flex flex-wrap gap-2">
