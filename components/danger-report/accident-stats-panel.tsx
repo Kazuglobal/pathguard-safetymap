@@ -1,6 +1,6 @@
 /**
  * accident-stats-panel.tsx
- * 交通事故統計 拡張表示パネル v3
+ * 交通事故統計 拡張表示パネル v4
  * PathGuardian - 通学路安全マップ
  *
  * 153万件の警察庁オープンデータから、事故の詳細状況・
@@ -11,13 +11,31 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import {
+  BarChart2,
+  Clock,
+  List,
+  ShieldAlert,
+  PersonStanding,
+  Baby,
+  AlertOctagon,
+  UserRound,
+  Calendar,
+  TriangleAlert,
+  CircleAlert,
+  Users,
+  Car,
+  MapPin,
+  TrendingUp,
+  Activity,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+} from "lucide-react";
 import type {
   NearbyAccident,
-  RoadEnvironment,
-  PartyAnalysis,
   TimeAnalysis,
-  InjuryAnalysis,
   SituationSummary,
   AccidentStats,
   RiskLevelInfo,
@@ -40,12 +58,13 @@ const MONTH_NAMES = [
   "12月",
 ];
 
-const WEATHER_EMOJI: Record<string, string> = {
-  晴: "☀️",
-  曇: "☁️",
-  雨: "🌧️",
-  雪: "❄️",
-  霧: "🌫️",
+// 天候カラー（絵文字の代替）
+const WEATHER_COLOR: Record<string, string> = {
+  晴: "#F59E0B",
+  曇: "#94A3B8",
+  雨: "#3B82F6",
+  雪: "#93C5FD",
+  霧: "#D1D5DB",
 };
 
 function ageLabel(code: number | null): string {
@@ -73,14 +92,12 @@ export function isFatalNearbyAccident(
     .trim()
     .toLowerCase();
 
-  // DB由来の severity をそのまま採用する
   return severity === "fatal" || severity === "1";
 }
 
 export function deriveFatalAccidentCount(
   stats: Pick<AccidentStats, "fatal_accidents" | "total_fatalities" | "nearest_accidents">
 ): number {
-  // DB集計値を最優先する（UI側で再推定しない）
   return toNonNegativeInt((stats as { fatal_accidents?: unknown }).fatal_accidents);
 }
 
@@ -93,7 +110,6 @@ export function deriveSeveritySummaryText(
   const backendText = stats.situation_summary?.severity_text?.trim() ?? "";
   if (backendText) return backendText;
 
-  // DBテキストが欠損時のみ最小フォールバック
   const fatalAccidentCount = deriveFatalAccidentCount(stats);
   if (fatalAccidentCount > 0) {
     return `死亡事故${fatalAccidentCount}件が確認されています`;
@@ -102,30 +118,30 @@ export function deriveSeveritySummaryText(
 }
 
 // ============================================================
-// タブコンポーネント
+// タブコンポーネント（ピルスタイル）
 // ============================================================
 function Tabs({
   tabs,
   active,
   onChange,
 }: {
-  tabs: { id: string; label: string; icon: string }[];
+  tabs: { id: string; label: string; icon: React.ReactNode }[];
   active: string;
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-hide">
+    <div className="flex gap-1 px-3 py-2 bg-gray-50 border-b overflow-x-auto scrollbar-hide">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={`flex items-center gap-1 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
             active === t.id
-              ? "border-blue-500 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
+              ? "bg-white shadow-sm border border-gray-200 text-blue-600"
+              : "text-gray-500 hover:bg-white hover:text-gray-700"
           }`}
         >
-          <span>{t.icon}</span>
+          <span className="shrink-0">{t.icon}</span>
           {t.label}
         </button>
       ))}
@@ -134,7 +150,7 @@ function Tabs({
 }
 
 // ============================================================
-// リスクスコアバー
+// リスクスコアバー（ゾーンカラー）T-07
 // ============================================================
 function RiskScoreBar({ score }: { score: number }) {
   const risk = getAccidentRiskLevel(score);
@@ -142,27 +158,32 @@ function RiskScoreBar({ score }: { score: number }) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">事故リスクスコア</span>
-        <span className="text-lg font-bold" style={{ color: risk.color }}>
+        <span className="text-2xl font-bold leading-none" style={{ color: risk.color }}>
           {score}
-          <span className="text-xs text-gray-400 font-normal">/100</span>
+          <span className="text-xs text-gray-400 font-normal ml-0.5">/100</span>
         </span>
       </div>
-      <div className="h-3 w-full rounded-full bg-gray-100 overflow-hidden">
+      {/* ゾーンカラー背景 + ポインター */}
+      <div className="relative h-2 w-full rounded-full overflow-hidden bg-gradient-to-r from-green-300 via-yellow-300 to-red-400">
         <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
+          className="absolute top-0 left-0 h-full rounded-full bg-white/30"
+          style={{ width: `${Math.min(100, score)}%` }}
+        />
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow-sm"
           style={{
-            width: `${Math.min(100, score)}%`,
-            background: `linear-gradient(90deg, ${risk.color}88, ${risk.color})`,
+            left: `calc(${Math.min(100, score)}% - 6px)`,
+            backgroundColor: risk.color,
           }}
         />
       </div>
-      <p className="text-xs text-gray-500">{risk.description}</p>
+      <p className="text-xs text-gray-600">{risk.description}</p>
     </div>
   );
 }
 
 // ============================================================
-// 状況サマリーカード (NEW)
+// 状況サマリーカード
 // ============================================================
 function SituationSummaryCard({
   summary,
@@ -174,14 +195,14 @@ function SituationSummaryCard({
   severityText: string;
 }) {
   const items = [
-    { icon: "📋", text: summary.total_text },
-    { icon: "💀", text: severityText },
-    { icon: "🚶", text: summary.pedestrian_text },
-    { icon: "🌧️", text: summary.weather_risk_text },
-    { icon: "🛣️", text: summary.road_text },
+    { icon: <ClipboardList size={13} className="shrink-0 mt-0.5" />, text: summary.total_text },
+    { icon: <AlertOctagon size={13} className="shrink-0 mt-0.5 text-red-500" />, text: severityText },
+    { icon: <PersonStanding size={13} className="shrink-0 mt-0.5" />, text: summary.pedestrian_text },
+    { icon: <Activity size={13} className="shrink-0 mt-0.5" />, text: summary.weather_risk_text },
+    { icon: <MapPin size={13} className="shrink-0 mt-0.5" />, text: summary.road_text },
   ];
   if (summary.elderly_text) {
-    items.push({ icon: "👴", text: summary.elderly_text });
+    items.push({ icon: <UserRound size={13} className="shrink-0 mt-0.5" />, text: summary.elderly_text });
   }
 
   return (
@@ -189,13 +210,14 @@ function SituationSummaryCard({
       className="rounded-lg border p-3 space-y-2"
       style={{ borderColor: risk.color + "40", backgroundColor: risk.bgColor + "60" }}
     >
-      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1">
-        📝 この地点の事故状況
+      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+        <ClipboardList size={13} />
+        この地点の事故状況
       </h4>
       <div className="space-y-1.5">
         {items.map((item, i) => (
           <div key={i} className="flex items-start gap-2 text-xs text-gray-700">
-            <span className="shrink-0 mt-0.5">{item.icon}</span>
+            {item.icon}
             <span>{item.text}</span>
           </div>
         ))}
@@ -205,7 +227,7 @@ function SituationSummaryCard({
 }
 
 // ============================================================
-// 統計カード
+// 統計カード（横並びレイアウト）T-03
 // ============================================================
 function StatCard({
   label,
@@ -218,231 +240,311 @@ function StatCard({
   value: number | string;
   sub?: string;
   highlight?: boolean;
-  icon?: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <div
-      className={`rounded-lg border p-2.5 text-center ${
-        highlight ? "border-red-200 bg-red-50" : "border-gray-200 bg-white"
+      className={`rounded-lg flex items-center gap-2 px-3 py-2.5 ${
+        highlight
+          ? "border border-red-100 border-l-4 border-l-red-400 bg-red-50"
+          : "border border-gray-200 bg-white"
       }`}
     >
-      {icon && <div className="text-base mb-0.5">{icon}</div>}
-      <div
-        className={`text-lg font-bold leading-none ${
-          highlight ? "text-red-600" : "text-gray-900"
-        }`}
-      >
-        {value}
-      </div>
-      <div className="text-[10px] text-gray-500 mt-0.5">{label}</div>
-      {sub && (
-        <div className="text-[9px] text-gray-400 mt-0.5">{sub}</div>
+      {icon && (
+        <span className={`shrink-0 ${highlight ? "text-red-400" : "text-gray-400"}`}>
+          {icon}
+        </span>
       )}
+      <div className="min-w-0">
+        <div
+          className={`text-xl font-bold leading-none ${
+            highlight ? "text-red-600" : "text-gray-900"
+          }`}
+        >
+          {value}
+        </div>
+        <div className="text-xs text-gray-500 mt-0.5 truncate">{label}</div>
+        {sub && (
+          <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ============================================================
-// 道路環境分析タブ (NEW)
+// アラートバナー（左ボーダースタイル）T-05
 // ============================================================
-function RoadEnvironmentPanel({ env }: { env: RoadEnvironment }) {
-  const shapeEntries = Object.entries(env.by_road_shape || {}).sort(
-    (a, b) => b[1] - a[1]
+function AlertBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg px-3 py-2 space-y-1">
+      {children}
+    </div>
   );
-  const sidewalkEntries = Object.entries(env.by_sidewalk || {}).sort(
-    (a, b) => b[1] - a[1]
+}
+
+function AlertBannerItem({ text }: { text: React.ReactNode }) {
+  return (
+    <p className="text-xs text-amber-800 flex items-start gap-1.5">
+      <TriangleAlert size={14} className="text-amber-500 shrink-0 mt-0.5" />
+      <span>{text}</span>
+    </p>
   );
+}
+
+// ============================================================
+// 危険要因パネル（道路・当事者・安全分析の統合）T-04
+// ============================================================
+function DangerFactorsPanel({
+  stats,
+}: {
+  stats: AccidentStats;
+}) {
+  const env = stats.road_environment;
+  const party = stats.party_analysis;
+  const partyTypes = stats.by_party_type || {};
+  const roadSurface = stats.by_road_surface || {};
+
+  const shapeEntries = Object.entries(env?.by_road_shape || {}).sort((a, b) => b[1] - a[1]);
   const shapeTotal = shapeEntries.reduce((s, [, v]) => s + v, 0);
+  const sidewalkEntries = Object.entries(env?.by_sidewalk || {}).sort((a, b) => b[1] - a[1]);
   const sidewalkTotal = sidewalkEntries.reduce((s, [, v]) => s + v, 0);
 
-  return (
-    <div className="space-y-4 py-2">
-      {/* 警告バナー */}
-      {(env.intersection_ratio >= 60 || env.no_sidewalk_ratio >= 30) && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 space-y-1">
-          {env.intersection_ratio >= 60 && (
-            <p className="text-xs text-amber-800 flex items-center gap-1.5">
-              <span>⚠️</span>
-              事故の <strong>{env.intersection_ratio}%</strong> が交差点で発生しています
-            </p>
-          )}
-          {env.no_sidewalk_ratio >= 30 && (
-            <p className="text-xs text-amber-800 flex items-center gap-1.5">
-              <span>⚠️</span>
-              歩車道の区分がない場所での事故が <strong>{env.no_sidewalk_ratio}%</strong>
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* 道路形状 */}
-      {shapeEntries.length > 0 && (
-        <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">🛣️ 道路形状別</h4>
-          {shapeEntries.map(([label, count]) => {
-            const pct = shapeTotal > 0 ? Math.round((count / shapeTotal) * 100) : 0;
-            const isIntersection = label.includes("交差点");
-            return (
-              <div key={label} className="space-y-0.5">
-                <div className="flex justify-between text-xs">
-                  <span className={isIntersection ? "text-orange-700 font-medium" : "text-gray-600"}>
-                    {isIntersection ? "🔶 " : ""}
-                    {label}
-                  </span>
-                  <span className="text-gray-400">{count}件 ({pct}%)</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: isIntersection ? "#f97316" : "#94a3b8",
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 歩車道区分 */}
-      {sidewalkEntries.length > 0 && (
-        <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">🚶 歩車道区分別</h4>
-          {sidewalkEntries.map(([label, count]) => {
-            const pct =
-              sidewalkTotal > 0 ? Math.round((count / sidewalkTotal) * 100) : 0;
-            const noSidewalk = label.includes("区分なし") || label.includes("区別なし");
-            return (
-              <div key={label} className="space-y-0.5">
-                <div className="flex justify-between text-xs">
-                  <span className={noSidewalk ? "text-red-600 font-medium" : "text-gray-600"}>
-                    {noSidewalk ? "🚨 " : ""}
-                    {label}
-                  </span>
-                  <span className="text-gray-400">{count}件 ({pct}%)</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: noSidewalk ? "#dc2626" : "#94a3b8",
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// 当事者分析タブ (NEW)
-// ============================================================
-function PartyAnalysisPanel({ party }: { party: PartyAnalysis }) {
-  const ageEntries = Object.entries(party.by_age_group || {}).sort((a, b) => {
-    const order = [
-      "24歳以下",
-      "25-34歳",
-      "35-44歳",
-      "45-54歳",
-      "55-64歳",
-      "65-74歳",
-      "75歳以上",
-    ];
+  const ageEntries = Object.entries(party?.by_age_group || {}).sort((a, b) => {
+    const order = ["24歳以下", "25-34歳", "35-44歳", "45-54歳", "55-64歳", "65-74歳", "75歳以上"];
     return order.indexOf(a[0]) - order.indexOf(b[0]);
   });
   const maxAge = Math.max(...ageEntries.map(([, v]) => v), 1);
 
+  const maxParty = Math.max(...Object.values(partyTypes), 1);
+  const maxSurface = Math.max(...Object.values(roadSurface), 1);
+
   return (
-    <div className="space-y-4 py-2">
-      {/* 高齢者・若年者の警告 */}
-      {(party.elderly_ratio >= 30 || party.young_ratio >= 20) && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 space-y-1">
-          {party.elderly_ratio >= 30 && (
-            <p className="text-xs text-amber-800 flex items-center gap-1.5">
-              <span>👴</span>
-              高齢者（65歳以上）が当事者の <strong>{party.elderly_ratio}%</strong> に関与
-            </p>
+    <div className="divide-y divide-gray-100 py-1">
+      {/* 道路環境セクション */}
+      {env && (
+        <div className="space-y-3 py-3">
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <MapPin size={13} />
+            道路環境
+          </h4>
+
+          {(env.intersection_ratio >= 60 || env.no_sidewalk_ratio >= 30) && (
+            <AlertBanner>
+              {env.intersection_ratio >= 60 && (
+                <AlertBannerItem
+                  text={<>事故の <strong>{env.intersection_ratio}%</strong> が交差点で発生しています</>}
+                />
+              )}
+              {env.no_sidewalk_ratio >= 30 && (
+                <AlertBannerItem
+                  text={<>歩車道の区分がない場所での事故が <strong>{env.no_sidewalk_ratio}%</strong></>}
+                />
+              )}
+            </AlertBanner>
           )}
-          {party.young_ratio >= 20 && (
-            <p className="text-xs text-amber-800 flex items-center gap-1.5">
-              <span>🧑</span>
-              若年者（24歳以下）が当事者の <strong>{party.young_ratio}%</strong> に関与
-            </p>
+
+          {shapeEntries.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">道路形状別</p>
+              {shapeEntries.map(([label, count]) => {
+                const pct = shapeTotal > 0 ? Math.round((count / shapeTotal) * 100) : 0;
+                const isIntersection = label.includes("交差点");
+                return (
+                  <div key={label} className="space-y-0.5">
+                    <div className="flex justify-between text-xs">
+                      <span className={`flex items-center gap-1 ${isIntersection ? "text-orange-700 font-medium" : "text-gray-600"}`}>
+                        {isIntersection && <CircleAlert size={11} className="text-orange-500" />}
+                        {label}
+                      </span>
+                      <span className="text-gray-400">{count}件 ({pct}%)</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: isIntersection ? "#f97316" : "#94a3b8",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {sidewalkEntries.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">歩車道区分別</p>
+              {sidewalkEntries.map(([label, count]) => {
+                const pct = sidewalkTotal > 0 ? Math.round((count / sidewalkTotal) * 100) : 0;
+                const noSidewalk = label.includes("区分なし") || label.includes("区別なし");
+                return (
+                  <div key={label} className="space-y-0.5">
+                    <div className="flex justify-between text-xs">
+                      <span className={`flex items-center gap-1 ${noSidewalk ? "text-red-600 font-medium" : "text-gray-600"}`}>
+                        {noSidewalk && <CircleAlert size={11} className="text-red-500" />}
+                        {label}
+                      </span>
+                      <span className="text-gray-400">{count}件 ({pct}%)</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: noSidewalk ? "#dc2626" : "#94a3b8",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
 
-      {/* 年齢層分布（横棒グラフ） */}
-      {ageEntries.length > 0 && (
-        <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">👥 当事者の年齢層分布</h4>
-          {ageEntries.map(([label, count]) => {
-            const pct = Math.round((count / maxAge) * 100);
-            const isElderly = label.includes("65") || label.includes("75");
-            const isYoung = label.includes("24");
-            return (
-              <div key={label} className="flex items-center gap-2">
-                <span
-                  className={`text-[11px] w-16 shrink-0 text-right ${
-                    isElderly
-                      ? "text-orange-700 font-medium"
-                      : isYoung
-                      ? "text-blue-700 font-medium"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {label}
-                </span>
-                <div className="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: isElderly
-                        ? "#ea580c"
-                        : isYoung
-                        ? "#2563eb"
-                        : "#64748b",
-                    }}
-                  />
+      {/* 当事者セクション */}
+      {party && (
+        <div className="space-y-3 py-3">
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <Users size={13} />
+            当事者
+          </h4>
+
+          {(party.elderly_ratio >= 30 || party.young_ratio >= 20) && (
+            <AlertBanner>
+              {party.elderly_ratio >= 30 && (
+                <AlertBannerItem
+                  text={<>高齢者（65歳以上）が当事者の <strong>{party.elderly_ratio}%</strong> に関与</>}
+                />
+              )}
+              {party.young_ratio >= 20 && (
+                <AlertBannerItem
+                  text={<>若年者（24歳以下）が当事者の <strong>{party.young_ratio}%</strong> に関与</>}
+                />
+              )}
+            </AlertBanner>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <StatCard
+              label="高齢者関与率"
+              value={`${party.elderly_ratio}%`}
+              icon={<UserRound size={15} />}
+              highlight={party.elderly_ratio >= 30}
+            />
+            <StatCard
+              label="若年者関与率"
+              value={`${party.young_ratio}%`}
+              icon={<UserRound size={15} />}
+              highlight={party.young_ratio >= 25}
+            />
+          </div>
+
+          {ageEntries.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">年齢層分布</p>
+              {ageEntries.map(([label, count]) => {
+                const pct = Math.round((count / maxAge) * 100);
+                const isElderly = label.includes("65") || label.includes("75");
+                const isYoung = label.includes("24");
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span
+                      className={`text-xs w-16 shrink-0 text-right ${
+                        isElderly ? "text-orange-700 font-medium" : isYoung ? "text-blue-700 font-medium" : "text-gray-500"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                    <div className="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: isElderly ? "#ea580c" : isYoung ? "#2563eb" : "#64748b",
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 w-8 shrink-0">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 安全分析セクション */}
+      <div className="space-y-3 py-3">
+        <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+          <ShieldAlert size={13} />
+          安全分析
+        </h4>
+
+        {Object.keys(partyTypes).length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">当事者種別（TOP5）</p>
+            {Object.entries(partyTypes)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 5)
+              .map(([label, count]) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 w-28 truncate text-right">{label}</span>
+                  <div className="flex-1 h-3 bg-gray-50 rounded overflow-hidden">
+                    <div
+                      className="h-full bg-blue-400 rounded transition-all"
+                      style={{ width: `${(count / maxParty) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700 w-8 text-right">{count}</span>
                 </div>
-                <span className="text-[10px] text-gray-400 w-8 shrink-0">
-                  {count}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              ))}
+          </div>
+        )}
 
-      {/* 関与率サマリー */}
-      <div className="grid grid-cols-2 gap-2">
-        <StatCard
-          label="高齢者関与率"
-          value={`${party.elderly_ratio}%`}
-          icon="👴"
-          highlight={party.elderly_ratio >= 30}
-        />
-        <StatCard
-          label="若年者関与率"
-          value={`${party.young_ratio}%`}
-          icon="🧑"
-          highlight={party.young_ratio >= 25}
-        />
+        {Object.keys(roadSurface).length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">路面状態</p>
+            {Object.entries(roadSurface)
+              .sort(([, a], [, b]) => b - a)
+              .map(([label, count]) => {
+                const color =
+                  label.includes("乾燥") ? "#16A34A" :
+                  label.includes("湿潤") ? "#2563EB" :
+                  label.includes("凍結") || label.includes("積雪") ? "#7C3AED" :
+                  "#6B7280";
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600 w-24 truncate text-right">{label}</span>
+                    <div className="flex-1 h-3 bg-gray-50 rounded overflow-hidden">
+                      <div
+                        className="h-full rounded transition-all"
+                        style={{ width: `${(count / maxSurface) * 100}%`, backgroundColor: color }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-gray-700 w-8 text-right">{count}</span>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
+        {stats.situation_summary?.surface_text && (
+          <AlertBanner>
+            <AlertBannerItem text={stats.situation_summary.surface_text} />
+          </AlertBanner>
+        )}
       </div>
     </div>
   );
 }
 
 // ============================================================
-// 時間帯分析タブ (NEW)
+// 時間帯分析タブ
 // ============================================================
 function TimeAnalysisPanel({
   time,
@@ -468,7 +570,7 @@ function TimeAnalysisPanel({
         <StatCard
           label="最多発生時間"
           value={time.peak_hour !== null ? `${time.peak_hour}時台` : "-"}
-          icon="⏰"
+          icon={<Clock size={15} />}
           highlight={
             time.peak_hour !== null &&
             (time.peak_hour >= 7 && time.peak_hour <= 8)
@@ -492,14 +594,17 @@ function TimeAnalysisPanel({
               ? MONTH_NAMES[time.peak_month] || "-"
               : "-"
           }
-          icon="📅"
+          icon={<Calendar size={15} />}
         />
       </div>
 
       {/* 24時間分布 */}
       {hourEntries.length > 0 && (
         <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">⏰ 24時間分布</h4>
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <Clock size={13} />
+            24時間分布
+          </h4>
           <div className="flex items-end gap-px h-16">
             {Array.from({ length: 24 }, (_, h) => {
               const count =
@@ -528,7 +633,7 @@ function TimeAnalysisPanel({
               );
             })}
           </div>
-          <div className="flex justify-between text-[8px] text-gray-400 px-0.5">
+          <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
             <span>0</span>
             <span>6</span>
             <span className="text-orange-500 font-bold">7-8</span>
@@ -537,16 +642,20 @@ function TimeAnalysisPanel({
             <span>18</span>
             <span>23</span>
           </div>
-          <p className="text-[9px] text-gray-400 text-center">
-            🟧 = 通学・下校時間帯
-          </p>
+          <div className="flex items-center gap-1.5 justify-center">
+            <span className="w-3 h-3 rounded-sm bg-orange-400 shrink-0" />
+            <span className="text-[10px] text-gray-400">通学・下校時間帯</span>
+          </div>
         </div>
       )}
 
       {/* 月別分布 */}
       {monthEntries.length > 0 && (
         <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">📅 月別分布</h4>
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <Calendar size={13} />
+            月別分布
+          </h4>
           <div className="flex items-end gap-1 h-12">
             {Array.from({ length: 12 }, (_, m) => {
               const count =
@@ -558,7 +667,7 @@ function TimeAnalysisPanel({
                   className="flex-1 flex flex-col items-center gap-0.5"
                   title={`${m + 1}月: ${count}件`}
                 >
-                  <span className="text-[8px] text-gray-400">
+                  <span className="text-[10px] text-gray-400">
                     {count > 0 ? count : ""}
                   </span>
                   <div
@@ -571,7 +680,7 @@ function TimeAnalysisPanel({
                           : "#93c5fd",
                     }}
                   />
-                  <span className="text-[8px] text-gray-400">{m + 1}</span>
+                  <span className="text-[10px] text-gray-400">{m + 1}</span>
                 </div>
               );
             })}
@@ -579,190 +688,37 @@ function TimeAnalysisPanel({
         </div>
       )}
 
-      {/* 天候別 */}
+      {/* 天候別（カラードットバッジ）T-06 */}
       {byWeather && Object.keys(byWeather).length > 0 && (
         <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">🌤️ 天候別</h4>
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <Activity size={13} />
+            天候別
+          </h4>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(byWeather)
               .sort((a, b) => b[1] - a[1])
               .map(([w, c]) => {
                 const isBad = w === "雨" || w === "雪" || w === "霧";
+                const color = WEATHER_COLOR[w] || "#94A3B8";
                 return (
                   <span
                     key={w}
-                    className={`inline-flex items-center gap-0.5 rounded-full border px-2.5 py-1 text-xs ${
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
                       isBad
                         ? "border-amber-300 bg-amber-50 text-amber-800"
                         : "border-gray-200 bg-white text-gray-600"
                     }`}
                   >
-                    {WEATHER_EMOJI[w] || ""} {w} {c}件
-                  </span>
-                );
-              })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// 安全分析パネル（v3新規: 当事者種別・損傷程度・路面状態）
-// ============================================================
-function SafetyAnalysisPanel({
-  stats,
-}: {
-  stats: AccidentStats;
-}) {
-  const partyTypes = stats.by_party_type || {};
-  const roadSurface = stats.by_road_surface || {};
-  const terrain = stats.by_terrain || {};
-  const injury = stats.injury_analysis || { by_injury_level: {}, severe_ratio: 0 };
-
-  const maxParty = Math.max(...Object.values(partyTypes), 1);
-  const maxSurface = Math.max(...Object.values(roadSurface), 1);
-  const maxInjury = Math.max(...Object.values(injury.by_injury_level).filter((_, i) => true), 1);
-
-  return (
-    <div className="space-y-5 pt-3">
-      {/* 当事者種別 */}
-      {Object.keys(partyTypes).length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-gray-700 mb-2">
-            🚗 当事者種別（A+B合算）
-          </h4>
-          <div className="space-y-1.5">
-            {Object.entries(partyTypes)
-              .sort(([, a], [, b]) => b - a)
-              .slice(0, 6)
-              .map(([label, count]) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-600 w-28 truncate text-right">
-                    {label}
-                  </span>
-                  <div className="flex-1 h-4 bg-gray-50 rounded overflow-hidden">
-                    <div
-                      className="h-full bg-blue-400 rounded transition-all"
-                      style={{ width: `${(count / maxParty) * 100}%` }}
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: color }}
                     />
-                  </div>
-                  <span className="text-[10px] font-medium text-gray-700 w-8 text-right">
-                    {count}
+                    {w} {c}件
                   </span>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* 損傷程度 */}
-      {Object.keys(injury.by_injury_level).length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-gray-700 mb-2">
-            🩹 損傷程度（重傷以上: {injury.severe_ratio}%）
-          </h4>
-          <div className="space-y-1.5">
-            {Object.entries(injury.by_injury_level)
-              .filter(([label]) => !["0", "対象外当事者"].includes(label))
-              .sort(([, a], [, b]) => b - a)
-              .map(([label, count]) => {
-                const color =
-                  label === "死亡" ? "#DC2626" :
-                  label === "重傷" ? "#EA580C" :
-                  label === "負傷" || label === "軽傷" ? "#CA8A04" :
-                  "#6B7280";
-                return (
-                  <div key={label} className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-600 w-16 text-right">
-                      {label}
-                    </span>
-                    <div className="flex-1 h-4 bg-gray-50 rounded overflow-hidden">
-                      <div
-                        className="h-full rounded transition-all"
-                        style={{
-                          width: `${(count / maxInjury) * 100}%`,
-                          backgroundColor: color,
-                        }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-medium text-gray-700 w-8 text-right">
-                      {count}
-                    </span>
-                  </div>
                 );
               })}
           </div>
-        </div>
-      )}
-
-      {/* 路面状態 */}
-      {Object.keys(roadSurface).length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-gray-700 mb-2">
-            🌧️ 路面状態
-          </h4>
-          <div className="space-y-1.5">
-            {Object.entries(roadSurface)
-              .sort(([, a], [, b]) => b - a)
-              .map(([label, count]) => {
-                const color =
-                  label.includes("乾燥") ? "#16A34A" :
-                  label.includes("湿潤") ? "#2563EB" :
-                  label.includes("凍結") || label.includes("積雪") ? "#7C3AED" :
-                  "#6B7280";
-                return (
-                  <div key={label} className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-600 w-24 truncate text-right">
-                      {label}
-                    </span>
-                    <div className="flex-1 h-4 bg-gray-50 rounded overflow-hidden">
-                      <div
-                        className="h-full rounded transition-all"
-                        style={{
-                          width: `${(count / maxSurface) * 100}%`,
-                          backgroundColor: color,
-                        }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-medium text-gray-700 w-8 text-right">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {/* 地形 */}
-      {Object.keys(terrain).length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-gray-700 mb-2">
-            🏙️ 地形区分
-          </h4>
-          <div className="flex gap-2 flex-wrap">
-            {Object.entries(terrain)
-              .sort(([, a], [, b]) => b - a)
-              .map(([label, count]) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] bg-gray-100 text-gray-700"
-                >
-                  {label}: {count}件
-                </span>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* サマリーテキスト */}
-      {stats.situation_summary?.surface_text && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-          <p className="text-[11px] text-amber-800">
-            ⚠️ {stats.situation_summary.surface_text}
-          </p>
         </div>
       )}
     </div>
@@ -770,7 +726,7 @@ function SafetyAnalysisPanel({
 }
 
 // ============================================================
-// 事故詳細リスト（タブ内容） (NEW - 大幅拡張)
+// 事故詳細リスト
 // ============================================================
 function AccidentDetailList({
   accidents,
@@ -789,8 +745,9 @@ function AccidentDetailList({
 
   return (
     <div className="space-y-1.5 py-2">
-      <h4 className="text-xs font-semibold text-gray-700">
-        📍 近隣事故 {accidents.length}件（距離順）
+      <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+        <MapPin size={13} />
+        近隣事故 {accidents.length}件（距離順）
       </h4>
       <div className="space-y-1">
         {accidents.map((acc, i) => {
@@ -816,27 +773,18 @@ function AccidentDetailList({
                 <span className="font-mono text-[10px] text-gray-400 w-10 shrink-0">
                   {acc.distance_m}m
                 </span>
-                <span className="text-xs text-gray-700 flex-1 truncate">
-                  {isFatal && "💀 "}
-                  {isPed && !isFatal && "🚶 "}
+                <span className="text-xs text-gray-700 flex-1 truncate flex items-center gap-1">
+                  {isFatal && <AlertOctagon size={11} className="text-red-500 shrink-0" />}
+                  {isPed && !isFatal && <PersonStanding size={11} className="text-orange-500 shrink-0" />}
                   {acc.type || "不明"}
                 </span>
                 <span className="text-[10px] text-gray-400 shrink-0">
                   {acc.occurred_at?.slice(0, 10) || `${acc.year}年`}
                 </span>
-                <svg
-                  className={`h-3 w-3 text-gray-400 transition-transform ${
-                    isOpen ? "rotate-180" : ""
-                  }`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ChevronDown
+                  size={12}
+                  className={`text-gray-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
               </button>
 
               {/* 展開時の詳細 */}
@@ -855,11 +803,7 @@ function AccidentDetailList({
                     />
                     <Detail
                       label="天候"
-                      value={
-                        acc.weather
-                          ? `${WEATHER_EMOJI[acc.weather] || ""} ${acc.weather}`
-                          : "不明"
-                      }
+                      value={acc.weather || "不明"}
                     />
                     <Detail label="道路形状" value={acc.road_shape || "不明"} />
                     <Detail label="歩車道区分" value={acc.sidewalk || "不明"} />
@@ -877,18 +821,21 @@ function AccidentDetailList({
                   {/* タグ */}
                   <div className="flex flex-wrap gap-1 mt-2">
                     {acc.involved_pedestrian && (
-                      <span className="inline-flex items-center rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-[9px] font-medium">
-                        🚶 歩行者関与
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-[10px] font-medium">
+                        <PersonStanding size={10} />
+                        歩行者関与
                       </span>
                     )}
                     {acc.involved_child && (
-                      <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[9px] font-medium">
-                        🎒 子ども関与
+                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium">
+                        <Baby size={10} />
+                        子ども関与
                       </span>
                     )}
                     {isFatal && (
-                      <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[9px] font-medium">
-                        💀 死亡事故
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[10px] font-medium">
+                        <AlertOctagon size={10} />
+                        死亡事故
                       </span>
                     )}
                   </div>
@@ -922,7 +869,38 @@ function Detail({
 }
 
 // ============================================================
-// 事故概要タブ（旧fullモードの集約）
+// 登下校ピークアラート計算
+// ============================================================
+function computeCommutePeak(
+  timeAnalysis: TimeAnalysis | undefined,
+  totalAccidents: number
+): { type: "morning" | "afternoon"; count: number; pct: number } | null {
+  if (!timeAnalysis || totalAccidents === 0) return null;
+  const byHour = timeAnalysis.by_hour || {};
+  const morningCount = (byHour["7"] || 0) + (byHour["8"] || 0);
+  const afternoonCount =
+    (byHour["14"] || 0) + (byHour["15"] || 0) + (byHour["16"] || 0);
+  const ph = timeAnalysis.peak_hour;
+
+  if (ph !== null && ph >= 7 && ph <= 8 && morningCount / totalAccidents >= 0.25) {
+    return {
+      type: "morning",
+      count: morningCount,
+      pct: Math.round((morningCount / totalAccidents) * 100),
+    };
+  }
+  if (ph !== null && ph >= 14 && ph <= 16 && afternoonCount / totalAccidents >= 0.25) {
+    return {
+      type: "afternoon",
+      count: afternoonCount,
+      pct: Math.round((afternoonCount / totalAccidents) * 100),
+    };
+  }
+  return null;
+}
+
+// ============================================================
+// 事故概要タブ
 // ============================================================
 function OverviewPanel({
   stats,
@@ -942,8 +920,23 @@ function OverviewPanel({
     (a, b) => b[1] - a[1]
   );
 
+  const commutePeak = computeCommutePeak(stats.time_analysis, stats.total_accidents);
+
   return (
     <div className="space-y-4 py-2">
+      {/* 登下校ピークアラート T-05 */}
+      {commutePeak && (
+        <AlertBanner>
+          <AlertBannerItem
+            text={
+              commutePeak.type === "morning"
+                ? <>登校時間帯（7〜8時）に集中: {commutePeak.count}件（全体の{commutePeak.pct}%）</>
+                : <>下校時間帯（14〜16時）に集中: {commutePeak.count}件（全体の{commutePeak.pct}%）</>
+            }
+          />
+        </AlertBanner>
+      )}
+
       {/* 状況サマリー */}
       {stats.situation_summary && (
         <SituationSummaryCard
@@ -953,33 +946,36 @@ function OverviewPanel({
         />
       )}
 
-      {/* 統計カード4列 */}
-      <div className="grid grid-cols-4 gap-1.5">
-        <StatCard label="事故件数" value={stats.total_accidents} icon="📊" />
+      {/* 統計カード（レスポンシブ2列→4列）T-03 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+        <StatCard label="事故件数" value={stats.total_accidents} icon={<BarChart2 size={15} />} />
         <StatCard
           label="歩行者"
           value={stats.pedestrian_involved}
           highlight={stats.pedestrian_involved > 0}
-          icon="🚶"
+          icon={<PersonStanding size={15} />}
         />
         <StatCard
           label="子ども"
           value={stats.child_involved}
           highlight={stats.child_involved > 0}
-          icon="🎒"
+          icon={<Baby size={15} />}
         />
         <StatCard
           label="死亡事故"
           value={fatalAccidentCount}
           highlight={fatalAccidentCount > 0}
-          icon="💀"
+          icon={<AlertOctagon size={15} />}
         />
       </div>
 
       {/* 年度別推移 */}
       {yearEntries.length > 1 && (
         <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">📈 年度別推移</h4>
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <TrendingUp size={13} />
+            年度別推移
+          </h4>
           <div className="flex items-end gap-1.5 h-14">
             {yearEntries.map(([year, count]) => {
               const height = (count / maxYear) * 100;
@@ -988,7 +984,7 @@ function OverviewPanel({
                   key={year}
                   className="flex-1 flex flex-col items-center gap-0.5"
                 >
-                  <span className="text-[9px] text-gray-500 font-medium">
+                  <span className="text-[10px] text-gray-500 font-medium">
                     {count}
                   </span>
                   <div
@@ -998,7 +994,7 @@ function OverviewPanel({
                       background: "linear-gradient(180deg, #3b82f6, #60a5fa)",
                     }}
                   />
-                  <span className="text-[9px] text-gray-400">
+                  <span className="text-[10px] text-gray-400">
                     {year.slice(2)}'
                   </span>
                 </div>
@@ -1011,7 +1007,10 @@ function OverviewPanel({
       {/* 事故タイプ */}
       {typeEntries.length > 0 && (
         <div className="space-y-1.5">
-          <h4 className="text-xs font-semibold text-gray-700">🚗 事故タイプ</h4>
+          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <Car size={13} />
+            事故タイプ
+          </h4>
           {typeEntries.map(([type, count]) => {
             const isPed = type.includes("人対車両");
             return (
@@ -1023,8 +1022,8 @@ function OverviewPanel({
                     : "bg-gray-50 text-gray-600"
                 }`}
               >
-                <span>
-                  {isPed && "🚶 "}
+                <span className="flex items-center gap-1">
+                  {isPed && <PersonStanding size={11} />}
                   {type}
                 </span>
                 <span className="font-semibold">{count}件</span>
@@ -1041,23 +1040,21 @@ function OverviewPanel({
 // コンパクトモード
 // ============================================================
 function CompactPanel({ stats }: { stats: AccidentStats }) {
-  const risk = getAccidentRiskLevel(stats.risk_score);
   const severitySummaryText = deriveSeveritySummaryText(stats);
   return (
     <div className="p-4 space-y-3">
       <RiskScoreBar score={stats.risk_score} />
       <div className="grid grid-cols-2 gap-2">
-        <StatCard label="事故件数" value={stats.total_accidents} icon="📊" />
+        <StatCard label="事故件数" value={stats.total_accidents} icon={<BarChart2 size={15} />} />
         <StatCard
           label="歩行者事故"
           value={stats.pedestrian_involved}
           highlight={stats.pedestrian_involved > 0}
-          icon="🚶"
+          icon={<PersonStanding size={15} />}
         />
       </div>
-      {/* コンパクトでも状況サマリーの主要ポイントを表示 */}
       {stats.situation_summary && (
-        <div className="text-[11px] text-gray-600 space-y-0.5 bg-gray-50 rounded-lg p-2">
+        <div className="text-xs text-gray-600 space-y-0.5 bg-gray-50 rounded-lg p-2">
           <p>{severitySummaryText}</p>
           <p>{stats.situation_summary.pedestrian_text}</p>
           {stats.situation_summary.elderly_text && (
@@ -1065,7 +1062,7 @@ function CompactPanel({ stats }: { stats: AccidentStats }) {
           )}
         </div>
       )}
-      <p className="text-[9px] text-gray-400 text-center">
+      <p className="text-xs text-gray-400 text-center">
         半径{stats.search_params.radius_meters}m / 過去
         {stats.search_params.years}年 ・出典: 警察庁オープンデータ
       </p>
@@ -1096,7 +1093,9 @@ export function AccidentStatsLoading() {
 export function AccidentStatsEmpty({ radius }: { radius: number }) {
   return (
     <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
-      <div className="text-2xl mb-1">✅</div>
+      <div className="flex justify-center mb-1">
+        <CheckCircle2 size={28} className="text-green-500" />
+      </div>
       <p className="text-sm font-medium text-green-800">
         半径{radius}m以内に交通事故の記録はありません
       </p>
@@ -1110,13 +1109,11 @@ export function AccidentStatsEmpty({ radius }: { radius: number }) {
 // ============================================================
 // AccidentStatsPanel - メインコンポーネント
 // ============================================================
-const TAB_LIST = [
-  { id: "overview", label: "概要", icon: "📊" },
-  { id: "road", label: "道路環境", icon: "🛣️" },
-  { id: "party", label: "当事者", icon: "👥" },
-  { id: "safety", label: "安全分析", icon: "🛡️" },
-  { id: "time", label: "時間帯", icon: "⏰" },
-  { id: "detail", label: "事故詳細", icon: "📋" },
+const TAB_LIST: { id: string; label: string; icon: React.ReactNode }[] = [
+  { id: "overview", label: "概要", icon: <BarChart2 size={12} /> },
+  { id: "factors", label: "危険要因", icon: <ShieldAlert size={12} /> },
+  { id: "time", label: "時間帯", icon: <Clock size={12} /> },
+  { id: "detail", label: "事故詳細", icon: <List size={12} /> },
 ];
 
 export default function AccidentStatsPanel({
@@ -1161,10 +1158,10 @@ export default function AccidentStatsPanel({
           </span>
         </div>
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
           style={{ backgroundColor: risk.color + "20", color: risk.color }}
         >
-          {risk.emoji} {risk.label}
+          {risk.label}
         </span>
       </div>
 
@@ -1192,11 +1189,8 @@ export default function AccidentStatsPanel({
             {activeTab === "overview" && (
               <OverviewPanel stats={stats} risk={risk} />
             )}
-            {activeTab === "road" && stats.road_environment && (
-              <RoadEnvironmentPanel env={stats.road_environment} />
-            )}
-            {activeTab === "party" && stats.party_analysis && (
-              <PartyAnalysisPanel party={stats.party_analysis} />
+            {activeTab === "factors" && (
+              <DangerFactorsPanel stats={stats} />
             )}
             {activeTab === "time" && stats.time_analysis && (
               <TimeAnalysisPanel
@@ -1204,16 +1198,13 @@ export default function AccidentStatsPanel({
                 byWeather={stats.by_weather}
               />
             )}
-            {activeTab === "safety" && (
-              <SafetyAnalysisPanel stats={stats} />
-            )}
             {activeTab === "detail" && (
               <AccidentDetailList accidents={stats.nearest_accidents} />
             )}
           </div>
 
           {/* フッター */}
-          <div className="border-t px-4 py-2 text-[9px] text-gray-400 text-center space-y-0.5">
+          <div className="border-t px-4 py-2 text-xs text-gray-400 text-center space-y-0.5">
             <p>
               半径{stats.search_params.radius_meters}m以内 / 過去
               {stats.search_params.years}年間 / {stats.total_accidents}件
