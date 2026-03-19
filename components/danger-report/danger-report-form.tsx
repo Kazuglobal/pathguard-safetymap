@@ -26,10 +26,12 @@ import {
 } from "@/lib/disaster-scenario-prompts"
 import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
 import { VlmAnalysisPanel } from "./vlm-analysis-panel"
+import { SimulationQuickSummary } from "./simulation-quick-summary"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 import { handleError } from "@/lib/error-handler"
+import { extractSimulationQuickSummary } from "@/lib/vlm-analysis"
 
 interface DangerReportFormProps {
   onSubmit: (data: DangerReportSubmitPayload) => Promise<{ reportId: string; imageUrl: string | null }>
@@ -1060,6 +1062,17 @@ export default function DangerReportForm({
 
   const canSubmit = !!selectedLocation && (!isGpsLocation || isGpsLocationConfirmed)
   const showVlmPanel = vlmStatus !== "idle" || submittedReportId
+  const extractedQuickSummary = extractSimulationQuickSummary(vlmResult)
+  const riskAnalysisFallback = riskAnalysis?.[0]
+  const simulationQuickSummary =
+    extractedQuickSummary ||
+    (riskAnalysisFallback
+      ? {
+          summary: riskAnalysisFallback.risk,
+          action: riskAnalysisFallback.measure,
+        }
+      : null)
+  const previewSimulationImage = processedImagePreviews[0] ?? null
 
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
@@ -1608,6 +1621,14 @@ export default function DangerReportForm({
               </p>
             ))}
           </div>
+        )}
+
+        {simulationQuickSummary && (
+          <SimulationQuickSummary
+            summary={simulationQuickSummary.summary}
+            action={simulationQuickSummary.action}
+            imageUrl={previewSimulationImage}
+          />
         )}
 
         {/* 送信ボタン */}

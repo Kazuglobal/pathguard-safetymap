@@ -32,6 +32,7 @@ import {
 import type { LucideProps } from "lucide-react"
 import {
   HAZARD_CATEGORY_MAP,
+  extractSimulationQuickSummary,
   getSeverityVariant,
   getRiskLevelLabel,
   type VlmAnalysisResult,
@@ -39,6 +40,7 @@ import {
   type HazardCategory,
 } from "@/lib/vlm-analysis"
 import type { VlmAnalysisStatus } from "@/hooks/use-vlm-analysis"
+import { SimulationQuickSummary } from "./simulation-quick-summary"
 
 interface VlmAnalysisPanelProps {
   status: VlmAnalysisStatus
@@ -203,9 +205,18 @@ function FailedView({
 function CompletedView({ result }: { result: VlmAnalysisResult }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const detailsSectionId = useId()
+  const quickSummary = extractSimulationQuickSummary(result)
 
   return (
     <div className="space-y-4">
+      {quickSummary ? (
+        <SimulationQuickSummary
+          summary={quickSummary.summary}
+          action={quickSummary.action}
+          compact={true}
+        />
+      ) : null}
+
       {/* Overall Safety Score - always visible, acts as toggle */}
       <button
         type="button"

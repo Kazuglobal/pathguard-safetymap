@@ -3,6 +3,27 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import DangerReportForm from "@/components/danger-report/danger-report-form"
+import type { VlmAnalysisResult } from "@/lib/vlm-analysis"
+
+const mockVlmResult: VlmAnalysisResult = {
+  hazards: [
+    {
+      category: "traffic",
+      severity: 4,
+      description_ja: "車がスピードを出して通過します",
+      description_en: "Cars pass through at high speed",
+      child_specific_risk: "子どもの背丈だと運転手から見えにくい",
+      recommendation: "白線の内側で待つよう声かけする",
+    },
+  ],
+  overall_safety_score: 58,
+  overall_risk_level: 3,
+  child_perspective_summary: "車が急に見えて、子どもが判断しづらい場所です。",
+  time_weather_risks: {},
+  improvement_suggestions: {
+    immediate_actions: ["白線の内側を歩く"],
+  },
+}
 
 const mocks = vi.hoisted(() => ({
   supabase: { from: vi.fn(), rpc: vi.fn() } as any,
@@ -14,6 +35,11 @@ const mocks = vi.hoisted(() => ({
   retryVlmAnalysis: vi.fn(async () => undefined),
   resetVlmAnalysis: vi.fn(),
   enrichReportWithAccidents: vi.fn(),
+  vlmHookState: {
+    status: "idle" as const | "analyzing" | "completed" | "failed",
+    result: null as VlmAnalysisResult | null,
+    error: null as string | null,
+  },
 }))
 
 vi.mock("@/components/providers/supabase-provider", () => ({
@@ -26,9 +52,9 @@ vi.mock("@/components/ui/use-toast", () => ({
 
 vi.mock("@/hooks/use-vlm-analysis", () => ({
   useVlmAnalysis: vi.fn(() => ({
-    status: "idle",
-    result: null,
-    error: null,
+    status: mocks.vlmHookState.status,
+    result: mocks.vlmHookState.result,
+    error: mocks.vlmHookState.error,
     startAnalysis: mocks.startVlmAnalysis,
     retry: mocks.retryVlmAnalysis,
     reset: mocks.resetVlmAnalysis,
@@ -86,6 +112,9 @@ describe("DangerReportForm", () => {
     mocks.hookState.enrichCallCount = 0
     mocks.fetchStats.mockResolvedValue({ total_accidents: 3 })
     mocks.enrichReportWithAccidents.mockResolvedValue({ id: "report-123" })
+    mocks.vlmHookState.status = "idle"
+    mocks.vlmHookState.result = null
+    mocks.vlmHookState.error = null
   })
 
   it("keeps accident stats panel stable after submit and bypasses hook enrich state", async () => {
@@ -152,5 +181,23 @@ describe("DangerReportForm", () => {
         })
       )
     })
+  })
+
+  it("renders a quick simulation summary before submit when analysis is ready", () => {
+    mocks.vlmHookState.status = "completed"
+    mocks.vlmHookState.result = mockVlmResult
+
+    render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-789", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    expect(screen.getByText("投稿前プレビュー")).toBeInTheDocument()
+    expect(screen.getByText("子ども目線シミュレーション")).toBeInTheDocument()
+    expect(screen.getByText("車が急に見えて、子どもが判断しづらい場所です。")).toBeInTheDocument()
+    expect(screen.getByText("白線の内側を歩く")).toBeInTheDocument()
   })
 })

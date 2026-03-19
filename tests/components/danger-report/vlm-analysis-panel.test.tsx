@@ -119,6 +119,22 @@ describe("VlmAnalysisPanel", () => {
     expect(screen.getByText("要注意")).toBeInTheDocument()
   })
 
+  it("should render a quick summary and avoidance action in the collapsed overview", () => {
+    render(
+      <VlmAnalysisPanel
+        status="completed"
+        result={mockResult}
+        error={null}
+        onRetry={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("投稿前プレビュー")).toBeInTheDocument()
+    expect(screen.getByText("子ども目線シミュレーション")).toBeInTheDocument()
+    expect(screen.getAllByText(mockResult.child_perspective_summary).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText("警察に取締りを依頼")).toBeInTheDocument()
+  })
+
   it("should show collapsed hint with hazard count when collapsed", () => {
     render(
       <VlmAnalysisPanel
@@ -304,7 +320,7 @@ describe("VlmAnalysisPanel", () => {
     expect(screen.getByRole("tab", { name: "改善提案" })).toBeInTheDocument()
 
     // Default tab content should be visible
-    expect(screen.getByText(mockResult.child_perspective_summary)).toBeInTheDocument()
+    expect(screen.getAllByText(mockResult.child_perspective_summary).length).toBeGreaterThanOrEqual(1)
   })
 
   it("should display improvement suggestions correctly when expanded", async () => {
@@ -324,7 +340,7 @@ describe("VlmAnalysisPanel", () => {
     await user.click(improvementTab)
     expect(improvementTab).toHaveAttribute("aria-selected", "true")
 
-    expect(await screen.findByText("警察に取締りを依頼")).toBeInTheDocument()
+    expect((await screen.findAllByText("警察に取締りを依頼")).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("保護者の見守り強化")).toBeInTheDocument()
     expect(screen.getByText("信号機の設置")).toBeInTheDocument()
     expect(screen.getByText("横断歩道の追加")).toBeInTheDocument()
