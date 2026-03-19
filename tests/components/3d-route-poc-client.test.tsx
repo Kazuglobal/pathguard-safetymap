@@ -16,7 +16,7 @@ vi.mock("@/components/3d-route/elevation-graph", () => ({
 
 vi.mock("next/dynamic", () => {
   let index = 0
-  const ids = ["cesium-viewer", "street-view-panel", "spark-splat-viewer"]
+  const ids = ["cesium-viewer", "street-view-panel"]
 
   return {
     default: () => {
@@ -28,11 +28,6 @@ vi.mock("next/dynamic", () => {
     },
   }
 })
-
-vi.mock("@/components/3d-route/spark-splat-viewer", () => ({
-  PRESET_SPLATS: [{ label: "Sample", url: "/sample.spz" }],
-  default: () => <div data-testid="spark-splat-viewer-real" />,
-}))
 
 describe("ThreeDRoutePocClient", () => {
   it("Street表示を終了したら StreetViewPanel をアンマウントする", () => {

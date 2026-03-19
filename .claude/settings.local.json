@@ -116,7 +116,6 @@
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__apply_migration",
       "mcp__claude_ai_Supabase__execute_sql",
-      "WebFetch(domain:sparkjs.dev)",
       "Bash(cd:*)",
       "Bash(cat:*)",
       "Bash(git:*)",
@@ -128,7 +127,18 @@
       "Bash(fuser -k 3001/tcp)",
       "Bash(fuser:*)",
       "Bash(pnpm dev:*)",
-      "Bash(pnpm dev:turbo:*)"
+      "Bash(pnpm dev:turbo:*)",
+      "Bash(node_modules/.bin/tsc --noEmit --skipLibCheck 2>&1 | grep -E \"navigation\\\\.tsx|report-bottom-sheet|map-page-client|map-container\\\\.tsx\" | head -20)",
+      "Bash(pnpm test:*)",
+      "Read(//mnt/c/Users/s1598/.claude/commands/**)",
+      "Bash(/dev/null -name *.md)",
+      "Bash(tasklist /FI 'PID eq 25116')",
+      "Bash(cmd.exe /c \"tasklist /FI \\\\\"PID eq 25116\\\\\" 2>nul\")",
+      "Bash(cmd.exe /c \"tasklist | findstr node\" 2>/dev/null)",
+      "Bash(cmd.exe /c \"taskkill /PID 25116 /F\")",
+      "Bash(cmd.exe /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd.exe /c \"tasklist | findstr 2880\")",
+      "Bash(pnpm remove:*)"
     ],
     "deny": []
   }

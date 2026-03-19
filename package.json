@@ -74,7 +74,6 @@
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.4.0",
     "@sentry/nextjs": "^8.55.0",
-    "@sparkjsdev/spark": "github:sparkjsdev/spark#v2.0.0-preview",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "latest",
     "@turf/turf": "^7.2.0",
