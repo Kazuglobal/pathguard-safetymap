@@ -9,7 +9,9 @@ import type { UserRoute } from "@/lib/types"
 interface ChildRouteDashboardResult {
   state: ChildRouteDashboardState
   childName?: string
+  errorMessage?: string
   quickChecks: ChildRouteQuickCheck[]
+  retryHref: string
   selectedRoute: UserRoute | null
 }
 
@@ -59,10 +61,14 @@ export function useChildRouteDashboard(): ChildRouteDashboardResult {
   const needsSetup = Boolean(selectedRoute && !hasRouteGeometry)
   const routeIdForDangerLookup = hasRouteGeometry && selectedRoute?.id ? selectedRoute.id : ""
 
-  const { dangers, isLoading: dangersLoading } = useRouteDangers(
+  const { dangers, isLoading: dangersLoading, error: dangersError } = useRouteDangers(
     routeIdForDangerLookup,
     100
   )
+
+  const retryHref = selectedRoute?.id
+    ? `/map?routeId=${encodeURIComponent(selectedRoute.id)}`
+    : "/map"
 
   const state: ChildRouteDashboardState = routesLoading
     ? "loading"
@@ -70,6 +76,8 @@ export function useChildRouteDashboard(): ChildRouteDashboardResult {
       ? "empty"
       : needsSetup
         ? "needs_setup"
+        : dangersError
+          ? "error"
         : "ready"
 
   const quickChecks = useMemo<ChildRouteQuickCheck[]>(() => {
@@ -85,11 +93,11 @@ export function useChildRouteDashboard(): ChildRouteDashboardResult {
         id: "today",
         title: "今日の注意地点",
         value: `${dangerCount}件`,
-        href: "/report",
+        href: retryHref,
         description:
           dangerCount > 0
-            ? `${childName}の通学路で確認された危険を先に見る`
-            : `${childName}の通学路では新しい危険報告はまだありません`,
+            ? `${childName}の通学路で公開された危険をマップで確認`
+            : `${childName}の通学路では新しい公開危険報告はまだありません`,
       },
       {
         id: "route",
@@ -106,12 +114,16 @@ export function useChildRouteDashboard(): ChildRouteDashboardResult {
         description: selectedRoute.description?.trim() || "通学路を再確認できます",
       },
     ]
-  }, [dangers.length, selectedRoute, state])
+  }, [dangers.length, retryHref, selectedRoute, state])
 
   return {
     state: state === "ready" && dangersLoading ? "loading" : state,
     childName: selectedRoute?.child_name?.trim() || undefined,
+    errorMessage: dangersError
+      ? "時間をおいて再試行するか、マップで通学路を確認してください。"
+      : undefined,
     quickChecks,
+    retryHref,
     selectedRoute,
   }
 }

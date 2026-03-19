@@ -152,6 +152,7 @@ describe("ChildRouteDashboard", () => {
     expect(result.current.childName).toBe("さくら")
     expect(result.current.quickChecks[0]?.title).toBe("今日の注意地点")
     expect(result.current.quickChecks[0]?.value).toBe("1件")
+    expect(result.current.quickChecks[0]?.href).toBe("/map?routeId=route-2")
     expect(result.current.quickChecks[1]?.title).toBe("通学ルート")
     expect(result.current.quickChecks[1]?.value).toBe("10分")
     expect(result.current.quickChecks[2]?.title).toBe("直近の更新")
@@ -230,6 +231,79 @@ describe("ChildRouteDashboard", () => {
     expect(
       screen.getByText("ルートをもう一度設定すると、危険地点や見直しポイントをここで表示できます。")
     ).toBeInTheDocument()
+  })
+
+  it("returns an error state when danger lookup fails", () => {
+    vi.mocked(useUserRoutes).mockReturnValue({
+      routes: [
+        {
+          id: "route-2",
+          user_id: "test-user-id",
+          name: "さくらの通学路",
+          description: null,
+          child_id: "child-sakura",
+          child_name: "さくら",
+          start_lat: 35.68,
+          start_lng: 139.76,
+          end_lat: 35.69,
+          end_lng: 139.77,
+          start_address: "自宅",
+          end_address: "学校",
+          route_geometry: {
+            type: "LineString",
+            coordinates: [
+              [139.76, 35.68],
+              [139.77, 35.69],
+            ],
+          },
+          distance_meters: 800,
+          estimated_time_minutes: 10,
+          is_favorite: true,
+          created_at: "2026-03-14T00:00:00Z",
+          updated_at: "2026-03-15T00:00:00Z",
+        },
+      ],
+      childProfiles: [{ id: "child-sakura", label: "さくら", routeCount: 1 }],
+      primaryRoute: null,
+      isLoading: false,
+      error: null,
+      addRoute: vi.fn(),
+      updateRoute: vi.fn(),
+      deleteRoute: vi.fn(),
+      setPrimaryRoute: vi.fn(),
+      refreshRoutes: vi.fn(),
+    })
+
+    vi.mocked(useRouteDangers).mockReturnValue({
+      dangers: [],
+      isLoading: false,
+      error: "Database error",
+      refetch: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useChildRouteDashboard())
+
+    expect(result.current.state).toBe("error")
+    expect(result.current.quickChecks).toHaveLength(0)
+  })
+
+  it("renders the error state", () => {
+    render(
+      <ChildRouteDashboard
+        state="error"
+        quickChecks={[]}
+        retryHref="/map?routeId=route-2"
+        errorMessage="最新の危険情報を読み込めませんでした。"
+      />
+    )
+
+    expect(
+      screen.getByText("最新の危険情報を読み込めませんでした。")
+    ).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "マップで確認する" })).toHaveAttribute(
+      "href",
+      "/map?routeId=route-2"
+    )
   })
 
   it("renders the weekly quick-check headline and cards", () => {

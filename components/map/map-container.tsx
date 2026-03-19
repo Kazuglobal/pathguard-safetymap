@@ -252,9 +252,13 @@ function sleep(ms: number) {
 // MapContainer コンポーネント
 interface MapContainerProps {
   autoOpenReport?: boolean
+  preferredRouteId?: string | null
 }
 
-export default function MapContainer({ autoOpenReport = false }: MapContainerProps) {
+export default function MapContainer({
+  autoOpenReport = false,
+  preferredRouteId = null,
+}: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -530,9 +534,16 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
   }, [combinedReports])
 
   useEffect(() => {
-    if (selectedUserRouteId || !primaryRoute) return
+    if (selectedUserRouteId) return
+
+    if (preferredRouteId && userRoutes.some((route) => route.id === preferredRouteId)) {
+      setSelectedUserRouteId(preferredRouteId)
+      return
+    }
+
+    if (!primaryRoute) return
     setSelectedUserRouteId(primaryRoute.id)
-  }, [primaryRoute, selectedUserRouteId])
+  }, [preferredRouteId, primaryRoute, selectedUserRouteId, userRoutes])
 
   useEffect(() => {
     if (!map.current) return

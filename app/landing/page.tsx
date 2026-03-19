@@ -26,7 +26,9 @@ export default function LandingPage() {
         <ChildRouteDashboard
           state={dashboard.state}
           childName={dashboard.childName}
+          errorMessage={dashboard.errorMessage}
           quickChecks={dashboard.quickChecks}
+          retryHref={dashboard.retryHref}
         />
 
         {/* ヒーローカルーセル */}

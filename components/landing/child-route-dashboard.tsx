@@ -19,19 +19,33 @@ export interface ChildRouteQuickCheck {
   description?: string
 }
 
-export type ChildRouteDashboardState = "loading" | "empty" | "needs_setup" | "ready"
+export type ChildRouteDashboardState =
+  | "loading"
+  | "empty"
+  | "needs_setup"
+  | "error"
+  | "ready"
 
 interface ChildRouteDashboardProps {
   state: ChildRouteDashboardState
   childName?: string
+  errorMessage?: string
   quickChecks?: ChildRouteQuickCheck[]
+  retryHref?: string
 }
 
 export function ChildRouteDashboard({
   state,
   childName,
+  errorMessage,
   quickChecks = [],
+  retryHref = "/map",
 }: ChildRouteDashboardProps) {
+  const resolvedErrorMessage =
+    errorMessage && errorMessage !== "最新の危険情報を読み込めませんでした。"
+      ? errorMessage
+      : "時間をおいて再試行するか、マップで通学路を確認してください。"
+
   const getQuickCheckIcon = (item: ChildRouteQuickCheck) => {
     if (item.id === "share" || item.title.includes("共有")) {
       return MessagesSquare
@@ -120,6 +134,22 @@ export function ChildRouteDashboard({
                 className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
               >
                 通学路を登録する
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : state === "error" ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-5">
+              <p className="text-sm font-semibold text-slate-900">
+                最新の危険情報を読み込めませんでした。
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                {resolvedErrorMessage}
+              </p>
+              <Link
+                href={retryHref}
+                className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-50"
+              >
+                マップで確認する
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>

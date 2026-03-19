@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import type { DangerReport, UserRoute } from "@/lib/types"
 import {
   findDangersNearRoute,
@@ -78,6 +79,7 @@ export function useRouteDangers(
       const { data: allDangers, error: dangersError } = await supabase
         .from("danger_reports")
         .select("*")
+        .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
         .order("created_at", { ascending: false })
 
       if (dangersError) {
