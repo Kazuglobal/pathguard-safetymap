@@ -3,6 +3,7 @@ import { generateImageWithGeminiWithModel } from "@/lib/gemini-image"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
+import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -40,7 +41,13 @@ export async function POST(req: NextRequest) {
     let imageMimeType: string | undefined
 
     if (file) {
-      const buf = Buffer.from(await file.arrayBuffer())
+      const buf = Buffer.from(
+        await readFileWithSentryContext({
+          route: "/api/gemini/generate-image",
+          fieldName: "image",
+          file,
+        }),
+      )
       imageBase64 = buf.toString("base64")
       imageMimeType = file.type || "image/png"
     }

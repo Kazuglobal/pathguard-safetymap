@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => {
   const mockGetImageModel = vi.fn(() => "gemini-default-model")
   const mockLogApiUsage = vi.fn()
   const mockEstimateImageGenerationCost = vi.fn(() => 0.01)
+  const mockSetContext = vi.fn()
+  const mockAddBreadcrumb = vi.fn()
 
   return {
     mockGetUser,
@@ -13,6 +15,8 @@ const mocks = vi.hoisted(() => {
     mockGetImageModel,
     mockLogApiUsage,
     mockEstimateImageGenerationCost,
+    mockSetContext,
+    mockAddBreadcrumb,
   }
 })
 
@@ -35,6 +39,12 @@ vi.mock("@/lib/api-usage-logger", () => ({
 
 vi.mock("@/lib/api-cost-calculator", () => ({
   estimateImageGenerationCost: mocks.mockEstimateImageGenerationCost,
+}))
+
+vi.mock("@sentry/nextjs", () => ({
+  setContext: mocks.mockSetContext,
+  addBreadcrumb: mocks.mockAddBreadcrumb,
+  captureException: vi.fn(),
 }))
 
 async function loadRoute() {
@@ -125,6 +135,35 @@ describe("app/api/gemini/generate-image route", () => {
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
       expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+    )
+  })
+
+  it("adds Sentry upload context before reading multipart image data", async () => {
+    const { POST } = await loadRoute()
+    const form = new FormData()
+    form.append("prompt", "test prompt")
+    form.append("image", new File(["abcd"], "input.png", { type: "image/png" }))
+
+    const res = await POST(
+      new Request("http://localhost/api/gemini/generate-image", {
+        method: "POST",
+        body: form,
+      }) as any,
+    )
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockSetContext).toHaveBeenCalledWith(
+      "upload_file",
+      expect.objectContaining({
+        route: "/api/gemini/generate-image",
+        fieldName: "image",
+        fileName: expect.any(String),
+      }),
+    )
+    expect(mocks.mockAddBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "upload.read",
+      }),
     )
   })
 })

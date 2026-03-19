@@ -3,6 +3,7 @@ import { z } from "zod"
 import { generateDisasterPrompts } from "@/lib/gemini-prompts"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
+import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
 
 const CUSTOM_HAZARD_SCHEMA = z.string().trim().min(1).max(100)
   .regex(/^[\w\s\-\u3040-\u9FFF\u30A0-\u30FF\uFF00-\uFFEF]+$/u)
@@ -89,7 +90,13 @@ export async function POST(req: NextRequest) {
       const form = await req.formData()
       const file = form.get("image") as File | null
       if (file) {
-        const buffer = Buffer.from(await file.arrayBuffer())
+        const buffer = Buffer.from(
+          await readFileWithSentryContext({
+            route: "/api/gemini/generate-prompts",
+            fieldName: "image",
+            file,
+          }),
+        )
         imageBase64 = buffer.toString("base64")
       } else {
         imageBase64 = (form.get("imageBase64") as string) || undefined

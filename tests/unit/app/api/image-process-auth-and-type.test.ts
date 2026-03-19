@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => {
   const mockStorageUpload = vi.fn()
   const mockStorageGetPublicUrl = vi.fn()
   const mockStorageRemove = vi.fn()
+  const mockSetContext = vi.fn()
+  const mockAddBreadcrumb = vi.fn()
 
   const mockDbMaybeSingle = vi.fn()
   const mockDbUpdate = vi.fn()
@@ -46,6 +48,8 @@ const mocks = vi.hoisted(() => {
     mockStorageUpload,
     mockStorageGetPublicUrl,
     mockStorageRemove,
+    mockSetContext,
+    mockAddBreadcrumb,
     mockDbMaybeSingle,
     mockDbUpdate,
     mockDbUpdateEq,
@@ -65,6 +69,12 @@ vi.mock("@/lib/supabase-server", () => ({
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => mocks.mockAdminClient),
+}))
+
+vi.mock("@sentry/nextjs", () => ({
+  setContext: mocks.mockSetContext,
+  addBreadcrumb: mocks.mockAddBreadcrumb,
+  captureException: vi.fn(),
 }))
 
 import { POST } from "@/app/api/image/process/route"
@@ -180,5 +190,46 @@ describe("app/api/image/process ownership + imageType", () => {
     expect(response.status).toBe(404)
     expect(body.message).toContain("missing-report")
     expect(mocks.mockStorageUpload).not.toHaveBeenCalled()
+  })
+
+  it("adds Sentry upload context before reading multipart image data", async () => {
+    mocks.mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "owner-1", email: "owner@example.com" } },
+      error: null,
+    })
+    mocks.mockDbMaybeSingle.mockResolvedValueOnce({
+      data: {
+        user_id: "owner-1",
+        processed_image_urls: [],
+        image_url: null,
+      },
+      error: null,
+    })
+
+    const formData = new FormData()
+    formData.append("file", new File(["dummy"], "instrumented.png", { type: "image/png" }))
+    formData.append("reportId", "report-ctx")
+
+    const response = await POST(
+      new Request("http://localhost/api/image/process", {
+        method: "POST",
+        body: formData,
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockSetContext).toHaveBeenCalledWith(
+      "upload_file",
+      expect.objectContaining({
+        route: "/api/image/process",
+        fieldName: "file",
+        fileName: expect.any(String),
+      }),
+    )
+    expect(mocks.mockAddBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "upload.read",
+      }),
+    )
   })
 })
