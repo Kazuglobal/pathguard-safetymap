@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { createServerClient } from "@/lib/supabase-server";
 import { isAdminEmail } from "@/lib/admin";
+import { readFileWithSentryContext } from "@/lib/sentry-upload-context";
 // Node.js ランタイムを強制
 export const runtime = "nodejs";
 
@@ -125,7 +126,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = Buffer.from(
+      await readFileWithSentryContext({
+        route: "/api/image/process",
+        fieldName: "file",
+        file,
+      }),
+    );
     const timestamp = Date.now();
     const rawExt = file.name.split(".").pop() || "bin";
     const safeExt = /^[a-zA-Z0-9]+$/.test(rawExt) ? rawExt : "bin";
