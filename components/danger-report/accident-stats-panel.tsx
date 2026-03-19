@@ -303,7 +303,9 @@ function DangerFactorsPanel({
   const env = stats.road_environment;
   const party = stats.party_analysis;
   const partyTypes = stats.by_party_type || {};
+  const terrain = stats.by_terrain || {};
   const roadSurface = stats.by_road_surface || {};
+  const injury = stats.injury_analysis || { by_injury_level: {}, severe_ratio: 0 };
 
   const shapeEntries = Object.entries(env?.by_road_shape || {}).sort((a, b) => b[1] - a[1]);
   const shapeTotal = shapeEntries.reduce((s, [, v]) => s + v, 0);
@@ -316,6 +318,7 @@ function DangerFactorsPanel({
   });
   const maxAge = Math.max(...ageEntries.map(([, v]) => v), 1);
 
+  const maxInjury = Math.max(...Object.values(injury.by_injury_level), 1);
   const maxParty = Math.max(...Object.values(partyTypes), 1);
   const maxSurface = Math.max(...Object.values(roadSurface), 1);
 
@@ -485,6 +488,42 @@ function DangerFactorsPanel({
           安全分析
         </h4>
 
+        {Object.keys(injury.by_injury_level).length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">
+              損傷程度（重傷以上: {injury.severe_ratio}%）
+            </p>
+            {Object.entries(injury.by_injury_level)
+              .filter(([label]) => !["0", "対象外当事者"].includes(label))
+              .sort(([, a], [, b]) => b - a)
+              .map(([label, count]) => {
+                const color =
+                  label === "死亡"
+                    ? "#DC2626"
+                    : label === "重傷"
+                    ? "#EA580C"
+                    : label === "負傷" || label === "軽傷"
+                    ? "#CA8A04"
+                    : "#6B7280";
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600 w-16 text-right">{label}</span>
+                    <div className="flex-1 h-3 bg-gray-50 rounded overflow-hidden">
+                      <div
+                        className="h-full rounded transition-all"
+                        style={{
+                          width: `${(count / maxInjury) * 100}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-gray-700 w-8 text-right">{count}</span>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {Object.keys(partyTypes).length > 0 && (
           <div className="space-y-1.5">
             <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">当事者種別（TOP5）</p>
@@ -530,6 +569,24 @@ function DangerFactorsPanel({
                   </div>
                 );
               })}
+          </div>
+        )}
+
+        {Object.keys(terrain).length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">地形区分</p>
+            <div className="flex gap-2 flex-wrap">
+              {Object.entries(terrain)
+                .sort(([, a], [, b]) => b - a)
+                .map(([label, count]) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] bg-gray-100 text-gray-700"
+                  >
+                    {label}: {count}件
+                  </span>
+                ))}
+            </div>
           </div>
         )}
 
@@ -880,23 +937,24 @@ function computeCommutePeak(
   const morningCount = (byHour["7"] || 0) + (byHour["8"] || 0);
   const afternoonCount =
     (byHour["14"] || 0) + (byHour["15"] || 0) + (byHour["16"] || 0);
-  const ph = timeAnalysis.peak_hour;
 
-  if (ph !== null && ph >= 7 && ph <= 8 && morningCount / totalAccidents >= 0.25) {
-    return {
-      type: "morning",
+  const candidates = [
+    {
+      type: "morning" as const,
       count: morningCount,
       pct: Math.round((morningCount / totalAccidents) * 100),
-    };
-  }
-  if (ph !== null && ph >= 14 && ph <= 16 && afternoonCount / totalAccidents >= 0.25) {
-    return {
-      type: "afternoon",
+    },
+    {
+      type: "afternoon" as const,
       count: afternoonCount,
       pct: Math.round((afternoonCount / totalAccidents) * 100),
-    };
-  }
-  return null;
+    },
+  ].filter((candidate) => candidate.count / totalAccidents >= 0.25);
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.count - a.count);
+  return candidates[0];
 }
 
 // ============================================================

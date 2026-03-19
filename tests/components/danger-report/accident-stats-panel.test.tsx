@@ -139,6 +139,38 @@ describe('AccidentStatsPanel', () => {
     expect(screen.getByText(/雨 4件/)).toBeInTheDocument()
   })
 
+  it('shows commute alert when school-route hours exceed 25% even if a different single hour is the peak', () => {
+    render(
+      <AccidentStatsPanel
+        stats={createStats({
+          total_accidents: 20,
+          time_analysis: {
+            by_hour: { '7': 3, '8': 3, '10': 4, '14': 2 },
+            by_month: { '1': 2, '4': 5, '9': 3 },
+            peak_hour: 10,
+            peak_month: 4,
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByText(/登校時間帯（7〜8時）に集中: 6件（全体の30%）/)).toBeInTheDocument()
+  })
+
+  it('keeps injury severity and terrain details in the integrated factors tab', async () => {
+    const user = userEvent.setup()
+    render(<AccidentStatsPanel stats={createStats()} />)
+
+    await user.click(screen.getByRole('button', { name: /危険要因/ }))
+
+    expect(screen.getByText(/損傷程度/)).toBeInTheDocument()
+    expect(screen.getByText(/重傷以上: 17%/)).toBeInTheDocument()
+    expect(screen.getByText('軽傷')).toBeInTheDocument()
+    expect(screen.getByText(/地形区分/)).toBeInTheDocument()
+    expect(screen.getByText(/平坦: 10件/)).toBeInTheDocument()
+    expect(screen.getByText(/坂: 2件/)).toBeInTheDocument()
+  })
+
   it('shows expandable accident detail rows on the detail tab', async () => {
     const user = userEvent.setup()
     render(<AccidentStatsPanel stats={createStats()} />)
