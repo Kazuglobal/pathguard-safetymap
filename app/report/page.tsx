@@ -16,6 +16,7 @@ import { LongPressZoomableImage } from "@/components/ui/long-press-zoomable-imag
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
 import { useReportInteractionsBatch } from "@/hooks/use-report-interactions"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
+import { useToast } from "@/components/ui/use-toast"
 import FamilyShareCard from "@/components/report/family-share-card"
 import {
   buildFamilyShareAction,
@@ -98,6 +99,7 @@ const formatDate = (value: string | null) => {
 
 export default function ReportHubPage() {
   const { supabase } = useSupabase()
+  const { toast } = useToast()
   const [reports, setReports] = useState<PublicReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [cautionStates, setCautionStates] = useState<Record<string, boolean>>({})
@@ -303,7 +305,7 @@ export default function ReportHubPage() {
 
     setIsSharingDetailCard(true)
     try {
-      await shareFamilyShareCard({
+      const result = await shareFamilyShareCard({
         cardElement: detailShareCardRef.current,
         card: {
           title: selectedReport.title || "無題の報告",
@@ -316,10 +318,33 @@ export default function ReportHubPage() {
           imageUrl: getCoverImage(selectedReport),
         },
       })
+
+      if (result.mode === "share") {
+        toast({
+          title: "共有シートを開きました",
+          description: "家族向けカードをそのまま共有できます。",
+        })
+        return
+      }
+
+      toast({
+        title: "共有カードを保存しました",
+        description: "画像を保存し、共有文面もコピーしました。",
+      })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return
+      }
+
+      toast({
+        title: "共有に失敗しました",
+        description: "時間をおいて再度お試しください。",
+        variant: "destructive",
+      })
     } finally {
       setIsSharingDetailCard(false)
     }
-  }, [selectedReport])
+  }, [selectedReport, toast])
 
   const renderShareCard = ({ report, cover, meta, tags, coordinates }: ShareFeedEntry) => {
     const interaction = interactions.get(report.id) ?? { liked: false, likeCount: 0, saved: false, saveCount: 0 }

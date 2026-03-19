@@ -15,6 +15,7 @@ interface ShareFamilyShareCardOptions {
 }
 
 const DEFAULT_DOWNLOAD_NAME = "family-share-card.png"
+const IMAGE_LOAD_TIMEOUT_MS = 15000
 
 export function buildFamilyShareCardText(card: FamilyShareCardData): string {
   return [
@@ -80,7 +81,50 @@ export function buildFamilyShareAction(
   return "現地で安全な待機場所と声かけポイントを確認する"
 }
 
+async function waitForCardImages(
+  cardElement: HTMLElement,
+  timeoutMs = IMAGE_LOAD_TIMEOUT_MS,
+): Promise<void> {
+  const images = Array.from(cardElement.querySelectorAll("img"))
+
+  await Promise.all(
+    images.map((image) => {
+      if (image.complete && image.naturalHeight > 0) {
+        return Promise.resolve()
+      }
+
+      return new Promise<void>((resolve) => {
+        const cleanup = () => {
+          clearTimeout(timeoutId)
+          image.removeEventListener("load", handleLoad)
+          image.removeEventListener("error", handleError)
+        }
+
+        const handleLoad = () => {
+          cleanup()
+          resolve()
+        }
+
+        const handleError = () => {
+          cleanup()
+          resolve()
+        }
+
+        const timeoutId = window.setTimeout(() => {
+          cleanup()
+          resolve()
+        }, timeoutMs)
+
+        image.addEventListener("load", handleLoad, { once: true })
+        image.addEventListener("error", handleError, { once: true })
+      })
+    }),
+  )
+}
+
 export async function renderFamilyShareCardBlob(cardElement: HTMLElement): Promise<Blob> {
+  await waitForCardImages(cardElement)
+
   const canvas = await html2canvas(cardElement, {
     backgroundColor: "#ffffff",
     scale: 2,
@@ -125,17 +169,14 @@ export async function shareFamilyShareCard({
 
   if (typeof File !== "undefined" && typeof nav.share === "function") {
     const file = new File([blob], fileName, { type: "image/png" })
-    const shareData: ShareData = {
-      title: card.title,
-      text: shareText,
-    }
-
     if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
-      shareData.files = [file]
+      await nav.share({
+        title: card.title,
+        text: shareText,
+        files: [file],
+      })
+      return { mode: "share" as const }
     }
-
-    await nav.share(shareData)
-    return { mode: "share" as const }
   }
 
   downloadBlob(blob, fileName)
