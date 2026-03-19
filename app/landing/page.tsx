@@ -10,9 +10,11 @@ import {
   SafeMagazine,
   HiyariHatReport,
 } from "@/components/landing"
+import { useChildRouteDashboard } from "@/hooks/use-child-route-dashboard"
 
 export default function LandingPage() {
   const currentYear = new Date().getFullYear()
+  const dashboard = useChildRouteDashboard()
 
   return (
     <div className="min-h-screen bg-white">
@@ -22,30 +24,9 @@ export default function LandingPage() {
       {/* メインコンテンツ */}
       <main className="pt-[104px] md:pt-4 pb-24 md:pb-8">
         <ChildRouteDashboard
-          childName="さくら"
-          quickChecks={[
-            {
-              id: "today",
-              title: "今日の注意地点",
-              value: "2件",
-              href: "/map",
-              description: "見通しの悪い交差点を先に確認",
-            },
-            {
-              id: "share",
-              title: "直近の共有カード",
-              value: "昨夜 21:00",
-              href: "/report",
-              description: "家族に送った注意カードをすぐ開く",
-            },
-            {
-              id: "route",
-              title: "通学路の見直し",
-              value: "1分",
-              href: "/routes",
-              description: "朝の確認前にルートを再表示",
-            },
-          ]}
+          state={dashboard.state}
+          childName={dashboard.childName}
+          quickChecks={dashboard.quickChecks}
         />
 
         {/* ヒーローカルーセル */}

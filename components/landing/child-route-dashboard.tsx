@@ -1,7 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronRight, MapPin, MessagesSquare, ShieldAlert } from "lucide-react"
+import {
+  ChevronRight,
+  Clock3,
+  Loader2,
+  MapPin,
+  MessagesSquare,
+  Route,
+  ShieldAlert,
+} from "lucide-react"
 
 export interface ChildRouteQuickCheck {
   id: string
@@ -11,17 +19,31 @@ export interface ChildRouteQuickCheck {
   description?: string
 }
 
+export type ChildRouteDashboardState = "loading" | "empty" | "needs_setup" | "ready"
+
 interface ChildRouteDashboardProps {
+  state: ChildRouteDashboardState
   childName?: string
-  quickChecks: ChildRouteQuickCheck[]
+  quickChecks?: ChildRouteQuickCheck[]
 }
 
 export function ChildRouteDashboard({
+  state,
   childName,
-  quickChecks,
+  quickChecks = [],
 }: ChildRouteDashboardProps) {
   const getQuickCheckIcon = (item: ChildRouteQuickCheck) => {
-    return item.id === "share" || item.title.includes("共有") ? MessagesSquare : MapPin
+    if (item.id === "share" || item.title.includes("共有")) {
+      return MessagesSquare
+    }
+    if (item.id === "route" || item.title.includes("ルート")) {
+      return Route
+    }
+    if (item.id === "update" || item.title.includes("更新")) {
+      return Clock3
+    }
+
+    return MapPin
   }
 
   return (
@@ -55,40 +77,88 @@ export function ChildRouteDashboard({
             </Link>
           </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {quickChecks.map((item) => {
-              const Icon = getQuickCheckIcon(item)
-
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className="group rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-transform hover:-translate-y-0.5 hover:shadow-md"
+          {state === "loading" ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-sky-600 shadow-sm">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {item.title}
-                        </p>
-                        {item.description && (
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-lg font-bold text-slate-900">
-                      {item.value}
-                    </span>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    通学路を読み込み中...
                   </div>
-                </Link>
-              )
-            })}
-          </div>
+                </div>
+              ))}
+            </div>
+          ) : state === "needs_setup" ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-5">
+              <p className="text-sm font-semibold text-slate-900">
+                この通学路はまだシミュレーション準備中です
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                ルートをもう一度設定すると、危険地点や見直しポイントをここで表示できます。
+              </p>
+              <Link
+                href="/routes"
+                className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition-colors hover:bg-amber-50"
+              >
+                通学路を見直す
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : state === "empty" ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-sky-200 bg-sky-50/70 p-5">
+              <p className="text-sm font-semibold text-slate-900">
+                通学路を登録すると、わが子向けの注意が表示されます
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                まずはルートを1件登録すると、危険地点や見直しポイントをここで確認できます。
+              </p>
+              <Link
+                href="/routes"
+                className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
+              >
+                通学路を登録する
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {quickChecks.map((item) => {
+                const Icon = getQuickCheckIcon(item)
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className="group rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-transform hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-sky-600 shadow-sm">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {item.title}
+                          </p>
+                          {item.description && (
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-lg font-bold text-slate-900">
+                        {item.value}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </section>
