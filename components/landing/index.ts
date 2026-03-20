@@ -1,6 +1,7 @@
 export { DailyCommuteCheckCard } from "./DailyCommuteCheckCard"
 export { StickyHeader } from "./StickyHeader"
 export { HeroCarousel } from "./HeroCarousel"
+export { ChildRouteDashboard } from "./child-route-dashboard"
 export { SafetyNewsSection } from "./SafetyNewsSection"
 export { SchoolRouteNewsSection } from "./SchoolRouteNewsSection"
 export { HazardMapBanner } from "./HazardMapBanner"

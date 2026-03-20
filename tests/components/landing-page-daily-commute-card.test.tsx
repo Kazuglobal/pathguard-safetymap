@@ -9,6 +9,7 @@ vi.mock("@/components/landing", async () => {
   return {
     ...actual,
     StickyHeader: () => <div data-testid="sticky-header" />,
+    ChildRouteDashboard: () => <div data-testid="child-route-dashboard" />,
     HeroCarousel: () => <div data-testid="hero-carousel" />,
     SchoolRouteNewsSection: () => <div data-testid="school-route-news" />,
     HazardMapBanner: () => <div data-testid="hazard-map-banner" />,
@@ -17,6 +18,16 @@ vi.mock("@/components/landing", async () => {
     HiyariHatReport: () => <div data-testid="hiyari-hat-report" />,
   }
 })
+
+vi.mock("@/hooks/use-child-route-dashboard", () => ({
+  useChildRouteDashboard: () => ({
+    state: "empty",
+    childName: undefined,
+    errorMessage: undefined,
+    quickChecks: [],
+    retryHref: "/map",
+  }),
+}))
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: any) => (

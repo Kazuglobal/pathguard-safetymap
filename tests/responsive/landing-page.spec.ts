@@ -7,9 +7,21 @@ test.describe('Landing Page Responsive Tests', () => {
     await testPageResponsiveness(page, '/landing', 'landing-page', {
       customChecks: async (helper: ResponsiveTestHelper, viewport) => {
         const navigation = new NavigationPageObject(page);
+
+        const dashboardSection = page.locator('[data-testid="child-route-dashboard"]');
+        await expect(dashboardSection).toBeVisible();
+
+        const landingSections = page.locator('main > section');
+        if (await landingSections.count() >= 2) {
+          const dashboardBox = await landingSections.nth(0).boundingBox();
+          const heroBox = await landingSections.nth(1).boundingBox();
+          if (dashboardBox && heroBox) {
+            expect(dashboardBox.y).toBeLessThan(heroBox.y);
+          }
+        }
         
         // Test hero section responsiveness
-        const heroSection = page.locator('[data-testid="hero-section"], .hero, section:first-child');
+        const heroSection = page.locator('[data-testid="hero-section"]');
         if (await heroSection.isVisible()) {
           await expect(heroSection).toBeVisible();
           

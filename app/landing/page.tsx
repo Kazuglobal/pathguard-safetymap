@@ -3,6 +3,7 @@
 import {
   DailyCommuteCheckCard,
   StickyHeader,
+  ChildRouteDashboard,
   HeroCarousel,
   SchoolRouteNewsSection,
   HazardMapBanner,
@@ -10,9 +11,11 @@ import {
   SafeMagazine,
   HiyariHatReport,
 } from "@/components/landing"
+import { useChildRouteDashboard } from "@/hooks/use-child-route-dashboard"
 
 export default function LandingPage() {
   const currentYear = new Date().getFullYear()
+  const dashboard = useChildRouteDashboard()
 
   return (
     <div className="min-h-screen bg-white">
@@ -21,8 +24,16 @@ export default function LandingPage() {
 
       {/* メインコンテンツ */}
       <main className="pt-[104px] md:pt-4 pb-24 md:pb-8">
+        <ChildRouteDashboard
+          state={dashboard.state}
+          childName={dashboard.childName}
+          errorMessage={dashboard.errorMessage}
+          quickChecks={dashboard.quickChecks}
+          retryHref={dashboard.retryHref}
+        />
+
         {/* ヒーローカルーセル */}
-        <section className="py-4">
+        <section data-testid="hero-section" className="py-4">
           <HeroCarousel />
         </section>
 
