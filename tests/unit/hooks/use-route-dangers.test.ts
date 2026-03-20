@@ -32,7 +32,9 @@ describe('useRouteDangers Hook', () => {
         eq: vi.fn(() => ({
           single: vi.fn(() => Promise.resolve({ data: null, error: { message: 'Not found' } })),
         })),
-        order: vi.fn(() => Promise.resolve({ data: [], error: null })),
+        in: vi.fn(() => ({
+          order: vi.fn(() => Promise.resolve({ data: [], error: null })),
+        })),
       })),
     }))
     mocks.useSupabase.mockReturnValue({
@@ -71,6 +73,9 @@ describe('useRouteDangers Hook', () => {
   describe('Fetching Dangers', () => {
     it('fetches dangers near the specified route', async () => {
       const mockRoute = mockRoutes[0] // Has route_geometry
+      const inMock = vi.fn(() => ({
+        order: vi.fn(() => Promise.resolve({ data: mockAllDangerReports, error: null })),
+      }))
 
       mocks.from.mockImplementation((table: string) => {
         if (table === 'user_routes') {
@@ -85,7 +90,7 @@ describe('useRouteDangers Hook', () => {
         // danger_reports
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockAllDangerReports, error: null })),
+            in: inMock,
           })),
         }
       })
@@ -98,6 +103,7 @@ describe('useRouteDangers Hook', () => {
 
       // Should filter to only dangers near the route
       expect(result.current.dangers.length).toBeGreaterThan(0)
+      expect(inMock).toHaveBeenCalledWith('status', ['approved', 'published', 'resolved'])
     })
 
     it('returns empty array when route has no geometry', async () => {
@@ -115,7 +121,9 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockAllDangerReports, error: null })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: mockAllDangerReports, error: null })),
+            })),
           })),
         }
       })
@@ -145,7 +153,9 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            })),
           })),
         }
       })
@@ -182,7 +192,9 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            })),
           })),
         }
       })
@@ -213,7 +225,9 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            })),
           })),
         }
       })
@@ -276,9 +290,11 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({
-              data: null,
-              error: { message: 'Database error' },
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({
+                data: null,
+                error: { message: 'Database error' },
+              })),
             })),
           })),
         }
@@ -334,7 +350,9 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            })),
           })),
         }
       })
@@ -405,7 +423,9 @@ describe('useRouteDangers Hook', () => {
         }
         return {
           select: vi.fn(() => ({
-            order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({ data: mockDangerReportsNearRoute, error: null })),
+            })),
           })),
         }
       })

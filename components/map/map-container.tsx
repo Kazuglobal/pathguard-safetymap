@@ -54,6 +54,11 @@ import {
 } from "@/lib/hazard-scenarios"
 import { buildRouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
 import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety-scorer"
+import {
+  buildFamilyShareAction,
+  buildFamilyShareMapLabel,
+  buildFamilyShareSummary,
+} from "@/lib/report-generation/family-share-card"
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
 import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
@@ -191,6 +196,11 @@ function MapImagePopupContent({
 }
 
 interface SubmittedReportState {
+  reportId: string
+  title: string
+  summary: string
+  action: string | null
+  mapLabel: string
   location: [number, number]
   originalImage: string | null
   processedImages: string[] // 複数画像に対応
@@ -252,9 +262,13 @@ function sleep(ms: number) {
 // MapContainer コンポーネント
 interface MapContainerProps {
   autoOpenReport?: boolean
+  preferredRouteId?: string | null
 }
 
-export default function MapContainer({ autoOpenReport = false }: MapContainerProps) {
+export default function MapContainer({
+  autoOpenReport = false,
+  preferredRouteId = null,
+}: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -530,9 +544,16 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
   }, [combinedReports])
 
   useEffect(() => {
-    if (selectedUserRouteId || !primaryRoute) return
+    if (selectedUserRouteId) return
+
+    if (preferredRouteId && userRoutes.some((route) => route.id === preferredRouteId)) {
+      setSelectedUserRouteId(preferredRouteId)
+      return
+    }
+
+    if (!primaryRoute) return
     setSelectedUserRouteId(primaryRoute.id)
-  }, [primaryRoute, selectedUserRouteId])
+  }, [preferredRouteId, primaryRoute, selectedUserRouteId, userRoutes])
 
   useEffect(() => {
     if (!map.current) return
@@ -1813,6 +1834,19 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
       // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)
       if (selectedLocation) {
         setSubmittedReport({
+          reportId: newReportId,
+          title: finalReportData.title || "無題の報告",
+          summary: buildFamilyShareSummary(finalReportData.description, finalReportData.title),
+          action: buildFamilyShareAction(
+            finalReportData.learning_checkpoints,
+            selectedUserRoute?.name
+              ? `${selectedUserRoute.name}で立ち止まる場所と待機位置を確認する`
+              : null,
+          ),
+          mapLabel: buildFamilyShareMapLabel(
+            [route_context_name ?? selectedUserRoute?.name ?? null, finalReportData.prefecture, finalReportData.city],
+            selectedLocation,
+          ),
           location: selectedLocation,
           originalImage: finalReportData.image_url || null,
           processedImages: finalReportData.processed_image_urls || [],
@@ -2635,6 +2669,17 @@ export default function MapContainer({ autoOpenReport = false }: MapContainerPro
           onClose={() => { setIsSubmittedPreviewOpen(false); setSubmittedReport(null); }}
           originalImage={submittedReport?.originalImage ?? null}
           processedImages={submittedReport?.processedImages ?? []}
+          shareCard={
+            submittedReport
+              ? {
+                  title: submittedReport.title,
+                  summary: submittedReport.summary,
+                  action: submittedReport.action,
+                  mapLabel: submittedReport.mapLabel,
+                  imageUrl: submittedReport.processedImages[0] ?? submittedReport.originalImage ?? null,
+                }
+              : null
+          }
         />
         {/* ARビュー */}
         {isARMode && (

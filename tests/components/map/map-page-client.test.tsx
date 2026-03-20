@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@/components/map/map-container", () => ({
-  default: (props: { autoOpenReport?: boolean }) => {
+  default: (props: { autoOpenReport?: boolean; preferredRouteId?: string | null }) => {
     mocks.mapContainer(props)
     return <div data-testid="map-container" />
   },
@@ -57,11 +57,21 @@ describe("MapPageClient", () => {
     render(<MapPageClient />)
 
     expect(mocks.mapContainer).toHaveBeenCalledWith(
-      expect.objectContaining({ autoOpenReport: true }),
+      expect.objectContaining({ autoOpenReport: true, preferredRouteId: "abc" }),
     )
 
     await waitFor(() => {
       expect(mocks.replace).toHaveBeenCalledWith("/map?routeId=abc", { scroll: false })
     })
+  })
+
+  it("passes through the selected route id from the query string", () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams("routeId=route-42"))
+
+    render(<MapPageClient />)
+
+    expect(mocks.mapContainer).toHaveBeenCalledWith(
+      expect.objectContaining({ autoOpenReport: false, preferredRouteId: "route-42" }),
+    )
   })
 })

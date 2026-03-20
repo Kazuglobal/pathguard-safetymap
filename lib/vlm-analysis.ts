@@ -60,6 +60,11 @@ export interface VlmAnalysisResult {
   }
 }
 
+export interface SimulationQuickSummaryData {
+  summary: string
+  action: string | null
+}
+
 /**
  * Request to analyze hazard image
  */
@@ -437,4 +442,43 @@ export function getRiskLevelLabel(level: 1 | 2 | 3 | 4 | 5): string {
     5: "非常に危険",
   }
   return labels[level]
+}
+
+function getFirstNonEmptyText(values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const normalized = value.trim()
+      if (normalized.length > 0) {
+        return normalized
+      }
+    }
+  }
+  return null
+}
+
+export function extractSimulationQuickSummary(
+  result: VlmAnalysisResult | null | undefined
+): SimulationQuickSummaryData | null {
+  if (!result) {
+    return null
+  }
+
+  const summary = getFirstNonEmptyText([
+    result.child_perspective_summary,
+    ...result.hazards.flatMap((hazard) => [hazard.child_specific_risk, hazard.description_ja]),
+  ])
+
+  const action = getFirstNonEmptyText([
+    result.improvement_suggestions.immediate_actions?.[0],
+    ...result.hazards.map((hazard) => hazard.recommendation),
+  ])
+
+  if (!summary) {
+    return null
+  }
+
+  return {
+    summary,
+    action,
+  }
 }
