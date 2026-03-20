@@ -28,7 +28,7 @@ export default function LandingPage() {
 
         {/* 今日の通学3分チェック */}
         <section className="px-4 py-3">
-          <DailyCommuteCheckCard cautionCount={2} routeConfigured={false} lastUpdatedDaysAgo={46} />
+          <DailyCommuteCheckCard />
         </section>
 
         {/* 通学路の安全ニュース（リアルタイム） */}

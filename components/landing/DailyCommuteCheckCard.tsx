@@ -117,6 +117,8 @@ interface DailyCommuteCheckCardProps {
   lastUpdatedDaysAgo?: number | null
   /** 地図へのリンク先 */
   mapHref?: string
+  /** 補足説明文 */
+  description?: string
 }
 
 // ─── Stat Cell ────────────────────────────────────────────────────────────────
@@ -156,6 +158,7 @@ export function DailyCommuteCheckCard({
   routeConfigured = false,
   lastUpdatedDaysAgo = null,
   mapHref = "/map",
+  description = "通学前に危険情報やルート設定状況を30秒で確認できます。",
 }: DailyCommuteCheckCardProps) {
   const updatedLabel =
     lastUpdatedDaysAgo === null ? "未更新" : lastUpdatedDaysAgo === 0 ? "今日" : `${lastUpdatedDaysAgo}日前`
@@ -182,11 +185,7 @@ export function DailyCommuteCheckCard({
             <ShieldClockSvg />
             <h2 className="text-base font-bold text-slate-900">今日の通学3分チェック</h2>
           </div>
-          <p className="text-xs leading-relaxed text-slate-500">
-            登録した通学路向けの注意点を30秒で
-            <br />
-            確認できます。
-          </p>
+          <p className="max-w-[14rem] text-xs leading-relaxed text-slate-500">{description}</p>
         </div>
 
         <Link
