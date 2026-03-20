@@ -126,9 +126,10 @@ interface StatCellProps {
   label: string
   icon: React.ReactNode
   highlight?: "caution" | "neutral" | "ok"
+  href: string
 }
 
-function StatCell({ value, label, icon, highlight = "neutral" }: StatCellProps) {
+function StatCell({ value, label, icon, highlight = "neutral", href }: StatCellProps) {
   const valueColor =
     highlight === "caution"
       ? "text-amber-700"
@@ -137,11 +138,14 @@ function StatCell({ value, label, icon, highlight = "neutral" }: StatCellProps) 
         : "text-slate-800"
 
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-2 py-3 shadow-sm">
+    <Link
+      href={href}
+      className="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-2 py-3 shadow-sm transition-colors hover:bg-slate-50 active:bg-slate-100"
+    >
       <p className={`text-xl font-bold leading-none ${valueColor}`}>{value}</p>
       <div className="flex h-8 items-center justify-center">{icon}</div>
       <p className="text-center text-[11px] leading-tight text-slate-500">{label}</p>
-    </div>
+    </Link>
   )
 }
 
@@ -201,18 +205,21 @@ export function DailyCommuteCheckCard({
           label="今日の注意地点"
           icon={<MapPinAlertSvg />}
           highlight={cautionCount > 0 ? "caution" : "neutral"}
+          href={mapHref}
         />
         <StatCell
           value={routeConfigured ? "設定済み" : "未設定"}
           label="通学ルート"
           icon={<RouteSvg />}
           highlight={routeConfigured ? "ok" : "neutral"}
+          href="/routes"
         />
         <StatCell
           value={updatedLabel}
           label="直近の更新"
           icon={<ClockUpdateSvg />}
           highlight={lastUpdatedDaysAgo !== null && lastUpdatedDaysAgo <= 1 ? "ok" : "neutral"}
+          href={mapHref}
         />
       </div>
     </div>
