@@ -1,3 +1,4 @@
+export { DailyCommuteCheckCard } from "./DailyCommuteCheckCard"
 export { StickyHeader } from "./StickyHeader"
 export { HeroCarousel } from "./HeroCarousel"
 export { ChildRouteDashboard } from "./child-route-dashboard"
