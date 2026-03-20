@@ -76,10 +76,15 @@ export function ChildRouteDashboard({
     >
       <div className="mx-auto max-w-xl px-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-base font-bold tracking-tight text-slate-900">
-              今日の通学3分チェック
-            </h2>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold tracking-tight text-slate-900">
+                今日の通学3分チェック
+              </h2>
+              <p className="mt-1 text-xs text-slate-600 md:hidden">
+                {childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を30秒で確認できます。
+              </p>
+            </div>
             <p className="hidden text-sm leading-6 text-slate-600 md:block">
               {childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を30秒で確認できます。
             </p>
@@ -200,11 +205,14 @@ export function ChildRouteDashboard({
                           href={`/school-route-news/${news.slug}`}
                           className="flex items-center gap-2 text-xs leading-snug text-slate-700 hover:text-sky-700"
                         >
-                          <span
-                            className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                            style={{ backgroundColor: news.categoryColor }}
-                          />
-                          <span className="line-clamp-1">{news.title}</span>
+                          <span className="inline-flex flex-shrink-0 items-center gap-1.5 text-[10px] font-medium text-slate-500">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ backgroundColor: news.categoryColor }}
+                            />
+                            <span>{news.categoryLabel}</span>
+                          </span>
+                          <span className="line-clamp-1 min-w-0">{news.title}</span>
                         </Link>
                       </li>
                     ))}

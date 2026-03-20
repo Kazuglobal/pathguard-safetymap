@@ -208,10 +208,10 @@ describe("ChildRouteDashboard", () => {
     expect(result.current.quickChecks).toHaveLength(0)
   })
 
-  it("renders the loading and empty states", () => {
+  it("renders the compact loading state", () => {
     render(<ChildRouteDashboard state="loading" quickChecks={[]} />)
 
-    expect(screen.getAllByText("通学路を読み込み中...")).toHaveLength(3)
+    expect(screen.getAllByText("読み込み中")).toHaveLength(3)
   })
 
   it("renders the empty state", () => {
@@ -319,9 +319,25 @@ describe("ChildRouteDashboard", () => {
     )
 
     expect(screen.getByRole("heading", { name: "今日の通学3分チェック" })).toBeInTheDocument()
-    expect(screen.getByText(/さくらさん向け/)).toBeInTheDocument()
+    expect(screen.getAllByText(/さくらさん向け/).length).toBeGreaterThan(0)
     expect(screen.getByText("今日の注意地点")).toBeInTheDocument()
     expect(screen.getByText("直近の共有カード")).toBeInTheDocument()
+  })
+
+  it("renders a mobile-visible child context label when childName is available", () => {
+    render(
+      <ChildRouteDashboard
+        state="ready"
+        childName="さくら"
+        quickChecks={[
+          { id: "today", title: "今日の注意地点", value: "2件", href: "/map" },
+        ]}
+      />
+    )
+
+    const childLabels = screen.getAllByText(/さくらさん向け/)
+
+    expect(childLabels.some((element) => element.className.includes("md:hidden"))).toBe(true)
   })
 
   it("falls back to route-neutral copy when the child name is unavailable", () => {
@@ -334,7 +350,35 @@ describe("ChildRouteDashboard", () => {
       />
     )
 
-    expect(screen.getByText(/登録した通学路向け/)).toBeInTheDocument()
+    expect(screen.getAllByText(/登録した通学路向け/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/さん向け/)).not.toBeInTheDocument()
+  })
+
+  const mockNewsPreview = [
+    { id: "1", title: "交差点で事故", categoryLabel: "事故", categoryColor: "#ef4444", slug: "news-1" },
+    { id: "2", title: "登校時の注意喚起", categoryLabel: "注意", categoryColor: "#f59e0b", slug: "news-2" },
+  ]
+
+  const mockChecks = [
+    { id: "today", title: "今日の注意地点", value: "2件", href: "/map" },
+  ]
+
+  it("renders news preview when state is ready and newsPreview provided", () => {
+    render(<ChildRouteDashboard state="ready" quickChecks={mockChecks} newsPreview={mockNewsPreview} />)
+    expect(screen.getByText("通学路の安全ニュース")).toBeInTheDocument()
+    expect(screen.getByText("交差点で事故")).toBeInTheDocument()
+    expect(screen.getByText("事故")).toBeInTheDocument()
+    expect(screen.getByText("注意")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /すべて見る/ })).toHaveAttribute("href", "/school-route-news")
+  })
+
+  it("does not render news preview when newsPreview is empty", () => {
+    render(<ChildRouteDashboard state="ready" quickChecks={mockChecks} newsPreview={[]} />)
+    expect(screen.queryByText("通学路の安全ニュース")).not.toBeInTheDocument()
+  })
+
+  it("does not render news preview when state is not ready", () => {
+    render(<ChildRouteDashboard state="loading" newsPreview={mockNewsPreview} />)
+    expect(screen.queryByText("通学路の安全ニュース")).not.toBeInTheDocument()
   })
 })
