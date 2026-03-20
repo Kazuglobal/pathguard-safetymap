@@ -8,7 +8,6 @@ import {
   MapPin,
   MessagesSquare,
   Route,
-  ShieldAlert,
 } from "lucide-react"
 
 export interface ChildRouteQuickCheck {
@@ -17,6 +16,14 @@ export interface ChildRouteQuickCheck {
   value: string
   href: string
   description?: string
+}
+
+export interface NewsPreviewItem {
+  id: string
+  title: string
+  categoryLabel: string
+  categoryColor: string
+  slug: string
 }
 
 export type ChildRouteDashboardState =
@@ -32,6 +39,7 @@ interface ChildRouteDashboardProps {
   errorMessage?: string
   quickChecks?: ChildRouteQuickCheck[]
   retryHref?: string
+  newsPreview?: NewsPreviewItem[]
 }
 
 export function ChildRouteDashboard({
@@ -40,6 +48,7 @@ export function ChildRouteDashboard({
   errorMessage,
   quickChecks = [],
   retryHref = "/map",
+  newsPreview,
 }: ChildRouteDashboardProps) {
   const resolvedErrorMessage =
     errorMessage && errorMessage !== "最新の危険情報を読み込めませんでした。"
@@ -63,44 +72,36 @@ export function ChildRouteDashboard({
   return (
     <section
       data-testid="child-route-dashboard"
-      className="bg-gradient-to-b from-sky-50 via-white to-white py-4 md:py-6"
+      className="bg-white py-3 md:py-4"
     >
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="rounded-3xl border border-sky-100 bg-white/95 p-4 shadow-[0_12px_40px_rgba(14,165,233,0.12)] md:p-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                わが子向けチェック
-              </div>
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
-                  今日の通学3分チェック
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を30秒で確認できます。
-                </p>
-              </div>
-            </div>
+      <div className="mx-auto max-w-xl px-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold tracking-tight text-slate-900">
+              今日の通学3分チェック
+            </h2>
+            <p className="hidden text-sm leading-6 text-slate-600 md:block">
+              {childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を30秒で確認できます。
+            </p>
             <Link
               href="/map"
-              className="inline-flex items-center gap-1 self-start rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
             >
-              通学路を見る
-              <ChevronRight className="h-4 w-4" />
+              地図を見る
+              <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
 
           {state === "loading" ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="mt-2 grid grid-cols-3 gap-2">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={index}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                  className="flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50 p-2.5"
                 >
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    通学路を読み込み中...
+                  <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    読み込み中
                   </div>
                 </div>
               ))}
@@ -154,40 +155,63 @@ export function ChildRouteDashboard({
               </Link>
             </div>
           ) : (
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {quickChecks.map((item) => {
-                const Icon = getQuickCheckIcon(item)
+            <>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {quickChecks.map((item) => {
+                  const Icon = getQuickCheckIcon(item)
 
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className="group rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-transform hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-sky-600 shadow-sm">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {item.title}
-                          </p>
-                          {item.description && (
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {item.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-lg font-bold text-slate-900">
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className="group flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center transition-transform hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <span className="text-base font-bold leading-tight text-slate-900">
                         {item.value}
                       </span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
+                      <div className="my-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                        <Icon className="h-3.5 w-3.5" />
+                      </div>
+                      <p className="line-clamp-2 text-[10px] font-medium leading-tight text-slate-500">
+                        {item.title}
+                      </p>
+                    </Link>
+                  )
+                })}
+              </div>
+              {newsPreview && newsPreview.length > 0 && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500">
+                      通学路の安全ニュース
+                    </span>
+                    <Link
+                      href="/school-route-news"
+                      className="flex items-center gap-0.5 text-xs text-sky-600 hover:text-sky-700"
+                    >
+                      すべて見る
+                      <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {newsPreview.map((news) => (
+                      <li key={news.id}>
+                        <Link
+                          href={`/school-route-news/${news.slug}`}
+                          className="flex items-center gap-2 text-xs leading-snug text-slate-700 hover:text-sky-700"
+                        >
+                          <span
+                            className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: news.categoryColor }}
+                          />
+                          <span className="line-clamp-1">{news.title}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
