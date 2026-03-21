@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  DailyCommuteCheckCard,
   StickyHeader,
   ChildRouteDashboard,
   HeroCarousel,
@@ -36,12 +35,6 @@ export default function LandingPage() {
         <section data-testid="hero-section" className="py-4">
           <HeroCarousel />
         </section>
-
-        {/* 今日の通学3分チェック */}
-        <section className="px-4 py-3">
-          <DailyCommuteCheckCard />
-        </section>
-
         {/* 通学路の安全ニュース（リアルタイム） */}
         <SchoolRouteNewsSection />
 
@@ -78,3 +71,4 @@ export default function LandingPage() {
     </div>
   )
 }
+
