@@ -15,8 +15,6 @@ const PROTECTED_PREFIXES = [
   '/routes',
   '/hazard-game',
   '/route-quiz',
-  '/safe-magazine',
-  '/school-route-news',
   '/3d-route-poc',
   '/xroad',
   '/admin',

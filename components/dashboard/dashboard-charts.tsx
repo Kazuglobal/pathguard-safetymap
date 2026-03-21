@@ -60,6 +60,9 @@ export default function DashboardCharts({
     { name: "レベル5", value: dangerLevelCount[5] || 0 },
   ]
 
+  const totalReports = allReports.length
+  const totalStatusCount = pendingCount + approvedCount + resolvedCount
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
@@ -68,27 +71,33 @@ export default function DashboardCharts({
           <CardDescription>報告のステータス別の分布</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {totalStatusCount === 0 ? (
+            <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
+              データがありません
+            </div>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -98,27 +107,33 @@ export default function DashboardCharts({
           <CardDescription>報告された危険タイプの分布</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={dangerTypeData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                >
-                  {dangerTypeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {totalReports === 0 ? (
+            <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
+              データがありません
+            </div>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={dangerTypeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  >
+                    {dangerTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -128,22 +143,28 @@ export default function DashboardCharts({
           <CardDescription>報告された危険度レベルの分布</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              value: {
-                label: "報告数",
-                color: "hsl(var(--chart-1))",
-              },
-            }}
-            className="aspect-auto h-[260px] sm:h-[320px]"
-          >
-            <BarChart data={dangerLevelData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
+          {totalReports === 0 ? (
+            <div className="h-[260px] flex items-center justify-center text-gray-400 text-sm">
+              データがありません
+            </div>
+          ) : (
+            <ChartContainer
+              config={{
+                value: {
+                  label: "報告数",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="aspect-auto h-[260px] sm:h-[320px]"
+            >
+              <BarChart data={dangerLevelData}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          )}
         </CardContent>
       </Card>
     </div>
