@@ -4,6 +4,16 @@ import { useState, useEffect, useCallback } from "react"
 import type { AuthChangeEvent } from "@supabase/supabase-js"
 import { useSupabase } from "@/components/providers/supabase-provider"
 
+export type { NotificationPreferences, PushPayload } from "@/lib/notifications/builders"
+export {
+  ROUTE_REPORT_NOTIFICATION_TYPE,
+  getNotificationTypeLabel,
+  buildRouteReportNotification,
+  buildDangerReportPushPayload,
+  buildNewsPushPayload,
+  buildMagazinePushPayload,
+} from "@/lib/notifications/builders"
+
 export interface Notification {
   id: string
   title: string
@@ -13,35 +23,6 @@ export interface Notification {
   link?: string
   created_at: string
   user_id: string
-}
-
-export const ROUTE_REPORT_NOTIFICATION_TYPE = "route_report"
-
-export function getNotificationTypeLabel(type: string): string | null {
-  if (type === ROUTE_REPORT_NOTIFICATION_TYPE) {
-    return "通学路更新"
-  }
-
-  return null
-}
-
-export function buildRouteReportNotification(params: {
-  userId: string
-  reportId: string
-  reportTitle: string
-  routeId?: string | null
-  routeName?: string | null
-}) {
-  const routeLabel = params.routeName?.trim() || "通学路"
-
-  return {
-    user_id: params.userId,
-    type: ROUTE_REPORT_NOTIFICATION_TYPE,
-    title: `${routeLabel}に新しい危険報告があります`,
-    content: `「${params.reportTitle}」として報告されました。家族にも共有して見直してください。`,
-    link: params.routeId ? `/map?routeId=${params.routeId}` : "/map",
-    is_read: false,
-  }
 }
 
 type UseNotificationsOptions = {

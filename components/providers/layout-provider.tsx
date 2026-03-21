@@ -9,6 +9,7 @@ import {
   useSupabase,
 } from "@/components/providers/supabase-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { PushPermissionPrompt } from "@/components/notifications/push-permission-prompt"
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js"
 
 interface LayoutProviderInnerProps {
@@ -106,6 +107,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
         {children}
       </NavigationWrapper>
       <Toaster />
+      {user && <PushPermissionPrompt />}
     </>
   )
 }
