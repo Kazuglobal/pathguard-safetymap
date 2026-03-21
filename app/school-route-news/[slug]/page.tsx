@@ -4,6 +4,7 @@ import Image from "next/image"
 import { ArrowLeft, AlertTriangle, AlertCircle, Construction, FileText, Users, Clock, Tag, MapPin, ExternalLink, CheckCircle, Zap } from "lucide-react"
 import { getNewsItemBySlug, NEWS_CATEGORIES, formatNewsDate, type NewsCategory } from "@/lib/school-route-news"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 const CATEGORY_ICONS = {
   "AlertTriangle": AlertTriangle,
@@ -122,7 +123,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
       {/* 記事本文 */}
       <article className="max-w-3xl mx-auto px-4 pb-8">
         <div className="prose prose-gray max-w-none prose-headings:text-gray-900 prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-li:text-gray-700 prose-ul:my-3 prose-li:my-1">
-          <ReactMarkdown>{item.content}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
         </div>
       </article>
 
