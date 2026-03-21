@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase-server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = () => getSupabaseAdmin() as any
 import { notifyUsersNearReport } from '@/lib/push-notifications/notify-danger-report'
-import type { DangerReport } from '@/lib/types'
 
 const bodySchema = z.object({
   reportId: z.string().uuid(),
@@ -32,25 +34,17 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { reportId } = parsed.data
-
-  // レポートを取得
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
-  const { data: report, error: fetchError } = await admin
+  const { data: report, error: fetchError } = await db()
     .from('danger_reports')
     .select('id, title, latitude, longitude')
-    .eq('id', reportId)
+    .eq('id', parsed.data.reportId)
     .single()
 
   if (fetchError || !report) {
     return NextResponse.json({ error: 'レポートが見つかりません' }, { status: 404 })
   }
 
-  const notified = await notifyUsersNearReport(report as unknown as DangerReport)
+  const notified = await notifyUsersNearReport(report)
 
   return NextResponse.json({ notified })
 }

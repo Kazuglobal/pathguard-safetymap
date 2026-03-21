@@ -8,13 +8,13 @@ vi.mock('web-push', () => ({
   },
 }))
 
-// Supabase モック
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(),
+// Supabase adminモック
+vi.mock('@/lib/supabase-admin', () => ({
+  getSupabaseAdmin: vi.fn(),
 }))
 
 import webpush from 'web-push'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { PushSubscriptionRow } from '@/lib/web-push'
 import type { PushPayload } from '@/lib/notifications/builders'
 
@@ -66,10 +66,11 @@ describe('sendPushNotification', () => {
 
   it('410エラー時はサブスクリプションを削除して { success: false, removed: true } を返す', async () => {
     const mockDelete = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+      eq: vi.fn().mockResolvedValue({ error: null }),
     })
-    const mockAdmin = { from: vi.fn().mockReturnValue({ delete: mockDelete }) }
-    vi.mocked(createClient).mockReturnValue(mockAdmin as any)
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      from: vi.fn().mockReturnValue({ delete: mockDelete }),
+    } as any)
 
     const error = Object.assign(new Error('Gone'), { statusCode: 410 })
     vi.mocked(webpush.sendNotification).mockRejectedValueOnce(error)
@@ -115,7 +116,7 @@ describe('sendPushToUser', () => {
     ]
     const mockSelect = vi.fn().mockResolvedValue({ data: subsWithDisabledPref, error: null })
     const mockFrom = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockSelect }) })
-    vi.mocked(createClient).mockReturnValue({ from: mockFrom } as any)
+    vi.mocked(getSupabaseAdmin).mockReturnValue({ from: mockFrom } as any)
 
     const { sendPushToUser } = await import('@/lib/web-push')
     const count = await sendPushToUser('user-1', mockPayload, 'danger_reports')

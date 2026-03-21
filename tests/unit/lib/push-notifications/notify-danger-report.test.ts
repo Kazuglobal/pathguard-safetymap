@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/supabase-admin', () => ({
+  getSupabaseAdmin: vi.fn(),
 }))
 
 vi.mock('@/lib/geo/route-danger-finder', () => ({
@@ -25,35 +25,15 @@ vi.mock('@/lib/notifications/builders', () => ({
 
 import { createClient } from '@supabase/supabase-js'
 import { findDangersNearRoute } from '@/lib/geo/route-danger-finder'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sendPushToUser } from '@/lib/web-push'
-import { notifyUsersNearReport } from '@/lib/push-notifications/notify-danger-report'
-import type { DangerReport } from '@/lib/types'
+import { notifyUsersNearReport, type DangerReportLocation } from '@/lib/push-notifications/notify-danger-report'
 
-const mockReport: DangerReport = {
+const mockReport: DangerReportLocation = {
   id: 'report-1',
-  user_id: 'user-a',
   title: 'テスト危険報告',
-  description: null,
   latitude: 35.6812,
   longitude: 139.7671,
-  danger_type: 'traffic',
-  danger_level: 3,
-  status: 'pending',
-  image_url: null,
-  processed_image_url: null,
-  processed_image_urls: null,
-  prefecture: null,
-  prefecture_code: null,
-  city: null,
-  municipality_code: null,
-  town: null,
-  postal_code: null,
-  geocode_source: null,
-  geocoded_at: null,
-  geocode_confidence: null,
-  address_hash: null,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
 }
 
 const mockRoute = {
@@ -79,7 +59,7 @@ describe('notifyUsersNearReport', () => {
         not: vi.fn().mockResolvedValue({ data: [mockRoute], error: null }),
       }),
     })
-    vi.mocked(createClient).mockReturnValue({ from: mockFrom } as any)
+    vi.mocked(getSupabaseAdmin).mockReturnValue({ from: mockFrom } as any)
     vi.mocked(findDangersNearRoute).mockReturnValue([mockReport])
     vi.mocked(sendPushToUser).mockResolvedValue(1)
 
@@ -95,7 +75,7 @@ describe('notifyUsersNearReport', () => {
         not: vi.fn().mockResolvedValue({ data: [mockRoute], error: null }),
       }),
     })
-    vi.mocked(createClient).mockReturnValue({ from: mockFrom } as any)
+    vi.mocked(getSupabaseAdmin).mockReturnValue({ from: mockFrom } as any)
     vi.mocked(findDangersNearRoute).mockReturnValue([])
 
     const count = await notifyUsersNearReport(mockReport)
@@ -104,10 +84,7 @@ describe('notifyUsersNearReport', () => {
     expect(count).toBe(0)
   })
 
-  it('latitude/longitudeがない場合は0を返す', async () => {
-    const reportWithoutCoords = { ...mockReport, latitude: 0, longitude: 0 }
-    // 0,0は有効な座標だが、通常ありえないため実装ではスキップしない
-    // ただし latitude/longitude が undefined の場合
+  it('latitude/longitudeがundefinedの場合は0を返す', async () => {
     const count = await notifyUsersNearReport({ ...mockReport, latitude: undefined as any, longitude: undefined as any })
     expect(count).toBe(0)
   })

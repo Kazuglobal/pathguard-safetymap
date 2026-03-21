@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase-server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+
+// push_subscriptions テーブルは生成型未反映のため any キャスト
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = () => getSupabaseAdmin() as any
 
 const unsubscribeSchema = z.object({
   endpoint: z.string().url(),
 })
-
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
 
 // DELETE: サブスクリプション解除
 export async function DELETE(req: NextRequest) {
@@ -37,8 +34,7 @@ export async function DELETE(req: NextRequest) {
     )
   }
 
-  const admin = getAdminClient()
-  const { error } = await admin
+  const { error } = await db()
     .from('push_subscriptions')
     .delete()
     .eq('user_id', user.id)

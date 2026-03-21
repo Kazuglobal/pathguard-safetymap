@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { broadcastPush } from '@/lib/web-push'
-import {
-  buildNewsPushPayload,
-  buildMagazinePushPayload,
-} from '@/lib/notifications/builders'
+import { buildNewsPushPayload, buildMagazinePushPayload } from '@/lib/notifications/builders'
+import { verifyCronSecret } from '@/lib/cron-auth'
 
 const bodySchema = z.object({
   type: z.enum(['news', 'magazine']),
@@ -14,16 +12,13 @@ const bodySchema = z.object({
 })
 
 // コンテンツ通知の最終送信時刻を追跡（インメモリ、1時間制限）
+// Note: サーバーレス環境では各コンテナがリセットされるため実質ベストエフォート
 const lastSentAt = new Map<string, number>()
-const CONTENT_NOTIFICATION_COOLDOWN_MS = 60 * 60 * 1000 // 1時間
+const CONTENT_NOTIFICATION_COOLDOWN_MS = 60 * 60 * 1000
 
 export async function POST(req: NextRequest) {
-  // CRON_SECRET 認証
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
-  }
+  const authError = verifyCronSecret(req)
+  if (authError) return authError
 
   let body: unknown
   try {

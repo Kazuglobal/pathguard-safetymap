@@ -6,12 +6,12 @@ vi.mock('@/lib/supabase-server', () => ({
   createServerClient: vi.fn(),
 }))
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/supabase-admin', () => ({
+  getSupabaseAdmin: vi.fn(),
 }))
 
 import { createServerClient } from '@/lib/supabase-server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { POST, PATCH } from '@/app/api/push/subscribe/route'
 
 const mockUser = { id: 'user-1', email: 'test@example.com' }
@@ -26,7 +26,7 @@ function mockAuth(user: typeof mockUser | null) {
 
 function mockAdminUpsert(error: unknown = null) {
   const upsert = vi.fn().mockResolvedValue({ error })
-  vi.mocked(createClient).mockReturnValue({
+  vi.mocked(getSupabaseAdmin).mockReturnValue({
     from: vi.fn().mockReturnValue({ upsert }),
   } as any)
   return upsert
@@ -106,7 +106,7 @@ describe('PATCH /api/push/subscribe', () => {
         eq: vi.fn().mockResolvedValue({ error: null }),
       }),
     })
-    vi.mocked(createClient).mockReturnValue({
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
       from: vi.fn().mockReturnValue({ update: mockUpdate }),
     } as any)
 

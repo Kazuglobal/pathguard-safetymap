@@ -130,12 +130,16 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
     if (!subscription) return
 
     try {
-      // サーバーから削除
-      await fetch('/api/push/unsubscribe', {
+      const res = await fetch('/api/push/unsubscribe', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint: subscription.endpoint }),
       })
+
+      if (!res.ok && res.status !== 404) {
+        console.error('[push] unsubscribe API error', res.status)
+        return
+      }
 
       // ブラウザのサブスクリプションを解除
       await subscription.unsubscribe()

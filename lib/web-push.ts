@@ -6,7 +6,7 @@
  */
 
 import webpush from 'web-push'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { NotificationPreferences, PushPayload } from '@/lib/notifications/builders'
 
 // VAPID設定
@@ -28,14 +28,9 @@ export interface PushSubscriptionRow {
   last_notified_at: string | null
 }
 
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Supabase service role credentials not configured')
-  }
-  return createClient(supabaseUrl, serviceRoleKey)
-}
+// push_subscriptions テーブルは生成型未反映のため any キャスト
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = () => getSupabaseAdmin() as any
 
 /**
  * 単一サブスクリプションにプッシュ通知を送信する。
@@ -64,11 +59,7 @@ export async function sendPushNotification(
     if (status === 410 || status === 404) {
       // サブスクリプション期限切れ → 削除
       try {
-        const admin = getAdminClient()
-        await admin
-          .from('push_subscriptions')
-          .delete()
-          .eq('id', sub.id)
+        await db().from('push_subscriptions').delete().eq('id', sub.id)
       } catch (deleteErr) {
         console.error('[web-push] Failed to delete expired subscription', deleteErr)
       }
@@ -88,24 +79,22 @@ export async function sendPushToUser(
   payload: PushPayload,
   preferenceKey: keyof NotificationPreferences
 ): Promise<number> {
-  const admin = getAdminClient()
-  const { data: subs, error } = await admin
+  const { data: subs, error } = await db()
     .from('push_subscriptions')
     .select('*')
     .eq('user_id', userId)
 
   if (error || !subs) return 0
 
-  let count = 0
-  await Promise.all(
+  const results = await Promise.all(
     subs.map(async (sub: PushSubscriptionRow) => {
       const prefs = sub.notification_preferences ?? {}
-      if (prefs[preferenceKey] === false) return
+      if (prefs[preferenceKey] === false) return 0
       const result = await sendPushNotification(sub, payload)
-      if (result.success) count++
+      return result.success ? 1 : 0
     })
   )
-  return count
+  return results.reduce((a: number, b: number) => a + b, 0)
 }
 
 /**
@@ -116,15 +105,13 @@ export async function broadcastPush(
   payload: PushPayload,
   preferenceKey: keyof NotificationPreferences
 ): Promise<number> {
-  const admin = getAdminClient()
-
-  // ページネーションで全件取得
+  // ページネーションで全件取得・送信
   const PAGE_SIZE = 200
   let offset = 0
   let totalNotified = 0
 
   while (true) {
-    const { data: subs, error } = await admin
+    const { data: subs, error } = await db()
       .from('push_subscriptions')
       .select('*')
       .range(offset, offset + PAGE_SIZE - 1)
