@@ -144,6 +144,84 @@ Color palette: Warm yellows, greens, community warmth
 Mood: Gratitude, community support, safety
 ${QUALITY_SUFFIX}`,
     description: "見守りボランティア表彰"
+  },
+  {
+    slug: "residential-road-30kmh",
+    filename: "residential-road-30kmh.png",
+    prompt: `Create a Japanese infographic illustration about a new speed limit law reducing residential road limits to 30km/h.
+
+Visual elements:
+- A narrow Japanese residential street (生活道路) with houses, fences, and power lines
+- A large "30" speed limit road sign prominently displayed
+- A car slowing down near a crosswalk
+- Elementary school children walking safely with yellow caps and randoseru backpacks
+- Traffic calming markings painted on the road surface
+- A calendar/date indicator suggesting April 2026 law revision
+
+Style: Clean Japanese educational infographic
+Color palette: Orange/yellow for warning, blue for law/policy
+Focus: New law awareness for local residents and families
+${QUALITY_SUFFIX}`,
+    description: "生活道路30km/h速度規制"
+  },
+  {
+    slug: "spring-suspicious-alert",
+    filename: "spring-suspicious-alert.png",
+    prompt: `Create a Japanese safety awareness illustration about protecting children from suspicious strangers during spring.
+
+Visual elements:
+- A Japanese neighborhood street scene in spring (cherry blossoms)
+- A child walking to school with yellow cap and randoseru
+- A "いかのおすし" (safety rules for children) sign or poster nearby
+- An adult volunteer in yellow safety vest watching over from a distance
+- Bright, safe atmosphere but with subtle awareness messaging
+- Community patrol or local neighborhood watch presence
+
+Style: Warm but alert Japanese safety illustration
+Color palette: Spring pinks and greens, yellow for safety
+Mood: Protective, community-focused, child safety awareness
+Focus: Spring seasonal alert without depicting threatening figures
+${QUALITY_SUFFIX}`,
+    description: "春の不審者警戒"
+  },
+  {
+    slug: "zone30plus-model-districts",
+    filename: "zone30plus-model-districts.png",
+    prompt: `Create a Japanese illustration showing Zone 30 Plus model districts rollout across Japan.
+
+Visual elements:
+- A map of Japan with multiple highlighted regions (65 locations)
+- A residential Japanese street with "ゾーン30プラス" zone signage
+- Physical road safety measures: speed humps, colored pavement, bollards
+- Elementary school children in yellow caps walking safely
+- Police and local government representatives discussing plans
+- An infographic-style layout showing before/after street improvements
+
+Style: Modern Japanese infographic/editorial illustration
+Color palette: Blue and green for infrastructure safety, orange for highlighted zones
+Mood: Progressive, systematic, nationwide safety improvement
+${QUALITY_SUFFIX}`,
+    description: "ゾーン30プラス65箇所モデル地区"
+  },
+  {
+    slug: "new-first-grader-safety",
+    filename: "new-first-grader-safety.png",
+    prompt: `Create a warm Japanese illustration showing a family walking a new school route with their first-grade child.
+
+Visual elements:
+- A cheerful new first-grader (新1年生) in a brand new uniform with yellow randoseru
+- Parents walking the route together on a bright spring morning
+- Cherry blossoms lining a Japanese residential street
+- Crosswalks, traffic signals, and school zone markings
+- A school building visible in the distance
+- Community safety signs and friendly crossing guard in yellow vest
+
+Style: Heartfelt, warm Japanese family illustration
+Color palette: Spring pastels, yellow for school safety, warm family tones
+Mood: Hopeful, safety-conscious, family bonding, new beginning
+Focus: Importance of walking the school route before the start of school
+${QUALITY_SUFFIX}`,
+    description: "新1年生交通安全"
   }
 ]
 

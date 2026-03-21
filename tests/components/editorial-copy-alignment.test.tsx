@@ -18,6 +18,14 @@ vi.mock("next/link", () => ({
 }))
 
 describe("editorial copy alignment", () => {
+  it("renders the newest curated school route story in the landing news section", () => {
+    render(<SchoolRouteNewsSection />)
+
+    expect(
+      screen.getByText("【全国】2026年9月から生活道路の法定速度を30km/hに引き下げ—通学路の安全対策が大きく前進")
+    ).toBeInTheDocument()
+  })
+
   it("renders the landing school route news badge as editorially curated", () => {
     render(<SchoolRouteNewsSection />)
 

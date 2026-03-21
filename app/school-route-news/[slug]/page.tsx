@@ -4,6 +4,7 @@ import Image from "next/image"
 import { ArrowLeft, AlertTriangle, AlertCircle, Construction, FileText, Users, Clock, Tag, MapPin, ExternalLink, CheckCircle, Zap } from "lucide-react"
 import { getNewsItemBySlug, NEWS_CATEGORIES, formatNewsDate, type NewsCategory } from "@/lib/school-route-news"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 const CATEGORY_ICONS = {
   "AlertTriangle": AlertTriangle,
@@ -121,8 +122,73 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
 
       {/* 記事本文 */}
       <article className="max-w-3xl mx-auto px-4 pb-8">
-        <div className="prose prose-gray max-w-none prose-headings:text-gray-900 prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-li:text-gray-700 prose-ul:my-3 prose-li:my-1">
-          <ReactMarkdown>{item.content}</ReactMarkdown>
+        <div className="max-w-none">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h2: ({ children }) => (
+                <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b border-gray-200">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-lg font-bold text-gray-900 mt-6 mb-3">
+                  {children}
+                </h3>
+              ),
+              p: ({ children }) => (
+                <p className="text-base text-gray-700 leading-relaxed mb-4">
+                  {children}
+                </p>
+              ),
+              ul: ({ children }) => (
+                <ul className="list-disc pl-5 mb-4 space-y-1">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-5 mb-4 space-y-1">
+                  {children}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-base text-gray-700 leading-relaxed">
+                  {children}
+                </li>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-bold text-gray-900">{children}</strong>
+              ),
+              table: ({ children }) => (
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full border-collapse border border-gray-200 text-sm">
+                    {children}
+                  </table>
+                </div>
+              ),
+              th: ({ children }) => (
+                <th className="border border-gray-200 bg-gray-50 px-4 py-2 text-left font-medium text-gray-700">
+                  {children}
+                </th>
+              ),
+              td: ({ children }) => (
+                <td className="border border-gray-200 px-4 py-2 text-gray-600">
+                  {children}
+                </td>
+              ),
+              input: ({ checked, ...props }) => (
+                <input
+                  {...props}
+                  checked={checked}
+                  disabled
+                  readOnly
+                  className="mr-2 h-4 w-4 align-middle accent-gray-900"
+                />
+              ),
+            }}
+          >
+            {item.content}
+          </ReactMarkdown>
         </div>
       </article>
 
