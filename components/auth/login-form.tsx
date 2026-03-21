@@ -124,7 +124,7 @@ export default function LoginForm() {
       })
 
       router.refresh()
-      router.push("/map")
+      router.push("/landing")
     } catch (error) {
       toast({
         title: "エラー",

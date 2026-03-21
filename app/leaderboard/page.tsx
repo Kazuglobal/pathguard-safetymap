@@ -50,28 +50,40 @@ export default async function LeaderboardPage() {
             </tr>
           </thead>
           <tbody>
-            {rankRows.map((row, idx) => (
-              <tr
-                key={row.user_id}
-                className={
-                  row.user_id === session.user.id ? "bg-yellow-50 font-semibold" : "hover:bg-gray-50"
-                }
-              >
-                <td className="py-2 px-4">{idx + 1}</td>
-                <td className="py-2 px-4">{(row.profiles as any)?.display_name ?? "匿名"}</td>
-                <td className="py-2 px-4 text-right">{row.points}pt</td>
+            {rankRows.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-12 text-center text-gray-400 text-sm">
+                  まだランキングデータがありません
+                </td>
               </tr>
-            ))}
-            {myRow && (
-              <tr className="bg-yellow-50 font-semibold border-t">
-                <td className="py-2 px-4">-</td>
-                <td className="py-2 px-4">{(myRow.profiles as any)?.display_name ?? "あなた"}</td>
-                <td className="py-2 px-4 text-right">{myRow.points}pt</td>
-              </tr>
+            ) : (
+              <>
+                {rankRows.map((row, idx) => (
+                  <tr
+                    key={row.user_id}
+                    className={
+                      row.user_id === session.user.id ? "bg-yellow-50 font-semibold" : "hover:bg-gray-50"
+                    }
+                  >
+                    <td className="py-2 px-4">{idx + 1}</td>
+                    <td className="py-2 px-4">{(row.profiles as any)?.display_name ?? "匿名"}</td>
+                    <td className="py-2 px-4 text-right">{row.points}pt</td>
+                  </tr>
+                ))}
+                {myRow && (
+                  <tr className="bg-yellow-50 font-semibold border-t">
+                    <td className="py-2 px-4">-</td>
+                    <td className="py-2 px-4">{(myRow.profiles as any)?.display_name ?? "あなた"}</td>
+                    <td className="py-2 px-4 text-right">{myRow.points}pt</td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>
-        <p className="text-xs text-gray-500 mt-4 text-center">上位50名を表示しています</p>
+        {rankRows.length > 0 && (
+          <p className="text-xs text-gray-500 mt-4 text-center">上位50名を表示しています</p>
+        )}
       </div>
     </div>
   )
