@@ -25,10 +25,59 @@ const patchSchema = z.object({
   preferences: preferencesSchema,
 })
 
+const endpointSearchSchema = z.object({
+  endpoint: z.string().url(),
+})
+
+async function getAuthenticatedUser() {
+  const supabase = await createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return user
+}
+
+export async function GET(req: NextRequest) {
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
+  const parsed = endpointSearchSchema.safeParse({
+    endpoint: req.nextUrl.searchParams.get('endpoint'),
+  })
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'パラメータが不正です', details: parsed.error.flatten() },
+      { status: 400 }
+    )
+  }
+
+  const { data, error } = await db()
+    .from('push_subscriptions')
+    .select('endpoint, notification_preferences')
+    .eq('user_id', user.id)
+    .eq('endpoint', parsed.data.endpoint)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[push/subscribe] get error', error)
+    return NextResponse.json({ error: '設定の取得に失敗しました' }, { status: 500 })
+  }
+
+  if (!data) {
+    return NextResponse.json({ subscribed: false, preferences: null })
+  }
+
+  return NextResponse.json({
+    subscribed: true,
+    preferences: data.notification_preferences,
+  })
+}
+
 // POST: サブスクリプション登録
 export async function POST(req: NextRequest) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) {
     return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
   }
@@ -76,8 +125,7 @@ export async function POST(req: NextRequest) {
 
 // PATCH: 通知設定更新
 export async function PATCH(req: NextRequest) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) {
     return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
   }

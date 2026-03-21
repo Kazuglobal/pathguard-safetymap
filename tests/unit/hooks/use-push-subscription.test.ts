@@ -35,12 +35,16 @@ Object.defineProperty(global, 'PushManager', {
   writable: true,
 })
 
-global.fetch = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({}) })
+global.fetch = vi.fn()
 
 describe('usePushSubscription', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'test-vapid-public-key'
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({}),
+    } as any)
   })
 
   it('初期状態でサブスクリプションがなければ unsubscribed になる', async () => {
@@ -66,6 +70,17 @@ describe('usePushSubscription', () => {
       toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
     }
     mockGetSubscription.mockResolvedValueOnce(mockSub)
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        subscribed: true,
+        preferences: {
+          danger_reports: false,
+          news: true,
+          magazine: false,
+        },
+      }),
+    } as any)
 
     const { usePushSubscription } = await import('@/hooks/use-push-subscription')
     const { result } = renderHook(() => usePushSubscription())
@@ -75,5 +90,51 @@ describe('usePushSubscription', () => {
     })
 
     expect(result.current.state).toBe('subscribed')
+    expect(result.current.preferences).toEqual({
+      danger_reports: false,
+      news: true,
+      magazine: false,
+    })
+  })
+
+  it('通知設定更新 API が失敗した場合は optimistic update をロールバックする', async () => {
+    const mockSub = {
+      endpoint: 'https://example.com/push',
+      toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
+    }
+    mockGetSubscription.mockResolvedValueOnce(mockSub)
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          subscribed: true,
+          preferences: {
+            danger_reports: true,
+            news: true,
+            magazine: true,
+          },
+        }),
+      } as any)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      } as any)
+
+    const { usePushSubscription } = await import('@/hooks/use-push-subscription')
+    const { result } = renderHook(() => usePushSubscription())
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+    })
+
+    await act(async () => {
+      await result.current.updatePreferences({ news: false })
+    })
+
+    expect(result.current.preferences).toEqual({
+      danger_reports: true,
+      news: true,
+      magazine: true,
+    })
   })
 })

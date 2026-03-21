@@ -306,6 +306,7 @@ export type Database = {
           postal_code: string | null
           prefecture: string | null
           prefecture_code: number | null
+          push_notified_at: string | null
           processed_image_url: string | null
           processed_image_urls: string[] | null
           status: string
@@ -336,6 +337,7 @@ export type Database = {
           postal_code?: string | null
           prefecture?: string | null
           prefecture_code?: number | null
+          push_notified_at?: string | null
           processed_image_url?: string | null
           processed_image_urls?: string[] | null
           status?: string
@@ -366,6 +368,7 @@ export type Database = {
           postal_code?: string | null
           prefecture?: string | null
           prefecture_code?: number | null
+          push_notified_at?: string | null
           processed_image_url?: string | null
           processed_image_urls?: string[] | null
           status?: string

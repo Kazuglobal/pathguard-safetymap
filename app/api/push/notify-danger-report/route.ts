@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase-server'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = () => getSupabaseAdmin() as any
-import { notifyUsersNearReport } from '@/lib/push-notifications/notify-danger-report'
+import {
+  claimDangerReportForNotification,
+  notifyUsersNearReport,
+  releaseDangerReportNotificationClaim,
+} from '@/lib/push-notifications/notify-danger-report'
 
 const bodySchema = z.object({
   reportId: z.string().uuid(),
 })
 
 export async function POST(req: NextRequest) {
-  // 認証チェック
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -34,17 +33,34 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { data: report, error: fetchError } = await db()
-    .from('danger_reports')
-    .select('id, title, latitude, longitude')
-    .eq('id', parsed.data.reportId)
-    .single()
+  let claimed
+  try {
+    claimed = await claimDangerReportForNotification({
+      reportId: parsed.data.reportId,
+      userId: user.id,
+    })
+  } catch (error) {
+    console.error('[push/notify-danger-report] claim error', error)
+    return NextResponse.json({ error: '通知送信に失敗しました' }, { status: 500 })
+  }
 
-  if (fetchError || !report) {
+  if (claimed.status === 'not_found') {
     return NextResponse.json({ error: 'レポートが見つかりません' }, { status: 404 })
   }
 
-  const notified = await notifyUsersNearReport(report)
+  if (claimed.status === 'already_claimed') {
+    return NextResponse.json({ notified: 0, skipped: true })
+  }
 
-  return NextResponse.json({ notified })
+  try {
+    const notified = await notifyUsersNearReport(claimed.report)
+    return NextResponse.json({ notified })
+  } catch (error) {
+    await releaseDangerReportNotificationClaim({
+      reportId: parsed.data.reportId,
+      claimedAt: claimed.claimedAt,
+    })
+    console.error('[push/notify-danger-report] notify error', error)
+    return NextResponse.json({ error: '通知送信に失敗しました' }, { status: 500 })
+  }
 }

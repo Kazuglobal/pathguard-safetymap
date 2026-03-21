@@ -25,8 +25,89 @@ export interface DangerReportLocation {
   longitude: number
 }
 
+interface DangerReportNotificationRow extends DangerReportLocation {
+  user_id: string
+  push_notified_at: string | null
+}
+
+export type DangerReportNotificationClaimResult =
+  | {
+      status: 'claimed'
+      report: DangerReportLocation
+      claimedAt: string
+    }
+  | { status: 'not_found' }
+  | { status: 'already_claimed' }
+
 type RouteWithGeometry = Pick<UserRoute, 'id' | 'user_id' | 'name'> & {
   route_geometry: GeoJSON.LineString
+}
+
+export async function claimDangerReportForNotification(params: {
+  reportId: string
+  userId?: string
+}): Promise<DangerReportNotificationClaimResult> {
+  let lookupQuery = db()
+    .from('danger_reports')
+    .select('id, title, latitude, longitude, user_id, push_notified_at')
+    .eq('id', params.reportId)
+
+  if (params.userId) {
+    lookupQuery = lookupQuery.eq('user_id', params.userId)
+  }
+
+  const { data: existing, error: lookupError } = await lookupQuery.maybeSingle()
+  if (lookupError) {
+    throw lookupError
+  }
+
+  if (!existing) {
+    return { status: 'not_found' }
+  }
+
+  if ((existing as DangerReportNotificationRow).push_notified_at) {
+    return { status: 'already_claimed' }
+  }
+
+  const claimedAt = new Date().toISOString()
+  let claimQuery = db()
+    .from('danger_reports')
+    .update({ push_notified_at: claimedAt })
+    .eq('id', params.reportId)
+    .is('push_notified_at', null)
+
+  if (params.userId) {
+    claimQuery = claimQuery.eq('user_id', params.userId)
+  }
+
+  const { data: claimed, error: claimError } = await claimQuery
+    .select('id, title, latitude, longitude')
+    .maybeSingle()
+
+  if (claimError) {
+    throw claimError
+  }
+
+  if (!claimed) {
+    return { status: 'already_claimed' }
+  }
+
+  return {
+    status: 'claimed',
+    claimedAt,
+    report: claimed as DangerReportLocation,
+  }
+}
+
+export async function releaseDangerReportNotificationClaim(params: {
+  reportId: string
+  claimedAt: string
+}): Promise<void> {
+  await db()
+    .from('danger_reports')
+    .update({ push_notified_at: null })
+    .eq('id', params.reportId)
+    .eq('push_notified_at', params.claimedAt)
 }
 
 /**
@@ -34,7 +115,7 @@ type RouteWithGeometry = Pick<UserRoute, 'id' | 'user_id' | 'name'> & {
  * 返り値は通知を送信したユーザー数。
  */
 export async function notifyUsersNearReport(report: DangerReportLocation): Promise<number> {
-  if (!report.latitude || !report.longitude) return 0
+  if (report.latitude == null || report.longitude == null) return 0
 
   // route_geometry を持つ全ルートを取得
   const { data: routes, error } = await db()
@@ -42,7 +123,11 @@ export async function notifyUsersNearReport(report: DangerReportLocation): Promi
     .select('id, user_id, name, route_geometry')
     .not('route_geometry', 'is', null)
 
-  if (error || !routes || routes.length === 0) return 0
+  if (error) {
+    throw error
+  }
+
+  if (!routes || routes.length === 0) return 0
 
   // 300m以内のルートを持つユニークなユーザーIDを集める
   const notifiedUserIds = new Set<string>()

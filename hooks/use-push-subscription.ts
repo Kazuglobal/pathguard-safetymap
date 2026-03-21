@@ -34,6 +34,28 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   magazine: true,
 }
 
+async function fetchSavedPreferences(endpoint: string): Promise<NotificationPreferences | null> {
+  try {
+    const res = await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`)
+    if (!res.ok) {
+      return null
+    }
+
+    const data = (await res.json()) as {
+      subscribed?: boolean
+      preferences?: NotificationPreferences | null
+    }
+
+    if (!data.subscribed || !data.preferences) {
+      return null
+    }
+
+    return data.preferences
+  } catch {
+    return null
+  }
+}
+
 export function usePushSubscription(): UsePushSubscriptionReturn {
   const [state, setState] = useState<PushSubscriptionState>('loading')
   const [subscription, setSubscription] = useState<PushSubscription | null>(null)
@@ -59,6 +81,10 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         }
 
         if (sub) {
+          const savedPreferences = await fetchSavedPreferences(sub.endpoint)
+          if (savedPreferences) {
+            setPreferences(savedPreferences)
+          }
           setSubscription(sub)
           setState('subscribed')
         } else {
@@ -153,13 +179,14 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
 
   const updatePreferences = useCallback(
     async (prefs: Partial<NotificationPreferences>) => {
+      const previousPrefs = preferences
       const newPrefs = { ...preferences, ...prefs }
       setPreferences(newPrefs)
 
       if (!subscription) return
 
       try {
-        await fetch('/api/push/subscribe', {
+        const res = await fetch('/api/push/subscribe', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -167,7 +194,13 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
             preferences: newPrefs,
           }),
         })
+
+        if (!res.ok) {
+          setPreferences(previousPrefs)
+          console.error('[push] updatePreferences API error', res.status)
+        }
       } catch (err) {
+        setPreferences(previousPrefs)
         console.error('[push] updatePreferences error', err)
       }
     },

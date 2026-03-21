@@ -23,11 +23,15 @@ vi.mock('@/lib/notifications/builders', () => ({
   })),
 }))
 
-import { createClient } from '@supabase/supabase-js'
 import { findDangersNearRoute } from '@/lib/geo/route-danger-finder'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sendPushToUser } from '@/lib/web-push'
-import { notifyUsersNearReport, type DangerReportLocation } from '@/lib/push-notifications/notify-danger-report'
+import {
+  claimDangerReportForNotification,
+  notifyUsersNearReport,
+  releaseDangerReportNotificationClaim,
+  type DangerReportLocation,
+} from '@/lib/push-notifications/notify-danger-report'
 
 const mockReport: DangerReportLocation = {
   id: 'report-1',
@@ -87,5 +91,108 @@ describe('notifyUsersNearReport', () => {
   it('latitude/longitudeがundefinedの場合は0を返す', async () => {
     const count = await notifyUsersNearReport({ ...mockReport, latitude: undefined as any, longitude: undefined as any })
     expect(count).toBe(0)
+  })
+})
+
+describe('claimDangerReportForNotification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('未送信レポートの claim に成功したとき claimed を返す', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: { ...mockReport, user_id: 'user-a', push_notified_at: null },
+      error: null,
+    })
+    const updateMaybeSingle = vi.fn().mockResolvedValue({
+      data: mockReport,
+      error: null,
+    })
+    const selectAfterClaim = vi.fn().mockReturnValue({ maybeSingle: updateMaybeSingle })
+    const eqUserIdAfterClaim = vi.fn().mockReturnValue({ select: selectAfterClaim })
+    const isPushNotifiedAtNull = vi.fn().mockReturnValue({ eq: eqUserIdAfterClaim })
+    const eqReportIdAfterUpdate = vi.fn().mockReturnValue({ is: isPushNotifiedAtNull })
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      from: vi
+        .fn()
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({ maybeSingle }),
+            }),
+          }),
+        })
+        .mockReturnValueOnce({
+          update: vi.fn().mockReturnValue({
+            eq: eqReportIdAfterUpdate,
+          }),
+        }),
+    } as any)
+
+    const result = await claimDangerReportForNotification({
+      reportId: 'report-1',
+      userId: 'user-a',
+    })
+
+    expect(result.status).toBe('claimed')
+    if (result.status === 'claimed') {
+      expect(result.report).toEqual(mockReport)
+    }
+  })
+
+  it('既に claim 済みのレポートは already_claimed を返す', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        ...mockReport,
+        user_id: 'user-a',
+        push_notified_at: '2026-03-21T12:34:56.000Z',
+      },
+      error: null,
+    })
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await claimDangerReportForNotification({
+      reportId: 'report-1',
+      userId: 'user-a',
+    })
+
+    expect(result).toEqual({ status: 'already_claimed' })
+  })
+})
+
+describe('releaseDangerReportNotificationClaim', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('claim timestamp が一致した場合のみ解放する', async () => {
+    const eqClaimedAt = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: eqClaimedAt,
+          }),
+        }),
+      }),
+    } as any)
+
+    await releaseDangerReportNotificationClaim({
+      reportId: 'report-1',
+      claimedAt: '2026-03-21T12:34:56.000Z',
+    })
+
+    expect(eqClaimedAt).toHaveBeenCalledWith(
+      'push_notified_at',
+      '2026-03-21T12:34:56.000Z'
+    )
   })
 })

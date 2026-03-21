@@ -12,7 +12,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 
 import { createServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { POST, PATCH } from '@/app/api/push/subscribe/route'
+import { GET, POST, PATCH } from '@/app/api/push/subscribe/route'
 
 const mockUser = { id: 'user-1', email: 'test@example.com' }
 
@@ -123,5 +123,78 @@ describe('PATCH /api/push/subscribe', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data).toEqual({ updated: true })
+  })
+})
+
+describe('GET /api/push/subscribe', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('既存 endpoint の通知設定を返す', async () => {
+    mockAuth(mockUser)
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        endpoint: 'https://fcm.googleapis.com/push/abc',
+        notification_preferences: {
+          danger_reports: false,
+          news: true,
+          magazine: false,
+        },
+      },
+      error: null,
+    })
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const req = new NextRequest(
+      'http://localhost/api/push/subscribe?endpoint=https%3A%2F%2Ffcm.googleapis.com%2Fpush%2Fabc'
+    )
+
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      subscribed: true,
+      preferences: {
+        danger_reports: false,
+        news: true,
+        magazine: false,
+      },
+    })
+  })
+
+  it('endpoint が見つからない場合は subscribed: false を返す', async () => {
+    mockAuth(mockUser)
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    })
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const req = new NextRequest(
+      'http://localhost/api/push/subscribe?endpoint=https%3A%2F%2Ffcm.googleapis.com%2Fpush%2Fmissing'
+    )
+
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      subscribed: false,
+      preferences: null,
+    })
   })
 })
