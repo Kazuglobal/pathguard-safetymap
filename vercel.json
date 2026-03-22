@@ -6,5 +6,11 @@
       "ESLINT_NO_DEV_ERRORS": "true",
       "DISABLE_ESLINT_PLUGIN": "true"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/push-danger-reports",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

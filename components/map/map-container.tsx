@@ -1759,6 +1759,15 @@ export default function MapContainer({
         }
       }
 
+      // 危険レポートアラート: 通学路300m圏内のユーザーにプッシュ通知 (fire-and-forget)
+      fetch('/api/push/notify-danger-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: newReportId }),
+      }).catch(() => {
+        // プッシュ通知の失敗はレポート投稿の成功に影響しない
+      })
+
       // 2. 画像があれば、画像処理 API を呼び出す（original / processed）
       let finalReportData = insertedData as DangerReport; // 型アサーション
       if (newReportId && (originalFileToUpload || processedFilesToUpload.length > 0)) {

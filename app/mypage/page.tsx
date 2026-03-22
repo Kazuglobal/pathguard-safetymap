@@ -35,6 +35,7 @@ import {
   Gamepad2,
   Award,
 } from "lucide-react"
+import { PushSettingsPanel } from "@/components/notifications/push-settings-panel"
 
 interface ReportSummary extends Pick<
   DangerReport,
@@ -528,6 +529,10 @@ export default function MyPage() {
               </Button>
             </CardFooter>
           </Card>
+        </section>
+
+        <section>
+          <PushSettingsPanel />
         </section>
 
         <section>
