@@ -60,8 +60,9 @@ export default function DashboardCharts({
     { name: "レベル5", value: dangerLevelCount[5] || 0 },
   ]
 
-  const totalReports = allReports.length
-  const totalStatusCount = pendingCount + approvedCount + resolvedCount
+  const hasStatusData = statusData.some((entry) => entry.value > 0)
+  const hasDangerTypeData = dangerTypeData.some((entry) => entry.value > 0)
+  const hasDangerLevelData = dangerLevelData.some((entry) => entry.value > 0)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -71,11 +72,7 @@ export default function DashboardCharts({
           <CardDescription>報告のステータス別の分布</CardDescription>
         </CardHeader>
         <CardContent>
-          {totalStatusCount === 0 ? (
-            <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
-              データがありません
-            </div>
-          ) : (
+          {hasStatusData ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height={320}>
                 <PieChart>
@@ -97,6 +94,10 @@ export default function DashboardCharts({
                 </PieChart>
               </ResponsiveContainer>
             </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
+              データがありません
+            </div>
           )}
         </CardContent>
       </Card>
@@ -107,11 +108,7 @@ export default function DashboardCharts({
           <CardDescription>報告された危険タイプの分布</CardDescription>
         </CardHeader>
         <CardContent>
-          {totalReports === 0 ? (
-            <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
-              データがありません
-            </div>
-          ) : (
+          {hasDangerTypeData ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height={320}>
                 <PieChart>
@@ -133,6 +130,10 @@ export default function DashboardCharts({
                 </PieChart>
               </ResponsiveContainer>
             </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
+              データがありません
+            </div>
           )}
         </CardContent>
       </Card>
@@ -143,11 +144,7 @@ export default function DashboardCharts({
           <CardDescription>報告された危険度レベルの分布</CardDescription>
         </CardHeader>
         <CardContent>
-          {totalReports === 0 ? (
-            <div className="h-[260px] flex items-center justify-center text-gray-400 text-sm">
-              データがありません
-            </div>
-          ) : (
+          {hasDangerLevelData ? (
             <ChartContainer
               config={{
                 value: {
@@ -164,6 +161,10 @@ export default function DashboardCharts({
                 <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ChartContainer>
+          ) : (
+            <div className="h-[260px] flex items-center justify-center text-gray-400 text-sm">
+              データがありません
+            </div>
           )}
         </CardContent>
       </Card>
