@@ -123,7 +123,6 @@ export default function LoginForm() {
         description: "デモアカウントにログインしました。",
       })
 
-      router.refresh()
       router.push("/landing")
     } catch (error) {
       toast({
