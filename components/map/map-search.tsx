@@ -86,7 +86,12 @@ const SCHOOL_CATEGORIES = [
 ] as const
 
 function isSchool(result: SearchResult): boolean {
-  return result.feature_type === "poi" && result.poi_category.some((category) => SCHOOL_CATEGORIES.includes(category))
+  return (
+    result.feature_type === "poi" &&
+    result.poi_category.some((category) =>
+      SCHOOL_CATEGORIES.includes(category as (typeof SCHOOL_CATEGORIES)[number]),
+    )
+  )
 }
 
 function toStringArray(value: unknown): string[] {
