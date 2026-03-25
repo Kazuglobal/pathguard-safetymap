@@ -124,15 +124,18 @@ describe("MapSearch", () => {
     ["preschool", "〇〇幼稚園"],
     ["vocational_school", "〇〇専門学校"],
     ["special_education_school", "〇〇特別支援学校"],
+    ["secondary_school", "〇〇中等教育学校"],
+    ["technical_school", "〇〇技術専門学校"],
+    ["trade_school", "〇〇職業訓練校"],
   ])(
-    "renders a school icon for poi_category %s",
+    "renders a school icon for poi_category %s (%s)",
     async (category, facilityName) => {
       vi.spyOn(global, "fetch").mockResolvedValue({
         ok: true,
         json: async () => ({
           features: [
             {
-              id: "poi.school",
+              id: `poi.${category}`,
               geometry: { coordinates: [139.75, 35.68] },
               properties: {
                 name: facilityName,

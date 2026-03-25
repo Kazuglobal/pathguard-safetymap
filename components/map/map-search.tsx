@@ -83,8 +83,7 @@ const SCHOOL_CATEGORIES = [
   "trade_school",
   // 特殊教育
   "special_education_school",
-  "boarding_school",
-]
+] as const
 
 function isSchool(result: SearchResult): boolean {
   return result.feature_type === "poi" && result.poi_category.some((category) => SCHOOL_CATEGORIES.includes(category))
