@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Search, Loader2, MapPin } from "lucide-react"
+import { Search, Loader2, MapPin, School } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -11,22 +11,91 @@ import mapboxgl from "mapbox-gl"
 interface MapSearchProps {
   map: mapboxgl.Map | null
   onSelectLocation?: (coordinates: [number, number]) => void
+  className?: string
+  inputClassName?: string
+  dismissResultsSignal?: number
 }
 
 interface SearchResult {
   id: string
   place_name: string
   center: [number, number]
+  feature_type?: string
+  poi_category: string[]
 }
 
-export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
+interface SearchBoxFeatureProperties {
+  full_address?: string
+  name?: string
+  mapbox_id?: string
+  feature_type?: string
+  poi_category?: string[] | string
+}
+
+interface SearchBoxFeature {
+  id?: string
+  geometry?: {
+    coordinates?: number[]
+  }
+  properties?: SearchBoxFeatureProperties
+}
+
+interface SearchBoxResponse {
+  features?: SearchBoxFeature[]
+}
+
+const SCHOOL_CATEGORIES = ["school", "university", "college", "kindergarten"]
+
+function isSchool(result: SearchResult): boolean {
+  return result.feature_type === "poi" && result.poi_category.some((category) => SCHOOL_CATEGORIES.includes(category))
+}
+
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string").map((item) => item.toLowerCase())
+  }
+
+  if (typeof value === "string" && value.length > 0) {
+    return [value.toLowerCase()]
+  }
+
+  return []
+}
+
+function toSearchResult(feature: SearchBoxFeature): SearchResult | null {
+  const properties = feature?.properties ?? {}
+  const coordinates = feature?.geometry?.coordinates
+
+  if (
+    !Array.isArray(coordinates) ||
+    coordinates.length < 2 ||
+    typeof coordinates[0] !== "number" ||
+    typeof coordinates[1] !== "number"
+  ) {
+    return null
+  }
+
+  return {
+    id: String(feature?.id ?? properties?.mapbox_id ?? properties?.name ?? `${coordinates[0]},${coordinates[1]}`),
+    place_name: properties.full_address ?? properties.name ?? "",
+    center: [coordinates[0], coordinates[1]],
+    feature_type: typeof properties.feature_type === "string" ? properties.feature_type : undefined,
+    poi_category: toStringArray(properties.poi_category),
+  }
+}
+
+export default function MapSearch({
+  map,
+  onSelectLocation,
+  className,
+  inputClassName,
+  dismissResultsSignal,
+}: MapSearchProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
-
-  // 検索結果の外側をクリックし
 
   // 検索結果の外側をクリックしたら結果を閉じる
   useEffect(() => {
@@ -42,6 +111,10 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
     }
   }, [])
 
+  useEffect(() => {
+    setShowResults(false)
+  }, [dismissResultsSignal])
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
 
@@ -51,14 +124,15 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
     setShowResults(true)
 
     try {
-      const accessToken = mapboxgl.accessToken
+      const accessToken = mapboxgl.accessToken || ""
       const params = new URLSearchParams({
+        q: query,
         access_token: accessToken,
         country: "jp",
         language: "ja",
-        autocomplete: "true",
+        auto_complete: "true",
         limit: "8",
-        types: "address,place,locality,neighborhood,district,region,postcode",
+        types: "address,street,neighborhood,locality,place,district,postcode,region,poi,category",
       })
 
       if (map) {
@@ -66,23 +140,19 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
         params.set("proximity", `${center.lng},${center.lat}`)
       }
 
-      const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-        query,
-      )}.json?${params.toString()}`
+      const endpoint = `https://api.mapbox.com/search/searchbox/v1/forward?${params.toString()}`
 
       const response = await fetch(endpoint)
       if (!response.ok) {
         throw new Error(`Search request failed: ${response.status}`)
       }
-      const data = await response.json()
+      const data: SearchBoxResponse = await response.json()
 
-      if (data.features) {
+      if (Array.isArray(data.features)) {
         setResults(
-          data.features.map((feature: any) => ({
-            id: feature.id,
-            place_name: feature.place_name ?? feature.text ?? "",
-            center: feature.center,
-          })),
+          data.features
+            .map(toSearchResult)
+            .filter((result: SearchResult | null): result is SearchResult => result !== null),
         )
       } else {
         setResults([])
@@ -114,14 +184,18 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
   }
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-none">
+    <div
+      ref={searchRef}
+      data-testid="map-search-root"
+      className={`relative w-full max-w-none ${className ?? ""}`.trim()}
+    >
       <form onSubmit={handleSearch} className="relative">
         <Input
           type="text"
-          placeholder="住所や場所を検索..."
+          placeholder="学校・施設・住所を検索..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pr-10 bg-white"
+          className={`pr-10 bg-white ${inputClassName ?? ""}`.trim()}
         />
         <Button
           type="submit"
@@ -129,6 +203,7 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
           variant="ghost"
           className="absolute right-0 top-0 h-full"
           disabled={isSearching}
+          aria-label="search"
         >
           {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>
@@ -143,7 +218,11 @@ export default function MapSearch({ map, onSelectLocation }: MapSearchProps) {
                 className="px-3 py-2 hover:bg-muted cursor-pointer flex items-start"
                 onClick={() => handleResultClick(result)}
               >
-                <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
+                {isSchool(result) ? (
+                  <School className="h-4 w-4 mr-2 mt-0.5 shrink-0 text-blue-600" />
+                ) : (
+                  <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
+                )}
                 <span className="text-sm">{result.place_name}</span>
               </li>
             ))}
