@@ -20,18 +20,68 @@ interface SearchResult {
   id: string
   place_name: string
   center: [number, number]
-  place_type: string[]
-  category?: string
+  feature_type?: string
+  poi_category: string[]
+}
+
+interface SearchBoxFeatureProperties {
+  full_address?: string
+  name?: string
+  mapbox_id?: string
+  feature_type?: string
+  poi_category?: string[] | string
+}
+
+interface SearchBoxFeature {
+  id?: string
+  geometry?: {
+    coordinates?: number[]
+  }
+  properties?: SearchBoxFeatureProperties
+}
+
+interface SearchBoxResponse {
+  features?: SearchBoxFeature[]
 }
 
 const SCHOOL_CATEGORIES = ["school", "university", "college", "kindergarten"]
 
 function isSchool(result: SearchResult): boolean {
-  return (
-    result.place_type.includes("poi") &&
-    !!result.category &&
-    SCHOOL_CATEGORIES.includes(result.category)
-  )
+  return result.feature_type === "poi" && result.poi_category.some((category) => SCHOOL_CATEGORIES.includes(category))
+}
+
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string").map((item) => item.toLowerCase())
+  }
+
+  if (typeof value === "string" && value.length > 0) {
+    return [value.toLowerCase()]
+  }
+
+  return []
+}
+
+function toSearchResult(feature: SearchBoxFeature): SearchResult | null {
+  const properties = feature?.properties ?? {}
+  const coordinates = feature?.geometry?.coordinates
+
+  if (
+    !Array.isArray(coordinates) ||
+    coordinates.length < 2 ||
+    typeof coordinates[0] !== "number" ||
+    typeof coordinates[1] !== "number"
+  ) {
+    return null
+  }
+
+  return {
+    id: String(feature?.id ?? properties?.mapbox_id ?? properties?.name ?? `${coordinates[0]},${coordinates[1]}`),
+    place_name: properties.full_address ?? properties.name ?? "",
+    center: [coordinates[0], coordinates[1]],
+    feature_type: typeof properties.feature_type === "string" ? properties.feature_type : undefined,
+    poi_category: toStringArray(properties.poi_category),
+  }
 }
 
 export default function MapSearch({
@@ -46,8 +96,6 @@ export default function MapSearch({
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
-
-  // 検索結果の外側をクリックし
 
   // 検索結果の外側をクリックしたら結果を閉じる
   useEffect(() => {
@@ -78,12 +126,13 @@ export default function MapSearch({
     try {
       const accessToken = mapboxgl.accessToken || ""
       const params = new URLSearchParams({
+        q: query,
         access_token: accessToken,
         country: "jp",
         language: "ja",
-        autocomplete: "true",
+        auto_complete: "true",
         limit: "8",
-        types: "address,place,locality,neighborhood,district,region,postcode,poi",
+        types: "address,street,neighborhood,locality,place,district,postcode,region,poi,category",
       })
 
       if (map) {
@@ -91,25 +140,19 @@ export default function MapSearch({
         params.set("proximity", `${center.lng},${center.lat}`)
       }
 
-      const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-        query,
-      )}.json?${params.toString()}`
+      const endpoint = `https://api.mapbox.com/search/searchbox/v1/forward?${params.toString()}`
 
       const response = await fetch(endpoint)
       if (!response.ok) {
         throw new Error(`Search request failed: ${response.status}`)
       }
-      const data = await response.json()
+      const data: SearchBoxResponse = await response.json()
 
-      if (data.features) {
+      if (Array.isArray(data.features)) {
         setResults(
-          data.features.map((feature: any) => ({
-            id: feature.id,
-            place_name: feature.place_name ?? feature.text ?? "",
-            center: feature.center,
-            place_type: feature.place_type ?? [],
-            category: feature.properties?.category ?? undefined,
-          })),
+          data.features
+            .map(toSearchResult)
+            .filter((result: SearchResult | null): result is SearchResult => result !== null),
         )
       } else {
         setResults([])
