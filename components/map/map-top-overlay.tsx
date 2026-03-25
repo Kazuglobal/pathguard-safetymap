@@ -78,7 +78,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
   return (
     <div className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-30">
       <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
-        <div className="rounded-[1.75rem] border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm">
+        <div className="overflow-visible rounded-[1.75rem] border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm">
           {props.searchSlot}
         </div>
 
