@@ -12,12 +12,12 @@ Make the map search box return school and facility results again without changin
 
 ## Chosen Approach
 
-Switch `MapSearch` from Geocoding v5 to Mapbox Search Box `/forward` text search:
+Use a two-step search strategy in `MapSearch`:
 
+- try Mapbox Search Box `/forward` first for POI-capable search
+- if Search Box returns no results or fails, fall back to Geocoding v5 for address and place search
 - keep the existing submit-driven UI and result list
-- request `country=jp`, `language=ja`, `limit=8`, `auto_complete=true`
-- include POI-capable Search Box `types`
-- map Search Box GeoJSON responses into the existing local result model
+- map both response shapes into the same local result model
 - derive the school icon from `properties.feature_type === "poi"` and `properties.poi_category`
 
 ## Why
@@ -33,5 +33,5 @@ Switch `MapSearch` from Geocoding v5 to Mapbox Search Box `/forward` text search
 
 ## Risks
 
-- Mapbox documents Japan Search API support as a public beta / limited release, so this should be treated as the supported path for Japanese-language queries in Japan, but still as an external dependency with evolving behavior.
-- Search Box response fields differ from Geocoding v5, so tests must assert the new endpoint and schema directly.
+- Mapbox documents Japan Search API support as a public beta / limited release, so Search Box should not be the only path for general map search in this project.
+- Search Box and Geocoding return different response fields, so tests must assert both the primary request contract and the fallback behavior.

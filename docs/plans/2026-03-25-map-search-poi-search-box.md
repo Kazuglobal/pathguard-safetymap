@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Restore school and facility search in the map search box by switching from Geocoding v5 to a POI-capable Mapbox Search API endpoint.
+**Goal:** Restore school and facility search in the map search box without regressing existing address and place search.
 
-**Architecture:** Keep [`components/map/map-search.tsx`](C:/Users/s1598/mapsefe/20250615/components/map/map-search.tsx) as the single client-side integration point, replace its request/response mapping with Mapbox Search Box `/forward`, and preserve the external `MapSearch` props and selection behavior. Update the component test file to lock the request endpoint, response schema, and school-icon rendering against the new API contract.
+**Architecture:** Keep [`components/map/map-search.tsx`](C:/Users/s1598/mapsefe/20250615/components/map/map-search.tsx) as the single client-side integration point, use Mapbox Search Box `/forward` as the primary POI-aware lookup, and fall back to Geocoding v5 when Search Box returns no usable results. Preserve the external `MapSearch` props and selection behavior while updating the component tests to lock both the Search Box contract and the fallback path.
 
 **Tech Stack:** Next.js App Router, React 19, Mapbox GL JS, Vitest, Testing Library
 
@@ -47,7 +47,7 @@ git add tests/components/map/map-search.test.tsx
 git commit -m "test: cover map search POI api contract"
 ```
 
-### Task 2: Switch `MapSearch` to Search Box `/forward`
+### Task 2: Switch `MapSearch` to Search Box `/forward` with Geocoding fallback
 
 **Files:**
 - Modify: `components/map/map-search.tsx`
@@ -55,13 +55,13 @@ git commit -m "test: cover map search POI api contract"
 
 **Step 1: Write the minimal production change**
 
-- replace the request URL with `/search/searchbox/v1/forward`
+- replace the primary request URL with `/search/searchbox/v1/forward`
 - send Search Box parameters:
 
 ```ts
 const params = new URLSearchParams({
   access_token: accessToken,
-  country: "jp",
+  country: "JP",
   language: "ja",
   auto_complete: "true",
   limit: "8",
@@ -72,6 +72,7 @@ const params = new URLSearchParams({
 - map features from `geometry.coordinates` and `properties`
 - render a display label from `properties.full_address ?? properties.name`
 - detect school POIs from `properties.feature_type` and `properties.poi_category`
+- if Search Box returns an empty feature list, call the existing Geocoding v5 address/place search and map that response into the same result model
 
 **Step 2: Run focused tests**
 

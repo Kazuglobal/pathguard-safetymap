@@ -44,6 +44,23 @@ interface SearchBoxResponse {
   features?: SearchBoxFeature[]
 }
 
+interface GeocodingFeatureProperties {
+  category?: string
+}
+
+interface GeocodingFeature {
+  id?: string
+  place_name?: string
+  text?: string
+  center?: number[]
+  place_type?: string[]
+  properties?: GeocodingFeatureProperties
+}
+
+interface GeocodingResponse {
+  features?: GeocodingFeature[]
+}
+
 const SCHOOL_CATEGORIES = ["school", "university", "college", "kindergarten"]
 
 function isSchool(result: SearchResult): boolean {
@@ -82,6 +99,96 @@ function toSearchResult(feature: SearchBoxFeature): SearchResult | null {
     feature_type: typeof properties.feature_type === "string" ? properties.feature_type : undefined,
     poi_category: toStringArray(properties.poi_category),
   }
+}
+
+function toGeocodingResult(feature: GeocodingFeature): SearchResult | null {
+  const coordinates = feature?.center
+
+  if (
+    !Array.isArray(coordinates) ||
+    coordinates.length < 2 ||
+    typeof coordinates[0] !== "number" ||
+    typeof coordinates[1] !== "number"
+  ) {
+    return null
+  }
+
+  const placeType = Array.isArray(feature.place_type) ? feature.place_type[0] : undefined
+
+  return {
+    id: String(feature?.id ?? `${coordinates[0]},${coordinates[1]}`),
+    place_name: feature.place_name ?? feature.text ?? "",
+    center: [coordinates[0], coordinates[1]],
+    feature_type: typeof placeType === "string" ? placeType : undefined,
+    poi_category: toStringArray(feature.properties?.category),
+  }
+}
+
+async function fetchSearchBoxResults(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {
+  const accessToken = mapboxgl.accessToken || ""
+  const params = new URLSearchParams({
+    q: query,
+    access_token: accessToken,
+    country: "JP",
+    language: "ja",
+    auto_complete: "true",
+    limit: "8",
+    types: "address,street,neighborhood,locality,place,district,postcode,region,poi,category",
+  })
+
+  if (map) {
+    const center = map.getCenter()
+    params.set("proximity", `${center.lng},${center.lat}`)
+  }
+
+  const endpoint = `https://api.mapbox.com/search/searchbox/v1/forward?${params.toString()}`
+  const response = await fetch(endpoint)
+
+  if (!response.ok) {
+    throw new Error(`Search Box request failed: ${response.status}`)
+  }
+
+  const data: SearchBoxResponse = await response.json()
+  if (!Array.isArray(data.features)) {
+    return []
+  }
+
+  return data.features
+    .map(toSearchResult)
+    .filter((result: SearchResult | null): result is SearchResult => result !== null)
+}
+
+async function fetchGeocodingResults(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {
+  const accessToken = mapboxgl.accessToken || ""
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    country: "JP",
+    language: "ja",
+    autocomplete: "true",
+    limit: "8",
+    types: "address,place,locality,neighborhood,district,region,postcode",
+  })
+
+  if (map) {
+    const center = map.getCenter()
+    params.set("proximity", `${center.lng},${center.lat}`)
+  }
+
+  const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`
+  const response = await fetch(endpoint)
+
+  if (!response.ok) {
+    throw new Error(`Geocoding request failed: ${response.status}`)
+  }
+
+  const data: GeocodingResponse = await response.json()
+  if (!Array.isArray(data.features)) {
+    return []
+  }
+
+  return data.features
+    .map(toGeocodingResult)
+    .filter((result: SearchResult | null): result is SearchResult => result !== null)
 }
 
 export default function MapSearch({
@@ -124,39 +231,19 @@ export default function MapSearch({
     setShowResults(true)
 
     try {
-      const accessToken = mapboxgl.accessToken || ""
-      const params = new URLSearchParams({
-        q: query,
-        access_token: accessToken,
-        country: "jp",
-        language: "ja",
-        auto_complete: "true",
-        limit: "8",
-        types: "address,street,neighborhood,locality,place,district,postcode,region,poi,category",
-      })
+      let nextResults: SearchResult[] = []
 
-      if (map) {
-        const center = map.getCenter()
-        params.set("proximity", `${center.lng},${center.lat}`)
+      try {
+        nextResults = await fetchSearchBoxResults(query, map)
+      } catch (error) {
+        console.warn("Search Box 検索エラー:", error)
       }
 
-      const endpoint = `https://api.mapbox.com/search/searchbox/v1/forward?${params.toString()}`
-
-      const response = await fetch(endpoint)
-      if (!response.ok) {
-        throw new Error(`Search request failed: ${response.status}`)
+      if (nextResults.length === 0) {
+        nextResults = await fetchGeocodingResults(query, map)
       }
-      const data: SearchBoxResponse = await response.json()
 
-      if (Array.isArray(data.features)) {
-        setResults(
-          data.features
-            .map(toSearchResult)
-            .filter((result: SearchResult | null): result is SearchResult => result !== null),
-        )
-      } else {
-        setResults([])
-      }
+      setResults(nextResults)
     } catch (error) {
       console.error("住所検索エラー:", error)
       setResults([])

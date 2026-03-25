@@ -63,7 +63,7 @@ describe("MapSearch", () => {
     const url = new URL(endpoint)
     expect(url.origin + url.pathname).toBe("https://api.mapbox.com/search/searchbox/v1/forward")
     expect(url.searchParams.get("q")).toBe("東京")
-    expect(url.searchParams.get("country")).toBe("jp")
+    expect(url.searchParams.get("country")).toBe("JP")
     expect(url.searchParams.get("language")).toBe("ja")
     expect(url.searchParams.get("auto_complete")).toBe("true")
     expect(url.searchParams.get("types")).toContain("poi")
@@ -110,6 +110,49 @@ describe("MapSearch", () => {
       .closest("li")
       ?.querySelector("svg.text-blue-600")
     expect(icon).toBeInTheDocument()
+  })
+
+  it("falls back to geocoding when Search Box returns no results", async () => {
+    const fetchMock = vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          features: [],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          features: [
+            {
+              id: "place.1",
+              place_name: "東京都千代田区",
+              center: [139.75, 35.68],
+            },
+          ],
+        }),
+      } as Response)
+
+    render(
+      <MapSearch
+        map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
+      target: { value: "東京" },
+    })
+    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+
+    expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    const firstUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(firstUrl.origin + firstUrl.pathname).toBe("https://api.mapbox.com/search/searchbox/v1/forward")
+
+    const secondUrl = String(fetchMock.mock.calls[1]?.[0])
+    expect(secondUrl).toContain("https://api.mapbox.com/geocoding/v5/mapbox.places/")
+    expect(secondUrl).toContain("country=JP")
   })
 
   it("hides results when an external dismiss signal changes without clearing the query", async () => {
