@@ -35,12 +35,20 @@ const MAP_STYLES = [
     previewAlt: "標準のプレビュー",
   },
   {
-    id: "satellite-v9",
-    name: "航空写真",
+    id: "standard-satellite",
+    name: "衛星写真（最新）",
     shortName: "衛星写真",
+    description: "最新の高解像度衛星写真で表示します",
+    previewImage: "/images/map-style-previews/standard-satellite.svg",
+    previewAlt: "衛星写真（最新）のプレビュー",
+  },
+  {
+    id: "satellite-v9",
+    name: "航空写真（旧）",
+    shortName: "航空写真",
     description: "写真ベースで周辺状況を確認します",
     previewImage: "/images/map-style-previews/satellite.png",
-    previewAlt: "衛星写真のプレビュー",
+    previewAlt: "航空写真のプレビュー",
   },
   {
     id: "satellite-streets-v12",

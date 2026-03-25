@@ -139,6 +139,7 @@ export async function validateMapboxTokenAsync(): Promise<{ isValid: boolean; er
 
 export const MAPBOX_STYLES = {
   STREETS: 'mapbox://styles/mapbox/streets-v12',
+  STANDARD_SATELLITE: 'mapbox://styles/mapbox/standard-satellite',
   SATELLITE: 'mapbox://styles/mapbox/satellite-v9',
   OUTDOORS: 'mapbox://styles/mapbox/outdoors-v12',
   LIGHT: 'mapbox://styles/mapbox/light-v11',
