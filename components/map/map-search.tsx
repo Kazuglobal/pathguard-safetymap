@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Search, Loader2, MapPin } from "lucide-react"
+import { Search, Loader2, MapPin, School } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -20,6 +20,18 @@ interface SearchResult {
   id: string
   place_name: string
   center: [number, number]
+  place_type: string[]
+  category?: string
+}
+
+const SCHOOL_CATEGORIES = ["school", "university", "college", "kindergarten"]
+
+function isSchool(result: SearchResult): boolean {
+  return (
+    result.place_type.includes("poi") &&
+    !!result.category &&
+    SCHOOL_CATEGORIES.includes(result.category)
+  )
 }
 
 export default function MapSearch({
@@ -71,7 +83,7 @@ export default function MapSearch({
         language: "ja",
         autocomplete: "true",
         limit: "8",
-        types: "address,place,locality,neighborhood,district,region,postcode",
+        types: "address,place,locality,neighborhood,district,region,postcode,poi",
       })
 
       if (map) {
@@ -95,6 +107,8 @@ export default function MapSearch({
             id: feature.id,
             place_name: feature.place_name ?? feature.text ?? "",
             center: feature.center,
+            place_type: feature.place_type ?? [],
+            category: feature.properties?.category ?? undefined,
           })),
         )
       } else {
@@ -135,7 +149,7 @@ export default function MapSearch({
       <form onSubmit={handleSearch} className="relative">
         <Input
           type="text"
-          placeholder="住所や場所を検索..."
+          placeholder="学校・施設・住所を検索..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className={`pr-10 bg-white ${inputClassName ?? ""}`.trim()}
@@ -161,7 +175,11 @@ export default function MapSearch({
                 className="px-3 py-2 hover:bg-muted cursor-pointer flex items-start"
                 onClick={() => handleResultClick(result)}
               >
-                <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
+                {isSchool(result) ? (
+                  <School className="h-4 w-4 mr-2 mt-0.5 shrink-0 text-blue-600" />
+                ) : (
+                  <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
+                )}
                 <span className="text-sm">{result.place_name}</span>
               </li>
             ))}

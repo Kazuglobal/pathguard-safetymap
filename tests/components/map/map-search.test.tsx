@@ -22,7 +22,7 @@ describe("MapSearch", () => {
     )
 
     expect(screen.getByTestId("map-search-root")).toHaveClass("custom-shell")
-    expect(screen.getByPlaceholderText("住所や場所を検索...")).toHaveClass("custom-input")
+    expect(screen.getByPlaceholderText("学校・施設・住所を検索...")).toHaveClass("custom-input")
   })
 
   it("renders results after search and selects a location", async () => {
@@ -47,7 +47,7 @@ describe("MapSearch", () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText("住所や場所を検索..."), {
+    fireEvent.change(screen.getByPlaceholderText("学校・施設・住所を検索..."), {
       target: { value: "東京" },
     })
     fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
@@ -58,6 +58,40 @@ describe("MapSearch", () => {
 
     expect(mockFlyTo).toHaveBeenCalled()
     expect(onSelectLocation).toHaveBeenCalledWith([139.75, 35.68])
+  })
+
+  it("renders a school icon for school POI results", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            id: "poi.1",
+            place_name: "〇〇小学校, 東京都千代田区",
+            center: [139.75, 35.68],
+            place_type: ["poi"],
+            properties: { category: "school" },
+          },
+        ],
+      }),
+    } as Response)
+
+    render(
+      <MapSearch
+        map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText("学校・施設・住所を検索..."), {
+      target: { value: "〇〇小学校" },
+    })
+    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+
+    expect(await screen.findByText("〇〇小学校, 東京都千代田区")).toBeInTheDocument()
+
+    // 学校アイコンが表示されていること（MapPinではなくSchoolアイコン）
+    const icon = screen.getByText("〇〇小学校, 東京都千代田区").closest("li")?.querySelector("svg")
+    expect(icon).toBeInTheDocument()
   })
 
   it("hides results when an external dismiss signal changes without clearing the query", async () => {
@@ -81,7 +115,7 @@ describe("MapSearch", () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText("住所や場所を検索..."), {
+    fireEvent.change(screen.getByPlaceholderText("学校・施設・住所を検索..."), {
       target: { value: "東京" },
     })
     fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
@@ -96,6 +130,6 @@ describe("MapSearch", () => {
     )
 
     expect(screen.queryByText("東京都千代田区")).not.toBeInTheDocument()
-    expect(screen.getByPlaceholderText("住所や場所を検索...")).toHaveValue("東京")
+    expect(screen.getByPlaceholderText("学校・施設・住所を検索...")).toHaveValue("東京")
   })
 })
