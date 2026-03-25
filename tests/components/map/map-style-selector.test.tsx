@@ -135,7 +135,7 @@ describe("MapStyleSelector", () => {
     expect(screen.getAllByText("表示中").length).toBeGreaterThan(0)
   })
 
-  it("shows preview images for all seven map styles", async () => {
+  it("shows preview images for all eight map styles", async () => {
     const user = userEvent.setup()
 
     render(
@@ -159,13 +159,14 @@ describe("MapStyleSelector", () => {
     await user.click(screen.getByRole("button", { name: "表示" }))
 
     expect(screen.getByRole("img", { name: "標準のプレビュー" })).toBeInTheDocument()
-    expect(screen.getByRole("img", { name: "衛星写真のプレビュー" })).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "衛星写真（最新）のプレビュー" })).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "航空写真のプレビュー" })).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "衛星+道路のプレビュー" })).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "ナビのプレビュー" })).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "ライトのプレビュー" })).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "ダークのプレビュー" })).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "アウトドアのプレビュー" })).toBeInTheDocument()
-    expect(screen.getAllByRole("img")).toHaveLength(7)
+    expect(screen.getAllByRole("img")).toHaveLength(8)
   })
 
   it("keeps the blue selected style badge on one line with compact sizing", async () => {
@@ -241,7 +242,7 @@ describe("MapStyleSelector", () => {
     )
 
     await user.click(screen.getByRole("button"))
-    await user.click(screen.getByText("航空写真"))
+    await user.click(screen.getByText("航空写真（旧）"))
 
     expect(onChange).toHaveBeenCalledWith("satellite-v9")
   })
