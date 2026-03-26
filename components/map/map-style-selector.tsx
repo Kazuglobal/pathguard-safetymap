@@ -39,7 +39,7 @@ const MAP_STYLES = [
     name: "衛星写真（最新）",
     shortName: "衛星写真",
     description: "最新の高解像度衛星写真で表示します",
-    previewImage: "/images/map-style-previews/standard-satellite.svg",
+    previewImage: "/images/map-style-previews/スクリーンショット 2026-03-26 235329.png",
     previewAlt: "衛星写真（最新）のプレビュー",
   },
   {
