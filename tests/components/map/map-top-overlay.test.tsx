@@ -5,6 +5,28 @@ import { describe, expect, it, vi } from "vitest"
 import { MapTopOverlay } from "@/components/map/map-top-overlay"
 
 describe("MapTopOverlay", () => {
+  it("keeps the overlay below the fixed desktop header", () => {
+    const { container } = render(
+      <MapTopOverlay
+        activePanel={null}
+        is3DEnabled={false}
+        isARMode={false}
+        isHeatmapVisible={false}
+        onPanelChange={() => {}}
+        onToggle3D={() => {}}
+        onToggleAR={() => {}}
+        onToggleHeatmap={() => {}}
+        searchSlot={<div>search-slot</div>}
+        heatmapPanelSlot={<div>heatmap-panel</div>}
+        hazardPanelSlot={<div>hazard-panel</div>}
+        threeDPanelSlot={<div>3d-panel</div>}
+        arPanelSlot={<div>ar-panel</div>}
+      />,
+    )
+
+    expect(container.firstChild).toHaveClass("md:top-[calc(env(safe-area-inset-top,0px)+4.75rem)]")
+  })
+
   it("renders the search field first and shows the horizontal chip row", () => {
     render(
       <MapTopOverlay

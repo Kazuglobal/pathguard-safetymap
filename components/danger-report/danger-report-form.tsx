@@ -17,6 +17,7 @@ import { compressImage, fileToBase64 } from "@/lib/image-utils"
 import { urlOrDataUrlToBlob } from "@/lib/data-url-utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  allPrompts,
   promptCategories,
   getPromptById,
   type TargetAudience,
@@ -31,7 +32,11 @@ import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 import { handleError } from "@/lib/error-handler"
-import { extractSimulationQuickSummary } from "@/lib/vlm-analysis"
+import {
+  extractPreSubmitSimulationQuickSummary,
+  extractSimulationQuickSummary,
+  selectSimulationQuickSummaryImage,
+} from "@/lib/vlm-analysis"
 
 interface DangerReportFormProps {
   onSubmit: (data: DangerReportSubmitPayload) => Promise<{ reportId: string; imageUrl: string | null }>
@@ -206,6 +211,12 @@ export default function DangerReportForm({
   const [showPromptDetails, setShowPromptDetails] = useState(false)
   // 手動解析トリガー（自動解析を無効化し、ボタンクリックで開始）
   const [manualAnalysisTriggered, setManualAnalysisTriggered] = useState(false)
+
+  // 一括生成用の状態
+  const [batchLoading, setBatchLoading] = useState(false)
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentName: string } | null>(null)
+  const [batchImages, setBatchImages] = useState<Array<{ promptId: string; name: string; shortName: string; targetAudience: TargetAudience; blobUrl: string; file: File }>>([])
+  const [showBatchResults, setShowBatchResults] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
 
   // VLM Analysis Hook
@@ -394,6 +405,12 @@ export default function DangerReportForm({
     const blobUrl = URL.createObjectURL(blob)
     registerBlobUrl(blobUrl)
     return { file, blobUrl }
+  }
+
+  const fileToBlobUrl = (file: File): string => {
+    const blobUrl = URL.createObjectURL(file)
+    registerBlobUrl(blobUrl)
+    return blobUrl
   }
 
   const buildRegionConstraints = (hazards: HazardItem[]): string => {
@@ -885,6 +902,69 @@ export default function DangerReportForm({
     }
   }
 
+  // 全10プロンプトを一括生成
+  const batchGenerateAll = async () => {
+    if (!originalImageFile) {
+      toast({
+        title: '元写真をアップロードしてください',
+        description: '「元写真」タブから通学路の写真を撮影またはアップロードしてください。',
+        variant: 'destructive',
+      })
+      return
+    }
+    setBatchLoading(true)
+    setBatchImages([])
+    setShowBatchResults(true)
+
+    try {
+      const compressed = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
+      const results: Array<{ promptId: string; name: string; shortName: string; targetAudience: TargetAudience; blobUrl: string; file: File }> = []
+
+      for (let i = 0; i < allPrompts.length; i++) {
+        const p = allPrompts[i]
+        setBatchProgress({ current: i + 1, total: allPrompts.length, currentName: p.name })
+        try {
+          const fd = new FormData()
+          fd.append('image', compressed)
+          fd.append('prompt', p.prompt)
+          fd.append('generationMode', 'disaster')
+          const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+          if (res.ok) {
+            const json = await res.json()
+            const imgs = Array.isArray(json.images) ? (json.images as { dataUrl: string }[]) : []
+            if (imgs[0]) {
+              const { file, blobUrl } = await dataUrlToFileAndBlobUrl(imgs[0].dataUrl, `batch-${p.id}.png`)
+              results.push({ promptId: p.id, name: p.name, shortName: p.shortName, targetAudience: p.targetAudience, blobUrl, file })
+              setBatchImages([...results])
+            }
+          }
+        } catch {
+          // 失敗したプロンプトはスキップして続行
+        }
+        if (i < allPrompts.length - 1) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
+      }
+    } catch (error) {
+      toast({
+        title: '一括生成に失敗しました',
+        description: handleError(error, '時間をおいて再度お試しください。'),
+        variant: 'destructive',
+      })
+    } finally {
+      setBatchProgress(null)
+      setBatchLoading(false)
+    }
+  }
+
+  // バッチ生成結果をレポートの加工画像に追加
+  const addBatchImageToReport = (img: { file: File; blobUrl: string }) => {
+    setProcessedImageFiles(prev => [...prev, img.file])
+    setProcessedImagePreviews(prev => [...prev, fileToBlobUrl(img.file)])
+    setActiveImageTab('processed')
+    toast({ title: '追加しました', description: '加工画像に追加されました' })
+  }
+
   // カテゴリ変更時にプロンプトIDをリセット
   const handleCategoryChange = (category: TargetAudience) => {
     setSelectedCategory(category)
@@ -1063,16 +1143,25 @@ export default function DangerReportForm({
   const canSubmit = !!selectedLocation && (!isGpsLocation || isGpsLocationConfirmed)
   const showVlmPanel = vlmStatus !== "idle" || submittedReportId
   const extractedQuickSummary = extractSimulationQuickSummary(vlmResult)
+  const preSubmitQuickSummary = extractPreSubmitSimulationQuickSummary(
+    generatedPrompts?.riskObservationTable
+  )
   const riskAnalysisFallback = riskAnalysis?.[0]
   const simulationQuickSummary =
     extractedQuickSummary ||
+    preSubmitQuickSummary ||
     (riskAnalysisFallback
       ? {
           summary: riskAnalysisFallback.risk,
           action: riskAnalysisFallback.measure,
         }
       : null)
-  const previewSimulationImage = processedImagePreviews[0] ?? null
+  const preferredSimulationHazardKey = extractedQuickSummary ? null : preSubmitQuickSummary?.hazardKey
+  const previewSimulationImage = selectSimulationQuickSummaryImage(
+    processedImageFiles,
+    processedImagePreviews,
+    preferredSimulationHazardKey
+  )
 
   // 画像削除ハンドラー（元画像）
   const handleRemoveOriginalImage = () => {
@@ -1505,6 +1594,80 @@ export default function DangerReportForm({
                       </>
                     )}
                   </Button>
+
+                  {/* 一括生成ボタン */}
+                  <div className="border-t pt-3 mt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={batchGenerateAll}
+                      disabled={batchLoading}
+                      className="w-full"
+                    >
+                      {batchLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {batchProgress
+                            ? `生成中 ${batchProgress.current}/${batchProgress.total} — ${batchProgress.currentName}`
+                            : '準備中...'}
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          全プロンプト一括生成（{allPrompts.length}件）
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* 一括生成結果 */}
+                  {batchImages.length > 0 && (
+                    <div className="border-t pt-2 mt-1">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-2"
+                        onClick={() => setShowBatchResults(v => !v)}
+                      >
+                        {showBatchResults ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        一括生成結果（{batchImages.length}/{allPrompts.length}件）
+                      </button>
+                      {showBatchResults && (
+                        <div className="space-y-3">
+                          {promptCategories.map(cat => {
+                            const catImgs = batchImages.filter(img => img.targetAudience === cat.id)
+                            if (catImgs.length === 0) return null
+                            return (
+                              <div key={cat.id}>
+                                <p className="text-xs text-gray-500 mb-1">{cat.name}</p>
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                  {catImgs.map(img => (
+                                    <div key={img.promptId} className="flex-none w-24">
+                                      <div
+                                        className="relative h-20 rounded overflow-hidden border cursor-pointer group"
+                                        onClick={() => addBatchImageToReport(img)}
+                                        title={`${img.name} — タップしてレポートに追加`}
+                                      >
+                                        <img
+                                          src={img.blobUrl}
+                                          alt={img.name}
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                          <span className="text-white text-xs font-medium">追加</span>
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-0.5 truncate">{img.shortName}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {autoGenLoading && (
