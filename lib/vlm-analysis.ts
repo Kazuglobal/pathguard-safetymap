@@ -456,6 +456,90 @@ function getFirstNonEmptyText(values: Array<string | null | undefined>): string 
   return null
 }
 
+function parseMarkdownTableRow(line: string): string[] {
+  return line
+    .split("|")
+    .map((cell) => cell.trim())
+    .filter((cell, index, cells) => {
+      if (index === 0 || index === cells.length - 1) {
+        return cell.length > 0
+      }
+      return true
+    })
+}
+
+function isMarkdownSeparatorRow(cells: string[]): boolean {
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
+}
+
+function isMarkdownHeaderRow(cells: string[]): boolean {
+  const normalizedCells = cells.map((cell) => cell.replace(/\s+/g, ""))
+  return normalizedCells.includes("ハザード") || normalizedCells.includes("想定リスク(例)") || normalizedCells.includes("想定リスク")
+}
+
+export function extractPreSubmitSimulationQuickSummary(
+  tableMarkdown: string | null | undefined
+): SimulationQuickSummaryData | null {
+  if (!tableMarkdown) {
+    return null
+  }
+
+  const lines = tableMarkdown
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|"))
+
+  for (const line of lines) {
+    const cells = parseMarkdownTableRow(line)
+    if (cells.length < 3 || isMarkdownSeparatorRow(cells) || isMarkdownHeaderRow(cells)) {
+      continue
+    }
+
+    const [, summaryCandidate, actionCandidate] = cells
+    const summary = getFirstNonEmptyText([summaryCandidate])
+    const action = getFirstNonEmptyText([actionCandidate])
+
+    if (!summary) {
+      continue
+    }
+
+    return {
+      summary,
+      action,
+    }
+  }
+
+  return null
+}
+
+function isSimulationFileName(fileName: string): boolean {
+  return /(earthquake|typhoon|flood|fire)/i.test(fileName)
+}
+
+export function selectSimulationQuickSummaryImage(
+  files: Array<Pick<File, "name"> | null | undefined>,
+  previews: Array<string | null | undefined>
+): string | null {
+  const itemCount = Math.min(files.length, previews.length)
+
+  for (let index = 0; index < itemCount; index += 1) {
+    const file = files[index]
+    const preview = previews[index]
+    if (!file || !preview) {
+      continue
+    }
+
+    const normalizedName = file.name.trim().toLowerCase()
+    if (!normalizedName || !isSimulationFileName(normalizedName)) {
+      continue
+    }
+
+    return preview
+  }
+
+  return null
+}
+
 export function extractSimulationQuickSummary(
   result: VlmAnalysisResult | null | undefined
 ): SimulationQuickSummaryData | null {
