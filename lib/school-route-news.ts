@@ -127,7 +127,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "小学校グループ別の対策箇所図と対応内容一覧を公開し、保護者が危険箇所を確認可能",
       "学校・警察・道路管理者・教育委員会が連携し、危険箇所の改善計画を策定"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/sumoto-safety-council.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/zone30plus-model.png",
     verifiedAt: "2026-03-29T09:00:00+09:00"
   },
   {
@@ -189,7 +189,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "不審者は20歳前後・身長170cm・細身・色黒の特徴、下校時間帯に声かけ",
       "門司警察署が防犯メールで注意喚起、情報提供を呼びかけ（093-321-0110）"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/kitakyushu-moji-suspicious.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/spring-suspicious-alert.png",
     isBreaking: true,
     verifiedAt: "2026-03-29T09:00:00+09:00"
   },
@@ -254,7 +254,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "不審者は50〜60代・黒キャップ・白マスク・黒上着・紺ズボン・黒スリッパの特徴",
       "同月12日にも近接エリアで声かけ事案が発生、地域での不審者情報が相次ぐ"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/kitakyushu-moji-stalking.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/tokyo-suspicious-20260206.png",
     isBreaking: true,
     verifiedAt: "2026-03-29T09:00:00+09:00"
   },
@@ -321,7 +321,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "不審者は60代・白髪・細身・白色パーカーに黒ズボンの特徴",
       "秋田県警が不審者情報を配信、声かけにとどまらず身体的接触を伴う事案として注意喚起"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/akita-suspicious-randoseru.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/spring-suspicious-alert.png",
     isBreaking: false,
     verifiedAt: "2026-03-29T09:00:00+09:00"
   },
