@@ -143,7 +143,7 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
       const lbX = Math.max(pad, Math.min(rx, canvas.width - lbW - pad))
       const gapAbove = Math.round(fontSize * 0.2)
       const idealAboveY = ry - lbH - gapAbove
-      const initialLbY = idealAboveY >= pad ? idealAboveY : Math.max(pad, ry + pad)
+      const initialLbY = idealAboveY >= pad ? idealAboveY : Math.max(pad, ry + rh + pad)
       const lbY = findNonOverlappingLabelY({
         lbX,
         initialY: initialLbY,

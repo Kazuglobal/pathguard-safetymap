@@ -243,13 +243,15 @@ export default function HazardGameClient() {
             >
               危険箇所をマーキングしてから分析（推奨）
             </Button>
-            <button
+            <Button
               onClick={handleDirectAnalysis}
               disabled={isAnalyzing}
-              className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-50"
+              variant="ghost"
+              size="sm"
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
             >
               {isAnalyzing ? "分析中..." : "マーキングをスキップして直接分析"}
-            </button>
+            </Button>
           </div>
 
           <div className="flex justify-center gap-3">
