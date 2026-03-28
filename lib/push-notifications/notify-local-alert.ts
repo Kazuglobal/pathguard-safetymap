@@ -12,18 +12,14 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = () => getSupabaseAdmin() as any
 
-import { sendPushNotification } from '@/lib/web-push'
+import { broadcastPush } from '@/lib/web-push'
 import {
   buildLocalAlertPushPayload,
   type LocalAlertCategory,
 } from '@/lib/notifications/builders'
-import type { PushSubscriptionRow } from '@/lib/web-push'
 
 /** プッシュ通知を送る対象カテゴリ */
 const PUSH_TARGET_CATEGORIES: LocalAlertCategory[] = ['suspicious', 'voice_call']
-
-/** ページネーションサイズ */
-const PAGE_SIZE = 200
 
 export interface LocalAlertForNotification {
   id: string
@@ -53,19 +49,20 @@ export type LocalAlertClaimResult =
 export async function claimLocalAlertForNotification(
   alertId: string
 ): Promise<LocalAlertClaimResult> {
-  const { data: existing } = await db()
+  const { data: existing, error: lookupError } = await db()
     .from('local_safety_alerts')
     .select('id, prefecture, city, category, description, push_notified_at')
     .eq('id', alertId)
     .maybeSingle()
 
+  if (lookupError) throw lookupError
   if (!existing) return { status: 'not_found' }
   if (existing.push_notified_at) return { status: 'already_claimed' }
   if (!shouldNotifyAlert(existing.category)) return { status: 'skip' }
 
   const claimedAt = new Date().toISOString()
 
-  const { data: claimed } = await db()
+  const { data: claimed, error: claimError } = await db()
     .from('local_safety_alerts')
     .update({ push_notified_at: claimedAt })
     .eq('id', alertId)
@@ -73,6 +70,7 @@ export async function claimLocalAlertForNotification(
     .select('id, prefecture, city, category, description')
     .maybeSingle()
 
+  if (claimError) throw claimError
   if (!claimed) return { status: 'already_claimed' }
 
   return {
@@ -80,6 +78,21 @@ export async function claimLocalAlertForNotification(
     alert: claimed as LocalAlertForNotification,
     claimedAt,
   }
+}
+
+/**
+ * クレーム取得したアラートを未通知状態に戻す。
+ * 通知処理が例外で失敗した際に Cron ルートから呼び出す。
+ */
+export async function releaseLocalAlertNotificationClaim(params: {
+  alertId: string
+  claimedAt: string
+}): Promise<void> {
+  await db()
+    .from('local_safety_alerts')
+    .update({ push_notified_at: null })
+    .eq('id', params.alertId)
+    .eq('push_notified_at', params.claimedAt)
 }
 
 /**
@@ -98,30 +111,5 @@ export async function notifyUsersForLocalAlert(
     description: alert.description,
   })
 
-  let offset = 0
-  let totalNotified = 0
-
-  while (true) {
-    const { data: subs, error } = await db()
-      .from('push_subscriptions')
-      .select('id, user_id, endpoint, p256dh, auth, notification_preferences, last_notified_at')
-      .range(offset, offset + PAGE_SIZE - 1)
-
-    if (error || !subs || subs.length === 0) break
-
-    const results = await Promise.all(
-      subs.map(async (sub: PushSubscriptionRow) => {
-        const prefs = sub.notification_preferences ?? {}
-        if (prefs['local_alerts'] === false) return 0
-        const result = await sendPushNotification(sub, payload)
-        return result.success ? 1 : 0
-      })
-    )
-
-    totalNotified += results.reduce((a: number, b: number) => a + b, 0)
-    if (subs.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
-  }
-
-  return totalNotified
+  return broadcastPush(payload, 'local_alerts')
 }

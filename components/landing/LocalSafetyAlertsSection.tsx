@@ -117,7 +117,7 @@ export function LocalSafetyAlertsSection() {
           {alerts.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
               {alerts.map((alert) => {
-                const config = CATEGORY_CONFIG[alert.category]
+                const config = CATEGORY_CONFIG[alert.category] ?? CATEGORY_CONFIG['other']
                 const breaking = isBreakingAlert(alert.occurred_at)
 
                 return (
@@ -163,7 +163,7 @@ export function LocalSafetyAlertsSection() {
                           {alert.prefecture}
                           {alert.city && ` ${alert.city}`}
                         </span>
-                        {alert.source_url && (
+                        {alert.source_url?.startsWith('https://') && (
                           <a
                             href={alert.source_url}
                             target="_blank"

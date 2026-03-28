@@ -15,6 +15,7 @@ import { verifyCronSecret } from '@/lib/cron-auth'
 import {
   claimLocalAlertForNotification,
   notifyUsersForLocalAlert,
+  releaseLocalAlertNotificationClaim,
 } from '@/lib/push-notifications/notify-local-alert'
 
 export const runtime = 'nodejs'
@@ -55,8 +56,17 @@ export async function GET(req: NextRequest) {
         return { notified: 0, skipped: 1 }
       }
 
-      const notified = await notifyUsersForLocalAlert(claimed.alert)
-      return { notified, skipped: 0 }
+      try {
+        const notified = await notifyUsersForLocalAlert(claimed.alert)
+        return { notified, skipped: 0 }
+      } catch (err) {
+        // 通知失敗時はクレームを解放して次回 Cron で再試行できるようにする
+        await releaseLocalAlertNotificationClaim({
+          alertId: claimed.alert.id,
+          claimedAt: claimed.claimedAt,
+        })
+        throw err
+      }
     })
   )
 
