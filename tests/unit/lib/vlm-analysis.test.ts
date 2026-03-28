@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   HAZARD_CATEGORY_MAP,
   analyzeHazardWithVLM,
+  extractPreSubmitSimulationQuickSummary,
   getSeverityVariant,
   getRiskLevelLabel,
+  selectSimulationQuickSummaryImage,
   type HazardCategory,
 } from "@/lib/vlm-analysis"
 
@@ -88,6 +90,70 @@ describe("vlm-analysis", () => {
       expect(getRiskLevelLabel(3)).toBe("要注意")
       expect(getRiskLevelLabel(4)).toBe("高リスク")
       expect(getRiskLevelLabel(5)).toBe("非常に危険")
+    })
+  })
+
+  describe("extractPreSubmitSimulationQuickSummary", () => {
+    it("should parse the first risk and action from a markdown table", () => {
+      const result = extractPreSubmitSimulationQuickSummary([
+        "| ハザード | 想定リスク (例) | その場でできる対策 (例) |",
+        "|---|---|---|",
+        "| 地震 | 塀のひび割れや落下物のおそれ | 塀から離れて迂回する |",
+      ].join("\n"))
+
+      expect(result).toEqual({
+        summary: "塀のひび割れや落下物のおそれ",
+        action: "塀から離れて迂回する",
+        hazardKey: "earthquake",
+      })
+    })
+
+    it("should return null when the markdown table does not contain a valid data row", () => {
+      expect(extractPreSubmitSimulationQuickSummary("| ハザード | 想定リスク | 対策 |")).toBeNull()
+      expect(extractPreSubmitSimulationQuickSummary("")).toBeNull()
+    })
+
+    it("should detect the hazard key from english table rows", () => {
+      const result = extractPreSubmitSimulationQuickSummary([
+        "| Hazard | Expected Risks (examples) | Immediate Countermeasures (examples) |",
+        "|---|---|---|",
+        "| Heavy rain (flooding) | Water may pool near the curb | Move to higher ground |",
+      ].join("\n"))
+
+      expect(result?.hazardKey).toBe("flood")
+    })
+  })
+
+  describe("selectSimulationQuickSummaryImage", () => {
+    it("should prefer a generated simulation image over overlay images", () => {
+      const result = selectSimulationQuickSummaryImage(
+        [new File(["overlay"], "overlay.png"), new File(["sim"], "flood.png")],
+        ["blob:overlay", "blob:flood"]
+      )
+
+      expect(result).toBe("blob:flood")
+    })
+
+    it("should prefer the preview that matches the requested hazard", () => {
+      const result = selectSimulationQuickSummaryImage(
+        [
+          new File(["sim"], "flood.png"),
+          new File(["sim"], "earthquake.png"),
+        ],
+        ["blob:flood", "blob:earthquake"],
+        "earthquake"
+      )
+
+      expect(result).toBe("blob:earthquake")
+    })
+
+    it("should return null when no preview can be confidently mapped to a simulation", () => {
+      const result = selectSimulationQuickSummaryImage(
+        [new File(["overlay"], "overlay.png"), new File(["manual"], "photo.png")],
+        ["blob:overlay", "blob:manual"]
+      )
+
+      expect(result).toBeNull()
     })
   })
 

@@ -407,6 +407,12 @@ export default function DangerReportForm({
     return { file, blobUrl }
   }
 
+  const fileToBlobUrl = (file: File): string => {
+    const blobUrl = URL.createObjectURL(file)
+    registerBlobUrl(blobUrl)
+    return blobUrl
+  }
+
   const buildRegionConstraints = (hazards: HazardItem[]): string => {
     if (!Array.isArray(hazards) || hazards.length === 0) return ''
     const lines: string[] = []
@@ -910,43 +916,51 @@ export default function DangerReportForm({
     setBatchImages([])
     setShowBatchResults(true)
 
-    const compressed = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
-    const results: Array<{ promptId: string; name: string; shortName: string; targetAudience: TargetAudience; blobUrl: string; file: File }> = []
+    try {
+      const compressed = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
+      const results: Array<{ promptId: string; name: string; shortName: string; targetAudience: TargetAudience; blobUrl: string; file: File }> = []
 
-    for (let i = 0; i < allPrompts.length; i++) {
-      const p = allPrompts[i]
-      setBatchProgress({ current: i + 1, total: allPrompts.length, currentName: p.name })
-      try {
-        const fd = new FormData()
-        fd.append('image', compressed)
-        fd.append('prompt', p.prompt)
-        fd.append('generationMode', 'disaster')
-        const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
-        if (res.ok) {
-          const json = await res.json()
-          const imgs = Array.isArray(json.images) ? (json.images as { dataUrl: string }[]) : []
-          if (imgs[0]) {
-            const { file, blobUrl } = await dataUrlToFileAndBlobUrl(imgs[0].dataUrl, `batch-${p.id}.png`)
-            results.push({ promptId: p.id, name: p.name, shortName: p.shortName, targetAudience: p.targetAudience, blobUrl, file })
-            setBatchImages([...results])
+      for (let i = 0; i < allPrompts.length; i++) {
+        const p = allPrompts[i]
+        setBatchProgress({ current: i + 1, total: allPrompts.length, currentName: p.name })
+        try {
+          const fd = new FormData()
+          fd.append('image', compressed)
+          fd.append('prompt', p.prompt)
+          fd.append('generationMode', 'disaster')
+          const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
+          if (res.ok) {
+            const json = await res.json()
+            const imgs = Array.isArray(json.images) ? (json.images as { dataUrl: string }[]) : []
+            if (imgs[0]) {
+              const { file, blobUrl } = await dataUrlToFileAndBlobUrl(imgs[0].dataUrl, `batch-${p.id}.png`)
+              results.push({ promptId: p.id, name: p.name, shortName: p.shortName, targetAudience: p.targetAudience, blobUrl, file })
+              setBatchImages([...results])
+            }
           }
+        } catch {
+          // 失敗したプロンプトはスキップして続行
         }
-      } catch {
-        // 失敗したプロンプトはスキップして続行
+        if (i < allPrompts.length - 1) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
       }
-      if (i < allPrompts.length - 1) {
-        await new Promise(r => setTimeout(r, 2000))
-      }
+    } catch (error) {
+      toast({
+        title: '一括生成に失敗しました',
+        description: handleError(error, '時間をおいて再度お試しください。'),
+        variant: 'destructive',
+      })
+    } finally {
+      setBatchProgress(null)
+      setBatchLoading(false)
     }
-
-    setBatchProgress(null)
-    setBatchLoading(false)
   }
 
   // バッチ生成結果をレポートの加工画像に追加
   const addBatchImageToReport = (img: { file: File; blobUrl: string }) => {
     setProcessedImageFiles(prev => [...prev, img.file])
-    setProcessedImagePreviews(prev => [...prev, img.blobUrl])
+    setProcessedImagePreviews(prev => [...prev, fileToBlobUrl(img.file)])
     setActiveImageTab('processed')
     toast({ title: '追加しました', description: '加工画像に追加されました' })
   }
@@ -1142,9 +1156,11 @@ export default function DangerReportForm({
           action: riskAnalysisFallback.measure,
         }
       : null)
+  const preferredSimulationHazardKey = extractedQuickSummary ? null : preSubmitQuickSummary?.hazardKey
   const previewSimulationImage = selectSimulationQuickSummaryImage(
     processedImageFiles,
-    processedImagePreviews
+    processedImagePreviews,
+    preferredSimulationHazardKey
   )
 
   // 画像削除ハンドラー（元画像）
