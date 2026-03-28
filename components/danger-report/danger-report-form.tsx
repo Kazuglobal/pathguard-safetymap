@@ -898,7 +898,14 @@ export default function DangerReportForm({
 
   // 全10プロンプトを一括生成
   const batchGenerateAll = async () => {
-    if (!originalImageFile) return
+    if (!originalImageFile) {
+      toast({
+        title: '元写真をアップロードしてください',
+        description: '「元写真」タブから通学路の写真を撮影またはアップロードしてください。',
+        variant: 'destructive',
+      })
+      return
+    }
     setBatchLoading(true)
     setBatchImages([])
     setShowBatchResults(true)
@@ -1579,7 +1586,7 @@ export default function DangerReportForm({
                       variant="outline"
                       size="sm"
                       onClick={batchGenerateAll}
-                      disabled={batchLoading || !originalImageFile}
+                      disabled={batchLoading}
                       className="w-full"
                     >
                       {batchLoading ? (
