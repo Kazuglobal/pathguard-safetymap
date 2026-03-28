@@ -110,7 +110,7 @@ export default function HazardGameClient() {
         <Gamepad2 className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4" />
         <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">写真危険発見ゲーム</h1>
         <p className="text-blue-100 text-base sm:text-lg">
-          AIと一緒に写真から潜在的な危険を見つけ出そう！
+          AIと一緒に写真の安全度を評価し、危険発見スキルを磨こう！
         </p>
       </div>
 
@@ -137,7 +137,7 @@ export default function HazardGameClient() {
             </div>
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">4</span>
-              <p>あなたのマーキングとAIの検出結果を比較してボーナスポイント獲得！</p>
+              <p>AIが安全スコアを算出。マーキングがAIの検出と一致するとボーナス獲得！</p>
             </div>
           </div>
         </CardContent>
@@ -146,8 +146,9 @@ export default function HazardGameClient() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          より多くの危険要素が含まれている写真（交差点、工事現場、公園など）で
-          高得点を狙えます！プライバシーに配慮し、人物の顔が写っていない写真を使用してください。
+          安全設備が整い、危険要素が少ない場所の写真ほど高得点になります。
+          街中・通学路・公園など身近な場所で試してみましょう。
+          プライバシーに配慮し、人物の顔が写っていない写真を使用してください。
         </AlertDescription>
       </Alert>
 
@@ -233,24 +234,22 @@ export default function HazardGameClient() {
 
       {selectedFile && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
+          <div className="flex flex-col items-center gap-2">
             <Button
               onClick={handleGoToMarking}
               disabled={isAnalyzing}
               size="lg"
               className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
             >
-              危険箇所をマーキングしてから分析
+              危険箇所をマーキングしてから分析（推奨）
             </Button>
-            <Button
+            <button
               onClick={handleDirectAnalysis}
               disabled={isAnalyzing}
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto"
+              className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-50"
             >
-              {isAnalyzing ? "分析中..." : "直接分析"}
-            </Button>
+              {isAnalyzing ? "分析中..." : "マーキングをスキップして直接分析"}
+            </button>
           </div>
 
           <div className="flex justify-center gap-3">

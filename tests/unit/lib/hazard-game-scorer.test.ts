@@ -116,7 +116,7 @@ describe('hazard-game-scorer', () => {
       expect(result.breakdown).toHaveLength(0)
     })
 
-    it('deducts 20 points when guardrail is not detected', () => {
+    it('deducts 10 points when guardrail is not detected (road scene)', () => {
       const vision = createMockVision({
         safetyEquipment: [
           createDetectionItem({ label: 'crosswalk', category: 'safety_equipment' }),
@@ -128,12 +128,13 @@ describe('hazard-game-scorer', () => {
 
       const result = calculateSafetyScore(vision, think)
 
-      expect(result.score).toBe(80)
+      // crosswalk/traffic_light/sidewalk present → road scene, guardrail missing → -10
+      expect(result.score).toBe(90)
       const guardrailDeduction = result.breakdown.find(
         (b) => b.item.includes('ガードレール')
       )
       expect(guardrailDeduction).toBeDefined()
-      expect(guardrailDeduction!.points).toBe(-20)
+      expect(guardrailDeduction!.points).toBe(-10)
     })
 
     it('accumulates penalties for multiple hazards', () => {
@@ -165,13 +166,13 @@ describe('hazard-game-scorer', () => {
 
     it('never returns a score below zero', () => {
       const vision = createMockVision({
-        // No safety equipment: -20 -15 -10 -10 = -55
+        // No safety equipment (road scene due to traffic): -10 -8 -6 -6 = -30
         safetyEquipment: [],
         // 6 hazards: -60
         hazards: Array.from({ length: 6 }, (_, i) =>
           createDetectionItem({ label: `hazard-${i}`, category: 'hazards' })
         ),
-        // 10 vehicles: -10
+        // 10 vehicles: -10 (also makes isRoadScene=true)
         traffic: [
           createDetectionItem({ label: 'car', category: 'traffic', count: 10 }),
         ],
@@ -265,7 +266,7 @@ describe('hazard-game-scorer', () => {
       const result = checkSafetyEquipment([])
       expect(result).toHaveLength(4)
       const totalPenalty = result.reduce((sum, b) => sum + b.points, 0)
-      expect(totalPenalty).toBe(-55)
+      expect(totalPenalty).toBe(-30)
     })
   })
 

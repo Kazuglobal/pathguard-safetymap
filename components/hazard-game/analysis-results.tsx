@@ -82,7 +82,7 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
     ctx.font = `${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI`
     ctx.textBaseline = 'top'
 
-    const maxLabelWidth = Math.round(canvas.width * 0.4)
+    const maxLabelWidth = Math.round(canvas.width * 0.55)
 
     const truncateText = (text: string, maxW: number): string => {
       if (ctx.measureText(text).width <= maxW) return text
@@ -133,15 +133,17 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
       ctx.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.004))
       ctx.strokeRect(rx, ry, rw, rh)
 
-      const rawLabel = `${item.description || item.label} / ${Math.round(item.confidence * 100)}%`
+      const rawLabel = `${item.label} (${Math.round(item.confidence * 100)}%)`
       const label = truncateText(rawLabel, maxLabelWidth)
       const textW = ctx.measureText(label).width
       const lbPadX = Math.round(fontSize * 0.5)
       const lbPadY = Math.round(fontSize * 0.35)
       const lbW = Math.round(textW + lbPadX * 2)
       const lbH = Math.round(fontSize + lbPadY * 2)
-      const lbX = rx + pad
-      const initialLbY = Math.max(pad, ry + pad)
+      const lbX = Math.max(pad, Math.min(rx, canvas.width - lbW - pad))
+      const gapAbove = Math.round(fontSize * 0.2)
+      const idealAboveY = ry - lbH - gapAbove
+      const initialLbY = idealAboveY >= pad ? idealAboveY : Math.max(pad, ry + pad)
       const lbY = findNonOverlappingLabelY({
         lbX,
         initialY: initialLbY,
