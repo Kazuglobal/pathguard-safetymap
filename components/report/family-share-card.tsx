@@ -33,16 +33,16 @@ export const FamilyShareCard = forwardRef<HTMLDivElement, FamilyShareCardProps>(
       >
         <div className="bg-gradient-to-r from-emerald-500 via-sky-500 to-blue-500 px-4 py-3 text-white">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
-              <div>
+            <div className="flex min-w-0 items-center gap-2">
+              <ShieldCheck className="h-5 w-5 shrink-0" />
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
                   Family Share
                 </p>
-                <h3 className="text-base font-bold leading-tight">{title}</h3>
+                <h3 className="break-words text-base font-bold leading-tight">{title}</h3>
               </div>
             </div>
-            <Badge className="border-white/20 bg-white/15 text-white hover:bg-white/15">
+            <Badge className="shrink-0 border-white/20 bg-white/15 text-white hover:bg-white/15">
               家族向け
             </Badge>
           </div>
