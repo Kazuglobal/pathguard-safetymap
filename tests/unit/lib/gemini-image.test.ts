@@ -15,7 +15,7 @@ vi.mock("@/lib/gemini-util", () => ({
 describe("generateImageWithGeminiWithModel", () => {
   beforeEach(() => {
     vi.resetModules()
-    vi.clearAllMocks()
+    mockFetch.mockReset()
   })
 
   it("uses a single forced model attempt so API route does not switch models", async () => {
@@ -48,7 +48,7 @@ describe("generateImageWithGeminiWithModel", () => {
                 {
                   inlineData: {
                     mimeType: "image/png",
-                    data: "aGVsbG8=",
+                    data: "a".repeat(128),
                   },
                 },
               ],

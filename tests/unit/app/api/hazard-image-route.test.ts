@@ -91,7 +91,15 @@ function createPromptSignature(value: string) {
 
 describe("app/api/hazard/image route", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetModules()
+    mocks.mockGetUser.mockReset()
+    mocks.mockMaybeSingle.mockReset()
+    mocks.mockUpsert.mockReset()
+    mocks.mockUpload.mockReset()
+    mocks.mockGetPublicUrl.mockReset()
+    mocks.mockGenerateImage.mockReset()
+    mocks.from.mockClear()
+    mocks.storageFrom.mockClear()
     mocks.mockGetUser.mockResolvedValue({
       data: { user: { id: "user-1" } },
       error: null,
