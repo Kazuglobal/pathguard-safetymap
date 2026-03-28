@@ -113,3 +113,63 @@ rm -rf .next/cache
 - API エラー: リトライ後、手動確認を促す
 - ファクトチェック失敗: 記事化しない
 - 重複ニュース: スキップ
+
+---
+
+## Layer 2: 地域アラート（リアルタイム）
+
+### 概要
+
+| 項目 | Layer 1（全国ニュース） | Layer 2（地域アラート） |
+|------|----------------------|----------------------|
+| 更新頻度 | 日次 07:00 | 2時間毎 |
+| コンテンツ | 全国・編集部選定記事 | 都道府県・市区町村レベルの速報 |
+| ストレージ | `lib/school-route-news.ts` 静的配列 | Supabase `local_safety_alerts` テーブル |
+| エージェント | news-fetcher〜image-generator（5人） | local-alert-fetcher（1人） |
+
+### トリガー
+- Vercel Cron: `/api/cron/local-safety-alerts`（`0 */2 * * *`）
+- エージェント: `local-alert-fetcher`
+
+### Step A: データ取得
+WebSearch キーワード:
+```
+- "声かけ事案 [都道府県名]"
+- "不審者情報 [都道府県名] 警察"
+- "つきまとい 通学路 [市区町村名]"
+- "児童 安全 [都道府県名] 速報"
+```
+
+データソース:
+- 各都道府県警察公式サイト `/防犯情報/声かけ事案`
+- 市区町村の安全・安心メール公開アーカイブ
+- 文部科学省 学校安全ポータルサイト
+
+### Step B: Supabase INSERT
+```sql
+INSERT INTO local_safety_alerts
+  (prefecture, city, category, description, source_url, occurred_at)
+VALUES
+  ('東京都', '世田谷区', 'voice_call', '説明文', 'https://...', '2026-03-28T09:00:00+09:00')
+ON CONFLICT (prefecture, city, occurred_at) DO NOTHING;
+```
+
+カテゴリ分類:
+- `suspicious`: 不審者（徘徊・写真撮影・その場に居座るなど）
+- `voice_call`: 声かけ事案（話しかけ・誘い込みなど）
+- `following`: つきまとい
+- `other`: その他
+
+### Step C: Push通知
+Cron が `push_notified_at IS NULL` かつ `suspicious` / `voice_call` を自動通知。
+エージェントからの手動通知は不要。
+
+### 関連ファイル
+
+| ファイル | 説明 |
+|---------|------|
+| `supabase/migrations/20260329000001_add_local_safety_alerts.sql` | テーブル定義 |
+| `lib/push-notifications/notify-local-alert.ts` | Push通知ロジック |
+| `app/api/cron/local-safety-alerts/route.ts` | Cronエンドポイント |
+| `hooks/use-local-safety-alerts.ts` | フロントエンドHook |
+| `components/landing/LocalSafetyAlertsSection.tsx` | UIコンポーネント |

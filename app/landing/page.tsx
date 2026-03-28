@@ -5,16 +5,26 @@ import {
   ChildRouteDashboard,
   HeroCarousel,
   SchoolRouteNewsSection,
+  LocalSafetyAlertsSection,
   HazardMapBanner,
   StoreSection,
   SafeMagazine,
   HiyariHatReport,
 } from "@/components/landing"
 import { useChildRouteDashboard } from "@/hooks/use-child-route-dashboard"
+import { getLatestNews } from "@/lib/school-route-news"
 
 export default function LandingPage() {
   const currentYear = new Date().getFullYear()
   const dashboard = useChildRouteDashboard()
+
+  const newsPreview = getLatestNews(2).map((item) => ({
+    id: item.id,
+    title: item.title,
+    categoryLabel: item.categoryLabel,
+    categoryColor: item.categoryColor,
+    slug: item.slug,
+  }))
 
   return (
     <div className="min-h-screen bg-white">
@@ -29,13 +39,17 @@ export default function LandingPage() {
           errorMessage={dashboard.errorMessage}
           quickChecks={dashboard.quickChecks}
           retryHref={dashboard.retryHref}
+          newsPreview={newsPreview}
         />
 
         {/* ヒーローカルーセル */}
         <section data-testid="hero-section" className="py-4">
           <HeroCarousel />
         </section>
-        {/* 通学路の安全ニュース（リアルタイム） */}
+        {/* 今日の地域アラート（声かけ・不審者情報 リアルタイム） */}
+        <LocalSafetyAlertsSection />
+
+        {/* 通学路の安全ニュース（全国・編集部選定） */}
         <SchoolRouteNewsSection />
 
         {/* 危険マップ誘導バナー */}
@@ -71,4 +85,3 @@ export default function LandingPage() {
     </div>
   )
 }
-
