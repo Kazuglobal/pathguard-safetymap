@@ -9,6 +9,7 @@ export interface NotificationPreferences {
   danger_reports: boolean
   news: boolean
   magazine: boolean
+  local_alerts: boolean
 }
 
 export interface PushPayload {
@@ -83,6 +84,43 @@ export function buildNewsPushPayload(params: {
     data: {
       url: `/school-route-news/${params.slug}`,
       type: 'news',
+    },
+  }
+}
+
+export type LocalAlertCategory = 'suspicious' | 'voice_call' | 'following' | 'other'
+
+export const LOCAL_ALERT_CATEGORY_LABELS: Record<LocalAlertCategory, string> = {
+  suspicious: '不審者情報',
+  voice_call: '声かけ事案',
+  following: 'つきまとい',
+  other: 'その他',
+} as const
+
+export function buildLocalAlertPushPayload(params: {
+  alertId: string
+  category: LocalAlertCategory
+  prefecture: string
+  city: string | null
+  description: string
+}): PushPayload {
+  const location = params.city
+    ? `${params.prefecture} ${params.city}`
+    : params.prefecture
+  const categoryLabel = LOCAL_ALERT_CATEGORY_LABELS[params.category]
+  const body = params.description.length > 80
+    ? `${params.description.slice(0, 80)}…`
+    : params.description
+
+  return {
+    title: `【速報】${location}で${categoryLabel}`,
+    body,
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
+    tag: `local-alert-${params.alertId}`,
+    data: {
+      url: `/local-alerts?id=${params.alertId}`,
+      type: 'local_alerts',
     },
   }
 }

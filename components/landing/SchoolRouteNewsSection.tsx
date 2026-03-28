@@ -21,17 +21,17 @@ export function SchoolRouteNewsSection() {
     <section className="py-6 md:py-10 bg-gray-50">
       <div className="max-w-6xl mx-auto">
         {/* セクションヘッダー */}
-        <div className="flex items-center justify-between px-4 mb-4 md:mb-6">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-start gap-2 px-4 mb-4 md:mb-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
             <Zap className="w-5 h-5 text-red-500" />
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">通学路の安全ニュース</h2>
-            <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-600 rounded-full">
+            <h2 className="text-lg font-bold text-gray-900 whitespace-nowrap md:text-xl">通学路の安全ニュース</h2>
+            <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
               編集部選定
             </span>
           </div>
           <Link
             href="/school-route-news"
-            className="flex items-center gap-0.5 text-sm text-gray-500 hover:text-red-600 transition-colors"
+            className="flex self-start items-center gap-0.5 whitespace-nowrap text-sm text-gray-500 transition-colors hover:text-red-600 md:self-auto"
           >
             すべて見る
             <ChevronRight className="w-4 h-4" />

@@ -33,6 +33,29 @@ describe("editorial copy alignment", () => {
     expect(screen.queryByText("リアルタイム")).not.toBeInTheDocument()
   })
 
+  it("keeps the landing school route news header compact on mobile", () => {
+    render(<SchoolRouteNewsSection />)
+
+    const title = screen.getByRole("heading", { name: "通学路の安全ニュース" })
+    const badge = screen.getByText("編集部選定")
+    const seeAllLink = screen.getByRole("link", { name: /すべて見る/ })
+    const titleRow = title.parentElement
+    const header = seeAllLink.parentElement
+
+    expect(header).toHaveClass(
+      "flex-col",
+      "items-start",
+      "gap-2",
+      "md:flex-row",
+      "md:items-center",
+      "md:justify-between"
+    )
+    expect(titleRow).toHaveClass("min-w-0")
+    expect(title).toHaveClass("whitespace-nowrap")
+    expect(badge).toHaveClass("flex-shrink-0", "whitespace-nowrap")
+    expect(seeAllLink).toHaveClass("self-start", "whitespace-nowrap")
+  })
+
   it("renders the school route news page subtitle without realtime wording", () => {
     render(<SchoolRouteNewsPage />)
 

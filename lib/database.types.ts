@@ -758,6 +758,42 @@ export type Database = {
         }
         Relationships: []
       }
+      local_safety_alerts: {
+        Row: {
+          id: string
+          prefecture: string
+          city: string | null
+          category: 'suspicious' | 'voice_call' | 'following' | 'other'
+          description: string
+          source_url: string | null
+          occurred_at: string
+          push_notified_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          prefecture: string
+          city?: string | null
+          category: 'suspicious' | 'voice_call' | 'following' | 'other'
+          description: string
+          source_url?: string | null
+          occurred_at: string
+          push_notified_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          prefecture?: string
+          city?: string | null
+          category?: 'suspicious' | 'voice_call' | 'following' | 'other'
+          description?: string
+          source_url?: string | null
+          occurred_at?: string
+          push_notified_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           content: string

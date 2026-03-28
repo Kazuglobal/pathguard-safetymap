@@ -129,8 +129,10 @@ describe("VlmAnalysisPanel", () => {
       />
     )
 
-    expect(screen.getByText("投稿前プレビュー")).toBeInTheDocument()
-    expect(screen.getByText("子ども目線シミュレーション")).toBeInTheDocument()
+    expect(screen.getByText("シミュレーション要約")).toBeInTheDocument()
+    expect(screen.getByText("危険要約")).toBeInTheDocument()
+    expect(screen.getByText("回避行動")).toBeInTheDocument()
+    expect(screen.queryByText("投稿前プレビュー")).not.toBeInTheDocument()
     expect(screen.getAllByText(mockResult.child_perspective_summary).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("警察に取締りを依頼")).toBeInTheDocument()
   })
