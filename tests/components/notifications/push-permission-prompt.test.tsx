@@ -29,7 +29,7 @@ describe('PushPermissionPrompt', () => {
   it('未購読状態で未却下なら表示される', () => {
     vi.mocked(usePushSubscription).mockReturnValue({
       state: 'unsubscribed',
-      preferences: { danger_reports: true, news: true, magazine: true },
+      preferences: { danger_reports: true, news: true, magazine: true, local_alerts: true },
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
       updatePreferences: vi.fn(),
@@ -43,7 +43,7 @@ describe('PushPermissionPrompt', () => {
     mockLocalStorage.setItem('push_prompt_dismissed', '1')
     vi.mocked(usePushSubscription).mockReturnValue({
       state: 'unsubscribed',
-      preferences: { danger_reports: true, news: true, magazine: true },
+      preferences: { danger_reports: true, news: true, magazine: true, local_alerts: true },
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
       updatePreferences: vi.fn(),
@@ -56,7 +56,7 @@ describe('PushPermissionPrompt', () => {
   it('購読済みの場合は表示されない', () => {
     vi.mocked(usePushSubscription).mockReturnValue({
       state: 'subscribed',
-      preferences: { danger_reports: true, news: true, magazine: true },
+      preferences: { danger_reports: true, news: true, magazine: true, local_alerts: true },
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
       updatePreferences: vi.fn(),
@@ -69,7 +69,7 @@ describe('PushPermissionPrompt', () => {
   it('閉じるボタンで非表示になり localStorage に保存される', () => {
     vi.mocked(usePushSubscription).mockReturnValue({
       state: 'unsubscribed',
-      preferences: { danger_reports: true, news: true, magazine: true },
+      preferences: { danger_reports: true, news: true, magazine: true, local_alerts: true },
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
       updatePreferences: vi.fn(),

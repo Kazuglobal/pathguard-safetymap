@@ -8,7 +8,7 @@ vi.mock('@/hooks/use-push-subscription', () => ({
 import { usePushSubscription } from '@/hooks/use-push-subscription'
 import { PushSettingsPanel } from '@/components/notifications/push-settings-panel'
 
-const defaultPrefs = { danger_reports: true, news: true, magazine: true }
+const defaultPrefs = { danger_reports: true, news: true, magazine: true, local_alerts: true }
 
 describe('PushSettingsPanel', () => {
   beforeEach(() => {

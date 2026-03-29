@@ -63,7 +63,10 @@ export interface VlmAnalysisResult {
 export interface SimulationQuickSummaryData {
   summary: string
   action: string | null
+  hazardKey?: SimulationHazardKey | null
 }
+
+export type SimulationHazardKey = "earthquake" | "typhoon" | "flood" | "fire"
 
 /**
  * Request to analyze hazard image
@@ -453,6 +456,147 @@ function getFirstNonEmptyText(values: Array<string | null | undefined>): string 
       }
     }
   }
+  return null
+}
+
+function parseMarkdownTableRow(line: string): string[] {
+  return line
+    .split("|")
+    .map((cell) => cell.trim())
+    .filter((cell, index, cells) => {
+      if (index === 0 || index === cells.length - 1) {
+        return cell.length > 0
+      }
+      return true
+    })
+}
+
+function isMarkdownSeparatorRow(cells: string[]): boolean {
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
+}
+
+function isMarkdownHeaderRow(cells: string[]): boolean {
+  const normalizedCells = cells.map((cell) => cell.replace(/\s+/g, ""))
+  return normalizedCells.includes("ハザード") || normalizedCells.includes("想定リスク(例)") || normalizedCells.includes("想定リスク")
+}
+
+function normalizeSimulationHazardKey(value: string | null | undefined): SimulationHazardKey | null {
+  if (!value) {
+    return null
+  }
+
+  const normalizedValue = value.trim().toLowerCase()
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (normalizedValue.includes("earthquake") || normalizedValue.includes("地震")) {
+    return "earthquake"
+  }
+  if (
+    normalizedValue.includes("typhoon") ||
+    normalizedValue.includes("台風") ||
+    normalizedValue.includes("強風") ||
+    normalizedValue.includes("strong wind")
+  ) {
+    return "typhoon"
+  }
+  if (
+    normalizedValue.includes("flood") ||
+    normalizedValue.includes("冠水") ||
+    normalizedValue.includes("洪水") ||
+    normalizedValue.includes("heavy rain") ||
+    normalizedValue.includes("heavyrain")
+  ) {
+    return "flood"
+  }
+  if (normalizedValue.includes("fire") || normalizedValue.includes("火災") || normalizedValue.includes("延焼")) {
+    return "fire"
+  }
+
+  return null
+}
+
+export function extractPreSubmitSimulationQuickSummary(
+  tableMarkdown: string | null | undefined
+): SimulationQuickSummaryData | null {
+  if (!tableMarkdown) {
+    return null
+  }
+
+  const lines = tableMarkdown
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|"))
+
+  for (const line of lines) {
+    const cells = parseMarkdownTableRow(line)
+    if (cells.length < 3 || isMarkdownSeparatorRow(cells) || isMarkdownHeaderRow(cells)) {
+      continue
+    }
+
+    const [hazardCandidate, summaryCandidate, actionCandidate] = cells
+    const summary = getFirstNonEmptyText([summaryCandidate])
+    const action = getFirstNonEmptyText([actionCandidate])
+    const hazardKey = normalizeSimulationHazardKey(hazardCandidate)
+
+    if (!summary) {
+      continue
+    }
+
+    return {
+      summary,
+      action,
+      hazardKey,
+    }
+  }
+
+  return null
+}
+
+function isSimulationFileName(fileName: string): boolean {
+  return /(earthquake|typhoon|flood|fire)/i.test(fileName)
+}
+
+export function selectSimulationQuickSummaryImage(
+  files: Array<Pick<File, "name"> | null | undefined>,
+  previews: Array<string | null | undefined>,
+  preferredHazardKey?: SimulationHazardKey | null
+): string | null {
+  const itemCount = Math.min(files.length, previews.length)
+
+  if (preferredHazardKey) {
+    for (let index = 0; index < itemCount; index += 1) {
+      const file = files[index]
+      const preview = previews[index]
+      if (!file || !preview) {
+        continue
+      }
+
+      const normalizedName = file.name.trim().toLowerCase()
+      if (!normalizedName || !normalizedName.includes(preferredHazardKey)) {
+        continue
+      }
+
+      return preview
+    }
+  }
+
+  for (let index = 0; index < itemCount; index += 1) {
+    const file = files[index]
+    const preview = previews[index]
+    if (!file || !preview) {
+      continue
+    }
+
+    const normalizedName = file.name.trim().toLowerCase()
+    if (!normalizedName || !isSimulationFileName(normalizedName)) {
+      continue
+    }
+
+    return preview
+  }
+
   return null
 }
 

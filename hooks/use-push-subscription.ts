@@ -32,6 +32,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   danger_reports: true,
   news: true,
   magazine: true,
+  local_alerts: true,
 }
 
 async function fetchSavedPreferences(endpoint: string): Promise<NotificationPreferences | null> {

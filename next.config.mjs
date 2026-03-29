@@ -29,13 +29,15 @@ const resolveEnv = (key, fallback = '') => {
   return fallback
 }
 
+const distDir = process.env.NEXT_DIST_DIR || '.next'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // React 19 strict mode
   reactStrictMode: true,
 
   // Keep Next.js build output in the default location Vercel expects.
-  distDir: '.next',
+  distDir,
 
   // Enforce TypeScript type-checking during build
   typescript: {

@@ -28,6 +28,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './'),
+      'react-map-gl/mapbox': resolve(__dirname, './tests/mocks/react-map-gl-mapbox.tsx'),
     },
   },
 })

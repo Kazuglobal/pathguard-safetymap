@@ -5,7 +5,7 @@ const playwrightBaseURL =
   process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${playwrightPort}`;
 const webServerCommand =
   process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ||
-  `node node_modules/next/dist/bin/next dev --webpack -p ${playwrightPort}`;
+  `cross-env NEXT_DIST_DIR=.next-playwright node node_modules/next/dist/bin/next dev --webpack -p ${playwrightPort}`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.

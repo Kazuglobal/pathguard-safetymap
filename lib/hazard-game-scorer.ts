@@ -19,11 +19,18 @@ import type {
 // ---- 安全設備チェック ----
 
 const SAFETY_EQUIPMENT_PENALTIES: Record<string, number> = {
-  guardrail: -20,
-  crosswalk: -15,
-  traffic_light: -10,
-  sidewalk: -10,
+  guardrail: -10,
+  crosswalk: -8,
+  traffic_light: -6,
+  sidewalk: -6,
 }
+
+const ROAD_SCENE_KEYWORDS = [
+  "crosswalk", "横断歩道",
+  "traffic_light", "信号機",
+  "guardrail", "ガードレール",
+  "sidewalk", "歩道",
+]
 
 function hasLabel(items: readonly DetectionItem[], pattern: string): boolean {
   const p = pattern.toLowerCase()
@@ -158,8 +165,16 @@ export function calculateSafetyScore(
   vision: VisionResult,
   think: ThinkResult
 ): SafetyScore {
+  const isRoadScene =
+    vision.traffic.length > 0 ||
+    vision.safetyEquipment.some((e) =>
+      ROAD_SCENE_KEYWORDS.some(
+        (kw) => e.label.toLowerCase().includes(kw) || e.description.toLowerCase().includes(kw)
+      )
+    )
+
   const breakdown: ScoreBreakdownItem[] = [
-    ...checkSafetyEquipment(vision.safetyEquipment),
+    ...(isRoadScene ? checkSafetyEquipment(vision.safetyEquipment) : []),
     ...checkHazards(vision.hazards),
     ...checkTraffic(vision.traffic),
     ...checkObstructions(vision.obstructions),

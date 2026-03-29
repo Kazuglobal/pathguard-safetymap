@@ -50,7 +50,7 @@ describe('AccidentHeatmapLayer popup helpers', () => {
       hasPedestrian: true,
     })
 
-    expect(content.textContent).toContain('24歳以下関与（年齢区分）')
+    expect(content.textContent).toContain('子ども関与（補充票確認分）')
     expect(content.textContent).toContain('歩行者関与')
   })
 

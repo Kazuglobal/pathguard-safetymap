@@ -53,7 +53,9 @@
     "next-runtime-app/types/**/*.ts",
     "next-runtime-app/dev/types/**/*.ts",
     "next-runtime-verify-4017/types/**/*.ts",
-    "next-runtime-verify-4017/dev/types/**/*.ts"
+    "next-runtime-verify-4017/dev/types/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    ".next-dev/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -7,6 +7,7 @@
 # Next.js
 # -----------------------------------------
 /.next/
+/.next-dev/
 /out/
 /next-runtime*/
 /.next-runtime*/

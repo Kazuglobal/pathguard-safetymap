@@ -109,7 +109,7 @@ export default function SubmittedReportPreview({
   /* ===== JSX ===== */
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-x-hidden overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="text-xl">報告画像プレビュー</DialogTitle>
           <DialogDescription className="sr-only">送信した報告の画像プレビュー</DialogDescription>
@@ -177,14 +177,14 @@ export default function SubmittedReportPreview({
               {/* ------- 加工画像（複数） ------- */}
               <TabsContent value="processed" className="mt-2">
                 {procSrcs.length > 0 ? (
-                  <div className="flex gap-2 overflow-x-auto">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {procSrcs.map((url, idx) => (
                       <div
                         key={idx}
-                        className="relative border rounded-md overflow-hidden min-w-[150px]"
+                        className="relative w-full overflow-hidden rounded-md border"
                       >
                         {!procErrors[idx] ? (
-                          <div className="relative w-full h-32 md:h-80">
+                          <div className="relative h-48 w-full sm:h-64">
                             <Image
                               src={addCacheBuster(url) || "/placeholder.svg"}
                               alt={`加工画像 ${idx + 1}`}
@@ -200,7 +200,7 @@ export default function SubmittedReportPreview({
                             />
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-32 md:h-80 bg-gray-100">
+                          <div className="flex h-48 flex-col items-center justify-center bg-gray-100 sm:h-64">
                             <ImageIcon className="h-8 w-8 text-gray-400" />
                             <p className="text-xs text-gray-500 mt-1">
                               読み込み失敗
@@ -247,14 +247,14 @@ export default function SubmittedReportPreview({
 
           {shareCard ? (
             <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">家族向け共有カード</p>
                   <p className="text-xs text-slate-500">
                     LINEやメッセージでそのまま送りやすい形に整えています。
                   </p>
                 </div>
-                <Button type="button" onClick={handleShare} disabled={isSharing} className="shrink-0">
+                <Button type="button" onClick={handleShare} disabled={isSharing} className="shrink-0 self-start sm:self-auto">
                   {isSharing ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (

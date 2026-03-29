@@ -1,7 +1,7 @@
 {
   "team_name": "通学路の安全ニュースチーム",
   "description": "全国で起きた通学路関連のリアルタイムニュースを取得・検証・記事化・公開するチーム",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "agents": [
     {
       "id": "news-fetcher",
@@ -118,6 +118,41 @@
         "no_realistic_accident_scenes": true,
         "focus_on_safety_awareness": true
       }
+    },
+    {
+      "id": "local-alert-fetcher",
+      "name": "ローカルアラートフェッチャー",
+      "role": "地域リアルタイム情報取得担当",
+      "description": "都道府県警察・市区町村の声かけ事案・不審者情報をリアルタイムで収集しSupabaseに格納する",
+      "responsibilities": [
+        "都道府県警察の声かけ事案・不審者情報ページの定期巡回",
+        "市区町村の防犯メール公開アーカイブからの情報収集",
+        "文部科学省 学校安全ポータルの確認",
+        "Supabase local_safety_alerts テーブルへのINSERT（重複はON CONFLICT DO NOTHING）",
+        "発生日時の正規化（ISO8601 UTC形式への変換）",
+        "カテゴリ分類（suspicious / voice_call / following / other）"
+      ],
+      "tools": ["WebSearch", "WebFetch", "Bash"],
+      "search_keywords": [
+        "声かけ事案",
+        "不審者情報 [都道府県名]",
+        "つきまとい 通学路",
+        "児童 声かけ 警察",
+        "子ども 見守り 不審者"
+      ],
+      "data_sources": [
+        "各都道府県警察公式サイト /防犯情報/声かけ事案",
+        "市区町村の安全・安心メール公開アーカイブ",
+        "文部科学省 学校安全ポータルサイト"
+      ],
+      "output_target": {
+        "type": "supabase",
+        "table": "local_safety_alerts",
+        "conflict_resolution": "ON CONFLICT (prefecture, city, occurred_at) DO NOTHING"
+      },
+      "schedule": "every_2_hours",
+      "independent_from_daily_workflow": true,
+      "note": "Layer 2 エージェント。日次ワークフローとは独立して2時間毎に実行する。Push通知はCron /api/cron/local-safety-alerts が自動送信する。"
     }
   ],
   "workflow": {

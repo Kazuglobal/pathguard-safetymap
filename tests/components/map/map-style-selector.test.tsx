@@ -169,6 +169,35 @@ describe("MapStyleSelector", () => {
     expect(screen.getAllByRole("img")).toHaveLength(8)
   })
 
+  it("uses the approved screenshot asset for the standard satellite preview", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MapStyleSelector
+        currentStyle="streets-v12"
+        onChange={() => {}}
+        isMobile
+        buttonLabel="表示"
+        overlayOptions={[
+          {
+            id: "heatmap",
+            label: "事故ヒートマップ",
+            description: "事故の集中地点を表示",
+            selected: false,
+            onSelect: vi.fn(),
+          },
+        ]}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "表示" }))
+
+    expect(screen.getByRole("img", { name: "衛星写真（最新）のプレビュー" })).toHaveAttribute(
+      "src",
+      "/images/map-style-previews/スクリーンショット 2026-03-26 235329.png",
+    )
+  })
+
   it("keeps the blue selected style badge on one line with compact sizing", async () => {
     const user = userEvent.setup()
 

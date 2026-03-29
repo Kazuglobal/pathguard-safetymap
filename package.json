@@ -9,8 +9,8 @@
   "scripts": {
     "copy-cesium": "node scripts/copy-cesium.js",
     "predev": "node scripts/copy-cesium.js",
-    "dev": "next dev --webpack",
-    "dev:turbo": "next dev",
+    "dev": "cross-env NEXT_DIST_DIR=.next-dev next dev --webpack",
+    "dev:turbo": "cross-env NEXT_DIST_DIR=.next-dev next dev",
     "build": "node scripts/copy-cesium.js && node scripts/validate-env.js && cross-env DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
     "lint": "next lint",
@@ -38,7 +38,8 @@
     "create-test-users": "tsx scripts/create-test-users.ts",
     "pipeline:run": "tsx instagram-tiktok-agents/scripts/run-pipeline.ts",
     "pipeline:run:date": "tsx instagram-tiktok-agents/scripts/run-pipeline.ts",
-    "generate-news-images": "tsx scripts/generate-school-route-news-images.ts"
+    "generate-news-images": "tsx scripts/generate-school-route-news-images.ts",
+    "generate-disaster-images": "tsx scripts/generate-disaster-prompt-images.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
