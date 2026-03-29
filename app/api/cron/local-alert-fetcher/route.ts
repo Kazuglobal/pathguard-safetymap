@@ -1,7 +1,7 @@
 /**
  * Cron: 地域安全アラートの自動収集
  *
- * vercel.json で 0 *\/4 * * * (4時間毎) に設定。
+ * vercel.json で 0 *\/3 * * * (3時間毎) に設定。
  * Gemini + Google Search Grounding で最新の声かけ・不審者情報を収集し
  * local_safety_alerts テーブルに upsert する。
  */
