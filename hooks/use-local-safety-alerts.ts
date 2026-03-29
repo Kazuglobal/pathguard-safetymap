@@ -15,7 +15,7 @@ export type LocalAlertCategory = 'suspicious' | 'voice_call' | 'following' | 'ot
 export interface LocalSafetyAlert {
   id: string
   prefecture: string
-  city: string | null
+  city: string
   category: LocalAlertCategory
   description: string
   source_url: string | null
@@ -44,7 +44,9 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000 // 5分
  * occurred_at から相対時間文字列を返す（"〇分前" / "〇時間前" / "〇日前"）
  */
 export function formatRelativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime()
+  const diff = getAlertAgeMs(isoString)
+  if (diff === null) return '不明'
+  if (diff < 60_000) return 'たった今'
   const minutes = Math.floor(diff / 60_000)
   if (minutes < 60) return `${minutes}分前`
   const hours = Math.floor(minutes / 60)
@@ -53,10 +55,19 @@ export function formatRelativeTime(isoString: string): string {
 }
 
 /**
- * occurred_at から 24 時間以内かどうか判定（速報バッジ用）
+ * occurred_at から 3 時間以内かどうか判定（新着バッジ用）
  */
 export function isBreakingAlert(occurredAt: string): boolean {
-  return Date.now() - new Date(occurredAt).getTime() < 24 * 60 * 60_000
+  const timestamp = new Date(occurredAt).getTime()
+  if (Number.isNaN(timestamp) || timestamp > Date.now()) return false
+  const diff = Date.now() - timestamp
+  return diff < 3 * 60 * 60_000
+}
+
+function getAlertAgeMs(isoString: string): number | null {
+  const timestamp = new Date(isoString).getTime()
+  if (Number.isNaN(timestamp)) return null
+  return Math.max(0, Date.now() - timestamp)
 }
 
 export function useLocalSafetyAlerts(

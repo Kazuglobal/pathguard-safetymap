@@ -762,7 +762,7 @@ export type Database = {
         Row: {
           id: string
           prefecture: string
-          city: string | null
+          city: string
           category: 'suspicious' | 'voice_call' | 'following' | 'other'
           description: string
           source_url: string | null
@@ -773,7 +773,7 @@ export type Database = {
         Insert: {
           id?: string
           prefecture: string
-          city?: string | null
+          city?: string
           category: 'suspicious' | 'voice_call' | 'following' | 'other'
           description: string
           source_url?: string | null
@@ -784,7 +784,7 @@ export type Database = {
         Update: {
           id?: string
           prefecture?: string
-          city?: string | null
+          city?: string
           category?: 'suspicious' | 'voice_call' | 'following' | 'other'
           description?: string
           source_url?: string | null

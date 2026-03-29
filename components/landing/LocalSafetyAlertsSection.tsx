@@ -65,7 +65,7 @@ export function LocalSafetyAlertsSection() {
             </span>
           </div>
           <p className="text-xs text-gray-400 px-0.5">
-            声かけ・不審者情報を5分毎に自動更新
+            3時間毎に収集・5分毎に自動更新
           </p>
         </div>
 
@@ -121,7 +121,13 @@ export function LocalSafetyAlertsSection() {
                 const breaking = isBreakingAlert(alert.occurred_at)
 
                 return (
-                  <div key={alert.id} className="flex gap-3 p-3 md:p-4">
+                  <div
+                    key={alert.id}
+                    className={[
+                      "flex gap-3 p-3 md:p-4 transition-colors",
+                      breaking ? "bg-orange-50" : "",
+                    ].join(" ")}
+                  >
                     {/* カテゴリアイコン */}
                     <div
                       className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
@@ -143,8 +149,9 @@ export function LocalSafetyAlertsSection() {
                           {config.label}
                         </span>
                         {breaking && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded animate-pulse">
-                            速報
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded animate-pulse">
+                            <span className="w-1 h-1 rounded-full bg-white" />
+                            新着
                           </span>
                         )}
                         <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
