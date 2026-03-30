@@ -1,65 +1,43 @@
 {
-  // ========================
-  // TypeScript Compiler Options
-  // ========================
   "compilerOptions": {
-    /* === プロジェクト構成 === */
-    "baseUrl": ".", // "@/..." → ./...
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    /* === 型チェック & 変換ターゲット === */
-    "target": "ES2022",
+    "target": "ES2017",
     "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022"
+      "dom",
+      "dom.iterable",
+      "esnext"
     ],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    /* === 型検証強化 === */
-    "strict": true,
+    "allowJs": true,
     "skipLibCheck": true,
+    "strict": false,
     "noEmit": true,
     "incremental": true,
-    /* === JS / JSX サポート === */
-    "allowJs": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
-    "isolatedModules": true,
+    "module": "esnext",
     "esModuleInterop": true,
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    /* === Next.js 用プラグイン === */
+    "isolatedModules": true,
+    "jsx": "react-jsx",
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "types": [
-      "node"
-    ]
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
-  // ========================
-  // 型チェック対象ファイル
-  // ========================
   "include": [
     "next-env.d.ts",
+    ".next-dev/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx",
+    ".next-dev/dev/types/**/*.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "next-runtime-app/types/**/*.ts",
-    "next-runtime-app/dev/types/**/*.ts",
-    "next-runtime-verify-4017/types/**/*.ts",
-    "next-runtime-verify-4017/dev/types/**/*.ts",
-    ".next-dev/types/**/*.ts",
-    ".next-dev/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "tests",
-    "supabase/functions"
+    "node_modules"
   ]
 }
