@@ -13,10 +13,6 @@
       "schedule": "*/15 * * * *"
     },
     {
-      "path": "/api/cron/local-safety-alerts",
-      "schedule": "0 */2 * * *"
-    },
-    {
       "path": "/api/cron/local-alert-fetcher",
       "schedule": "0 */3 * * *"
     }

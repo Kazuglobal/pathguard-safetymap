@@ -206,12 +206,13 @@ export async function getAccidentStatsRPC(params: {
 
   // DB関数のstatement timeoutが発生する場合は、年数を段階的に下げて再試行
   while (yearsForQuery >= requestedYears) {
-    const res = await supabase.rpc("get_nearby_accident_stats", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await (supabase as any).rpc("get_nearby_accident_stats", {
       p_latitude: params.latitude,
       p_longitude: params.longitude,
       p_radius_meters: radiusMeters,
       p_years: yearsForQuery,
-    } as any);
+    });
 
     if (!res.error) {
       data = res.data;

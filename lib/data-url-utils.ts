@@ -1,5 +1,5 @@
 function decodeDataUrl(dataUrl: string): Blob {
-  const matched = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/s)
+  const matched = dataUrl.match(/^data:([^;,]+)?(;base64)?,([^]*)$/)
   if (!matched) {
     throw new Error("Invalid data URL")
   }
