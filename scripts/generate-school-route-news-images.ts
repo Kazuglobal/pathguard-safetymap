@@ -222,6 +222,66 @@ Mood: Hopeful, safety-conscious, family bonding, new beginning
 Focus: Importance of walking the school route before the start of school
 ${QUALITY_SUFFIX}`,
     description: "新1年生交通安全"
+  },
+  {
+    slug: "national-spring-traffic-safety-campaign-20260330",
+    filename: "national-spring-traffic-safety-campaign-20260330.png",
+    prompt: `Create a Japanese illustration about the national spring traffic safety campaign (令和8年春の全国交通安全運動).
+
+Visual elements:
+- Elementary school children with yellow caps and randoseru crossing a crosswalk safely
+- A volunteer in a yellow safety vest holding a yellow flag
+- Spring cherry blossoms lining a Japanese residential street
+- Traffic safety campaign banners (交通安全運動) on poles
+- A school zone marking on the road
+- Bright morning scene with warm sunlight
+
+Style: Bright, community-oriented Japanese illustration
+Color palette: Orange/yellow for safety campaign, spring pinks and greens
+Mood: Safe, community support, awareness
+Focus: Spring school commute safety and community watch
+${QUALITY_SUFFIX}`,
+    description: "令和8年春の全国交通安全運動"
+  },
+  {
+    slug: "national-model-zone-65-areas-20260330",
+    filename: "national-model-zone-65-areas-20260330.png",
+    prompt: `Create a Japanese infographic illustration about the Ministry of Land Infrastructure Transport and Tourism selecting 65 model zones for school route safety improvements.
+
+Visual elements:
+- A stylized map of Japan with 65 highlighted points/regions
+- A residential Japanese street with guardrails, widened sidewalks, and crosswalk markings
+- Elementary school children walking safely with yellow caps and randoseru
+- Road infrastructure elements: guardrails, colored pavement, pedestrian barriers
+- An infographic-style layout suggesting nationwide coverage
+- Government seal or document icon suggesting official policy
+
+Style: Modern Japanese infographic/editorial illustration
+Color palette: Blue and green for infrastructure safety, orange dots for highlighted zones
+Mood: Progressive, systematic, nationwide safety improvement
+Focus: Infrastructure-based safety improvements for school routes
+${QUALITY_SUFFIX}`,
+    description: "国交省モデル地域65箇所"
+  },
+  {
+    slug: "national-school-watch-activity-handbook-20260330",
+    filename: "national-school-watch-activity-handbook-20260330.png",
+    prompt: `Create a warm Japanese illustration about community school route watch activities strengthened before the new school term.
+
+Visual elements:
+- Elderly and adult volunteers in bright yellow safety vests holding flags
+- Elementary school children with yellow caps and randoseru walking safely
+- A crosswalk scene in a Japanese neighborhood
+- Spring cherry blossoms suggesting new school term
+- A handbook or guidebook element suggesting the Ministry of Education handbook
+- Community members smiling and cooperating
+
+Style: Heartfelt, warm Japanese community illustration
+Color palette: Greens and yellows for community warmth and safety
+Mood: Cooperative, protective, hopeful community spirit
+Focus: Volunteer watch activities protecting children on school routes
+${QUALITY_SUFFIX}`,
+    description: "新学期見守り活動強化"
   }
 ]
 
