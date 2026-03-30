@@ -7,9 +7,7 @@ import { NextResponse } from 'next/server'
  * allow-all で graceful fallback（開発環境・Upstash未設定環境でも動作する）
  */
 
-type RateLimitResult =
-  | { success: true }
-  | { success: false; reset: number }
+type RateLimitResult = { success: boolean; reset?: number }
 
 let Ratelimit: typeof import('@upstash/ratelimit').Ratelimit | null = null
 let Redis: typeof import('@upstash/redis').Redis | null = null
@@ -71,14 +69,13 @@ export async function checkGeminiRateLimit(identifier: string): Promise<RateLimi
 }
 
 /** レート制限超過時の標準レスポンス */
-export function rateLimitedResponse(reset: number): NextResponse {
+export function rateLimitedResponse(reset?: number): NextResponse {
+  const retryAfter = reset ? Math.ceil((reset - Date.now()) / 1000) : 60
   return NextResponse.json(
     { error: 'リクエストが多すぎます。しばらく後にお試しください。' },
     {
       status: 429,
-      headers: {
-        'Retry-After': String(Math.ceil((reset - Date.now()) / 1000)),
-      },
+      headers: { 'Retry-After': String(retryAfter) },
     }
   )
 }
