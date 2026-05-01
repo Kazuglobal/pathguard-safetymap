@@ -22,6 +22,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { AccidentHeatmapFilters } from '@/lib/traffic-accident-heatmap'
+import {
+  ACCIDENT_DATA_MAX_YEAR,
+  ACCIDENT_DATA_MIN_YEAR,
+} from '@/lib/accident-stats-year-window'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -42,7 +46,10 @@ interface AccidentHeatmapControlsProps {
 // Year options
 // ---------------------------------------------------------------------------
 
-const YEAR_OPTIONS = [2018, 2019, 2020, 2021, 2022, 2023]
+const YEAR_OPTIONS = Array.from(
+  { length: ACCIDENT_DATA_MAX_YEAR - ACCIDENT_DATA_MIN_YEAR + 1 },
+  (_, index) => ACCIDENT_DATA_MIN_YEAR + index,
+)
 
 function countActiveFilters(filters: AccidentHeatmapFilters) {
   let count = 0

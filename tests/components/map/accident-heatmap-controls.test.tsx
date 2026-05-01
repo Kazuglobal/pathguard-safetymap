@@ -79,6 +79,22 @@ describe('AccidentHeatmapControls', () => {
     expect(screen.queryByText('24歳以下関与のみ')).not.toBeInTheDocument()
   })
 
+  it('includes 2024 in the year range selectors', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={128}
+        error={null}
+      />,
+    )
+
+    expect(screen.getAllByText('2024年').length).toBeGreaterThan(0)
+  })
+
   it('updates the young filter independently', () => {
     const onFiltersChange = vi.fn()
 

@@ -2,6 +2,10 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
+import {
+  ACCIDENT_DATA_MAX_YEAR,
+  ACCIDENT_DATA_MIN_YEAR,
+} from '@/lib/accident-stats-year-window'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,8 +71,8 @@ export interface AccidentGeoJSON {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_HEATMAP_FILTERS: AccidentHeatmapFilters = {
-  minYear: 2018,
-  maxYear: 2023,
+  minYear: ACCIDENT_DATA_MIN_YEAR,
+  maxYear: ACCIDENT_DATA_MAX_YEAR,
   severityFilter: 'all',
   childFilter: null,
   youngFilter: null,
