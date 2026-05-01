@@ -14,6 +14,10 @@ function createSupabaseRpcMock(
 }
 
 describe('traffic-accident-heatmap', () => {
+  it('uses 2024 as the default max year for heatmap queries', () => {
+    expect(DEFAULT_HEATMAP_FILTERS.maxYear).toBe(2024)
+  })
+
   it('returns empty collection and skips RPC when bounds are invalid', async () => {
     const supabase = createSupabaseRpcMock(async () => ({
       data: null,

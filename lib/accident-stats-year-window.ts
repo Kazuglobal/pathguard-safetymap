@@ -1,5 +1,5 @@
 export const ACCIDENT_DATA_MIN_YEAR = 2018;
-export const ACCIDENT_DATA_MAX_YEAR = 2023;
+export const ACCIDENT_DATA_MAX_YEAR = 2024;
 export const DEFAULT_ACCIDENT_YEARS = 5;
 
 function toPositiveInt(value: unknown, fallback: number): number {
