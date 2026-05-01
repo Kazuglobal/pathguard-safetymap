@@ -1,8 +1,6 @@
-"use client"
-
 import {
   StickyHeader,
-  ChildRouteDashboard,
+  LandingChildRouteDashboard,
   HeroCarousel,
   SchoolRouteNewsSection,
   LocalSafetyAlertsSection,
@@ -11,14 +9,12 @@ import {
   SafeMagazine,
   HiyariHatReport,
 } from "@/components/landing"
-import { useChildRouteDashboard } from "@/hooks/use-child-route-dashboard"
-import { getLatestNews } from "@/lib/school-route-news"
+import { getLandingNewsPreview } from "@/lib/landing-news-preview"
 
 export default function LandingPage() {
   const currentYear = new Date().getFullYear()
-  const dashboard = useChildRouteDashboard()
 
-  const newsPreview = getLatestNews(2).map((item) => ({
+  const newsPreview = getLandingNewsPreview(2).map((item) => ({
     id: item.id,
     title: item.title,
     categoryLabel: item.categoryLabel,
@@ -33,14 +29,7 @@ export default function LandingPage() {
 
       {/* メインコンテンツ */}
       <main className="pt-[104px] md:pt-4 pb-24 md:pb-8">
-        <ChildRouteDashboard
-          state={dashboard.state}
-          childName={dashboard.childName}
-          errorMessage={dashboard.errorMessage}
-          quickChecks={dashboard.quickChecks}
-          retryHref={dashboard.retryHref}
-          newsPreview={newsPreview}
-        />
+        <LandingChildRouteDashboard newsPreview={newsPreview} />
 
         {/* ヒーローカルーセル */}
         <section data-testid="hero-section" className="py-4">

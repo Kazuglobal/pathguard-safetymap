@@ -1,8 +1,10 @@
 import * as Sentry from '@sentry/nextjs'
 
-if (process.env.SENTRY_DSN) {
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
+
+if (dsn) {
   Sentry.init({
-    dsn: process.env.SENTRY_DSN,
+    dsn,
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: process.env.NODE_ENV === 'production' ? 0.05 : 0,
