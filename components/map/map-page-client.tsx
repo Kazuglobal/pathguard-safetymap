@@ -1,13 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HelpCircle } from "lucide-react"
 
-import MapContainer from "@/components/map/map-container"
 import UsageTutorialDialog from "@/components/map/usage-tutorial-dialog"
 import { Button } from "@/components/ui/button"
 import { shouldShowTutorial } from "@/lib/tutorial-storage"
+
+const MapContainer = dynamic(() => import("@/components/map/map-container"), {
+  ssr: false,
+  loading: () => (
+    <div className="fullscreen-map-container">
+      <div className="relative h-full min-h-[500px] w-full bg-slate-100" />
+    </div>
+  ),
+})
 
 export default function MapPageClient() {
   const [showTutorial, setShowTutorial] = useState(false)

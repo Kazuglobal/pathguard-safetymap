@@ -1,19 +1,30 @@
-"use client"
-
-import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronRight, BookOpen, AlertTriangle, BarChart2, Users, Clock } from "lucide-react"
-import { getAllArticles, formatDate, CATEGORIES, type CategoryKey } from "@/lib/safe-magazine"
+import {
+  ChevronRight,
+  BookOpen,
+  AlertTriangle,
+  BarChart2,
+  Users,
+  Clock,
+  Shield,
+  FileText,
+} from "lucide-react"
+import {
+  formatLandingSafeMagazineDate,
+  getLandingSafeMagazinePreview,
+} from "@/lib/landing-safe-magazine-preview"
 
 const CATEGORY_ICONS = {
   "AlertTriangle": AlertTriangle,
   "BarChart2": BarChart2,
   "Users": Users,
+  "Shield": Shield,
+  "FileText": FileText,
 }
 
 export function SafeMagazine() {
-  const articles = getAllArticles().slice(0, 3)
+  const articles = getLandingSafeMagazinePreview(3)
 
   return (
     <section className="py-6 md:py-10">
@@ -36,8 +47,8 @@ export function SafeMagazine() {
         {/* 記事リスト（デスクトップはグリッド） */}
         <div className="px-4 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
           {articles.map((article) => {
-            const category = CATEGORIES[article.category as CategoryKey]
-            const IconComponent = category ? CATEGORY_ICONS[category.icon as keyof typeof CATEGORY_ICONS] : null
+            const IconComponent =
+              CATEGORY_ICONS[article.categoryIcon as keyof typeof CATEGORY_ICONS] ?? null
 
             return (
               <Link
@@ -77,7 +88,7 @@ export function SafeMagazine() {
                   </div>
                   <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-white/90 text-gray-500 text-xs rounded">
                     <Clock className="w-3 h-3" />
-                    {formatDate(article.publishedDate)}
+                    {formatLandingSafeMagazineDate(article.publishedDate)}
                   </div>
                 </div>
 

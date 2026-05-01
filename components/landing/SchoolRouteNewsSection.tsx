@@ -1,10 +1,7 @@
-"use client"
-
-import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChevronRight, AlertTriangle, AlertCircle, Construction, FileText, Users, MapPin, Clock, Zap } from "lucide-react"
-import { getLatestNews, formatNewsDate, NEWS_CATEGORIES, type NewsCategory } from "@/lib/school-route-news"
+import { formatLandingNewsDate, getLandingNewsPreview } from "@/lib/landing-news-preview"
 
 const CATEGORY_ICONS = {
   "AlertTriangle": AlertTriangle,
@@ -15,7 +12,7 @@ const CATEGORY_ICONS = {
 }
 
 export function SchoolRouteNewsSection() {
-  const newsItems = getLatestNews(5)
+  const newsItems = getLandingNewsPreview(5)
 
   return (
     <section className="py-6 md:py-10 bg-gray-50">
@@ -42,8 +39,8 @@ export function SchoolRouteNewsSection() {
         <div className="px-4">
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {newsItems.map((item) => {
-              const category = NEWS_CATEGORIES[item.category as NewsCategory]
-              const IconComponent = category ? CATEGORY_ICONS[category.icon as keyof typeof CATEGORY_ICONS] : AlertTriangle
+              const IconComponent =
+                CATEGORY_ICONS[item.categoryIcon as keyof typeof CATEGORY_ICONS] ?? AlertTriangle
 
               return (
                 <Link
@@ -94,7 +91,7 @@ export function SchoolRouteNewsSection() {
                       </span>
                       <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
                         <Clock className="w-2.5 h-2.5" />
-                        {formatNewsDate(item.publishedDate)}
+                        {formatLandingNewsDate(item.publishedDate)}
                       </span>
                     </div>
 
