@@ -5,6 +5,7 @@ import Image from "next/image"
 import { ArrowLeft, AlertTriangle, BarChart2, Users, Shield, FileText, Clock, Tag, ExternalLink, CheckCircle } from "lucide-react"
 import { CATEGORIES, formatDate, type CategoryKey, type SafeMagazineArticle } from "@/lib/safe-magazine"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 const CATEGORY_ICONS = {
   "AlertTriangle": AlertTriangle,
@@ -117,6 +118,7 @@ export function ArticleContent({ article }: ArticleContentProps) {
       <article className="max-w-3xl mx-auto px-4 pb-8">
         <div className="prose prose-gray prose-lg max-w-none">
           <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
             components={{
               h3: ({ children }) => (
                 <h3 className="text-xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b border-gray-200">

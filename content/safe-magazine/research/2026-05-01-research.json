@@ -1,0 +1,43 @@
+{
+  "research_date": "2026-05-01",
+  "total_items": 2,
+  "items": [
+    {
+      "id": "news-001",
+      "title": "令和8年 春の全国交通安全運動が4月6日〜15日に実施—通学路の歩行者保護を最重点として取り締まり強化",
+      "summary": "内閣府が決定した令和8年春の全国交通安全運動推進要綱に基づき、2026年4月6日〜15日の10日間、全国で交通安全運動が展開された。重点は『通学路・生活道路におけるこどもを始めとする歩行者の安全確保』『ながらスマホの根絶や歩行者優先等の安全運転意識の向上』『自転車・特定小型原動機付自転車の交通ルールの理解・遵守の徹底』の3項目。新学期と重なる時期で、通学路の見守り活動と取り締まりが重点化された。",
+      "source_urls": [
+        "https://www8.cao.go.jp/koutu/keihatsu/undou/r08_haru/youkou.html",
+        "https://jafmate.jp/car/traffic_topics_20260404_1198990.html",
+        "https://www.jmpsa.or.jp/block/kinki/safety/e14168.html",
+        "https://motoinfo.jama.or.jp/?p=12144"
+      ],
+      "published_date": "2026-04-06",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 9,
+      "keywords": ["春の全国交通安全運動", "令和8年", "通学路", "取り締まり", "歩行者保護", "新学期"]
+    },
+    {
+      "id": "news-002",
+      "title": "国土交通省が小学校等周辺の面的交通安全対策モデル地域として全国65箇所を選定—『ゾーン30プラス』整備加速へ",
+      "summary": "国土交通省は、小学校等周辺における面的な交通安全対策を推進する取り組みとして、全国65箇所をモデル地域に選定。ETC2.0プローブデータの活用によるデータ駆動型の合同点検と、ハンプ・狭さく等の物理デバイスを組み合わせた『ゾーン30プラス』の導入を、技術・財政両面で支援する。令和6年12月時点での通学路安全対策の進捗は、対策必要箇所72,568箇所のうち66,203箇所（91.2%）が完了。",
+      "source_urls": [
+        "https://www.mlit.go.jp/report/press/road01_hh_001898.html",
+        "https://www.mlit.go.jp/road/road/traffic/sesaku/tsugakuro.html",
+        "https://www.npa.go.jp/bureau/traffic/seibi2/kisei/zone30/zone30.html"
+      ],
+      "published_date": "2026-03-30",
+      "category": "policy-update",
+      "location": {
+        "prefecture": null,
+        "city": null
+      },
+      "relevance_score": 8,
+      "keywords": ["国土交通省", "ゾーン30プラス", "モデル地域", "面的安全対策", "ETC2.0", "通学路整備"]
+    }
+  ]
+}

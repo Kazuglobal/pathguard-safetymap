@@ -1,0 +1,59 @@
+{
+  "article_id": "2026-05-03-first-grader-may-peak",
+  "article_slug": "first-grader-may-peak",
+  "category": "safety-tips",
+  "thumbnail": {
+    "filename": "first-grader-may-peak.png",
+    "fallback_svg": "first-grader-may-peak.svg",
+    "size": "1200x630",
+    "concept": "GW明けに親子で通学路を歩いて点検する温かい春の情景。新1年生の黄色い帽子と赤いランドセル、保護者の手のぬくもり、横断歩道とスクールゾーン標識、子ども110番の家の黄色いプレート。",
+    "color_palette": "Bright spring greens, soft yellow safety accents, warm sunlight, soft pastel blues",
+    "mood": "Warm, caring, hopeful — a tender but purposeful moment between parent and child"
+  },
+  "content_images": [
+    {
+      "id": "may-peak-chart",
+      "filename": "may-peak-chart.png",
+      "concept": "新1年生の月別事故ピークを示す棒グラフ（4月49人 → 5月63人）。5月をハイライトし、出典を警察庁分析資料として明記",
+      "color_palette": "Red/orange peak accent, blue/teal baseline, soft cream background"
+    },
+    {
+      "id": "five-checkpoints",
+      "filename": "five-checkpoints.png",
+      "concept": "親子で点検すべき5つの危険ポイント（見通しの悪い交差点、横断歩道のない道路、飛び出し危険ゾーン、抜け道、子ども110番の家）を2x3グリッドで図解",
+      "color_palette": "Soft pastel base with warm orange/red for danger points, green for safety, yellow for safe haven"
+    }
+  ],
+  "generation_status": {
+    "thumbnail_png": "GENERATED (2026-05-03 14:42)",
+    "thumbnail_svg": "GENERATED (kept as fallback)",
+    "content_images_png": "GENERATED (2026-05-03 14:43) — may-peak-chart.png, five-checkpoints.png",
+    "spring_traffic_safety_2026_png": "GENERATED (2026-05-03 14:41) — backfilled from previous failed run",
+    "zone30plus_model_areas_png": "GENERATED (2026-05-03 14:41) — backfilled from previous failed run"
+  },
+  "seo": {
+    "title": "「魔の7歳」5月の事故ピーク——GW明けに親子で点検したい通学路の5つの危険ポイント | SAFE MAGAZINE",
+    "description": "警察庁データで小1の歩行中死傷者は小6の約2.5〜2.9倍。新1年生の事故は4月より5月中旬〜下旬がピーク。GW明けに親子で点検したい通学路の5つの危険ポイントを公的統計に基づき解説します。",
+    "keywords": ["通学路", "魔の7歳", "小学1年生", "5月", "新1年生", "歩行中事故", "GW明け", "通学路点検", "横断歩道", "飛び出し", "下校時間", "子ども110番の家"],
+    "og_image": "/images/safe-magazine/thumbnails/first-grader-may-peak.png",
+    "og_type": "article",
+    "twitter_card": "summary_large_image"
+  },
+  "json_ld": {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "「魔の7歳」の事故ピークは5月——GW明けに親子で確認したい通学路の5つの危険ポイント",
+    "datePublished": "2026-05-03",
+    "dateModified": "2026-05-03",
+    "author": {
+      "@type": "Organization",
+      "name": "PathGuardian SAFE MAGAZINE"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "PathGuardian"
+    },
+    "image": "/images/safe-magazine/thumbnails/first-grader-may-peak.png",
+    "articleSection": "安全対策"
+  }
+}

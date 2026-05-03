@@ -1,0 +1,38 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-first-grader-may-peak" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:white;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bg-first-grader-may-peak)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="200" fill="#3B82F6" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="150" fill="#22C55E" opacity="0.12"/>
+
+  <!-- Spring leaves accent -->
+  <circle cx="950" cy="120" r="60" fill="#86EFAC" opacity="0.4"/>
+  <circle cx="1010" cy="160" r="40" fill="#4ADE80" opacity="0.35"/>
+
+  <!-- Central icon -->
+  <text x="600" y="280" text-anchor="middle" font-size="120" filter="url(#shadow)">🎒</text>
+
+  <!-- Title card -->
+  <rect x="100" y="400" width="1000" height="180" rx="20" fill="white" filter="url(#shadow)" opacity="0.95"/>
+
+  <!-- Category badge -->
+  <rect x="130" y="430" width="170" height="36" rx="18" fill="#3B82F6"/>
+  <text x="215" y="455" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="bold" fill="white">安全対策 / 安全教育</text>
+
+  <!-- Title text -->
+  <text x="130" y="520" font-family="sans-serif" font-size="32" font-weight="bold" fill="#1F2937">「魔の7歳」5月のピーク——親子で通学路点検</text>
+
+  <!-- Footer line -->
+  <rect x="130" y="550" width="60" height="4" rx="2" fill="#3B82F6"/>
+</svg>

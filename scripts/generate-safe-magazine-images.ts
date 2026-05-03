@@ -374,6 +374,149 @@ Color palette: Afternoon warm orange light, warning yellows, safe greens
 Mood: Alert but empowering, children as active participants in their own safety
 ${QUALITY_SUFFIX}`,
     contentImages: []
+  },
+  {
+    articleId: "2026-05-01-spring-traffic-safety-2026",
+    articleSlug: "spring-traffic-safety-2026",
+    category: "policy-update",
+    title: "令和8年春の全国交通安全運動",
+    thumbnailPrompt: `Create a Japanese illustration depicting the spring nationwide traffic safety campaign focused on protecting school-route pedestrians.
+
+Scene elements:
+- Spring morning Japanese residential street with cherry blossoms (桜) in soft bloom
+- Group of Japanese elementary school children with yellow safety caps (黄色い帽子) and randoseru backpacks (ランドセル) walking in line
+- A police officer (warm, friendly appearance) holding a traffic safety flag at a crosswalk
+- A "横断中" (crossing in progress) flag/sign held by a school crossing guard
+- Yellow campaign banner reading "春の全国交通安全運動" visible on a street pole
+- Cars stopped politely at the crosswalk, drivers visibly attentive
+- Sun rays through cherry blossom petals, gentle morning light
+- Street zone signage suggesting school zone (スクールゾーン)
+
+Key visual elements:
+- Cherry blossoms = spring season
+- Yellow safety hat = elementary student commute
+- Police officer + guard = enforcement and community presence
+- Stopped car = pedestrian-priority message
+
+Style: Warm Japanese editorial illustration, hopeful and protective tone
+Color palette: Soft pink (cherry blossoms), yellow safety accents, traffic safety green
+Mood: Community-supported, safe new school year, springtime hope
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
+    articleId: "2026-05-01-zone30plus-model-areas",
+    articleSlug: "zone30plus-model-areas",
+    category: "policy-update",
+    title: "ゾーン30プラス モデル地域65箇所",
+    thumbnailPrompt: `Create a Japanese illustration showing the "Zone 30 Plus" school-route safety infrastructure on residential streets.
+
+Scene elements:
+- Japanese residential neighborhood centered around a small elementary school
+- A clear "30" speed limit road sign (red circle) prominently displayed
+- A speed hump (ハンプ) visible on the road surface as a slight rise
+- Road narrowing structure (狭さく / chicane) with planters
+- Colored pavement marking (カラー舗装) in green/red along pedestrian edges
+- Large painted "30" number on the road surface
+- Group of Japanese elementary school children (yellow caps, randoseru) walking safely on the colored sidewalk
+- Slow-moving cars respecting the speed limit
+- Faint overlay map or area boundary suggesting "面的対策エリア" (area-wide safety zone)
+- Modern, well-maintained Japanese street design
+
+Key visual elements:
+- "30" speed sign and road marking = legal speed regulation
+- Hump + chicane + colored pavement = physical speed enforcement
+- Children walking safely = the goal of the program
+- Area boundary overlay = "面" (area-wide) concept
+
+Style: Modern Japanese infographic-style illustration with clear architectural detail
+Color palette: Cool blue-green for safety infrastructure, warm yellow for children, red speed sign accent
+Mood: Engineered safety, community-focused, forward-looking
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
+    articleId: "2026-05-03-first-grader-may-peak",
+    articleSlug: "first-grader-may-peak",
+    category: "safety-tips",
+    title: "「魔の7歳」5月の事故ピーク——親子で点検したい通学路",
+    thumbnailPrompt: `Create a warm, emotionally engaging Japanese illustration showing a parent and a first-grade child walking through their school route together for a safety check after Golden Week.
+
+Scene elements (Japanese specific):
+- A Japanese mother (or father) walking hand-in-hand with a small first-grade boy or girl
+- The child wears the bright yellow safety cap (黄色い帽子) and a red randoseru backpack — a freshly-enrolled first-grader (新1年生)
+- The parent points gently toward a marked crosswalk (横断歩道) with a school zone sign (スクールゾーン) in soft focus
+- Late-spring residential neighborhood (5月 / May): fresh green leaves on cherry trees (the petals already fallen), bright clear sky, soft warm sunlight
+- A "止まれ" (stop) sign visible on a side street
+- A "子ども110番の家" (child safety help-house) yellow triangular sign visible on a nearby home
+- A green belt road marking (グリーンベルト) along the pedestrian edge
+- A friendly community atmosphere — perhaps a neighbor watering plants in the background
+- The composition emphasizes the parent-child connection and the act of "checking together"
+
+Key visual themes:
+- Parent + child = "親子で点検" (checking together)
+- Yellow cap + small randoseru = vulnerable first-grader, "魔の7歳"
+- Bright fresh-green spring scene = May timing, post Golden Week
+- Crosswalk + stop sign + safety markers = the 5 danger points being checked
+- "Child 110-ban" sign = emergency safe haven awareness
+
+Mood: Warm, caring, hopeful — a tender but purposeful moment between parent and child
+Style: Soft Japanese editorial illustration with anime/manga inspired warmth, gentle shading, child-friendly aesthetic
+Color palette: Bright spring greens, soft yellow safety accents, warm sunlight, soft pastel blues for sky
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "may-peak-chart",
+        prompt: `Create a clean, friendly Japanese-style infographic showing the seasonal peak of first-grade traffic accidents.
+
+Layout:
+- A horizontal bar chart titled "新1年生の歩行中事故 月別死者・重傷者数" (Monthly deaths/serious injuries of first-graders walking)
+- Bars for: 4月 (April) showing 49人, 5月 (May) showing 63人 (highlighted in red as the peak)
+- Annotation: "5月中旬〜下旬が第1のピーク" (Mid-to-late May is the first peak) with an arrow
+- Subtitle: "出典: 警察庁分析資料" (Source: National Police Agency analysis)
+- A small icon of a yellow-cap elementary first-grader walking with a randoseru in the corner
+- A small caution triangle symbol next to the May bar
+
+Visual emphasis:
+- Use red/orange for the May (peak) bar to signal danger
+- Use blue/teal for the April bar (lower)
+- Clean grid background, white space, modern infographic style
+- Japanese typography that is clearly readable
+
+Style: Clean Japanese editorial infographic, educational and parent-friendly
+Color palette: Red/orange peak accent, blue/teal baseline, soft cream background
+Mood: Informative, slightly cautionary, easy to understand at a glance
+${QUALITY_SUFFIX}`,
+        description: "新1年生の月別事故ピーク（4月→5月）の比較グラフ"
+      },
+      {
+        id: "five-checkpoints",
+        prompt: `Create a Japanese-style educational infographic showing 5 dangerous points to check along a school route. NO title text in the image — captions are the only Japanese text.
+
+Layout: A clean 2x3 grid of 6 tiles total. The TOP-LEFT tile is decorative only (no text), showing a parent and child silhouette walking together with a small magnifying glass icon. The other 5 tiles each show one numbered danger point.
+
+Tile 1 (top-middle): Number "1" in a circle. Illustration of a Japanese residential corner blocked by a high wall and a parked white car. A small child in a yellow safety cap stands at the corner, hand raised, unable to see oncoming traffic. Caption below the illustration: "見通しの悪い交差点"
+
+Tile 2 (top-right): Number "2" in a circle. Illustration of a quiet Japanese residential street WITHOUT a crosswalk. A child stands cautiously at the curb. Caption below: "横断歩道のない道路"
+
+Tile 3 (bottom-left): Number "3" in a circle. Illustration of a child running excitedly out of a park gate or in front of a friend's house. Caption below: "飛び出し危険ゾーン"
+
+Tile 4 (bottom-middle): Number "4" in a circle. Illustration of a narrow Japanese alleyway without sidewalks, with a large red X mark over it. Caption below: "抜け道・通学路外ルート"
+
+Tile 5 (bottom-right): Number "5" in a circle. Illustration of a Japanese home with a clear bright-yellow triangular "子ども110番の家" plate mounted on the gate. Caption below: "子ども110番の家"
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the 5 captions listed above, exactly as written, with NO title or extra Japanese text anywhere on the image.
+- Numbers 1〜5 in small circles only — no other numerals.
+- Do NOT add any banner text, headline text, or extra phrases. The grid should be clean.
+
+Style: Clean, friendly Japanese infographic with simple flat illustrations, gentle outlines
+Color palette: Soft pastel cream background with warm orange/red accents for danger points, green for safety, bright yellow for the help-house plate
+Mood: Practical, parent-friendly, easy to understand at a glance
+${QUALITY_SUFFIX}`,
+        description: "通学路で親子で点検したい5つの危険ポイントの図解"
+      }
+    ]
   }
 ]
 
@@ -461,20 +604,27 @@ async function generateAllImages() {
   console.log("=== SAFE MAGAZINE 日本向け高品質画像生成 ===\n")
 
   const basePath = path.join(process.cwd(), "public", "images", "safe-magazine")
+  const forceRegenerate = process.argv.includes("--force")
 
   for (const config of ARTICLE_IMAGES) {
     console.log(`\n--- Article: ${config.title} ---`)
 
-    // Generate thumbnail
+    // Generate thumbnail (skip if exists unless --force)
     const thumbnailPath = path.join(basePath, "thumbnails", `${config.articleSlug}.png`)
-    await generateImage(config.thumbnailPrompt, thumbnailPath)
+    if (!forceRegenerate && fs.existsSync(thumbnailPath)) {
+      console.log(`⊘ Skipped (exists): ${path.basename(thumbnailPath)}`)
+    } else {
+      await generateImage(config.thumbnailPrompt, thumbnailPath)
+      await new Promise(resolve => setTimeout(resolve, 3000))
+    }
 
-    // Wait between requests to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 3000))
-
-    // Generate content images
+    // Generate content images (skip if exists unless --force)
     for (const contentImage of config.contentImages) {
       const imagePath = path.join(basePath, "articles", config.articleSlug, `${contentImage.id}.png`)
+      if (!forceRegenerate && fs.existsSync(imagePath)) {
+        console.log(`⊘ Skipped (exists): ${path.basename(imagePath)}`)
+        continue
+      }
       await generateImage(contentImage.prompt, imagePath)
       await new Promise(resolve => setTimeout(resolve, 3000))
     }
