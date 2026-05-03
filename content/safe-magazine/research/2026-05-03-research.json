@@ -1,0 +1,80 @@
+{
+  "research_date": "2026-05-03",
+  "category": "safety-tips",
+  "topic_candidates": [
+    {
+      "title": "魔の7歳と5月ピーク - GW明けの通学路点検",
+      "rationale": "5月3日時点でGW期間中、明け以降に小1の事故ピークが来るタイミング。令和7年交通安全白書の最新データを活用",
+      "uniqueness": "既存記事は事故箇所対策完了率91%が主軸。本記事は『5月ピーク』『下校時間帯』『飛び出し』など実践的な保護者向け点検ガイド"
+    }
+  ],
+  "verified_sources": [
+    {
+      "url": "https://www.gov-online.go.jp/useful/article/201804/1.html",
+      "title": "小学校1年生の歩行中の死者・重傷者は6年生の約2.9倍。新1年生を交通事故から守るには？",
+      "publisher": "政府広報オンライン",
+      "key_facts": [
+        "警察庁による令和3年(2021年)〜令和7年(2025年)の5年間の歩行中の小学生死者・重傷者は1,842人",
+        "学年別: 小1=415人, 小6=167人 (約2.5倍/最新データでは2.9倍とも)",
+        "事故類型: 横断中が最多",
+        "時間帯: 午前7時台、午後2時台〜5時台に多く、最多は午後3時台",
+        "下校中が最多"
+      ]
+    },
+    {
+      "url": "https://www8.cao.go.jp/koutu/taisaku/r07kou_haku/zenbun/genkyo/feature/feature_1_1.html",
+      "title": "令和7年交通安全白書 第1節 状態別にみた小学生の交通事故の状況",
+      "publisher": "内閣府",
+      "key_facts": [
+        "令和2〜6年の歩行中事故 小1=446人(最多)",
+        "新1年生の月別: 4月27人 → 6月40人 → 10月61人(ピーク)",
+        "全小学生の時間帯: 14時台〜15時台が最多、次いで16時台〜17時台",
+        "小学生事故の約6割が法令違反を伴う(飛び出しが最多原因)",
+        "違反なし41% (全年齢層65%より低い)"
+      ]
+    },
+    {
+      "url": "https://www.npa.go.jp/news/release/2025/R7harunoundou_koutuujikobunseki.pdf",
+      "title": "令和7年春の全国交通安全運動の実施について（交通事故分析）",
+      "publisher": "警察庁交通局",
+      "key_facts": [
+        "1年生の死者・重傷者は6年生の約2.9倍",
+        "死者・重傷者の約4割は飛び出しによるもの",
+        "下校時に事故が多発、夏休み前の7月までが目立つ",
+        "1年生の第1のピークは5月中旬と下旬"
+      ]
+    },
+    {
+      "url": "https://social.ja-kyosai.or.jp/anzen_map/",
+      "title": "つうがくろ あんぜんMAP",
+      "publisher": "JA共済 地域貢献活動",
+      "key_facts": [
+        "親子で実際に通学路を歩いて作る安全マップの作成支援"
+      ]
+    },
+    {
+      "url": "https://www.secom.co.jp/kodomo/n/20200611.html",
+      "title": "通学路に潜む「危険」をハッケン！地域安全マップの作り方",
+      "publisher": "セコム",
+      "key_facts": [
+        "周囲からよく見えない場所、ルール違反がある場所、歩くのが怖い場所などをチェック"
+      ]
+    },
+    {
+      "url": "https://www.gov-online.go.jp/useful/article/201804/1.html",
+      "title": "政府広報オンライン",
+      "publisher": "政府広報",
+      "key_facts": [
+        "車から子どもの姿は見えにくい(背が低く、運転席のピラー死角に入りやすい)",
+        "子どもは視野が狭く、危険認識が大人より遅い"
+      ]
+    }
+  ],
+  "excluded_topics": [
+    "自転車青切符: 既存記事 2026-03-15-bicycle-blue-ticket.md と重複",
+    "30km/h法定速度: 既存記事 2026-03-15-30kmh-speed-limit.md と重複",
+    "ゾーン30プラス: 既存記事 2026-05-01-zone30plus-model-areas.md と重複",
+    "対策完了率91%: 既存記事 2026-02-06-school-route-safety-statistics.md と重複",
+    "ながら見守り: 既存記事 2026-02-06-nagara-mimamori-guide.md と重複"
+  ]
+}

@@ -434,6 +434,89 @@ Color palette: Cool blue-green for safety infrastructure, warm yellow for childr
 Mood: Engineered safety, community-focused, forward-looking
 ${QUALITY_SUFFIX}`,
     contentImages: []
+  },
+  {
+    articleId: "2026-05-03-first-grader-may-peak",
+    articleSlug: "first-grader-may-peak",
+    category: "safety-tips",
+    title: "「魔の7歳」5月の事故ピーク——親子で点検したい通学路",
+    thumbnailPrompt: `Create a warm, emotionally engaging Japanese illustration showing a parent and a first-grade child walking through their school route together for a safety check after Golden Week.
+
+Scene elements (Japanese specific):
+- A Japanese mother (or father) walking hand-in-hand with a small first-grade boy or girl
+- The child wears the bright yellow safety cap (黄色い帽子) and a red randoseru backpack — a freshly-enrolled first-grader (新1年生)
+- The parent points gently toward a marked crosswalk (横断歩道) with a school zone sign (スクールゾーン) in soft focus
+- Late-spring residential neighborhood (5月 / May): fresh green leaves on cherry trees (the petals already fallen), bright clear sky, soft warm sunlight
+- A "止まれ" (stop) sign visible on a side street
+- A "子ども110番の家" (child safety help-house) yellow triangular sign visible on a nearby home
+- A green belt road marking (グリーンベルト) along the pedestrian edge
+- A friendly community atmosphere — perhaps a neighbor watering plants in the background
+- The composition emphasizes the parent-child connection and the act of "checking together"
+
+Key visual themes:
+- Parent + child = "親子で点検" (checking together)
+- Yellow cap + small randoseru = vulnerable first-grader, "魔の7歳"
+- Bright fresh-green spring scene = May timing, post Golden Week
+- Crosswalk + stop sign + safety markers = the 5 danger points being checked
+- "Child 110-ban" sign = emergency safe haven awareness
+
+Mood: Warm, caring, hopeful — a tender but purposeful moment between parent and child
+Style: Soft Japanese editorial illustration with anime/manga inspired warmth, gentle shading, child-friendly aesthetic
+Color palette: Bright spring greens, soft yellow safety accents, warm sunlight, soft pastel blues for sky
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "may-peak-chart",
+        prompt: `Create a clean, friendly Japanese-style infographic showing the seasonal peak of first-grade traffic accidents.
+
+Layout:
+- A horizontal bar chart titled "新1年生の歩行中事故 月別死者・重傷者数" (Monthly deaths/serious injuries of first-graders walking)
+- Bars for: 4月 (April) showing 49人, 5月 (May) showing 63人 (highlighted in red as the peak)
+- Annotation: "5月中旬〜下旬が第1のピーク" (Mid-to-late May is the first peak) with an arrow
+- Subtitle: "出典: 警察庁分析資料" (Source: National Police Agency analysis)
+- A small icon of a yellow-cap elementary first-grader walking with a randoseru in the corner
+- A small caution triangle symbol next to the May bar
+
+Visual emphasis:
+- Use red/orange for the May (peak) bar to signal danger
+- Use blue/teal for the April bar (lower)
+- Clean grid background, white space, modern infographic style
+- Japanese typography that is clearly readable
+
+Style: Clean Japanese editorial infographic, educational and parent-friendly
+Color palette: Red/orange peak accent, blue/teal baseline, soft cream background
+Mood: Informative, slightly cautionary, easy to understand at a glance
+${QUALITY_SUFFIX}`,
+        description: "新1年生の月別事故ピーク（4月→5月）の比較グラフ"
+      },
+      {
+        id: "five-checkpoints",
+        prompt: `Create a Japanese-style educational infographic showing 5 dangerous points to check along a school route. NO title text in the image — captions are the only Japanese text.
+
+Layout: A clean 2x3 grid of 6 tiles total. The TOP-LEFT tile is decorative only (no text), showing a parent and child silhouette walking together with a small magnifying glass icon. The other 5 tiles each show one numbered danger point.
+
+Tile 1 (top-middle): Number "1" in a circle. Illustration of a Japanese residential corner blocked by a high wall and a parked white car. A small child in a yellow safety cap stands at the corner, hand raised, unable to see oncoming traffic. Caption below the illustration: "見通しの悪い交差点"
+
+Tile 2 (top-right): Number "2" in a circle. Illustration of a quiet Japanese residential street WITHOUT a crosswalk. A child stands cautiously at the curb. Caption below: "横断歩道のない道路"
+
+Tile 3 (bottom-left): Number "3" in a circle. Illustration of a child running excitedly out of a park gate or in front of a friend's house. Caption below: "飛び出し危険ゾーン"
+
+Tile 4 (bottom-middle): Number "4" in a circle. Illustration of a narrow Japanese alleyway without sidewalks, with a large red X mark over it. Caption below: "抜け道・通学路外ルート"
+
+Tile 5 (bottom-right): Number "5" in a circle. Illustration of a Japanese home with a clear bright-yellow triangular "子ども110番の家" plate mounted on the gate. Caption below: "子ども110番の家"
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the 5 captions listed above, exactly as written, with NO title or extra Japanese text anywhere on the image.
+- Numbers 1〜5 in small circles only — no other numerals.
+- Do NOT add any banner text, headline text, or extra phrases. The grid should be clean.
+
+Style: Clean, friendly Japanese infographic with simple flat illustrations, gentle outlines
+Color palette: Soft pastel cream background with warm orange/red accents for danger points, green for safety, bright yellow for the help-house plate
+Mood: Practical, parent-friendly, easy to understand at a glance
+${QUALITY_SUFFIX}`,
+        description: "通学路で親子で点検したい5つの危険ポイントの図解"
+      }
+    ]
   }
 ]
 
