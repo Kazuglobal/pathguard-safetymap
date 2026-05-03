@@ -1,0 +1,119 @@
+{
+  "created_date": "2026-05-01",
+  "articles": [
+    {
+      "article_id": "2026-05-01-spring-traffic-safety-2026",
+      "article_title": "令和8年春の全国交通安全運動（4/6〜15）——通学路の歩行者保護を最重点に",
+      "category": "policy-update",
+      "thumbnail": {
+        "description": "桜の咲く春の通学路で、横断歩道を渡る黄色い帽子の小学生を交通指導員が見守るシーン。背景に「春の全国交通安全運動」ののぼり旗。",
+        "dimensions": "1200x630",
+        "style": "warm-illustration",
+        "color_scheme": {
+          "primary": "#8B5CF6",
+          "secondary": "#EDE9FE",
+          "accent": "#FBBF24",
+          "text": "#FFFFFF"
+        },
+        "text_overlay": {
+          "title": "春の全国交通安全運動",
+          "subtitle": "4/6〜15 通学路重点",
+          "position": "bottom-left"
+        },
+        "suggested_stock_keywords": ["spring traffic safety", "school crossing", "japanese police officer", "cherry blossom street"],
+        "icon": "FileText"
+      },
+      "infographics": [
+        {
+          "type": "timeline",
+          "title": "運動期間中の重点取り締まり",
+          "data": {
+            "items": [
+              { "time": "4/6 (月)", "event": "運動スタート" },
+              { "time": "4/10 (金)", "event": "交通事故死ゼロを目指す日" },
+              { "time": "4/15 (水)", "event": "運動終了" }
+            ]
+          },
+          "dimensions": "800x400"
+        },
+        {
+          "type": "stat-card",
+          "title": "小学1年生 歩行中事故 月別比較",
+          "data": {
+            "april": 49,
+            "may": 63,
+            "increase_pct": "+28.6%"
+          },
+          "dimensions": "600x400"
+        }
+      ],
+      "ui_components": [
+        {
+          "type": "alert-banner",
+          "usage": "記事トップに表示",
+          "props": {
+            "variant": "info",
+            "icon": "Megaphone",
+            "message": "新学期の通学路重点取り締まり期間"
+          }
+        }
+      ]
+    },
+    {
+      "article_id": "2026-05-01-zone30plus-model-areas",
+      "article_title": "ゾーン30プラス——国交省が小学校周辺のモデル地域65箇所を選定、面的安全対策が加速",
+      "category": "policy-update",
+      "thumbnail": {
+        "description": "30km/h標識・路面の30表示・ハンプ・狭さく・カラー舗装が一体化された日本の住宅街通学路。安全に歩く小学生たち。",
+        "dimensions": "1200x630",
+        "style": "infographic-illustration",
+        "color_scheme": {
+          "primary": "#3B82F6",
+          "secondary": "#DBEAFE",
+          "accent": "#EF4444",
+          "text": "#FFFFFF"
+        },
+        "text_overlay": {
+          "title": "ゾーン30プラス",
+          "subtitle": "全国65箇所のモデル地域",
+          "position": "bottom-left"
+        },
+        "suggested_stock_keywords": ["zone 30", "speed bump", "japanese residential street", "school zone safety"],
+        "icon": "Construction"
+      },
+      "infographics": [
+        {
+          "type": "comparison-table",
+          "title": "ゾーン30 / ゾーン30プラス / 2026年9月法改正",
+          "data": {
+            "zone30": { "speed_regulation": "区域指定", "physical_devices": "任意", "scope": "申請区域のみ" },
+            "zone30plus": { "speed_regulation": "区域指定", "physical_devices": "必須", "scope": "モデル地域等" },
+            "law_2026_09": { "speed_regulation": "全国一律", "physical_devices": "なし", "scope": "全国の無標識生活道路" }
+          },
+          "dimensions": "900x500"
+        },
+        {
+          "type": "stat-card",
+          "title": "通学路安全対策の進捗（令和6年12月時点）",
+          "data": {
+            "total": "72,568箇所",
+            "completed": "66,203箇所",
+            "completion_rate": "91.2%"
+          },
+          "dimensions": "600x400"
+        }
+      ],
+      "ui_components": [
+        {
+          "type": "alert-banner",
+          "usage": "記事トップに表示",
+          "props": {
+            "variant": "info",
+            "icon": "Construction",
+            "message": "面的安全対策のモデル地域が65箇所に拡大"
+          }
+        }
+      ]
+    }
+  ]
+}

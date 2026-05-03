@@ -374,6 +374,66 @@ Color palette: Afternoon warm orange light, warning yellows, safe greens
 Mood: Alert but empowering, children as active participants in their own safety
 ${QUALITY_SUFFIX}`,
     contentImages: []
+  },
+  {
+    articleId: "2026-05-01-spring-traffic-safety-2026",
+    articleSlug: "spring-traffic-safety-2026",
+    category: "policy-update",
+    title: "令和8年春の全国交通安全運動",
+    thumbnailPrompt: `Create a Japanese illustration depicting the spring nationwide traffic safety campaign focused on protecting school-route pedestrians.
+
+Scene elements:
+- Spring morning Japanese residential street with cherry blossoms (桜) in soft bloom
+- Group of Japanese elementary school children with yellow safety caps (黄色い帽子) and randoseru backpacks (ランドセル) walking in line
+- A police officer (warm, friendly appearance) holding a traffic safety flag at a crosswalk
+- A "横断中" (crossing in progress) flag/sign held by a school crossing guard
+- Yellow campaign banner reading "春の全国交通安全運動" visible on a street pole
+- Cars stopped politely at the crosswalk, drivers visibly attentive
+- Sun rays through cherry blossom petals, gentle morning light
+- Street zone signage suggesting school zone (スクールゾーン)
+
+Key visual elements:
+- Cherry blossoms = spring season
+- Yellow safety hat = elementary student commute
+- Police officer + guard = enforcement and community presence
+- Stopped car = pedestrian-priority message
+
+Style: Warm Japanese editorial illustration, hopeful and protective tone
+Color palette: Soft pink (cherry blossoms), yellow safety accents, traffic safety green
+Mood: Community-supported, safe new school year, springtime hope
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
+    articleId: "2026-05-01-zone30plus-model-areas",
+    articleSlug: "zone30plus-model-areas",
+    category: "policy-update",
+    title: "ゾーン30プラス モデル地域65箇所",
+    thumbnailPrompt: `Create a Japanese illustration showing the "Zone 30 Plus" school-route safety infrastructure on residential streets.
+
+Scene elements:
+- Japanese residential neighborhood centered around a small elementary school
+- A clear "30" speed limit road sign (red circle) prominently displayed
+- A speed hump (ハンプ) visible on the road surface as a slight rise
+- Road narrowing structure (狭さく / chicane) with planters
+- Colored pavement marking (カラー舗装) in green/red along pedestrian edges
+- Large painted "30" number on the road surface
+- Group of Japanese elementary school children (yellow caps, randoseru) walking safely on the colored sidewalk
+- Slow-moving cars respecting the speed limit
+- Faint overlay map or area boundary suggesting "面的対策エリア" (area-wide safety zone)
+- Modern, well-maintained Japanese street design
+
+Key visual elements:
+- "30" speed sign and road marking = legal speed regulation
+- Hump + chicane + colored pavement = physical speed enforcement
+- Children walking safely = the goal of the program
+- Area boundary overlay = "面" (area-wide) concept
+
+Style: Modern Japanese infographic-style illustration with clear architectural detail
+Color palette: Cool blue-green for safety infrastructure, warm yellow for children, red speed sign accent
+Mood: Engineered safety, community-focused, forward-looking
+${QUALITY_SUFFIX}`,
+    contentImages: []
   }
 ]
 
@@ -461,20 +521,27 @@ async function generateAllImages() {
   console.log("=== SAFE MAGAZINE 日本向け高品質画像生成 ===\n")
 
   const basePath = path.join(process.cwd(), "public", "images", "safe-magazine")
+  const forceRegenerate = process.argv.includes("--force")
 
   for (const config of ARTICLE_IMAGES) {
     console.log(`\n--- Article: ${config.title} ---`)
 
-    // Generate thumbnail
+    // Generate thumbnail (skip if exists unless --force)
     const thumbnailPath = path.join(basePath, "thumbnails", `${config.articleSlug}.png`)
-    await generateImage(config.thumbnailPrompt, thumbnailPath)
+    if (!forceRegenerate && fs.existsSync(thumbnailPath)) {
+      console.log(`⊘ Skipped (exists): ${path.basename(thumbnailPath)}`)
+    } else {
+      await generateImage(config.thumbnailPrompt, thumbnailPath)
+      await new Promise(resolve => setTimeout(resolve, 3000))
+    }
 
-    // Wait between requests to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 3000))
-
-    // Generate content images
+    // Generate content images (skip if exists unless --force)
     for (const contentImage of config.contentImages) {
       const imagePath = path.join(basePath, "articles", config.articleSlug, `${contentImage.id}.png`)
+      if (!forceRegenerate && fs.existsSync(imagePath)) {
+        console.log(`⊘ Skipped (exists): ${path.basename(imagePath)}`)
+        continue
+      }
       await generateImage(contentImage.prompt, imagePath)
       await new Promise(resolve => setTimeout(resolve, 3000))
     }
