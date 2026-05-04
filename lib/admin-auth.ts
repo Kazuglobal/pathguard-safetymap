@@ -18,18 +18,7 @@ export async function getCurrentUserAdminStatus(): Promise<AdminStatus> {
     return { isAuthenticated: true, isAdmin: true }
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (profileError) {
-    console.error('[admin-auth] Failed to fetch profile role:', profileError.message)
-    return { isAuthenticated: true, isAdmin: false }
-  }
-
-  return { isAuthenticated: true, isAdmin: profile?.role === 'admin' }
+  return { isAuthenticated: true, isAdmin: false }
 }
 
 export async function verifyAdminRequest(): Promise<{

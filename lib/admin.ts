@@ -19,12 +19,10 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 /**
  * ユーザーオブジェクトから管理者かどうかを判定する
  * - メールアドレスによる判定
- * - profiles.role による判定
  */
 export function isAdminUser(user: {
   email?: string | null
-  role?: string | null
 } | null | undefined): boolean {
   if (!user) return false
-  return isAdminEmail(user.email) || user.role === "admin"
+  return isAdminEmail(user.email)
 }

@@ -430,24 +430,10 @@ export default function MapContainer({
           return
         }
 
-        let role: string | null = null
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle()
-
-        if (profileError) {
-          console.error("Error fetching user profile role:", profileError)
-        } else {
-          role = profile?.role ?? null
-        }
-
         if (isMounted) {
           setIsAdmin(
             isAdminUser({
               email: user.email,
-              role,
             }),
           )
         }

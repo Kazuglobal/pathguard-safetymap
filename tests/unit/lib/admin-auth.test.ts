@@ -62,7 +62,7 @@ describe('admin-auth', () => {
     expect(mockFrom).not.toHaveBeenCalled()
   })
 
-  it('管理者メールでなくても profile.role=admin なら管理者になる', async () => {
+  it('管理者メールでないユーザーは profile.role=admin でも管理者扱いしない', async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'u-2', email: 'member@example.com' } },
       error: null,
@@ -76,18 +76,15 @@ describe('admin-auth', () => {
 
     expect(status).toEqual({
       isAuthenticated: true,
-      isAdmin: true,
+      isAdmin: false,
     })
+    expect(mockFrom).not.toHaveBeenCalled()
   })
 
-  it('profile.role 照会が失敗した場合は管理者として扱わない', async () => {
+  it('非管理者メールは profile.role を照会せず管理者として扱わない', async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'u-3', email: 'member@example.com' } },
       error: null,
-    })
-    mockMaybeSingle.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'query failed' },
     })
 
     const status = await getCurrentUserAdminStatus()
@@ -96,6 +93,7 @@ describe('admin-auth', () => {
       isAuthenticated: true,
       isAdmin: false,
     })
+    expect(mockFrom).not.toHaveBeenCalled()
   })
 
   it('verifyAdminRequest は未認証時に 401 を返す', async () => {
