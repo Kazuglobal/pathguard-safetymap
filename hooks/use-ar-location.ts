@@ -13,6 +13,7 @@ export interface UserLocation {
   lat: number
   lon: number
   accuracy?: number
+  speed?: number | null
 }
 
 export interface UseARLocationReturn {
@@ -53,6 +54,7 @@ export function useARLocation(): UseARLocationReturn {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          speed: position.coords.speed,
         })
         setLocationPermission(true)
         setError(null)

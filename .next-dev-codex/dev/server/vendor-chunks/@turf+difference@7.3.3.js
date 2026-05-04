@@ -1,0 +1,25 @@
+"use strict";
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+exports.id = "vendor-chunks/@turf+difference@7.3.3";
+exports.ids = ["vendor-chunks/@turf+difference@7.3.3"];
+exports.modules = {
+
+/***/ "(ssr)/./node_modules/.pnpm/@turf+difference@7.3.3/node_modules/@turf/difference/dist/esm/index.js":
+/*!***************************************************************************************************!*\
+  !*** ./node_modules/.pnpm/@turf+difference@7.3.3/node_modules/@turf/difference/dist/esm/index.js ***!
+  \***************************************************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (/* binding */ index_default),\n/* harmony export */   difference: () => (/* binding */ difference2)\n/* harmony export */ });\n/* harmony import */ var polyclip_ts__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! polyclip-ts */ \"(ssr)/./node_modules/.pnpm/polyclip-ts@0.16.8/node_modules/polyclip-ts/dist/esm/index.js\");\n/* harmony import */ var _turf_helpers__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @turf/helpers */ \"(ssr)/./node_modules/.pnpm/@turf+helpers@7.3.3/node_modules/@turf/helpers/dist/esm/index.js\");\n/* harmony import */ var _turf_meta__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @turf/meta */ \"(ssr)/./node_modules/.pnpm/@turf+meta@7.3.3/node_modules/@turf/meta/dist/esm/index.js\");\n// index.ts\n\n\n\nfunction difference2(features) {\n  const geoms = [];\n  (0,_turf_meta__WEBPACK_IMPORTED_MODULE_1__.geomEach)(features, (geom) => {\n    geoms.push(geom.coordinates);\n  });\n  if (geoms.length < 2) {\n    throw new Error(\"Must have at least two features\");\n  }\n  const properties = features.features[0].properties || {};\n  const differenced = polyclip_ts__WEBPACK_IMPORTED_MODULE_0__.difference(geoms[0], ...geoms.slice(1));\n  if (differenced.length === 0) return null;\n  if (differenced.length === 1) return (0,_turf_helpers__WEBPACK_IMPORTED_MODULE_2__.polygon)(differenced[0], properties);\n  return (0,_turf_helpers__WEBPACK_IMPORTED_MODULE_2__.multiPolygon)(differenced, properties);\n}\nvar index_default = difference2;\n\n//# sourceMappingURL=index.js.map//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHNzcikvLi9ub2RlX21vZHVsZXMvLnBucG0vQHR1cmYrZGlmZmVyZW5jZUA3LjMuMy9ub2RlX21vZHVsZXMvQHR1cmYvZGlmZmVyZW5jZS9kaXN0L2VzbS9pbmRleC5qcyIsIm1hcHBpbmdzIjoiOzs7Ozs7OztBQUFBO0FBQ3dDO0FBQ2M7QUFDaEI7QUFDdEM7QUFDQTtBQUNBLEVBQUUsb0RBQVE7QUFDVjtBQUNBLEdBQUc7QUFDSDtBQUNBO0FBQ0E7QUFDQTtBQUNBLHNCQUFzQixtREFBbUI7QUFDekM7QUFDQSx1Q0FBdUMsc0RBQU87QUFDOUMsU0FBUywyREFBWTtBQUNyQjtBQUNBO0FBSUU7QUFDRiIsInNvdXJjZXMiOlsiQzpcXFVzZXJzXFxzMTU5OFxcbWFwc2VmZVxcMjAyNTA2MTVcXG5vZGVfbW9kdWxlc1xcLnBucG1cXEB0dXJmK2RpZmZlcmVuY2VANy4zLjNcXG5vZGVfbW9kdWxlc1xcQHR1cmZcXGRpZmZlcmVuY2VcXGRpc3RcXGVzbVxcaW5kZXguanMiXSwic291cmNlc0NvbnRlbnQiOlsiLy8gaW5kZXgudHNcbmltcG9ydCAqIGFzIHBvbHljbGlwIGZyb20gXCJwb2x5Y2xpcC10c1wiO1xuaW1wb3J0IHsgcG9seWdvbiwgbXVsdGlQb2x5Z29uIH0gZnJvbSBcIkB0dXJmL2hlbHBlcnNcIjtcbmltcG9ydCB7IGdlb21FYWNoIH0gZnJvbSBcIkB0dXJmL21ldGFcIjtcbmZ1bmN0aW9uIGRpZmZlcmVuY2UyKGZlYXR1cmVzKSB7XG4gIGNvbnN0IGdlb21zID0gW107XG4gIGdlb21FYWNoKGZlYXR1cmVzLCAoZ2VvbSkgPT4ge1xuICAgIGdlb21zLnB1c2goZ2VvbS5jb29yZGluYXRlcyk7XG4gIH0pO1xuICBpZiAoZ2VvbXMubGVuZ3RoIDwgMikge1xuICAgIHRocm93IG5ldyBFcnJvcihcIk11c3QgaGF2ZSBhdCBsZWFzdCB0d28gZmVhdHVyZXNcIik7XG4gIH1cbiAgY29uc3QgcHJvcGVydGllcyA9IGZlYXR1cmVzLmZlYXR1cmVzWzBdLnByb3BlcnRpZXMgfHwge307XG4gIGNvbnN0IGRpZmZlcmVuY2VkID0gcG9seWNsaXAuZGlmZmVyZW5jZShnZW9tc1swXSwgLi4uZ2VvbXMuc2xpY2UoMSkpO1xuICBpZiAoZGlmZmVyZW5jZWQubGVuZ3RoID09PSAwKSByZXR1cm4gbnVsbDtcbiAgaWYgKGRpZmZlcmVuY2VkLmxlbmd0aCA9PT0gMSkgcmV0dXJuIHBvbHlnb24oZGlmZmVyZW5jZWRbMF0sIHByb3BlcnRpZXMpO1xuICByZXR1cm4gbXVsdGlQb2x5Z29uKGRpZmZlcmVuY2VkLCBwcm9wZXJ0aWVzKTtcbn1cbnZhciBpbmRleF9kZWZhdWx0ID0gZGlmZmVyZW5jZTI7XG5leHBvcnQge1xuICBpbmRleF9kZWZhdWx0IGFzIGRlZmF1bHQsXG4gIGRpZmZlcmVuY2UyIGFzIGRpZmZlcmVuY2Vcbn07XG4vLyMgc291cmNlTWFwcGluZ1VSTD1pbmRleC5qcy5tYXAiXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(ssr)/./node_modules/.pnpm/@turf+difference@7.3.3/node_modules/@turf/difference/dist/esm/index.js\n");
+
+/***/ })
+
+};
+;

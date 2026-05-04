@@ -12,12 +12,15 @@ import {
   getDangerLevelColor,
 } from "@/lib/ar-display-utils"
 import type { ARLearningContent } from "@/lib/ar-learning-tour"
+import type { KidsHazardCue } from "@/lib/ar-learning-tour-kids"
 import { ARImageGallery } from "./ar-image-gallery"
 
 interface ARPrimaryHazardCardProps {
   hazard: ARHazardData
   estimatedTimeMinutes: number
   learningContent?: ARLearningContent
+  childCue?: KidsHazardCue
+  isApproaching?: boolean
   progressLabel?: string
   onMarkReviewed?: () => void
   onSaveForLater?: () => void
@@ -27,6 +30,8 @@ export function ARPrimaryHazardCard({
   hazard,
   estimatedTimeMinutes,
   learningContent,
+  childCue,
+  isApproaching = false,
   progressLabel,
   onMarkReviewed,
   onSaveForLater,
@@ -39,12 +44,8 @@ export function ARPrimaryHazardCard({
     >
       <div
         className="relative"
-        style={{
-          transform: "perspective(1000px) rotateX(5deg) rotateY(-5deg)",
-          transformStyle: "preserve-3d",
-        }}
       >
-        <Card className="bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto">
+        <Card className="max-h-[calc(100vh-8rem)] overflow-x-hidden overflow-y-auto rounded-3xl bg-white shadow-2xl pointer-events-auto">
           <ARImageGallery
             images={getReportImages(hazard.report)}
             alt={hazard.report.title}
@@ -81,6 +82,60 @@ export function ARPrimaryHazardCard({
               {formatDistance(hazard.distance)}先
             </p>
 
+            {childCue && (
+              <div
+                className={`mb-3 rounded-2xl border p-4 ${
+                  isApproaching
+                    ? "border-amber-300 bg-slate-950 text-white shadow-lg"
+                    : "border-slate-200 bg-white text-slate-900"
+                }`}
+                role={isApproaching ? "alert" : "note"}
+                aria-live={isApproaching ? "assertive" : "polite"}
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant={isApproaching ? "secondary" : "outline"}
+                    className={isApproaching ? "bg-amber-300 text-slate-950" : ""}
+                  >
+                    {isApproaching ? "いま確認するポイント" : "親子で確認"}
+                  </Badge>
+                  <span className={`text-xs font-semibold ${isApproaching ? "text-amber-100" : "text-slate-500"}`}>
+                    {childCue.dangerKind}
+                  </span>
+                </div>
+                <p className="text-lg font-bold leading-relaxed">{childCue.shortMessage}</p>
+                <p className={`mt-2 text-sm leading-6 ${isApproaching ? "text-slate-100" : "text-slate-700"}`}>
+                  {childCue.action}
+                </p>
+              </div>
+            )}
+
+            {(onMarkReviewed || onSaveForLater) && (
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="min-h-11 rounded-xl"
+                  onClick={onMarkReviewed}
+                  disabled={!onMarkReviewed}
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  確認した
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="min-h-11 rounded-xl"
+                  onClick={onSaveForLater}
+                  disabled={!onSaveForLater}
+                >
+                  <BookmarkPlus className="mr-2 h-4 w-4" />
+                  あとで見返す
+                </Button>
+              </div>
+            )}
+
             {learningContent && (
               <div className="space-y-3 rounded-2xl bg-slate-50 p-3">
                 <div>
@@ -108,29 +163,6 @@ export function ARPrimaryHazardCard({
                   ))}
                 </div>
 
-                {(onMarkReviewed || onSaveForLater) && (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="rounded-xl"
-                      onClick={onMarkReviewed}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      確認した
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="rounded-xl"
-                      onClick={onSaveForLater}
-                    >
-                      <BookmarkPlus className="mr-2 h-4 w-4" />
-                      あとで見返す
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
           </div>
