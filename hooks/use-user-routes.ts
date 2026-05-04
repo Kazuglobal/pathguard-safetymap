@@ -61,6 +61,14 @@ export function useUserRoutes() {
 
   const checkAuth = useCallback(async () => {
     const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (session?.user) {
+      return session.user
+    }
+
+    const {
       data: { user },
     } = await supabase.auth.getUser()
     return user
@@ -364,6 +372,20 @@ export function useUserRoutes() {
     fetchRoutes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setRefreshKey((k) => k + 1)
+        return
+      }
+
+      setRoutes([])
+      setIsLoading(false)
+    })
+
+    return () => data.subscription.unsubscribe()
+  }, [supabase])
 
   return {
     routes,

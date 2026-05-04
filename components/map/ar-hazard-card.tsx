@@ -18,10 +18,13 @@ import { ARImageGallery } from "./ar-image-gallery"
 interface ARPrimaryHazardCardProps {
   hazard: ARHazardData
   estimatedTimeMinutes: number
+  distanceLabel?: string
+  estimatedTimeLabel?: string
   learningContent?: ARLearningContent
   childCue?: KidsHazardCue
   isApproaching?: boolean
   progressLabel?: string
+  markReviewedLabel?: string
   onMarkReviewed?: () => void
   onSaveForLater?: () => void
 }
@@ -29,18 +32,24 @@ interface ARPrimaryHazardCardProps {
 export function ARPrimaryHazardCard({
   hazard,
   estimatedTimeMinutes,
+  distanceLabel,
+  estimatedTimeLabel,
   learningContent,
   childCue,
   isApproaching = false,
   progressLabel,
+  markReviewedLabel = "確認した",
   onMarkReviewed,
   onSaveForLater,
 }: ARPrimaryHazardCardProps) {
+  const readableDistance = distanceLabel ?? `${formatDistance(hazard.distance)}先`
+  const readableTime = estimatedTimeLabel ?? `${estimatedTimeMinutes}分`
+
   return (
     <div
       className="absolute top-20 left-4 right-4 z-20 pointer-events-none"
       role="article"
-      aria-label={`危険個所: ${hazard.report.title}、${formatDistance(hazard.distance)}先`}
+      aria-label={`危険個所: ${hazard.report.title}、${readableDistance}`}
     >
       <div
         className="relative"
@@ -79,7 +88,7 @@ export function ARPrimaryHazardCard({
             </div>
 
             <p className="text-sm text-gray-600 mb-3">
-              {formatDistance(hazard.distance)}先
+              {readableDistance}
             </p>
 
             {childCue && (
@@ -120,7 +129,7 @@ export function ARPrimaryHazardCard({
                   disabled={!onMarkReviewed}
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  確認した
+                  {markReviewedLabel}
                 </Button>
                 <Button
                   type="button"
@@ -202,7 +211,7 @@ export function ARPrimaryHazardCard({
             <TreePine className="h-5 w-5 text-green-600" aria-hidden="true" />
           </div>
           <div className="bg-black/90 text-white px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg">
-            {estimatedTimeMinutes}分
+            {readableTime}
           </div>
         </div>
       </div>

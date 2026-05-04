@@ -130,7 +130,7 @@ const ERROR_MESSAGES: Record<ARErrorType, Omit<ARError, "type">> = {
   orientation_denied: {
     message: "デバイスの向き検出が拒否されました",
     suggestion:
-      "方向検出なしでも利用可能ですが、精度が低下します。設定から許可を有効にすることをお勧めします。",
+      "カメラ向きを使えないため、AR表示を停止しました。通常マップで危険個所を確認してください。",
   },
   orientation_unavailable: {
     message: "デバイスの向き検出がサポートされていません",
