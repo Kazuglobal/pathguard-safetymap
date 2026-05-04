@@ -2,17 +2,23 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useToast } from "@/components/ui/use-toast"
-import { throttle, ORIENTATION_THROTTLE_MS } from "@/lib/ar-constants"
+import { createARError, throttle, ORIENTATION_THROTTLE_MS, type ARError } from "@/lib/ar-constants"
 
 export interface UseAROrientationReturn {
   userHeading: number
   orientationPermission: boolean
+  error: ARError | null
   retry: () => void
 }
 
-export function useAROrientation(): UseAROrientationReturn {
+interface UseAROrientationInput {
+  enabled?: boolean
+}
+
+export function useAROrientation({ enabled = true }: UseAROrientationInput = {}): UseAROrientationReturn {
   const [userHeading, setUserHeading] = useState<number>(0)
   const [orientationPermission, setOrientationPermission] = useState(false)
+  const [error, setError] = useState<ARError | null>(null)
   const orientationListenerRef = useRef<EventListener | null>(null)
   const throttledHandlerRef = useRef<ReturnType<typeof throttle<(event: DeviceOrientationEvent) => void>> | null>(null)
   const { toast } = useToast()
@@ -31,7 +37,10 @@ export function useAROrientation(): UseAROrientationReturn {
   }, [])
 
   const initOrientation = useCallback(() => {
+    if (!enabled) return
+
     cleanup()
+    setError(null)
 
     if (typeof window === "undefined" || !window.DeviceOrientationEvent) {
       toastRef.current({
@@ -59,6 +68,7 @@ export function useAROrientation(): UseAROrientationReturn {
       orientationListenerRef.current = listener
       window.addEventListener("deviceorientation", listener)
       setOrientationPermission(true)
+      setError(null)
     }
 
     if (
@@ -71,27 +81,53 @@ export function useAROrientation(): UseAROrientationReturn {
           if (response === "granted") {
             setupOrientationListener()
           } else {
+            setOrientationPermission(false)
+            setError(createARError("orientation_denied"))
             toastRef.current({
               title: "方向検出が許可されていません",
-              description: "設定から許可を有効にすると精度が向上します",
+              description: "親子モードでは通常マップで確認してください",
             })
           }
         })
         .catch(() => {
+          setOrientationPermission(false)
+          setError(createARError("orientation_denied"))
           toastRef.current({
             title: "方向検出の設定に失敗しました",
-            description: "危険個所は表示されますが、方向の精度が低くなります",
+            description: "親子モードでは通常マップで確認してください",
           })
         })
     } else {
       setupOrientationListener()
     }
-  }, [cleanup])
+  }, [cleanup, enabled])
 
   useEffect(() => {
+    if (!enabled) {
+      cleanup()
+      return
+    }
+
     initOrientation()
     return cleanup
-  }, [initOrientation, cleanup])
+  }, [enabled, initOrientation, cleanup])
 
-  return { userHeading, orientationPermission, retry: initOrientation }
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        cleanup()
+      } else {
+        initOrientation()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [enabled, initOrientation, cleanup])
+
+  return { userHeading, orientationPermission, error, retry: initOrientation }
 }

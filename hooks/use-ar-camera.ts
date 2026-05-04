@@ -20,7 +20,11 @@ export interface UseARCameraReturn {
   retry: () => void
 }
 
-export function useARCamera(): UseARCameraReturn {
+interface UseARCameraInput {
+  enabled?: boolean
+}
+
+export function useARCamera({ enabled = true }: UseARCameraInput = {}): UseARCameraReturn {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
@@ -35,6 +39,7 @@ export function useARCamera(): UseARCameraReturn {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
+    setIsCameraActive(false)
   }, [])
 
   const initCamera = useCallback(async () => {
@@ -98,18 +103,42 @@ export function useARCamera(): UseARCameraReturn {
   }, [])
 
   const retry = useCallback(() => {
+    if (!enabled) return
     stopCamera()
     setIsCameraActive(false)
     initCamera()
-  }, [stopCamera, initCamera])
+  }, [enabled, stopCamera, initCamera])
 
   useEffect(() => {
+    if (!enabled) {
+      stopCamera()
+      setIsLoading(false)
+      return
+    }
+
     initCamera()
 
     return () => {
       stopCamera()
     }
-  }, [initCamera, stopCamera])
+  }, [enabled, initCamera, stopCamera])
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        stopCamera()
+      } else {
+        initCamera()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [enabled, initCamera, stopCamera])
 
   return {
     videoRef,

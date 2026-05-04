@@ -67,4 +67,21 @@ describe("ARPrimaryHazardCard parent-child learning UI", () => {
     expect(screen.getByRole("button", { name: "確認した" })).toHaveClass("min-h-11")
     expect(screen.getByRole("button", { name: "あとで見返す" })).toHaveClass("min-h-11")
   })
+
+  it("手動確認モードでは到着ボタンと手動ラベルを表示する", () => {
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard()}
+        estimatedTimeMinutes={0}
+        distanceLabel="手動確認"
+        estimatedTimeLabel="現地で確認"
+        markReviewedLabel="ここに着いた"
+        onMarkReviewed={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("手動確認")).toBeInTheDocument()
+    expect(screen.getByText("現地で確認")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "ここに着いた" })).toBeInTheDocument()
+  })
 })

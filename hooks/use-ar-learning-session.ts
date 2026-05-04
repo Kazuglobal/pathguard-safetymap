@@ -1,23 +1,35 @@
 "use client"
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react"
+import type { KidsChecklistItem, KidsQuizAnswers } from "@/lib/ar-learning-quiz"
 import type { ARLearningTourStatus } from "@/lib/ar-learning-tour"
 
 interface LearningSessionState {
+  schemaVersion: 1
   startedAt: string
+  completedAt: string | null
   reviewedCount: number
   savedCount: number
   progress: Record<string, ARLearningTourStatus>
+  checklist: KidsChecklistItem[]
+  quizAnswers: KidsQuizAnswers
+  quizScore: number
+  quizTotal: number
+  quizCompletedAt: string | null
 }
 
 type LearningSessionAction =
   | { type: "hydrate"; state: LearningSessionState }
   | { type: "mark"; reportId: string; status: ARLearningTourStatus }
+  | { type: "set_checklist"; checklist: KidsChecklistItem[] }
+  | { type: "toggle_checklist"; itemId: string; checked: boolean }
+  | { type: "complete_quiz"; answers: KidsQuizAnswers; score: number; total: number }
   | { type: "reset" }
 
 interface UseARLearningSessionInput {
   routeId: string
   sessionId?: string
+  enabled?: boolean
 }
 
 const DB_NAME = "pathguardian-ar-learning"
@@ -33,17 +45,48 @@ export function getARLearningSessionStorageKey(
 
 function createInitialState(): LearningSessionState {
   return {
+    schemaVersion: 1,
     startedAt: new Date().toISOString(),
+    completedAt: null,
     reviewedCount: 0,
     savedCount: 0,
     progress: {},
+    checklist: [],
+    quizAnswers: {},
+    quizScore: 0,
+    quizTotal: 0,
+    quizCompletedAt: null,
+  }
+}
+
+function normalizeSessionState(state: Partial<LearningSessionState>): LearningSessionState {
+  const progress = state.progress ?? {}
+
+  return {
+    schemaVersion: 1,
+    startedAt: state.startedAt ?? new Date().toISOString(),
+    completedAt: state.completedAt ?? null,
+    reviewedCount:
+      typeof state.reviewedCount === "number"
+        ? state.reviewedCount
+        : Object.values(progress).filter((status) => status === "reviewed").length,
+    savedCount:
+      typeof state.savedCount === "number"
+        ? state.savedCount
+        : Object.values(progress).filter((status) => status === "saved").length,
+    progress,
+    checklist: state.checklist ?? [],
+    quizAnswers: state.quizAnswers ?? {},
+    quizScore: state.quizScore ?? 0,
+    quizTotal: state.quizTotal ?? 0,
+    quizCompletedAt: state.quizCompletedAt ?? null,
   }
 }
 
 function reducer(state: LearningSessionState, action: LearningSessionAction): LearningSessionState {
   switch (action.type) {
     case "hydrate":
-      return action.state
+      return normalizeSessionState(action.state)
     case "mark": {
       const progress = {
         ...state.progress,
@@ -56,6 +99,27 @@ function reducer(state: LearningSessionState, action: LearningSessionAction): Le
         savedCount: Object.values(progress).filter((status) => status === "saved").length,
       }
     }
+    case "set_checklist":
+      return {
+        ...state,
+        checklist: action.checklist,
+      }
+    case "toggle_checklist":
+      return {
+        ...state,
+        checklist: state.checklist.map((item) =>
+          item.id === action.itemId ? { ...item, checked: action.checked } : item
+        ),
+      }
+    case "complete_quiz":
+      return {
+        ...state,
+        completedAt: state.completedAt ?? new Date().toISOString(),
+        quizAnswers: action.answers,
+        quizScore: action.score,
+        quizTotal: action.total,
+        quizCompletedAt: new Date().toISOString(),
+      }
     case "reset":
       return createInitialState()
     default:
@@ -108,7 +172,7 @@ async function writeSession(key: string, state: LearningSessionState): Promise<v
   })
 }
 
-export function useARLearningSession({ routeId, sessionId }: UseARLearningSessionInput) {
+export function useARLearningSession({ routeId, sessionId, enabled = true }: UseARLearningSessionInput) {
   const storageKey = useMemo(
     () => getARLearningSessionStorageKey(routeId, sessionId),
     [routeId, sessionId]
@@ -118,6 +182,12 @@ export function useARLearningSession({ routeId, sessionId }: UseARLearningSessio
   const hasLocalChangesRef = useRef(false)
 
   useEffect(() => {
+    if (!enabled) {
+      setHasHydrated(false)
+      hasLocalChangesRef.current = false
+      return
+    }
+
     let cancelled = false
     setHasHydrated(false)
     hasLocalChangesRef.current = false
@@ -126,7 +196,7 @@ export function useARLearningSession({ routeId, sessionId }: UseARLearningSessio
       .then((stored) => {
         if (!cancelled) {
           if (stored) {
-            dispatch({ type: "hydrate", state: stored })
+            dispatch({ type: "hydrate", state: normalizeSessionState(stored) })
           } else if (!hasLocalChangesRef.current) {
             dispatch({ type: "hydrate", state: createInitialState() })
           }
@@ -145,15 +215,15 @@ export function useARLearningSession({ routeId, sessionId }: UseARLearningSessio
     return () => {
       cancelled = true
     }
-  }, [storageKey])
+  }, [enabled, storageKey])
 
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!enabled || !hasHydrated) return
 
     writeSession(storageKey, state).catch(() => {
       // Persistence is best-effort for the MVP.
     })
-  }, [hasHydrated, state, storageKey])
+  }, [enabled, hasHydrated, state, storageKey])
 
   return {
     state,
@@ -161,6 +231,18 @@ export function useARLearningSession({ routeId, sessionId }: UseARLearningSessio
     markStop: (reportId: string, status: ARLearningTourStatus) => {
       hasLocalChangesRef.current = true
       dispatch({ type: "mark", reportId, status })
+    },
+    setChecklist: (checklist: KidsChecklistItem[]) => {
+      hasLocalChangesRef.current = true
+      dispatch({ type: "set_checklist", checklist })
+    },
+    toggleChecklistItem: (itemId: string, checked: boolean) => {
+      hasLocalChangesRef.current = true
+      dispatch({ type: "toggle_checklist", itemId, checked })
+    },
+    completeQuiz: (answers: KidsQuizAnswers, score: number, total: number) => {
+      hasLocalChangesRef.current = true
+      dispatch({ type: "complete_quiz", answers, score, total })
     },
     reset: () => {
       hasLocalChangesRef.current = true

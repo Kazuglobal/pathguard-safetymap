@@ -104,3 +104,5 @@ export const useSupabase = () => {
   if (!context) throw new Error('useSupabase must be used inside SupabaseProvider')
   return context
 }
+
+export const useOptionalSupabase = () => useContext(Context)

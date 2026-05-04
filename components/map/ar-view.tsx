@@ -1,26 +1,29 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import Link from "next/link"
 import {
   X,
   Navigation,
   AlertCircle,
   Settings,
   Compass,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck,
+  Map
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
 import type { ARViewProps } from "@/lib/ar-view-types"
-import { calculateARHazardData, getARVisibilityOptions } from "@/lib/ar-utils"
+import type { DangerReport } from "@/lib/types"
+import { calculateARHazardData, getARVisibilityOptions, type ARHazardData } from "@/lib/ar-utils"
 import { formatHeadingDisplay } from "@/lib/ar-display-utils"
 import {
   buildARLearningTourStops,
   summarizeARLearningTour,
   type ARLearningTourStatus,
 } from "@/lib/ar-learning-tour"
+import { buildKidsChecklist, generateKidsQuiz } from "@/lib/ar-learning-quiz"
 import { summarizeRouteLearningProgress } from "@/lib/ar-learning-route-progress"
 import { drawHazardOverlay } from "@/lib/ar-canvas-renderer"
 import {
@@ -38,16 +41,39 @@ import { useAROrientation } from "@/hooks/use-ar-orientation"
 import { useARLearningSession } from "@/hooks/use-ar-learning-session"
 import { createKidsHazardCue, isApproachingHazard } from "@/lib/ar-learning-tour-kids"
 import { trackEvent } from "@/lib/analytics"
+import { buildRouteLearningSessionPayload } from "@/lib/route-learning-session-payload"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
+import { ARLearningReviewCard } from "./ar-learning-review"
 
 function calculateEstimatedTime(distance: number): number {
   return Math.round((distance / 1000 / WALKING_SPEED_KMH) * 60)
 }
 
+function createManualHazardData(reports: DangerReport[]): ARHazardData[] {
+  return reports.map((report, index) => ({
+    report,
+    distance: 0,
+    bearing: 0,
+    relativeAngle: 0,
+    x: 0,
+    y: 0,
+    z: Math.min((index + 1) / Math.max(reports.length, 1), 1),
+  }))
+}
+
 export default function ARView({ mode, onClose }: ARViewProps) {
   const isParentChildMode = mode.kind === "parent_child_route"
   const reports = mode.reports
+  const parentRouteId = isParentChildMode ? mode.routeId : null
+  const parentChildId = isParentChildMode ? mode.childId : null
+  const parentChildName = isParentChildMode ? mode.childName : null
+  const parentSessionId = isParentChildMode ? mode.sessionId : null
+  const [hasSafetyAcknowledged, setHasSafetyAcknowledged] = useState(!isParentChildMode)
+  const [guardianConsent, setGuardianConsent] = useState(false)
+  const [manualLocationMode, setManualLocationMode] = useState(false)
+  const sensorsEnabled = !isParentChildMode || hasSafetyAcknowledged
+  const optionalSupabase = useOptionalSupabase()
 
   // フック
   const {
@@ -60,12 +86,20 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     error: cameraError,
     stopCamera,
     retry: retryCamera,
-  } = useARCamera()
-  const { userLocation, locationPermission, error: locationError, retry: retryLocation } = useARLocation()
-  const { userHeading, orientationPermission, retry: retryOrientation } = useAROrientation()
+  } = useARCamera({ enabled: sensorsEnabled })
+  const { userLocation, locationPermission, error: locationError, retry: retryLocation } = useARLocation({
+    enabled: sensorsEnabled && !manualLocationMode,
+  })
+  const {
+    userHeading,
+    orientationPermission,
+    error: orientationError,
+    retry: retryOrientation,
+  } = useAROrientation({ enabled: sensorsEnabled })
   const learningSession = useARLearningSession({
     routeId: isParentChildMode ? mode.routeId : "nearby",
     sessionId: isParentChildMode ? mode.sessionId : "nearby",
+    enabled: sensorsEnabled,
   })
 
   // ローカルstate
@@ -74,12 +108,19 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number | null>(null)
   const sessionCompletedTrackedRef = useRef(false)
+  const remoteSavedQuizCompletedAtRef = useRef<string | null>(null)
   const [maxDistance, setMaxDistance] = useState<number>(DEFAULT_MAX_DISTANCE)
   const [showSettings, setShowSettings] = useState(false)
   const [fov, setFov] = useState<number>(DEFAULT_FOV)
   const [localTourProgress, setLocalTourProgress] = useState<Record<string, ARLearningTourStatus>>({})
   const [activeStopId, setActiveStopId] = useState<string | null>(null)
   const approachedReportIdsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    setHasSafetyAcknowledged(!isParentChildMode)
+    setGuardianConsent(false)
+    setManualLocationMode(false)
+  }, [isParentChildMode, parentRouteId])
 
   const tourProgress = isParentChildMode ? learningSession.state.progress : localTourProgress
   const isLocationAccuracyLow =
@@ -90,9 +131,20 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     Number.isFinite(userLocation.speed) &&
     userLocation.speed * 3.6 > 15
   const canUpdateTourStatus = !isParentChildMode || learningSession.hasHydrated
+  const isLocationFallbackAvailable =
+    isParentChildMode &&
+    Boolean(locationError) &&
+    !manualLocationMode &&
+    !cameraError
 
   // エラー集約: カメラエラーを優先
-  const arError: ARError | null = cameraError ?? locationError ?? null
+  const arError: ARError | null =
+    cameraError ??
+    (isParentChildMode && !manualLocationMode ? orientationError : null) ??
+    (manualLocationMode && isParentChildMode ? null : locationError) ??
+    null
+  const hasPositionContext = Boolean(userLocation) || (isParentChildMode && manualLocationMode)
+  const canRenderHazardContent = sensorsEnabled && !arError && isCameraActive && hasPositionContext
 
   // パーミッション集約
   const permissions = useMemo(() => ({
@@ -110,6 +162,10 @@ export default function ARView({ mode, onClose }: ARViewProps) {
 
   // AR危険個所データの計算
   const arHazards = useMemo(() => {
+    if (isParentChildMode && manualLocationMode) {
+      return createManualHazardData(reports)
+    }
+
     if (!userLocation || reports.length === 0) {
       return []
     }
@@ -124,7 +180,16 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         fov,
       })
     )
-  }, [userLocation, userHeading, reports, orientationPermission, maxDistance, fov])
+  }, [
+    fov,
+    isParentChildMode,
+    manualLocationMode,
+    maxDistance,
+    orientationPermission,
+    reports,
+    userHeading,
+    userLocation,
+  ])
 
   const learningStops = useMemo(() => {
     return buildARLearningTourStops(arHazards, tourProgress)
@@ -168,6 +233,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     () => summarizeRouteLearningProgress(reports, tourProgress),
     [reports, tourProgress]
   )
+  const kidsQuiz = useMemo(() => {
+    if (!isParentChildMode) return null
+    return generateKidsQuiz(reports, {
+      seed: `${parentRouteId ?? "route"}:${learningSession.state.startedAt}`,
+    })
+  }, [isParentChildMode, learningSession.state.startedAt, parentRouteId, reports])
   const isTourComplete = isParentChildMode
     ? routeProgressSummary.isComplete
     : learningStops.length > 0 && learningStops.every((stop) => stop.status !== "pending")
@@ -178,17 +249,18 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const isActiveStopApproaching =
     Boolean(activeStop) &&
     isParentChildMode &&
+    !manualLocationMode &&
     !isLocationAccuracyLow &&
     !isMovingTooFast &&
     isApproachingHazard(activeStop!.hazard.distance)
 
   useEffect(() => {
-    if (!isParentChildMode) return
+    if (!isParentChildMode || !hasSafetyAcknowledged) return
     trackEvent("ar_parent_mode_started", {
-      route_id: mode.routeId,
-      child_id: mode.childId,
+      route_id: parentRouteId,
+      child_id: parentChildId,
     })
-  }, [isParentChildMode, mode])
+  }, [hasSafetyAcknowledged, isParentChildMode, parentChildId, parentRouteId])
 
   useEffect(() => {
     if (!isParentChildMode || !activeStop || !isActiveStopApproaching) return
@@ -220,6 +292,97 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     isParentChildMode,
     isTourComplete,
     learningSession.state.startedAt,
+    routeProgressSummary.reviewedCount,
+    routeProgressSummary.savedCount,
+  ])
+
+  useEffect(() => {
+    if (
+      !isParentChildMode ||
+      !isTourComplete ||
+      !learningSession.hasHydrated ||
+      learningSession.state.checklist.length > 0
+    ) {
+      return
+    }
+
+    learningSession.setChecklist(buildKidsChecklist(reports))
+  }, [
+    isParentChildMode,
+    isTourComplete,
+    learningSession,
+    learningSession.hasHydrated,
+    learningSession.state.checklist.length,
+    reports,
+  ])
+
+  useEffect(() => {
+    const quizCompletedAt = learningSession.state.quizCompletedAt
+    if (
+      !isParentChildMode ||
+      !quizCompletedAt ||
+      !parentRouteId ||
+      !parentSessionId ||
+      remoteSavedQuizCompletedAtRef.current === quizCompletedAt ||
+      !optionalSupabase?.supabase
+    ) {
+      return
+    }
+
+    remoteSavedQuizCompletedAtRef.current = quizCompletedAt
+
+    const saveRemoteSession = async () => {
+      const supabase = optionalSupabase.supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      const payload = buildRouteLearningSessionPayload({
+        checklist: learningSession.state.checklist,
+        progress: learningSession.state.progress,
+      })
+
+      await supabase.from("route_learning_sessions").upsert(
+        {
+          user_id: user.id,
+          route_id: parentRouteId,
+          session_id: parentSessionId,
+          child_id: parentChildId,
+          child_name: parentChildName,
+          schema_version: payload.schemaVersion,
+          started_at: learningSession.state.startedAt,
+          completed_at: learningSession.state.completedAt ?? quizCompletedAt,
+          reviewed_count: routeProgressSummary.reviewedCount,
+          saved_count: routeProgressSummary.savedCount,
+          quiz_score: learningSession.state.quizScore,
+          quiz_total: learningSession.state.quizTotal,
+          checklist: payload.checklist,
+          stop_results: payload.stopResults,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,route_id,session_id" }
+      )
+    }
+
+    saveRemoteSession().catch(() => {
+      remoteSavedQuizCompletedAtRef.current = null
+    })
+  }, [
+    isParentChildMode,
+    learningSession.state.checklist,
+    learningSession.state.completedAt,
+    learningSession.state.progress,
+    learningSession.state.quizCompletedAt,
+    learningSession.state.quizScore,
+    learningSession.state.quizTotal,
+    learningSession.state.startedAt,
+    optionalSupabase,
+    parentChildId,
+    parentChildName,
+    parentRouteId,
+    parentSessionId,
     routeProgressSummary.reviewedCount,
     routeProgressSummary.savedCount,
   ])
@@ -354,6 +517,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     if (errorType.startsWith("camera")) {
       retryCamera()
     } else if (errorType.startsWith("location")) {
+      setManualLocationMode(false)
       retryLocation()
     } else if (errorType.startsWith("orientation")) {
       retryOrientation()
@@ -364,6 +528,20 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       retryOrientation()
     }
   }, [arError, retryCamera, retryLocation, retryOrientation])
+
+  const handleUseManualLocationMode = useCallback(() => {
+    setManualLocationMode(true)
+    setActiveStopId(
+      reports.find((report) => tourProgress[report.id] === undefined)?.id ??
+      reports[0]?.id ??
+      null
+    )
+  }, [reports, tourProgress])
+
+  const handleAcknowledgeSafety = useCallback(() => {
+    if (!guardianConsent) return
+    setHasSafetyAcknowledged(true)
+  }, [guardianConsent])
 
   const updateTourStatus = useCallback(
     (status: ARLearningTourStatus) => {
@@ -411,6 +589,20 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     })
   }, [isParentChildMode, mode])
 
+  const handleCompleteQuiz = useCallback(
+    (answers: Record<string, string>, score: number, total: number) => {
+      if (!isParentChildMode) return
+
+      learningSession.completeQuiz(answers, score, total)
+      trackEvent("ar_quiz_completed", {
+        route_id: mode.routeId,
+        score,
+        total,
+      })
+    },
+    [isParentChildMode, learningSession, mode]
+  )
+
   return (
     <div
       ref={dialogRef}
@@ -451,6 +643,62 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         </div>
       </div>
 
+      {isParentChildMode && !hasSafetyAcknowledged && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <Card
+            className="w-full max-w-md rounded-3xl border-amber-200 bg-white p-5 shadow-2xl"
+            role="alertdialog"
+            aria-labelledby="ar-safety-title"
+            aria-describedby="ar-safety-description"
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+                <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div>
+                <h3 id="ar-safety-title" className="text-lg font-bold text-slate-950">
+                  立ち止まって親子で確認
+                </h3>
+                <p id="ar-safety-description" className="mt-2 text-sm leading-6 text-slate-700">
+                  歩きながら画面を見続けないでください。危険ポイントでは必ず立ち止まり、保護者が周囲を確認してから子どもと一緒に内容を見てください。
+                </p>
+              </div>
+            </div>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-800">
+              <input
+                type="checkbox"
+                className="mt-1 h-5 w-5 shrink-0 rounded border-slate-400"
+                checked={guardianConsent}
+                onChange={(event) => setGuardianConsent(event.target.checked)}
+              />
+              <span>
+                保護者として、AR確認中に子どもの位置情報を取得することに同意します。
+              </span>
+            </label>
+
+            <div className="mt-5 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 rounded-2xl"
+                onClick={handleClose}
+              >
+                閉じる
+              </Button>
+              <Button
+                type="button"
+                className="min-h-11 flex-1 rounded-2xl"
+                disabled={!guardianConsent}
+                onClick={handleAcknowledgeSafety}
+              >
+                同意して開始
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* 設定パネル */}
       {showSettings && (
         <ARSettingsPanel
@@ -463,7 +711,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       )}
 
       {/* 方向インジケーター */}
-      {isCameraActive && userLocation && !arError && (
+      {sensorsEnabled && isCameraActive && userLocation && !arError && (
         <div className="absolute top-16 left-4 z-20">
           <div className="bg-black/60 backdrop-blur-sm rounded-lg p-2 text-white text-xs">
             <div className="flex items-center gap-2">
@@ -474,7 +722,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         </div>
       )}
 
-      {isParentChildMode && !arError && (
+      {isParentChildMode && !arError && hasSafetyAcknowledged && (
         <div className="absolute right-4 top-16 z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm">
           <p className="text-xs font-semibold tracking-wide text-amber-200">選択中の通学路</p>
           <p className="mt-1 text-sm font-bold">{mode.routeName}</p>
@@ -485,12 +733,15 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           {isMovingTooFast && (
             <p className="mt-2 text-xs text-amber-100">移動速度が速いため接近通知を抑制中</p>
           )}
+          {manualLocationMode && (
+            <p className="mt-2 text-xs text-amber-100">位置情報なし: 手動確認中</p>
+          )}
         </div>
       )}
 
       {/* スクリーンリーダー向け危険個所数通知 */}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {isCameraActive && userLocation && !arError && (
+        {canRenderHazardContent && (
           arHazards.length > 0
             ? `${arHazards.length}件の危険個所が検出されました`
             : "近くに危険個所はありません"
@@ -515,7 +766,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         />
 
         {/* ローディング状態 */}
-        {isLoading && (
+        {sensorsEnabled && isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70" role="status" aria-live="polite">
             <div className="text-center text-white max-w-xs">
               <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent mx-auto" aria-hidden="true" />
@@ -528,7 +779,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         )}
 
         {/* エラー状態 */}
-        {arError && (
+        {sensorsEnabled && arError && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-4">
             <Card className="max-w-md p-6" role="alertdialog" aria-labelledby="ar-error-title">
               <div className="mb-4 flex items-center gap-2 text-red-600">
@@ -540,16 +791,31 @@ export default function ARView({ mode, onClose }: ARViewProps) {
                   {arError.suggestion}
                 </p>
               </div>
-              <div className="flex gap-2">
+              {isLocationFallbackAvailable && (
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+                  GPSが使えない場合でも、現地で立ち止まって手動確認できます。危険ポイントに着いたら「ここに着いた」を押してください。
+                </div>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {isLocationFallbackAvailable && (
+                  <Button
+                    type="button"
+                    onClick={handleUseManualLocationMode}
+                    className="min-h-11 flex-1"
+                  >
+                    <Map className="h-4 w-4 mr-2" />
+                    手動で確認を続ける
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={handleRetry}
-                  className="flex-1"
+                  className="min-h-11 flex-1"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   再試行
                 </Button>
-                <Button onClick={handleClose} className="flex-1">
+                <Button onClick={handleClose} className="min-h-11 flex-1">
                   閉じる
                 </Button>
               </div>
@@ -558,26 +824,29 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         )}
 
         {/* 主要危険地点カード */}
-        {!arError && isCameraActive && userLocation && activeStop && (
+        {canRenderHazardContent && activeStop && (
           <ARPrimaryHazardCard
             hazard={activeStop.hazard}
             estimatedTimeMinutes={calculateEstimatedTime(activeStop.hazard.distance)}
+            distanceLabel={manualLocationMode ? "手動確認" : undefined}
+            estimatedTimeLabel={manualLocationMode ? "現地で確認" : undefined}
             learningContent={activeStop.content}
             childCue={activeStopKidsCue}
             isApproaching={isActiveStopApproaching}
             progressLabel={`${Math.max(activeStopIndex + 1, 1)} / ${learningStops.length}`}
+            markReviewedLabel={manualLocationMode ? "ここに着いた" : "確認した"}
             onMarkReviewed={canUpdateTourStatus ? () => updateTourStatus("reviewed") : undefined}
             onSaveForLater={canUpdateTourStatus ? () => updateTourStatus("saved") : undefined}
           />
         )}
 
         {/* 次の危険地点カード */}
-        {!arError && isCameraActive && userLocation && nextStop && !isTourComplete && (
+        {canRenderHazardContent && nextStop && !isTourComplete && (
           <ARSecondaryHazardCard hazard={nextStop.hazard} />
         )}
 
         {/* 危険地点がない場合 */}
-        {!arError && isCameraActive && userLocation && arHazards.length === 0 && (
+        {canRenderHazardContent && arHazards.length === 0 && (
           <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
             <Card className="bg-white/95 backdrop-blur-sm rounded-t-3xl shadow-2xl m-4 pointer-events-auto">
               <div className="p-6 text-center">
@@ -588,82 +857,28 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           </div>
         )}
 
-        {!arError && isCameraActive && userLocation && isTourComplete && (
-          <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-none">
-            <Card className="pointer-events-auto rounded-3xl bg-white/95 p-5 shadow-2xl backdrop-blur-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold tracking-[0.2em] text-emerald-600">TOUR SUMMARY</p>
-                  <h3 className="text-lg font-bold text-slate-900">通学路の振り返り</h3>
-                </div>
-                <Badge className="rounded-full bg-emerald-600 text-white">
-                  {isParentChildMode
-                    ? `${routeProgressSummary.completedCount}/${routeProgressSummary.totalCount}`
-                    : `${learningSummary.reviewedCount + learningSummary.savedCount}/${learningSummary.totalCount}`}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-2xl bg-slate-100 px-3 py-3">
-                  <p className="text-xs text-slate-500">確認済み</p>
-                  <p className="text-lg font-bold text-slate-900">
-                    {isParentChildMode ? routeProgressSummary.reviewedCount : learningSummary.reviewedCount}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-amber-50 px-3 py-3">
-                  <p className="text-xs text-amber-700">見返し</p>
-                  <p className="text-lg font-bold text-amber-900">
-                    {isParentChildMode ? routeProgressSummary.savedCount : learningSummary.savedCount}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-rose-50 px-3 py-3">
-                  <p className="text-xs text-rose-700">最重要</p>
-                  <p className="text-sm font-bold text-rose-900">
-                    {isParentChildMode
-                      ? routeProgressSummary.highestRiskReport?.title ?? "なし"
-                      : learningSummary.highestRiskStop?.report.title ?? "なし"}
-                  </p>
-                </div>
-              </div>
-
-              {((isParentChildMode && routeProgressSummary.revisitReports.length > 0) ||
-                (!isParentChildMode && learningSummary.revisitStops.length > 0)) && (
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">あとで見返す地点</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(isParentChildMode
-                      ? routeProgressSummary.revisitReports
-                      : learningSummary.revisitStops.map((stop) => stop.report)
-                    ).map((report) => (
-                      <Badge key={report.id} variant="secondary" className="rounded-full">
-                        {report.title}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 flex gap-2">
-                <Button type="button" className="flex-1 rounded-2xl" onClick={handleRestartTour}>
-                  もう一度見る
-                </Button>
-                {isParentChildMode && (
-                  <Button type="button" asChild variant="outline" className="flex-1 rounded-2xl" onClick={handleQuizLinkClick}>
-                    <Link href={`/route-quiz?routeId=${encodeURIComponent(mode.routeId)}`}>
-                      クイズへ進む
-                    </Link>
-                  </Button>
-                )}
-                <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={handleClose}>
-                  閉じる
-                </Button>
-              </div>
-            </Card>
-          </div>
+        {canRenderHazardContent && isTourComplete && (
+          <ARLearningReviewCard
+            isParentChildMode={isParentChildMode}
+            routeId={parentRouteId}
+            routeProgressSummary={routeProgressSummary}
+            learningSummary={learningSummary}
+            checklist={learningSession.state.checklist}
+            quiz={kidsQuiz}
+            quizAnswers={learningSession.state.quizAnswers}
+            quizScore={learningSession.state.quizScore}
+            quizTotal={learningSession.state.quizTotal}
+            quizCompletedAt={learningSession.state.quizCompletedAt}
+            onToggleChecklistItem={learningSession.toggleChecklistItem}
+            onCompleteQuiz={handleCompleteQuiz}
+            onRestartTour={handleRestartTour}
+            onClose={handleClose}
+            onQuizLinkClick={handleQuizLinkClick}
+          />
         )}
 
         {/* 中央の十字線 */}
-        {!arError && isCameraActive && (
+        {sensorsEnabled && !arError && isCameraActive && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
             <div className="h-1 w-16 border-t-2 border-white/50" />
             <div className="absolute h-16 w-1 border-l-2 border-white/50" />

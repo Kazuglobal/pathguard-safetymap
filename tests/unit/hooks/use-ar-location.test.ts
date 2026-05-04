@@ -139,6 +139,7 @@ describe("useARLocation", () => {
         lat: 35.6812,
         lon: 139.7671,
         accuracy: 15,
+        speed: null,
       })
       expect(result.current.locationPermission).toBe(true)
       expect(result.current.error).toBeNull()

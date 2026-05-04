@@ -23,7 +23,11 @@ export interface UseARLocationReturn {
   retry: () => void
 }
 
-export function useARLocation(): UseARLocationReturn {
+interface UseARLocationInput {
+  enabled?: boolean
+}
+
+export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseARLocationReturn {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
   const [locationPermission, setLocationPermission] = useState(false)
   const [error, setError] = useState<ARError | null>(null)
@@ -40,6 +44,8 @@ export function useARLocation(): UseARLocationReturn {
   }, [])
 
   const startWatch = useCallback(() => {
+    if (!enabled) return
+
     stopWatch()
     setError(null)
 
@@ -84,14 +90,36 @@ export function useARLocation(): UseARLocationReturn {
         timeout: LOCATION_TIMEOUT_MS,
       }
     )
-  }, [stopWatch])
+  }, [enabled, stopWatch])
 
   useEffect(() => {
+    if (!enabled) {
+      stopWatch()
+      return
+    }
+
     startWatch()
     return () => {
       stopWatch()
     }
-  }, [startWatch, stopWatch])
+  }, [enabled, startWatch, stopWatch])
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        stopWatch()
+      } else {
+        startWatch()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [enabled, startWatch, stopWatch])
 
   return { userLocation, locationPermission, error, retry: startWatch }
 }
