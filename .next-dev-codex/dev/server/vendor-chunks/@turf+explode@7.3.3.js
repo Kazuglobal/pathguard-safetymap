@@ -1,0 +1,25 @@
+"use strict";
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+exports.id = "vendor-chunks/@turf+explode@7.3.3";
+exports.ids = ["vendor-chunks/@turf+explode@7.3.3"];
+exports.modules = {
+
+/***/ "(ssr)/./node_modules/.pnpm/@turf+explode@7.3.3/node_modules/@turf/explode/dist/esm/index.js":
+/*!*********************************************************************************************!*\
+  !*** ./node_modules/.pnpm/@turf+explode@7.3.3/node_modules/@turf/explode/dist/esm/index.js ***!
+  \*********************************************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (/* binding */ index_default),\n/* harmony export */   explode: () => (/* binding */ explode)\n/* harmony export */ });\n/* harmony import */ var _turf_meta__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @turf/meta */ \"(ssr)/./node_modules/.pnpm/@turf+meta@7.3.3/node_modules/@turf/meta/dist/esm/index.js\");\n/* harmony import */ var _turf_helpers__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @turf/helpers */ \"(ssr)/./node_modules/.pnpm/@turf+helpers@7.3.3/node_modules/@turf/helpers/dist/esm/index.js\");\n// index.ts\n\n\nfunction explode(geojson) {\n  const points = [];\n  if (geojson.type === \"FeatureCollection\") {\n    (0,_turf_meta__WEBPACK_IMPORTED_MODULE_0__.featureEach)(geojson, function(feature) {\n      (0,_turf_meta__WEBPACK_IMPORTED_MODULE_0__.coordEach)(feature, function(coord) {\n        points.push((0,_turf_helpers__WEBPACK_IMPORTED_MODULE_1__.point)(coord, feature.properties));\n      });\n    });\n  } else if (geojson.type === \"Feature\") {\n    (0,_turf_meta__WEBPACK_IMPORTED_MODULE_0__.coordEach)(geojson, function(coord) {\n      points.push((0,_turf_helpers__WEBPACK_IMPORTED_MODULE_1__.point)(coord, geojson.properties));\n    });\n  } else {\n    (0,_turf_meta__WEBPACK_IMPORTED_MODULE_0__.coordEach)(geojson, function(coord) {\n      points.push((0,_turf_helpers__WEBPACK_IMPORTED_MODULE_1__.point)(coord));\n    });\n  }\n  return (0,_turf_helpers__WEBPACK_IMPORTED_MODULE_1__.featureCollection)(points);\n}\nvar index_default = explode;\n\n//# sourceMappingURL=index.js.map//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHNzcikvLi9ub2RlX21vZHVsZXMvLnBucG0vQHR1cmYrZXhwbG9kZUA3LjMuMy9ub2RlX21vZHVsZXMvQHR1cmYvZXhwbG9kZS9kaXN0L2VzbS9pbmRleC5qcyIsIm1hcHBpbmdzIjoiOzs7Ozs7O0FBQUE7QUFDb0Q7QUFDSztBQUN6RDtBQUNBO0FBQ0E7QUFDQSxJQUFJLHVEQUFXO0FBQ2YsTUFBTSxxREFBUztBQUNmLG9CQUFvQixvREFBSztBQUN6QixPQUFPO0FBQ1AsS0FBSztBQUNMLElBQUk7QUFDSixJQUFJLHFEQUFTO0FBQ2Isa0JBQWtCLG9EQUFLO0FBQ3ZCLEtBQUs7QUFDTCxJQUFJO0FBQ0osSUFBSSxxREFBUztBQUNiLGtCQUFrQixvREFBSztBQUN2QixLQUFLO0FBQ0w7QUFDQSxTQUFTLGdFQUFpQjtBQUMxQjtBQUNBO0FBSUU7QUFDRiIsInNvdXJjZXMiOlsiQzpcXFVzZXJzXFxzMTU5OFxcbWFwc2VmZVxcMjAyNTA2MTVcXG5vZGVfbW9kdWxlc1xcLnBucG1cXEB0dXJmK2V4cGxvZGVANy4zLjNcXG5vZGVfbW9kdWxlc1xcQHR1cmZcXGV4cGxvZGVcXGRpc3RcXGVzbVxcaW5kZXguanMiXSwic291cmNlc0NvbnRlbnQiOlsiLy8gaW5kZXgudHNcbmltcG9ydCB7IGNvb3JkRWFjaCwgZmVhdHVyZUVhY2ggfSBmcm9tIFwiQHR1cmYvbWV0YVwiO1xuaW1wb3J0IHsgcG9pbnQsIGZlYXR1cmVDb2xsZWN0aW9uIH0gZnJvbSBcIkB0dXJmL2hlbHBlcnNcIjtcbmZ1bmN0aW9uIGV4cGxvZGUoZ2VvanNvbikge1xuICBjb25zdCBwb2ludHMgPSBbXTtcbiAgaWYgKGdlb2pzb24udHlwZSA9PT0gXCJGZWF0dXJlQ29sbGVjdGlvblwiKSB7XG4gICAgZmVhdHVyZUVhY2goZ2VvanNvbiwgZnVuY3Rpb24oZmVhdHVyZSkge1xuICAgICAgY29vcmRFYWNoKGZlYXR1cmUsIGZ1bmN0aW9uKGNvb3JkKSB7XG4gICAgICAgIHBvaW50cy5wdXNoKHBvaW50KGNvb3JkLCBmZWF0dXJlLnByb3BlcnRpZXMpKTtcbiAgICAgIH0pO1xuICAgIH0pO1xuICB9IGVsc2UgaWYgKGdlb2pzb24udHlwZSA9PT0gXCJGZWF0dXJlXCIpIHtcbiAgICBjb29yZEVhY2goZ2VvanNvbiwgZnVuY3Rpb24oY29vcmQpIHtcbiAgICAgIHBvaW50cy5wdXNoKHBvaW50KGNvb3JkLCBnZW9qc29uLnByb3BlcnRpZXMpKTtcbiAgICB9KTtcbiAgfSBlbHNlIHtcbiAgICBjb29yZEVhY2goZ2VvanNvbiwgZnVuY3Rpb24oY29vcmQpIHtcbiAgICAgIHBvaW50cy5wdXNoKHBvaW50KGNvb3JkKSk7XG4gICAgfSk7XG4gIH1cbiAgcmV0dXJuIGZlYXR1cmVDb2xsZWN0aW9uKHBvaW50cyk7XG59XG52YXIgaW5kZXhfZGVmYXVsdCA9IGV4cGxvZGU7XG5leHBvcnQge1xuICBpbmRleF9kZWZhdWx0IGFzIGRlZmF1bHQsXG4gIGV4cGxvZGVcbn07XG4vLyMgc291cmNlTWFwcGluZ1VSTD1pbmRleC5qcy5tYXAiXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(ssr)/./node_modules/.pnpm/@turf+explode@7.3.3/node_modules/@turf/explode/dist/esm/index.js\n");
+
+/***/ })
+
+};
+;

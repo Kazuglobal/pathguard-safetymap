@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import Link from "next/link"
 import {
   X,
   Navigation,
@@ -12,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import type { DangerReport } from "@/lib/types"
+import type { ARViewProps } from "@/lib/ar-view-types"
 import { calculateARHazardData, getARVisibilityOptions } from "@/lib/ar-utils"
 import { formatHeadingDisplay } from "@/lib/ar-display-utils"
 import {
@@ -20,6 +21,7 @@ import {
   summarizeARLearningTour,
   type ARLearningTourStatus,
 } from "@/lib/ar-learning-tour"
+import { summarizeRouteLearningProgress } from "@/lib/ar-learning-route-progress"
 import { drawHazardOverlay } from "@/lib/ar-canvas-renderer"
 import {
   type ARError,
@@ -33,19 +35,20 @@ import {
 import { useARCamera } from "@/hooks/use-ar-camera"
 import { useARLocation } from "@/hooks/use-ar-location"
 import { useAROrientation } from "@/hooks/use-ar-orientation"
+import { useARLearningSession } from "@/hooks/use-ar-learning-session"
+import { createKidsHazardCue, isApproachingHazard } from "@/lib/ar-learning-tour-kids"
+import { trackEvent } from "@/lib/analytics"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
-
-interface ARViewProps {
-  reports: DangerReport[]
-  onClose: () => void
-}
 
 function calculateEstimatedTime(distance: number): number {
   return Math.round((distance / 1000 / WALKING_SPEED_KMH) * 60)
 }
 
-export default function ARView({ reports, onClose }: ARViewProps) {
+export default function ARView({ mode, onClose }: ARViewProps) {
+  const isParentChildMode = mode.kind === "parent_child_route"
+  const reports = mode.reports
+
   // フック
   const {
     videoRef,
@@ -60,17 +63,33 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   } = useARCamera()
   const { userLocation, locationPermission, error: locationError, retry: retryLocation } = useARLocation()
   const { userHeading, orientationPermission, retry: retryOrientation } = useAROrientation()
+  const learningSession = useARLearningSession({
+    routeId: isParentChildMode ? mode.routeId : "nearby",
+    sessionId: isParentChildMode ? mode.sessionId : "nearby",
+  })
 
   // ローカルstate
   const dialogRef = useRef<HTMLDivElement>(null)
   const lastActiveElementRef = useRef<HTMLElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const sessionCompletedTrackedRef = useRef(false)
   const [maxDistance, setMaxDistance] = useState<number>(DEFAULT_MAX_DISTANCE)
   const [showSettings, setShowSettings] = useState(false)
   const [fov, setFov] = useState<number>(DEFAULT_FOV)
-  const [tourProgress, setTourProgress] = useState<Record<string, ARLearningTourStatus>>({})
+  const [localTourProgress, setLocalTourProgress] = useState<Record<string, ARLearningTourStatus>>({})
   const [activeStopId, setActiveStopId] = useState<string | null>(null)
+  const approachedReportIdsRef = useRef<Set<string>>(new Set())
+
+  const tourProgress = isParentChildMode ? learningSession.state.progress : localTourProgress
+  const isLocationAccuracyLow =
+    isParentChildMode && typeof userLocation?.accuracy === "number" && userLocation.accuracy > 50
+  const isMovingTooFast =
+    isParentChildMode &&
+    typeof userLocation?.speed === "number" &&
+    Number.isFinite(userLocation.speed) &&
+    userLocation.speed * 3.6 > 15
+  const canUpdateTourStatus = !isParentChildMode || learningSession.hasHydrated
 
   // エラー集約: カメラエラーを優先
   const arError: ARError | null = cameraError ?? locationError ?? null
@@ -145,7 +164,65 @@ export default function ARView({ reports, onClose }: ARViewProps) {
   }, [activeStopIndex, learningStops])
 
   const learningSummary = useMemo(() => summarizeARLearningTour(learningStops), [learningStops])
-  const isTourComplete = learningStops.length > 0 && learningStops.every((stop) => stop.status !== "pending")
+  const routeProgressSummary = useMemo(
+    () => summarizeRouteLearningProgress(reports, tourProgress),
+    [reports, tourProgress]
+  )
+  const isTourComplete = isParentChildMode
+    ? routeProgressSummary.isComplete
+    : learningStops.length > 0 && learningStops.every((stop) => stop.status !== "pending")
+  const activeStopKidsCue = useMemo(() => {
+    if (!isParentChildMode || !activeStop) return undefined
+    return createKidsHazardCue(activeStop.report)
+  }, [activeStop, isParentChildMode])
+  const isActiveStopApproaching =
+    Boolean(activeStop) &&
+    isParentChildMode &&
+    !isLocationAccuracyLow &&
+    !isMovingTooFast &&
+    isApproachingHazard(activeStop!.hazard.distance)
+
+  useEffect(() => {
+    if (!isParentChildMode) return
+    trackEvent("ar_parent_mode_started", {
+      route_id: mode.routeId,
+      child_id: mode.childId,
+    })
+  }, [isParentChildMode, mode])
+
+  useEffect(() => {
+    if (!isParentChildMode || !activeStop || !isActiveStopApproaching) return
+    if (approachedReportIdsRef.current.has(activeStop.report.id)) return
+
+    approachedReportIdsRef.current.add(activeStop.report.id)
+    trackEvent("ar_hazard_approached", {
+      distance_m: Math.round(activeStop.hazard.distance),
+      hazard_id: activeStop.report.id,
+      danger_type: activeStop.report.danger_type,
+    })
+  }, [activeStop, isActiveStopApproaching, isParentChildMode])
+
+  useEffect(() => {
+    if (!isParentChildMode || !isTourComplete || sessionCompletedTrackedRef.current) return
+
+    sessionCompletedTrackedRef.current = true
+    const startedAt = new Date(learningSession.state.startedAt).getTime()
+    const durationSeconds = Number.isFinite(startedAt)
+      ? Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+      : 0
+
+    trackEvent("ar_session_completed", {
+      reviewed_count: routeProgressSummary.reviewedCount,
+      saved_count: routeProgressSummary.savedCount,
+      duration_s: durationSeconds,
+    })
+  }, [
+    isParentChildMode,
+    isTourComplete,
+    learningSession.state.startedAt,
+    routeProgressSummary.reviewedCount,
+    routeProgressSummary.savedCount,
+  ])
 
   // Canvas描画エラーハンドラー
   const handleCanvasError = useCallback((message: string) => {
@@ -298,23 +375,41 @@ export default function ARView({ reports, onClose }: ARViewProps) {
           : stop
       )
 
-      setTourProgress((current) => ({
-        ...current,
-        [activeStop.report.id]: status,
-      }))
+      if (isParentChildMode) {
+        learningSession.markStop(activeStop.report.id, status)
+        trackEvent(status === "reviewed" ? "ar_hazard_confirmed" : "ar_hazard_saved", {
+          hazard_id: activeStop.report.id,
+        })
+      } else {
+        setLocalTourProgress((current) => ({
+          ...current,
+          [activeStop.report.id]: status,
+        }))
+      }
 
       setActiveStopId(
         nextStops.find((stop) => stop.status === "pending")?.report.id ??
         activeStop.report.id
       )
     },
-    [activeStop, learningStops]
+    [activeStop, isParentChildMode, learningSession, learningStops]
   )
 
   const handleRestartTour = useCallback(() => {
-    setTourProgress({})
+    if (isParentChildMode) {
+      learningSession.reset()
+    } else {
+      setLocalTourProgress({})
+    }
     setActiveStopId(learningStops[0]?.report.id ?? null)
-  }, [learningStops])
+  }, [isParentChildMode, learningSession, learningStops])
+
+  const handleQuizLinkClick = useCallback(() => {
+    if (!isParentChildMode) return
+    trackEvent("ar_quiz_link_clicked", {
+      route_id: mode.routeId,
+    })
+  }, [isParentChildMode, mode])
 
   return (
     <div
@@ -325,10 +420,12 @@ export default function ARView({ reports, onClose }: ARViewProps) {
       className="fixed inset-0 z-50 flex flex-col bg-black"
     >
       {/* ヘッダー */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
+      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
         <div className="flex items-center gap-2">
           <Navigation className="h-5 w-5 text-white" />
-          <h2 id="ar-view-title" className="text-lg font-semibold text-white">AR危険個所ビュー</h2>
+          <h2 id="ar-view-title" className="text-lg font-semibold text-white">
+            {isParentChildMode ? "親子で通学路確認" : "AR危険個所ビュー"}
+          </h2>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -374,6 +471,20 @@ export default function ARView({ reports, onClose }: ARViewProps) {
               <span>{formatHeadingDisplay(userHeading)}</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {isParentChildMode && !arError && (
+        <div className="absolute right-4 top-16 z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm">
+          <p className="text-xs font-semibold tracking-wide text-amber-200">選択中の通学路</p>
+          <p className="mt-1 text-sm font-bold">{mode.routeName}</p>
+          {mode.childName && <p className="mt-1 text-xs text-slate-200">{mode.childName}</p>}
+          {isLocationAccuracyLow && (
+            <p className="mt-2 text-xs text-amber-100">位置精度が低いため強調を抑制中</p>
+          )}
+          {isMovingTooFast && (
+            <p className="mt-2 text-xs text-amber-100">移動速度が速いため接近通知を抑制中</p>
+          )}
         </div>
       )}
 
@@ -452,9 +563,11 @@ export default function ARView({ reports, onClose }: ARViewProps) {
             hazard={activeStop.hazard}
             estimatedTimeMinutes={calculateEstimatedTime(activeStop.hazard.distance)}
             learningContent={activeStop.content}
+            childCue={activeStopKidsCue}
+            isApproaching={isActiveStopApproaching}
             progressLabel={`${Math.max(activeStopIndex + 1, 1)} / ${learningStops.length}`}
-            onMarkReviewed={() => updateTourStatus("reviewed")}
-            onSaveForLater={() => updateTourStatus("saved")}
+            onMarkReviewed={canUpdateTourStatus ? () => updateTourStatus("reviewed") : undefined}
+            onSaveForLater={canUpdateTourStatus ? () => updateTourStatus("saved") : undefined}
           />
         )}
 
@@ -484,34 +597,46 @@ export default function ARView({ reports, onClose }: ARViewProps) {
                   <h3 className="text-lg font-bold text-slate-900">通学路の振り返り</h3>
                 </div>
                 <Badge className="rounded-full bg-emerald-600 text-white">
-                  {learningSummary.reviewedCount + learningSummary.savedCount}/{learningSummary.totalCount}
+                  {isParentChildMode
+                    ? `${routeProgressSummary.completedCount}/${routeProgressSummary.totalCount}`
+                    : `${learningSummary.reviewedCount + learningSummary.savedCount}/${learningSummary.totalCount}`}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-2xl bg-slate-100 px-3 py-3">
                   <p className="text-xs text-slate-500">確認済み</p>
-                  <p className="text-lg font-bold text-slate-900">{learningSummary.reviewedCount}</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    {isParentChildMode ? routeProgressSummary.reviewedCount : learningSummary.reviewedCount}
+                  </p>
                 </div>
                 <div className="rounded-2xl bg-amber-50 px-3 py-3">
                   <p className="text-xs text-amber-700">見返し</p>
-                  <p className="text-lg font-bold text-amber-900">{learningSummary.savedCount}</p>
+                  <p className="text-lg font-bold text-amber-900">
+                    {isParentChildMode ? routeProgressSummary.savedCount : learningSummary.savedCount}
+                  </p>
                 </div>
                 <div className="rounded-2xl bg-rose-50 px-3 py-3">
                   <p className="text-xs text-rose-700">最重要</p>
                   <p className="text-sm font-bold text-rose-900">
-                    {learningSummary.highestRiskStop?.report.title ?? "なし"}
+                    {isParentChildMode
+                      ? routeProgressSummary.highestRiskReport?.title ?? "なし"
+                      : learningSummary.highestRiskStop?.report.title ?? "なし"}
                   </p>
                 </div>
               </div>
 
-              {learningSummary.revisitStops.length > 0 && (
+              {((isParentChildMode && routeProgressSummary.revisitReports.length > 0) ||
+                (!isParentChildMode && learningSummary.revisitStops.length > 0)) && (
                 <div className="mt-4">
                   <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">あとで見返す地点</p>
                   <div className="flex flex-wrap gap-2">
-                    {learningSummary.revisitStops.map((stop) => (
-                      <Badge key={stop.report.id} variant="secondary" className="rounded-full">
-                        {stop.report.title}
+                    {(isParentChildMode
+                      ? routeProgressSummary.revisitReports
+                      : learningSummary.revisitStops.map((stop) => stop.report)
+                    ).map((report) => (
+                      <Badge key={report.id} variant="secondary" className="rounded-full">
+                        {report.title}
                       </Badge>
                     ))}
                   </div>
@@ -522,6 +647,13 @@ export default function ARView({ reports, onClose }: ARViewProps) {
                 <Button type="button" className="flex-1 rounded-2xl" onClick={handleRestartTour}>
                   もう一度見る
                 </Button>
+                {isParentChildMode && (
+                  <Button type="button" asChild variant="outline" className="flex-1 rounded-2xl" onClick={handleQuizLinkClick}>
+                    <Link href={`/route-quiz?routeId=${encodeURIComponent(mode.routeId)}`}>
+                      クイズへ進む
+                    </Link>
+                  </Button>
+                )}
                 <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={handleClose}>
                   閉じる
                 </Button>

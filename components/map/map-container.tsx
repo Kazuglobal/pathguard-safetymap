@@ -218,6 +218,7 @@ interface MapImageOverlayEntry {
 }
 
 type LocationSelectionSource = "manual" | "gps" | null
+type ActiveARKind = "nearby" | "parent_child_route"
 
 function isAbortLikeError(error: unknown): boolean {
   if (!error) return false
@@ -290,6 +291,7 @@ export default function MapContainer({
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [is3DEnabled, setIs3DEnabled] = useState(false)
   const [isARMode, setIsARMode] = useState(false)
+  const [activeARKind, setActiveARKind] = useState<ActiveARKind>("nearby")
   const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
@@ -1572,8 +1574,23 @@ export default function MapContainer({
   };
 
   const toggleARMode = useCallback(() => {
+    setActiveARKind("nearby")
     setIsARMode((prev) => !prev)
   }, [])
+
+  const handleOpenParentChildARMode = useCallback(() => {
+    if (!selectedUserRoute) {
+      toast({
+        title: "通学路を選択してください",
+        description: "親子で確認する通学路を先に選んでください。",
+      })
+      return
+    }
+
+    setActiveARKind("parent_child_route")
+    setIsARMode(true)
+    setActiveTopPanel("ar")
+  }, [selectedUserRoute, toast])
 
   // --- Event Handlers ---
   const handleRouteSelectionChange = useCallback((routeId: string) => {
@@ -2119,6 +2136,24 @@ export default function MapContainer({
                 >
                   {isARMode ? "ARを閉じる" : "ARを開く"}
                 </Button>
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-3">
+                  <p className="text-sm font-semibold text-amber-950">親子で通学路確認</p>
+                  <p className="mt-1 text-xs leading-5 text-amber-800">
+                    選択中の通学路に近い危険ポイントだけを、子ども向けの短い注意で確認します。
+                  </p>
+                  <Button
+                    type="button"
+                    variant={isARMode && activeARKind === "parent_child_route" ? "default" : "outline"}
+                    className="mt-3 h-11 w-full justify-center"
+                    onClick={handleOpenParentChildARMode}
+                    disabled={!selectedUserRoute}
+                  >
+                    親子で通学路確認
+                  </Button>
+                  {!selectedUserRoute && (
+                    <p className="mt-2 text-xs text-amber-700">先に通学路を選択してください。</p>
+                  )}
+                </div>
               </div>
             }
             heatmapPanelSlot={
@@ -2693,7 +2728,22 @@ export default function MapContainer({
         {/* ARビュー */}
         {isARMode && (
           <ARView
-            reports={combinedReports}
+            mode={
+              activeARKind === "parent_child_route" && selectedUserRoute
+                ? {
+                    kind: "parent_child_route",
+                    routeId: selectedUserRoute.id,
+                    routeName: selectedUserRoute.name,
+                    childId: selectedUserRoute.child_id,
+                    childName: selectedUserRoute.child_name,
+                    reports: routeDangers,
+                    sessionId: "active",
+                  }
+                : {
+                    kind: "nearby",
+                    reports: combinedReports,
+                  }
+            }
             onClose={() => setIsARMode(false)}
           />
         )}
