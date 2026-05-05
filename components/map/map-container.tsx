@@ -24,7 +24,6 @@ import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数�
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
-import { isAdminUser } from "@/lib/admin"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
 import {
@@ -430,12 +429,16 @@ export default function MapContainer({
           return
         }
 
+        const adminStatusResponse = await fetch("/api/auth/admin-status", {
+          cache: "no-store",
+        })
+        if (!adminStatusResponse.ok) {
+          throw new Error(`Admin status request failed: ${adminStatusResponse.status}`)
+        }
+
+        const adminStatus = (await adminStatusResponse.json()) as { isAdmin?: boolean }
         if (isMounted) {
-          setIsAdmin(
-            isAdminUser({
-              email: user.email,
-            }),
-          )
+          setIsAdmin(Boolean(adminStatus.isAdmin))
         }
       } catch (err) {
         console.error("Error in checkAdminStatus:", err)

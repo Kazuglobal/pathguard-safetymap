@@ -6,19 +6,8 @@ import { readFileWithSentryContext } from "@/lib/sentry-upload-context";
 // Node.js ランタイムを強制
 export const runtime = "nodejs";
 
-// --- トップレベル (関数の外) ---
-// 環境変数を取得
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// Supabase Admin クライアントを初期化 (キーがない場合は null になる)
-const supabaseAdmin: SupabaseClient<Database> | null =
-  supabaseUrl && supabaseKey
-    ? createClient<Database>(supabaseUrl, supabaseKey)
-    : null;
-// --- ここまでトップレベル ---
-
 const BUCKET_NAME = "danger-reports";
+let supabaseAdminClient: SupabaseClient<Database> | null | undefined;
 
 type ImageType = "processed" | "original";
 
@@ -46,6 +35,19 @@ function extractStoragePathFromPublicUrl(publicUrl: string, bucketName: string):
   }
 }
 
+function getSupabaseAdminClient(): SupabaseClient<Database> | null {
+  if (supabaseAdminClient !== undefined) return supabaseAdminClient;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  supabaseAdminClient =
+    supabaseUrl && supabaseKey
+      ? createClient<Database>(supabaseUrl, supabaseKey)
+      : null;
+
+  return supabaseAdminClient;
+}
+
 
 // --- POST 関数定義 ---
 export async function POST(req: Request) {
@@ -60,6 +62,7 @@ export async function POST(req: Request) {
   }
 
   // Supabase Admin クライアントが初期化されているかチェック
+  const supabaseAdmin = getSupabaseAdminClient();
   if (!supabaseAdmin) {
     return new Response(
       JSON.stringify({
@@ -116,9 +119,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const admin = isAdminEmail(user.email)
-      || user.app_metadata?.role === "admin"
-      || user.user_metadata?.role === "admin";
+    const admin = isAdminEmail(user.email) || user.app_metadata?.role === "admin";
     if (existingReport.user_id !== user.id && !admin) {
       return new Response(
         JSON.stringify({ message: "このレポートを更新する権限がありません" }),
