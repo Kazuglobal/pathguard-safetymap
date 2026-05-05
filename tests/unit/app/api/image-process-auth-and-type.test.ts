@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
   const mockStorageRemove = vi.fn()
   const mockSetContext = vi.fn()
   const mockAddBreadcrumb = vi.fn()
+  const mockReadFileWithSentryContext = vi.fn()
 
   const mockDbMaybeSingle = vi.fn()
   const mockDbUpdate = vi.fn()
@@ -50,6 +51,7 @@ const mocks = vi.hoisted(() => {
     mockStorageRemove,
     mockSetContext,
     mockAddBreadcrumb,
+    mockReadFileWithSentryContext,
     mockDbMaybeSingle,
     mockDbUpdate,
     mockDbUpdateEq,
@@ -77,7 +79,27 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }))
 
+vi.mock("@/lib/sentry-upload-context", () => ({
+  readFileWithSentryContext: mocks.mockReadFileWithSentryContext,
+}))
+
 import { POST } from "@/app/api/image/process/route"
+
+async function expectResponseStatus(response: Response, expectedStatus: number) {
+  expect(response.status, await response.clone().text()).toBe(expectedStatus)
+}
+
+function createTestFile(fileName: string, type = "image/png"): File {
+  return { name: fileName, type } as File
+}
+
+function createMultipartRequest(fields: Record<string, FormDataEntryValue | null>): Request {
+  return {
+    formData: vi.fn(async () => ({
+      get: (key: string) => fields[key] ?? null,
+    })),
+  } as unknown as Request
+}
 
 describe("app/api/image/process ownership + imageType", () => {
   beforeEach(() => {
@@ -89,6 +111,7 @@ describe("app/api/image/process ownership + imageType", () => {
     }))
     mocks.mockStorageRemove.mockResolvedValue({ error: null })
     mocks.mockDbUpdateEq.mockResolvedValue({ error: null })
+    mocks.mockReadFileWithSentryContext.mockResolvedValue(new ArrayBuffer(5))
   })
 
   it("returns 403 when report owner and requester do not match", async () => {
@@ -105,17 +128,41 @@ describe("app/api/image/process ownership + imageType", () => {
       error: null,
     })
 
-    const formData = new FormData()
-    formData.append("file", new File(["dummy"], "sample.png", { type: "image/png" }))
-    formData.append("reportId", "report-123")
+    const response = await POST(createMultipartRequest({
+      file: createTestFile("sample.png"),
+      reportId: "report-123",
+    }))
+    await expectResponseStatus(response, 403)
+    expect(mocks.mockStorageUpload).not.toHaveBeenCalled()
+    expect(mocks.mockStorageRemove).not.toHaveBeenCalled()
+  })
 
-    const response = await POST(
-      new Request("http://localhost/api/image/process", {
-        method: "POST",
-        body: formData,
-      }),
-    )
-    expect(response.status).toBe(403)
+  it("does not trust caller-controlled user_metadata role for cross-user updates", async () => {
+    mocks.mockGetUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "user-1",
+          email: "user1@example.com",
+          user_metadata: { role: "admin" },
+        },
+      },
+      error: null,
+    })
+    mocks.mockDbMaybeSingle.mockResolvedValueOnce({
+      data: {
+        user_id: "user-2",
+        processed_image_urls: [],
+        image_url: null,
+      },
+      error: null,
+    })
+
+    const response = await POST(createMultipartRequest({
+      file: createTestFile("sample.png"),
+      reportId: "report-123",
+    }))
+
+    await expectResponseStatus(response, 403)
     expect(mocks.mockStorageUpload).not.toHaveBeenCalled()
     expect(mocks.mockStorageRemove).not.toHaveBeenCalled()
   })
@@ -134,20 +181,14 @@ describe("app/api/image/process ownership + imageType", () => {
       error: null,
     })
 
-    const formData = new FormData()
-    formData.append("file", new File(["dummy"], "original.png", { type: "image/png" }))
-    formData.append("reportId", "report-999")
-    formData.append("imageType", "original")
-
-    const response = await POST(
-      new Request("http://localhost/api/image/process", {
-        method: "POST",
-        body: formData,
-      }),
-    )
+    const response = await POST(createMultipartRequest({
+      file: createTestFile("original.png"),
+      reportId: "report-999",
+      imageType: "original",
+    }))
+    await expectResponseStatus(response, 200)
     const body = await response.json()
 
-    expect(response.status).toBe(200)
     expect(mocks.mockStorageUpload).toHaveBeenCalledWith(
       expect.stringMatching(/^owner-1\/report-999\//),
       expect.any(Buffer),
@@ -175,24 +216,18 @@ describe("app/api/image/process ownership + imageType", () => {
       error: null,
     })
 
-    const formData = new FormData()
-    formData.append("file", new File(["dummy"], "sample.png", { type: "image/png" }))
-    formData.append("reportId", "missing-report")
-
-    const response = await POST(
-      new Request("http://localhost/api/image/process", {
-        method: "POST",
-        body: formData,
-      }),
-    )
+    const response = await POST(createMultipartRequest({
+      file: createTestFile("sample.png"),
+      reportId: "missing-report",
+    }))
+    await expectResponseStatus(response, 404)
     const body = await response.json()
 
-    expect(response.status).toBe(404)
     expect(body.message).toContain("missing-report")
     expect(mocks.mockStorageUpload).not.toHaveBeenCalled()
   })
 
-  it("adds Sentry upload context before reading multipart image data", async () => {
+  it("delegates multipart image reads with route context", async () => {
     mocks.mockGetUser.mockResolvedValueOnce({
       data: { user: { id: "owner-1", email: "owner@example.com" } },
       error: null,
@@ -206,29 +241,19 @@ describe("app/api/image/process ownership + imageType", () => {
       error: null,
     })
 
-    const formData = new FormData()
-    formData.append("file", new File(["dummy"], "instrumented.png", { type: "image/png" }))
-    formData.append("reportId", "report-ctx")
+    const response = await POST(createMultipartRequest({
+      file: createTestFile("instrumented.png"),
+      reportId: "report-ctx",
+    }))
 
-    const response = await POST(
-      new Request("http://localhost/api/image/process", {
-        method: "POST",
-        body: formData,
-      }),
-    )
-
-    expect(response.status).toBe(200)
-    expect(mocks.mockSetContext).toHaveBeenCalledWith(
-      "upload_file",
+    await expectResponseStatus(response, 200)
+    expect(mocks.mockReadFileWithSentryContext).toHaveBeenCalledWith(
       expect.objectContaining({
         route: "/api/image/process",
         fieldName: "file",
-        fileName: expect.any(String),
-      }),
-    )
-    expect(mocks.mockAddBreadcrumb).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category: "upload.read",
+        file: expect.objectContaining({
+          name: "instrumented.png",
+        }),
       }),
     )
   })
