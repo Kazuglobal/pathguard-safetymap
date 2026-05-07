@@ -232,4 +232,78 @@ describe("SafetyQuestClient", () => {
 
     expect(screen.getByRole("heading", { name: "ぼうけんマップ" })).toBeInTheDocument()
   })
+
+  it("makes side-mode controls update visible game state instead of staying decorative", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
+
+    await user.click(screen.getByRole("button", { name: /パトロール/ }))
+    expect(screen.getByText("3/5")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "右へ" }))
+    expect(screen.getByText("4/5")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "左へ" }))
+    expect(screen.getByText("3/5")).toBeInTheDocument()
+  })
+
+  it("lets mystery, collection, ranking, and AR controls produce visible feedback", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
+
+    await user.click(screen.getByRole("button", { name: /なぞとき/ }))
+    await user.click(screen.getByRole("button", { name: "こたえを決定する" }))
+    expect(screen.getByText("正解!")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /ガチャ・コレクション/ }))
+    await user.click(screen.getByRole("button", { name: "1回まわす 50" }))
+    expect(screen.getByText("見通し名人をゲット!")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /ランキング/ }))
+    await user.click(screen.getByRole("button", { name: "おともだちランキング" }))
+    expect(screen.getByText("クラスの友だちと安全チャレンジ中")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /ARフォト/ }))
+    await user.click(screen.getByRole("button", { name: "撮影" }))
+    expect(screen.getByText("撮影しました。あぶないサイン +1")).toBeInTheDocument()
+  })
+
+  it("makes utility buttons and secondary tabs visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
+
+    await user.click(screen.getByRole("button", { name: "通知" }))
+    expect(screen.getByText("今日の安全通知: 夕方は見通しの悪い交差点に気をつけよう")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "ヘルプ" }))
+    expect(screen.getByText("画面の青いボタンを押すと、次の安全アクションに進めます。")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /協力ミッション/ }))
+    await user.click(screen.getByRole("button", { name: "かぞくチーム" }))
+    expect(screen.getByText("かぞくチームで安全週間に参加中")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /ランキング/ }))
+    await user.click(screen.getByRole("button", { name: "イベントに参加する!" }))
+    expect(screen.getByText("イベント参加中! 今日の安全チャレンジを続けよう")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /アバター/ }))
+    await user.click(screen.getByRole("button", { name: "カラー" }))
+    expect(screen.getByText("カラーを表示中")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "リセット" }))
+    expect(screen.getByText("アバターを初期状態に戻しました")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "このアバターで けってい!" }))
+    expect(screen.getByText("アバターを保存しました: ぼうし")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /ヒーロー図鑑/ }))
+    await user.click(screen.getByRole("button", { name: "バッジ" }))
+    expect(screen.getByText("バッジを表示中")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "すべて見る" }))
+    expect(screen.getByText("すべてのバッジを表示中")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /マイルーム/ }))
+    await user.click(screen.getByRole("button", { name: "ずかん" }))
+    expect(screen.getByText("ずかんを開きました")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "ミッションを見る" }))
+    expect(screen.getByText("今月のミッションを確認中")).toBeInTheDocument()
+  })
 })

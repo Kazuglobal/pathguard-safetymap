@@ -130,6 +130,13 @@ const teamMembers = [
   ["はると", "750 pt"],
 ]
 
+const familyMembers = [
+  ["おとうさん", "1,020 pt"],
+  ["おかあさん", "940 pt"],
+  ["そうた", "850 pt"],
+  ["いもうと", "450 pt"],
+]
+
 const collectionItems = [
   { key: "school-guard", name: "スクールガード", rarity: "★★★", color: "#f7c948", locked: false },
   { key: "route-guide", name: "みちしるべくん", rarity: "★★", color: "#7bd88f", locked: false },
@@ -157,6 +164,7 @@ export default function SafetyQuestClient() {
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([])
   const [challenges, setChallenges] = useState<readonly SafetyQuestChallenge[]>(SAMPLE_SAFETY_QUEST_CHALLENGES)
   const [selectedChallenge, setSelectedChallenge] = useState<SafetyQuestChallenge>(SAMPLE_SAFETY_QUEST_CHALLENGES[0])
+  const [notificationMessage, setNotificationMessage] = useState("")
 
   const foundCount = foundHazards.length
   const quizIsCorrect = quizAnswer === "danger"
@@ -182,6 +190,13 @@ export default function SafetyQuestClient() {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  useEffect(() => {
+    const showHelp = () => setNotificationMessage("画面の青いボタンを押すと、次の安全アクションに進めます。")
+
+    window.addEventListener("safety-quest-help", showHelp)
+    return () => window.removeEventListener("safety-quest-help", showHelp)
   }, [])
 
   const handleHazardMark = (id: string) => {
@@ -385,6 +400,7 @@ export default function SafetyQuestClient() {
             <StatusPill icon={<Sparkles className="h-4 w-4 text-[#0ea5e9]" />} value="120" />
             <button
               type="button"
+              onClick={() => setNotificationMessage("今日の安全通知: 夕方は見通しの悪い交差点に気をつけよう")}
               className="grid h-10 w-10 place-items-center rounded-full border-2 border-[#cfe7fb] bg-white shadow-sm"
               aria-label="通知"
             >
@@ -393,13 +409,13 @@ export default function SafetyQuestClient() {
           </div>
         </header>
 
-        <section className="relative overflow-hidden rounded-[34px] border-[9px] border-[#111827] bg-[#111827] shadow-[0_28px_60px_rgba(10,33,64,0.28)]">
-          <div className="relative h-[900px] overflow-hidden rounded-[23px] bg-white sm:h-[760px] md:h-auto md:aspect-[16/9]">
-            {renderedScreen}
+        {notificationMessage && (
+          <div className="mb-3 rounded-[18px] border-2 border-[#bfe5ff] bg-white px-4 py-3 text-sm font-black text-[#0b4e91] shadow-sm" role="status">
+            {notificationMessage}
           </div>
-        </section>
+        )}
 
-        <nav className="mt-4 overflow-hidden rounded-[22px] border border-[#c7ddf2] bg-white/90 p-2 shadow-sm backdrop-blur">
+        <nav className="mb-4 overflow-hidden rounded-[22px] border border-[#c7ddf2] bg-white/90 p-2 shadow-sm backdrop-blur">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {modeItems.map((item) => {
               const Icon = item.icon
@@ -424,6 +440,12 @@ export default function SafetyQuestClient() {
             })}
           </div>
         </nav>
+
+        <section className="relative overflow-hidden rounded-[34px] border-[9px] border-[#111827] bg-[#111827] shadow-[0_28px_60px_rgba(10,33,64,0.28)]">
+          <div className="relative h-[760px] overflow-hidden rounded-[23px] bg-white md:h-auto md:aspect-[16/9]">
+            {renderedScreen}
+          </div>
+        </section>
       </div>
     </main>
   )
@@ -468,6 +490,7 @@ function GameHeader({
         {right}
         <button
           type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("safety-quest-help"))}
           className="grid h-9 w-9 place-items-center rounded-full border-2 border-[#c9e5fb] bg-white text-[#0d4f92] shadow-sm"
           aria-label="ヘルプ"
         >
@@ -991,6 +1014,9 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 function PatrolScreen({ onBack, onReward }: { onBack: () => void; onReward: () => void }) {
+  const [safePower, setSafePower] = useState(3)
+  const movePatrol = (delta: number) => setSafePower((current) => Math.max(0, Math.min(5, current + delta)))
+
   return (
     <div className="flex h-full flex-col bg-[#d8f6ff]">
       <GameHeader
@@ -1035,17 +1061,27 @@ function PatrolScreen({ onBack, onReward }: { onBack: () => void; onReward: () =
       </div>
       <div className="flex items-center justify-between gap-4 bg-[#064d91] p-4">
         <div className="flex gap-3">
-          <button className="grid h-16 w-16 place-items-center rounded-[18px] border-4 border-white/70 bg-[#16b8a6] text-white shadow" type="button" aria-label="左へ">
+          <button
+            className="grid h-16 w-16 place-items-center rounded-[18px] border-4 border-white/70 bg-[#16b8a6] text-white shadow"
+            type="button"
+            aria-label="左へ"
+            onClick={() => movePatrol(-1)}
+          >
             <ArrowLeft className="h-9 w-9" />
           </button>
-          <button className="grid h-16 w-16 place-items-center rounded-[18px] border-4 border-white/70 bg-[#16b8a6] text-white shadow" type="button" aria-label="右へ">
+          <button
+            className="grid h-16 w-16 place-items-center rounded-[18px] border-4 border-white/70 bg-[#16b8a6] text-white shadow"
+            type="button"
+            aria-label="右へ"
+            onClick={() => movePatrol(1)}
+          >
             <ChevronRight className="h-9 w-9" />
           </button>
         </div>
         <div className="min-w-[190px] rounded-[18px] bg-[#063b75] px-5 py-3 text-center text-white">
           <p className="text-xs font-black">安全パワー</p>
-          <ProgressBar value={60} color="#ffd23f" />
-          <p className="mt-1 text-xl font-black">3/5</p>
+          <ProgressBar value={safePower * 20} color="#ffd23f" />
+          <p className="mt-1 text-xl font-black">{safePower}/5</p>
         </div>
         <button type="button" onClick={onReward} className="rounded-[18px] bg-[#1e88e5] px-8 py-4 text-xl font-black text-white shadow-lg">
           ジャンプ
@@ -1056,6 +1092,10 @@ function PatrolScreen({ onBack, onReward }: { onBack: () => void; onReward: () =
 }
 
 function TeamMissionScreen() {
+  const [teamTab, setTeamTab] = useState<"class" | "family">("class")
+  const activeMembers = teamTab === "class" ? teamMembers : familyMembers
+  const teamPoint = teamTab === "class" ? "4,850 pt" : "3,260 pt"
+
   return (
     <div className="h-full bg-gradient-to-b from-[#0757aa] to-[#052e78] p-5 text-[#0b2551]">
       <div className="mb-4 flex items-center justify-between text-white">
@@ -1065,17 +1105,32 @@ function TeamMissionScreen() {
         </div>
         <div className="rounded-[18px] bg-white px-5 py-3 text-[#0b2551] shadow-lg">
           <p className="text-xs font-black text-[#52708f]">チームポイント</p>
-          <p className="text-3xl font-black">4,850 pt</p>
+          <p className="text-3xl font-black">{teamPoint}</p>
         </div>
       </div>
       <div className="grid h-[calc(100%-92px)] gap-4 lg:grid-cols-[0.58fr_1.42fr]">
         <section className="rounded-[24px] bg-white/95 p-4 shadow-xl">
           <div className="mb-3 grid grid-cols-2 gap-2">
-            <button className="rounded-[14px] bg-[#0d66c4] py-2 text-sm font-black text-white" type="button">クラスチーム</button>
-            <button className="rounded-[14px] border-2 border-[#d8e8f7] bg-white py-2 text-sm font-black" type="button">かぞくチーム</button>
+            <button
+              className={cn("rounded-[14px] py-2 text-sm font-black", teamTab === "class" ? "bg-[#0d66c4] text-white" : "border-2 border-[#d8e8f7] bg-white")}
+              type="button"
+              onClick={() => setTeamTab("class")}
+            >
+              クラスチーム
+            </button>
+            <button
+              className={cn("rounded-[14px] py-2 text-sm font-black", teamTab === "family" ? "bg-[#0d66c4] text-white" : "border-2 border-[#d8e8f7] bg-white")}
+              type="button"
+              onClick={() => setTeamTab("family")}
+            >
+              かぞくチーム
+            </button>
           </div>
+          <p className="mb-3 rounded-[14px] bg-[#e0f2fe] px-3 py-2 text-sm font-black text-[#0d66c4]">
+            {teamTab === "class" ? "クラスチームで安全チャレンジ中" : "かぞくチームで安全週間に参加中"}
+          </p>
           <div className="space-y-2">
-            {teamMembers.map(([name, point], index) => (
+            {activeMembers.map(([name, point], index) => (
               <div key={name} className="flex items-center gap-3 rounded-[14px] border border-[#e0ecf8] bg-[#f8fbff] p-2">
                 <PlayerFace size="sm" />
                 <span className="font-black">{name}</span>
@@ -1422,6 +1477,8 @@ function ItemChip({ icon, label, value }: { icon: React.ReactNode; label: string
 }
 
 function MysteryScreen({ onBack }: { onBack: () => void }) {
+  const [solved, setSolved] = useState(false)
+
   return (
     <div className="flex h-full flex-col bg-[#f6f0e5]">
       <GameHeader title="なぞときミッション" compact onBack={onBack} />
@@ -1456,16 +1513,21 @@ function MysteryScreen({ onBack }: { onBack: () => void }) {
           <div className="grid items-center gap-3 md:grid-cols-[1fr_auto]">
             <div>
               <p className="mb-2 text-sm font-black">車のかげからとび出すとどうなる?</p>
+              {solved && (
+                <p className="mb-2 rounded-[12px] bg-[#dcfce7] px-3 py-2 text-sm font-black text-[#087b55]">
+                  <span>正解!</span> 見えない場所から出ると車に気づかれにくいよ。
+                </p>
+              )}
               <div className="flex gap-2">
                 {Array.from({ length: 7 }).map((_, index) => (
                   <span key={index} className="grid h-9 w-9 place-items-center rounded-[8px] border-2 border-[#b7c9d8] bg-[#f8fbff] text-sm font-black">
-                    {index === 6 ? "険" : ""}
+                    {solved ? ["危", "険", "", "", "", "", ""][index] : index === 6 ? "険" : ""}
                   </span>
                 ))}
               </div>
             </div>
-            <button type="button" className="rounded-[16px] bg-[#0d66c4] px-10 py-3 text-lg font-black text-white shadow">
-              こたえを決定する
+            <button type="button" onClick={() => setSolved(true)} className="rounded-[16px] bg-[#0d66c4] px-10 py-3 text-lg font-black text-white shadow">
+              {solved ? "もう一度見る" : "こたえを決定する"}
             </button>
           </div>
         </div>
@@ -1486,8 +1548,16 @@ function KidDetective() {
 }
 
 function CollectionScreen({ unlockedRewards, onBack }: { unlockedRewards: string[]; onBack: () => void }) {
+  const [localRewards, setLocalRewards] = useState<string[]>([])
+  const [gachaMessage, setGachaMessage] = useState("ガードマン")
+  const unlockedCollection = [...unlockedRewards, ...localRewards]
+  const spinGacha = (message: string) => {
+    setLocalRewards((current) => (current.includes("lookout-master") ? current : [...current, "lookout-master"]))
+    setGachaMessage(message)
+  }
+
   return (
-    <div className="h-full bg-gradient-to-b from-[#dff6ff] to-[#f8fcff] p-5">
+    <div className="h-full overflow-y-auto bg-gradient-to-b from-[#dff6ff] to-[#f8fcff] p-5">
       <GameHeader
         title="ガチャ・コレクション"
         compact
@@ -1518,13 +1588,18 @@ function CollectionScreen({ unlockedRewards, onBack }: { unlockedRewards: string
               />
             ))}
             <div className="absolute bottom-0 left-1/2 h-32 w-64 -translate-x-1/2 rounded-[28px] border-[8px] border-[#a33428] bg-[#f05a42]" />
-            <button type="button" className="absolute bottom-8 left-1/2 grid h-20 w-20 -translate-x-1/2 place-items-center rounded-full border-8 border-[#0d66c4] bg-[#ffd23f] shadow-lg" aria-label="ガチャを回す">
+            <button
+              type="button"
+              onClick={() => spinGacha("見通し名人をゲット!")}
+              className="absolute bottom-8 left-1/2 grid h-20 w-20 -translate-x-1/2 place-items-center rounded-full border-8 border-[#0d66c4] bg-[#ffd23f] shadow-lg"
+              aria-label="ガチャを回す"
+            >
               <Gift className="h-10 w-10 text-[#0d66c4]" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button className="rounded-[18px] bg-[#14b8a6] py-3 text-lg font-black text-white shadow" type="button">1回まわす<br /><span className="text-sm">50</span></button>
-            <button className="rounded-[18px] bg-[#ef4444] py-3 text-lg font-black text-white shadow" type="button">10回まわす<br /><span className="text-sm">450</span></button>
+            <button className="rounded-[18px] bg-[#14b8a6] py-3 text-lg font-black text-white shadow" type="button" aria-label="1回まわす 50" onClick={() => spinGacha("見通し名人をゲット!")}>1回まわす<br /><span className="text-sm">50</span></button>
+            <button className="rounded-[18px] bg-[#ef4444] py-3 text-lg font-black text-white shadow" type="button" aria-label="10回まわす 450" onClick={() => spinGacha("見通し名人をゲット! 10回分のシール追加!")}>10回まわす<br /><span className="text-sm">450</span></button>
           </div>
         </section>
         <section className="flex flex-col gap-4">
@@ -1536,7 +1611,7 @@ function CollectionScreen({ unlockedRewards, onBack }: { unlockedRewards: string
               <h3 className="text-2xl font-black">新しいヒーローをゲット!</h3>
               <div className="mt-4 rounded-[18px] bg-white p-4 text-[#0b2551] shadow">
                 <span className="rounded-full bg-[#ef4444] px-2 py-1 text-xs font-black text-white">NEW!</span>
-                <h4 className="mt-2 text-xl font-black">ガードマン</h4>
+                <h4 className="mt-2 text-xl font-black">{gachaMessage}</h4>
                 <p className="text-sm font-bold text-[#31516f]">みんなを守る、まちのヒーロー! 危険を見つけてお知らせしてくれるよ。</p>
               </div>
             </div>
@@ -1548,7 +1623,7 @@ function CollectionScreen({ unlockedRewards, onBack }: { unlockedRewards: string
             </div>
             <div className="grid grid-cols-5 gap-3">
               {collectionItems.map((item) => {
-                const locked = item.locked && !unlockedRewards.includes(item.key)
+                const locked = item.locked && !unlockedCollection.includes(item.key)
 
                 return (
                 <div key={item.name} className="rounded-[16px] border-2 border-[#c7ddf2] bg-white p-3 text-center shadow-sm">
@@ -1574,13 +1649,22 @@ function CollectionScreen({ unlockedRewards, onBack }: { unlockedRewards: string
 }
 
 function RankingScreen({ onBack }: { onBack: () => void }) {
-  const rows = [
+  const [rankingTab, setRankingTab] = useState<"national" | "friends">("national")
+  const [eventJoined, setEventJoined] = useState(false)
+  const nationalRows = [
     ["4", "ゆうき", "3,120 pt"],
     ["5", "あかり", "2,950 pt"],
     ["23", "あなた", "2,840 pt"],
   ]
+  const friendRows = [
+    ["1", "そうた", "2,840 pt"],
+    ["2", "ゆい", "2,310 pt"],
+    ["3", "あなた", "2,120 pt"],
+  ]
+  const rows = rankingTab === "national" ? nationalRows : friendRows
+
   return (
-    <div className="h-full bg-gradient-to-b from-[#ecf9ff] to-[#fff7e6] p-5">
+    <div className="h-full overflow-y-auto bg-gradient-to-b from-[#ecf9ff] to-[#fff7e6] p-5">
       <GameHeader
         title="ランキング＆イベント"
         compact
@@ -1621,9 +1705,22 @@ function RankingScreen({ onBack }: { onBack: () => void }) {
         </section>
         <section className="rounded-[28px] border-4 border-white bg-white p-4 shadow-xl">
           <div className="grid grid-cols-2 gap-2">
-            <button className="rounded-[14px] bg-[#0d66c4] py-2 font-black text-white" type="button">全国ランキング</button>
-            <button className="rounded-[14px] bg-[#f1f5f9] py-2 font-black text-[#31516f]" type="button">おともだちランキング</button>
+            <button
+              className={cn("rounded-[14px] py-2 font-black", rankingTab === "national" ? "bg-[#0d66c4] text-white" : "bg-[#f1f5f9] text-[#31516f]")}
+              type="button"
+              onClick={() => setRankingTab("national")}
+            >
+              全国ランキング
+            </button>
+            <button
+              className={cn("rounded-[14px] py-2 font-black", rankingTab === "friends" ? "bg-[#0d66c4] text-white" : "bg-[#f1f5f9] text-[#31516f]")}
+              type="button"
+              onClick={() => setRankingTab("friends")}
+            >
+              おともだちランキング
+            </button>
           </div>
+          {rankingTab === "friends" && <p className="mt-3 rounded-[14px] bg-[#e0f2fe] px-3 py-2 text-sm font-black text-[#0d66c4]">クラスの友だちと安全チャレンジ中</p>}
           <div className="mt-6 grid grid-cols-3 items-end gap-3">
             {[
               ["2", "はると", "4,320 pt", "bg-[#e5e7eb]", "h-28"],
@@ -1649,9 +1746,14 @@ function RankingScreen({ onBack }: { onBack: () => void }) {
               </div>
             ))}
           </div>
-          <button type="button" className="mt-5 w-full rounded-[20px] bg-[#ff8b18] py-4 text-xl font-black text-white shadow-lg">
-            イベントに参加する!
+          <button
+            type="button"
+            onClick={() => setEventJoined(true)}
+            className="mt-5 w-full rounded-[20px] bg-[#ff8b18] py-4 text-xl font-black text-white shadow-lg"
+          >
+            {eventJoined ? "参加中!" : "イベントに参加する!"}
           </button>
+          {eventJoined && <p className="mt-3 rounded-[14px] bg-[#fff7dd] px-3 py-2 text-sm font-black text-[#e57200]">イベント参加中! 今日の安全チャレンジを続けよう</p>}
         </section>
       </div>
     </div>
@@ -1673,15 +1775,23 @@ function AvatarScreen({
 }) {
   const hats = ["ぼうし", "ヘルメット", "キャップ", "ねこ耳"]
   const colors = ["#22c55e", "#3b82f6", "#a855f7", "#f97316", "#ef4444", "#facc15"]
+  const [activePanel, setActivePanel] = useState("ぼうし")
+  const [avatarMessage, setAvatarMessage] = useState("ぼうしを表示中")
+  const resetAvatar = () => {
+    onColor("#22c55e")
+    onHat("ぼうし")
+    setAvatarMessage("アバターを初期状態に戻しました")
+  }
+
   return (
-    <div className="h-full bg-gradient-to-br from-[#fff6e8] via-[#fffaf2] to-[#dff6ff]">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-[#fff6e8] via-[#fffaf2] to-[#dff6ff]">
       <GameHeader
         title="アバターカスタム"
         compact
         onBack={onBack}
         right={<StatusPill icon={<Star className="h-4 w-4 fill-[#facc15] text-[#eab308]" />} value="1,250" />}
       />
-      <div className="grid h-[calc(100%-56px)] gap-4 p-5 lg:grid-cols-[1.05fr_.95fr]">
+      <div className="grid min-h-[calc(100%-56px)] gap-4 p-5 lg:grid-cols-[1.05fr_.95fr]">
         <section className="relative overflow-hidden rounded-[28px] bg-[#ffefd8]/80 p-5 shadow-inner">
           <div className="absolute left-8 top-14 rounded-[18px] bg-white p-4 text-sm font-black shadow">ぼうしやふくを<br />えらんでね!</div>
           <div className="absolute right-10 top-14 h-36 w-24 rounded-full border-8 border-[#d6a675] bg-[#fef3c7]" />
@@ -1693,12 +1803,21 @@ function AvatarScreen({
           <div className="rounded-[24px] border-2 border-[#d8e8f7] bg-white p-4 shadow-lg">
             <div className="mb-3 flex gap-2">
               {["ぼうし", "ふく", "くつ", "アクセ", "カラー"].map((tab, index) => (
-                <button key={tab} className={cn("flex items-center gap-2 rounded-[14px] px-4 py-2 text-sm font-black", index === 0 ? "bg-[#0d66c4] text-white" : "bg-[#f1f5f9]")} type="button">
+                <button
+                  key={tab}
+                  className={cn("flex items-center gap-2 rounded-[14px] px-4 py-2 text-sm font-black", activePanel === tab ? "bg-[#0d66c4] text-white" : "bg-[#f1f5f9]")}
+                  type="button"
+                  onClick={() => {
+                    setActivePanel(tab)
+                    setAvatarMessage(`${tab}を表示中`)
+                  }}
+                >
                   {index === 4 ? <Palette className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                   {tab}
                 </button>
               ))}
             </div>
+            <p className="mb-3 rounded-[14px] bg-[#e0f2fe] px-3 py-2 text-sm font-black text-[#0d66c4]">{avatarMessage}</p>
             <div className="grid grid-cols-4 gap-3">
               {hats.map((hat) => (
                 <button
@@ -1726,12 +1845,16 @@ function AvatarScreen({
                   aria-label={`${color}を選択`}
                 />
               ))}
-              <button className="grid h-12 w-12 place-items-center rounded-[14px] border-2 border-[#d8e8f7] bg-[#f8fbff]" type="button">
+              <button className="grid h-12 w-12 place-items-center rounded-[14px] border-2 border-[#d8e8f7] bg-[#f8fbff]" type="button" onClick={resetAvatar} aria-label="リセット">
                 <RotateCcw className="h-6 w-6 text-[#52708f]" />
               </button>
             </div>
           </div>
-          <button type="button" className="mt-auto rounded-[18px] bg-[#0d66c4] py-4 text-xl font-black text-white shadow-lg">
+          <button
+            type="button"
+            onClick={() => setAvatarMessage(`アバターを保存しました: ${equippedHat}`)}
+            className="mt-auto rounded-[18px] bg-[#0d66c4] py-4 text-xl font-black text-white shadow-lg"
+          >
             このアバターで けってい!
           </button>
         </section>
@@ -1817,6 +1940,9 @@ function IsometricTown() {
 function ArPhotoScreen({ onBack }: { onBack: () => void }) {
   const [practicePhotoName, setPracticePhotoName] = useState<string | null>(null)
   const [practiceStatus, setPracticeStatus] = useState("練習写真を準備しました")
+  const [arFindCount, setArFindCount] = useState(3)
+  const [hintCount, setHintCount] = useState(2)
+  const [arMessage, setArMessage] = useState("やったね! あぶないサインをみつけたよ!")
 
   const submitPrivatePracticePhoto = async (file: File) => {
     if (typeof fetch !== "function") return
@@ -1856,7 +1982,7 @@ function ArPhotoScreen({ onBack }: { onBack: () => void }) {
         title="ARたんけんフォト"
         compact
         onBack={onBack}
-        right={<StatusPill icon={<Check className="h-4 w-4 text-[#10b981]" />} value="みつけた数 3/5" />}
+        right={<StatusPill icon={<Check className="h-4 w-4 text-[#10b981]" />} value={`みつけた数 ${arFindCount}/5`} />}
       />
       <div className="relative flex-1 overflow-hidden">
         <StreetPhotoScene ar />
@@ -1902,19 +2028,40 @@ function ArPhotoScreen({ onBack }: { onBack: () => void }) {
         </div>
         <div className="absolute bottom-24 left-10 right-10 flex items-center gap-4 rounded-[18px] bg-white/92 p-4 shadow-xl">
           <Mascot size="sm" />
-          <p className="flex-1 text-sm font-black">やったね! あぶないサインをみつけたよ!</p>
+          <p className="flex-1 text-sm font-black">{arMessage}</p>
           <span className="text-xl font-black text-[#f97316]">+50pt</span>
         </div>
         <div className="absolute bottom-5 left-0 right-0 flex items-end justify-center gap-16 text-white">
-          <button type="button" className="grid h-16 w-16 place-items-center rounded-[18px] border-2 border-white/70 bg-[#0b2551]/60" aria-label="アルバム">
+          <button
+            type="button"
+            onClick={() => setArMessage(practicePhotoName ? `${practicePhotoName} をアルバムで確認中` : "まだ練習写真がありません")}
+            className="grid h-16 w-16 place-items-center rounded-[18px] border-2 border-white/70 bg-[#0b2551]/60"
+            aria-label="アルバム"
+          >
             <ImageIcon className="h-8 w-8" />
           </button>
-          <button type="button" className="grid h-24 w-24 place-items-center rounded-full border-8 border-white bg-[#318ff0] shadow-2xl" aria-label="撮影">
+          <button
+            type="button"
+            onClick={() => {
+              setArFindCount((current) => Math.min(5, current + 1))
+              setArMessage("撮影しました。あぶないサイン +1")
+            }}
+            className="grid h-24 w-24 place-items-center rounded-full border-8 border-white bg-[#318ff0] shadow-2xl"
+            aria-label="撮影"
+          >
             <Camera className="h-12 w-12" />
           </button>
-          <button type="button" className="relative grid h-16 w-16 place-items-center rounded-[18px] border-2 border-white/70 bg-[#0b2551]/60" aria-label="ヒント">
+          <button
+            type="button"
+            onClick={() => {
+              setHintCount((current) => Math.max(0, current - 1))
+              setArMessage("ヒント: 標識の近くをよく見てみよう")
+            }}
+            className="relative grid h-16 w-16 place-items-center rounded-[18px] border-2 border-white/70 bg-[#0b2551]/60"
+            aria-label="ヒント"
+          >
             <Sparkles className="h-8 w-8 text-[#facc15]" />
-            <span className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-black text-[#0b2551]">2</span>
+            <span className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-black text-[#0b2551]">{hintCount}</span>
           </button>
         </div>
       </div>
@@ -1923,18 +2070,26 @@ function ArPhotoScreen({ onBack }: { onBack: () => void }) {
 }
 
 function HeroEncyclopediaScreen({ onBack }: { onBack: () => void }) {
+  const [activeCategory, setActiveCategory] = useState("ヒーロー")
+  const [showAllBadges, setShowAllBadges] = useState(false)
+
   return (
-    <div className="h-full bg-gradient-to-br from-[#e8f6ff] to-[#f7fbff]">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-[#e8f6ff] to-[#f7fbff]">
       <GameHeader title="安全ヒーロー図鑑" compact onBack={onBack} />
-      <div className="grid h-[calc(100%-56px)] gap-4 p-4 lg:grid-cols-[180px_1fr]">
+      <div className="grid min-h-[calc(100%-56px)] gap-4 p-4 lg:grid-cols-[180px_1fr]">
         <aside className="rounded-[24px] border-2 border-[#d8e8f7] bg-white/95 p-3 shadow-lg">
           <div className="mb-4 rounded-[18px] bg-[#f8fbff] p-3 text-center">
             <p className="text-xs font-black text-[#52708f]">図鑑コンプ率</p>
             <p className="text-2xl font-black">68%</p>
             <ProgressBar value={68} color="#14b8a6" />
           </div>
-          {["ヒーロー", "バッジ", "ルート生き物", "ストーリー"].map((item, index) => (
-            <button key={item} type="button" className={cn("mb-2 flex w-full items-center gap-2 rounded-[14px] px-3 py-3 text-sm font-black", index === 0 ? "bg-[#0d66c4] text-white" : "bg-[#f8fbff]")}>
+          {["ヒーロー", "バッジ", "ルート生き物", "ストーリー"].map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setActiveCategory(item)}
+              className={cn("mb-2 flex w-full items-center gap-2 rounded-[14px] px-3 py-3 text-sm font-black", activeCategory === item ? "bg-[#0d66c4] text-white" : "bg-[#f8fbff]")}
+            >
               <Shield className="h-5 w-5" />
               {item}
             </button>
@@ -1944,7 +2099,8 @@ function HeroEncyclopediaScreen({ onBack }: { onBack: () => void }) {
           </div>
         </aside>
         <section className="flex flex-col gap-4">
-          <div className="grid grid-cols-4 gap-3">
+          <p className="rounded-[16px] bg-white px-4 py-3 text-sm font-black text-[#0d66c4] shadow-sm">{activeCategory}を表示中</p>
+          <div className="grid grid-cols-3 gap-3">
             {[
               ["ヒーロー", "18/28"],
               ["バッジ", "42/72"],
@@ -1956,7 +2112,23 @@ function HeroEncyclopediaScreen({ onBack }: { onBack: () => void }) {
               </div>
             ))}
           </div>
-          <div className="grid flex-1 grid-cols-4 gap-4">
+          <div className="rounded-[22px] border-2 border-[#d8e8f7] bg-white p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-black text-[#0d66c4]">バッジコレクション</h3>
+              <button type="button" onClick={() => setShowAllBadges((current) => !current)} className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs font-black">
+                {showAllBadges ? "もどす" : "すべて見る"}
+              </button>
+            </div>
+            {showAllBadges && <p className="mb-3 rounded-[12px] bg-[#fef3c7] px-3 py-2 text-xs font-black text-[#b45309]">すべてのバッジを表示中</p>}
+            <div className="flex gap-4">
+              {["#f59e0b", "#0d66c4", "#ef4444", "#14b8a6", "#7c3aed"].map((color, index) => (
+                <div key={color} className="grid h-16 w-16 place-items-center rounded-[18px] border-4 border-white shadow" style={{ background: color }}>
+                  <Shield className="h-9 w-9 fill-white/20 text-white" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {heroCards.map((hero) => (
               <div key={hero.name} className="rounded-[20px] border-2 border-[#d8e8f7] bg-white p-4 text-center shadow-lg">
                 <h3 className={cn("mb-2 font-black", hero.locked ? "text-[#94a3b8]" : "text-[#0d66c4]")}>{hero.name}</h3>
@@ -1974,19 +2146,6 @@ function HeroEncyclopediaScreen({ onBack }: { onBack: () => void }) {
               </div>
             ))}
           </div>
-          <div className="rounded-[22px] border-2 border-[#d8e8f7] bg-white p-4 shadow-lg">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-black text-[#0d66c4]">バッジコレクション</h3>
-              <button type="button" className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs font-black">すべて見る</button>
-            </div>
-            <div className="flex gap-4">
-              {["#f59e0b", "#0d66c4", "#ef4444", "#14b8a6", "#7c3aed"].map((color, index) => (
-                <div key={color} className="grid h-16 w-16 place-items-center rounded-[18px] border-4 border-white shadow" style={{ background: color }}>
-                  <Shield className="h-9 w-9 fill-white/20 text-white" />
-                </div>
-              ))}
-            </div>
-          </div>
         </section>
       </div>
     </div>
@@ -1994,6 +2153,8 @@ function HeroEncyclopediaScreen({ onBack }: { onBack: () => void }) {
 }
 
 function RoomScreen({ onBack, onExplore }: { onBack: () => void; onExplore: () => void }) {
+  const [roomMessage, setRoomMessage] = useState("マイルームを表示中")
+
   return (
     <div className="h-full bg-gradient-to-b from-[#fff0cf] to-[#dff7ff]">
       <GameHeader
@@ -2017,13 +2178,13 @@ function RoomScreen({ onBack, onExplore }: { onBack: () => void; onExplore: () =
         <div className="absolute left-[57%] top-28 h-40 w-20 rounded-b-[40px] bg-[#94d3a2]" />
 
         <section className="absolute left-7 top-6 w-[34%] rounded-[24px] bg-white/95 p-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <PlayerFace size="lg" />
-            <div>
-              <h3 className="text-xl font-black">そうた</h3>
+          <div className="flex items-center gap-2">
+            <PlayerFace size="md" />
+            <div className="min-w-0 flex-1">
+              <h3 className="whitespace-nowrap text-base font-black sm:text-xl">そうた</h3>
               <p className="text-sm font-bold text-[#31516f]">安全マスター見習い</p>
             </div>
-            <span className="ml-auto rounded-[16px] bg-[#0d66c4] px-3 py-2 text-center text-xs font-black text-white">レベル<br /><span className="text-xl">12</span></span>
+            <span className="ml-auto shrink-0 rounded-[14px] bg-[#0d66c4] px-2 py-1 text-center text-[10px] font-black text-white">レベル<br /><span className="text-lg">12</span></span>
           </div>
         </section>
 
@@ -2031,8 +2192,12 @@ function RoomScreen({ onBack, onExplore }: { onBack: () => void; onExplore: () =
           <h3 className="mb-3 text-sm font-black text-[#31516f]">今月のミッション</h3>
           <MissionLine label="あんぜんな道を3回シェアしよう" value={67} progress="2/3" />
           <MissionLine label="ARたんけんを5回クリアしよう" value={80} progress="4/5" />
-          <button type="button" className="mt-3 rounded-full bg-[#14b8a6] px-5 py-2 text-sm font-black text-white">ミッションを見る</button>
+          <button type="button" onClick={() => setRoomMessage("今月のミッションを確認中")} className="mt-3 rounded-full bg-[#14b8a6] px-5 py-2 text-sm font-black text-white">ミッションを見る</button>
         </section>
+
+        <div className="absolute left-1/2 top-[18%] z-10 -translate-x-1/2 rounded-[18px] bg-white/95 px-4 py-3 text-sm font-black text-[#0d66c4] shadow-xl" role="status">
+          {roomMessage}
+        </div>
 
         <div className="absolute bottom-[25%] left-[42%] grid h-32 w-32 place-items-center rounded-[24px] bg-[#2563eb] shadow-xl">
           <div className="h-24 w-24 rounded-[20px] border-4 border-[#1e40af] bg-[#3b82f6]" />
@@ -2061,7 +2226,12 @@ function RoomScreen({ onBack, onExplore }: { onBack: () => void; onExplore: () =
         <Mascot size="md" className="absolute bottom-[15%] right-[32%]" />
         <div className="absolute bottom-4 left-8 right-8 flex items-center justify-between rounded-[24px] bg-white/95 p-3 shadow-xl">
           {["コレクション", "ずかん", "トロフィー", "ショップ", "フレンド"].map((item, index) => (
-            <button key={item} type="button" className="grid place-items-center gap-1 rounded-[16px] px-4 py-2 text-xs font-black text-[#31516f]">
+            <button
+              key={item}
+              type="button"
+              onClick={() => setRoomMessage(`${item}を開きました`)}
+              className="grid place-items-center gap-1 rounded-[16px] px-4 py-2 text-xs font-black text-[#31516f]"
+            >
               {[Gift, BookOpen, Trophy, Award, Users].map((Icon, iconIndex) => (iconIndex === index ? <Icon key={iconIndex} className="h-6 w-6 text-[#0d66c4]" /> : null))}
               {item}
             </button>
