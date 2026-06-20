@@ -4,6 +4,7 @@ import {
   getModelPricing,
   calculateMapboxCost,
   estimateImageGenerationCost,
+  calculateOpenAIImageGenerationCost,
   estimateMonthlyProjection,
   API_PRICING,
 } from '@/lib/api-cost-calculator'
@@ -114,6 +115,45 @@ describe('api-cost-calculator', () => {
     it('returns 0 when requestCount is zero or negative', () => {
       expect(estimateImageGenerationCost('gemini-2.5-flash-image', 0)).toBe(0)
       expect(estimateImageGenerationCost('gemini-2.5-flash-image', -2)).toBe(0)
+    })
+  })
+
+  describe('calculateOpenAIImageGenerationCost', () => {
+    it('calculates GPT Image 2 cost from image, text, and output tokens', () => {
+      const cost = calculateOpenAIImageGenerationCost('gpt-image-2', {
+        inputTokens: 1100,
+        inputImageTokens: 1000,
+        inputTextTokens: 100,
+        outputTokens: 2000,
+      })
+
+      expect(cost).toBeCloseTo(0.0685, 8)
+    })
+
+    it('uses the request estimate when usage is unavailable', () => {
+      expect(calculateOpenAIImageGenerationCost('gpt-image-2')).toBeCloseTo(0.053, 6)
+    })
+
+    it('uses token pricing for dated GPT Image 2 model aliases', () => {
+      const cost = calculateOpenAIImageGenerationCost('gpt-image-2-2026-04-21', {
+        inputTokens: 0,
+        inputImageTokens: 0,
+        inputTextTokens: 0,
+        outputTokens: 1000,
+      })
+
+      expect(cost).toBeCloseTo(0.03, 8)
+    })
+
+    it('calculates GPT Image 1 overrides using their own token rates', () => {
+      const cost = calculateOpenAIImageGenerationCost('gpt-image-1', {
+        inputTokens: 1100,
+        inputImageTokens: 1000,
+        inputTextTokens: 100,
+        outputTokens: 2000,
+      })
+
+      expect(cost).toBeCloseTo(0.0905, 8)
     })
   })
 

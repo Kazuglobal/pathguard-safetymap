@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithOpenAIWithModel, FORCED_OPENAI_IMAGE_MODEL } from "@/lib/openai-image"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
-import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
+import { calculateOpenAIImageGenerationCost } from "@/lib/api-cost-calculator"
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 180
 
-const ROUTE_TIMEOUT_MS = 55_000 // maxDuration(60s) - 5s バッファ
+const ROUTE_TIMEOUT_MS = 175_000 // maxDuration(180s) - 5s buffer
 const FORCED_IMAGE_MODEL = FORCED_OPENAI_IMAGE_MODEL
 
 export async function POST(req: NextRequest) {
@@ -77,7 +77,9 @@ export async function POST(req: NextRequest) {
         api_endpoint: 'generate-image',
         model_name: modelName,
         request_count: 1,
-        estimated_cost_usd: estimateImageGenerationCost(modelName, 1),
+        input_tokens: result.usage?.inputTokens,
+        output_tokens: result.usage?.outputTokens,
+        estimated_cost_usd: calculateOpenAIImageGenerationCost(modelName, result.usage),
         success: true,
       })
     } catch { /* fire-and-forget */ }
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
     const statusCode = (() => {
       if (/unauthorized|forbidden|api.?key|401|403/i.test(message)) return 401
       if (/quota|rate.?limit|429/i.test(message)) return 429
+      if (/サポートされていない画像形式|MIME形式|入力画像が大きすぎ/i.test(message)) return 400
       return 500
     })()
     return NextResponse.json({ error: message }, { status: statusCode })

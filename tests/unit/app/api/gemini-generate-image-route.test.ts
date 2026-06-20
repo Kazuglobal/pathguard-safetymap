@@ -4,17 +4,19 @@ const mocks = vi.hoisted(() => {
   const mockGetUser = vi.fn()
   const mockGenerateImage = vi.fn()
   const mockLogApiUsage = vi.fn()
-  const mockEstimateImageGenerationCost = vi.fn(() => 0.01)
+  const mockCalculateImageGenerationCost = vi.fn(() => 0.01)
   const mockSetContext = vi.fn()
   const mockAddBreadcrumb = vi.fn()
+  const mockReadFileWithSentryContext = vi.fn(async () => new ArrayBuffer(4))
 
   return {
     mockGetUser,
     mockGenerateImage,
     mockLogApiUsage,
-    mockEstimateImageGenerationCost,
+    mockCalculateImageGenerationCost,
     mockSetContext,
     mockAddBreadcrumb,
+    mockReadFileWithSentryContext,
   }
 })
 
@@ -36,7 +38,11 @@ vi.mock("@/lib/api-usage-logger", () => ({
 }))
 
 vi.mock("@/lib/api-cost-calculator", () => ({
-  estimateImageGenerationCost: mocks.mockEstimateImageGenerationCost,
+  calculateOpenAIImageGenerationCost: mocks.mockCalculateImageGenerationCost,
+}))
+
+vi.mock("@/lib/sentry-upload-context", () => ({
+  readFileWithSentryContext: mocks.mockReadFileWithSentryContext,
 }))
 
 vi.mock("@sentry/nextjs", () => ({
@@ -136,31 +142,28 @@ describe("app/api/gemini/generate-image route", () => {
     )
   })
 
-  it("adds Sentry upload context before reading multipart image data", async () => {
+  it("reads multipart image data through the Sentry context helper", async () => {
     const { POST } = await loadRoute()
-    const form = new FormData()
-    form.append("prompt", "test prompt")
-    form.append("image", new File(["abcd"], "input.png", { type: "image/png" }))
+    const file = {
+      name: "input.png",
+      type: "image/png",
+      size: 4,
+    }
+    const request = {
+      headers: new Headers({ "content-type": "multipart/form-data; boundary=test" }),
+      formData: vi.fn(async () => ({
+        get: (key: string) => key === "prompt" ? "test prompt" : key === "image" ? file : null,
+      })),
+    }
 
-    const res = await POST(
-      new Request("http://localhost/api/gemini/generate-image", {
-        method: "POST",
-        body: form,
-      }) as any,
-    )
+    const res = await POST(request as any)
 
     expect(res.status).toBe(200)
-    expect(mocks.mockSetContext).toHaveBeenCalledWith(
-      "upload_file",
+    expect(mocks.mockReadFileWithSentryContext).toHaveBeenCalledWith(
       expect.objectContaining({
         route: "/api/gemini/generate-image",
         fieldName: "image",
-        fileName: expect.any(String),
-      }),
-    )
-    expect(mocks.mockAddBreadcrumb).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category: "upload.read",
+        file,
       }),
     )
   })

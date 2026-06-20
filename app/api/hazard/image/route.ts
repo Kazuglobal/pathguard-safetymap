@@ -12,7 +12,7 @@ import { createServerClient } from "@/lib/supabase-server"
 import type { HazardAreaContext, HazardType } from "@/lib/types"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 180
 
 const BUCKET_NAME = "hazard-simulations"
 const MODEL_NAME = FORCED_OPENAI_IMAGE_MODEL
@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
       .eq("risk_level", payload.riskLevel)
       .eq("area_context", payload.areaContext)
       .eq("scenario_key", payload.scenarioKey)
+      .eq("provider", "openai")
       .eq("prompt_signature", promptSignature)
       .maybeSingle()
 
