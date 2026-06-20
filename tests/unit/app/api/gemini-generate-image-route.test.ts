@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => {
   const mockGetUser = vi.fn()
   const mockGenerateImage = vi.fn()
-  const mockGetImageModel = vi.fn(() => "gemini-default-model")
   const mockLogApiUsage = vi.fn()
   const mockEstimateImageGenerationCost = vi.fn(() => 0.01)
   const mockSetContext = vi.fn()
@@ -12,7 +11,6 @@ const mocks = vi.hoisted(() => {
   return {
     mockGetUser,
     mockGenerateImage,
-    mockGetImageModel,
     mockLogApiUsage,
     mockEstimateImageGenerationCost,
     mockSetContext,
@@ -28,9 +26,9 @@ vi.mock("@/lib/supabase-server", () => ({
   })),
 }))
 
-vi.mock("@/lib/gemini-image", () => ({
-  generateImageWithGeminiWithModel: mocks.mockGenerateImage,
-  getImageModel: mocks.mockGetImageModel,
+vi.mock("@/lib/openai-image", () => ({
+  generateImageWithOpenAIWithModel: mocks.mockGenerateImage,
+  FORCED_OPENAI_IMAGE_MODEL: "gpt-image-2",
 }))
 
 vi.mock("@/lib/api-usage-logger", () => ({
@@ -71,27 +69,27 @@ describe("app/api/gemini/generate-image route", () => {
     })
     mocks.mockGenerateImage.mockResolvedValue({
       images: [],
-      model: "gemini-3.1-flash-image-preview",
+      model: "gpt-image-2",
     })
   })
 
-  it("always uses gemini-3.1-flash-image-preview when generationMode is standard", async () => {
+  it("always uses gpt-image-2 when generationMode is standard", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("standard") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+      expect.objectContaining({ model: "gpt-image-2" }),
     )
   })
 
-  it("always uses gemini-3.1-flash-image-preview when generationMode is disaster", async () => {
+  it("always uses gpt-image-2 when generationMode is disaster", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("disaster") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+      expect.objectContaining({ model: "gpt-image-2" }),
     )
   })
 
@@ -122,7 +120,7 @@ describe("app/api/gemini/generate-image route", () => {
     clearTimeoutSpy.mockRestore()
   })
 
-  it("always uses gemini-3.1-flash-image-preview when generationMode is omitted", async () => {
+  it("always uses gpt-image-2 when generationMode is omitted", async () => {
     const { POST } = await loadRoute()
     const form = new FormData()
     form.append("prompt", "test prompt")
@@ -134,7 +132,7 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+      expect.objectContaining({ model: "gpt-image-2" }),
     )
   })
 
