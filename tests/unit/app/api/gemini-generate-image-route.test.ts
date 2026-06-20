@@ -3,20 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => {
   const mockGetUser = vi.fn()
   const mockGenerateImage = vi.fn()
-  const mockGetImageModel = vi.fn(() => "gemini-default-model")
   const mockLogApiUsage = vi.fn()
-  const mockEstimateImageGenerationCost = vi.fn(() => 0.01)
+  const mockCalculateImageGenerationCost = vi.fn(() => 0.01)
   const mockSetContext = vi.fn()
   const mockAddBreadcrumb = vi.fn()
+  const mockReadFileWithSentryContext = vi.fn(async () => new ArrayBuffer(4))
 
   return {
     mockGetUser,
     mockGenerateImage,
-    mockGetImageModel,
     mockLogApiUsage,
-    mockEstimateImageGenerationCost,
+    mockCalculateImageGenerationCost,
     mockSetContext,
     mockAddBreadcrumb,
+    mockReadFileWithSentryContext,
   }
 })
 
@@ -28,9 +28,9 @@ vi.mock("@/lib/supabase-server", () => ({
   })),
 }))
 
-vi.mock("@/lib/gemini-image", () => ({
-  generateImageWithGeminiWithModel: mocks.mockGenerateImage,
-  getImageModel: mocks.mockGetImageModel,
+vi.mock("@/lib/openai-image", () => ({
+  generateImageWithOpenAIWithModel: mocks.mockGenerateImage,
+  FORCED_OPENAI_IMAGE_MODEL: "gpt-image-2",
 }))
 
 vi.mock("@/lib/api-usage-logger", () => ({
@@ -38,7 +38,11 @@ vi.mock("@/lib/api-usage-logger", () => ({
 }))
 
 vi.mock("@/lib/api-cost-calculator", () => ({
-  estimateImageGenerationCost: mocks.mockEstimateImageGenerationCost,
+  calculateOpenAIImageGenerationCost: mocks.mockCalculateImageGenerationCost,
+}))
+
+vi.mock("@/lib/sentry-upload-context", () => ({
+  readFileWithSentryContext: mocks.mockReadFileWithSentryContext,
 }))
 
 vi.mock("@sentry/nextjs", () => ({
@@ -71,27 +75,27 @@ describe("app/api/gemini/generate-image route", () => {
     })
     mocks.mockGenerateImage.mockResolvedValue({
       images: [],
-      model: "gemini-3.1-flash-image-preview",
+      model: "gpt-image-2",
     })
   })
 
-  it("always uses gemini-3.1-flash-image-preview when generationMode is standard", async () => {
+  it("always uses gpt-image-2 when generationMode is standard", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("standard") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+      expect.objectContaining({ model: "gpt-image-2" }),
     )
   })
 
-  it("always uses gemini-3.1-flash-image-preview when generationMode is disaster", async () => {
+  it("always uses gpt-image-2 when generationMode is disaster", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("disaster") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+      expect.objectContaining({ model: "gpt-image-2" }),
     )
   })
 
@@ -122,7 +126,7 @@ describe("app/api/gemini/generate-image route", () => {
     clearTimeoutSpy.mockRestore()
   })
 
-  it("always uses gemini-3.1-flash-image-preview when generationMode is omitted", async () => {
+  it("always uses gpt-image-2 when generationMode is omitted", async () => {
     const { POST } = await loadRoute()
     const form = new FormData()
     form.append("prompt", "test prompt")
@@ -134,35 +138,32 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-3.1-flash-image-preview" }),
+      expect.objectContaining({ model: "gpt-image-2" }),
     )
   })
 
-  it("adds Sentry upload context before reading multipart image data", async () => {
+  it("reads multipart image data through the Sentry context helper", async () => {
     const { POST } = await loadRoute()
-    const form = new FormData()
-    form.append("prompt", "test prompt")
-    form.append("image", new File(["abcd"], "input.png", { type: "image/png" }))
+    const file = {
+      name: "input.png",
+      type: "image/png",
+      size: 4,
+    }
+    const request = {
+      headers: new Headers({ "content-type": "multipart/form-data; boundary=test" }),
+      formData: vi.fn(async () => ({
+        get: (key: string) => key === "prompt" ? "test prompt" : key === "image" ? file : null,
+      })),
+    }
 
-    const res = await POST(
-      new Request("http://localhost/api/gemini/generate-image", {
-        method: "POST",
-        body: form,
-      }) as any,
-    )
+    const res = await POST(request as any)
 
     expect(res.status).toBe(200)
-    expect(mocks.mockSetContext).toHaveBeenCalledWith(
-      "upload_file",
+    expect(mocks.mockReadFileWithSentryContext).toHaveBeenCalledWith(
       expect.objectContaining({
         route: "/api/gemini/generate-image",
         fieldName: "image",
-        fileName: expect.any(String),
-      }),
-    )
-    expect(mocks.mockAddBreadcrumb).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category: "upload.read",
+        file,
       }),
     )
   })
