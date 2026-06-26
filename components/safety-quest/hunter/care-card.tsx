@@ -1,50 +1,23 @@
 "use client"
 
-import type { JSX } from "react"
+import { motion, useReducedMotion, type Transition } from "framer-motion"
 import { Baby, Clock, ShieldAlert, Sparkles } from "lucide-react"
 
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
 
+import { Mascot, StatPill, tokens } from "./theme"
+
 // きけんハンター「気をつけるカード」
 // 子ども向け・やさしい・断定しないトーンで、地点の事故サマリを表示する。
-// 配色パレット: 青 #0d66c4 / オレンジ #f97316 / 黄 #ffcf35 / 紺 #0b2551
+// 配色/角丸/影/演出は共通テーマ（theme.tsx）の tokens に統一。
 
-const PALETTE = {
-  blue: "#0d66c4",
-  orange: "#f97316",
-  yellow: "#ffcf35",
-  navy: "#0b2551",
-} as const
+const C = tokens.color
 
-interface CareChipProps {
-  readonly icon: JSX.Element
-  readonly label: string
-  readonly value: string
-  readonly accent: string
-}
+const SPRING: Transition = { type: "spring", stiffness: 260, damping: 18 }
 
-function CareChip({ icon, label, value, accent }: CareChipProps): JSX.Element {
-  return (
-    <div
-      className="flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm ring-1 ring-black/5"
-      style={{ color: PALETTE.navy }}
-    >
-      <span
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white"
-        style={{ backgroundColor: accent }}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <span className="flex flex-col leading-tight">
-        <span className="text-[11px] font-bold opacity-70">{label}</span>
-        <span className="text-sm font-black">{value}</span>
-      </span>
-    </div>
-  )
-}
+export function CareCard({ accident }: { accident: HunterAccidentSummary }) {
+  const reduce = useReducedMotion()
 
-export function CareCard({ accident }: { accident: HunterAccidentSummary }): JSX.Element {
   const {
     hasData,
     riskLabel,
@@ -61,73 +34,102 @@ export function CareCard({ accident }: { accident: HunterAccidentSummary }): JSX
   const hasAnyChip = showChildChip || showTypeChip || showTimeChip
 
   return (
-    <section
-      className="relative overflow-hidden rounded-[20px] bg-white/95 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur"
+    <motion.section
+      className="relative overflow-hidden rounded-[24px] bg-[#FFF8EF] p-5"
+      style={{
+        boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
+      }}
       aria-label="気をつけるカード"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={reduce ? { duration: 0.2 } : SPRING}
     >
-      {/* 上部: 危険レベルのバッジ */}
+      {/* やわらかい飾りの光（装飾） */}
       <div
-        className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-white shadow-sm"
-        style={{ backgroundColor: PALETTE.blue }}
-      >
-        <span className="text-lg leading-none" aria-hidden="true">
-          {riskEmoji}
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full"
+        style={{ background: C.warning, opacity: 0.16 }}
+      />
+
+      {/* 上部: 危険レベルのバッジ ＋ 見守るハンタくん */}
+      <div className="relative flex items-start justify-between gap-3">
+        <div
+          className="inline-flex items-center gap-2 rounded-full px-4 py-2"
+          style={{
+            backgroundColor: C.primaryStrong,
+            color: "#FFFFFF",
+            boxShadow: tokens.shadow.soft,
+          }}
+        >
+          <span className="text-lg leading-none" aria-hidden="true">
+            {riskEmoji}
+          </span>
+          <span className="text-[15px] font-extrabold tracking-wide">
+            {riskLabel}
+          </span>
+        </div>
+
+        <span className="-mt-1 -mr-1 shrink-0">
+          <Mascot size="sm" mood="cheer" />
         </span>
-        <span className="text-sm font-black tracking-wide">{riskLabel}</span>
       </div>
 
-      {/* 中央: 子ども向けメッセージ */}
+      {/* 中央: 子ども向けメッセージ（このカードの主役） */}
       <p
-        className="mt-4 text-xl font-black leading-snug"
-        style={{ color: PALETTE.navy }}
+        className="relative mt-3 text-[20px] font-extrabold leading-[1.5]"
+        style={{ color: C.ink }}
       >
         {kidMessage}
       </p>
 
       {/* データがあるとき: 気をつけるポイントのチップ */}
       {hasAnyChip ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="relative mt-4 flex flex-wrap gap-2">
           {showChildChip ? (
-            <CareChip
+            <StatPill
+              tone="orange"
               icon={<Baby className="h-4 w-4" aria-hidden="true" />}
-              label="こどもがかかわった"
+              label="こどもが かかわった"
               value={`${childInvolved}けん`}
-              accent={PALETTE.orange}
             />
           ) : null}
           {showTypeChip ? (
-            <CareChip
+            <StatPill
+              tone="blue"
               icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />}
-              label="おおいできごと"
+              label="おおい できごと"
               value={topAccidentType as string}
-              accent={PALETTE.blue}
             />
           ) : null}
           {showTimeChip ? (
-            <CareChip
+            <StatPill
+              tone="yellow"
               icon={<Clock className="h-4 w-4" aria-hidden="true" />}
-              label="きをつけるじかん"
+              label="きを つける じかん"
               value={peakTimeSlot as string}
-              accent={PALETTE.navy}
             />
           ) : null}
         </div>
       ) : (
-        // データがないとき: やさしいフォロー
+        // データがないとき: やさしいフォロー（断定しない）
         <div
-          className="mt-4 flex items-center gap-2 rounded-2xl px-4 py-3"
-          style={{ backgroundColor: `${PALETTE.yellow}33`, color: PALETTE.navy }}
+          className="relative mt-4 flex items-center gap-2.5 rounded-[16px] px-4 py-3"
+          style={{ backgroundColor: "#FFFFFF", boxShadow: tokens.shadow.soft }}
         >
           <Sparkles
             className="h-5 w-5 shrink-0"
-            style={{ color: PALETTE.orange }}
+            style={{ color: C.accent }}
             aria-hidden="true"
           />
-          <span className="text-sm font-bold">
-            まわりをよく見て、ゆっくりあるこうね。
+          <span className="text-[16px] font-bold" style={{ color: C.ink }}>
+            まわりを よく
+            <ruby>
+              見<rt>み</rt>
+            </ruby>
+            て、ゆっくり あるく れんしゅうを しよう。
           </span>
         </div>
       )}
-    </section>
+    </motion.section>
   )
 }

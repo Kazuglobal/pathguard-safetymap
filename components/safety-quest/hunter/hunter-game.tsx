@@ -1,9 +1,17 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
-import { ArrowLeft, Camera, ShieldCheck, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import type { ReactNode } from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import {
+  Camera,
+  Images,
+  Lightbulb,
+  Lock,
+  Search,
+  Sparkles,
+} from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import { judgeTap } from "@/lib/hunter/scoring"
 import type {
   HunterAccidentSummary,
@@ -17,6 +25,14 @@ import { ExploreCanvas } from "./explore-canvas"
 import { LocationPinPicker } from "./location-pin-picker"
 import { MaskConfirm } from "./mask-confirm"
 import { ResultCard } from "./result-card"
+import {
+  Celebrate,
+  HunterShell,
+  Mascot,
+  PrimaryCTA,
+  StatPill,
+  tokens,
+} from "./theme"
 
 type Screen =
   | "home"
@@ -40,6 +56,8 @@ interface SessionResult {
   comboMax: number
 }
 
+const C = tokens.color
+
 export function HunterGame() {
   const [screen, setScreen] = useState<Screen>("home")
   const [file, setFile] = useState<File | null>(null)
@@ -53,7 +71,9 @@ export function HunterGame() {
   const [result, setResult] = useState<SessionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [celebratePoints, setCelebratePoints] = useState<number | null>(null)
 
+  const reduce = useReducedMotion()
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
 
   const resetPlay = useCallback(() => {
@@ -112,26 +132,29 @@ export function HunterGame() {
   )
 
   const handleTap = (tap: HunterTap) => {
-    setTaps((prev) => [...prev, tap])
+    // 「決め手のタップ」を含めて確定させる: setTaps は非同期なので、
+    // 自動終了時は nextTaps を直接 finishSession へ渡す（stale closure 回避）。
+    const nextTaps = [...taps, tap]
+    setTaps(nextTaps)
     const outcome = judgeTap(tap, hazards, foundSet)
     setLastOutcome(outcome)
     if (outcome.result === "hit" && outcome.hazardId) {
       const nextFound = [...foundIds, outcome.hazardId]
       setFoundIds(nextFound)
       if (nextFound.length >= hazards.length) {
-        void finishSession(nextFound)
+        void finishSession(nextTaps, nextFound)
       }
     }
   }
 
   const finishSession = useCallback(
-    async (_foundIds: string[]) => {
+    async (sessionTaps: HunterTap[], _foundIds: string[]) => {
       setBusy(true)
       try {
         const response = await fetch("/api/hunter/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "explore", hazards, taps }),
+          body: JSON.stringify({ mode: "explore", hazards, taps: sessionTaps }),
         })
         const body = await response.json().catch(() => null)
         if (response.ok && body) {
@@ -151,70 +174,65 @@ export function HunterGame() {
         setScreen("result")
       }
     },
-    [hazards, taps],
+    [hazards],
   )
 
-  // ----- 画面 -----
+  // 発見（hit）時に お祝い演出を出す（ハンドラ挙動は変えず lastOutcome を監視）
+  useEffect(() => {
+    if (lastOutcome?.result !== "hit") return
+    setCelebratePoints(lastOutcome.points > 0 ? lastOutcome.points : null)
+    const timer = setTimeout(() => setCelebratePoints(null), 900)
+    return () => clearTimeout(timer)
+  }, [lastOutcome])
+
+  // けっか画面に入ったら お祝い演出
+  const [resultCelebrate, setResultCelebrate] = useState(false)
+  useEffect(() => {
+    if (screen !== "result") {
+      setResultCelebrate(false)
+      return
+    }
+    setResultCelebrate(true)
+    const timer = setTimeout(() => setResultCelebrate(false), 1000)
+    return () => clearTimeout(timer)
+  }, [screen])
+
+  // ----- 画面記述（タイトル/戻る/HUD/進捗/中身） -----
+
+  const remaining = Math.max(0, hazards.length - foundIds.length)
+
+  let title: string | undefined
+  let onBack: (() => void) | undefined
+  let headerRight: ReactNode
+  let progress: { current: number; total: number } | undefined
+  let content: ReactNode
 
   if (screen === "home") {
-    return (
-      <Shell>
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
-          <div className="grid h-24 w-24 place-items-center rounded-[28px] bg-[#0d66c4] shadow-xl">
-            <ShieldCheck className="h-12 w-12 text-white" aria-hidden />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-[#0b2551]">きけんハンター</h1>
-            <p className="mt-2 text-sm font-bold text-[#31516f]">
-              通学路の写真から、あぶないところを じぶんの目で さがそう！
-            </p>
-          </div>
-          <Button
-            size="lg"
-            className="rounded-[18px] bg-[#f97316] px-10 py-6 text-lg font-black hover:bg-[#ea580c]"
-            onClick={() => {
-              resetAll()
-              setScreen("select")
-            }}
-          >
-            はじめる
-          </Button>
-        </div>
-      </Shell>
+    content = (
+      <HomeScreen
+        onStart={() => {
+          resetAll()
+          setScreen("select")
+        }}
+      />
     )
-  }
-
-  if (screen === "select") {
-    return (
-      <Shell title="しゃしんを えらぶ" onBack={() => setScreen("home")}>
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
-          <p className="max-w-sm text-sm font-bold text-[#31516f]">
-            顔・名前・学校名・お家の入口・車のナンバーが 写っていない写真を つかってね。
+  } else if (screen === "select") {
+    title = "しゃしんを えらぶ"
+    onBack = () => setScreen("home")
+    content = <SelectScreen onPick={handleFileChange} thumbnail={file} />
+  } else if (screen === "mask" && file) {
+    title = "プライバシー かくにん"
+    onBack = () => setScreen("select")
+    content = (
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex items-center gap-3">
+          <Mascot size="sm" mood="cheer" />
+          <p className="text-[15px] font-bold leading-relaxed" style={{ color: C.ink }}>
+            おうちの人との やくそく。
+            <br />
+            かおや なまえが うつっていないか みてみよう。
           </p>
-          <input
-            id="hunter-photo-upload"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            aria-label="通学路の写真をえらぶ"
-            onChange={handleFileChange}
-          />
-          <label
-            htmlFor="hunter-photo-upload"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-[18px] bg-[#0d66c4] px-8 py-5 text-lg font-black text-white shadow-lg hover:bg-[#0a55a6]"
-          >
-            <Camera className="h-6 w-6" aria-hidden />
-            写真をえらぶ
-          </label>
         </div>
-      </Shell>
-    )
-  }
-
-  if (screen === "mask" && file) {
-    return (
-      <Shell title="プライバシー かくにん" onBack={() => setScreen("select")}>
         <MaskConfirm
           file={file}
           onConfirm={(dataUrl) => {
@@ -223,13 +241,13 @@ export function HunterGame() {
           }}
           onCancel={() => setScreen("select")}
         />
-      </Shell>
+      </div>
     )
-  }
-
-  if (screen === "pin") {
-    return (
-      <Shell title="ばしょを えらぶ" onBack={() => setScreen("mask")}>
+  } else if (screen === "pin") {
+    title = "ばしょを えらぶ"
+    onBack = () => setScreen("mask")
+    content = (
+      <div className="flex flex-1 flex-col p-4">
         <LocationPinPicker
           initial={pin ?? undefined}
           onConfirm={(confirmed) => {
@@ -237,143 +255,448 @@ export function HunterGame() {
             setScreen("consent")
           }}
         />
-      </Shell>
-    )
-  }
-
-  if (screen === "consent") {
-    return (
-      <Shell title="AIに そうだんする まえに" onBack={() => setScreen("pin")}>
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-          <Sparkles className="h-12 w-12 text-[#f97316]" aria-hidden />
-          <p className="max-w-md text-sm font-bold leading-relaxed text-[#31516f]">
-            ぼかした写真を AIに おくって、あぶないところを いっしょに さがします。
-            <br />
-            おうちの人と かくにんしてから すすんでね。
-          </p>
-          {error && (
-            <p role="alert" className="rounded-[14px] bg-[#fee2e2] px-4 py-2 text-sm font-black text-[#b91c1c]">
-              {error}
-            </p>
-          )}
-          <Button
-            size="lg"
-            disabled={busy || !maskedUrl || !pin}
-            className="rounded-[18px] bg-[#f97316] px-10 py-6 text-lg font-black hover:bg-[#ea580c]"
-            onClick={() => {
-              if (maskedUrl && pin) void runAnalyze(pin, maskedUrl)
-            }}
-          >
-            OK！はじめる
-          </Button>
-        </div>
-      </Shell>
-    )
-  }
-
-  if (screen === "analyzing") {
-    return (
-      <Shell title="AIが かくにん中…">
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-          <div className="h-16 w-16 animate-spin rounded-full border-8 border-[#dbeafe] border-t-[#0d66c4]" />
-          <p className="text-sm font-black text-[#31516f]">
-            写真の あぶないところを さがしているよ…
-          </p>
-        </div>
-      </Shell>
-    )
-  }
-
-  if (screen === "explore" && maskedUrl) {
-    const remaining = hazards.length - foundIds.length
-    return (
-      <Shell title="あぶないところを さがそう！" onBack={() => setScreen("home")}>
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-          {accident && <CareCard accident={accident} />}
-          <ExploreCanvas
-            imageUrl={maskedUrl}
-            hazards={hazards}
-            foundIds={foundIds}
-            onTap={handleTap}
-            lastOutcome={lastOutcome}
-          />
-          <Button
-            size="lg"
-            disabled={busy}
-            className="rounded-[18px] bg-[#0d66c4] py-5 text-base font-black hover:bg-[#0a55a6]"
-            onClick={() => void finishSession(foundIds)}
-          >
-            {remaining > 0 ? `けっかを みる（のこり ${remaining}）` : "けっかを みる"}
-          </Button>
-        </div>
-      </Shell>
-    )
-  }
-
-  if (screen === "result" && result) {
-    return (
-      <Shell title="けっか">
-        <div className="flex-1 overflow-y-auto p-4">
-          <ResultCard
-            score={result.score}
-            matches={result.matches}
-            total={result.total}
-            comboMax={result.comboMax}
-            hazards={hazards}
-            foundIds={foundIds}
-            onRetry={() => {
-              resetPlay()
-              setScreen("explore")
-            }}
-            onNewPhoto={() => {
-              resetAll()
-              setScreen("select")
-            }}
-          />
-        </div>
-      </Shell>
-    )
-  }
-
-  // フォールバック（状態が壊れたとき）
-  return (
-    <Shell title="きけんハンター">
-      <div className="flex flex-1 items-center justify-center p-6">
-        <Button onClick={resetAll} className="rounded-[18px] font-black">
-          ホームに もどる
-        </Button>
       </div>
-    </Shell>
+    )
+  } else if (screen === "consent") {
+    title = "AIに そうだんする まえに"
+    onBack = () => setScreen("pin")
+    content = (
+      <ConsentScreen
+        error={error}
+        disabled={busy || !maskedUrl || !pin}
+        onConfirm={() => {
+          if (maskedUrl && pin) void runAnalyze(pin, maskedUrl)
+        }}
+      />
+    )
+  } else if (screen === "analyzing") {
+    title = "AIが かくにん中…"
+    content = <AnalyzingScreen imageUrl={maskedUrl} />
+  } else if (screen === "explore" && maskedUrl) {
+    title = "さがそう！"
+    onBack = () => setScreen("home")
+    progress = { current: foundIds.length, total: hazards.length }
+    headerRight = (
+      <StatPill
+        icon={<Search className="h-4 w-4" />}
+        label="はっけん"
+        value={`${foundIds.length}/${hazards.length}`}
+        tone="green"
+      />
+    )
+    content = (
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+        {accident && <CareCard accident={accident} />}
+        <ExploreCanvas
+          imageUrl={maskedUrl}
+          hazards={hazards}
+          foundIds={foundIds}
+          onTap={handleTap}
+          lastOutcome={lastOutcome}
+        />
+        <div
+          className="flex items-center gap-3 rounded-[20px] px-3 py-2.5"
+          style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
+        >
+          <Mascot size="sm" mood="cheer" />
+          <p className="text-[14px] font-bold leading-snug" style={{ color: C.ink }}>
+            きに なるところを 指で タッチしてみよう。
+            <br />
+            「ここ あぶないかも？」を さがす れんしゅうだよ。
+          </p>
+        </div>
+        <PrimaryCTA
+          disabled={busy}
+          className={tokens.cls.ctaBlue}
+          onClick={() => void finishSession(taps, foundIds)}
+        >
+          {remaining > 0 ? `けっかを みる（のこり ${remaining}）` : "けっかを みる"}
+        </PrimaryCTA>
+      </div>
+    )
+  } else if (screen === "result" && result) {
+    title = "けっか"
+    content = (
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="mb-2 flex flex-col items-center">
+          <Mascot size="lg" mood="wow" />
+        </div>
+        <ResultCard
+          score={result.score}
+          matches={result.matches}
+          total={result.total}
+          comboMax={result.comboMax}
+          hazards={hazards}
+          foundIds={foundIds}
+          onRetry={() => {
+            resetPlay()
+            setScreen("explore")
+          }}
+          onNewPhoto={() => {
+            resetAll()
+            setScreen("select")
+          }}
+        />
+      </div>
+    )
+  } else {
+    // フォールバック（状態が壊れたとき）
+    title = "きけんハンター"
+    content = (
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 p-6 text-center">
+        <Mascot size="md" mood="happy" />
+        <PrimaryCTA onClick={resetAll}>ホームに もどる</PrimaryCTA>
+      </div>
+    )
+  }
+
+  const enter = reduce
+    ? { opacity: 0 }
+    : { opacity: 0, x: 24, scale: 0.98 }
+  const center = reduce
+    ? { opacity: 1 }
+    : { opacity: 1, x: 0, scale: 1 }
+  const leave = reduce
+    ? { opacity: 0 }
+    : { opacity: 0, x: -24, scale: 0.98 }
+
+  return (
+    <>
+      <HunterShell
+        title={title}
+        onBack={onBack}
+        headerRight={headerRight}
+        progress={progress}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={screen}
+            className="flex flex-1 flex-col"
+            initial={enter}
+            animate={center}
+            exit={leave}
+            transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 260, damping: 18 }}
+          >
+            {content}
+          </motion.div>
+        </AnimatePresence>
+      </HunterShell>
+
+      {/* 発見・達成のお祝い演出（装飾オーバーレイ） */}
+      <Celebrate
+        show={celebratePoints !== null || resultCelebrate}
+        points={celebratePoints ?? undefined}
+      />
+    </>
   )
 }
 
-function Shell({
-  title,
-  onBack,
-  children,
+/* ------------------------------------------------------------------ *
+ * ふりがな helper
+ * ------------------------------------------------------------------ */
+
+function R({ k, y }: { k: string; y: string }) {
+  return (
+    <ruby className="leading-none">
+      {k}
+      <rt className="text-[0.5em] font-bold">{y}</rt>
+    </ruby>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * home
+ * ------------------------------------------------------------------ */
+
+const HOW_TO: ReadonlyArray<{ icon: ReactNode; text: ReactNode }> = [
+  { icon: <Camera className="h-5 w-5" />, text: "しゃしんを えらぶ" },
+  { icon: <Search className="h-5 w-5" />, text: "あぶないところを さがす" },
+  { icon: <Lightbulb className="h-5 w-5" />, text: "きをつける れんしゅう" },
+]
+
+function HomeScreen({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-8 text-center">
+      <Mascot size="lg" mood="happy" />
+
+      <div>
+        <h1
+          className="text-[28px] font-extrabold tracking-wide"
+          style={{ color: C.primaryStrong }}
+        >
+          きけんハンター
+        </h1>
+        <p className="mt-2 text-[16px] font-bold leading-relaxed" style={{ color: C.ink }}>
+          <R k="通学路" y="つうがくろ" />の しゃしんから、
+          <br />
+          あぶないところを <R k="自分" y="じぶん" />の <R k="目" y="め" />で さがそう！
+        </p>
+      </div>
+
+      <PrimaryCTA onClick={onStart}>
+        <Sparkles className="h-5 w-5" aria-hidden="true" />
+        ぼうけんスタート
+      </PrimaryCTA>
+
+      <div
+        className="w-full max-w-sm rounded-[24px] px-4 py-4 text-left"
+        style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
+      >
+        <p className="mb-2 text-[14px] font-extrabold" style={{ color: C.inkSoft }}>
+          あそびかた
+        </p>
+        <ol className="flex flex-col gap-2.5">
+          {HOW_TO.map((step, i) => (
+            <li key={i} className="flex items-center gap-3">
+              <span
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white"
+                style={{ background: C.primary }}
+              >
+                <span className="text-[15px] font-extrabold">{i + 1}</span>
+              </span>
+              <span aria-hidden="true" style={{ color: C.primary }}>
+                {step.icon}
+              </span>
+              <span className="text-[15px] font-bold" style={{ color: C.ink }}>
+                {step.text}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * select
+ * ------------------------------------------------------------------ */
+
+function PhotoChoice({
+  htmlFor,
+  icon,
+  label,
+  onChange,
+  capture,
 }: {
-  title?: string
-  onBack?: () => void
-  children: React.ReactNode
+  htmlFor: string
+  icon: ReactNode
+  label: string
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  capture?: "environment"
 }) {
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-md flex-col bg-gradient-to-b from-[#eaf2fb] to-[#dbeafe]">
-      {title && (
-        <header className="flex items-center gap-3 bg-[#0b2551] px-4 py-3 text-white">
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="もどる"
-              className="grid h-9 w-9 place-items-center rounded-full bg-white/15 hover:bg-white/25"
-            >
-              <ArrowLeft className="h-5 w-5" aria-hidden />
-            </button>
-          )}
-          <h1 className="text-base font-black">{title}</h1>
-        </header>
+    <>
+      <input
+        id={htmlFor}
+        type="file"
+        accept="image/*"
+        capture={capture}
+        className="sr-only"
+        aria-label={label}
+        onChange={onChange}
+      />
+      <label
+        htmlFor={htmlFor}
+        className={`flex min-h-[72px] flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[24px] bg-white px-4 py-4 text-center ${tokens.cls.focus}`}
+        style={{ boxShadow: tokens.shadow.card, color: C.ink }}
+      >
+        <span aria-hidden="true" style={{ color: C.primary }}>
+          {icon}
+        </span>
+        <span className="text-[16px] font-extrabold">{label}</span>
+      </label>
+    </>
+  )
+}
+
+function SelectScreen({
+  onPick,
+  thumbnail,
+}: {
+  onPick: (event: React.ChangeEvent<HTMLInputElement>) => void
+  thumbnail: File | null
+}) {
+  return (
+    <div className="flex flex-1 flex-col gap-5 px-5 py-6">
+      <div className="flex items-center gap-3">
+        <Mascot size="sm" mood="happy" />
+        <h2 className="text-[20px] font-extrabold" style={{ color: C.ink }}>
+          どこを しらべる？
+        </h2>
+      </div>
+
+      <div className="flex gap-3">
+        <PhotoChoice
+          htmlFor="hunter-photo-camera"
+          icon={<Camera className="h-8 w-8" />}
+          label="カメラで とる"
+          onChange={onPick}
+          capture="environment"
+        />
+        <PhotoChoice
+          htmlFor="hunter-photo-album"
+          icon={<Images className="h-8 w-8" />}
+          label="アルバムから えらぶ"
+          onChange={onPick}
+        />
+      </div>
+
+      {thumbnail && (
+        <p className="text-[13px] font-bold" style={{ color: C.inkSoft }}>
+          えらんだ しゃしん: {thumbnail.name}
+        </p>
       )}
-      {children}
+
+      <div
+        className="rounded-[24px] px-4 py-3 text-[14px] font-bold leading-relaxed"
+        style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft, color: C.ink }}
+      >
+        かお・なまえ・<R k="学校名" y="がっこうめい" />・おうちの<R k="入口" y="いりぐち" />・
+        くるまの ナンバーが うつっていない しゃしんを つかってね。
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * consent
+ * ------------------------------------------------------------------ */
+
+function ConsentScreen({
+  error,
+  disabled,
+  onConfirm,
+}: {
+  error: string | null
+  disabled: boolean
+  onConfirm: () => void
+}) {
+  return (
+    <div className="flex flex-1 flex-col justify-center gap-5 px-5 py-6">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <Mascot size="md" mood="cheer" />
+      </div>
+
+      <div
+        className="rounded-[24px] px-5 py-5"
+        style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.card }}
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <span
+            className="grid h-8 w-8 place-items-center rounded-full text-white"
+            style={{ background: C.primary }}
+          >
+            <Lock className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <span className="text-[15px] font-extrabold" style={{ color: C.ink }}>
+            しゃしんは あんぜんに あつかうよ
+          </span>
+        </div>
+        <p className="text-[16px] font-bold leading-relaxed" style={{ color: C.ink }}>
+          ぼかした しゃしんを AIに おくって、あぶないところを いっしょに さがすよ。
+          おうちの<R k="人" y="ひと" />と かくにんしてから すすんでね。
+        </p>
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="rounded-[16px] px-4 py-3 text-[14px] font-extrabold"
+          style={{ background: "#FCE8E8", color: C.danger }}
+        >
+          {error}
+        </p>
+      )}
+
+      <PrimaryCTA disabled={disabled} onClick={onConfirm}>
+        OK！はじめる
+      </PrimaryCTA>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * analyzing（楽しいローディング）
+ * ------------------------------------------------------------------ */
+
+function AnalyzingScreen({ imageUrl }: { imageUrl: string | null }) {
+  const reduce = useReducedMotion()
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-8 text-center">
+      <Mascot size="lg" mood="think" />
+
+      <div
+        className="relative w-full max-w-sm overflow-hidden rounded-[24px]"
+        style={{ aspectRatio: "4 / 3", background: C.headerNavy, boxShadow: tokens.shadow.card }}
+      >
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt="しらべている しゃしん"
+            className="absolute inset-0 h-full w-full object-contain opacity-90"
+            draggable={false}
+          />
+        ) : null}
+
+        {/* スキャンライン */}
+        {!reduce && (
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-x-0 h-10"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(30,136,229,0) 0%, rgba(30,136,229,.35) 50%, rgba(30,136,229,0) 100%)",
+            }}
+            initial={{ top: "-10%" }}
+            animate={{ top: ["-10%", "100%"] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
+
+        {/* 往復する虫めがね */}
+        <motion.div
+          aria-hidden="true"
+          className="absolute top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full"
+          style={{
+            background: "rgba(255,255,255,.18)",
+            border: `3px solid ${C.warning}`,
+            color: "#fff",
+          }}
+          initial={{ left: "8%" }}
+          animate={reduce ? { left: "44%" } : { left: ["8%", "76%", "8%"] }}
+          transition={reduce ? undefined : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Search className="h-6 w-6" />
+        </motion.div>
+      </div>
+
+      <p className="text-[17px] font-extrabold" style={{ color: C.ink }}>
+        いま、いっしょに みているよ
+        {!reduce && (
+          <motion.span
+            aria-hidden="true"
+            initial={{ opacity: 0.3 }}
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+          >
+            …
+          </motion.span>
+        )}
+      </p>
+
+      <div
+        className="w-full max-w-sm rounded-[20px] px-4 py-3 text-left text-[14px] font-bold leading-relaxed"
+        style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft, color: C.ink }}
+      >
+        <span className="mr-1" aria-hidden="true">
+          💡
+        </span>
+        <R k="豆知識" y="まめちしき" />：<R k="横断歩道" y="おうだんほどう" />では、
+        わたるまえに <R k="右" y="みぎ" />と <R k="左" y="ひだり" />を よく <R k="見" y="み" />てね。
+      </div>
     </div>
   )
 }

@@ -9,11 +9,17 @@
 // =============================================
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Eye, RotateCcw, Sparkles, X } from "lucide-react"
 import {
   buildBlurRegions,
   type DetectedFace,
 } from "@/lib/hunter/masking"
 import type { HunterRegion } from "@/lib/hunter/types"
+import { Mascot, PrimaryCTA, tokens } from "./theme"
+
+/** 丸ゴシックの親しみフォントスタック（テーマと統一） */
+const FONT_FAMILY =
+  '"M PLUS Rounded 1c","Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif'
 
 export interface MaskConfirmProps {
   /** ユーザーが選んだ元画像 (端末内のみで処理) */
@@ -319,6 +325,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
   const totalRegions = autoRegions.length + manualRegions.length
 
+  const C = tokens.color
+  const undoDisabled = manualRegions.length === 0
+
   return (
     <div
       style={{
@@ -326,34 +335,83 @@ export function MaskConfirm(props: MaskConfirmProps) {
         flexDirection: "column",
         gap: 16,
         padding: 20,
-        borderRadius: 20,
-        background: "#f0f9ff",
-        border: "2px solid #bae6fd",
+        borderRadius: tokens.radius.card,
+        background: C.surfaceWarm,
+        boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
         maxWidth: MAX_DISPLAY_WIDTH + 48,
         margin: "0 auto",
-        color: "#0f172a",
-        fontFamily: "system-ui, sans-serif",
+        color: C.ink,
+        fontFamily: FONT_FAMILY,
       }}
     >
-      <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0369a1" }}>
-        しゃしんを かくしてから つかおう
-      </h2>
+      {/* 見出し＋見守るハンタくん（おうちの人との やくそく 風） */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Mascot size="sm" mood="cheer" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 800,
+              lineHeight: 1.3,
+              color: C.ink,
+            }}
+          >
+            しゃしんを かくしてから つかおう
+          </h2>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.inkSoft }}>
+            おうちの人との やくそく
+          </span>
+        </div>
+      </div>
 
-      <p
+      {/* 注意文（warning 面の上は ink 文字固定・白文字禁止） */}
+      <div
         style={{
-          margin: 0,
-          fontSize: 14,
-          lineHeight: 1.6,
-          background: "#fffbeb",
-          border: "2px solid #fde68a",
-          borderRadius: 12,
-          padding: "10px 12px",
+          display: "flex",
+          gap: 10,
+          alignItems: "flex-start",
+          background: "#FFF6DD",
+          borderRadius: tokens.radius.chip,
+          padding: "12px 14px",
         }}
       >
-        顔・名前・お家・車のナンバーが かくれているか かくにんしてね。
-        <br />
-        かくしたいところを ゆびで なぞって しかくを ついかできるよ。
-      </p>
+        <span
+          aria-hidden="true"
+          style={{
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            width: 28,
+            height: 28,
+            borderRadius: 9999,
+            background: C.warning,
+            color: C.ink,
+          }}
+        >
+          <Eye size={17} strokeWidth={2.4} />
+        </span>
+        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: C.ink }}>
+          <ruby>
+            顔<rt>かお</rt>
+          </ruby>
+          ・
+          <ruby>
+            名前<rt>なまえ</rt>
+          </ruby>
+          ・お
+          <ruby>
+            家<rt>いえ</rt>
+          </ruby>
+          ・
+          <ruby>
+            車<rt>くるま</rt>
+          </ruby>
+          のナンバーが かくれているか かくにんしてね。
+          <br />
+          かくしたいところを ゆびで なぞって しかくを ついかできるよ。
+        </p>
+      </div>
 
       <div
         style={{
@@ -374,11 +432,11 @@ export function MaskConfirm(props: MaskConfirmProps) {
             display: "block",
             width: "100%",
             height: "auto",
-            borderRadius: 12,
-            border: "2px solid #7dd3fc",
+            borderRadius: tokens.radius.thumb,
+            border: `3px solid ${C.primary}`,
             touchAction: "none",
             cursor: "crosshair",
-            background: "#e2e8f0",
+            background: "#E2ECF6",
           }}
         />
         {isLoading && (
@@ -387,50 +445,78 @@ export function MaskConfirm(props: MaskConfirmProps) {
               position: "absolute",
               inset: 0,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 14,
-              fontWeight: 700,
-              color: "#0369a1",
+              gap: 8,
+              borderRadius: tokens.radius.thumb,
+              background: "rgba(255,248,239,.86)",
             }}
           >
-            よみこみちゅう…
+            <Mascot size="sm" mood="think" />
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.primaryStrong }}>
+              よみこみちゅう…
+            </span>
           </div>
         )}
       </div>
 
-      <p style={{ margin: 0, fontSize: 13, color: "#475569" }}>
-        かくしている ばしょ: {totalRegions} こ
+      {/* かくしている ばしょの数（やさしい言い回し） */}
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.inkSoft }}>
+        かくしている ばしょ:{" "}
+        <span style={{ color: C.success, fontSize: 18, fontWeight: 800 }}>
+          {totalRegions}
+        </span>{" "}
+        こ
         {autoRegions.length > 0 && `（じどう ${autoRegions.length} こ）`}
       </p>
 
       {errorMessage && (
         <p
           role="alert"
-          style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#b91c1c" }}
+          style={{
+            margin: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 14,
+            fontWeight: 700,
+            color: C.danger,
+            background: "#FCEBEB",
+            borderRadius: tokens.radius.chip,
+            padding: "10px 12px",
+          }}
         >
           {errorMessage}
         </p>
       )}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+      {/* やりなおし系（副ボタン・タップ領域 48px 以上） */}
+      <div style={{ display: "flex", gap: 10 }}>
         <button
           type="button"
           onClick={handleUndo}
-          disabled={manualRegions.length === 0}
+          disabled={undoDisabled}
           aria-label="さいごに ついかした しかくを けす"
           style={{
-            flex: "1 1 120px",
-            padding: "10px 14px",
-            borderRadius: 999,
-            border: "2px solid #cbd5e1",
-            background: manualRegions.length === 0 ? "#f1f5f9" : "#ffffff",
-            color: manualRegions.length === 0 ? "#94a3b8" : "#334155",
+            flex: "1 1 0",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            minHeight: 48,
+            padding: "0 14px",
+            borderRadius: 9999,
+            border: `2px solid ${undoDisabled ? "#E2E8F0" : "#CBD8E6"}`,
+            background: undoDisabled ? "#F2F5F9" : C.surface,
+            color: undoDisabled ? "#9AA8B6" : C.ink,
             fontWeight: 700,
-            fontSize: 14,
-            cursor: manualRegions.length === 0 ? "not-allowed" : "pointer",
+            fontSize: 15,
+            fontFamily: FONT_FAMILY,
+            cursor: undoDisabled ? "not-allowed" : "pointer",
           }}
         >
+          <RotateCcw size={16} strokeWidth={2.4} aria-hidden="true" />
           ひとつ もどす
         </button>
         <button
@@ -438,40 +524,37 @@ export function MaskConfirm(props: MaskConfirmProps) {
           onClick={onCancel}
           aria-label="ぼかしを やめて とじる"
           style={{
-            flex: "1 1 120px",
-            padding: "10px 14px",
-            borderRadius: 999,
-            border: "2px solid #cbd5e1",
-            background: "#ffffff",
-            color: "#334155",
+            flex: "1 1 0",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            minHeight: 48,
+            padding: "0 14px",
+            borderRadius: 9999,
+            border: "2px solid #CBD8E6",
+            background: C.surface,
+            color: C.ink,
             fontWeight: 700,
-            fontSize: 14,
+            fontSize: 15,
+            fontFamily: FONT_FAMILY,
             cursor: "pointer",
           }}
         >
+          <X size={16} strokeWidth={2.4} aria-hidden="true" />
           やめる
         </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={isLoading}
-          aria-label="ぼかした しゃしんを つかう"
-          style={{
-            flex: "2 1 160px",
-            padding: "12px 16px",
-            borderRadius: 999,
-            border: "none",
-            background: isLoading ? "#93c5fd" : "#2563eb",
-            color: "#ffffff",
-            fontWeight: 800,
-            fontSize: 16,
-            cursor: isLoading ? "not-allowed" : "pointer",
-            boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
-          }}
-        >
-          このしゃしんを つかう
-        </button>
       </div>
+
+      {/* 主ボタン（青CTA：この先へ進む安心アクション） */}
+      <PrimaryCTA
+        onClick={handleConfirm}
+        disabled={isLoading}
+        className={tokens.cls.ctaBlue}
+      >
+        <Sparkles size={20} strokeWidth={2.4} aria-hidden="true" />
+        この しゃしんを つかう
+      </PrimaryCTA>
     </div>
   )
 }

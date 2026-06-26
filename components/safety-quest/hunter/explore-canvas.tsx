@@ -4,12 +4,21 @@
 // きけんハンター 探索モード 中心UI
 // アップ写真の上をタップして危険を見つける。
 // 発見済みマーカー表示 + タップ結果の前向きフィードバック。
+//
+// 見た目は共通テーマ(theme.tsx)に統一:
+//   - tokens   : 配色・角丸・影
+//   - StatPill : 上部HUD（のこり / みつけた）
+//   - Celebrate: 発見時の紙吹雪＋「+pt」演出
+//   - Mascot   : 発見時に「わぁ！」と よろこぶハンタくん
 // =============================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { Search, Sparkles } from "lucide-react"
 
 import type { HunterHazard } from "@/lib/hunter/types"
+
+import { Celebrate, Mascot, StatPill, tokens } from "./theme"
 
 export interface ExploreCanvasProps {
   imageUrl: string
@@ -23,6 +32,8 @@ export interface ExploreCanvasProps {
   } | null
 }
 
+const C = tokens.color
+
 /** 0..1 にクランプ */
 function clamp01(value: number): number {
   if (Number.isNaN(value)) return 0
@@ -31,23 +42,26 @@ function clamp01(value: number): number {
   return value
 }
 
-/** 結果ごとの前向きメッセージ（否定しないトーン） */
-const OUTCOME_MESSAGES: Record<"hit" | "near" | "miss", string> = {
+type Outcome = "hit" | "near" | "miss"
+
+/** 結果ごとの前向きメッセージ（否定しない・断定しないトーン） */
+const OUTCOME_MESSAGES: Record<Outcome, string> = {
   hit: "やったね！みつけた！",
-  near: "おしい！近いよ",
-  miss: "もう一回さがそう！",
+  near: "おしい！もう ちょっと！",
+  miss: "つぎは どこかな？さがそう！",
 }
 
-const OUTCOME_COLORS: Record<"hit" | "near" | "miss", string> = {
-  hit: "#22c55e",
-  near: "#f59e0b",
-  miss: "#38bdf8",
+/** メッセージチップの配色（warning の上は ink 文字、それ以外は白文字） */
+const OUTCOME_CHIP: Record<Outcome, { bg: string; fg: string }> = {
+  hit: { bg: C.success, fg: "#FFFFFF" },
+  near: { bg: C.warning, fg: C.ink },
+  miss: { bg: C.primary, fg: "#FFFFFF" },
 }
 
 interface FeedbackState {
   /** 再描画トリガー用の一意キー */
   key: number
-  result: "hit" | "near" | "miss"
+  result: Outcome
   points: number
   /** 表示位置（相対 0..1）。なければ中央。 */
   x: number
@@ -57,6 +71,7 @@ interface FeedbackState {
 export function ExploreCanvas(props: ExploreCanvasProps) {
   const { imageUrl, hazards, foundIds, onTap, lastOutcome } = props
 
+  const reduce = useReducedMotion()
   const containerRef = useRef<HTMLDivElement>(null)
   const [imageFailed, setImageFailed] = useState(false)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
@@ -64,7 +79,9 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
 
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
 
-  const remaining = Math.max(0, hazards.length - foundSet.size)
+  const total = hazards.length
+  const foundCount = foundSet.size
+  const remaining = Math.max(0, total - foundCount)
 
   const foundHazards = useMemo(
     () => hazards.filter((hazard) => foundSet.has(hazard.id)),
@@ -99,7 +116,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
       setFeedback((current) =>
         current && current.key === feedbackSeqRef.current ? null : current,
       )
-    }, 1400)
+    }, 1600)
 
     return () => clearTimeout(timer)
   }, [lastOutcome, hazards])
@@ -138,198 +155,264 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
     [emitTap],
   )
 
+  const isHit = feedback?.result === "hit"
+
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        borderRadius: 20,
-        overflow: "hidden",
-        background: "#0b2551",
-        boxShadow: "0 10px 30px rgba(11, 37, 81, 0.35)",
-        userSelect: "none",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      {/* 残り発見数バッジ */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          zIndex: 4,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "6px 12px",
-          borderRadius: 999,
-          background: "rgba(11, 37, 81, 0.72)",
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: "0.02em",
-          backdropFilter: "blur(4px)",
-        }}
-      >
-        <span aria-hidden="true">🔍</span>
-        <span>
-          のこり <span style={{ color: "#ffd166" }}>{remaining}</span> こ
-        </span>
+    <div style={{ position: "relative", width: "100%" }}>
+      {/* 発見時の全画面お祝い（紙吹雪＋「+pt」） */}
+      <Celebrate
+        show={Boolean(isHit)}
+        points={isHit && feedback && feedback.points > 0 ? feedback.points : undefined}
+      />
+
+      {/* 上部 HUD（StatPill：のこり / みつけた） */}
+      <div className="mb-2.5 flex items-center justify-center gap-2">
+        <StatPill
+          icon={<Search className="h-4 w-4" aria-hidden="true" />}
+          label="のこり"
+          value={remaining}
+          tone="orange"
+        />
+        <StatPill
+          icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
+          label="みつけた"
+          value={foundCount}
+          tone="green"
+        />
       </div>
 
-      {/* タップ領域（写真） */}
       <div
-        ref={containerRef}
-        role="button"
-        tabIndex={0}
-        aria-label="しゃしんの上をタップして、きけんをさがそう"
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
         style={{
           position: "relative",
           width: "100%",
-          aspectRatio: "4 / 3",
-          cursor: "pointer",
-          outline: "none",
+          borderRadius: tokens.radius.thumb,
+          overflow: "hidden",
+          background: C.headerNavy,
+          boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
+          userSelect: "none",
+          WebkitTapHighlightColor: "transparent",
         }}
       >
-        {imageFailed ? (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              color: "#cdd9ef",
-              textAlign: "center",
-              padding: 16,
-            }}
-          >
-            <span aria-hidden="true" style={{ fontSize: 36 }}>
-              🖼️
-            </span>
-            <span style={{ fontSize: 14 }}>
-              しゃしんをよみこめませんでした
-            </span>
-          </div>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt="つうがくろのしゃしん"
-            draggable={false}
-            onError={() => setImageFailed(true)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              pointerEvents: "none",
-            }}
-          />
-        )}
-
-        {/* 発見済みマーカー（未発見は隠す） */}
-        {foundHazards.map((hazard) => {
-          const cx = clamp01(hazard.region.x + hazard.region.w / 2)
-          const cy = clamp01(hazard.region.y + hazard.region.h / 2)
-          return (
-            <motion.div
-              key={hazard.id}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 360, damping: 18 }}
-              aria-label={`みつけたきけん: ${hazard.type}`}
-              role="img"
+        {/* タップ領域（写真） */}
+        <div
+          ref={containerRef}
+          role="button"
+          tabIndex={0}
+          aria-label="しゃしんの上を タップして、きけんを さがそう"
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          className={tokens.cls.focus}
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: "4 / 3",
+            cursor: "pointer",
+          }}
+        >
+          {imageFailed ? (
+            <div
               style={{
                 position: "absolute",
-                left: `${cx * 100}%`,
-                top: `${cy * 100}%`,
-                transform: "translate(-50%, -50%)",
-                zIndex: 3,
-                pointerEvents: "none",
-              }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle at 30% 30%, #ff6b6b, #ef4444)",
-                  border: "3px solid #fff",
-                  boxShadow:
-                    "0 0 0 4px rgba(239, 68, 68, 0.28), 0 4px 10px rgba(0,0,0,0.3)",
-                  color: "#fff",
-                  fontWeight: 900,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                !
-              </span>
-            </motion.div>
-          )
-        })}
-
-        {/* タップ結果フィードバック */}
-        <AnimatePresence>
-          {feedback ? (
-            <motion.div
-              key={feedback.key}
-              initial={{ opacity: 0, y: 8, scale: 0.8 }}
-              animate={{ opacity: 1, y: -10, scale: 1 }}
-              exit={{ opacity: 0, y: -28, scale: 0.9 }}
-              transition={{ duration: 0.35 }}
-              style={{
-                position: "absolute",
-                left: `${feedback.x * 100}%`,
-                top: `${feedback.y * 100}%`,
-                transform: "translate(-50%, -50%)",
-                zIndex: 5,
-                pointerEvents: "none",
+                inset: 0,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 4,
+                justifyContent: "center",
+                gap: 8,
+                color: "#CDD9EF",
+                textAlign: "center",
+                padding: 16,
               }}
             >
-              {feedback.result === "hit" && feedback.points > 0 ? (
-                <span
-                  style={{
-                    fontWeight: 900,
-                    fontSize: 26,
-                    color: "#ffd166",
-                    textShadow: "0 2px 6px rgba(0,0,0,0.45)",
-                  }}
-                >
-                  +{feedback.points}pt
-                </span>
-              ) : null}
-              <span
+              <span aria-hidden="true" style={{ fontSize: 40 }}>
+                🖼️
+              </span>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>
+                しゃしんを よみこめませんでした
+              </span>
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt="つうがくろの しゃしん"
+              draggable={false}
+              onError={() => setImageFailed(true)}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                pointerEvents: "none",
+              }}
+            />
+          )}
+
+          {/* 発見済みマーカー（未発見は隠す）。きをつけるイエローの丸「！」 */}
+          {foundHazards.map((hazard) => {
+            const cx = clamp01(hazard.region.x + hazard.region.w / 2)
+            const cy = clamp01(hazard.region.y + hazard.region.h / 2)
+            return (
+              <motion.div
+                key={hazard.id}
+                initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { scale: [0, 1.15, 1], opacity: 1 }}
+                transition={
+                  reduce
+                    ? { duration: 0.2 }
+                    : { type: "spring", stiffness: 320, damping: 16 }
+                }
+                aria-label={`みつけた きをつけるところ: ${hazard.type}`}
+                role="img"
                 style={{
-                  padding: "4px 12px",
-                  borderRadius: 999,
-                  background: OUTCOME_COLORS[feedback.result],
-                  color: "#fff",
-                  fontWeight: 800,
-                  fontSize: 14,
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+                  position: "absolute",
+                  left: `${cx * 100}%`,
+                  top: `${cy * 100}%`,
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 3,
+                  pointerEvents: "none",
                 }}
               >
-                {OUTCOME_MESSAGES[feedback.result]}
-              </span>
-            </motion.div>
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    background: tokens.gradient.treasure,
+                    border: "4px solid #FFFFFF",
+                    boxShadow: `0 0 0 4px ${C.warning}55, ${tokens.shadow.card}`,
+                    color: C.ink,
+                    fontWeight: 900,
+                    fontSize: 26,
+                    lineHeight: 1,
+                  }}
+                >
+                  !
+                </span>
+              </motion.div>
+            )
+          })}
+
+          {/* タップ結果フィードバック（位置に紐づく前向きメッセージ） */}
+          <AnimatePresence>
+            {feedback ? (
+              <motion.div
+                key={feedback.key}
+                initial={
+                  reduce
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: 8, scale: 0.8 }
+                }
+                animate={
+                  reduce
+                    ? { opacity: 1 }
+                    : { opacity: 1, y: -12, scale: 1 }
+                }
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -30, scale: 0.9 }}
+                transition={
+                  reduce
+                    ? { duration: 0.2 }
+                    : { type: "spring", stiffness: 320, damping: 18 }
+                }
+                style={{
+                  position: "absolute",
+                  left: `${feedback.x * 100}%`,
+                  top: `${feedback.y * 100}%`,
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 5,
+                  pointerEvents: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {feedback.result === "hit" && feedback.points > 0 ? (
+                  <span
+                    style={{
+                      fontWeight: 900,
+                      fontSize: 28,
+                      color: C.accent,
+                      textShadow:
+                        "-2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0 3px 6px rgba(30,60,90,.25)",
+                    }}
+                  >
+                    +{feedback.points}pt
+                  </span>
+                ) : null}
+                <span
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: tokens.radius.button,
+                    background: OUTCOME_CHIP[feedback.result].bg,
+                    color: OUTCOME_CHIP[feedback.result].fg,
+                    fontWeight: 800,
+                    fontSize: 16,
+                    whiteSpace: "nowrap",
+                    boxShadow: tokens.shadow.card,
+                  }}
+                >
+                  {OUTCOME_MESSAGES[feedback.result]}
+                </span>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* 発見時に よろこぶハンタくん（右下にポンっと登場） */}
+          <AnimatePresence>
+            {isHit ? (
+              <motion.div
+                key="hunter-wow"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.5, y: 10 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6, y: 8 }}
+                transition={
+                  reduce
+                    ? { duration: 0.2 }
+                    : { type: "spring", stiffness: 300, damping: 16 }
+                }
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  bottom: 8,
+                  zIndex: 6,
+                  pointerEvents: "none",
+                }}
+              >
+                <Mascot size="sm" mood="wow" />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* 操作ヒント（フィードバック中は隠す・装飾） */}
+          {!feedback ? (
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                bottom: 10,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 2,
+                padding: "5px 14px",
+                borderRadius: tokens.radius.button,
+                background: "rgba(11, 37, 81, 0.6)",
+                backdropFilter: "blur(4px)",
+                color: "#FFFFFF",
+                fontSize: 13,
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+              }}
+            >
+              タップして きをつけるところを さがそう
+            </div>
           ) : null}
-        </AnimatePresence>
+        </div>
       </div>
     </div>
   )
