@@ -205,69 +205,64 @@ export function Mascot({
       transition={transition}
     >
       {/* 接地影 */}
-      <ellipse cx={60} cy={112} rx={26} ry={5} fill="rgba(30,60,90,.12)" />
+      <ellipse cx={60} cy={113} rx={26} ry={5} fill="rgba(30,60,90,.12)" />
 
-      {/* たんけん帽（庇つきキャップ） */}
+      {/* おうかん（小さな王冠・ヒーローの印） */}
+      <g strokeLinejoin="round">
+        <path
+          d="M45 33 L48 18 L54 26 L60 15 L66 26 L72 18 L75 33 Z"
+          fill={C.warning}
+          stroke={C.accentStrong}
+          strokeWidth={2}
+        />
+        <circle cx={60} cy={16} r={2.6} fill={C.accent} />
+      </g>
+
+      {/* 盾（バッジ）本体 */}
       <path
-        d="M30 40 a30 30 0 0 1 60 0 z"
-        fill={C.accent}
-      />
-      <path d="M86 40 q16 1 18 8 q-12 3 -22 -2 z" fill={C.accentStrong} />
-      <circle cx={60} cy={16} r={4} fill={C.accentStrong} />
-
-      {/* ボディ（大きな円） */}
-      <circle
-        cx={60}
-        cy={66}
-        r={34}
+        d="M32 39 Q32 33 38 33 H82 Q88 33 88 39 V66 Q88 86 60 99 Q32 86 32 66 Z"
         fill={C.primary}
         stroke={C.primaryStrong}
         strokeWidth={4}
+        strokeLinejoin="round"
       />
 
+      {/* 上部ハイライト（立体感） */}
+      <path
+        d="M37 41 Q37 38 40 38 H80 Q83 38 83 41 V49 Q60 55 37 49 Z"
+        fill="#FFFFFF"
+        opacity={0.12}
+      />
+
+      {/* 顔パネル（白） */}
+      <ellipse cx={60} cy={62} rx={23} ry={20} fill="#FFFFFF" opacity={0.95} />
+
       {/* ほっぺ */}
-      <circle cx={42} cy={68} r={5.5} fill={C.combo} opacity={0.2} />
-      <circle cx={78} cy={68} r={5.5} fill={C.combo} opacity={0.2} />
+      <circle cx={45} cy={67} r={5} fill={C.combo} opacity={0.45} />
+      <circle cx={75} cy={67} r={5} fill={C.combo} opacity={0.45} />
 
       {/* 目・口（表情） */}
       <MascotEyes mood={mood} />
       <MascotMouth mood={mood} />
 
-      {/* おなかの盾エンブレム */}
-      <path
-        d="M52 80 h16 v6 q0 8 -8 12 q-8 -4 -8 -12 z"
-        fill={C.surfaceWarm}
-        stroke={C.primaryStrong}
-        strokeWidth={2}
-      />
-      <g fill={C.accent}>
-        <Star cx={60} cy={89} r={4.5} />
+      {/* バッジの星（下部） */}
+      <g fill={C.warning} stroke={C.accentStrong} strokeWidth={1}>
+        <Star cx={60} cy={88} r={6} />
       </g>
 
-      {/* 手の虫めがね（右手） */}
-      <line
-        x1={92}
-        y1={92}
-        x2={101}
-        y2={101}
-        stroke={C.accentStrong}
-        strokeWidth={5}
-        strokeLinecap="round"
-      />
-      <circle
-        cx={88}
-        cy={84}
-        r={9}
-        fill="rgba(255,255,255,.2)"
-        stroke={C.primaryStrong}
-        strokeWidth={4}
-      />
+      {/* キラキラ（cheer / wow で強調） */}
+      <g fill={C.warning}>
+        <Star cx={22} cy={44} r={mood === "wow" ? 5 : 3.4} />
+        <Star cx={98} cy={40} r={mood === "wow" ? 5 : 3.4} />
+        {(mood === "wow" || mood === "cheer") && <Star cx={101} cy={74} r={4} />}
+        {(mood === "wow" || mood === "cheer") && <Star cx={19} cy={72} r={4} />}
+      </g>
 
       {/* think のときの「？」 */}
       {mood === "think" && (
         <text
-          x={96}
-          y={34}
+          x={97}
+          y={30}
           fontSize={20}
           fontWeight={800}
           fill={C.primaryStrong}
