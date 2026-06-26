@@ -247,7 +247,7 @@ export function HunterGame() {
     title = "ばしょを えらぶ"
     onBack = () => setScreen("mask")
     content = (
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-4">
         <LocationPinPicker
           initial={pin ?? undefined}
           onConfirm={(confirmed) => {
