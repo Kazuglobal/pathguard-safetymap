@@ -338,8 +338,10 @@ export function MaskConfirm(props: MaskConfirmProps) {
         borderRadius: tokens.radius.card,
         background: C.surfaceWarm,
         boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
+        width: "100%",
         maxWidth: MAX_DISPLAY_WIDTH + 48,
         margin: "0 auto",
+        boxSizing: "border-box",
         color: C.ink,
         fontFamily: FONT_FAMILY,
       }}
@@ -417,7 +419,8 @@ export function MaskConfirm(props: MaskConfirmProps) {
         style={{
           position: "relative",
           alignSelf: "center",
-          width: displaySize.w || "100%",
+          width: "100%",
+          maxWidth: displaySize.w || "100%",
         }}
       >
         <canvas
