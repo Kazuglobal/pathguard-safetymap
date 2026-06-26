@@ -333,8 +333,10 @@ export function MaskConfirm(props: MaskConfirmProps) {
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 16,
-        padding: 20,
+        flex: "1 1 0",
+        minHeight: 0,
+        gap: 12,
+        padding: 16,
         borderRadius: tokens.radius.card,
         background: C.surfaceWarm,
         boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
@@ -418,9 +420,12 @@ export function MaskConfirm(props: MaskConfirmProps) {
       <div
         style={{
           position: "relative",
-          alignSelf: "center",
+          flex: "1 1 0",
+          minHeight: 0,
           width: "100%",
-          maxWidth: displaySize.w || "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <canvas
@@ -433,7 +438,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
           aria-label="ぼかしを かける しゃしん。ドラッグで かくす しかくを ついか"
           style={{
             display: "block",
-            width: "100%",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            width: "auto",
             height: "auto",
             borderRadius: tokens.radius.thumb,
             border: `3px solid ${C.primary}`,

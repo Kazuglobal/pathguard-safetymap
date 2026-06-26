@@ -224,15 +224,7 @@ export function HunterGame() {
     title = "プライバシー かくにん"
     onBack = () => setScreen("select")
     content = (
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex items-center gap-3">
-          <Mascot size="sm" mood="cheer" />
-          <p className="text-[15px] font-bold leading-relaxed" style={{ color: C.ink }}>
-            おうちの人との やくそく。
-            <br />
-            かおや なまえが うつっていないか みてみよう。
-          </p>
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-4">
         <MaskConfirm
           file={file}
           onConfirm={(dataUrl) => {
