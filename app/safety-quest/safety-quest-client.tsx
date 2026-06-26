@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import {
   ArrowLeft,
@@ -53,7 +54,8 @@ type Screen =
   | "room"
 
 type ModeItem = {
-  screen: Screen
+  screen?: Screen
+  href?: string
   concept: "UI 01" | "UI 02" | "UI 03"
   label: string
   icon: React.ComponentType<{ className?: string }>
@@ -61,6 +63,7 @@ type ModeItem = {
 
 const modeItems: ModeItem[] = [
   { screen: "map", concept: "UI 01", label: "ぼうけんマップ", icon: Map },
+  { href: "/safety-quest/hunter", concept: "UI 03", label: "きけんハンター", icon: Camera },
   { screen: "challenge", concept: "UI 01", label: "危険さがし", icon: Target },
   { screen: "patrol", concept: "UI 01", label: "パトロール", icon: Shield },
   { screen: "team", concept: "UI 01", label: "協力ミッション", icon: Users },
@@ -419,22 +422,37 @@ export default function SafetyQuestClient() {
           <div className="flex gap-2 overflow-x-auto pb-1">
             {modeItems.map((item) => {
               const Icon = item.icon
-              const active = item.screen === screen
+              const active = item.screen != null && item.screen === screen
+              const className = cn(
+                "flex min-w-max items-center gap-2 rounded-[16px] border px-3 py-2 text-xs font-black transition",
+                active
+                  ? "border-[#1067c8] bg-[#1067c8] text-white shadow-md"
+                  : "border-[#d8e8f7] bg-[#f8fbff] text-[#12355d] hover:bg-[#eaf5ff]",
+              )
+              const content = (
+                <>
+                  <Icon className="h-4 w-4" />
+                  <span className="text-[10px] opacity-75">{item.concept}</span>
+                  {item.label}
+                </>
+              )
+
+              if (item.href) {
+                return (
+                  <Link key={item.href} href={item.href} className={className}>
+                    {content}
+                  </Link>
+                )
+              }
+
               return (
                 <button
                   key={item.screen}
                   type="button"
-                  onClick={() => navigateToScreen(item.screen)}
-                  className={cn(
-                    "flex min-w-max items-center gap-2 rounded-[16px] border px-3 py-2 text-xs font-black transition",
-                    active
-                      ? "border-[#1067c8] bg-[#1067c8] text-white shadow-md"
-                      : "border-[#d8e8f7] bg-[#f8fbff] text-[#12355d] hover:bg-[#eaf5ff]",
-                  )}
+                  onClick={() => item.screen && navigateToScreen(item.screen)}
+                  className={className}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span className="text-[10px] opacity-75">{item.concept}</span>
-                  {item.label}
+                  {content}
                 </button>
               )
             })}
@@ -1954,13 +1972,13 @@ function ArPhotoScreen({ onBack }: { onBack: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageBase64,
-          markers: [],
+          userMarkers: [],
         }),
       })
       if (!response.ok) return
 
       const body = await response.json().catch(() => null)
-      const pointsAwarded = Number(body?.score?.pointsAwarded ?? 0)
+      const pointsAwarded = Number(body?.pointsAwarded ?? 0)
       setPracticeStatus(pointsAwarded > 0 ? `AIが安全ポイントを確認しました +${pointsAwarded}pt` : "AIが安全ポイントを確認しました")
     } catch {
       setPracticeStatus("練習写真を準備しました")

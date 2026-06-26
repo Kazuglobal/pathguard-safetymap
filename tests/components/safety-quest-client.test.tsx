@@ -191,7 +191,7 @@ describe("SafetyQuestClient", () => {
       if (url === "/api/safety-quest/private-practice") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ score: { pointsAwarded: 80 }, private: true }),
+          json: async () => ({ pointsAwarded: 80, private: true }),
         })
       }
 
@@ -220,7 +220,7 @@ describe("SafetyQuestClient", () => {
     expect(privatePracticeCall).toBeDefined()
     const body = JSON.parse(String(privatePracticeCall?.[1]?.body))
     expect(body.imageBase64).toMatch(/^data:image\/png;base64,/)
-    expect(body.markers).toEqual([])
+    expect(body.userMarkers).toEqual([])
   })
 
   it("makes the shared back button return secondary screens to the adventure map", async () => {
