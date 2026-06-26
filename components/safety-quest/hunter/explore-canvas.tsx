@@ -257,7 +257,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
               <motion.div
                 key={hazard.id}
                 initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
-                animate={reduce ? { opacity: 1 } : { scale: [0, 1.15, 1], opacity: 1 }}
+                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
                 transition={
                   reduce
                     ? { duration: 0.2 }

@@ -119,7 +119,7 @@ export function LocationPinPicker({
                 animate={
                   reduce
                     ? { opacity: 1 }
-                    : { scale: [0, 1.15, 1], opacity: 1 }
+                    : { scale: 1, opacity: 1 }
                 }
                 transition={
                   reduce ? { duration: 0.2 } : { ...tokens.spring }
