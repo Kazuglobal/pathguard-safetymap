@@ -5,9 +5,12 @@ import type { ReactNode } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   Camera,
+  Check,
   Images,
   Lightbulb,
   Lock,
+  Map as MapIcon,
+  Save,
   Search,
   Sparkles,
 } from "lucide-react"
@@ -23,6 +26,7 @@ import type {
 } from "@/lib/hunter/types"
 
 import { CareCard } from "./care-card"
+import { DangerMapScreen } from "./danger-map-screen"
 import { ExploreCanvas } from "./explore-canvas"
 import { LocationPinPicker } from "./location-pin-picker"
 import { MaskConfirm } from "./mask-confirm"
@@ -48,6 +52,7 @@ type Screen =
   | "explore"
   | "quiz"
   | "result"
+  | "records"
 
 type PlayMode = "explore" | "quiz"
 
@@ -80,6 +85,10 @@ export function HunterGame() {
   const [busy, setBusy] = useState(false)
   const [celebratePoints, setCelebratePoints] = useState<number | null>(null)
   const [mode, setMode] = useState<PlayMode>("explore")
+  // 「のこす(きろく保存)」の同意。第三者AI送信の同意とは別物。既定オフ。
+  const [saveConsent, setSaveConsent] = useState(false)
+  // 保存結果の控えめな通知（成功/失敗）。ゲームは止めない。
+  const [saveNotice, setSaveNotice] = useState<"ok" | "error" | null>(null)
 
   const reduce = useReducedMotion()
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
@@ -113,15 +122,21 @@ export function HunterGame() {
   }
 
   const runAnalyze = useCallback(
-    async (confirmedPin: Pin, image: string) => {
+    async (confirmedPin: Pin, image: string, save: boolean) => {
       setBusy(true)
       setError(null)
+      setSaveNotice(null)
       setScreen("analyzing")
       try {
         const response = await fetch("/api/hunter/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: image, pin: confirmedPin, consent: true }),
+          body: JSON.stringify({
+            imageBase64: image,
+            pin: confirmedPin,
+            consent: true,
+            save,
+          }),
         })
         const body = await response.json().catch(() => null)
         if (!response.ok) {
@@ -131,6 +146,10 @@ export function HunterGame() {
         }
         setHazards(body.hazards ?? [])
         setAccident(body.accident ?? null)
+        // 保存をたのんだときだけ、結果の控えめな通知を出す（ゲームは止めない）。
+        if (save) {
+          setSaveNotice(body.savedError ? "error" : "ok")
+        }
         resetPlay()
         setScreen("mode")
       } catch {
@@ -227,6 +246,13 @@ export function HunterGame() {
     return () => clearTimeout(timer)
   }, [lastOutcome])
 
+  // 保存通知は数秒で自動的に消す（操作の邪魔をしない）
+  useEffect(() => {
+    if (!saveNotice) return
+    const timer = setTimeout(() => setSaveNotice(null), 3600)
+    return () => clearTimeout(timer)
+  }, [saveNotice])
+
   // けっか画面に入ったら お祝い演出
   const [resultCelebrate, setResultCelebrate] = useState(false)
   useEffect(() => {
@@ -256,6 +282,7 @@ export function HunterGame() {
           resetAll()
           setScreen("select")
         }}
+        onOpenRecords={() => setScreen("records")}
       />
     )
   } else if (screen === "select") {
@@ -298,8 +325,10 @@ export function HunterGame() {
       <ConsentScreen
         error={error}
         disabled={busy || !maskedUrl || !pin}
+        saveConsent={saveConsent}
+        onSaveConsentChange={setSaveConsent}
         onConfirm={() => {
-          if (maskedUrl && pin) void runAnalyze(pin, maskedUrl)
+          if (maskedUrl && pin) void runAnalyze(pin, maskedUrl, saveConsent)
         }}
       />
     )
@@ -407,6 +436,18 @@ export function HunterGame() {
           }}
         />
       </div>
+    )
+  } else if (screen === "records") {
+    title = "きろく"
+    onBack = () => setScreen("home")
+    content = (
+      <DangerMapScreen
+        onBack={() => setScreen("home")}
+        onPlayNew={() => {
+          resetAll()
+          setScreen("select")
+        }}
+      />
     )
   } else {
     // フォールバック（状態が壊れたとき）
@@ -564,7 +605,13 @@ const HOW_TO: ReadonlyArray<{ icon: ReactNode; text: ReactNode }> = [
   { icon: <Lightbulb className="h-5 w-5" />, text: "きをつける れんしゅう" },
 ]
 
-function HomeScreen({ onStart }: { onStart: () => void }) {
+function HomeScreen({
+  onStart,
+  onOpenRecords,
+}: {
+  onStart: () => void
+  onOpenRecords: () => void
+}) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-8 text-center">
       <Mascot size="lg" mood="happy" />
@@ -587,6 +634,16 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
         <Sparkles className="h-5 w-5" aria-hidden="true" />
         ぼうけんスタート
       </PrimaryCTA>
+
+      <button
+        type="button"
+        onClick={onOpenRecords}
+        className={`inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[15px] font-extrabold ${tokens.cls.focus}`}
+        style={{ color: C.primaryStrong, boxShadow: tokens.shadow.soft }}
+      >
+        <MapIcon className="h-5 w-5" aria-hidden="true" />
+        きろく / <R k="危険" y="きけん" />マップ
+      </button>
 
       <div
         className="w-full max-w-sm rounded-[24px] px-4 py-4 text-left"
@@ -716,10 +773,14 @@ function SelectScreen({
 function ConsentScreen({
   error,
   disabled,
+  saveConsent,
+  onSaveConsentChange,
   onConfirm,
 }: {
   error: string | null
   disabled: boolean
+  saveConsent: boolean
+  onSaveConsentChange: (next: boolean) => void
   onConfirm: () => void
 }) {
   return (
@@ -748,6 +809,49 @@ function ConsentScreen({
           おうちの<R k="人" y="ひと" />と かくにんしてから すすんでね。
         </p>
       </div>
+
+      {/* 保存同意（任意・既定オフ）。第三者AI送信の同意とは別物。 */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={saveConsent}
+        onClick={() => onSaveConsentChange(!saveConsent)}
+        className={`flex items-center gap-3 rounded-[24px] px-4 py-4 text-left ${tokens.cls.focus}`}
+        style={{
+          background: C.surface,
+          boxShadow: saveConsent
+            ? `0 0 0 3px ${C.success}, ${tokens.shadow.soft}`
+            : tokens.shadow.soft,
+        }}
+      >
+        <span
+          aria-hidden="true"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition-colors"
+          style={{ background: saveConsent ? C.success : "#C7D2DD" }}
+        >
+          {saveConsent ? <Check className="h-5 w-5" /> : <Save className="h-5 w-5" />}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[15px] font-extrabold" style={{ color: C.ink }}>
+            この <R k="写真" y="しゃしん" />を のこす（きろくに <R k="保存" y="ほぞん" />）
+          </span>
+          <span className="text-[13px] font-bold leading-snug" style={{ color: C.inkSoft }}>
+            あとで <R k="危険" y="きけん" />マップで <R k="見" y="み" />られるよ。
+            おうちの<R k="人" y="ひと" />と かくにんしてね。
+          </span>
+        </span>
+        {/* トグルの見た目（表示専用） */}
+        <span
+          aria-hidden="true"
+          className="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+          style={{ background: saveConsent ? C.success : "#C7D2DD" }}
+        >
+          <span
+            className="absolute top-1 h-5 w-5 rounded-full bg-white transition-all"
+            style={{ left: saveConsent ? 24 : 4, boxShadow: tokens.shadow.soft }}
+          />
+        </span>
+      </button>
 
       {error && (
         <p
