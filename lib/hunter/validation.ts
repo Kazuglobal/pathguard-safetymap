@@ -50,6 +50,8 @@ export const hunterAnalyzeSchema = z.object({
   imageBase64: z.string().min(1).max(MAX_IMAGE_LENGTH),
   pin: hunterPinSchema,
   consent: z.literal(true),
+  // 保存はオプトイン。既定 (未指定) は保存しない＝従来挙動を維持 (後方互換)。
+  save: z.boolean().optional(),
 })
 
 export const hunterAccidentSummarySchema = z.object({
@@ -90,6 +92,7 @@ export interface HunterAnalyzeInput {
   imageBase64: string
   pin: { latitude: number; longitude: number }
   consent: true
+  save?: boolean
 }
 
 export interface HunterSessionInput {
@@ -129,4 +132,23 @@ export function parseSessionBody(body: unknown): ParseResult<HunterSessionInput>
   const result = hunterSessionSchema.safeParse(body)
   if (result.success) return { ok: true, data: result.data as HunterSessionInput }
   return { ok: false, error: firstIssueMessage(result.error) }
+}
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * photoId が UUID 形式か検証する。
+ * - 文字列でなければ error。
+ * - UUID 形式でなければ error。
+ * - 正しければ { ok: true, id } を返す。
+ */
+export function parsePhotoId(value: unknown): { ok: boolean; id?: string; error?: string } {
+  if (typeof value !== "string") {
+    return { ok: false, error: "写真IDが正しくありません" }
+  }
+  if (!UUID_REGEX.test(value)) {
+    return { ok: false, error: "写真IDの形式が正しくありません" }
+  }
+  return { ok: true, id: value }
 }

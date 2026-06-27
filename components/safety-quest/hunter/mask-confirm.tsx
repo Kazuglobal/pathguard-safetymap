@@ -5,7 +5,10 @@
 // 子どもの写真をAIに送る「前」に、顔・表札・ナンバーを
 // 端末内でぼかす。未マスク画像は絶対に外部へ出さない。
 // onConfirm は canvas で生成したマスク済み dataURL のみを返す。
-// 重い依存 (MediaPipe 等) は使わず、ネイティブ FaceDetector + 手動矩形のみ。
+// 顔検出は端末内推論のみ: MediaPipe FaceDetector(動的import) を第一候補、
+// 失敗時はネイティブ FaceDetector、それも無ければ手動矩形のみにフォールバック。
+// 推論はすべてブラウザ内で完結し、未マスク画像は外部へ送らない
+// (CDN からは WASM とモデルのみを取得し、写真は fetch しない)。
 // =============================================
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -44,21 +47,93 @@ type DragState = {
   curY: number
 }
 
-/** FaceDetector の有無を判定 (SSR セーフ) */
-function hasFaceDetector(): boolean {
+// --- MediaPipe 顔検出 (第一候補・端末内推論) ---
+// CDN からは WASM とモデル(.tflite)のみを取得する。写真(未マスク画像)は
+// fetch せず、detector.detect(img) に渡してブラウザ内 (WASM) で推論する。
+const MEDIAPIPE_WASM_BASE =
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+const BLAZE_FACE_MODEL_URL =
+  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
+
+/** detect() の戻り値で利用する最小形 (型は @mediapipe/tasks-vision に準拠)。 */
+type MediaPipeFaceDetector = {
+  detect: (image: HTMLImageElement) => {
+    detections: ReadonlyArray<{
+      boundingBox?: { originX: number; originY: number; width: number; height: number }
+      categories?: ReadonlyArray<{ score: number }>
+    }>
+  }
+}
+
+/**
+ * FaceDetector の生成は重い (WASM + モデル取得) ため、モジュール内で 1 度だけ。
+ * 失敗時は promise をクリアし、次回の呼び出しで再試行できるようにする。
+ */
+let faceDetectorPromise: Promise<MediaPipeFaceDetector> | null = null
+
+async function loadMediaPipeFaceDetector(): Promise<MediaPipeFaceDetector> {
+  if (faceDetectorPromise) return faceDetectorPromise
+  const promise = (async () => {
+    // 動的 import: 初回検出時のみ MediaPipe を読み込み、初期バンドルを軽く保つ。
+    const vision = await import("@mediapipe/tasks-vision")
+    const fileset = await vision.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE)
+    const detector = await vision.FaceDetector.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: BLAZE_FACE_MODEL_URL },
+      runningMode: "IMAGE",
+    })
+    return detector as unknown as MediaPipeFaceDetector
+  })()
+  faceDetectorPromise = promise
+  // ロード失敗はキャッシュしない (次回フォールバック後も再試行可能に)
+  promise.catch(() => {
+    if (faceDetectorPromise === promise) faceDetectorPromise = null
+  })
+  return promise
+}
+
+/**
+ * MediaPipe による顔検出。ロード/推論に失敗した場合は throw する
+ * (呼び出し側 detectFaces がフォールバックを担う)。
+ */
+async function detectFacesMediaPipe(
+  source: HTMLImageElement,
+  imgWidth: number,
+  imgHeight: number,
+): Promise<DetectedFace[]> {
+  if (imgWidth <= 0 || imgHeight <= 0) return []
+  const detector = await loadMediaPipeFaceDetector()
+  // 推論は端末内 (WASM)。画像データは外部送信しない。
+  const result = detector.detect(source)
+  const faces: DetectedFace[] = []
+  for (const det of result.detections) {
+    const box = det.boundingBox
+    if (!box) continue
+    faces.push({
+      x: box.originX / imgWidth,
+      y: box.originY / imgHeight,
+      width: box.width / imgWidth,
+      height: box.height / imgHeight,
+      score: det.categories?.[0]?.score,
+    })
+  }
+  return faces
+}
+
+/** ネイティブ FaceDetector の有無を判定 (SSR セーフ) */
+function hasNativeFaceDetector(): boolean {
   return typeof window !== "undefined" && "FaceDetector" in window
 }
 
 /**
- * オンデバイス顔検出 (任意)。
- * FaceDetector が無い / 失敗しても throw せず空配列を返す (手動のみで続行)。
+ * ブラウザ標準 (実験的) の FaceDetector によるフォールバック検出。
+ * 無い / 失敗しても throw せず空配列を返す (手動のみで続行)。
  */
-async function detectFaces(
+async function detectFacesNative(
   source: CanvasImageSource,
   imgWidth: number,
   imgHeight: number,
 ): Promise<DetectedFace[]> {
-  if (!hasFaceDetector() || imgWidth <= 0 || imgHeight <= 0) return []
+  if (!hasNativeFaceDetector() || imgWidth <= 0 || imgHeight <= 0) return []
   try {
     // FaceDetector は実験的 API のため型定義が無い環境を考慮。
     const Ctor = (window as unknown as {
@@ -80,6 +155,31 @@ async function detectFaces(
     // 検出失敗は許容 (手動ぼかしで続行)
     return []
   }
+}
+
+/**
+ * オンデバイス顔検出 (検出チェーン)。
+ * 1. MediaPipe FaceDetector を第一候補 (端末内推論)。
+ * 2. 失敗したら throw せず、ネイティブ FaceDetector にフォールバック。
+ * 3. それも無ければ空配列 → 手動矩形のみで続行。
+ * いずれの段でも未マスク画像は外部へ送らない。
+ */
+async function detectFaces(
+  source: HTMLImageElement,
+  imgWidth: number,
+  imgHeight: number,
+): Promise<DetectedFace[]> {
+  if (imgWidth <= 0 || imgHeight <= 0) return []
+  try {
+    return await detectFacesMediaPipe(source, imgWidth, imgHeight)
+  } catch (error) {
+    // MediaPipe のロード/推論失敗は許容し、ネイティブ検出へフォールバック。
+    console.warn(
+      "MediaPipe 顔検出に失敗したため、ネイティブ FaceDetector にフォールバックします:",
+      error,
+    )
+  }
+  return detectFacesNative(source, imgWidth, imgHeight)
 }
 
 /**
@@ -314,8 +414,10 @@ export function MaskConfirm(props: MaskConfirmProps) {
       applyBlurRegion(ctx, canvas, region)
     }
     try {
-      // マスク済みのみを出力 (未マスク画像は一切外へ出さない)
-      const maskedDataUrl = canvas.toDataURL("image/jpeg", 0.8)
+      // マスク済みのみを出力 (未マスク画像は一切外へ出さない)。
+      // webp で出力: canvas 再エンコードは EXIF(GPS含む) を引き継がないため、
+      // 保存時の EXIF/位置情報の残存をクライアント側でも防ぐ (サーバも webp 限定)。
+      const maskedDataUrl = canvas.toDataURL("image/webp", 0.85)
       onConfirm(maskedDataUrl)
     } catch (error) {
       console.error("マスク済み画像の生成に失敗:", error)

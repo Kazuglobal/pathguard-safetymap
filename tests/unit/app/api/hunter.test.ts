@@ -23,9 +23,20 @@ vi.mock("@/lib/upstash-rate-limiter", async () => {
   }
 })
 
+vi.mock("@/lib/hunter/storage", () => ({
+  uploadMaskedPhoto: vi.fn().mockResolvedValue({ path: "user-1/photo-1/masked.webp" }),
+  createPhotoSignedUrl: vi.fn().mockResolvedValue("https://signed.example/masked.webp"),
+}))
+
+vi.mock("@/lib/hunter/audit", () => ({
+  writeAuditLog: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { createServerClient } from "@/lib/supabase-server"
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
 import { checkGeminiRateLimit } from "@/lib/upstash-rate-limiter"
+import { uploadMaskedPhoto, createPhotoSignedUrl } from "@/lib/hunter/storage"
+import { writeAuditLog } from "@/lib/hunter/audit"
 
 const mockUser = { id: "user-1", email: "test@example.com" }
 
@@ -35,6 +46,9 @@ function mockAuth(user: typeof mockUser | null) {
       getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
     },
     rpc: vi.fn(),
+    from: vi.fn().mockReturnValue({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    }),
   } as any)
 }
 
@@ -144,6 +158,61 @@ describe("/api/hunter/analyze", () => {
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
     expect(res.status).toBe(502)
+  })
+
+  it("does not save when save is omitted (Phase 0 backward compat)", async () => {
+    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(uploadMaskedPhoto).not.toHaveBeenCalled()
+    expect(body.photoId).toBeUndefined()
+    expect(body.signedUrl).toBeUndefined()
+  })
+
+  it("saves the masked photo and returns photoId + signedUrl when save=true", async () => {
+    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/analyze", { ...validBody, save: true }),
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(uploadMaskedPhoto).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(uploadMaskedPhoto).mock.calls[0][1]).toBe(mockUser.id)
+    expect(vi.mocked(uploadMaskedPhoto).mock.calls[0][3]).toBe(validBody.imageBase64)
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      mockUser.id,
+      "analyze_save",
+      expect.any(String),
+    )
+    expect(body.photoId).toEqual(expect.any(String))
+    expect(body.signedUrl).toBe("https://signed.example/masked.webp")
+    expect(body.savedError).toBe(false)
+    // 検出結果は通常どおり返る
+    expect(body.hazards).toHaveLength(1)
+    // 未マスク画像はレスポンスに含めない
+    expect(JSON.stringify(body)).not.toContain("base64")
+  })
+
+  it("keeps the game going (savedError) when storage upload fails", async () => {
+    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+    vi.mocked(uploadMaskedPhoto).mockRejectedValueOnce(new Error("storage down"))
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/analyze", { ...validBody, save: true }),
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.savedError).toBe(true)
+    expect(body.photoId).toBeNull()
+    expect(body.signedUrl).toBeNull()
+    expect(body.hazards).toHaveLength(1)
   })
 })
 
