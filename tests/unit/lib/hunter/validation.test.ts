@@ -69,8 +69,29 @@ describe("parseSessionBody", () => {
     expect(res.ok).toBe(true)
   })
 
+  it("accepts a quiz-mode session", () => {
+    const res = parseSessionBody({
+      mode: "quiz",
+      hazards: [validHazard],
+      accident: {
+        hasData: true,
+        riskScore: 50,
+        riskLevel: "high",
+        riskLabel: "危険",
+        riskEmoji: "🟠",
+        totalAccidents: 5,
+        childInvolved: 1,
+        topAccidentType: "出会い頭",
+        peakTimeSlot: null,
+        kidMessage: "気をつけよう",
+      },
+      answers: [{ itemId: "q-place-0", tap: { x: 0.4, y: 0.4 } }],
+    })
+    expect(res.ok).toBe(true)
+  })
+
   it("rejects an unknown mode", () => {
-    const res = parseSessionBody({ mode: "quiz", hazards: [], taps: [] })
+    const res = parseSessionBody({ mode: "battle", hazards: [], taps: [] })
     expect(res.ok).toBe(false)
   })
 

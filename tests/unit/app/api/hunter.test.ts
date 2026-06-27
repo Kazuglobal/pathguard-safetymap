@@ -187,10 +187,47 @@ describe("/api/hunter/session", () => {
     expect(body.total).toBe(1)
   })
 
+  it("re-scores a quiz session server-side", async () => {
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const hazard = {
+      id: "s-0-0",
+      type: "車に注意",
+      region: { x: 0.3, y: 0.3, w: 0.3, h: 0.3 },
+      severity: "high",
+      kidExplanation: "あぶないよ",
+      safeAction: "気をつけよう",
+      confidence: 0.9,
+    }
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "quiz",
+        hazards: [hazard],
+        accident: {
+          hasData: true,
+          riskScore: 50,
+          riskLevel: "high",
+          riskLabel: "危険",
+          riskEmoji: "🟠",
+          totalAccidents: 5,
+          childInvolved: 1,
+          topAccidentType: "出会い頭",
+          peakTimeSlot: null,
+          kidMessage: "気をつけよう",
+        },
+        answers: [{ itemId: "q-place-0", tap: { x: 0.4, y: 0.4 } }],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.mode).toBe("quiz")
+    expect(body.total).toBeGreaterThan(0)
+    expect(body.correct).toBe(1)
+  })
+
   it("rejects a malformed body", async () => {
     const { POST } = await import("@/app/api/hunter/session/route")
     const res = await POST(
-      makeJsonRequest("http://localhost/api/hunter/session", { mode: "quiz", hazards: [], taps: [] }),
+      makeJsonRequest("http://localhost/api/hunter/session", { mode: "battle", hazards: [], taps: [] }),
     )
     expect(res.status).toBe(400)
   })

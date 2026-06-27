@@ -6,7 +6,12 @@
 
 import { z } from "zod"
 
-import type { HunterHazard, HunterTap } from "@/lib/hunter/types"
+import type {
+  HunterAccidentSummary,
+  HunterHazard,
+  HunterQuizAnswer,
+  HunterTap,
+} from "@/lib/hunter/types"
 
 const MAX_IMAGE_LENGTH = 25 * 1024 * 1024
 
@@ -47,11 +52,36 @@ export const hunterAnalyzeSchema = z.object({
   consent: z.literal(true),
 })
 
-/** /api/hunter/session の入力 (サーバ再採点)。 */
+export const hunterAccidentSummarySchema = z.object({
+  hasData: z.boolean(),
+  riskScore: z.number().finite(),
+  riskLevel: z.string(),
+  riskLabel: z.string(),
+  riskEmoji: z.string(),
+  totalAccidents: z.number().finite(),
+  childInvolved: z.number().finite(),
+  topAccidentType: z.string().nullable(),
+  peakTimeSlot: z.string().nullable(),
+  kidMessage: z.string(),
+})
+
+export const hunterQuizAnswerSchema = z.object({
+  itemId: z.string().min(1),
+  tap: hunterTapSchema.optional(),
+  choiceId: z.string().optional(),
+})
+
+/**
+ * /api/hunter/session の入力 (サーバ再採点)。
+ * explore: hazards + taps を再採点。
+ * quiz: hazards + accident から出題を再生成し answers を採点（クライアント点数を信用しない）。
+ */
 export const hunterSessionSchema = z.object({
-  mode: z.literal("explore"),
-  hazards: z.array(hunterHazardSchema).max(50),
-  taps: z.array(hunterTapSchema).max(200),
+  mode: z.enum(["explore", "quiz"]),
+  hazards: z.array(hunterHazardSchema).max(50).optional(),
+  taps: z.array(hunterTapSchema).max(200).optional(),
+  accident: hunterAccidentSummarySchema.optional(),
+  answers: z.array(hunterQuizAnswerSchema).max(50).optional(),
 })
 
 // z.infer はこの環境で全フィールドを optional 推論するため、明示的 interface を使う。
@@ -63,9 +93,11 @@ export interface HunterAnalyzeInput {
 }
 
 export interface HunterSessionInput {
-  mode: "explore"
-  hazards: HunterHazard[]
-  taps: HunterTap[]
+  mode: "explore" | "quiz"
+  hazards?: HunterHazard[]
+  taps?: HunterTap[]
+  accident?: HunterAccidentSummary
+  answers?: HunterQuizAnswer[]
 }
 
 // strictNullChecks:false では判別共用体の絞り込みが効かないため、単一形状にする。

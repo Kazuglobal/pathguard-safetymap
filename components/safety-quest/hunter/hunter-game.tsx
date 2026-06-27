@@ -13,9 +13,11 @@ import {
 } from "lucide-react"
 
 import { judgeTap } from "@/lib/hunter/scoring"
+import { buildQuizItems } from "@/lib/hunter/quiz"
 import type {
   HunterAccidentSummary,
   HunterHazard,
+  HunterQuizAnswer,
   HunterTap,
   HunterTapOutcome,
 } from "@/lib/hunter/types"
@@ -24,6 +26,7 @@ import { CareCard } from "./care-card"
 import { ExploreCanvas } from "./explore-canvas"
 import { LocationPinPicker } from "./location-pin-picker"
 import { MaskConfirm } from "./mask-confirm"
+import { HunterQuizPanel } from "./quiz-panel"
 import { ResultCard } from "./result-card"
 import {
   Celebrate,
@@ -41,8 +44,12 @@ type Screen =
   | "pin"
   | "consent"
   | "analyzing"
+  | "mode"
   | "explore"
+  | "quiz"
   | "result"
+
+type PlayMode = "explore" | "quiz"
 
 interface Pin {
   latitude: number
@@ -72,9 +79,14 @@ export function HunterGame() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [celebratePoints, setCelebratePoints] = useState<number | null>(null)
+  const [mode, setMode] = useState<PlayMode>("explore")
 
   const reduce = useReducedMotion()
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
+  const quizItems = useMemo(
+    () => (accident ? buildQuizItems(hazards, accident) : []),
+    [hazards, accident],
+  )
 
   const resetPlay = useCallback(() => {
     setFoundIds([])
@@ -120,7 +132,7 @@ export function HunterGame() {
         setHazards(body.hazards ?? [])
         setAccident(body.accident ?? null)
         resetPlay()
-        setScreen("explore")
+        setScreen("mode")
       } catch {
         setError("つうしんエラーが おきました。もう一度ためしてね。")
         setScreen("consent")
@@ -175,6 +187,36 @@ export function HunterGame() {
       }
     },
     [hazards],
+  )
+
+  const finishQuizSession = useCallback(
+    async (answers: HunterQuizAnswer[]) => {
+      setBusy(true)
+      try {
+        const response = await fetch("/api/hunter/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "quiz", hazards, accident, answers }),
+        })
+        const body = await response.json().catch(() => null)
+        if (response.ok && body) {
+          setResult({
+            score: body.score ?? 0,
+            matches: body.correct ?? 0,
+            total: body.total ?? quizItems.length,
+            comboMax: 0,
+          })
+        } else {
+          setResult({ score: 0, matches: 0, total: quizItems.length, comboMax: 0 })
+        }
+      } catch {
+        setResult({ score: 0, matches: 0, total: quizItems.length, comboMax: 0 })
+      } finally {
+        setBusy(false)
+        setScreen("result")
+      }
+    },
+    [hazards, accident, quizItems],
   )
 
   // 発見（hit）時に お祝い演出を出す（ハンドラ挙動は変えず lastOutcome を監視）
@@ -264,6 +306,36 @@ export function HunterGame() {
   } else if (screen === "analyzing") {
     title = "AIが かくにん中…"
     content = <AnalyzingScreen imageUrl={maskedUrl} />
+  } else if (screen === "mode") {
+    title = "あそびかたを えらぶ"
+    onBack = () => setScreen("home")
+    content = (
+      <ModeSelectScreen
+        accident={accident}
+        canQuiz={quizItems.length > 0}
+        onExplore={() => {
+          setMode("explore")
+          resetPlay()
+          setScreen("explore")
+        }}
+        onQuiz={() => {
+          setMode("quiz")
+          setScreen("quiz")
+        }}
+      />
+    )
+  } else if (screen === "quiz" && maskedUrl) {
+    title = "クイズモード"
+    onBack = () => setScreen("mode")
+    content = (
+      <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
+        <HunterQuizPanel
+          items={quizItems}
+          imageUrl={maskedUrl}
+          onComplete={(answers) => void finishQuizSession(answers)}
+        />
+      </div>
+    )
   } else if (screen === "explore" && maskedUrl) {
     title = "さがそう！"
     onBack = () => setScreen("home")
@@ -321,8 +393,13 @@ export function HunterGame() {
           hazards={hazards}
           foundIds={foundIds}
           onRetry={() => {
-            resetPlay()
-            setScreen("explore")
+            if (mode === "quiz") {
+              setResult(null)
+              setScreen("quiz")
+            } else {
+              resetPlay()
+              setScreen("explore")
+            }
           }}
           onNewPhoto={() => {
             resetAll()
@@ -393,6 +470,87 @@ function R({ k, y }: { k: string; y: string }) {
       {k}
       <rt className="text-[0.5em] font-bold">{y}</rt>
     </ruby>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * mode select（あそびかたを えらぶ）
+ * ------------------------------------------------------------------ */
+
+function ModeCard({
+  icon,
+  title,
+  desc,
+  onClick,
+  disabled,
+  bg,
+}: {
+  icon: ReactNode
+  title: string
+  desc: string
+  onClick: () => void
+  disabled?: boolean
+  bg: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-3 rounded-[24px] px-4 py-4 text-left text-white disabled:opacity-50 ${tokens.cls.focus}`}
+      style={{ background: bg, boxShadow: tokens.shadow.card }}
+    >
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/25">
+        {icon}
+      </span>
+      <span className="flex flex-col">
+        <span className="text-[18px] font-extrabold">{title}</span>
+        <span className="text-[13px] font-bold text-white/90">{desc}</span>
+      </span>
+    </button>
+  )
+}
+
+function ModeSelectScreen({
+  accident,
+  canQuiz,
+  onExplore,
+  onQuiz,
+}: {
+  accident: HunterAccidentSummary | null
+  canQuiz: boolean
+  onExplore: () => void
+  onQuiz: () => void
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div className="flex items-center gap-2.5">
+        <Mascot size="sm" mood="happy" />
+        <h2 className="text-[20px] font-extrabold" style={{ color: C.ink }}>
+          どっちで あそぶ？
+        </h2>
+      </div>
+
+      {accident && <CareCard accident={accident} />}
+
+      <div className="grid grid-cols-1 gap-3">
+        <ModeCard
+          icon={<Search className="h-6 w-6" />}
+          title="たんけんモード"
+          desc="じぶんで あぶないところを さがそう"
+          onClick={onExplore}
+          bg={C.primary}
+        />
+        <ModeCard
+          icon={<Lightbulb className="h-6 w-6" />}
+          title="クイズモード"
+          desc="この あたりの 事故から クイズに こたえよう"
+          onClick={onQuiz}
+          disabled={!canQuiz}
+          bg={C.accent}
+        />
+      </div>
+    </div>
   )
 }
 

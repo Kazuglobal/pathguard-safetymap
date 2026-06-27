@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { createServerClient } from "@/lib/supabase-server"
 import { scoreSession } from "@/lib/hunter/scoring"
+import { buildQuizItems, scoreQuiz } from "@/lib/hunter/quiz"
 import { parseSessionBody } from "@/lib/hunter/validation"
 
 export const runtime = "nodejs"
@@ -36,10 +37,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 })
   }
 
-  const { hazards, taps } = parsed.data
-  const result = scoreSession(taps, hazards)
+  const { mode, hazards = [], taps = [], accident, answers = [] } = parsed.data
 
+  if (mode === "quiz") {
+    // クライアントの点数を信用せず、hazards+accident から出題を再生成して採点する。
+    if (!accident) {
+      return NextResponse.json({ error: "クイズの採点に必要な情報が不足しています" }, { status: 400 })
+    }
+    const items = buildQuizItems(hazards, accident)
+    const result = scoreQuiz(items, answers)
+    return NextResponse.json({
+      mode: "quiz",
+      score: result.score,
+      correct: result.correct,
+      total: result.total,
+      outcomes: result.outcomes,
+    })
+  }
+
+  const result = scoreSession(taps, hazards)
   return NextResponse.json({
+    mode: "explore",
     score: result.score,
     matches: result.matches,
     comboMax: result.comboMax,

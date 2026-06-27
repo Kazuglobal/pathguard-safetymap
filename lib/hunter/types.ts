@@ -69,3 +69,50 @@ export interface HunterPin {
   readonly latitude: number
   readonly longitude: number
 }
+
+// =============================================
+// AIクイズモード (Phase 2 / 設計書 モードB)
+// =============================================
+
+/** place=写真上の場所をタップ / choice=4択 */
+export type HunterQuizKind = "place" | "choice"
+
+export interface HunterQuizChoice {
+  readonly id: string
+  readonly label: string
+}
+
+export interface HunterQuizItem {
+  readonly id: string
+  readonly kind: HunterQuizKind
+  /** 出題テーマ（事故タイプ等）。無い場合 null */
+  readonly theme: string | null
+  readonly question: string
+  /** place: 正解の危険ポイント */
+  readonly answerHazardId?: string
+  readonly answerRegion?: HunterRegion
+  /** choice: 選択肢と正解ID */
+  readonly choices?: readonly HunterQuizChoice[]
+  readonly correctChoiceId?: string
+  /** 解説（やさしい学び＋事故のリアリティ一言） */
+  readonly explanation: string
+}
+
+export interface HunterQuizAnswer {
+  readonly itemId: string
+  readonly tap?: HunterTap
+  readonly choiceId?: string
+}
+
+export interface HunterQuizOutcome {
+  readonly itemId: string
+  readonly correct: boolean
+  readonly points: number
+}
+
+export interface HunterQuizResult {
+  readonly score: number
+  readonly correct: number
+  readonly total: number
+  readonly outcomes: readonly HunterQuizOutcome[]
+}
