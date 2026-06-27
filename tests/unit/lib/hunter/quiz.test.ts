@@ -64,12 +64,12 @@ describe("buildQuizItems", () => {
 
   it("includes the accident reality line in explanations when data exists", () => {
     const items = buildQuizItems([hazard("h1", "きけんなもの")], accidentWithData, 2)
-    expect(items.some((i) => i.explanation.includes("けん あったよ"))).toBe(true)
+    expect(items.some((i) => i.explanation.includes("件 あったよ"))).toBe(true)
   })
 
   it("omits the reality line when there is no accident data", () => {
     const items = buildQuizItems([hazard("h1", "きけんなもの")], accidentNoData, 2)
-    expect(items.every((i) => !i.explanation.includes("けん あったよ"))).toBe(true)
+    expect(items.every((i) => !i.explanation.includes("件 あったよ"))).toBe(true)
   })
 
   it("falls back to a choice question when there are no hazards", () => {
@@ -78,11 +78,11 @@ describe("buildQuizItems", () => {
     expect(items.every((i) => i.kind === "choice")).toBe(true)
   })
 
-  it("selects a theme-matched choice template (出会い頭 → 見とおし)", () => {
+  it("selects a theme-matched choice template (出会い頭 → 見通し)", () => {
     const items = buildQuizItems([], accidentWithData, 1)
     const choice = items[0]
     expect(choice.kind).toBe("choice")
-    expect(choice.question).toContain("見とおし")
+    expect(choice.question).toContain("見通し")
     expect(choice.choices).toHaveLength(4)
     expect(choice.correctChoiceId).toBe("c0")
     // 正解(c0)が先頭に固定されない（決定的に回転）

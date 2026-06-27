@@ -33,35 +33,35 @@ interface ChoiceTemplate {
 const CHOICE_TEMPLATES: readonly ChoiceTemplate[] = [
   {
     keywords: ["出会い", "見通", "交差", "出合"],
-    question: "見とおしの わるい かどでは どうする？",
-    correct: "とまって 左右を よく見る",
-    distractors: ["はしって すすむ", "スマホを 見ながら あるく", "車は こないと きめつける"],
+    question: "見通しの悪い角ではどうする？",
+    correct: "止まって左右をよく見る",
+    distractors: ["走って進む", "スマホを見ながら歩く", "車は来ないと決めつける"],
   },
   {
     keywords: ["横断", "歩行"],
-    question: "どうろを わたるときは どうする？",
-    correct: "手をあげて 左右を 見てから わたる",
-    distractors: ["ななめに わたる", "車の まえを はしる", "下を むいて わたる"],
+    question: "道路を渡るときはどうする？",
+    correct: "手をあげて左右を見てから渡る",
+    distractors: ["ななめに渡る", "車の前を走る", "下を向いて渡る"],
   },
   {
     keywords: ["飛び出", "とびだし", "飛出"],
-    question: "ものかげが あるときは どうする？",
-    correct: "とまって 車が こないか たしかめる",
-    distractors: ["いきおいよく とびだす", "目を つぶって すすむ", "音だけで きめる"],
+    question: "物陰があるときはどうする？",
+    correct: "止まって車が来ないか確かめる",
+    distractors: ["いきおいよく飛び出す", "目をつぶって進む", "音だけで決める"],
   },
   {
     keywords: ["右折", "左折", "まがり", "曲"],
-    question: "車が まがってくる かどでは どうする？",
-    correct: "車と 目を あわせて まってもらう",
-    distractors: ["車は とまると しんじる", "いそいで わたる", "うしろを むいて あるく"],
+    question: "車が曲がってくる角ではどうする？",
+    correct: "車と目を合わせて待ってもらう",
+    distractors: ["車は止まると信じる", "急いで渡る", "後ろを向いて歩く"],
   },
 ]
 
 const DEFAULT_TEMPLATE: ChoiceTemplate = {
   keywords: [],
-  question: "あんぜんに あるくには どうする？",
-  correct: "まわりを よく見て あるく",
-  distractors: ["はしりながら スマホを 見る", "車道の まんなかを あるく", "左右を 見ないで すすむ"],
+  question: "安全に歩くにはどうする？",
+  correct: "まわりをよく見て歩く",
+  distractors: ["走りながらスマホを見る", "車道の真ん中を歩く", "左右を見ないで進む"],
 }
 
 function pickChoiceTemplate(theme: string | null): ChoiceTemplate {
@@ -76,12 +76,12 @@ function pickChoiceTemplate(theme: string | null): ChoiceTemplate {
 function realityLine(accident: HunterAccidentSummary): string {
   if (!accident.hasData) return ""
   if (accident.childInvolved > 0) {
-    return `じつは このあたりでは 子どもが かかわる 事故が ${accident.childInvolved}けん あったよ。`
+    return `じつは このあたりでは 子どもが かかわる 事故が ${accident.childInvolved}件 あったよ。`
   }
   if (!accident.topAccidentType) {
-    return `じつは このあたりでは 事故が ${accident.totalAccidents}けん あったよ。`
+    return `じつは このあたりでは 事故が ${accident.totalAccidents}件 あったよ。`
   }
-  return `じつは このあたりでは 「${kidAccidentLabel(accident.topAccidentType)}」が ${accident.totalAccidents}けん あったよ。`
+  return `じつは このあたりでは 「${kidAccidentLabel(accident.topAccidentType)}」が ${accident.totalAccidents}件 あったよ。`
 }
 
 /** 正解を含む4択を、item ごとに決定的な位置へ配置（ランダム非使用） */
@@ -125,7 +125,7 @@ export function buildQuizItems(
       id: `q-place-${i}`,
       kind: "place",
       theme,
-      question: `「${h.type}」は どこかな？ 写真を タップして さがそう！`,
+      question: `「${h.type}」はどこかな？写真をタップしてさがそう！`,
       answerHazardId: h.id,
       answerRegion: h.region,
       explanation: reality ? `${h.safeAction} ${reality}` : h.safeAction,
@@ -143,8 +143,8 @@ export function buildQuizItems(
       choices,
       correctChoiceId,
       explanation: reality
-        ? `せいかいは「${template.correct}」。${reality}`
-        : `せいかいは「${template.correct}」だよ。`,
+        ? `正解は「${template.correct}」。${reality}`
+        : `正解は「${template.correct}」だよ。`,
     })
   }
 

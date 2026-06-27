@@ -6,6 +6,7 @@ import { Baby, Clock, ShieldAlert, Sparkles } from "lucide-react"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
 import { kidAccidentLabel } from "@/lib/hunter/accident-context"
 
+import { RubyText } from "./ruby-text"
 import { Mascot, StatPill, tokens } from "./theme"
 
 // きけんハンター「気をつけるカード」
@@ -80,7 +81,7 @@ export function CareCard({ accident }: { accident: HunterAccidentSummary }) {
         className="relative mt-3 text-[20px] font-extrabold leading-[1.5]"
         style={{ color: C.ink }}
       >
-        {kidMessage}
+        <RubyText text={kidMessage} />
       </p>
 
       {/* データがあるとき: 気をつけるポイントのチップ */}
@@ -99,7 +100,7 @@ export function CareCard({ accident }: { accident: HunterAccidentSummary }) {
               tone="blue"
               icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />}
               label="おおい できごと"
-              value={kidAccidentLabel(topAccidentType)}
+              value={<RubyText text={kidAccidentLabel(topAccidentType)} />}
             />
           ) : null}
           {showTimeChip ? (

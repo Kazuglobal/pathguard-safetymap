@@ -9,9 +9,9 @@ import {
 
 describe("kidAccidentLabel", () => {
   it("converts technical accident labels to kid-friendly wording", () => {
-    expect(kidAccidentLabel("車両相互正面衝突")).toBe("しょうめんからの しょうとつ");
-    expect(kidAccidentLabel("出会い頭衝突")).toBe("かどでの 出会いがしら");
-    expect(kidAccidentLabel("人対車両横断中")).toBe("どうろを わたっているときの 事故");
+    expect(kidAccidentLabel("車両相互正面衝突")).toBe("正面からの衝突");
+    expect(kidAccidentLabel("出会い頭衝突")).toBe("角での出会い頭");
+    expect(kidAccidentLabel("人対車両横断中")).toBe("道路を渡っているときの事故");
   });
 
   it("never returns a raw technical term for unknown labels", () => {

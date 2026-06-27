@@ -6,6 +6,7 @@ import { Check, Lightbulb, X } from "lucide-react"
 
 import { judgeQuizAnswer } from "@/lib/hunter/quiz"
 import type { HunterQuizAnswer, HunterQuizItem, HunterTap } from "@/lib/hunter/types"
+import { RubyText } from "./ruby-text"
 import { Mascot, PrimaryCTA, StatPill, tokens } from "./theme"
 
 const C = tokens.color
@@ -69,7 +70,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
             className="rounded-full px-3 py-1 text-[12px] font-extrabold text-white"
             style={{ background: C.accent }}
           >
-            {item.theme}
+            <RubyText text={item.theme} />
           </span>
         )}
       </div>
@@ -80,10 +81,10 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
           <Mascot size="sm" mood={revealed ? (revealed.correct ? "wow" : "cheer") : "think"} />
         </span>
         <p
-          className="rounded-[18px] bg-white px-4 py-3 text-[16px] font-extrabold leading-snug"
+          className="rounded-[18px] bg-white px-4 py-3 text-[16px] font-extrabold leading-relaxed"
           style={{ color: C.ink, boxShadow: tokens.shadow.soft }}
         >
-          {item.question}
+          <RubyText text={item.question} />
         </p>
       </div>
 
@@ -167,7 +168,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
               >
                 {revealed && isCorrect && <Check className="h-5 w-5 shrink-0" strokeWidth={3} />}
                 {revealed && isPicked && !isCorrect && <X className="h-5 w-5 shrink-0" strokeWidth={3} />}
-                <span>{choice.label}</span>
+                <RubyText text={choice.label} />
               </button>
             )
           })}
@@ -191,7 +192,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
                 <span className="font-extrabold" style={{ color: revealed.correct ? C.success : C.accentStrong }}>
                   {revealed.correct ? "せいかい！ " : "おしい！ "}
                 </span>
-                {item.explanation}
+                <RubyText text={item.explanation} />
               </p>
             </div>
             <PrimaryCTA onClick={goNext}>
