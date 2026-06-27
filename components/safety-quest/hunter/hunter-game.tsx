@@ -613,17 +613,20 @@ function HomeScreen({
   onOpenRecords: () => void
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-8 text-center">
-      <Mascot size="lg" mood="happy" />
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-4 text-center sm:gap-5 sm:py-6">
+      {/* 短い画面でもはみ出さないよう、マスコットは画面高に応じて縮小 */}
+      <div className="shrink-0 [@media(max-height:680px)]:scale-90 [@media(max-height:600px)]:scale-75">
+        <Mascot size="lg" mood="happy" />
+      </div>
 
       <div>
         <h1
-          className="text-[28px] font-extrabold tracking-wide"
+          className="text-[26px] font-extrabold tracking-wide sm:text-[28px]"
           style={{ color: C.primaryStrong }}
         >
           きけんハンター
         </h1>
-        <p className="mt-2 text-[16px] font-bold leading-relaxed" style={{ color: C.ink }}>
+        <p className="mt-1.5 text-[15px] font-bold leading-relaxed sm:text-[16px]" style={{ color: C.ink }}>
           <R k="通学路" y="つうがくろ" />の しゃしんから、
           <br />
           あぶないところを <R k="自分" y="じぶん" />の <R k="目" y="め" />で さがそう！
@@ -645,8 +648,9 @@ function HomeScreen({
         きろく / <R k="危険" y="きけん" />マップ
       </button>
 
+      {/* あそびかた: 画面が低いときは隠して本体を優先表示 */}
       <div
-        className="w-full max-w-sm rounded-[24px] px-4 py-4 text-left"
+        className="hidden w-full max-w-sm rounded-[24px] px-4 py-3.5 text-left [@media(min-height:720px)]:block"
         style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
       >
         <p className="mb-2 text-[14px] font-extrabold" style={{ color: C.inkSoft }}>
