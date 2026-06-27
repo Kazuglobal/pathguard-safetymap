@@ -126,3 +126,7 @@ header.txt
 # 生成された静的ファイル（copy-cesiumスクリプトで生成）
 # -----------------------------------------
 /public/cesium/
+
+# MediaPipe WASM（copy-mediapipeスクリプトで node_modules から再生成）
+# モデル(.tflite)は再生成されないため public/mediapipe/models は追跡する
+/public/mediapipe/wasm/

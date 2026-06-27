@@ -481,7 +481,7 @@ export function HunterGame() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={screen}
-            className="flex flex-1 flex-col"
+            className="flex min-h-0 flex-1 flex-col"
             initial={enter}
             animate={center}
             exit={leave}

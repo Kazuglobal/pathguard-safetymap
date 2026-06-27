@@ -48,12 +48,13 @@ type DragState = {
 }
 
 // --- MediaPipe 顔検出 (第一候補・端末内推論) ---
-// CDN からは WASM とモデル(.tflite)のみを取得する。写真(未マスク画像)は
-// fetch せず、detector.detect(img) に渡してブラウザ内 (WASM) で推論する。
-const MEDIAPIPE_WASM_BASE =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
-const BLAZE_FACE_MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
+// WASM とモデル(.tflite)は self-host (public/mediapipe/*) から取得する。
+// 外部 CDN に依存せず CSP(script-src/connect-src 'self') 内で完結し、
+// オフラインでも動く (設計書 §6.6)。写真(未マスク画像)は fetch せず、
+// detector.detect(img) に渡してブラウザ内 (WASM) で推論する。
+// 資産は scripts/copy-mediapipe.js が predev/build 時に node_modules から配置する。
+const MEDIAPIPE_WASM_BASE = "/mediapipe/wasm"
+const BLAZE_FACE_MODEL_URL = "/mediapipe/models/blaze_face_short_range.tflite"
 
 /** detect() の戻り値で利用する最小形 (型は @mediapipe/tasks-vision に準拠)。 */
 type MediaPipeFaceDetector = {

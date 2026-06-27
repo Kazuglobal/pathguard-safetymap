@@ -69,12 +69,16 @@ async function callGeminiVision(
   let mimeType = "image/jpeg"
   let dataBase64 = imageBase64OrDataUrl
   if (imageBase64OrDataUrl.startsWith("data:")) {
-    const match = imageBase64OrDataUrl.match(/^data:([^;]+);base64,(.+)$/)
-    if (!match) {
+    // 正規表現の貪欲キャプチャ (.+) は数MBの data URL でスタックを使い切り
+    // RangeError を投げるため、indexOf ベースで O(n) かつ非再帰にパースする。
+    const commaIndex = imageBase64OrDataUrl.indexOf(",")
+    const header = commaIndex >= 0 ? imageBase64OrDataUrl.slice(0, commaIndex) : ""
+    const semicolonIndex = header.indexOf(";")
+    if (commaIndex < 0 || semicolonIndex < 0 || !header.includes(";base64")) {
       throw new Error("画像のdata URLが不正です")
     }
-    mimeType = match[1]
-    dataBase64 = match[2]
+    mimeType = header.slice("data:".length, semicolonIndex)
+    dataBase64 = imageBase64OrDataUrl.slice(commaIndex + 1)
   }
 
   const parts: any[] = [

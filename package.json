@@ -8,10 +8,11 @@
   },
   "scripts": {
     "copy-cesium": "node scripts/copy-cesium.js",
-    "predev": "node scripts/copy-cesium.js",
+    "copy-mediapipe": "node scripts/copy-mediapipe.js",
+    "predev": "node scripts/copy-cesium.js && node scripts/copy-mediapipe.js",
     "dev": "cross-env NEXT_DIST_DIR=.next-dev next dev --webpack",
     "dev:turbo": "cross-env NEXT_DIST_DIR=.next-dev next dev",
-    "build": "node scripts/copy-cesium.js && node scripts/validate-env.js && cross-env DISABLE_ESLINT_PLUGIN=true next build",
+    "build": "node scripts/copy-cesium.js && node scripts/copy-mediapipe.js && node scripts/validate-env.js && cross-env DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
