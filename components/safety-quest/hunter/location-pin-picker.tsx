@@ -43,9 +43,9 @@ type Suggestion = {
 
 const C = tokens.color
 
-// ---- 検索（住所＝Mapbox / 施設＝OSM Nominatim を併用） ----
+// ---- 検索（Mapbox Geocoding） ----
 
-/** Mapbox Geocoding。住所・地名・一部POIに強い。 */
+/** Mapbox Geocoding。住所・地名・POIを検索する。 */
 async function fetchMapboxSuggestions(
   query: string,
   token: string,
@@ -83,67 +83,6 @@ async function fetchMapboxSuggestions(
       }
     })
     .filter((s: Suggestion) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
-}
-
-/**
- * OSM Nominatim。日本の小学校・中学校など公共施設(POI)の網羅が良い。
- * 失敗・未対応でも throw せず空配列を返す（Mapbox 結果のみで成立）。
- */
-async function fetchNominatimSuggestions(
-  query: string,
-  viewbox: string | null,
-  signal: AbortSignal,
-): Promise<Suggestion[]> {
-  const box = viewbox ? `&viewbox=${viewbox}&bounded=0` : ""
-  const url =
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}` +
-    `&countrycodes=jp&accept-language=ja&limit=5&addressdetails=0${box}`
-  const res = await fetch(url, { signal, headers: { Accept: "application/json" } })
-  if (!res.ok) return []
-  const data = await res.json()
-  if (!Array.isArray(data)) return []
-  return data
-    .map((d: Record<string, unknown>): Suggestion => {
-      const full = String(d.display_name ?? "")
-      // display_name は「新宿区立四谷小学校, 新宿通り, ...」。先頭が施設名。
-      const primary = String(d.name ?? full.split(",")[0] ?? "").trim()
-      const sublabel = full.startsWith(primary)
-        ? full.slice(primary.length).replace(/^[,、\s]+/, "")
-        : full
-      return {
-        id: `osm-${String(d.place_id ?? d.osm_id ?? Math.random())}`,
-        label: primary,
-        sublabel: sublabel || undefined,
-        latitude: Number(d.lat),
-        longitude: Number(d.lon),
-        kind: "facility",
-      }
-    })
-    .filter((s: Suggestion) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
-}
-
-/** 2ソースをマージ。近接重複を除き、最大件数で打ち切る。 */
-function mergeSuggestions(
-  mapbox: Suggestion[],
-  nominatim: Suggestion[],
-  limit = 7,
-): Suggestion[] {
-  const out: Suggestion[] = []
-  const seen: Array<{ lat: number; lng: number }> = []
-  const isDup = (s: Suggestion) =>
-    seen.some(
-      (p) => Math.abs(p.lat - s.latitude) < 1e-4 && Math.abs(p.lng - s.longitude) < 1e-4,
-    )
-  // 施設(学校など)を先に出し、見つけたい対象に早く辿り着けるようにする。
-  for (const s of [...mapbox, ...nominatim].sort((a, b) =>
-    a.kind === b.kind ? 0 : a.kind === "facility" ? -1 : 1,
-  )) {
-    if (!s.label || isDup(s)) continue
-    seen.push({ lat: s.latitude, lng: s.longitude })
-    out.push(s)
-    if (out.length >= limit) break
-  }
-  return out
 }
 
 export function LocationPinPicker({
@@ -188,7 +127,7 @@ export function LocationPinPicker({
     onConfirm({ latitude: pin.latitude, longitude: pin.longitude })
   }, [pin, onConfirm])
 
-  // --- 検索（住所＝Mapbox / 学校など施設＝Nominatim を併用・デバウンス） ---
+  // --- 検索（住所・地名・施設を Mapbox で検索・デバウンス） ---
   useEffect(() => {
     const q = query.trim()
     if (!mapToken || q.length < 2) {
@@ -200,19 +139,10 @@ export function LocationPinPicker({
       // 表示中の地図の中心・範囲に近い候補を優先（地域の関連性を上げる）
       const center = mapRef.current?.getCenter() ?? null
       const proximity = center ? { lng: center.lng, lat: center.lat } : null
-      const bounds = mapRef.current?.getBounds()
-      // Nominatim viewbox は left,top,right,bottom（経度,緯度）
-      const viewbox = bounds
-        ? `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`
-        : null
-
-      Promise.all([
-        fetchMapboxSuggestions(q, mapToken, proximity, controller.signal).catch(() => []),
-        fetchNominatimSuggestions(q, viewbox, controller.signal).catch(() => []),
-      ])
-        .then(([mapbox, nominatim]) => {
+      fetchMapboxSuggestions(q, mapToken, proximity, controller.signal)
+        .then((results) => {
           if (controller.signal.aborted) return
-          setSuggestions(mergeSuggestions(mapbox, nominatim))
+          setSuggestions(results)
         })
         .catch(() => {
           // abort / ネットワーク失敗は無視（検索なしでも地図タップは使える）
@@ -282,7 +212,7 @@ export function LocationPinPicker({
       }}
     >
       {/* 地図エリア（flex-1 でモバイルでも大きく見やすく） */}
-      <div className="relative w-full flex-1 min-h-[300px]">
+      <div className="relative min-h-[240px] w-full flex-1">
         <Map
           ref={mapRef}
           mapboxAccessToken={mapToken}
@@ -290,7 +220,6 @@ export function LocationPinPicker({
           initialViewState={initialViewState}
           onClick={handleMapClick}
           cursor="crosshair"
-          attributionControl={false}
           style={{ width: "100%", height: "100%" }}
         >
           {pin && (

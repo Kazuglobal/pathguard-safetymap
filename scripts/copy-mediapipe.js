@@ -17,17 +17,41 @@ const wasmSrc = path.join(
 )
 const wasmDest = path.join(__dirname, '..', 'public', 'mediapipe', 'wasm')
 
-// 既にコピー済みならスキップ
-if (fs.existsSync(path.join(wasmDest, 'vision_wasm_internal.wasm'))) {
-  console.log('[copy-mediapipe] Already exists, skipping.')
-  process.exit(0)
-}
+const requiredFiles = [
+  'vision_wasm_internal.js',
+  'vision_wasm_internal.wasm',
+  'vision_wasm_module_internal.js',
+  'vision_wasm_module_internal.wasm',
+  'vision_wasm_nosimd_internal.js',
+  'vision_wasm_nosimd_internal.wasm',
+]
 
 if (!fs.existsSync(wasmSrc)) {
-  console.warn('[copy-mediapipe] @mediapipe/tasks-vision/wasm not found, skipping.')
-  process.exit(0)
+  console.error('[copy-mediapipe] @mediapipe/tasks-vision/wasm not found.')
+  process.exit(1)
 }
 
+for (const file of requiredFiles) {
+  const src = path.join(wasmSrc, file)
+  if (!fs.existsSync(src)) {
+    console.error(`[copy-mediapipe] Required WASM asset missing: ${file}`)
+    process.exit(1)
+  }
+}
+
+fs.rmSync(wasmDest, { recursive: true, force: true })
 fs.mkdirSync(wasmDest, { recursive: true })
-fs.cpSync(wasmSrc, wasmDest, { recursive: true })
+
+for (const file of requiredFiles) {
+  fs.copyFileSync(path.join(wasmSrc, file), path.join(wasmDest, file))
+}
+
+for (const file of requiredFiles) {
+  const dest = path.join(wasmDest, file)
+  if (!fs.existsSync(dest)) {
+    console.error(`[copy-mediapipe] Failed to copy required WASM asset: ${file}`)
+    process.exit(1)
+  }
+}
+
 console.log('[copy-mediapipe] Copied WASM assets to public/mediapipe/wasm.')
