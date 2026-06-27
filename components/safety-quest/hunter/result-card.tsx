@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Eye, Search, ShieldCheck, Sparkles, Star as StarIcon, Zap } from "lucide-react"
 
 import type { HunterHazard } from "@/lib/hunter/types"
+import { RubyText } from "./ruby-text"
 import { Celebrate, Mascot, PrimaryCTA, StatPill, tokens } from "./theme"
 
 export interface ResultCardProps {
@@ -137,7 +138,7 @@ export function ResultCard(props: ResultCardProps) {
           <Mascot size="lg" mood={mascotMood} />
 
           <h2 className="mt-1 text-[22px] font-extrabold leading-tight sm:text-2xl">
-            {celebrationMessage(matches, total)}
+            <RubyText text={celebrationMessage(matches, total)} />
           </h2>
 
           {/* 達成の星（1〜3） */}
@@ -189,7 +190,7 @@ export function ResultCard(props: ResultCardProps) {
             style={{ color: C.primaryStrong }}
           >
             <Sparkles className="h-5 w-5" style={{ color: C.warning }} aria-hidden="true" />
-            見つけた きけんと、気をつける れんしゅう
+            <RubyText text="見つけた危険と、気をつける練習" />
           </h3>
           <ul className="mt-3 space-y-2.5">
             {foundHazards.map((h) => (
@@ -207,7 +208,7 @@ export function ResultCard(props: ResultCardProps) {
                     <ShieldCheck className="h-4 w-4 text-white" />
                   </span>
                   <span className="font-extrabold" style={{ color: C.ink }}>
-                    {h.type}
+                    <RubyText text={h.type} />
                   </span>
                   <span
                     className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white"
@@ -221,7 +222,7 @@ export function ResultCard(props: ResultCardProps) {
                   style={{ color: C.ink }}
                 >
                   <span aria-hidden="true">🛡 </span>
-                  {h.safeAction}
+                  <RubyText text={h.safeAction} />
                 </p>
               </li>
             ))}
@@ -241,7 +242,7 @@ export function ResultCard(props: ResultCardProps) {
             style={{ color: C.accentStrong }}
           >
             <Search className="h-5 w-5" aria-hidden="true" />
-            つぎは こんなところも 見てみよう！
+            <RubyText text="つぎはこんなところも見てみよう！" />
           </h3>
           <ul className="mt-3 space-y-2.5">
             {missedHazards.map((h) => (
@@ -256,13 +257,13 @@ export function ResultCard(props: ResultCardProps) {
               >
                 <p className="flex items-center gap-2 font-extrabold" style={{ color: C.accentStrong }}>
                   <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>{h.type}</span>
+                  <RubyText text={h.type} />
                 </p>
                 <p
                   className="mt-1.5 text-sm font-medium leading-relaxed"
                   style={{ color: C.inkSoft }}
                 >
-                  {h.kidExplanation}
+                  <RubyText text={h.kidExplanation} />
                 </p>
               </li>
             ))}

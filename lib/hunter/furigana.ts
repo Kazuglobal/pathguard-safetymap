@@ -107,6 +107,10 @@ export const FURIGANA_DICT: Readonly<Record<string, string>> = {
   越: "こ",
   抜: "ぬ",
   変: "か",
+  近: "ちか",
+  出: "で",
+  気: "き",
+  物: "もの",
 }
 
 const SORTED_KEYS: readonly string[] = Object.keys(FURIGANA_DICT).sort(

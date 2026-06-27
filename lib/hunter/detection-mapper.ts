@@ -26,7 +26,7 @@ const SEVERITY_BY_CATEGORY: Readonly<Record<HazardCategory, RiskSeverity>> = {
 
 /** 危険カテゴリ -> 子ども向けの短い日本語ラベル。 */
 const TYPE_LABEL_BY_CATEGORY: Readonly<Record<HazardCategory, string>> = {
-  hazards: "きけんなもの",
+  hazards: "危険なもの",
   traffic: "車に注意",
   obstructions: "じゃまなもの",
 }

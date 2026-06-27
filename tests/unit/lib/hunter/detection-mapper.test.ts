@@ -95,7 +95,7 @@ describe("mapDetectionsToHunterHazards", () => {
     )
 
     expect(result[0].severity).toBe("high")
-    expect(result[0].type).toBe("きけんなもの")
+    expect(result[0].type).toBe("危険なもの")
     expect(result[0].safeAction).toBe("あぶないものの 近くは はなれて 歩こう。")
   })
 
