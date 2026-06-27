@@ -5,7 +5,7 @@ import Map, { Marker } from "react-map-gl/mapbox"
 import type { MapMouseEvent, MapRef } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { motion, useReducedMotion } from "framer-motion"
-import { LocateFixed, MapPin, Search, X } from "lucide-react"
+import { Building2, LocateFixed, MapPin, Satellite, Map as MapIcon, Search, X } from "lucide-react"
 
 import { Mascot, PrimaryCTA, tokens } from "./theme"
 
@@ -21,10 +21,130 @@ const DEFAULT_CENTER = {
 }
 const DEFAULT_ZOOM = 14
 
+// 地図の種類（ちず / 航空写真）。航空写真は地名ラベル付きで場所を選びやすい。
+const MAP_STYLES = {
+  street: "mapbox://styles/mapbox/streets-v12",
+  satellite: "mapbox://styles/mapbox/satellite-streets-v12",
+} as const
+type MapStyleKey = keyof typeof MAP_STYLES
+
 type Pin = { latitude: number; longitude: number }
-type Suggestion = { id: string; label: string; latitude: number; longitude: number }
+/** kind: place=住所/地名, facility=学校など施設（POI） */
+type Suggestion = {
+  id: string
+  /** 主表示（施設名・地名）。Googleのように太字で見せる */
+  label: string
+  /** 副表示（住所など）。薄い文字で2行目に */
+  sublabel?: string
+  latitude: number
+  longitude: number
+  kind: "place" | "facility"
+}
 
 const C = tokens.color
+
+// ---- 検索（住所＝Mapbox / 施設＝OSM Nominatim を併用） ----
+
+/** Mapbox Geocoding。住所・地名・一部POIに強い。 */
+async function fetchMapboxSuggestions(
+  query: string,
+  token: string,
+  proximity: { lng: number; lat: number } | null,
+  signal: AbortSignal,
+): Promise<Suggestion[]> {
+  const prox =
+    proximity && Number.isFinite(proximity.lng) && Number.isFinite(proximity.lat)
+      ? `&proximity=${proximity.lng},${proximity.lat}`
+      : ""
+  const url =
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
+    `?access_token=${token}&country=jp&language=ja&limit=5&types=place,locality,neighborhood,address,poi${prox}`
+  const res = await fetch(url, { signal })
+  if (!res.ok) return []
+  const data = await res.json()
+  const features = Array.isArray(data?.features) ? data.features : []
+  return features
+    .map((f: Record<string, unknown>): Suggestion => {
+      const center = f.center as [number, number] | undefined
+      const types = (f.place_type as string[] | undefined) ?? []
+      const primary = String(f.text ?? f.place_name ?? "")
+      const full = String(f.place_name ?? "")
+      // place_name は「四谷小学校, 新宿区...」のように先頭が primary。住所部分だけ副表示に。
+      const sublabel = full.startsWith(primary)
+        ? full.slice(primary.length).replace(/^[,、\s]+/, "")
+        : full
+      return {
+        id: `mb-${String(f.id ?? f.place_name ?? Math.random())}`,
+        label: primary,
+        sublabel: sublabel || undefined,
+        longitude: Number(center?.[0]),
+        latitude: Number(center?.[1]),
+        kind: types.includes("poi") ? "facility" : "place",
+      }
+    })
+    .filter((s: Suggestion) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+}
+
+/**
+ * OSM Nominatim。日本の小学校・中学校など公共施設(POI)の網羅が良い。
+ * 失敗・未対応でも throw せず空配列を返す（Mapbox 結果のみで成立）。
+ */
+async function fetchNominatimSuggestions(
+  query: string,
+  viewbox: string | null,
+  signal: AbortSignal,
+): Promise<Suggestion[]> {
+  const box = viewbox ? `&viewbox=${viewbox}&bounded=0` : ""
+  const url =
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}` +
+    `&countrycodes=jp&accept-language=ja&limit=5&addressdetails=0${box}`
+  const res = await fetch(url, { signal, headers: { Accept: "application/json" } })
+  if (!res.ok) return []
+  const data = await res.json()
+  if (!Array.isArray(data)) return []
+  return data
+    .map((d: Record<string, unknown>): Suggestion => {
+      const full = String(d.display_name ?? "")
+      // display_name は「新宿区立四谷小学校, 新宿通り, ...」。先頭が施設名。
+      const primary = String(d.name ?? full.split(",")[0] ?? "").trim()
+      const sublabel = full.startsWith(primary)
+        ? full.slice(primary.length).replace(/^[,、\s]+/, "")
+        : full
+      return {
+        id: `osm-${String(d.place_id ?? d.osm_id ?? Math.random())}`,
+        label: primary,
+        sublabel: sublabel || undefined,
+        latitude: Number(d.lat),
+        longitude: Number(d.lon),
+        kind: "facility",
+      }
+    })
+    .filter((s: Suggestion) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+}
+
+/** 2ソースをマージ。近接重複を除き、最大件数で打ち切る。 */
+function mergeSuggestions(
+  mapbox: Suggestion[],
+  nominatim: Suggestion[],
+  limit = 7,
+): Suggestion[] {
+  const out: Suggestion[] = []
+  const seen: Array<{ lat: number; lng: number }> = []
+  const isDup = (s: Suggestion) =>
+    seen.some(
+      (p) => Math.abs(p.lat - s.latitude) < 1e-4 && Math.abs(p.lng - s.longitude) < 1e-4,
+    )
+  // 施設(学校など)を先に出し、見つけたい対象に早く辿り着けるようにする。
+  for (const s of [...mapbox, ...nominatim].sort((a, b) =>
+    a.kind === b.kind ? 0 : a.kind === "facility" ? -1 : 1,
+  )) {
+    if (!s.label || isDup(s)) continue
+    seen.push({ lat: s.latitude, lng: s.longitude })
+    out.push(s)
+    if (out.length >= limit) break
+  }
+  return out
+}
 
 export function LocationPinPicker({
   onConfirm,
@@ -49,6 +169,7 @@ export function LocationPinPicker({
   const [query, setQuery] = useState("")
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [locating, setLocating] = useState(false)
+  const [mapStyle, setMapStyle] = useState<MapStyleKey>("street")
 
   // ピンを置きつつ地図をその地点へ移動
   const moveTo = useCallback((latitude: number, longitude: number, zoom = 16) => {
@@ -67,7 +188,7 @@ export function LocationPinPicker({
     onConfirm({ latitude: pin.latitude, longitude: pin.longitude })
   }, [pin, onConfirm])
 
-  // --- 住所 / 地名の検索（Mapbox Geocoding・デバウンス） ---
+  // --- 検索（住所＝Mapbox / 学校など施設＝Nominatim を併用・デバウンス） ---
   useEffect(() => {
     const q = query.trim()
     if (!mapToken || q.length < 2) {
@@ -76,36 +197,25 @@ export function LocationPinPicker({
     }
     const controller = new AbortController()
     const timer = setTimeout(() => {
-      // 表示中の地図の中心に近い候補を優先（地域の関連性を上げる）
-      const center = mapRef.current?.getCenter()
-      const proximity =
-        center && Number.isFinite(center.lng) && Number.isFinite(center.lat)
-          ? `&proximity=${center.lng},${center.lat}`
-          : ""
-      const url =
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
-        `?access_token=${mapToken}&country=jp&language=ja&limit=5&types=place,locality,neighborhood,address,poi${proximity}`
-      fetch(url, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          const features = Array.isArray(data?.features) ? data.features : []
-          const items: Suggestion[] = features
-            .map((f: Record<string, unknown>) => {
-              const center = f.center as [number, number] | undefined
-              return {
-                id: String(f.id ?? f.place_name ?? Math.random()),
-                label: String(f.place_name ?? f.text ?? ""),
-                longitude: Number(center?.[0]),
-                latitude: Number(center?.[1]),
-              }
-            })
-            .filter(
-              (s: Suggestion) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude),
-            )
-          setSuggestions(items)
+      // 表示中の地図の中心・範囲に近い候補を優先（地域の関連性を上げる）
+      const center = mapRef.current?.getCenter() ?? null
+      const proximity = center ? { lng: center.lng, lat: center.lat } : null
+      const bounds = mapRef.current?.getBounds()
+      // Nominatim viewbox は left,top,right,bottom（経度,緯度）
+      const viewbox = bounds
+        ? `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`
+        : null
+
+      Promise.all([
+        fetchMapboxSuggestions(q, mapToken, proximity, controller.signal).catch(() => []),
+        fetchNominatimSuggestions(q, viewbox, controller.signal).catch(() => []),
+      ])
+        .then(([mapbox, nominatim]) => {
+          if (controller.signal.aborted) return
+          setSuggestions(mergeSuggestions(mapbox, nominatim))
         })
         .catch(() => {
-          // abort / ネットワーク失敗は無視（検索なしで地図タップは使える）
+          // abort / ネットワーク失敗は無視（検索なしでも地図タップは使える）
         })
     }, 320)
 
@@ -176,7 +286,7 @@ export function LocationPinPicker({
         <Map
           ref={mapRef}
           mapboxAccessToken={mapToken}
-          mapStyle="mapbox://styles/mapbox/streets-v12"
+          mapStyle={MAP_STYLES[mapStyle]}
           initialViewState={initialViewState}
           onClick={handleMapClick}
           cursor="crosshair"
@@ -276,22 +386,71 @@ export function LocationPinPicker({
                     onClick={() => handleSelectSuggestion(s)}
                     className="flex w-full items-center gap-2.5 px-3 py-3 text-left hover:bg-[#EAF4FF]"
                   >
-                    <MapPin
-                      className="h-4 w-4 shrink-0"
-                      style={{ color: C.accent }}
-                      aria-hidden="true"
-                    />
-                    <span
-                      className="text-[14px] font-bold leading-snug"
-                      style={{ color: C.ink }}
-                    >
-                      {s.label}
+                    {s.kind === "facility" ? (
+                      <Building2
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                        style={{ color: C.primary }}
+                        aria-label="しせつ"
+                      />
+                    ) : (
+                      <MapPin
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                        style={{ color: C.accent }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className="block truncate text-[14px] font-bold leading-snug"
+                        style={{ color: C.ink }}
+                      >
+                        {s.label}
+                      </span>
+                      {s.sublabel && (
+                        <span
+                          className="block truncate text-[12px] font-medium leading-snug"
+                          style={{ color: C.inkSoft }}
+                        >
+                          {s.sublabel}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
+        </div>
+
+        {/* 地図の種類 切替（左下・ちず / 航空写真） */}
+        <div
+          role="group"
+          aria-label="ちずの しゅるいを えらぶ"
+          className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-full bg-white p-1"
+          style={{ boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}` }}
+        >
+          {([
+            { key: "street", label: "ちず", Icon: MapIcon },
+            { key: "satellite", label: "こうくうしゃしん", Icon: Satellite },
+          ] as const).map(({ key, label, Icon }) => {
+            const active = mapStyle === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMapStyle(key)}
+                aria-pressed={active}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-extrabold transition-colors ${tokens.cls.focus}`}
+                style={{
+                  background: active ? C.primary : "transparent",
+                  color: active ? "#fff" : C.inkSoft,
+                }}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" strokeWidth={2.5} />
+                {label}
+              </button>
+            )
+          })}
         </div>
 
         {/* 現在地ボタン（右下） */}
@@ -308,9 +467,10 @@ export function LocationPinPicker({
           />
         </button>
 
-        {/* 下部の小さなヒント（候補表示中は隠す） */}
+        {/* 下部の小さなヒント（候補表示中は隠す）。
+            左下トグル・右下ボタンと重ならないよう一段上に置く。 */}
         {suggestions.length === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-2">
+          <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center px-2">
             <span className="rounded-full bg-black/55 px-3 py-1 text-[12px] font-bold text-white">
               {pin ? "べつの ところも タップできるよ" : "ちずを タップして ピンを おいてね"}
             </span>
