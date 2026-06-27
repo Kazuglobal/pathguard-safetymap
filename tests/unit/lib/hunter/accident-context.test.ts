@@ -4,7 +4,26 @@ import {
   buildAccidentSummary,
   buildAccidentPromptContext,
   extractAccidentThemes,
+  kidAccidentLabel,
 } from "@/lib/hunter/accident-context";
+
+describe("kidAccidentLabel", () => {
+  it("converts technical accident labels to kid-friendly wording", () => {
+    expect(kidAccidentLabel("車両相互正面衝突")).toBe("しょうめんからの しょうとつ");
+    expect(kidAccidentLabel("出会い頭衝突")).toBe("かどでの 出会いがしら");
+    expect(kidAccidentLabel("人対車両横断中")).toBe("どうろを わたっているときの 事故");
+  });
+
+  it("never returns a raw technical term for unknown labels", () => {
+    expect(kidAccidentLabel("謎の専門用語ABC")).toBe("交通事故");
+    expect(kidAccidentLabel(null)).toBe("交通事故");
+    expect(kidAccidentLabel(undefined)).toBe("交通事故");
+  });
+
+  it("drops the hard technical phrase for a common label", () => {
+    expect(kidAccidentLabel("車両相互正面衝突")).not.toContain("車両相互");
+  });
+});
 
 /**
  * AccidentStats は多数の必須フィールドを持つため、テストで使う最小限のフィールドだけを

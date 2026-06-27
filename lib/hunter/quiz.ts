@@ -3,6 +3,7 @@
 // 事故傾向 + AI検出から、出題と採点を行う純粋ロジック。
 // =============================================
 
+import { kidAccidentLabel } from "./accident-context"
 import type {
   HunterAccidentSummary,
   HunterHazard,
@@ -77,8 +78,10 @@ function realityLine(accident: HunterAccidentSummary): string {
   if (accident.childInvolved > 0) {
     return `じつは このあたりでは 子どもが かかわる 事故が ${accident.childInvolved}けん あったよ。`
   }
-  const what = accident.topAccidentType ? `${accident.topAccidentType}の ` : ""
-  return `じつは このあたりでは ${what}事故が ${accident.totalAccidents}けん あったよ。`
+  if (!accident.topAccidentType) {
+    return `じつは このあたりでは 事故が ${accident.totalAccidents}けん あったよ。`
+  }
+  return `じつは このあたりでは 「${kidAccidentLabel(accident.topAccidentType)}」が ${accident.totalAccidents}けん あったよ。`
 }
 
 /** 正解を含む4択を、item ごとに決定的な位置へ配置（ランダム非使用） */
@@ -110,7 +113,9 @@ export function buildQuizItems(
   const limit = Math.max(1, max)
   const items: HunterQuizItem[] = []
   const reality = realityLine(accident)
-  const theme = accident.topAccidentType
+  // rawTheme: テンプレ選択（マッチング）用の元ラベル / theme: 表示用の子ども向けラベル
+  const rawTheme = accident.topAccidentType
+  const theme = rawTheme ? kidAccidentLabel(rawTheme) : null
 
   // choice 問題を1つは入れる（テーマ駆動）。place の枠を残す。
   const placeBudget = Math.max(1, limit - 1)
@@ -128,7 +133,7 @@ export function buildQuizItems(
   })
 
   if (items.length < limit) {
-    const template = pickChoiceTemplate(theme)
+    const template = pickChoiceTemplate(rawTheme)
     const { choices, correctChoiceId } = buildChoices(template, items.length + 1)
     items.push({
       id: `q-choice-0`,

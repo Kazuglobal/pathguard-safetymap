@@ -4,6 +4,7 @@ import { motion, useReducedMotion, type Transition } from "framer-motion"
 import { Baby, Clock, ShieldAlert, Sparkles } from "lucide-react"
 
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
+import { kidAccidentLabel } from "@/lib/hunter/accident-context"
 
 import { Mascot, StatPill, tokens } from "./theme"
 
@@ -98,7 +99,7 @@ export function CareCard({ accident }: { accident: HunterAccidentSummary }) {
               tone="blue"
               icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />}
               label="おおい できごと"
-              value={topAccidentType as string}
+              value={kidAccidentLabel(topAccidentType)}
             />
           ) : null}
           {showTimeChip ? (

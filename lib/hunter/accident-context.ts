@@ -49,6 +49,43 @@ function resolvePeakTimeSlot(peakHour: number | null): string | null {
   return `${peakHour}時ごろ`;
 }
 
+/**
+ * 警察庁の事故類型ラベル（例「車両相互正面衝突」「出会い頭衝突」）を
+ * 小学生にも わかる やさしい言い回しへ変換する（表示用）。
+ * 未知の専門ラベルは技術用語を見せないよう汎用「交通事故」にフォールバック。
+ * 注: マッチング(pickChoiceTemplate)やAI注入には元の専門ラベルを使う。
+ */
+const KID_ACCIDENT_LABELS: ReadonlyArray<readonly [string, string]> = [
+  ["正面衝突", "しょうめんからの しょうとつ"],
+  ["追突", "うしろからの しょうとつ"],
+  ["出会い頭", "かどでの 出会いがしら"],
+  ["出合い頭", "かどでの 出会いがしら"],
+  ["右折", "右に まがる車との 事故"],
+  ["左折", "左に まがる車との 事故"],
+  ["すれ違い", "すれちがいの 事故"],
+  ["追越", "おいこしの 事故"],
+  ["追抜", "おいぬきの 事故"],
+  ["進路変更", "しんろを かえる 事故"],
+  ["横断中", "どうろを わたっているときの 事故"],
+  ["横断", "どうろを わたるときの 事故"],
+  ["対面通行", "むかいあって あるくときの 事故"],
+  ["背面通行", "せなか むきで あるくときの 事故"],
+  ["歩行者", "歩いている人の 事故"],
+  ["工作物", "かべや ポールに ぶつかる 事故"],
+  ["路外逸脱", "みちから はずれる 事故"],
+  ["転落", "おちる 事故"],
+  ["転倒", "ころぶ 事故"],
+  ["駐車車両", "とまっている車に ぶつかる 事故"],
+  ["自転車", "自転車の 事故"],
+  ["列車", "ふみきりの 事故"],
+];
+
+export function kidAccidentLabel(raw: string | null | undefined): string {
+  if (!raw) return "交通事故";
+  const hit = KID_ACCIDENT_LABELS.find(([key]) => raw.includes(key));
+  return hit ? hit[1] : "交通事故";
+}
+
 /** データ無し (null / 0件) を表す共通サマリ。 */
 const EMPTY_SUMMARY: HunterAccidentSummary = {
   hasData: false,
