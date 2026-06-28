@@ -71,7 +71,6 @@ import {
   resolveAlertRadius,
   getAlertFitBounds,
 } from "@/lib/suspicious-alert"
-import { moderateSuspiciousAlert, buildModerationUpdate } from "@/lib/suspicious-alert-moderation"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -2030,35 +2029,44 @@ export default function MapContainer({
         suppressSuccessToast: true,
       });
 
-      // AI一次審査（決定論的ヒューリスティック核。失敗・不確実は自動公開しない）
-      const verdict = moderateSuspiciousAlert({
-        text: memo,
-        hasImage: Boolean(payload.originalImageFile),
+      const moderationResponse = await fetch("/api/suspicious-alert/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId }),
       });
-      const update = buildModerationUpdate(verdict, new Date().toISOString());
 
-      if (supabase && reportId) {
-        const { error: moderationError } = await supabase
-          .from("danger_reports")
-          .update(update)
-          .eq("id", reportId);
-        if (moderationError) {
-          console.error("AI一次審査の反映に失敗しました:", moderationError);
-        } else {
-          // ローカル状態にも審査結果を反映（自分の地図表示を最新化）
-          setPendingReports((prev) =>
-            prev.map((r) => (r.id === reportId ? { ...r, ...update } : r)),
-          );
-        }
+      type ModerationResponseBody = {
+        verdict?: { status?: string; reason?: string; score?: number }
+        report?: DangerReport
+        error?: string
+      };
+      const moderationBody = (await moderationResponse.json().catch(() => ({}))) as ModerationResponseBody;
+
+      if (!moderationResponse.ok || !moderationBody.verdict || !moderationBody.report) {
+        console.error("AI一次審査に失敗しました:", moderationBody.error ?? moderationResponse.statusText);
+        toast({
+          title: "アラートを受け付けました",
+          description: "自動審査に失敗したため、内容確認のうえ公開されます（あなたの地図には表示中）。",
+        });
+      } else if (moderationBody.verdict.status === "approved") {
+        setPendingReports((prev) => prev.filter((r) => r.id !== reportId));
+        setDangerReports((prev) => [
+          moderationBody.report as DangerReport,
+          ...prev.filter((r) => r.id !== reportId),
+        ]);
+        toast({
+          title: "アラートを地図に公開しました",
+          description: "危険エリアを全員の地図に表示しています。",
+        });
+      } else {
+        setPendingReports((prev) =>
+          prev.map((r) => (r.id === reportId ? { ...r, ...(moderationBody.report as DangerReport) } : r)),
+        );
+        toast({
+          title: "アラートを受け付けました",
+          description: "内容確認のうえ公開されます（あなたの地図には表示中）。",
+        });
       }
-
-      toast({
-        title: verdict.status === "approved" ? "アラートを地図に公開しました" : "アラートを受け付けました",
-        description:
-          verdict.status === "approved"
-            ? "危険エリアを全員の地図に表示しています。"
-            : "内容確認のうえ公開されます（あなたの地図には表示中）。",
-      });
 
       // 円全体が見えるようにフィットしてフォームを閉じる
       const bounds = getAlertFitBounds(selectedLocation, radius);
