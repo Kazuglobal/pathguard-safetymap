@@ -55,6 +55,11 @@ Your project is live at:
 
 **[https://vercel.com/globalbunny77-gmailcoms-projects/v0--koujw6zjtpn](https://vercel.com/globalbunny77-gmailcoms-projects/v0--koujw6zjtpn)**
 
+### 不審者アラートの本番反映メモ
+
+- サーバ審査 API `/api/suspicious-alert/moderate` は `NEXT_PUBLIC_SUPABASE_URL` と `SUPABASE_SERVICE_ROLE_KEY` が必須です。
+- このリポジトリは Supabase migration を手動適用する運用です。本番DBには `supabase/migrations/20260628010000_allow_suspicious_danger_type.sql` を適用し、`danger_reports.danger_type` の CHECK 制約で `suspicious` を許可してください。
+
 ## Build your app
 
 Continue building your app on:

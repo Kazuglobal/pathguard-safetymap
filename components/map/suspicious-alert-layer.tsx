@@ -227,6 +227,7 @@ export function SuspiciousAlertLayer({
     const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined
     if (!src) return
 
+    // TODO: 件数が増えたら、現在の表示範囲または直近期間に絞って過密表示を避ける。
     const collection = buildAlertCircleCollection(reports)
     src.setData(collection as any)
   }, [map, isVisible, reports])
