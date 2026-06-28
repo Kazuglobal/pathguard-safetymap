@@ -12,6 +12,7 @@ vi.mock("html2canvas", () => ({
 }))
 
 import {
+  buildFamilyShareCardText,
   renderFamilyShareCardBlob,
   shareFamilyShareCard,
 } from "@/lib/report-generation/family-share-card"
@@ -83,6 +84,29 @@ describe("family-share-card", () => {
     expect(removeMock).toHaveBeenCalledTimes(1)
 
     createElementSpy.mockRestore()
+  })
+
+  it("buildFamilyShareCardText ignores mapImageUrl and photoImageUrl and produces the same text", () => {
+    const base = {
+      title: "不審者アラート",
+      summary: "公園付近で不審な人物を目撃",
+      action: "一人で通らない",
+      mapLabel: "東京・練馬区",
+    }
+
+    const textWithout = buildFamilyShareCardText(base)
+    const textWith = buildFamilyShareCardText({
+      ...base,
+      imageUrl: "/old.png",
+      mapImageUrl: "/map.png",
+      photoImageUrl: "/photo.jpg",
+    })
+
+    expect(textWith).toBe(textWithout)
+    expect(textWith).toContain("不審者アラート")
+    expect(textWith).toContain("東京・練馬区")
+    expect(textWith).toContain("公園付近で不審な人物を目撃")
+    expect(textWith).toContain("一人で通らない")
   })
 
   it("waits for card images to load before rendering the canvas", async () => {

@@ -12,18 +12,22 @@ interface BuildMapDisplayOverlayOptionsParams {
   isHeatmapVisible: boolean
   isFloodVisible: boolean
   isTsunamiVisible: boolean
+  isSuspiciousVisible: boolean
   onToggleHeatmap: () => void
   onToggleFlood: () => void
   onToggleTsunami: () => void
+  onToggleSuspicious: () => void
 }
 
 export function buildMapDisplayOverlayOptions({
   isHeatmapVisible,
   isFloodVisible,
   isTsunamiVisible,
+  isSuspiciousVisible,
   onToggleHeatmap,
   onToggleFlood,
   onToggleTsunami,
+  onToggleSuspicious,
 }: BuildMapDisplayOverlayOptionsParams): MapDisplayOption[] {
   return [
     {
@@ -34,6 +38,13 @@ export function buildMapDisplayOverlayOptions({
       onSelect: onToggleHeatmap,
       previewImage: "/images/map-style-previews/heat-map.png",
       previewAlt: "事故ヒートマップのプレビュー",
+    },
+    {
+      id: "suspicious",
+      label: "不審者情報",
+      description: "不審者目撃エリアを半径つきの円で表示します",
+      selected: isSuspiciousVisible,
+      onSelect: onToggleSuspicious,
     },
     {
       id: "flood",

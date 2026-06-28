@@ -618,3 +618,20 @@
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.5); opacity: 0.5; }
 }
+
+/* 不審者アラートハイライトマーカー */
+.suspicious-alert-marker {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(249, 115, 22, 0.3);
+  border: 3px solid #f97316;
+  animation: suspicious-alert-pulse 1.5s ease-in-out infinite;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+@keyframes suspicious-alert-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}

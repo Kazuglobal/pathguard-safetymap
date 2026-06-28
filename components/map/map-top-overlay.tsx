@@ -2,28 +2,32 @@
 
 import type { ReactNode } from "react"
 
-export type MapTopOverlayPanel = "3d" | "ar" | "heatmap" | "hazard" | null
+export type MapTopOverlayPanel = "3d" | "ar" | "heatmap" | "hazard" | "suspicious" | null
 
 interface MapTopOverlayProps {
   activePanel: MapTopOverlayPanel
   is3DEnabled: boolean
   isARMode: boolean
   isHeatmapVisible: boolean
+  isSuspiciousVisible: boolean
   onPanelChange: (panel: MapTopOverlayPanel) => void
   onToggle3D: () => void
   onToggleAR: () => void
   onToggleHeatmap: () => void
+  onToggleSuspicious: () => void
   searchSlot: ReactNode
   threeDPanelSlot: ReactNode
   arPanelSlot: ReactNode
   heatmapPanelSlot: ReactNode
   hazardPanelSlot: ReactNode
+  suspiciousPanelSlot: ReactNode
 }
 
 const CHIP_CONFIG = [
   { id: "3d" as const, label: "3D" },
   { id: "ar" as const, label: "AR" },
   { id: "heatmap" as const, label: "事故ヒートマップ" },
+  { id: "suspicious" as const, label: "不審者情報" },
   { id: "hazard" as const, label: "ハザード" },
 ]
 
@@ -33,9 +37,10 @@ function getPanelSlot({
   arPanelSlot,
   heatmapPanelSlot,
   hazardPanelSlot,
+  suspiciousPanelSlot,
 }: Pick<
   MapTopOverlayProps,
-  "activePanel" | "threeDPanelSlot" | "arPanelSlot" | "heatmapPanelSlot" | "hazardPanelSlot"
+  "activePanel" | "threeDPanelSlot" | "arPanelSlot" | "heatmapPanelSlot" | "hazardPanelSlot" | "suspiciousPanelSlot"
 >) {
   switch (activePanel) {
     case "3d":
@@ -46,6 +51,8 @@ function getPanelSlot({
       return heatmapPanelSlot
     case "hazard":
       return hazardPanelSlot
+    case "suspicious":
+      return suspiciousPanelSlot
     default:
       return null
   }
@@ -72,6 +79,10 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
       props.onToggleHeatmap()
     }
 
+    if (panel === "suspicious" && !props.isSuspiciousVisible) {
+      props.onToggleSuspicious()
+    }
+
     props.onPanelChange(panel)
   }
 
@@ -89,6 +100,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                 (chip.id === "3d" && props.is3DEnabled && props.activePanel === "3d") ||
                 (chip.id === "ar" && props.isARMode && props.activePanel === "ar") ||
                 (chip.id === "heatmap" && props.isHeatmapVisible && props.activePanel === "heatmap") ||
+                (chip.id === "suspicious" && props.isSuspiciousVisible && props.activePanel === "suspicious") ||
                 (chip.id === "hazard" && props.activePanel === "hazard")
 
               return (

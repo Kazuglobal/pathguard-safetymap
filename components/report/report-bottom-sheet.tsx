@@ -9,7 +9,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Search } from "lucide-react"
+import { Search, UserX } from "lucide-react"
 
 interface ReportBottomSheetProps {
   open: boolean
@@ -22,6 +22,11 @@ export function ReportBottomSheet({ open, onOpenChange }: ReportBottomSheetProps
   const handleHunter = () => {
     onOpenChange(false)
     router.push("/safety-quest/hunter")
+  }
+
+  const handleSuspiciousAlert = () => {
+    onOpenChange(false)
+    router.push("/map?suspiciousAlert=1")
   }
 
   return (
@@ -53,6 +58,19 @@ export function ReportBottomSheet({ open, onOpenChange }: ReportBottomSheetProps
             <div>
               <p className="font-semibold text-gray-900">きけんハンターをはじめる</p>
               <p className="text-xs text-gray-500">写真をえらんで、危険をさがそう</p>
+            </div>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-16 justify-start gap-4 border-2 text-left"
+            onClick={handleSuspiciousAlert}
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100">
+              <UserX className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">不審者アラートを地図化</p>
+              <p className="text-xs text-gray-500">学校からの不審者情報を地図ですぐ共有</p>
             </div>
           </Button>
         </div>
