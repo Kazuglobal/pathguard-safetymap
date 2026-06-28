@@ -28,6 +28,13 @@ export interface DangerReport {
   learning_summary?: string | null
   learning_checkpoints?: string[] | null
   attention_tags?: string[] | null
+  // 不審者アラート（danger_type='suspicious'）の危険エリア円の半径（メートル）。null は未指定＝既定300m。
+  alert_radius_m?: number | null
+  // AI一次審査の結果
+  ai_moderation_status?: string | null
+  ai_moderation_reason?: string | null
+  ai_moderation_checked_at?: string | null
+  ai_moderation_score?: number | null
 }
 
 export interface FilterOptions {

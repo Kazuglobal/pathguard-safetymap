@@ -3,6 +3,7 @@ import {
   Shield,
   AlertTriangle,
   HelpCircle,
+  UserX,
   type LucideIcon,
 } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
@@ -16,6 +17,8 @@ export function getDangerTypeLabel(type: string): string {
       return "犯罪危険"
     case "disaster":
       return "災害危険"
+    case "suspicious":
+      return "不審者情報"
     case "other":
       return "その他"
     default:
@@ -32,6 +35,8 @@ export function getDangerTypeIcon(type: string): LucideIcon {
       return Shield
     case "disaster":
       return AlertTriangle
+    case "suspicious":
+      return UserX
     case "other":
       return HelpCircle
     default:

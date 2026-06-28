@@ -3,18 +3,21 @@ import { describe, expect, it, vi } from "vitest"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 
 describe("buildMapDisplayOverlayOptions", () => {
-  it("builds real overlay options for heatmap and each hazard layer", () => {
+  it("builds real overlay options for heatmap, suspicious alerts, and each hazard layer", () => {
     const onToggleHeatmap = vi.fn()
     const onToggleFlood = vi.fn()
     const onToggleTsunami = vi.fn()
+    const onToggleSuspicious = vi.fn()
 
     const options = buildMapDisplayOverlayOptions({
       isHeatmapVisible: true,
       isFloodVisible: false,
       isTsunamiVisible: true,
+      isSuspiciousVisible: false,
       onToggleHeatmap,
       onToggleFlood,
       onToggleTsunami,
+      onToggleSuspicious,
     })
 
     expect(options).toEqual([
@@ -25,6 +28,12 @@ describe("buildMapDisplayOverlayOptions", () => {
         previewImage: "/images/map-style-previews/heat-map.png",
         previewAlt: "事故ヒートマップのプレビュー",
         selected: true,
+      }),
+      expect.objectContaining({
+        id: "suspicious",
+        label: "不審者情報",
+        description: "不審者目撃エリアを半径つきの円で表示します",
+        selected: false,
       }),
       expect.objectContaining({
         id: "flood",
@@ -47,8 +56,10 @@ describe("buildMapDisplayOverlayOptions", () => {
     options[0].onSelect()
     options[1].onSelect()
     options[2].onSelect()
+    options[3].onSelect()
 
     expect(onToggleHeatmap).toHaveBeenCalledTimes(1)
+    expect(onToggleSuspicious).toHaveBeenCalledTimes(1)
     expect(onToggleFlood).toHaveBeenCalledTimes(1)
     expect(onToggleTsunami).toHaveBeenCalledTimes(1)
   })

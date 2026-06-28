@@ -12,14 +12,28 @@ export interface FamilyShareCardProps {
   action?: string | null
   mapLabel: string
   imageUrl?: string | null
+  mapImageUrl?: string | null
+  photoImageUrl?: string | null
   className?: string
 }
 
 export const FamilyShareCard = forwardRef<HTMLDivElement, FamilyShareCardProps>(
   function FamilyShareCard(
-    { title, summary, action = null, mapLabel, imageUrl = null, className },
+    {
+      title,
+      summary,
+      action = null,
+      mapLabel,
+      imageUrl = null,
+      mapImageUrl = null,
+      photoImageUrl = null,
+      className,
+    },
     ref,
   ) {
+    const resolvedMapImage = mapImageUrl ?? imageUrl ?? null
+    const resolvedPhotoImage = photoImageUrl ?? null
+
     return (
       <Card
         ref={ref}
@@ -49,7 +63,7 @@ export const FamilyShareCard = forwardRef<HTMLDivElement, FamilyShareCardProps>(
         </div>
 
         <CardContent className="space-y-4 p-4">
-          {imageUrl ? (
+          {resolvedMapImage ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
               <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
                 <MapPin className="h-3.5 w-3.5" />
@@ -57,7 +71,7 @@ export const FamilyShareCard = forwardRef<HTMLDivElement, FamilyShareCardProps>(
               </div>
               <div className="relative aspect-[16/9] w-full bg-slate-200">
                 <img
-                  src={imageUrl}
+                  src={resolvedMapImage}
                   alt={`${title}の共有カード画像`}
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
@@ -73,6 +87,19 @@ export const FamilyShareCard = forwardRef<HTMLDivElement, FamilyShareCardProps>(
               <p className="mt-2 leading-6">家族で地図を見ながら危険地点を確認してください。</p>
             </div>
           )}
+
+          {resolvedPhotoImage ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+              <div className="relative aspect-[4/3] w-full bg-slate-200">
+                <img
+                  src={resolvedPhotoImage}
+                  alt={`${title}の写真`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">

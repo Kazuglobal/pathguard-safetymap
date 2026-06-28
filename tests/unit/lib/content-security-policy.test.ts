@@ -9,4 +9,8 @@ describe("buildContentSecurityPolicy", () => {
     expect(policy).toContain("img-src 'self' data: blob: https://disaportaldata.gsi.go.jp")
     expect(policy).toContain("connect-src 'self' https://disaportaldata.gsi.go.jp")
   })
+
+  it("does not allow the public Nominatim endpoint", () => {
+    expect(buildContentSecurityPolicy()).not.toContain("nominatim.openstreetmap.org")
+  })
 })

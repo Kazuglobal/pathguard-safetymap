@@ -9,7 +9,7 @@ import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
 import DangerReportForm, { type DangerReportSubmitPayload } from "../danger-report/danger-report-form"
 import type { DangerReport } from "@/lib/types"
-import { AlertTriangle, Car, Shield, HelpCircle, Trash2, MapPin } from "lucide-react"
+import { AlertTriangle, Car, Shield, HelpCircle, Trash2, MapPin, UserX } from "lucide-react"
 import Map3DToggle from "./map-3d-toggle"
 import { Button } from "@/components/ui/button"
 import MapSearch from "./map-search"
@@ -62,6 +62,15 @@ import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
 import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
+import { useSearchParams } from "next/navigation"
+import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
+import SuspiciousAlertForm, { type SuspiciousAlertFormPayload } from "../danger-report/suspicious-alert-form"
+import {
+  SUSPICIOUS_DANGER_TYPE,
+  DEFAULT_ALERT_RADIUS_M,
+  resolveAlertRadius,
+  getAlertFitBounds,
+} from "@/lib/suspicious-alert"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -454,6 +463,83 @@ export default function MapContainer({
   // --- ▼▼▼ モバイル判定と地点選択待ち state を追加 ▼▼▼ ---
   const isMobile = useMediaQuery("(max-width: 768px)"); // md ブレークポイント (Tailwind)
   const [awaitingLocationSelection, setAwaitingLocationSelection] = useState(false);
+
+  // --- 不審者アラート 地図化 ---
+  const [isSuspiciousAlertOpen, setIsSuspiciousAlertOpen] = useState(false);
+  // 「表示」パネルの不審者情報トグル（3D/AR/事故ヒートマップ/ハザードと同様）
+  const [isSuspiciousVisible, setIsSuspiciousVisible] = useState(false);
+  const [alertDraftRadius, setAlertDraftRadius] = useState<number>(DEFAULT_ALERT_RADIUS_M);
+  const [alertFocusedId, setAlertFocusedId] = useState<string | null>(null);
+  const [isSuspiciousSubmitting, setIsSuspiciousSubmitting] = useState(false);
+  const suspiciousMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  // handleMapClick が初期化時の古いクロージャで登録されても最新値を読めるよう ref に同期する
+  const isSuspiciousAlertOpenRef = useRef(false);
+  const suspiciousAlertSearchParams = useSearchParams();
+
+  useEffect(() => {
+    isSuspiciousAlertOpenRef.current = isSuspiciousAlertOpen;
+  }, [isSuspiciousAlertOpen]);
+
+  // 報告メニューから ?suspiciousAlert=1 で来たら専用フォームを開く
+  useEffect(() => {
+    if (!suspiciousAlertSearchParams) return;
+    if (suspiciousAlertSearchParams.get("suspiciousAlert") === "1") {
+      setIsSuspiciousAlertOpen(true);
+    }
+  }, [suspiciousAlertSearchParams]);
+
+  // 表示する不審者アラート（承認済み＋自分のpending）に、入力中ドラフトを加える
+  const suspiciousAlertReports = useMemo(() => {
+    const base = [...dangerReports, ...pendingReports].filter(
+      (r) => r.danger_type === SUSPICIOUS_DANGER_TYPE,
+    );
+    if (
+      isSuspiciousAlertOpen &&
+      selectedLocation &&
+      isValidCoordinates(selectedLocation[1], selectedLocation[0])
+    ) {
+      base.push({
+        id: "__suspicious_draft__",
+        danger_type: SUSPICIOUS_DANGER_TYPE,
+        danger_level: 4,
+        latitude: selectedLocation[1],
+        longitude: selectedLocation[0],
+        alert_radius_m: alertDraftRadius,
+      } as DangerReport);
+    }
+    return base;
+  }, [dangerReports, pendingReports, isSuspiciousAlertOpen, selectedLocation, alertDraftRadius]);
+
+  // 入力中: 中心に大きいパルスマーカーを置き、円全体が収まるよう自動フィットする
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    if (suspiciousMarkerRef.current) {
+      suspiciousMarkerRef.current.remove();
+      suspiciousMarkerRef.current = null;
+    }
+    if (
+      !isSuspiciousAlertOpen ||
+      !selectedLocation ||
+      !isValidCoordinates(selectedLocation[1], selectedLocation[0])
+    ) {
+      setAlertFocusedId(null);
+      return;
+    }
+    const el = document.createElement("div");
+    el.className = "suspicious-alert-marker";
+    suspiciousMarkerRef.current = new mapboxgl.Marker(el).setLngLat(selectedLocation).addTo(m);
+    setAlertFocusedId("__suspicious_draft__");
+    const bounds = getAlertFitBounds(selectedLocation, alertDraftRadius);
+    if (bounds) {
+      try {
+        m.fitBounds(bounds as any, { padding: 80, duration: 600, maxZoom: 17 });
+      } catch (e) {
+        console.error("fitBounds for suspicious alert failed", e);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuspiciousAlertOpen, selectedLocation, alertDraftRadius]);
   
   // ヘルプの表示状態管理
   const [isHelpVisible, setIsHelpVisible] = useState(true);
@@ -809,6 +895,14 @@ export default function MapContainer({
       setDismissSearchResultsSignal,
     })
 
+    // 不審者アラート入力中は、地図クリックで中心点を指定する（プレビュー円・ピンは effect 側で更新）。
+    // ref 経由で読むことで、マップ初期化前にフォームが開いた場合（?suspiciousAlert=1 直接遷移）でも確実に分岐する。
+    if (isSuspiciousAlertOpenRef.current) {
+      setSelectedLocation(coordinates);
+      setLocationSelectionSource("manual");
+      return;
+    }
+
     if (awaitingLocationSelection) {
       // 地点選択モード：位置を選択
       console.log("Location selection mode: Setting location");
@@ -990,23 +1084,28 @@ export default function MapContainer({
   }, [isReportFormOpen, submittedReport]); // submittedReport dependency added
 
   // --- Location Selection Mode: Ensure click listener is active ---
+  // awaitingLocationSelection / isSuspiciousAlertOpen の変化時に最新の handleMapClick を再登録し、
+  // 各モードのクロージャ（不審者アラート分岐など）が確実に最新になるようにする。
   useEffect(() => {
-    if (awaitingLocationSelection && map.current && mapInitialized.current) {
-      // 地点選択モードの時は、クリックリスナーが確実に有効になるようにする
+    if (!map.current || !mapInitialized.current) return;
+    if (awaitingLocationSelection || isSuspiciousAlertOpen) {
       if (!clickListenerAdded.current || !mapClickHandler.current) {
         addClickListener();
       } else {
-        // 既にリスナーが追加されている場合でも、最新のhandleMapClickを確実に使用する
         if (mapClickHandler.current) {
           map.current.off("click", mapClickHandler.current);
         }
         mapClickHandler.current = handleMapClick;
         map.current.on("click", mapClickHandler.current);
       }
-      console.log("Location selection mode: Click listener ensured to be active");
+    } else if (clickListenerAdded.current && mapClickHandler.current) {
+      // どのモードでもない通常状態に戻ったら、最新（分岐なし）の handleMapClick を再登録する
+      map.current.off("click", mapClickHandler.current);
+      mapClickHandler.current = handleMapClick;
+      map.current.on("click", mapClickHandler.current);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [awaitingLocationSelection]);
+  }, [awaitingLocationSelection, isSuspiciousAlertOpen]);
 
   useEffect(() => {
     // 地点選択モード中またはフォームが開いている時にマーカーを表示
@@ -1429,6 +1528,7 @@ export default function MapContainer({
         if (report.danger_type === "traffic") IconComponent = Car;
         else if (report.danger_type === "crime") IconComponent = Shield;
         else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
+        else if (report.danger_type === SUSPICIOUS_DANGER_TYPE) IconComponent = UserX;
         root.render(<IconComponent className="h-5 w-5 text-white" />); // Adjusted size
 
         new mapboxgl.Marker(markerElement)
@@ -1663,7 +1763,8 @@ export default function MapContainer({
   };
 
   const handleReportSubmit = async (
-    reportData: DangerReportSubmitPayload & { imageFile?: File | null }
+    reportData: DangerReportSubmitPayload & { imageFile?: File | null },
+    options?: { suppressPreview?: boolean; suppressSuccessToast?: boolean }
   ): Promise<{ reportId: string; imageUrl: string | null }> => {
     if (!supabase || !selectedLocation) { // Check supabase and selectedLocation
       toast({ title: "エラー", description: "地図上で位置を選択してください。", variant: "destructive" });
@@ -1834,20 +1935,24 @@ export default function MapContainer({
 
 
       // 3. 後続処理 (トースト、ポイント、プレビュー、ローカル状態更新)
-      toast({ title: "報告完了", description: "危険箇所報告が送信されました。" }); // 最終的な完了トースト
+      if (!options?.suppressSuccessToast) {
+        toast({ title: "報告完了", description: "危険箇所報告が送信されました。" }); // 最終的な完了トースト
+      }
 
       // Gamification (エラーがあっても続行)
       try {
         if (user?.id) { // user.id が存在するか確認
            await addPoints(supabase, user.id, 20);
-           toast({ title: "ポイント獲得", description: "報告送信で +20pt 獲得しました。" });
+           if (!options?.suppressSuccessToast) {
+             toast({ title: "ポイント獲得", description: "報告送信で +20pt 獲得しました。" });
+           }
         } else {
            console.warn("User ID not found for gamification points.");
         }
       } catch (e: any) { console.error("Gamification error:", e); }
 
       // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)
-      if (selectedLocation) {
+      if (selectedLocation && !options?.suppressPreview) {
         setSubmittedReport({
           reportId: newReportId,
           title: finalReportData.title || "無題の報告",
@@ -1875,7 +1980,7 @@ export default function MapContainer({
       // setIsReportFormOpen(false); // Close form
 
       // プレビューモーダル表示 (API の結果を反映したデータで判断)
-      if (finalReportData.image_url || (finalReportData.processed_image_urls && finalReportData.processed_image_urls.length > 0)) {
+      if (!options?.suppressPreview && (finalReportData.image_url || (finalReportData.processed_image_urls && finalReportData.processed_image_urls.length > 0))) {
         // selectedLocation が null の場合でもプレビューは表示できるかもしれない
         // ただし、SubmittedReportPreview が location を期待している場合は問題
         if (selectedLocation) {
@@ -1895,6 +2000,97 @@ export default function MapContainer({
       console.error("Error submitting report:", error);
       toast({ title: "送信エラー", description: `報告の送信エラー: ${error.message}`, variant: "destructive" });
       throw error; // Re-throw so form can handle it
+    }
+  };
+
+  // 不審者アラートの送信: 既存の挿入/画像パイプラインを再利用し、AI一次審査で公開可否を決める
+  const handleSuspiciousAlertSubmit = async (payload: SuspiciousAlertFormPayload) => {
+    if (!selectedLocation) {
+      toast({ title: "場所を選んでください", description: "住所検索・現在地・地図タップで地点を指定できます。", variant: "destructive" });
+      return;
+    }
+    setIsSuspiciousSubmitting(true);
+    try {
+      const radius = resolveAlertRadius(payload.radiusM);
+      const memo = payload.memo?.trim() ?? "";
+      const reportPayload: DangerReportSubmitPayload = {
+        title: memo ? memo.slice(0, 40) : "不審者情報",
+        description: memo || null,
+        danger_type: SUSPICIOUS_DANGER_TYPE,
+        danger_level: 4,
+        alert_radius_m: radius,
+        status: "pending",
+        ai_moderation_status: "pending",
+        originalImageFile: payload.originalImageFile ?? null,
+      };
+
+      const { reportId } = await handleReportSubmit(reportPayload, {
+        suppressPreview: true,
+        suppressSuccessToast: true,
+      });
+
+      const moderationResponse = await fetch("/api/suspicious-alert/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId }),
+      });
+
+      type ModerationResponseBody = {
+        verdict?: { status?: string; reason?: string; score?: number }
+        report?: DangerReport
+        error?: string
+      };
+      const moderationBody = (await moderationResponse.json().catch(() => ({}))) as ModerationResponseBody;
+
+      if (!moderationResponse.ok || !moderationBody.verdict || !moderationBody.report) {
+        console.error("AI一次審査に失敗しました:", moderationBody.error ?? moderationResponse.statusText);
+        toast({
+          title: "アラートを受け付けました",
+          description: "自動審査に失敗したため、内容確認のうえ公開されます（あなたの地図には表示中）。",
+        });
+      } else if (moderationBody.verdict.status === "approved") {
+        setPendingReports((prev) => prev.filter((r) => r.id !== reportId));
+        setDangerReports((prev) => [
+          moderationBody.report as DangerReport,
+          ...prev.filter((r) => r.id !== reportId),
+        ]);
+        toast({
+          title: "アラートを地図に公開しました",
+          description: "危険エリアを全員の地図に表示しています。",
+        });
+      } else {
+        setPendingReports((prev) =>
+          prev.map((r) => (r.id === reportId ? { ...r, ...(moderationBody.report as DangerReport) } : r)),
+        );
+        toast({
+          title: "アラートを受け付けました",
+          description: "内容確認のうえ公開されます（あなたの地図には表示中）。",
+        });
+      }
+
+      // 円全体が見えるようにフィットしてフォームを閉じる
+      const bounds = getAlertFitBounds(selectedLocation, radius);
+      if (bounds && map.current) {
+        try {
+          map.current.fitBounds(bounds as any, { padding: 80, maxZoom: 17 });
+        } catch (e) {
+          console.error("fitBounds after submit failed", e);
+        }
+      }
+      setIsSuspiciousAlertOpen(false);
+      setIsSuspiciousVisible(true); // 投稿直後は自分のアラートを地図に表示したままにする
+      setAlertFocusedId(reportId ?? null);
+      setSelectedLocation(null);
+      setLocationSelectionSource(null);
+      if (suspiciousMarkerRef.current) {
+        suspiciousMarkerRef.current.remove();
+        suspiciousMarkerRef.current = null;
+      }
+    } catch (error) {
+      console.error("不審者アラートの送信に失敗しました:", error);
+      // handleReportSubmit 側でエラートーストは表示済み
+    } finally {
+      setIsSuspiciousSubmitting(false);
     }
   };
 
@@ -2035,9 +2231,11 @@ export default function MapContainer({
         isHeatmapVisible: accidentHeatmap.isVisible,
         isFloodVisible: hazardLayerVisibility.flood,
         isTsunamiVisible: hazardLayerVisibility.tsunami,
+        isSuspiciousVisible: isSuspiciousVisible,
         onToggleHeatmap: accidentHeatmap.toggleVisibility,
         onToggleFlood: () => handleHazardLayerToggle("flood", !hazardLayerVisibility.flood),
         onToggleTsunami: () => handleHazardLayerToggle("tsunami", !hazardLayerVisibility.tsunami),
+        onToggleSuspicious: () => setIsSuspiciousVisible((v) => !v),
       }),
     [
       accidentHeatmap.isVisible,
@@ -2045,6 +2243,7 @@ export default function MapContainer({
       handleHazardLayerToggle,
       hazardLayerVisibility.flood,
       hazardLayerVisibility.tsunami,
+      isSuspiciousVisible,
     ],
   )
 
@@ -2079,10 +2278,12 @@ export default function MapContainer({
             is3DEnabled={is3DEnabled}
             isARMode={isARMode}
             isHeatmapVisible={accidentHeatmap.isVisible}
+            isSuspiciousVisible={isSuspiciousVisible}
             onPanelChange={setActiveTopPanel}
             onToggle3D={toggle3DMode}
             onToggleAR={toggleARMode}
             onToggleHeatmap={accidentHeatmap.toggleVisibility}
+            onToggleSuspicious={() => setIsSuspiciousVisible((v) => !v)}
             searchSlot={
               <MapSearch
                 map={map.current}
@@ -2172,6 +2373,42 @@ export default function MapContainer({
                 onHazardSelect={handleRouteHazardSelect}
                 variant="inline"
               />
+            }
+            suspiciousPanelSlot={
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-900">不審者情報</p>
+                  <p className="text-xs text-slate-500">
+                    不審者の目撃エリアを、半径つきのオレンジの円で地図に表示します。
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={isSuspiciousVisible ? "default" : "outline"}
+                  className={`h-11 w-full justify-center ${isSuspiciousVisible ? "bg-orange-500 text-white hover:bg-orange-600" : "border-orange-200 text-orange-700 hover:bg-orange-50"}`}
+                  onClick={() => setIsSuspiciousVisible((v) => !v)}
+                >
+                  {isSuspiciousVisible ? "地図から非表示にする" : "地図に表示する"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-center"
+                  onClick={() => {
+                    setActiveTopPanel(null)
+                    setIsSuspiciousVisible(true)
+                    setIsSuspiciousAlertOpen(true)
+                  }}
+                >
+                  <UserX className="mr-2 h-4 w-4 text-orange-600" />
+                  不審者アラートを投稿
+                </Button>
+                {suspiciousAlertReports.length === 0 && (
+                  <p className="text-xs text-slate-400">
+                    まだ不審者情報がありません。「不審者アラートを投稿」から登録できます。
+                  </p>
+                )}
+              </div>
             }
           />
         )}
@@ -2275,6 +2512,43 @@ export default function MapContainer({
           geoJSON={accidentHeatmap.geoJSON}
           isVisible={accidentHeatmap.isVisible}
         />
+
+        {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
+        <SuspiciousAlertLayer
+          map={map.current}
+          reports={suspiciousAlertReports}
+          isVisible={isSuspiciousVisible || isSuspiciousAlertOpen}
+          focusedId={alertFocusedId}
+        />
+
+        {/* 不審者アラート 専用入力フォーム（モバイル/タブレットはボトムナビの上／デスクトップ右） */}
+        {/* ボトムナビ（navigation.tsx の fixed bottom-0 z-50, h-20, md:hidden）に重ならないよう
+            md 未満では下端をナビ高さ分（約5rem＋safe-area）持ち上げる。md 以上はナビが消えるため右下に配置。 */}
+        {isSuspiciousAlertOpen && (
+          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
+            <div className="max-h-[70dvh] overflow-y-auto overscroll-contain rounded-2xl border border-orange-100 bg-white p-4 shadow-2xl">
+              <SuspiciousAlertForm
+                selectedLocation={selectedLocation}
+                onLocationPick={(coords) => {
+                  // カメラ寄せは draft effect の fitBounds に任せる（二重移動を避ける）
+                  setSelectedLocation(coords);
+                  setLocationSelectionSource("manual");
+                }}
+                onRadiusChange={(radiusM) => setAlertDraftRadius(radiusM)}
+                onSubmit={handleSuspiciousAlertSubmit}
+                onCancel={() => {
+                  setIsSuspiciousAlertOpen(false);
+                  setAlertFocusedId(null);
+                  if (suspiciousMarkerRef.current) {
+                    suspiciousMarkerRef.current.remove();
+                    suspiciousMarkerRef.current = null;
+                  }
+                }}
+                isSubmitting={isSuspiciousSubmitting}
+              />
+            </div>
+          </div>
+        )}
 
         {/* モバイルマップヒント */}
         {showMobileMapHint && (

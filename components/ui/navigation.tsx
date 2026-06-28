@@ -14,9 +14,9 @@ import {
   UserCheck,
   Home,
   Route,
-  PlusCircle,
   Newspaper,
   BarChart3,
+  Search,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
@@ -71,9 +71,10 @@ export function Navigation({
     {
       key: "report-action",
       href: "#report",
-      label: "報告",
-      icon: PlusCircle,
-      description: "危険を今すぐ報告",
+      label: "きけんハンター",
+      mobileLabel: "ハンター",
+      icon: Search,
+      description: "写真で危険をさがす練習",
       emphasize: true,
       isAction: true,
     },
@@ -192,14 +193,14 @@ export function Navigation({
                   </Link>
                 )
               })}
-              {/* デスクトップ: 報告ボタン */}
+              {/* デスクトップ: きけんハンターボタン */}
               <Button
                 size="sm"
-                className="bg-gradient-to-r from-orange-400 to-rose-500 text-white hover:from-orange-500 hover:to-rose-600 ml-2"
+                className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white hover:from-emerald-500 hover:to-teal-600 ml-2"
                 onClick={() => setIsReportOpen(true)}
               >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                報告する
+                <Search className="w-4 h-4 mr-2" />
+                きけんハンター
               </Button>
             </div>
 
@@ -271,11 +272,11 @@ export function Navigation({
                   aria-label={item.label}
                   onClick={() => setIsReportOpen(true)}
                 >
-                  <span className="flex h-14 w-14 -mt-2 items-center justify-center rounded-full border-none bg-gradient-to-br from-orange-400 to-rose-500 text-white shadow-lg transition-all">
+                  <span className="flex h-14 w-14 -mt-2 items-center justify-center rounded-full border-none bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-lg transition-all">
                     <Icon className="h-6 w-6" />
                   </span>
                   <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
-                    {item.label}
+                    {item.mobileLabel ?? item.label}
                   </span>
                 </button>
               )

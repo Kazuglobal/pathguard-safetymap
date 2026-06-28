@@ -24,6 +24,7 @@ function formatRelativeTime(dateStr: string): string {
 const DANGER_TYPE_LABELS: Record<string, string> = {
   traffic: "交通危険",
   crime: "防犯",
+  suspicious: "不審者情報",
   disaster: "災害・自然",
   other: "その他",
 }

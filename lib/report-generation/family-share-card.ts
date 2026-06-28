@@ -6,6 +6,8 @@ export interface FamilyShareCardData {
   action?: string | null
   mapLabel: string
   imageUrl?: string | null
+  mapImageUrl?: string | null
+  photoImageUrl?: string | null
 }
 
 interface ShareFamilyShareCardOptions {

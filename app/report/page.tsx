@@ -59,6 +59,11 @@ const DANGER_TYPE_META: Record<string, { label: string; accent: string; badge: s
     accent: "from-amber-400 via-orange-500 to-red-500",
     badge: "bg-amber-500/90 text-slate-900",
   },
+  suspicious: {
+    label: "不審者情報",
+    accent: "from-orange-400 via-orange-500 to-orange-600",
+    badge: "bg-orange-500/90 text-white",
+  },
   other: {
     label: "その他",
     accent: "from-slate-400 via-slate-500 to-slate-600",

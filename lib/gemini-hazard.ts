@@ -69,12 +69,16 @@ async function callGeminiVision(
   let mimeType = "image/jpeg"
   let dataBase64 = imageBase64OrDataUrl
   if (imageBase64OrDataUrl.startsWith("data:")) {
-    const match = imageBase64OrDataUrl.match(/^data:([^;]+);base64,(.+)$/)
-    if (!match) {
+    // 正規表現の貪欲キャプチャ (.+) は数MBの data URL でスタックを使い切り
+    // RangeError を投げるため、indexOf ベースで O(n) かつ非再帰にパースする。
+    const commaIndex = imageBase64OrDataUrl.indexOf(",")
+    const header = commaIndex >= 0 ? imageBase64OrDataUrl.slice(0, commaIndex) : ""
+    const semicolonIndex = header.indexOf(";")
+    if (commaIndex < 0 || semicolonIndex < 0 || !header.includes(";base64")) {
       throw new Error("画像のdata URLが不正です")
     }
-    mimeType = match[1]
-    dataBase64 = match[2]
+    mimeType = header.slice("data:".length, semicolonIndex)
+    dataBase64 = imageBase64OrDataUrl.slice(commaIndex + 1)
   }
 
   const parts: any[] = [
@@ -138,8 +142,12 @@ const PIPELINE_JSON_SCHEMA = `{
 
 export function getPipelinePromptByType(
   promptType: PromptType,
-  userMarkers?: readonly UserMarker[]
+  userMarkers?: readonly UserMarker[],
+  accidentContext?: string
 ): string {
+  const accidentSuffix = accidentContext && accidentContext.trim().length > 0
+    ? `\n\n${accidentContext.trim()}`
+    : ''
   const userSuffix = userMarkers?.length
     ? `\n\n【ユーザーマーキング情報】\nユーザーは以下の${userMarkers.length}箇所を事前に危険と判断しました:\n${userMarkers.map((m, i) =>
         `${i + 1}. カテゴリ: ${m.category}, ラベル: ${m.label}, 位置: (x:${m.x.toFixed(2)}, y:${m.y.toFixed(2)}, w:${m.width.toFixed(2)}, h:${m.height.toFixed(2)})`
@@ -207,7 +215,7 @@ Bounding Box 座標の具体例:
 2. countとpositions配列の要素数が一致しているか
 3. bboxの座標が0.00-1.00の範囲内か
 4. 各bboxが実際の物体の位置・サイズに対応しているか
-${userSuffix}
+${userSuffix}${accidentSuffix}
 必ずJSONのみを出力。`
 
   switch (promptType) {
@@ -352,14 +360,46 @@ export function parseGeminiPipelineResponse(raw: any): {
 
 // ---- パイプライン版メイン関数 ----
 
+export interface AnalyzeImageOptions {
+  readonly userMarkers?: readonly UserMarker[]
+  readonly promptType?: PromptType
+  /** その地点の事故傾向をプロンプトに注入する文字列 (空可) */
+  readonly accidentContext?: string
+  /** ログ/コスト計測の区別用 (例: "hunter-explore") */
+  readonly purpose?: string
+}
+
+function normalizeAnalyzeArgs(
+  optionsOrUserMarkers?: AnalyzeImageOptions | readonly UserMarker[],
+  legacyPromptType?: PromptType
+): { userMarkers?: readonly UserMarker[]; promptType: PromptType; accidentContext?: string } {
+  if (Array.isArray(optionsOrUserMarkers)) {
+    return { userMarkers: optionsOrUserMarkers, promptType: legacyPromptType ?? "default" }
+  }
+  const opts = (optionsOrUserMarkers ?? {}) as AnalyzeImageOptions
+  return {
+    userMarkers: opts.userMarkers,
+    promptType: opts.promptType ?? legacyPromptType ?? "default",
+    accidentContext: opts.accidentContext,
+  }
+}
+
+/**
+ * Vision→Think→Score パイプライン。
+ * 後方互換: 旧 `(image, userMarkers[], promptType)` 形式と、新 `(image, options)` 形式の両方を受ける。
+ */
 export async function analyzeImagePipeline(
   imageBase64OrDataUrl: string,
-  userMarkers?: readonly UserMarker[],
-  promptType: PromptType = "default"
+  optionsOrUserMarkers?: AnalyzeImageOptions | readonly UserMarker[],
+  legacyPromptType?: PromptType
 ): Promise<PipelineAnalysisResultWithComparison> {
   const startTime = Date.now()
 
-  const prompt = getPipelinePromptByType(promptType, userMarkers)
+  const { userMarkers, promptType, accidentContext } = normalizeAnalyzeArgs(
+    optionsOrUserMarkers,
+    legacyPromptType
+  )
+  const prompt = getPipelinePromptByType(promptType, userMarkers, accidentContext)
   const textResponse = await callGeminiVision(imageBase64OrDataUrl, prompt)
   const parsed = extractFirstJson(textResponse)
   const { vision, think, educationalTips } = parseGeminiPipelineResponse(parsed)

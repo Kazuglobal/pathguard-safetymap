@@ -290,6 +290,11 @@ export type Database = {
           accident_risk_score: number | null
           accident_stats: Json | null
           address_hash: string | null
+          ai_moderation_checked_at: string | null
+          ai_moderation_reason: string | null
+          ai_moderation_score: number | null
+          ai_moderation_status: string | null
+          alert_radius_m: number | null
           city: string | null
           created_at: string | null
           danger_level: number
@@ -319,6 +324,11 @@ export type Database = {
           accident_risk_score?: number | null
           accident_stats?: Json | null
           address_hash?: string | null
+          ai_moderation_checked_at?: string | null
+          ai_moderation_reason?: string | null
+          ai_moderation_score?: number | null
+          ai_moderation_status?: string | null
+          alert_radius_m?: number | null
           city?: string | null
           created_at?: string | null
           danger_level: number
@@ -350,6 +360,11 @@ export type Database = {
           accident_risk_score?: number | null
           accident_stats?: Json | null
           address_hash?: string | null
+          ai_moderation_checked_at?: string | null
+          ai_moderation_reason?: string | null
+          ai_moderation_score?: number | null
+          ai_moderation_status?: string | null
+          alert_radius_m?: number | null
           city?: string | null
           created_at?: string | null
           danger_level?: number

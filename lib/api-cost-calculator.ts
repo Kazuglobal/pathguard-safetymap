@@ -37,8 +37,31 @@ const DEFAULT_MODEL_PRICING: ModelPricing = {
 const IMAGE_GENERATION_ESTIMATED_COST_PER_REQUEST_USD = {
   'gemini-2.5-flash-image': 0.04,
   'gemini-3-pro-image-preview': 0.04,
+  'gemini-3.1-flash-image-preview': 0.04,
+  // Fallback only when the provider response does not include token usage.
+  'gpt-image-2': 0.053,
+  'gpt-image-1': 0.042,
 } as const
 const DEFAULT_IMAGE_GENERATION_ESTIMATED_COST_USD = 0.04
+
+export type OpenAIImageGenerationUsage = {
+  inputTokens: number
+  inputImageTokens: number
+  inputTextTokens: number
+  outputTokens: number
+}
+
+const OPENAI_GPT_IMAGE_2_PRICE_PER_MILLION_TOKENS = {
+  inputImage: 8,
+  inputText: 5,
+  outputImage: 30,
+} as const
+
+const OPENAI_GPT_IMAGE_1_PRICE_PER_MILLION_TOKENS = {
+  inputImage: 10,
+  inputText: 5,
+  outputImage: 40,
+} as const
 
 export const API_PRICING = {
   gemini: {
@@ -146,6 +169,47 @@ export function estimateImageGenerationCost(model: string, requestCount = 1): nu
     (IMAGE_GENERATION_ESTIMATED_COST_PER_REQUEST_USD as Record<string, number>)[model] ??
     DEFAULT_IMAGE_GENERATION_ESTIMATED_COST_USD
   return perRequest * safeRequestCount
+}
+
+/**
+ * Calculates GPT Image 2 cost from token usage returned by the Images API.
+ * Falls back to the request-level estimate when usage is unavailable.
+ */
+export function calculateOpenAIImageGenerationCost(
+  model: string,
+  usage?: OpenAIImageGenerationUsage,
+): number {
+  if (!usage) {
+    return estimateImageGenerationCost(model, 1)
+  }
+
+  const pricing = model.startsWith('gpt-image-2')
+    ? OPENAI_GPT_IMAGE_2_PRICE_PER_MILLION_TOKENS
+    : model === 'gpt-image-1'
+      ? OPENAI_GPT_IMAGE_1_PRICE_PER_MILLION_TOKENS
+      : null
+
+  if (!pricing) {
+    return estimateImageGenerationCost(model, 1)
+  }
+
+  const inputImageTokens = Math.max(0, usage.inputImageTokens)
+  const inputTextTokens = Math.max(0, usage.inputTextTokens)
+  const unclassifiedInputTokens = Math.max(
+    0,
+    usage.inputTokens - inputImageTokens - inputTextTokens,
+  )
+  const outputTokens = Math.max(0, usage.outputTokens)
+
+  return (
+    ((inputImageTokens + unclassifiedInputTokens) *
+      pricing.inputImage) /
+      1_000_000 +
+    (inputTextTokens * pricing.inputText) /
+      1_000_000 +
+    (outputTokens * pricing.outputImage) /
+      1_000_000
+  )
 }
 // ---------------------------------------------------------------------------
 // Mapbox cost calculation
