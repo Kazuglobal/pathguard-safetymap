@@ -191,12 +191,12 @@ export function DangerMapScreen({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
+    <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
       {/* 地図（トークンが無いときは出さない） */}
       {mapToken && (
         <div
-          className="relative w-full shrink-0 overflow-hidden rounded-[20px] bg-white"
-          style={{ height: 220, boxShadow: tokens.shadow.card }}
+          className="relative h-[220px] w-full shrink-0 overflow-hidden rounded-[20px] bg-white md:h-[300px]"
+          style={{ boxShadow: tokens.shadow.card }}
         >
           <Map
             ref={mapRef}

@@ -312,7 +312,7 @@ export function HunterGame() {
     title = "ばしょを えらぶ"
     onBack = () => setScreen("mask")
     content = (
-      <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-4">
+      <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col p-2 sm:p-4">
         <LocationPinPicker
           initial={pin ?? undefined}
           onConfirm={(confirmed) => {
@@ -361,7 +361,7 @@ export function HunterGame() {
     title = "クイズモード"
     onBack = () => setScreen("mode")
     content = (
-      <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
+      <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col p-3 sm:p-4">
         <HunterQuizPanel
           items={quizItems}
           imageUrl={maskedUrl}
@@ -382,7 +382,7 @@ export function HunterGame() {
       />
     )
     content = (
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 overflow-y-auto p-4">
         {accident && <CareCard accident={accident} />}
         <ExploreCanvas
           imageUrl={maskedUrl}
@@ -568,7 +568,7 @@ function ModeSelectScreen({
   onQuiz: () => void
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
       <div className="flex items-center gap-2.5">
         <Mascot size="sm" mood="happy" />
         <h2 className="text-[20px] font-extrabold" style={{ color: C.ink }}>
@@ -578,7 +578,7 @@ function ModeSelectScreen({
 
       {accident && <CareCard accident={accident} />}
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ModeCard
           icon={<Search className="h-6 w-6" />}
           title="たんけんモード"
@@ -619,7 +619,7 @@ function HomeScreen({
   onExit: () => void
 }) {
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-4 px-6 py-4 text-center sm:gap-5 sm:py-6">
+    <div className="relative flex h-full flex-col items-center justify-center px-6 py-4 text-center sm:py-6">
       {/* アプリのホームへ戻る動線（全画面化でナビが消えるため） */}
       <button
         type="button"
@@ -631,45 +631,47 @@ function HomeScreen({
         ホーム
       </button>
 
-      {/* 短い画面でもはみ出さないよう、マスコットは画面高に応じて縮小 */}
-      <div className="shrink-0 [@media(max-height:680px)]:scale-90 [@media(max-height:600px)]:scale-75">
-        <Mascot size="lg" mood="happy" />
-      </div>
+      {/* 大画面でも読みやすいよう中央の列幅を一定に保つ */}
+      <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 sm:gap-5">
+        {/* 短い画面でもはみ出さないよう、マスコットは画面高に応じて縮小 */}
+        <div className="shrink-0 [@media(max-height:680px)]:scale-90 [@media(max-height:600px)]:scale-75">
+          <Mascot size="lg" mood="happy" />
+        </div>
 
-      <div>
-        <h1
-          className="text-[26px] font-extrabold tracking-wide sm:text-[28px]"
-          style={{ color: C.primaryStrong }}
+        <div>
+          <h1
+            className="text-[26px] font-extrabold tracking-wide sm:text-[28px]"
+            style={{ color: C.primaryStrong }}
+          >
+            きけんハンター
+          </h1>
+          <p className="mt-1.5 text-[15px] font-bold leading-relaxed sm:text-[16px]" style={{ color: C.ink }}>
+            <R k="通学路" y="つうがくろ" />の しゃしんから、
+            <br />
+            あぶないところを <R k="自分" y="じぶん" />の <R k="目" y="め" />で さがそう！
+          </p>
+        </div>
+
+        <PrimaryCTA onClick={onStart}>
+          <Sparkles className="h-5 w-5" aria-hidden="true" />
+          ぼうけんスタート
+        </PrimaryCTA>
+
+        <button
+          type="button"
+          onClick={onOpenRecords}
+          className={`inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[15px] font-extrabold ${tokens.cls.focus}`}
+          style={{ color: C.primaryStrong, boxShadow: tokens.shadow.soft }}
         >
-          きけんハンター
-        </h1>
-        <p className="mt-1.5 text-[15px] font-bold leading-relaxed sm:text-[16px]" style={{ color: C.ink }}>
-          <R k="通学路" y="つうがくろ" />の しゃしんから、
-          <br />
-          あぶないところを <R k="自分" y="じぶん" />の <R k="目" y="め" />で さがそう！
-        </p>
-      </div>
+          <MapIcon className="h-5 w-5" aria-hidden="true" />
+          きろく / <R k="危険" y="きけん" />マップ
+        </button>
 
-      <PrimaryCTA onClick={onStart}>
-        <Sparkles className="h-5 w-5" aria-hidden="true" />
-        ぼうけんスタート
-      </PrimaryCTA>
-
-      <button
-        type="button"
-        onClick={onOpenRecords}
-        className={`inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[15px] font-extrabold ${tokens.cls.focus}`}
-        style={{ color: C.primaryStrong, boxShadow: tokens.shadow.soft }}
-      >
-        <MapIcon className="h-5 w-5" aria-hidden="true" />
-        きろく / <R k="危険" y="きけん" />マップ
-      </button>
-
-      {/* あそびかた: 画面が低いときは隠して本体を優先表示 */}
-      <div
-        className="hidden w-full max-w-sm rounded-[24px] px-4 py-3.5 text-left [@media(min-height:720px)]:block"
-        style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
-      >
+        {/* あそびかた: 画面が低いときは隠して本体を優先表示 */}
+        <div
+          className="hidden w-full rounded-[24px] px-4 py-3.5 text-left [@media(min-height:720px)]:block"
+          style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
+        >
         <p className="mb-2 text-[14px] font-extrabold" style={{ color: C.inkSoft }}>
           あそびかた
         </p>
@@ -691,6 +693,7 @@ function HomeScreen({
             </li>
           ))}
         </ol>
+        </div>
       </div>
     </div>
   )
@@ -746,7 +749,7 @@ function SelectScreen({
   thumbnail: File | null
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-5 px-5 py-6">
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-5 py-6">
       <div className="flex items-center gap-3">
         <Mascot size="sm" mood="happy" />
         <h2 className="text-[20px] font-extrabold" style={{ color: C.ink }}>
@@ -805,7 +808,7 @@ function ConsentScreen({
   onConfirm: () => void
 }) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-5 px-5 py-6">
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-5 py-6">
       <div className="flex flex-col items-center gap-3 text-center">
         <Mascot size="md" mood="cheer" />
       </div>
@@ -899,11 +902,11 @@ function AnalyzingScreen({ imageUrl }: { imageUrl: string | null }) {
   const reduce = useReducedMotion()
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-8 text-center">
+    <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-5 px-6 py-8 text-center">
       <Mascot size="lg" mood="think" />
 
       <div
-        className="relative w-full max-w-sm overflow-hidden rounded-[24px]"
+        className="relative w-full max-w-sm overflow-hidden rounded-[24px] md:max-w-md"
         style={{ aspectRatio: "4 / 3", background: C.headerNavy, boxShadow: tokens.shadow.card }}
       >
         {imageUrl ? (
@@ -963,7 +966,7 @@ function AnalyzingScreen({ imageUrl }: { imageUrl: string | null }) {
       </p>
 
       <div
-        className="w-full max-w-sm rounded-[20px] px-4 py-3 text-left text-[14px] font-bold leading-relaxed"
+        className="w-full max-w-sm rounded-[20px] px-4 py-3 text-left text-[14px] font-bold leading-relaxed md:max-w-md"
         style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft, color: C.ink }}
       >
         <span className="mr-1" aria-hidden="true">

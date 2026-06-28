@@ -294,17 +294,17 @@ export function HunterShell({
 }) {
   return (
     // 外側: 画面いっぱいの背景。デスクトップ/タブレットでは中央寄せの「アプリカード」にする。
-    <div className="flex min-h-[100dvh] w-full justify-center bg-[#DCEBFF] sm:items-center sm:p-4 md:p-6">
-      {/* 内側フレーム: スマホ=全画面 / sm+=角丸カード。横はみ出しは overflow-hidden で根絶。 */}
+    <div className="flex min-h-[100dvh] w-full justify-center bg-[#DCEBFF] sm:items-center sm:p-4 md:p-6 lg:p-8">
+      {/* 内側フレーム: スマホ=全画面 / タブレット・デスクトップ=画面幅に応じて拡大する角丸カード。 */}
       <div
         className={cn(
-          "relative flex w-full max-w-md flex-col overflow-hidden",
-          "h-[100dvh] sm:h-auto sm:min-h-[600px] sm:max-h-[calc(100dvh-2rem)] sm:rounded-[32px] sm:shadow-[0_24px_60px_rgba(11,37,81,.28)] sm:ring-1 sm:ring-black/5",
+          "relative flex w-full max-w-md flex-col overflow-hidden md:max-w-2xl lg:max-w-3xl",
+          "h-[100dvh] sm:h-auto sm:min-h-[600px] sm:max-h-[calc(100dvh-2rem)] md:min-h-[680px] md:max-h-[calc(100dvh-3rem)] lg:max-h-[calc(100dvh-4rem)] sm:rounded-[32px] sm:shadow-[0_24px_60px_rgba(11,37,81,.28)] sm:ring-1 sm:ring-black/5",
           tokens.cls.pageBg,
         )}
       >
         {title && (
-          <header className="bg-[#0B2551] px-4 py-3 text-white">
+          <header className="bg-[#0B2551] px-4 py-3 text-white md:px-6 md:py-4">
             <div className="flex items-center gap-3">
               {onBack && (
                 <button
@@ -319,7 +319,7 @@ export function HunterShell({
                   <ArrowLeft className="h-5 w-5" aria-hidden="true" />
                 </button>
               )}
-              <h1 className="min-w-0 flex-1 truncate text-[16px] font-extrabold leading-tight">
+              <h1 className="min-w-0 flex-1 truncate text-[16px] font-extrabold leading-tight md:text-[18px]">
                 {title}
               </h1>
               {headerRight && (
