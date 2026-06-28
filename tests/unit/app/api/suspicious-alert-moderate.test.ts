@@ -90,6 +90,32 @@ describe("/api/suspicious-alert/moderate", () => {
     vi.mocked(checkApiRateLimit).mockResolvedValue({ success: true })
   })
 
+  it("rejects unauthenticated requests", async () => {
+    mockAuth(null)
+
+    const res = await POST(makeRequest({ reportId: "report-1" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body.error).toContain("認証")
+    expect(checkApiRateLimit).not.toHaveBeenCalled()
+    expect(getSupabaseAdmin).not.toHaveBeenCalled()
+  })
+
+  it("forbids moderating another user's report", async () => {
+    const { updateBuilder } = mockAdmin({
+      ...baseReport,
+      user_id: "someone-else",
+    })
+
+    const res = await POST(makeRequest({ reportId: "report-1" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(403)
+    expect(body.error).toContain("審査できません")
+    expect(updateBuilder.update).not.toHaveBeenCalled()
+  })
+
   it("rate limits authenticated users", async () => {
     vi.mocked(checkApiRateLimit).mockResolvedValue({
       success: false,
