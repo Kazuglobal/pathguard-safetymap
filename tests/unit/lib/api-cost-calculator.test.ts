@@ -116,6 +116,11 @@ describe('api-cost-calculator', () => {
       expect(estimateImageGenerationCost('gemini-2.5-flash-image', 0)).toBe(0)
       expect(estimateImageGenerationCost('gemini-2.5-flash-image', -2)).toBe(0)
     })
+
+    it('returns the Nano Banana 2 Lite per-image price', () => {
+      const cost = estimateImageGenerationCost('gemini-3.1-flash-lite-image')
+      expect(cost).toBeCloseTo(0.0336, 6)
+    })
   })
 
   describe('calculateOpenAIImageGenerationCost', () => {

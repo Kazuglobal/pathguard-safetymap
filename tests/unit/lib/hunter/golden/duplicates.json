@@ -1,0 +1,38 @@
+{
+  "version": "hunter-1",
+  "imageUsable": true,
+  "dangerPoints": [
+    {
+      "kind": "blind_corner",
+      "kidType": "見通しの悪い角",
+      "region": { "x": 0.4, "y": 0.4, "w": 0.2, "h": 0.2 },
+      "severity": "high",
+      "confidence": 0.9,
+      "whyDangerous": "ここは 車が 見えにくいよ。",
+      "safeAction": "とまって 左右を 見よう。",
+      "accidentLink": "出会い頭",
+      "quiz": {
+        "question": "見通しの わるい 角では どうする？",
+        "choices": ["とまって 左右を 見る", "はしって ぬける", "おとで きめる", "車は とまると きめる"],
+        "explanation": "とまれば きづけるよ。"
+      }
+    },
+    {
+      "kind": "narrow_sidewalk",
+      "kidType": "せまい歩道",
+      "region": { "x": 0.42, "y": 0.42, "w": 0.2, "h": 0.2 },
+      "severity": "low",
+      "confidence": 0.9,
+      "whyDangerous": "歩道が せまいよ。",
+      "safeAction": "はしを あるこう。",
+      "accidentLink": null,
+      "quiz": {
+        "question": "せまい 歩道では どこを あるく？",
+        "choices": ["道の はし", "車道の まんなか", "はしりまわる", "目を つぶる"],
+        "explanation": "車から はなれよう。"
+      }
+    }
+  ],
+  "safePoints": [],
+  "noHazardFollow": null
+}

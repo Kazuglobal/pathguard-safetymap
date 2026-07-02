@@ -2,14 +2,21 @@
 // きけんハンター 探索モード 採点ロジック (純粋関数)
 // 設計書: docs/plans/2026-06-26-kiken-hunter-design.md
 // React/IO/副作用なし。すべてイミュータブル。
+//
+// 方針B: Geminiのbboxに密着依存しない「やさしい当たり判定」+ ヒント。
+//  - hit はゾーンを広めに取る(HIT_MARGIN)。bbox は目安と割り切る。
+//  - 外れ(near/miss)には最近傍の未発見hazardへの温度感・方向を付け、
+//    自己修正できるようにする(自動発見はしない=最後は子のタップ)。
 // =============================================
 
 import type { RiskSeverity } from "@/lib/hazard-game-types"
 import type {
+  HunterDirection,
   HunterHazard,
   HunterRegion,
   HunterTap,
   HunterTapOutcome,
+  HunterTemperature,
 } from "@/lib/hunter/types"
 
 /** severity ごとの基礎点 */
@@ -19,17 +26,36 @@ export const SEVERITY_POINTS: Record<RiskSeverity, number> = {
   low: 50,
 }
 
-/** near 判定で各辺を拡張する既定マージン (相対座標) */
-const DEFAULT_NEAR_MARGIN = 0.06
+/** severity の重み(複数hit候補・統合時の優先度) */
+const WEIGHT_BY_SEVERITY: Record<RiskSeverity, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
+/** hit ゾーンを各辺へ拡張する既定マージン(やさしい当たり判定) */
+export const HIT_MARGIN = 0.1
+/** near ゾーンを各辺へ拡張する既定マージン */
+export const NEAR_OUTER = 0.18
+
+/** 温度のしきい値(タップ〜最近傍hazard中心の距離) */
+const HOT_DISTANCE = 0.18
+const WARM_DISTANCE = 0.34
 
 /** コンボ倍率の上限 */
 const MAX_COMBO_MULTIPLIER = 2
-
 /** コンボ 1 段あたりの増分 */
 const COMBO_STEP = 0.1
 
 export interface JudgeTapOptions {
+  /** hit 判定ゾーンの拡張マージン。既定 HIT_MARGIN。 */
+  hitMargin?: number
+  /** near 判定ゾーンの拡張マージン。既定 NEAR_OUTER。 */
   nearMargin?: number
+}
+
+function regionCenter(region: HunterRegion): { x: number; y: number } {
+  return { x: region.x + region.w / 2, y: region.y + region.h / 2 }
 }
 
 /** 点が region に内包されるか (端を含む)。 */
@@ -52,11 +78,51 @@ function expandRegion(region: HunterRegion, margin: number): HunterRegion {
   }
 }
 
+function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+/** タップ〜最近傍hazard中心の距離を温度感へ。 */
+export function tapTemperature(d: number): HunterTemperature {
+  if (d <= HOT_DISTANCE) return "hot"
+  if (d <= WARM_DISTANCE) return "warm"
+  return "cold"
+}
+
+/** タップから hazard 中心への大まかな方向(上下左右)。同点は null。 */
+export function tapDirection(tap: HunterTap, center: { x: number; y: number }): HunterDirection | null {
+  const dx = center.x - tap.x
+  const dy = center.y - tap.y
+  if (dx === 0 && dy === 0) return null
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "right" : "left"
+  return dy >= 0 ? "down" : "up"
+}
+
+/** 未発見hazardのうち、タップに最も近いものとその距離を返す。無ければ null。 */
+export function nearestUnfound(
+  tap: HunterTap,
+  hazards: readonly HunterHazard[],
+  foundIds: ReadonlySet<string>,
+): { hazardId: string | null; distance: number } {
+  let bestId: string | null = null
+  let best = Infinity
+  for (const hazard of hazards) {
+    if (foundIds.has(hazard.id)) continue
+    const d = distance(tap, regionCenter(hazard.region))
+    if (d < best) {
+      best = d
+      bestId = hazard.id
+    }
+  }
+  return { hazardId: bestId, distance: best }
+}
+
 /**
  * 単発のベース判定 (コンボ非適用)。
- * - 未発見の hazard で tight region に内包する最初の1件 -> hit
- * - そうでなく、nearMargin 拡張領域に内包する hazard があれば -> near
- * - どれも無ければ -> miss
+ * - 未発見 hazard の hit ゾーン(広め)に内包する候補のうち severity重み×confidence 最大 -> hit
+ * - hit 無し: 最近傍の未発見 hazard が near ゾーン内 -> near、外 -> miss
+ * - near/miss には nearestId/temperature/direction を付与(自己修正用)
+ * - 全 hazard 発見済みなら near を返さず最近傍も null(ヒント抑止)
  */
 export function judgeTap(
   tap: HunterTap,
@@ -64,26 +130,47 @@ export function judgeTap(
   foundIds: ReadonlySet<string>,
   options?: JudgeTapOptions,
 ): HunterTapOutcome {
-  const nearMargin = options?.nearMargin ?? DEFAULT_NEAR_MARGIN
+  const hitMargin = options?.hitMargin ?? HIT_MARGIN
+  const nearMargin = options?.nearMargin ?? NEAR_OUTER
 
+  // hit: 広めゾーンに入る未発見候補から、最も「危険で確からしい」1件を選ぶ
+  let hit: HunterHazard | null = null
+  let hitScore = -Infinity
   for (const hazard of hazards) {
     if (foundIds.has(hazard.id)) continue
-    if (regionContains(hazard.region, tap)) {
-      return {
-        result: "hit",
-        hazardId: hazard.id,
-        points: SEVERITY_POINTS[hazard.severity],
+    if (regionContains(expandRegion(hazard.region, hitMargin), tap)) {
+      const score = WEIGHT_BY_SEVERITY[hazard.severity] * hazard.confidence
+      if (score > hitScore) {
+        hitScore = score
+        hit = hazard
       }
     }
   }
-
-  for (const hazard of hazards) {
-    if (regionContains(expandRegion(hazard.region, nearMargin), tap)) {
-      return { result: "near", hazardId: hazard.id, points: 0 }
-    }
+  if (hit) {
+    return { result: "hit", hazardId: hit.id, points: SEVERITY_POINTS[hit.severity] }
   }
 
-  return { result: "miss", hazardId: null, points: 0 }
+  // 最近傍の未発見 hazard を基準にヒント(温度・方向)を作る
+  const nearest = nearestUnfound(tap, hazards, foundIds)
+  if (nearest.hazardId === null) {
+    // 全発見済み: ヒントを出さない
+    return { result: "miss", hazardId: null, points: 0, nearestId: null }
+  }
+
+  const nearestHazard = hazards.find((h) => h.id === nearest.hazardId) as HunterHazard
+  const center = regionCenter(nearestHazard.region)
+  const temperature = tapTemperature(nearest.distance)
+  const direction = tapDirection(tap, center)
+  const inNear = regionContains(expandRegion(nearestHazard.region, nearMargin), tap)
+
+  return {
+    result: inNear ? "near" : "miss",
+    hazardId: inNear ? nearestHazard.id : null,
+    points: 0,
+    nearestId: nearest.hazardId,
+    temperature,
+    direction,
+  }
 }
 
 /**
@@ -105,8 +192,7 @@ export interface ReplayResult {
 /**
  * 権威ある再採点。taps を順に replay し、コンボを適用して集計する。
  * - hit: consecutiveHits を加算し comboMultiplier を base 点へ適用 (四捨五入)。
- *        hazard を発見済みに追加し comboMax を更新。
- * - near/miss: consecutiveHits を 0 にリセットし outcome をそのまま記録。
+ * - near/miss: consecutiveHits を 0 にリセット。
  */
 export function scoreSession(
   taps: readonly HunterTap[],
@@ -131,11 +217,7 @@ export function scoreSession(
       if (consecutiveHits > comboMax) {
         comboMax = consecutiveHits
       }
-      outcomes.push({
-        result: "hit",
-        hazardId: base.hazardId,
-        points: awarded,
-      })
+      outcomes.push({ result: "hit", hazardId: base.hazardId, points: awarded })
       continue
     }
 

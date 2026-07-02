@@ -1,0 +1,68 @@
+{
+  "version": "hunter-1",
+  "imageUsable": true,
+  "dangerPoints": [
+    {
+      "kind": "blind_corner",
+      "kidType": "見通しの悪い角",
+      "region": { "x": 0.05, "y": 0.05, "w": 0.2, "h": 0.2 },
+      "severity": "high",
+      "confidence": 0.82,
+      "whyDangerous": "ここは 車が 見えにくいよ。",
+      "safeAction": "とまって 左右を 見よう。",
+      "accidentLink": "出会い頭",
+      "quiz": {
+        "question": "見通しの わるい 角では どうする？",
+        "choices": ["とまって 左右を 見る", "はしって ぬける", "おとが しなければ すすむ", "車は とまると きめる"],
+        "explanation": "とまれば 車に きづけるよ。"
+      }
+    },
+    {
+      "kind": "popout_spot",
+      "kidType": "飛び出しに注意",
+      "region": { "x": 0.55, "y": 0.05, "w": 0.2, "h": 0.2 },
+      "severity": "high",
+      "confidence": 0.78,
+      "whyDangerous": "ものかげから 出てくるかも。",
+      "safeAction": "ゆっくり あるこう。",
+      "accidentLink": "飛び出し",
+      "quiz": {
+        "question": "車の かげの そばでは？",
+        "choices": ["ゆっくり 見る", "はしって ぬける", "目を つぶる", "おとだけで すすむ"],
+        "explanation": "出てこないか 見てね。"
+      }
+    },
+    {
+      "kind": "crossing_no_signal",
+      "kidType": "信号のない横断",
+      "region": { "x": 0.05, "y": 0.6, "w": 0.2, "h": 0.2 },
+      "severity": "high",
+      "confidence": 0.75,
+      "whyDangerous": "信号が ないよ。",
+      "safeAction": "手を あげて わたろう。",
+      "accidentLink": "横断中",
+      "quiz": {
+        "question": "信号の ない 道を わたるには？",
+        "choices": ["とまって 左右を 見る", "はしって わたる", "おとで きめる", "手を あげれば 安心"],
+        "explanation": "とまって 見れば 安心だよ。"
+      }
+    },
+    {
+      "kind": "parked_car_shadow",
+      "kidType": "車のかげ",
+      "region": { "x": 0.55, "y": 0.6, "w": 0.2, "h": 0.2 },
+      "severity": "medium",
+      "confidence": 0.7,
+      "whyDangerous": "車の かげは 見えにくいよ。",
+      "safeAction": "車の そばは ゆっくり。",
+      "accidentLink": null,
+      "quiz": {
+        "question": "とまっている 車の そばでは？",
+        "choices": ["ゆっくり あるく", "はしって ぬける", "車に さわる", "目を つぶる"],
+        "explanation": "かげから 出てくるかも。"
+      }
+    }
+  ],
+  "safePoints": [],
+  "noHazardFollow": null
+}

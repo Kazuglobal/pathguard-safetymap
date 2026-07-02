@@ -28,9 +28,9 @@ vi.mock("@/lib/supabase-server", () => ({
   })),
 }))
 
-vi.mock("@/lib/openai-image", () => ({
-  generateImageWithOpenAIWithModel: mocks.mockGenerateImage,
-  FORCED_OPENAI_IMAGE_MODEL: "gpt-image-2",
+vi.mock("@/lib/gemini-image", () => ({
+  generateImageWithGeminiWithModel: mocks.mockGenerateImage,
+  FORCED_GEMINI_IMAGE_MODEL: "gemini-3.1-flash-lite-image",
 }))
 
 vi.mock("@/lib/api-usage-logger", () => ({
@@ -38,7 +38,7 @@ vi.mock("@/lib/api-usage-logger", () => ({
 }))
 
 vi.mock("@/lib/api-cost-calculator", () => ({
-  calculateOpenAIImageGenerationCost: mocks.mockCalculateImageGenerationCost,
+  estimateImageGenerationCost: mocks.mockCalculateImageGenerationCost,
 }))
 
 vi.mock("@/lib/sentry-upload-context", () => ({
@@ -75,27 +75,43 @@ describe("app/api/gemini/generate-image route", () => {
     })
     mocks.mockGenerateImage.mockResolvedValue({
       images: [],
-      model: "gpt-image-2",
+      model: "gemini-3.1-flash-lite-image",
     })
   })
 
-  it("always uses gpt-image-2 when generationMode is standard", async () => {
+  it("always uses gemini-3.1-flash-lite-image when generationMode is standard", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("standard") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-image-2" }),
+      expect.objectContaining({ model: "gemini-3.1-flash-lite-image" }),
     )
   })
 
-  it("always uses gpt-image-2 when generationMode is disaster", async () => {
+  it("logs usage under the gemini provider without stale token fields", async () => {
+    const { POST } = await loadRoute()
+    await POST(buildMultipartRequest("standard") as any)
+
+    expect(mocks.mockLogApiUsage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        api_provider: "gemini",
+        model_name: "gemini-3.1-flash-lite-image",
+        success: true,
+      }),
+    )
+    const loggedEntry = mocks.mockLogApiUsage.mock.calls[0][0]
+    expect(loggedEntry.input_tokens).toBeUndefined()
+    expect(loggedEntry.output_tokens).toBeUndefined()
+  })
+
+  it("always uses gemini-3.1-flash-lite-image when generationMode is disaster", async () => {
     const { POST } = await loadRoute()
     const res = await POST(buildMultipartRequest("disaster") as any)
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-image-2" }),
+      expect.objectContaining({ model: "gemini-3.1-flash-lite-image" }),
     )
   })
 
@@ -126,7 +142,7 @@ describe("app/api/gemini/generate-image route", () => {
     clearTimeoutSpy.mockRestore()
   })
 
-  it("always uses gpt-image-2 when generationMode is omitted", async () => {
+  it("always uses gemini-3.1-flash-lite-image when generationMode is omitted", async () => {
     const { POST } = await loadRoute()
     const form = new FormData()
     form.append("prompt", "test prompt")
@@ -138,7 +154,7 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(200)
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-image-2" }),
+      expect.objectContaining({ model: "gemini-3.1-flash-lite-image" }),
     )
   })
 

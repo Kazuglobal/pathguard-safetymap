@@ -5,8 +5,18 @@ vi.mock("@/lib/supabase-server", () => ({
   createServerClient: vi.fn(),
 }))
 
-vi.mock("@/lib/gemini-hazard", () => ({
-  analyzeImagePipeline: vi.fn(),
+vi.mock("@/lib/hunter/hunter-ai", () => ({
+  analyzeHunterImage: vi.fn(),
+}))
+
+vi.mock("@/lib/hunter/observability", () => ({
+  logAnalyzeFallback: vi.fn(),
+}))
+
+vi.mock("@/lib/hunter/answer-cache", () => ({
+  putAnswerKey: vi.fn().mockResolvedValue(undefined),
+  getAnswerKey: vi.fn().mockResolvedValue(null),
+  isAnswerCacheConfigured: vi.fn().mockReturnValue(false),
 }))
 
 vi.mock("@/lib/traffic-accident/server", () => ({
@@ -33,7 +43,9 @@ vi.mock("@/lib/hunter/audit", () => ({
 }))
 
 import { createServerClient } from "@/lib/supabase-server"
-import { analyzeImagePipeline } from "@/lib/gemini-hazard"
+import { analyzeHunterImage } from "@/lib/hunter/hunter-ai"
+import { logAnalyzeFallback } from "@/lib/hunter/observability"
+import { getAnswerKey, isAnswerCacheConfigured, putAnswerKey } from "@/lib/hunter/answer-cache"
 import { checkGeminiRateLimit } from "@/lib/upstash-rate-limiter"
 import { uploadMaskedPhoto, createPhotoSignedUrl } from "@/lib/hunter/storage"
 import { writeAuditLog } from "@/lib/hunter/audit"
@@ -60,30 +72,53 @@ function makeJsonRequest(url: string, body: unknown) {
   })
 }
 
-function emptyVisionAnalysis(hazards: unknown[] = []) {
+const detectedHazard = {
+  id: "sess-0",
+  kind: "blind_corner",
+  type: "見通しの悪い角",
+  region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 },
+  severity: "high",
+  kidExplanation: "曲がってくる車から見えにくいよ",
+  safeAction: "止まって左右を見よう",
+  confidence: 0.9,
+  accidentLink: "出会い頭",
+}
+
+const sampleQuiz = [
+  {
+    id: "q-choice-0",
+    kind: "choice",
+    theme: null,
+    question: "どうする？",
+    choices: [{ id: "c0", label: "止まる" }],
+    correctChoiceId: "c0",
+    explanation: "x",
+    accidentLink: null,
+  },
+]
+
+function exploreResult(hazards: unknown[]) {
   return {
-    vision: {
-      safetyEquipment: [],
-      hazards,
-      traffic: [],
-      obstructions: [],
-      inferenceTimeMs: 50,
-    },
-    think: { contextualRisks: [], priorityImprovements: [], latentRisks: [], childPerspectiveRisks: [] },
-    score: { score: 80 },
-    educationalTips: [],
-    analysisTimestamp: "2026-06-26T00:00:00.000Z",
+    mode: "explore",
+    hazards,
+    quiz: sampleQuiz,
+    safePoints: [],
+    noHazardFollow: null,
+    usedFallback: false,
+    fallbackReason: null,
   }
 }
 
-const detectedHazard = {
-  category: "hazards",
-  label: "blind_corner",
-  description: "見通しの悪い角だよ",
-  count: 1,
-  confidence: 0.9,
-  coverageRatio: 0.04,
-  positions: [{ x: 0.4, y: 0.5, width: 0.2, height: 0.2 }],
+function guideResult(reason: string) {
+  return {
+    mode: "guide",
+    hazards: [],
+    quiz: sampleQuiz,
+    safePoints: [],
+    noHazardFollow: "あんしんだね",
+    usedFallback: true,
+    fallbackReason: reason,
+  }
 }
 
 const validBody = {
@@ -127,41 +162,89 @@ describe("/api/hunter/analyze", () => {
     expect(body.error).toContain("同意")
   })
 
-  it("maps detected hazards and returns an accident summary", async () => {
-    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+  it("returns explore-mode hazards, quiz and an accident summary", async () => {
+    vi.mocked(analyzeHunterImage).mockResolvedValue(exploreResult([detectedHazard]) as any)
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
     const body = await res.json()
 
     expect(res.status).toBe(200)
+    expect(body.mode).toBe("explore")
     expect(body.hazards).toHaveLength(1)
     expect(body.hazards[0].region).toMatchObject({ x: 0.4, y: 0.5, w: 0.2, h: 0.2 })
+    expect(body.quiz.length).toBeGreaterThan(0)
     expect(body.usedFallback).toBe(false)
     expect(body.accident.hasData).toBe(false)
     // 画像は保存しない: レスポンスに画像が含まれない
     expect(JSON.stringify(body)).not.toContain("base64")
   })
 
-  it("falls back to generic hazards when detection is empty (double-empty)", async () => {
-    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([]) as any)
+  it("returns 200 guide mode (not 502) when detection is empty", async () => {
+    vi.mocked(analyzeHunterImage).mockResolvedValue(guideResult("empty") as any)
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
     const body = await res.json()
 
     expect(res.status).toBe(200)
+    expect(body.mode).toBe("guide")
     expect(body.usedFallback).toBe(true)
-    expect(body.hazards.length).toBeGreaterThan(0)
+    expect(body.fallbackReason).toBe("empty")
+    expect(body.hazards).toEqual([])
+    expect(body.quiz.length).toBeGreaterThan(0)
+    expect(logAnalyzeFallback).toHaveBeenCalledWith("empty", expect.any(String))
   })
 
-  it("returns 502 when the pipeline throws", async () => {
-    vi.mocked(analyzeImagePipeline).mockRejectedValue(new Error("boom"))
+  it("returns 200 guide (not 502) when the AI fails", async () => {
+    vi.mocked(analyzeHunterImage).mockResolvedValue(guideResult("ai_error") as any)
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
-    expect(res.status).toBe(502)
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.mode).toBe("guide")
+    expect(body.fallbackReason).toBe("ai_error")
+    expect(logAnalyzeFallback).toHaveBeenCalledWith("ai_error", expect.any(String))
+  })
+
+  it("still returns 200 guide when analyzeHunterImage unexpectedly throws (belt)", async () => {
+    vi.mocked(analyzeHunterImage).mockRejectedValue(new Error("boom"))
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.mode).toBe("guide")
+    expect(body.usedFallback).toBe(true)
+    expect(body.fallbackReason).toBe("ai_error")
+    expect(logAnalyzeFallback).toHaveBeenCalledWith("ai_error", expect.any(String))
+  })
+
+  it("caches the guide-mode fallback quiz's answer key even on the unexpected-exception path (belt)", async () => {
+    // トラスト境界の回帰テスト: この呼び出しを省略すると、Upstash 設定済み環境で
+    // /api/hunter/session がこの sessionId を「キャッシュミス=改ざんの疑い」として
+    // 409 で弾いてしまい、正しく回答しても採点0点になる。
+    vi.mocked(analyzeHunterImage).mockRejectedValue(new Error("boom"))
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(putAnswerKey).toHaveBeenCalledWith(
+      body.sessionId,
+      expect.objectContaining({
+        hazards: [],
+        quiz: body.quiz.map((q: any) => ({
+          id: q.id,
+          kind: q.kind,
+          correctChoiceId: q.correctChoiceId,
+          answerRegion: q.answerRegion,
+        })),
+      }),
+    )
   })
 
   it("does not save when save is omitted (Phase 0 backward compat)", async () => {
-    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+    vi.mocked(analyzeHunterImage).mockResolvedValue(exploreResult([detectedHazard]) as any)
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
     const body = await res.json()
@@ -172,8 +255,18 @@ describe("/api/hunter/analyze", () => {
     expect(body.signedUrl).toBeUndefined()
   })
 
+  it("does not save in guide mode even when save=true", async () => {
+    vi.mocked(analyzeHunterImage).mockResolvedValue(guideResult("empty") as any)
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/analyze", { ...validBody, save: true }),
+    )
+    expect(res.status).toBe(200)
+    expect(uploadMaskedPhoto).not.toHaveBeenCalled()
+  })
+
   it("saves the masked photo and returns photoId + signedUrl when save=true", async () => {
-    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+    vi.mocked(analyzeHunterImage).mockResolvedValue(exploreResult([detectedHazard]) as any)
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(
       makeJsonRequest("http://localhost/api/hunter/analyze", { ...validBody, save: true }),
@@ -193,14 +286,12 @@ describe("/api/hunter/analyze", () => {
     expect(body.photoId).toEqual(expect.any(String))
     expect(body.signedUrl).toBe("https://signed.example/masked.webp")
     expect(body.savedError).toBe(false)
-    // 検出結果は通常どおり返る
     expect(body.hazards).toHaveLength(1)
-    // 未マスク画像はレスポンスに含めない
     expect(JSON.stringify(body)).not.toContain("base64")
   })
 
   it("keeps the game going (savedError) when storage upload fails", async () => {
-    vi.mocked(analyzeImagePipeline).mockResolvedValue(emptyVisionAnalysis([detectedHazard]) as any)
+    vi.mocked(analyzeHunterImage).mockResolvedValue(exploreResult([detectedHazard]) as any)
     vi.mocked(uploadMaskedPhoto).mockRejectedValueOnce(new Error("storage down"))
     const { POST } = await import("@/app/api/hunter/analyze/route")
     const res = await POST(
@@ -256,41 +347,142 @@ describe("/api/hunter/session", () => {
     expect(body.total).toBe(1)
   })
 
-  it("re-scores a quiz session server-side", async () => {
+  it("re-scores a quiz session from client-supplied items", async () => {
     const { POST } = await import("@/app/api/hunter/session/route")
-    const hazard = {
-      id: "s-0-0",
-      type: "車に注意",
-      region: { x: 0.3, y: 0.3, w: 0.3, h: 0.3 },
-      severity: "high",
-      kidExplanation: "あぶないよ",
-      safeAction: "気をつけよう",
-      confidence: 0.9,
-    }
+    const items = [
+      {
+        id: "q-place-0",
+        kind: "place",
+        theme: null,
+        question: "「見通しの悪い角」は どこ？",
+        answerHazardId: "s-0",
+        answerRegion: { x: 0.3, y: 0.3, w: 0.3, h: 0.3 },
+        explanation: "とまろう",
+        accidentLink: null,
+      },
+    ]
     const res = await POST(
       makeJsonRequest("http://localhost/api/hunter/session", {
         mode: "quiz",
-        hazards: [hazard],
-        accident: {
-          hasData: true,
-          riskScore: 50,
-          riskLevel: "high",
-          riskLabel: "危険",
-          riskEmoji: "🟠",
-          totalAccidents: 5,
-          childInvolved: 1,
-          topAccidentType: "出会い頭",
-          peakTimeSlot: null,
-          kidMessage: "気をつけよう",
-        },
+        items,
         answers: [{ itemId: "q-place-0", tap: { x: 0.4, y: 0.4 } }],
       }),
     )
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.mode).toBe("quiz")
-    expect(body.total).toBeGreaterThan(0)
+    expect(body.total).toBe(1)
     expect(body.correct).toBe(1)
+  })
+
+  it("re-scores quiz from the server cache, ignoring tampered client items", async () => {
+    // サーバ保持の正解は c0。クライアントは correctChoiceId を c1 と偽り c1 を回答。
+    vi.mocked(getAnswerKey).mockResolvedValueOnce({
+      hazards: [],
+      quiz: [{ id: "q-choice-0", kind: "choice", correctChoiceId: "c0" }],
+    })
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "quiz",
+        sessionId: "sess-1",
+        items: [
+          {
+            id: "q-choice-0",
+            kind: "choice",
+            theme: null,
+            question: "?",
+            choices: [{ id: "c0", label: "a" }, { id: "c1", label: "b" }],
+            correctChoiceId: "c1",
+            explanation: "x",
+          },
+        ],
+        answers: [{ itemId: "q-choice-0", choiceId: "c1" }],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.correct).toBe(0) // サーバは c0 を正解とみなす
+  })
+
+  it("re-scores explore from the server cache, ignoring tampered hazards", async () => {
+    // サーバ保持の hazard は左上。クライアントは別の場所に偽 hazard を主張。
+    vi.mocked(getAnswerKey).mockResolvedValueOnce({
+      hazards: [
+        { id: "h0", region: { x: 0.3, y: 0.3, w: 0.2, h: 0.2 }, severity: "high", confidence: 0.9 },
+      ],
+      quiz: [],
+    })
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore",
+        sessionId: "sess-1",
+        hazards: [
+          {
+            id: "fake",
+            type: "x",
+            region: { x: 0.7, y: 0.7, w: 0.2, h: 0.2 },
+            severity: "high",
+            kidExplanation: "",
+            safeAction: "",
+            confidence: 0.9,
+          },
+        ],
+        taps: [{ x: 0.75, y: 0.75 }], // クライアント hazard には当たるが、キャッシュ hazard には当たらない
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.total).toBe(1) // キャッシュの1件
+    expect(body.matches).toBe(0) // キャッシュ基準では miss
+  })
+
+  it("scores an explore session against an empty cache (guide-mode session) instead of trusting fabricated client hazards", async () => {
+    // ガイドモード相当: サーバキャッシュは正当に hazards: [] (探索対象なし)。
+    // 攻撃者はそのセッションIDへ、自分ででっちあげた hazard + それに当たる tap を送る。
+    vi.mocked(isAnswerCacheConfigured).mockReturnValueOnce(true)
+    vi.mocked(getAnswerKey).mockResolvedValueOnce({ hazards: [], quiz: [] })
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore",
+        sessionId: "guide-sess-1",
+        hazards: [
+          {
+            id: "fake",
+            type: "x",
+            region: { x: 0.3, y: 0.3, w: 0.2, h: 0.2 },
+            severity: "high",
+            kidExplanation: "",
+            safeAction: "",
+            confidence: 0.9,
+          },
+        ],
+        taps: [{ x: 0.35, y: 0.35 }], // 自作 hazard には当たるが、サーバは空リストを権威とする
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.total).toBe(0) // キャッシュ側は0件(自作 hazard は無視される)
+    expect(body.matches).toBe(0)
+    expect(body.score).toBe(0)
+  })
+
+  it("rejects a quiz session with no items", async () => {
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", { mode: "quiz", answers: [] }),
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it("rejects an explore session with no hazards (guide mis-entry guard)", async () => {
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", { mode: "explore", hazards: [], taps: [] }),
+    )
+    expect(res.status).toBe(400)
   })
 
   it("rejects a malformed body", async () => {
@@ -299,5 +491,52 @@ describe("/api/hunter/session", () => {
       makeJsonRequest("http://localhost/api/hunter/session", { mode: "battle", hazards: [], taps: [] }),
     )
     expect(res.status).toBe(400)
+  })
+
+  it("rejects quiz re-scoring instead of trusting raw client items when the answer cache is configured but misses", async () => {
+    vi.mocked(isAnswerCacheConfigured).mockReturnValueOnce(true)
+    // sessionId 省略/期限切れ相当: getAnswerKey は既定で null を返す
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "quiz",
+        items: [
+          {
+            id: "q-choice-0",
+            kind: "choice",
+            theme: null,
+            question: "?",
+            choices: [{ id: "c0", label: "a" }, { id: "c1", label: "b" }],
+            correctChoiceId: "c1",
+            explanation: "x",
+          },
+        ],
+        answers: [{ itemId: "q-choice-0", choiceId: "c1" }],
+      }),
+    )
+    expect(res.status).toBe(409)
+  })
+
+  it("rejects explore re-scoring instead of trusting raw client hazards when the answer cache is configured but misses", async () => {
+    vi.mocked(isAnswerCacheConfigured).mockReturnValueOnce(true)
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore",
+        hazards: [
+          {
+            id: "fake",
+            type: "x",
+            region: { x: 0.3, y: 0.3, w: 0.2, h: 0.2 },
+            severity: "high",
+            kidExplanation: "",
+            safeAction: "",
+            confidence: 0.9,
+          },
+        ],
+        taps: [{ x: 0.35, y: 0.35 }],
+      }),
+    )
+    expect(res.status).toBe(409)
   })
 })

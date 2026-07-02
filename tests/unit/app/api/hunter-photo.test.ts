@@ -184,4 +184,38 @@ describe("GET /api/hunter/photos", () => {
     // 公開URL/生パスは漏らさない (image_path は応答に含めない)。
     expect(JSON.stringify(body)).not.toContain("image_path")
   })
+
+  it("summarizes detected danger types (deduped) and the top severity", async () => {
+    mockClient(mockUser, {
+      awaitResult: {
+        data: [
+          {
+            id: PHOTO_ID,
+            image_path: `${OWNER_ID}/${PHOTO_ID}/masked.webp`,
+            pin_lat: 33.59,
+            pin_lng: 130.4,
+            captured_at: "2026-06-26T00:00:00.000Z",
+            masked: true,
+            retention_until: null,
+            created_at: "2026-06-26T00:00:00.000Z",
+            hazard_detections: [
+              { type: "見通しの悪い角", kind: "blind_corner", severity: "high" },
+              { type: "車のかげ", kind: "parked_car_shadow", severity: "medium" },
+              { type: "見通しの悪い角", kind: "blind_corner", severity: "high" },
+            ],
+          },
+        ],
+        error: null,
+      },
+    })
+    vi.mocked(createPhotoSignedUrl).mockResolvedValue("https://signed.example/abc")
+
+    const { GET } = await import("@/app/api/hunter/photos/route")
+    const res = await GET(makeRequest("http://localhost/api/hunter/photos", "GET"))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.photos[0].dangers).toEqual(["見通しの悪い角", "車のかげ"])
+    expect(body.photos[0].topSeverity).toBe("high")
+  })
 })

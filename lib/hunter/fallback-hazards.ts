@@ -1,62 +1,162 @@
 // =============================================
-// きけんハンター フォールバック危険ポイント (Phase 0)
-// 事故0件 + AI検出0件の「ダブル空」でもゲームを成立させるための
-// 写真非依存の汎用「気をつけるポイント」集合と解決関数。
-// 設計書: docs/plans/2026-06-26-kiken-hunter-design.md
+// きけんハンター ガイドモード (フォールバック)
+// 事故0件・AI検出0件・解析不能・AIエラー時に、写真の上へ
+// 「偽の危険」を置かずにゲームを成立させる。
+//  - 写真に依存しない検証済みの安全クイズ(非空間choice)。
+//  - 理由別の正直なコピー(解析不能を「安全」と断定しない)。
+// 設計書 B5(ダブル空)/逆モードの精神。React/IO/副作用なし。
 // =============================================
 
-import type { HunterHazard } from "@/lib/hunter/types"
+import type {
+  HunterAccidentSummary,
+  HunterAnalyzeResult,
+  HunterFallbackReason,
+  HunterQuizItem,
+  HunterSafePoint,
+} from "@/lib/hunter/types"
+import { accidentTypeToKind, type HunterDangerKind } from "@/lib/hunter/kid-copy"
+import { buildRotatedChoices } from "@/lib/hunter/quiz-choices"
 
-/**
- * 写真に依存しない、通学路に共通する一般的な「気をつけるポイント」。
- * region は互いに重ならない相対座標 (0..1)。やさしい日本語で、
- * 子どもを否定せず・断定しない表現にする。confidence は中程度。
- */
-export const GENERIC_HUNTER_HAZARDS: readonly HunterHazard[] = [
+interface GuideQuizSeed {
+  readonly id: string
+  readonly theme: string | null
+  /** 関連づける危険 kind(事故テーマ選択用)。 */
+  readonly kind: HunterDangerKind | null
+  readonly question: string
+  /** index0 = 正解 */
+  readonly labels: readonly string[]
+  readonly explanation: string
+}
+
+const GUIDE_QUIZ_SEEDS: readonly GuideQuizSeed[] = [
   {
-    id: "generic-0",
-    type: "見通しの悪い角",
-    region: { x: 0.05, y: 0.1, w: 0.3, h: 0.35 },
-    severity: "high",
-    kidExplanation: "曲がり角は むこうが見えにくいことがあるよ。",
-    safeAction: "いちど とまって、左右をよく見てみよう。",
-    confidence: 0.5,
+    id: "guide-crossing",
+    theme: "横断",
+    kind: "crossing_no_signal",
+    question: "信号の ない 道を わたるときは どうする？",
+    labels: [
+      "止まって 左右を よく 見てから わたる",
+      "車の 音が しなければ わたる",
+      "手を あげれば 車は 止まる",
+      "走って いそいで わたる",
+    ],
+    explanation: "止まって 見れば 車に すぐ 気づけるよ。",
   },
   {
-    id: "generic-1",
-    type: "車のかげ",
-    region: { x: 0.4, y: 0.1, w: 0.3, h: 0.35 },
-    severity: "medium",
-    kidExplanation: "とまっている車のかげから 人や車が出てくることがあるよ。",
-    safeAction: "車のそばを通るときは ゆっくり歩いてみよう。",
-    confidence: 0.5,
+    id: "guide-blind",
+    theme: "見通し",
+    kind: "blind_corner",
+    question: "見通しの わるい 角では どうする？",
+    labels: [
+      "いちど 止まって 顔を 出して 見る",
+      "そのまま 走って ぬける",
+      "車は 来ないと 決めて すすむ",
+      "スマホを 見ながら あるく",
+    ],
+    explanation: "止まれば 曲がってくる 車に 気づけるよ。",
   },
   {
-    id: "generic-2",
-    type: "せまい歩道",
-    region: { x: 0.05, y: 0.55, w: 0.3, h: 0.35 },
-    severity: "low",
-    kidExplanation: "歩道がせまいと 車道に近くなることがあるよ。",
-    safeAction: "なるべく 道のはしっこを歩いてみよう。",
-    confidence: 0.5,
+    id: "guide-popout",
+    theme: "飛び出し",
+    kind: "popout_spot",
+    question: "車の かげの そばを とおるときは？",
+    labels: [
+      "ゆっくり あるいて、出てこないか 見る",
+      "いきおいよく 走って ぬける",
+      "目を つぶって すすむ",
+      "音だけで すすむ",
+    ],
+    explanation: "かげから 人や 車が 出てくるかも。",
   },
   {
-    id: "generic-3",
-    type: "横断するところ",
-    region: { x: 0.4, y: 0.55, w: 0.3, h: 0.35 },
-    severity: "medium",
-    kidExplanation: "道をわたるところは 車が来ることがあるよ。",
-    safeAction: "手をあげて 車が止まったのを見てからわたろう。",
-    confidence: 0.5,
+    id: "guide-walk",
+    theme: null,
+    kind: "narrow_sidewalk",
+    question: "道を あるくときは どこを あるく？",
+    labels: [
+      "歩道や 道の はしを あるく",
+      "車道の 真ん中を あるく",
+      "スマホを 見ながら あるく",
+      "ともだちと 走りまわる",
+    ],
+    explanation: "車から はなれて あるくと あんしんだよ。",
   },
 ]
 
 /**
- * 探索ターゲットを決める。AIが危険を検出していればそれを優先し、
- * 検出が空のときだけ汎用フォールバックを返す。純粋・非破壊。
+ * seed.id と呼び出し側の seedPrefix(セッション固有、省略時は既定文字列)から
+ * 回転量を導く。seedPrefix を省略したまま毎回呼ぶと同じ回転が固定化するため、
+ * 呼び出し側(buildGuideMode 経由)は可能な限り sessionId を渡すこと。
  */
-export function resolveExploreTargets(
-  detected: readonly HunterHazard[],
-): readonly HunterHazard[] {
-  return detected.length > 0 ? detected : GENERIC_HUNTER_HAZARDS
+function seedToItem(seed: GuideQuizSeed, seedPrefix: string): HunterQuizItem {
+  const { choices, correctChoiceId } = buildRotatedChoices(seed.labels, `${seedPrefix}:${seed.id}`)
+  return {
+    id: seed.id,
+    kind: "choice",
+    theme: seed.theme,
+    question: seed.question,
+    choices,
+    correctChoiceId,
+    explanation: seed.explanation,
+    accidentLink: null,
+  }
+}
+
+/** ガイドモードへ落ちた理由ごとの正直なフォロー文(安全を断定しない)。 */
+export const GUIDE_COPY_BY_REASON: Readonly<Record<HunterFallbackReason, string>> = {
+  empty:
+    "この みちは あぶないところが すくないみたい。じぶんの つうがくろでも さがしてみよう！ゆだんは きんもつ。",
+  unusable:
+    "しゃしんが うまく 見えなかったよ。あかるい つうがくろの しゃしんで もういちど ためしてね。",
+  ai_error: "いま うまく しらべられなかったよ。もういちど ためしてね。",
+  parse_error: "いま うまく しらべられなかったよ。もういちど ためしてね。",
+}
+
+/**
+ * 近隣事故傾向に合うガイドクイズを優先しつつ、最大 max 問を選ぶ。
+ * 偽の写真上ターゲットは出さない(quiz のみ)。
+ * seed(呼び出し側の sessionId 等)を変えると、正解の表示位置が変わる。
+ * 省略時は固定文字列を使うため、同じ質問バンクでは常に同じ回転になる
+ * (テスト/呼び出し元がまだ sessionId を持たない場合の後方互換)。
+ */
+export function selectGuideQuiz(
+  accident: HunterAccidentSummary | null,
+  max = 3,
+  seed?: string,
+): HunterQuizItem[] {
+  const priorityKind: HunterDangerKind | null = accident?.hasData
+    ? accidentTypeToKind(accident.topAccidentType)
+    : null
+
+  const ordered = GUIDE_QUIZ_SEEDS.slice().sort((a, b) => {
+    const aMatch = priorityKind && a.kind === priorityKind ? 0 : 1
+    const bMatch = priorityKind && b.kind === priorityKind ? 0 : 1
+    return aMatch - bMatch
+  })
+
+  const seedPrefix = seed && seed.trim().length > 0 ? seed : "guide"
+  return ordered.slice(0, Math.max(1, max)).map((guideSeed) => seedToItem(guideSeed, seedPrefix))
+}
+
+/**
+ * ガイドモードの解析結果を組み立てる。写真上に偽の危険は置かない。
+ * safePoints があれば逆モード(安全さがし)用に引き継ぐ(empty 時のみ意味を持つ)。
+ * seed(呼び出し側の sessionId)を渡すと、ガイドクイズの正解位置がセッションごとに
+ * 変わる(省略時は固定回転になり、毎回同じ位置が記憶されてしまう)。
+ */
+export function buildGuideMode(
+  accident: HunterAccidentSummary | null,
+  reason: HunterFallbackReason,
+  safePoints: readonly HunterSafePoint[] = [],
+  seed?: string,
+): HunterAnalyzeResult {
+  return {
+    mode: "guide",
+    hazards: [],
+    quiz: selectGuideQuiz(accident, 3, seed),
+    safePoints,
+    noHazardFollow: GUIDE_COPY_BY_REASON[reason],
+    usedFallback: true,
+    fallbackReason: reason,
+  }
 }

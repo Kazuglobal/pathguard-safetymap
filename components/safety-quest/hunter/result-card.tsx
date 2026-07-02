@@ -21,13 +21,13 @@ export interface ResultCardProps {
 
 const C = tokens.color
 
-/** お祝いメッセージ: 発見率で言葉を変える（どの結果でも前向き）。 */
+/** お祝いメッセージ: 「気づく目」を育てる前向きさ。断定・競争表現は使わない。 */
 function celebrationMessage(matches: number, total: number): string {
   if (total <= 0) return "プレイしてくれて ありがとう！"
-  if (matches >= total) return "ぜんぶ 見つけたよ！ きけんハンター めいじん！"
-  if (matches >= Math.ceil(total / 2)) return "すごい！ たくさん 見つけられたね！"
-  if (matches > 0) return "やったね！ きけんを 見つけられたよ！"
-  return "チャレンジ できたね！ つぎは いっしょに さがそう！"
+  if (matches >= total) return "ぜんぶ きづけたね！ すごい目だね！"
+  if (matches >= Math.ceil(total / 2)) return "たくさん きづけたね！ いい目だね！"
+  if (matches > 0) return "あぶないところに きづけたね！"
+  return "チャレンジ できたね！ つぎも いっしょに さがそう！"
 }
 
 /** 達成段階（0〜3）。点数ではなく「成長」を星であらわす。 */
@@ -50,8 +50,8 @@ interface Badge {
 function badgeFor(stars: number): Badge {
   if (stars >= 3) {
     return {
-      label: "めいじんバッジ",
-      caption: "ぜんぶ 見つけた すごい目！",
+      label: "きづきバッジ",
+      caption: "たくさん きづけた すごい目！",
       gradient: tokens.gradient.treasure,
     }
   }
@@ -144,18 +144,18 @@ export function ResultCard(props: ResultCardProps) {
           {/* 達成の星（1〜3） */}
           <StarRow stars={stars} />
 
-          {/* スコア（ヒーロー数値） */}
-          <div className="mt-3 flex items-end justify-center gap-2">
+          {/* スコアは主役にしない(小さめ・点取りゲーム化を避ける) */}
+          <div className="mt-2 flex items-end justify-center gap-1.5">
             <span
-              className="text-6xl font-extrabold leading-none tabular-nums sm:text-7xl"
-              style={{ color: C.warning, textShadow: "0 3px 10px rgba(11,37,81,.35)" }}
+              className="text-3xl font-extrabold leading-none tabular-nums sm:text-4xl"
+              style={{ color: C.warning }}
               aria-hidden="true"
             >
               {score}
             </span>
-            <span className="pb-1 text-2xl font-extrabold text-white/90">pt</span>
+            <span className="pb-0.5 text-base font-extrabold text-white/90">がんばりポイント</span>
           </div>
-          <p className="sr-only">スコアは {score} ポイントです</p>
+          <p className="sr-only">がんばりポイントは {score} です</p>
 
           {/* ごほうびバッジ */}
           <BadgeChip badge={badge} reduce={reduce ?? false} />
@@ -199,7 +199,7 @@ export function ResultCard(props: ResultCardProps) {
                 className="rounded-[20px] bg-[#FFF8EF] p-3.5"
                 style={{ boxShadow: tokens.shadow.soft, borderLeft: `5px solid ${C.warning}` }}
               >
-                <p className="flex items-center gap-2">
+                <p className="flex flex-wrap items-center gap-2">
                   <span
                     className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
                     style={{ background: C.success }}
@@ -210,6 +210,14 @@ export function ResultCard(props: ResultCardProps) {
                   <span className="font-extrabold" style={{ color: C.ink }}>
                     <RubyText text={h.type} />
                   </span>
+                  {h.accidentLink ? (
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white"
+                      style={{ background: C.accent }}
+                    >
+                      <RubyText text={h.accidentLink} />
+                    </span>
+                  ) : null}
                   <span
                     className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white"
                     style={{ background: C.success }}
@@ -217,8 +225,13 @@ export function ResultCard(props: ResultCardProps) {
                     みつけた！
                   </span>
                 </p>
+                {/* なぜ気をつけるか(この写真固有の理由) */}
+                <p className="mt-2 text-sm font-bold leading-relaxed" style={{ color: C.ink }}>
+                  <span aria-hidden="true">👀 </span>
+                  <RubyText text={h.kidExplanation} />
+                </p>
                 <p
-                  className="mt-2 text-sm font-bold leading-relaxed"
+                  className="mt-1.5 text-sm font-bold leading-relaxed"
                   style={{ color: C.ink }}
                 >
                   <span aria-hidden="true">🛡 </span>

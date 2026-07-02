@@ -5,7 +5,7 @@ import dotenv from "dotenv"
 dotenv.config({ path: ".env.local" })
 
 const API_KEY = process.env.GEMINI_API_KEY
-const MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview"
+const MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-lite-image"
 
 console.log(`API Key loaded: ${API_KEY ? "Yes" : "No"}`)
 console.log(`Model: ${MODEL}`)

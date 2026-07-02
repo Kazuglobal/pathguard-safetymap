@@ -6,10 +6,12 @@
 
 import { z } from "zod"
 
+import { KID_DANGER_KINDS } from "@/lib/hunter/kid-copy"
 import type {
   HunterAccidentSummary,
   HunterHazard,
   HunterQuizAnswer,
+  HunterQuizItem,
   HunterTap,
 } from "@/lib/hunter/types"
 
@@ -35,11 +37,32 @@ export const hunterHazardSchema = z.object({
   kidExplanation: z.string(),
   safeAction: z.string(),
   confidence: z.number().finite(),
+  // 後方互換: 旧クライアント/テストの hazard リテラルが壊れないよう任意。
+  kind: z.enum(KID_DANGER_KINDS).optional(),
+  accidentLink: z.string().nullable().optional(),
 })
 
 export const hunterTapSchema = z.object({
   x: z.number().gte(0).lte(1),
   y: z.number().gte(0).lte(1),
+})
+
+export const hunterQuizChoiceSchema = z.object({
+  id: z.string().min(1),
+  label: z.string(),
+})
+
+export const hunterQuizItemSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["place", "choice"]),
+  theme: z.string().nullable(),
+  question: z.string(),
+  choices: z.array(hunterQuizChoiceSchema).max(6).optional(),
+  correctChoiceId: z.string().optional(),
+  answerHazardId: z.string().optional(),
+  answerRegion: hunterRegionSchema.optional(),
+  explanation: z.string(),
+  accidentLink: z.string().nullable().optional(),
 })
 
 /**
@@ -76,15 +99,42 @@ export const hunterQuizAnswerSchema = z.object({
 /**
  * /api/hunter/session の入力 (サーバ再採点)。
  * explore: hazards + taps を再採点。
- * quiz: hazards + accident から出題を再生成し answers を採点（クライアント点数を信用しない）。
+ * quiz: クライアントが表示したのと同一の items を送り、answers を再採点する。
+ *
+ * 注(トラスト境界): Phase0 は保存なし=ステートレスのため、hazards/items の「定義」は
+ * クライアント供給であり、サーバは点数を信用せず定義から決定的に再採点するが、
+ * 正解鍵自体がクライアント由来である以上、厳密なトラスト境界ではない(改ざん可能)。
+ * 保存/順位/恒久報酬が無いため Phase0 では実害なし。Phase1 で匿名サーバキャッシュへ格上げ。
  */
-export const hunterSessionSchema = z.object({
-  mode: z.enum(["explore", "quiz"]),
-  hazards: z.array(hunterHazardSchema).max(50).optional(),
-  taps: z.array(hunterTapSchema).max(200).optional(),
-  accident: hunterAccidentSummarySchema.optional(),
-  answers: z.array(hunterQuizAnswerSchema).max(50).optional(),
-})
+export const hunterSessionSchema = z
+  .object({
+    mode: z.enum(["explore", "quiz"]),
+    hazards: z.array(hunterHazardSchema).max(50).optional(),
+    taps: z.array(hunterTapSchema).max(200).optional(),
+    accident: hunterAccidentSummarySchema.optional(),
+    items: z.array(hunterQuizItemSchema).max(20).optional(),
+    answers: z.array(hunterQuizAnswerSchema).max(50).optional(),
+    sessionId: z.string().max(100).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === "quiz") {
+      if (!data.items || data.items.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "クイズの採点に必要な出題がありません",
+          path: ["items"],
+        })
+      }
+    } else if (data.mode === "explore") {
+      if (!data.hazards || data.hazards.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "採点に必要な危険ポイントがありません",
+          path: ["hazards"],
+        })
+      }
+    }
+  })
 
 // z.infer はこの環境で全フィールドを optional 推論するため、明示的 interface を使う。
 // ランタイム検証は zod、型は下記 interface（検証後にキャスト）。
@@ -100,7 +150,9 @@ export interface HunterSessionInput {
   hazards?: HunterHazard[]
   taps?: HunterTap[]
   accident?: HunterAccidentSummary
+  items?: HunterQuizItem[]
   answers?: HunterQuizAnswer[]
+  sessionId?: string
 }
 
 // strictNullChecks:false では判別共用体の絞り込みが効かないため、単一形状にする。

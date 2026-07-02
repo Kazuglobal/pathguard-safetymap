@@ -38,6 +38,8 @@ const IMAGE_GENERATION_ESTIMATED_COST_PER_REQUEST_USD = {
   'gemini-2.5-flash-image': 0.04,
   'gemini-3-pro-image-preview': 0.04,
   'gemini-3.1-flash-image-preview': 0.04,
+  // Nano Banana 2 Lite: $0.0336 per 1K-resolution image (Gemini API standard pricing).
+  'gemini-3.1-flash-lite-image': 0.0336,
   // Fallback only when the provider response does not include token usage.
   'gpt-image-2': 0.053,
   'gpt-image-1': 0.042,

@@ -55,9 +55,20 @@ function extractFirstJson(text: string): any {
 
 // ---- Gemini API 共通呼び出し ----
 
-async function callGeminiVision(
+/** generateContent の generationConfig (呼び出し側ごとに必要な分だけ指定)。 */
+export interface GeminiVisionGenerationConfig {
+  /** 低いほど決定的・保守的(構造化検出向け)。未指定ならAPI既定値。 */
+  readonly temperature?: number
+  /** "application/json" を指定すると応答がJSONのみに強制される。 */
+  readonly responseMimeType?: string
+  /** Gemini Schema形式(type は "OBJECT"/"STRING" 等の大文字)。responseMimeTypeと併用。 */
+  readonly responseSchema?: Record<string, unknown>
+}
+
+export async function callGeminiVision(
   imageBase64OrDataUrl: string,
-  prompt: string
+  prompt: string,
+  generationConfig?: GeminiVisionGenerationConfig
 ): Promise<string> {
   if (!imageBase64OrDataUrl || imageBase64OrDataUrl.length < 50) {
     throw new Error("画像データが不足しています")
@@ -86,12 +97,23 @@ async function callGeminiVision(
     { text: prompt },
   ]
 
+  const requestBody: Record<string, unknown> = {
+    contents: [{ role: "user", parts }],
+    ...(generationConfig && {
+      generationConfig: {
+        ...(generationConfig.temperature !== undefined && { temperature: generationConfig.temperature }),
+        ...(generationConfig.responseMimeType && { responseMimeType: generationConfig.responseMimeType }),
+        ...(generationConfig.responseSchema && { responseSchema: generationConfig.responseSchema }),
+      },
+    }),
+  }
+
   const res = await fetch(
     `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ role: "user", parts }] }),
+      body: JSON.stringify(requestBody),
     }
   )
 
