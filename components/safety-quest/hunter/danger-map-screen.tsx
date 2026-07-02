@@ -30,6 +30,18 @@ interface HunterPhoto {
   retentionUntil: string | null
   createdAt: string
   signedUrl: string | null
+  /** みつけた危険の種類(チップ表示)。 */
+  dangers?: string[]
+  /** 最大 severity(ピンの色分け)。 */
+  topSeverity?: string | null
+}
+
+/** severity → ピン/チップの色。 */
+function severityColor(severity: string | null | undefined): string {
+  if (severity === "high") return C.danger
+  if (severity === "medium") return C.warning
+  if (severity === "low") return C.primary
+  return C.primary
 }
 
 type Status = "loading" | "ready" | "error"
@@ -221,7 +233,7 @@ export function DangerMapScreen({
                   style={{
                     height: p.id === activeId ? 44 : 36,
                     width: p.id === activeId ? 44 : 36,
-                    background: p.id === activeId ? C.accent : C.primary,
+                    background: p.id === activeId ? C.accent : severityColor(p.topSeverity),
                     boxShadow: `0 0 0 3px #fff, ${tokens.shadow.card}`,
                   }}
                 >
@@ -347,7 +359,7 @@ function PhotoRow({
           )}
         </button>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="truncate text-[14px] font-extrabold" style={{ color: C.ink }}>
             {dateText}
           </span>
@@ -355,6 +367,19 @@ function PhotoRow({
             <MapPin className="h-3.5 w-3.5" aria-hidden="true" style={{ color: hasPin ? C.primary : C.inkSoft }} />
             {hasPin ? "ばしょ あり" : "ばしょ なし"}
           </span>
+          {photo.dangers && photo.dangers.length > 0 ? (
+            <span className="flex flex-wrap gap-1">
+              {photo.dangers.map((d, i) => (
+                <span
+                  key={i}
+                  className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white"
+                  style={{ background: severityColor(photo.topSeverity) }}
+                >
+                  <RubyText text={d} />
+                </span>
+              ))}
+            </span>
+          ) : null}
         </div>
 
         {confirming ? (

@@ -1,0 +1,23 @@
+{
+  "version": "hunter-1",
+  "imageUsable": true,
+  "dangerPoints": [
+    {
+      "kind": "popout_spot",
+      "kidType": "popout area",
+      "region": { "x": 0.4, "y": 0.4, "w": 0.2, "h": 0.2 },
+      "severity": "high",
+      "confidence": 0.8,
+      "whyDangerous": "a car may pop out here",
+      "safeAction": "stop and check both ways",
+      "accidentLink": "飛び出し",
+      "quiz": {
+        "question": "車の かげの そばでは？",
+        "choices": ["ゆっくり 見る", "はしって ぬける", "目を つぶる", "おとだけで すすむ"],
+        "explanation": "出てこないか 見てね。"
+      }
+    }
+  ],
+  "safePoints": [],
+  "noHazardFollow": null
+}

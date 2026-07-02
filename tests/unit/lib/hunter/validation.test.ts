@@ -4,12 +4,28 @@ import { parseAnalyzeBody, parseSessionBody } from "@/lib/hunter/validation"
 
 const validHazard = {
   id: "s-0-0",
-  type: "きけんなもの",
+  type: "見通しの悪い角",
   region: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 },
   severity: "high",
   kidExplanation: "あぶないよ",
   safeAction: "気をつけよう",
   confidence: 0.8,
+  kind: "blind_corner",
+  accidentLink: "出会い頭",
+}
+
+const validQuizItem = {
+  id: "q-choice-0",
+  kind: "choice",
+  theme: null,
+  question: "どうする？",
+  choices: [
+    { id: "c0", label: "止まる" },
+    { id: "c1", label: "走る" },
+  ],
+  correctChoiceId: "c0",
+  explanation: "とまろう",
+  accidentLink: null,
 }
 
 describe("parseAnalyzeBody", () => {
@@ -69,23 +85,31 @@ describe("parseSessionBody", () => {
     expect(res.ok).toBe(true)
   })
 
-  it("accepts a quiz-mode session", () => {
+  it("accepts a quiz-mode session with items", () => {
     const res = parseSessionBody({
       mode: "quiz",
+      items: [validQuizItem],
+      answers: [{ itemId: "q-choice-0", choiceId: "c0" }],
+      sessionId: "sess-123",
+    })
+    expect(res.ok).toBe(true)
+  })
+
+  it("rejects a quiz-mode session with no items", () => {
+    const res = parseSessionBody({ mode: "quiz", answers: [] })
+    expect(res.ok).toBe(false)
+  })
+
+  it("rejects an explore-mode session with no hazards", () => {
+    const res = parseSessionBody({ mode: "explore", hazards: [], taps: [] })
+    expect(res.ok).toBe(false)
+  })
+
+  it("accepts a hazard carrying optional kind and accidentLink", () => {
+    const res = parseSessionBody({
+      mode: "explore",
       hazards: [validHazard],
-      accident: {
-        hasData: true,
-        riskScore: 50,
-        riskLevel: "high",
-        riskLabel: "危険",
-        riskEmoji: "🟠",
-        totalAccidents: 5,
-        childInvolved: 1,
-        topAccidentType: "出会い頭",
-        peakTimeSlot: null,
-        kidMessage: "気をつけよう",
-      },
-      answers: [{ itemId: "q-place-0", tap: { x: 0.4, y: 0.4 } }],
+      taps: [],
     })
     expect(res.ok).toBe(true)
   })

@@ -27,7 +27,7 @@ export async function GET(_request: NextRequest) {
   const { data: rows, error: selectError } = await supabase
     .from("hunter_photos")
     .select(
-      "id, image_path, pin_lat, pin_lng, captured_at, masked, retention_until, created_at",
+      "id, image_path, pin_lat, pin_lng, captured_at, masked, retention_until, created_at, hazard_detections(type, kind, severity)",
     )
     .eq("player_id", user.id)
     .order("created_at", { ascending: false })
@@ -49,6 +49,7 @@ export async function GET(_request: NextRequest) {
       const signedUrl = row.image_path
         ? await createPhotoSignedUrl(supabase, row.image_path)
         : null
+      const { dangers, topSeverity } = summarizeDangers(row.hazard_detections)
       return {
         id: row.id,
         pinLat: row.pin_lat,
@@ -58,9 +59,37 @@ export async function GET(_request: NextRequest) {
         retentionUntil: row.retention_until,
         createdAt: row.created_at,
         signedUrl,
+        // みつけた危険の種類(危険マップのチップ用)。重複は除く。
+        dangers,
+        topSeverity,
       }
     }),
   )
 
   return NextResponse.json({ photos }, { status: 200 })
+}
+
+const SEVERITY_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 }
+
+/** 写真に紐づく hazard_detections を「種類リスト + 最大severity」へ集約する。 */
+function summarizeDangers(
+  raw: unknown,
+): { dangers: string[]; topSeverity: string | null } {
+  const detections = Array.isArray(raw)
+    ? (raw as Array<{ type?: unknown; severity?: unknown }>)
+    : []
+  const dangers: string[] = []
+  let topSeverity: string | null = null
+  let topRank = 0
+  for (const det of detections) {
+    const type = typeof det?.type === "string" ? det.type : null
+    if (type && !dangers.includes(type)) dangers.push(type)
+    const sev = typeof det?.severity === "string" ? det.severity : null
+    const rank = sev ? (SEVERITY_RANK[sev] ?? 0) : 0
+    if (rank > topRank) {
+      topRank = rank
+      topSeverity = sev
+    }
+  }
+  return { dangers: dangers.slice(0, 4), topSeverity }
 }

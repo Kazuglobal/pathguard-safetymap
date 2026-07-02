@@ -17,6 +17,12 @@ export const FURIGANA_DICT: Readonly<Record<string, string>> = {
   左折: "させつ",
   追越: "おいこし",
   追抜: "おいぬき",
+  // KID_ACCIDENT_LABELS(accident-context.ts)の表示文は「追い越し/追い抜き」と
+  // 送り仮名入りで書かれるため、上の(送り仮名なし)エントリでは一致しない。
+  // 「追」だけを辞書化すると「追突(ついとつ)」等と読みが競合するため、
+  // 送り仮名込みの複合語として個別に登録する。
+  追い越し: "おいこし",
+  追い抜き: "おいぬき",
   進路変更: "しんろへんこう",
   横断中: "おうだんちゅう",
   横断: "おうだん",
@@ -43,6 +49,10 @@ export const FURIGANA_DICT: Readonly<Record<string, string>> = {
   物陰: "ものかげ",
   角: "かど",
   車: "くるま",
+  水: "みず",
+  雨: "あめ",
+  上: "うえ",
+  日: "ひ",
   写真: "しゃしん",
   地図: "ちず",
   場所: "ばしょ",
@@ -102,15 +112,24 @@ export const FURIGANA_DICT: Readonly<Record<string, string>> = {
   合: "あ",
   落: "お",
   外: "そと",
+  // 「外」「進」は単独では上のとおり(そと/すす)だが、KID_ACCIDENT_LABELS
+  // (accident-context.ts)の「道から外れる事故」「進路を変える事故」に含まれる
+  // 「外れる」「進路」はそれぞれ「はずれる」「しんろ」と読む(誤読の同形異音語)。
+  // 最長一致(SORTED_KEYS)で下の複合語エントリを優先させ、誤読を防ぐ。
+  外れる: "はずれる",
+  進路: "しんろ",
   転: "ころ",
   背: "せ",
   越: "こ",
   抜: "ぬ",
+  違: "ちが",
   変: "か",
   近: "ちか",
   出: "で",
   気: "き",
   物: "もの",
+  // KID_ACCIDENT_LABELS の「向かい合って歩く」「背を向けて歩く」で使う(向かう/向ける)。
+  向: "む",
 }
 
 const SORTED_KEYS: readonly string[] = Object.keys(FURIGANA_DICT).sort(

@@ -14,15 +14,18 @@ import {
   Map as MapIcon,
   Save,
   Search,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react"
 
 import { judgeTap } from "@/lib/hunter/scoring"
-import { buildQuizItems } from "@/lib/hunter/quiz"
 import type {
   HunterAccidentSummary,
+  HunterAnalysisMode,
   HunterHazard,
   HunterQuizAnswer,
+  HunterQuizItem,
+  HunterSafePoint,
   HunterTap,
   HunterTapOutcome,
 } from "@/lib/hunter/types"
@@ -30,6 +33,7 @@ import type {
 import { CareCard } from "./care-card"
 import { DangerMapScreen } from "./danger-map-screen"
 import { ExploreCanvas } from "./explore-canvas"
+import { SafeHuntCanvas } from "./safe-hunt-canvas"
 import { LocationPinPicker } from "./location-pin-picker"
 import { MaskConfirm } from "./mask-confirm"
 import { HunterQuizPanel } from "./quiz-panel"
@@ -53,6 +57,7 @@ type Screen =
   | "mode"
   | "explore"
   | "quiz"
+  | "safe"
   | "result"
   | "records"
 
@@ -80,8 +85,14 @@ export function HunterGame() {
   const [pin, setPin] = useState<Pin | null>(null)
   const [hazards, setHazards] = useState<readonly HunterHazard[]>([])
   const [accident, setAccident] = useState<HunterAccidentSummary | null>(null)
+  const [quiz, setQuiz] = useState<readonly HunterQuizItem[]>([])
+  const [safePoints, setSafePoints] = useState<readonly HunterSafePoint[]>([])
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [analysisMode, setAnalysisMode] = useState<HunterAnalysisMode>("explore")
+  const [noHazardFollow, setNoHazardFollow] = useState<string | null>(null)
   const [foundIds, setFoundIds] = useState<string[]>([])
   const [taps, setTaps] = useState<HunterTap[]>([])
+  const [lastTap, setLastTap] = useState<{ x: number; y: number } | null>(null)
   const [lastOutcome, setLastOutcome] = useState<HunterTapOutcome | null>(null)
   const [result, setResult] = useState<SessionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -95,14 +106,12 @@ export function HunterGame() {
 
   const reduce = useReducedMotion()
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
-  const quizItems = useMemo(
-    () => (accident ? buildQuizItems(hazards, accident) : []),
-    [hazards, accident],
-  )
+  const quizItems = quiz
 
   const resetPlay = useCallback(() => {
     setFoundIds([])
     setTaps([])
+    setLastTap(null)
     setLastOutcome(null)
     setResult(null)
   }, [])
@@ -114,6 +123,11 @@ export function HunterGame() {
     setPin(null)
     setHazards([])
     setAccident(null)
+    setQuiz([])
+    setSafePoints([])
+    setSessionId(null)
+    setAnalysisMode("explore")
+    setNoHazardFollow(null)
     setError(null)
   }, [resetPlay])
 
@@ -149,8 +163,13 @@ export function HunterGame() {
         }
         setHazards(body.hazards ?? [])
         setAccident(body.accident ?? null)
+        setQuiz(body.quiz ?? [])
+        setSafePoints(body.safePoints ?? [])
+        setSessionId(body.sessionId ?? null)
+        setAnalysisMode(body.mode === "guide" ? "guide" : "explore")
+        setNoHazardFollow(body.noHazardFollow ?? null)
         // 保存をたのんだときだけ、結果の控えめな通知を出す（ゲームは止めない）。
-        if (save) {
+        if (save && body.mode === "explore") {
           setSaveNotice(body.savedError ? "error" : "ok")
         }
         resetPlay()
@@ -170,6 +189,7 @@ export function HunterGame() {
     // 自動終了時は nextTaps を直接 finishSession へ渡す（stale closure 回避）。
     const nextTaps = [...taps, tap]
     setTaps(nextTaps)
+    setLastTap(tap)
     const outcome = judgeTap(tap, hazards, foundSet)
     setLastOutcome(outcome)
     if (outcome.result === "hit" && outcome.hazardId) {
@@ -188,7 +208,7 @@ export function HunterGame() {
         const response = await fetch("/api/hunter/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "explore", hazards, taps: sessionTaps }),
+          body: JSON.stringify({ mode: "explore", hazards, taps: sessionTaps, sessionId }),
         })
         const body = await response.json().catch(() => null)
         if (response.ok && body) {
@@ -208,7 +228,7 @@ export function HunterGame() {
         setScreen("result")
       }
     },
-    [hazards],
+    [hazards, sessionId],
   )
 
   const finishQuizSession = useCallback(
@@ -218,7 +238,7 @@ export function HunterGame() {
         const response = await fetch("/api/hunter/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "quiz", hazards, accident, answers }),
+          body: JSON.stringify({ mode: "quiz", items: quizItems, answers, sessionId }),
         })
         const body = await response.json().catch(() => null)
         if (response.ok && body) {
@@ -238,7 +258,7 @@ export function HunterGame() {
         setScreen("result")
       }
     },
-    [hazards, accident, quizItems],
+    [quizItems, sessionId],
   )
 
   // 発見（hit）時に お祝い演出を出す（ハンドラ挙動は変えず lastOutcome を監視）
@@ -346,6 +366,9 @@ export function HunterGame() {
       <ModeSelectScreen
         accident={accident}
         canQuiz={quizItems.length > 0}
+        analysisMode={analysisMode}
+        noHazardFollow={noHazardFollow}
+        safeCount={safePoints.length}
         onExplore={() => {
           setMode("explore")
           resetPlay()
@@ -355,6 +378,7 @@ export function HunterGame() {
           setMode("quiz")
           setScreen("quiz")
         }}
+        onSafeHunt={() => setScreen("safe")}
       />
     )
   } else if (screen === "quiz" && maskedUrl) {
@@ -368,6 +392,16 @@ export function HunterGame() {
           onComplete={(answers) => void finishQuizSession(answers)}
         />
       </div>
+    )
+  } else if (screen === "safe" && maskedUrl) {
+    title = "安全さがし"
+    onBack = () => setScreen("mode")
+    content = (
+      <SafeHuntCanvas
+        imageUrl={maskedUrl}
+        safePoints={safePoints}
+        onDone={() => setScreen("mode")}
+      />
     )
   } else if (screen === "explore" && maskedUrl) {
     title = "さがそう！"
@@ -389,6 +423,7 @@ export function HunterGame() {
           hazards={hazards}
           foundIds={foundIds}
           onTap={handleTap}
+          lastTap={lastTap}
           lastOutcome={lastOutcome}
         />
         <div
@@ -559,22 +594,45 @@ function ModeCard({
 function ModeSelectScreen({
   accident,
   canQuiz,
+  analysisMode,
+  noHazardFollow,
+  safeCount,
   onExplore,
   onQuiz,
+  onSafeHunt,
 }: {
   accident: HunterAccidentSummary | null
   canQuiz: boolean
+  analysisMode: HunterAnalysisMode
+  noHazardFollow: string | null
+  safeCount: number
   onExplore: () => void
   onQuiz: () => void
+  onSafeHunt: () => void
 }) {
+  const isGuide = analysisMode === "guide"
   return (
     <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
       <div className="flex items-center gap-2.5">
         <Mascot size="sm" mood="happy" />
         <h2 className="text-[20px] font-extrabold" style={{ color: C.ink }}>
-          どっちで あそぶ？
+          {isGuide ? "クイズで れんしゅうしよう！" : "どっちで あそぶ？"}
         </h2>
       </div>
+
+      {/* ガイドモード: 偽の達成を出さず、肯定フォロー文を見せる */}
+      {isGuide && noHazardFollow ? (
+        <div
+          className="flex items-start gap-2.5 rounded-[20px] px-4 py-3.5"
+          style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
+        >
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0" style={{ color: C.accent }} aria-hidden="true" />
+          <p className="text-[15px] font-bold leading-relaxed" style={{ color: C.ink }}>
+            <R k="豆知識" y="まめちしき" />
+            ：{noHazardFollow}
+          </p>
+        </div>
+      ) : null}
 
       {accident && <CareCard accident={accident} />}
 
@@ -582,18 +640,32 @@ function ModeSelectScreen({
         <ModeCard
           icon={<Search className="h-6 w-6" />}
           title="たんけんモード"
-          desc="じぶんで あぶないところを さがそう"
+          desc={
+            isGuide
+              ? "このしゃしんでは あぶないところが 見つからなかったよ"
+              : "じぶんで あぶないところを さがそう"
+          }
           onClick={onExplore}
+          disabled={isGuide}
           bg={C.primary}
         />
         <ModeCard
           icon={<Lightbulb className="h-6 w-6" />}
           title="クイズモード"
-          desc="この あたりの 事故から クイズに こたえよう"
+          desc="あんぜんな あるきかたを クイズで まなぼう"
           onClick={onQuiz}
           disabled={!canQuiz}
           bg={C.accent}
         />
+        {safeCount > 0 ? (
+          <ModeCard
+            icon={<ShieldCheck className="h-6 w-6" />}
+            title="安全さがし"
+            desc="この みちの あんぜんの くふうを さがそう"
+            onClick={onSafeHunt}
+            bg={C.success}
+          />
+        ) : null}
       </div>
     </div>
   )

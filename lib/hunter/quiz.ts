@@ -1,14 +1,17 @@
 // =============================================
-// きけんハンター AIクイズモード ロジック (Phase 2 / 設計書 モードB)
-// 事故傾向 + AI検出から、出題と採点を行う純粋ロジック。
+// きけんハンター AIクイズモード ロジック
+// 専用ハンターAIが各危険ポイントに同梱した「設問・妥当な誤答・解説」を、
+// 写真連動の良問(HunterQuizItem)へ変換し、サーバ再採点と整合させる。
+// 固定テンプレ依存(写真非連動)は撤去し、ガイド用バンクへ降格した。
 // =============================================
 
 import { kidAccidentLabel } from "./accident-context"
+import { buildRotatedChoices } from "./quiz-choices"
+import type { RawAiQuiz } from "@/lib/hunter/ai-schema"
 import type {
   HunterAccidentSummary,
   HunterHazard,
   HunterQuizAnswer,
-  HunterQuizChoice,
   HunterQuizItem,
   HunterQuizOutcome,
   HunterQuizResult,
@@ -17,62 +20,17 @@ import type {
 } from "./types"
 
 const QUIZ_POINTS = 100
-/** place 問題の当たり判定マージン（exploreと同様に少し広め） */
-const PLACE_NEAR_MARGIN = 0.06
-const DEFAULT_MAX_ITEMS = 3
+/** place 問題の当たり判定マージン(探索の HIT_MARGIN と同じ寛容さ)。 */
+export const PLACE_NEAR_MARGIN = 0.1
+/** 1セッションの最大出題数(低学年の集中時間に配慮)。 */
+export const MAX_QUIZ = 3
+/** place(写真タップ)へ昇格する最低 confidence。 */
+const PLACE_CONF_MIN = 0.7
+/** place へ昇格する region 面積の範囲(小さすぎ/大きすぎは choice 据置)。 */
+const PLACE_AREA_MIN = 0.02
+const PLACE_AREA_MAX = 0.35
 
-// ---- 4択テンプレート（事故タイプのキーワードで選ぶ） ----
-
-interface ChoiceTemplate {
-  readonly keywords: readonly string[]
-  readonly question: string
-  readonly correct: string
-  readonly distractors: readonly [string, string, string]
-}
-
-const CHOICE_TEMPLATES: readonly ChoiceTemplate[] = [
-  {
-    keywords: ["出会い", "見通", "交差", "出合"],
-    question: "見通しの悪い角ではどうする？",
-    correct: "止まって左右をよく見る",
-    distractors: ["走って進む", "スマホを見ながら歩く", "車は来ないと決めつける"],
-  },
-  {
-    keywords: ["横断", "歩行"],
-    question: "道路を渡るときはどうする？",
-    correct: "手をあげて左右を見てから渡る",
-    distractors: ["ななめに渡る", "車の前を走る", "下を向いて渡る"],
-  },
-  {
-    keywords: ["飛び出", "とびだし", "飛出"],
-    question: "物陰があるときはどうする？",
-    correct: "止まって車が来ないか確かめる",
-    distractors: ["いきおいよく飛び出す", "目をつぶって進む", "音だけで決める"],
-  },
-  {
-    keywords: ["右折", "左折", "まがり", "曲"],
-    question: "車が曲がってくる角ではどうする？",
-    correct: "車と目を合わせて待ってもらう",
-    distractors: ["車は止まると信じる", "急いで渡る", "後ろを向いて歩く"],
-  },
-]
-
-const DEFAULT_TEMPLATE: ChoiceTemplate = {
-  keywords: [],
-  question: "安全に歩くにはどうする？",
-  correct: "まわりをよく見て歩く",
-  distractors: ["走りながらスマホを見る", "車道の真ん中を歩く", "左右を見ないで進む"],
-}
-
-function pickChoiceTemplate(theme: string | null): ChoiceTemplate {
-  if (!theme) return DEFAULT_TEMPLATE
-  return (
-    CHOICE_TEMPLATES.find((t) => t.keywords.some((k) => theme.includes(k))) ??
-    DEFAULT_TEMPLATE
-  )
-}
-
-/** 事故データに基づく「リアリティの一言」（断定しない・件数と種類のみ） */
+/** 事故データに基づく「リアリティの一言」(断定しない・件数と種類のみ)。 */
 function realityLine(accident: HunterAccidentSummary): string {
   if (!accident.hasData) return ""
   if (accident.childInvolved > 0) {
@@ -84,71 +42,89 @@ function realityLine(accident: HunterAccidentSummary): string {
   return `じつは このあたりでは 「${kidAccidentLabel(accident.topAccidentType)}」が ${accident.totalAccidents}件 あったよ。`
 }
 
-/** 正解を含む4択を、item ごとに決定的な位置へ配置（ランダム非使用） */
-function buildChoices(
-  template: ChoiceTemplate,
-  rotation: number,
-): { choices: HunterQuizChoice[]; correctChoiceId: string } {
-  const labels = [template.correct, ...template.distractors]
-  const correctId = "c0"
-  // ラベルに安定IDを付与（c0 が正解）
-  const withIds: HunterQuizChoice[] = labels.map((label, i) => ({ id: `c${i}`, label }))
-  // 正解が毎回同じ位置に来ないよう、決定的に回転させる
-  const shift = ((rotation % withIds.length) + withIds.length) % withIds.length
-  const rotated = withIds.slice(shift).concat(withIds.slice(0, shift))
-  return { choices: rotated, correctChoiceId: correctId }
+function withReality(base: string, reality: string): string {
+  return reality ? `${base} ${reality}` : base
+}
+
+function regionArea(region: HunterRegion): number {
+  return region.w * region.h
+}
+
+function isPlaceEligible(hazard: HunterHazard): boolean {
+  if (hazard.confidence < PLACE_CONF_MIN) return false
+  const area = regionArea(hazard.region)
+  return area >= PLACE_AREA_MIN && area <= PLACE_AREA_MAX
+}
+
+function themeFor(
+  hazard: HunterHazard,
+  accident?: HunterAccidentSummary,
+): string | null {
+  // hazard.accidentLink は sanitizeDangerPoints で既に kidAccidentLabel を通過済み
+  // (子ども向け語彙が保証済み)なので、ここで再度かけない(二重適用による劣化防止)。
+  if (hazard.accidentLink) return hazard.accidentLink
+  if (accident?.hasData && accident.topAccidentType) {
+    return kidAccidentLabel(accident.topAccidentType)
+  }
+  return null
 }
 
 /**
- * 出題を生成する。
- * - 写真内に危険があれば「その場所をタップ」(place)
- * - 事故データがあれば そのテーマの安全行動を問う (choice)
- * - どちらも無ければ 一般的な安全行動 (choice)
+ * 専用ハンターAI由来の危険ポイント(hazards)と、その同梱クイズ素材(materials)から
+ * 写真連動のクイズを生成する。materials[i] は hazards[i] に対応する。
+ * - 高信頼&適度な大きさの点だけ place(写真タップ)へ昇格(誤審を抑止)。
+ * - それ以外は同じ点の choice(4択)へ。各点は必ず choice 素材を持つ。
+ * - 変化をつけるため place は最大 ceil(max/2) 件。
  */
-export function buildQuizItems(
+export function buildQuizItemsFromAi(
   hazards: readonly HunterHazard[],
-  accident: HunterAccidentSummary,
-  max: number = DEFAULT_MAX_ITEMS,
+  materials: readonly RawAiQuiz[],
+  accident?: HunterAccidentSummary,
+  max: number = MAX_QUIZ,
 ): HunterQuizItem[] {
   const limit = Math.max(1, max)
+  const reality = accident ? realityLine(accident) : ""
+  const placeBudget = Math.ceil(limit / 2)
   const items: HunterQuizItem[] = []
-  const reality = realityLine(accident)
-  // rawTheme: テンプレ選択（マッチング）用の元ラベル / theme: 表示用の子ども向けラベル
-  const rawTheme = accident.topAccidentType
-  const theme = rawTheme ? kidAccidentLabel(rawTheme) : null
+  let placeCount = 0
 
-  // choice 問題を1つは入れる（テーマ駆動）。place の枠を残す。
-  const placeBudget = Math.max(1, limit - 1)
+  const count = Math.min(hazards.length, materials.length, limit)
+  for (let i = 0; i < count; i += 1) {
+    const hazard = hazards[i]
+    const material = materials[i]
+    const theme = themeFor(hazard, accident)
 
-  hazards.slice(0, placeBudget).forEach((h, i) => {
+    if (isPlaceEligible(hazard) && placeCount < placeBudget) {
+      placeCount += 1
+      items.push({
+        id: `q-place-${i}`,
+        kind: "place",
+        theme,
+        question: `「${hazard.type}」は どこかな？しゃしんを タップして さがそう！`,
+        answerHazardId: hazard.id,
+        answerRegion: hazard.region,
+        explanation: withReality(hazard.kidExplanation, reality),
+        accidentLink: hazard.accidentLink ?? null,
+      })
+      continue
+    }
+
+    // seed は hazard.id(= `${sessionId}-${i}` を含む)を使い、正解の表示位置が
+    // 写真・セッションをまたいで固定化されない(記憶で解けない)ようにする。
+    const { choices, correctChoiceId } = buildRotatedChoices(material.choices, hazard.id)
     items.push({
-      id: `q-place-${i}`,
-      kind: "place",
-      theme,
-      question: `「${h.type}」はどこかな？写真をタップしてさがそう！`,
-      answerHazardId: h.id,
-      answerRegion: h.region,
-      explanation: reality ? `${h.safeAction} ${reality}` : h.safeAction,
-    })
-  })
-
-  if (items.length < limit) {
-    const template = pickChoiceTemplate(rawTheme)
-    const { choices, correctChoiceId } = buildChoices(template, items.length + 1)
-    items.push({
-      id: `q-choice-0`,
+      id: `q-choice-${i}`,
       kind: "choice",
       theme,
-      question: template.question,
+      question: material.question,
       choices,
       correctChoiceId,
-      explanation: reality
-        ? `正解は「${template.correct}」。${reality}`
-        : `正解は「${template.correct}」だよ。`,
+      explanation: withReality(material.explanation, reality),
+      accidentLink: hazard.accidentLink ?? null,
     })
   }
 
-  return items.slice(0, limit)
+  return items
 }
 
 // ---- 採点 ----

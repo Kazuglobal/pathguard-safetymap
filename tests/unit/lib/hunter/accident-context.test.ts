@@ -3,6 +3,7 @@ import type { AccidentStats } from "@/lib/traffic-accident-data";
 import {
   buildAccidentSummary,
   buildAccidentPromptContext,
+  childRiskHint,
   extractAccidentThemes,
   kidAccidentLabel,
 } from "@/lib/hunter/accident-context";
@@ -306,6 +307,22 @@ describe("buildAccidentPromptContext", () => {
       }),
     );
     expect(context).toContain("朝の通学時間 (7-9時)");
+  });
+});
+
+describe("childRiskHint", () => {
+  it("is action-oriented and never uses the blunt '非常に危険' label", () => {
+    for (const score of [0, 10, 30, 50, 80, 100]) {
+      const hint = childRiskHint(score);
+      expect(hint.length).toBeGreaterThan(0);
+      expect(hint).not.toContain("非常に危険");
+      expect(hint).not.toContain("件");
+    }
+  });
+
+  it("escalates wording with risk score without asserting safety", () => {
+    expect(childRiskHint(60)).toContain("止まって");
+    expect(childRiskHint(0)).not.toContain("止まって");
   });
 });
 

@@ -1,17 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, Lightbulb, X } from "lucide-react"
 
 import { judgeQuizAnswer } from "@/lib/hunter/quiz"
-import type { HunterQuizAnswer, HunterQuizItem, HunterTap } from "@/lib/hunter/types"
+import type { HunterQuizAnswer, HunterQuizItem } from "@/lib/hunter/types"
+import {
+  containRect,
+  toContainerPct,
+  toImageCoords,
+  type Size,
+} from "@/lib/hunter/image-geometry"
 import { RubyText } from "./ruby-text"
 import { Mascot, PrimaryCTA, StatPill, tokens } from "./theme"
 
 const C = tokens.color
-
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 
 export interface HunterQuizPanelProps {
   items: readonly HunterQuizItem[]
@@ -26,17 +30,49 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
     null,
   )
 
+  const imageRef = useRef<HTMLDivElement>(null)
+  const [natural, setNatural] = useState<Size | null>(null)
+  const [box, setBox] = useState<Size | null>(null)
+
+  const contain = useMemo(() => {
+    if (!natural || !box) return null
+    return containRect(natural, box)
+  }, [natural, box])
+
+  // imageUrl は全問題で共通の1枚(同一 <img src>)。ここでリセットしないと 2問目以降で
+  // onLoad が再発火せず natural が null のまま固定され、place タップが恒久的に無効化される。
+  useEffect(() => {
+    setNatural(null)
+  }, [imageUrl])
+
+  useEffect(() => {
+    const el = imageRef.current
+    if (!el) return
+    const update = () => {
+      const rect = el.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) setBox({ w: rect.width, h: rect.height })
+    }
+    update()
+    if (typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [index])
+
   const item = items[index]
-  if (!item) return null
   const isLast = index >= items.length - 1
 
-  const submit = (answer: HunterQuizAnswer) => {
-    if (revealed) return
-    const outcome = judgeQuizAnswer(item, answer)
-    const nextAnswers = [...answers, answer]
-    setAnswers(nextAnswers)
-    setRevealed({ answer, correct: outcome.correct })
-  }
+  const submit = useCallback(
+    (answer: HunterQuizAnswer) => {
+      if (revealed || !item) return
+      const outcome = judgeQuizAnswer(item, answer)
+      setAnswers((prev) => [...prev, answer])
+      setRevealed({ answer, correct: outcome.correct })
+    },
+    [revealed, item],
+  )
+
+  if (!item) return null
 
   const goNext = () => {
     if (!revealed) return
@@ -49,20 +85,38 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
   }
 
   const handleImageTap = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (revealed) return
+    if (revealed || !contain) return
     const rect = e.currentTarget.getBoundingClientRect()
-    submit({
-      itemId: item.id,
-      tap: {
-        x: clamp01((e.clientX - rect.left) / rect.width),
-        y: clamp01((e.clientY - rect.top) / rect.height),
-      },
-    })
+    const rel = toImageCoords(e.clientX, e.clientY, rect, contain)
+    if (!rel) return // レターボックス上は無視
+    submit({ itemId: item.id, tap: rel })
   }
+
+  /** answerRegion 中心の枠内 % 位置。 */
+  const answerMarkerPos = () => {
+    if (!item.answerRegion) return { left: "50%", top: "50%" }
+    const center = {
+      x: item.answerRegion.x + item.answerRegion.w / 2,
+      y: item.answerRegion.y + item.answerRegion.h / 2,
+    }
+    if (!contain || !box) return { left: `${center.x * 100}%`, top: `${center.y * 100}%` }
+    const pct = toContainerPct(center, contain, box)
+    return { left: `${pct.leftPct}%`, top: `${pct.topPct}%` }
+  }
+
+  // place は否定しない: 外しても「ここにも あったね！」と温かく開示する。
+  const placeHeading = revealed?.correct ? "せいかい！ " : "ここにも あったね！ "
+  const choiceHeading = revealed?.correct ? "せいかい！ " : "おしい！ "
+  const heading = item.kind === "place" ? placeHeading : choiceHeading
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {/* 進捗 */}
+      {/* スクリーンリーダー向け: 解答結果と解説を読み上げる(常設。AnimatePresenceの
+          マウント/アンマウントに頼ると一部ATで読み上げられないことがあるため独立させる) */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {revealed ? `${heading}${item.explanation}` : ""}
+      </span>
+
       <div className="flex items-center justify-between">
         <StatPill tone="blue" label="もんだい" value={`${index + 1} / ${items.length}`} />
         {item.theme && (
@@ -75,7 +129,6 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
         )}
       </div>
 
-      {/* 問い */}
       <div className="flex items-start gap-2.5">
         <span className="shrink-0">
           <Mascot size="sm" mood={revealed ? (revealed.correct ? "wow" : "cheer") : "think"} />
@@ -88,13 +141,13 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
         </p>
       </div>
 
-      {/* place: 写真をタップ / choice: 4択 */}
       {item.kind === "place" ? (
         <div
           className="relative min-h-0 flex-1 overflow-hidden rounded-[20px]"
           style={{ background: C.headerNavy, boxShadow: tokens.shadow.card }}
         >
           <div
+            ref={imageRef}
             role="button"
             tabIndex={0}
             aria-label="しゃしんの上を タップして こたえよう"
@@ -107,10 +160,16 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
               src={imageUrl}
               alt="クイズの しゃしん"
               draggable={false}
+              onLoad={(e) => {
+                const img = e.currentTarget
+                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                  setNatural({ w: img.naturalWidth, h: img.naturalHeight })
+                }
+              }}
               className="absolute inset-0 h-full w-full object-contain"
               style={{ pointerEvents: "none" }}
             />
-            {/* 解答後: 正解の場所を見せる */}
+            {/* 解答後: 正解の場所を温かく見せる(外しても否定しない) */}
             {revealed && item.answerRegion && (
               <motion.span
                 initial={{ scale: 0, opacity: 0 }}
@@ -119,8 +178,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
                 aria-hidden="true"
                 className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
                 style={{
-                  left: `${(item.answerRegion.x + item.answerRegion.w / 2) * 100}%`,
-                  top: `${(item.answerRegion.y + item.answerRegion.h / 2) * 100}%`,
+                  ...answerMarkerPos(),
                   width: 52,
                   height: 52,
                   background: revealed.correct ? C.success : C.warning,
@@ -175,7 +233,6 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
         </div>
       )}
 
-      {/* 解説＋つぎへ */}
       <AnimatePresence>
         {revealed && (
           <motion.div
@@ -190,7 +247,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
               <Lightbulb className="mt-0.5 h-5 w-5 shrink-0" style={{ color: C.warning }} aria-hidden="true" />
               <p className="text-[14px] font-bold leading-relaxed" style={{ color: C.ink }}>
                 <span className="font-extrabold" style={{ color: revealed.correct ? C.success : C.accentStrong }}>
-                  {revealed.correct ? "せいかい！ " : "おしい！ "}
+                  {heading}
                 </span>
                 <RubyText text={item.explanation} />
               </p>

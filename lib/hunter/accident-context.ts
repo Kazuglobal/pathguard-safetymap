@@ -55,7 +55,8 @@ function resolvePeakTimeSlot(peakHour: number | null): string | null {
  * 未知の専門ラベルは技術用語を見せないよう汎用「交通事故」にフォールバック。
  * 注: マッチング(pickChoiceTemplate)やAI注入には元の専門ラベルを使う。
  */
-const KID_ACCIDENT_LABELS: ReadonlyArray<readonly [string, string]> = [
+// export: furigana.test.ts が全エントリの読み(誤読・辞書もれ)を回帰検証するために使う。
+export const KID_ACCIDENT_LABELS: ReadonlyArray<readonly [string, string]> = [
   ["正面衝突", "正面からの衝突"],
   ["追突", "うしろからの追突"],
   ["出会い頭", "角での出会い頭"],
@@ -84,6 +85,21 @@ export function kidAccidentLabel(raw: string | null | undefined): string {
   if (!raw) return "交通事故";
   const hit = KID_ACCIDENT_LABELS.find(([key]) => raw.includes(key));
   return hit ? hit[1] : "交通事故";
+}
+
+/**
+ * 子ども向けの非断定・行動志向のヒント文を返す。
+ * 「非常に危険」等の断定語や件数は使わず、「どうするか」に寄せる(北極星: こわがらせない)。
+ * 件数・リスクレベルの詳細は保護者向け面(care-card 折りたたみ)に分離する。
+ */
+export function childRiskHint(riskScore: number): string {
+  if (riskScore >= 50) {
+    return "ここは 車が おおいみたい。止まって 左右を 見る れんしゅうを しよう。";
+  }
+  if (riskScore >= 30) {
+    return "ここは すこし 気をつける ばしょだよ。まわりを よく 見よう。";
+  }
+  return "ゆっくり あるいて、まわりを よく 見て あんぜんに いこう。";
 }
 
 /** データ無し (null / 0件) を表す共通サマリ。 */

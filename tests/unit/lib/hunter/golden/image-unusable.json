@@ -1,0 +1,23 @@
+{
+  "version": "hunter-1",
+  "imageUsable": false,
+  "dangerPoints": [
+    {
+      "kind": "blind_corner",
+      "kidType": "見通しの悪い角",
+      "region": { "x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2 },
+      "severity": "high",
+      "confidence": 0.8,
+      "whyDangerous": "ここは 車が 見えにくいよ。",
+      "safeAction": "とまって 左右を 見よう。",
+      "accidentLink": "出会い頭",
+      "quiz": {
+        "question": "見通しの わるい 角では どうする？",
+        "choices": ["とまって 左右を 見る", "はしって ぬける", "おとで きめる", "車は とまると きめる"],
+        "explanation": "とまれば きづけるよ。"
+      }
+    }
+  ],
+  "safePoints": [],
+  "noHazardFollow": null
+}
