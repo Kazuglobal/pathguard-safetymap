@@ -25,6 +25,7 @@ import {
   defaultSituations,
   type DefaultSituation,
 } from "@/lib/disaster-scenario-prompts"
+import { FALLBACK_VIZ_PROMPT } from "@/lib/disaster-image-prompt-fallbacks"
 import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
 import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 import { SimulationQuickSummary } from "./simulation-quick-summary"
@@ -682,7 +683,7 @@ export default function DangerReportForm({
           const baseViz =
             prLocal?.vizPrompt ||
             generatedPrompts?.vizPrompt ||
-            "Create one 2048x2048 photorealistic hazard-communication infographic based on the uploaded Japanese suburban school-route photo. Preserve the original scene geometry exactly: same camera position, lens, horizon, perspective, building outlines, road markings, and daylight color temperature. Do not alter existing objects and do not add new buildings, people, or vehicles. Add overlays only. Mark four potential hazards with clean civic-design callouts anchored to real locations: (1) fence instability: semi-transparent red polygon + warning triangles + Japanese label \"フェンス倒壊注意\"; (2) utility pole failure risk: red circle/arrow + Japanese label \"電柱倒壊注意\"; (3) flooding-prone low spot: semi-transparent blue wash + droplet icons + Japanese label \"冠水注意\"; (4) fire spread exposure: semi-transparent amber haze + flame icons + Japanese label \"延焼注意\". Add numbered markers 1-4 with short leader lines and include a compact Japanese legend at bottom-left: \"凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意\". Style: realistic, HDR, sharp focus, balanced contrast, mobile-readable annotations. No graphic destruction, no gore, no extra text beyond the specified Japanese labels and legend, no watermark, and no model names."
+            FALLBACK_VIZ_PROMPT
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
           fd.append('generationMode', 'standard')
@@ -902,7 +903,7 @@ export default function DangerReportForm({
     }
   }
 
-  // 全10プロンプトを一括生成
+  // 全プロンプトを一括生成
   const batchGenerateAll = async () => {
     if (!originalImageFile) {
       toast({
