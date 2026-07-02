@@ -1,8 +1,8 @@
 /**
- * Gemini 2.5 Flash 画像生成ユーティリティ
+ * Gemini 画像生成ユーティリティ
  * SAFE MAGAZINE用のサムネイルと記事内画像を生成
  *
- * Model: gemini-3-pro-image-preview
+ * Model: gemini-3.1-flash-lite-image (Nano Banana 2 Lite)
  * ネイティブ画像生成機能を使用
  */
 
@@ -11,7 +11,7 @@ import path from "path"
 
 // 環境変数から取得
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const GEMINI_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview"
+const GEMINI_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-lite-image"
 
 export interface ImageGenerationConfig {
   aspectRatio: "16:9" | "1:1" | "4:3" | "3:4" | "9:16"
@@ -235,7 +235,7 @@ export async function generateArticleImages(
     generatedAt: new Date().toISOString(),
     articleImages: [],
     metadata: {
-      model: "gemini-3-pro-image-preview",
+      model: GEMINI_MODEL,
       safetyFilter: "default"
     }
   }

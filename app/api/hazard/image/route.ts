@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "node:crypto"
 
-import { generateImageWithOpenAIWithModel, FORCED_OPENAI_IMAGE_MODEL } from "@/lib/openai-image"
+import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
 import {
   buildHazardImagePrompt,
   formatDepthLabel,
@@ -15,7 +15,7 @@ export const runtime = "nodejs"
 export const maxDuration = 180
 
 const BUCKET_NAME = "hazard-simulations"
-const MODEL_NAME = FORCED_OPENAI_IMAGE_MODEL
+const MODEL_NAME = FORCED_GEMINI_IMAGE_MODEL
 
 function createPromptSignature(prompt: string): string {
   return createHash("md5").update(prompt).digest("hex")
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       .eq("risk_level", payload.riskLevel)
       .eq("area_context", payload.areaContext)
       .eq("scenario_key", payload.scenarioKey)
-      .eq("provider", "openai")
+      .eq("provider", "gemini")
       .eq("prompt_signature", promptSignature)
       .maybeSingle()
 
@@ -147,14 +147,14 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const generated = await generateImageWithOpenAIWithModel({
+    const generated = await generateImageWithGeminiWithModel({
       prompt,
       model: MODEL_NAME,
     })
 
     const image = generated.images[0]
     if (!image?.dataUrl) {
-      throw new Error("OpenAI did not return an image")
+      throw new Error("Gemini did not return an image")
     }
 
     const { mimeType, buffer } = parseDataUrl(image.dataUrl)
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
       risk_level: payload.riskLevel,
       area_context: payload.areaContext,
       scenario_key: payload.scenarioKey,
-      provider: "openai",
+      provider: "gemini",
       prompt_signature: promptSignature,
       prompt_en: prompt,
       depth_label: depthLabel,

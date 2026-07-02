@@ -16,7 +16,7 @@ export type GenerateImageResult = {
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 import { getSanitizedGeminiApiKey } from "./gemini-util"
-export const FORCED_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
+export const FORCED_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-lite-image"
 
 // Security: Allowed domains for file downloads (SSRF protection)
 const ALLOWED_DOWNLOAD_HOSTS = [
@@ -49,6 +49,46 @@ function estimateBase64Bytes(base64: string): number {
   if (len === 0) return 0
   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
   return Math.max(0, Math.floor((len * 3) / 4) - padding)
+}
+
+// Security: limits/allow-list for user-supplied INPUT images (image-to-image reference).
+// Mirrors lib/openai-image.ts's input validation so both provider adapters enforce the same guarantees.
+const MAX_INPUT_IMAGE_BYTES = 25 * 1024 * 1024
+const ALLOWED_INPUT_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+
+function validateInputMimeType(mimeType: string | undefined | null): string {
+  if (typeof mimeType !== 'string' || !ALLOWED_INPUT_IMAGE_MIME_TYPES.includes(mimeType)) {
+    throw new Error('サポートされていない画像形式です。PNG、JPEG、WebP形式を使用してください。')
+  }
+  return mimeType
+}
+
+function detectInputMimeType(base64: string): string | null {
+  const bytes = Buffer.from(base64.slice(0, 32), 'base64')
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return 'image/png'
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg'
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes.toString('ascii', 0, 4) === 'RIFF' &&
+    bytes.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp'
+  }
+  return null
 }
 
 // Helper to validate model name (alphanumeric, dash, dot, underscore only)
@@ -303,7 +343,17 @@ export async function generateImageWithGeminiWithModel({
 }: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = getSanitizedGeminiApiKey()
 
-  // Product requirement: always use Gemini 3.1 flash image preview.
+  if (imageBase64) {
+    const validatedMimeType = validateInputMimeType(imageMimeType)
+    if (estimateBase64Bytes(imageBase64) > MAX_INPUT_IMAGE_BYTES) {
+      throw new Error('入力画像が大きすぎます。25MB以下の画像を使用してください。')
+    }
+    if (detectInputMimeType(imageBase64) !== validatedMimeType) {
+      throw new Error('画像の内容とMIME形式が一致しません。')
+    }
+  }
+
+  // Product requirement: always use the forced Gemini image model (see FORCED_GEMINI_IMAGE_MODEL).
   const primaryModel = getImageModel()
   const modelsToTry = [primaryModel]
 

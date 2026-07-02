@@ -1,6 +1,6 @@
 /**
  * SAFE MAGAZINE 記事用画像生成スクリプト
- * Gemini 3 Pro Image Preview を使用
+ * Gemini 3.1 Flash Lite Image (Nano Banana 2 Lite) を使用
  * 高品質な教育用イラストを生成
  */
 
@@ -12,7 +12,7 @@ import dotenv from "dotenv"
 dotenv.config({ path: ".env.local" })
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const GEMINI_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview"
+const GEMINI_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-lite-image"
 
 console.log("API Key loaded:", GEMINI_API_KEY ? "Yes" : "No")
 console.log("API Key prefix:", GEMINI_API_KEY?.substring(0, 10) + "...")

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generateImageWithOpenAIWithModel, FORCED_OPENAI_IMAGE_MODEL } from "@/lib/openai-image"
+import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
-import { calculateOpenAIImageGenerationCost } from "@/lib/api-cost-calculator"
+import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
 
 export const runtime = "nodejs"
 export const maxDuration = 180
 
 const ROUTE_TIMEOUT_MS = 175_000 // maxDuration(180s) - 5s buffer
-const FORCED_IMAGE_MODEL = FORCED_OPENAI_IMAGE_MODEL
+const FORCED_IMAGE_MODEL = FORCED_GEMINI_IMAGE_MODEL
 
 export async function POST(req: NextRequest) {
   let modelName = FORCED_IMAGE_MODEL
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const result = await (async () => {
       try {
         return await Promise.race([
-          generateImageWithOpenAIWithModel({ prompt, imageBase64, imageMimeType, model: FORCED_IMAGE_MODEL }),
+          generateImageWithGeminiWithModel({ prompt, imageBase64, imageMimeType, model: FORCED_IMAGE_MODEL }),
           new Promise<never>((_, reject) => {
             routeTimeoutId = setTimeout(
               () => reject(new Error("画像生成がタイムアウトしました。しばらく待ってから再度お試しください。")),
@@ -73,13 +73,11 @@ export async function POST(req: NextRequest) {
 
     try {
       logApiUsage({
-        api_provider: 'openai',
+        api_provider: 'gemini',
         api_endpoint: 'generate-image',
         model_name: modelName,
         request_count: 1,
-        input_tokens: result.usage?.inputTokens,
-        output_tokens: result.usage?.outputTokens,
-        estimated_cost_usd: calculateOpenAIImageGenerationCost(modelName, result.usage),
+        estimated_cost_usd: estimateImageGenerationCost(modelName, 1),
         success: true,
       })
     } catch { /* fire-and-forget */ }
@@ -87,7 +85,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     try {
-      logApiUsage({ api_provider: 'openai', api_endpoint: 'generate-image', model_name: modelName, request_count: 1, estimated_cost_usd: 0, success: false, error_message: message })
+      logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: modelName, request_count: 1, estimated_cost_usd: 0, success: false, error_message: message })
     } catch { /* fire-and-forget */ }
     const statusCode = (() => {
       if (/unauthorized|forbidden|api.?key|401|403/i.test(message)) return 401
