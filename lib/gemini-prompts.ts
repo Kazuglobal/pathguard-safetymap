@@ -1,4 +1,5 @@
 import { getSanitizedGeminiApiKey, getSanitizedGeminiVisionModel } from "./gemini-util"
+import { FALLBACK_SIMULATION_PROMPTS, FALLBACK_VIZ_PROMPT } from "./disaster-image-prompt-fallbacks"
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -97,10 +98,11 @@ Step 1 – Risk Observation
 
 Step 2 – Hazard Visualization Prompt
 - Provide a single polished English prompt for standard hazard-visualization (not post-disaster destruction) for the Gemini Image Generation API.
-- The prompt must enforce strict scene preservation: same camera position, lens, perspective, horizon, daylight, and object layout as the uploaded photo. No scene replacement and no new people/vehicles/buildings.
-- The prompt must request overlay-only risk communication with exactly these Japanese labels: "フェンス倒壊注意", "電柱倒壊注意", "冠水注意", "延焼注意".
-- Require location-anchored callouts (semi-transparent polygons, arrows, warning icons, numbered markers 1-4, short leader lines) and a compact Japanese legend: "凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意".
-- Require realistic civic-infographic quality (HDR, sharp focus, balanced contrast, mobile-readable labels) and explicitly forbid gore, graphic destruction, extra text, watermarks, or model names.
+- The prompt must enforce strict scene preservation: same camera position, lens, perspective, horizon, daylight, object layout, and the ORIGINAL ASPECT RATIO of the uploaded photo. No scene replacement, no cropping to a different format, and no new people/vehicles/buildings.
+- Select ONLY hazards whose anchor object is actually visible in this photo — never force all four and never invent an object to justify a label. Use this fixed Japanese label vocabulary for the hazards you include: "フェンス倒壊注意" (fence/block wall), "電柱倒壊注意" (utility pole), "冠水注意" (low spot/drainage/gutter), "延焼注意" (adjacent dense or wooden buildings). If only two hazards are grounded in the photo, mark exactly two.
+- Require location-anchored callouts (semi-transparent polygons, arrows, warning icons, numbered markers with short leader lines) and a compact Japanese legend listing only the colors actually used, drawn from: "凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意".
+- Require that any visible faces or license plates be rendered unrecognizable.
+- Require realistic civic-infographic quality (HDR, sharp focus, balanced contrast, mobile-readable labels; Japanese text rendered accurately with no garbled characters) and explicitly forbid gore, graphic destruction, extra text, watermarks, or model names.
 
 Step 3 – Post-Disaster Simulation Prompts
 - CRITICAL REALISM RULE: First analyze the actual condition of every structure visible in the photo (walls, fences, utility poles, buildings, signs, roads). Calibrate the simulated damage PROPORTIONALLY to the observed condition:
@@ -108,8 +110,8 @@ Step 3 – Post-Disaster Simulation Prompts
   • Aging but intact structures (some discoloration, minor wear): show MODERATE effects (visible cracks, slight tilting, partial damage)
   • Visibly deteriorated structures (existing cracks, rust, tilting, crumbling mortar): show SIGNIFICANT effects (partial collapse, major tilting, fallen sections)
 - Provide four English prompts (earthquake aftermath, typhoon-class wind aftermath, flash flood, post-fire) for the Gemini Image Generation API.
-- Each prompt must maintain the original camera framing, lens, and daylight conditions unless the hazard inherently affects the scene (e.g., reflective floodwater, thin haze from distant smoke).
-- Each prompt must request a photorealistic 2048×2048 image with high dynamic range, Japanese suburban street context, no people, no added vehicles, and no model names.
+- Each prompt must maintain the original camera framing, lens, daylight conditions, and the uploaded photo's aspect ratio unless the hazard inherently affects the scene (e.g., reflective floodwater, thin haze from distant smoke).
+- Each prompt must request a photorealistic high-resolution image with high dynamic range, Japanese suburban street context, no people, no added vehicles, no recognizable faces or license plates, and no model names.
 - Each prompt MUST describe the specific structures visible in the photo and their realistic damage based on the condition analysis above. Do NOT use generic catastrophic descriptions.
 - FORBIDDEN: explosion-like imagery, dramatic dust clouds, completely flattened structures (unless already severely deteriorated), burning vehicles, large fires in frame, any imagery that would cause excessive fear or anxiety.
 - Specify hazard-specific visuals realistically based on what is in the photo:
@@ -175,24 +177,24 @@ Do not output anything except the JSON object.`
     vizPrompt:
       typeof parsed?.vizPrompt === "string" && parsed.vizPrompt.trim().length > 0
         ? parsed.vizPrompt
-        : "Create one 2048x2048 photorealistic hazard-communication infographic based on the uploaded Japanese suburban school-route photo. Preserve the original scene geometry exactly: same camera position, lens, horizon, perspective, building outlines, road markings, and daylight color temperature. Do not alter existing objects and do not add new buildings, people, or vehicles. Add overlays only. Mark four potential hazards with clean civic-design callouts anchored to real locations: (1) fence instability: semi-transparent red polygon + warning triangles + Japanese label \"フェンス倒壊注意\"; (2) utility pole failure risk: red circle/arrow + Japanese label \"電柱倒壊注意\"; (3) flooding-prone low spot: semi-transparent blue wash + droplet icons + Japanese label \"冠水注意\"; (4) fire spread exposure: semi-transparent amber haze + flame icons + Japanese label \"延焼注意\". Add numbered markers 1-4 with short leader lines and include a compact Japanese legend at bottom-left: \"凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意\". Style: realistic, HDR, sharp focus, balanced contrast, mobile-readable annotations. No graphic destruction, no gore, no extra text beyond the specified Japanese labels and legend, no watermark, and no model names.",
+        : FALLBACK_VIZ_PROMPT,
     simulationPrompts: {
       earthquake:
         typeof parsed?.simulationPrompts?.earthquake === "string" && parsed.simulationPrompts.earthquake.trim().length > 0
           ? parsed.simulationPrompts.earthquake
-          : "Photorealistic 2048x2048 render from the same viewpoint and daylight as the uploaded Japanese suburban street photo, showing a moderate earthquake aftermath (equivalent to Japan seismic intensity 5-upper): block walls and fences may show hairline cracks and minor mortar dust at joints; a utility pole may lean very slightly; small loose items (flower pots, signs) are displaced on the ground; minor pavement cracks visible. The overall scene is shaken but NOT devastated — structures remain mostly standing. High dynamic range, sharp focus, no people, no added vehicles, no watermarks, no model names. Do NOT show explosion-like destruction, large dust clouds, or completely collapsed structures.",
+          : FALLBACK_SIMULATION_PROMPTS.earthquake,
       typhoon:
         typeof parsed?.simulationPrompts?.typhoon === "string" && parsed.simulationPrompts.typhoon.trim().length > 0
           ? parsed.simulationPrompts.typhoon
-          : "Photorealistic 2048x2048 render from the same viewpoint and daylight as the uploaded Japanese suburban street photo right after strong wind (approximately 30m/s): scattered tree branches and leaves on wet pavement; lightweight objects (garbage bins, small signs) displaced; fences may rattle or bend slightly but remain standing; wet reflective road surface with puddles. Solid structures are intact. High dynamic range, sharp focus, no people, no extra vehicles, no watermarks, no model names. Do NOT show uprooted trees, destroyed buildings, or catastrophic damage.",
+          : FALLBACK_SIMULATION_PROMPTS.typhoon,
       flood:
         typeof parsed?.simulationPrompts?.flood === "string" && parsed.simulationPrompts.flood.trim().length > 0
           ? parsed.simulationPrompts.flood
-          : "Photorealistic 2048x2048 render from the same viewpoint and daylight as the uploaded Japanese suburban street photo during urban flooding: approximately 15-20 cm of muddy brownish water covering the road and lower portions of sidewalk, realistic water reflections and small ripples, floating leaves and minor debris, visible water line on curbs and wall bases. The water looks like actual floodwater (slightly murky, not crystal clear). High dynamic range, sharp focus, no people, no extra vehicles, no watermarks, no model names.",
+          : FALLBACK_SIMULATION_PROMPTS.flood,
       fire:
         typeof parsed?.simulationPrompts?.fire === "string" && parsed.simulationPrompts.fire.trim().length > 0
           ? parsed.simulationPrompts.fire
-          : "Photorealistic 2048x2048 render from the same viewpoint and daylight as the uploaded Japanese suburban street photo with signs of a nearby fire (fire source is NOT visible in frame): thin smoke haze reducing visibility slightly in the background, very light soot deposits on surfaces nearest to the assumed fire direction, a faint warm-orange tint in the hazy sky. No active flames, no burning vehicles, no charred ruins visible. The scene suggests a fire occurred nearby but the immediate area is not burning. High dynamic range, sharp focus, no people, no extra vehicles, no watermarks, no model names.",
+          : FALLBACK_SIMULATION_PROMPTS.fire,
     },
   }
 }
