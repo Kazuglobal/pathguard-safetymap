@@ -5,23 +5,31 @@ import Map, { Marker } from "react-map-gl/mapbox"
 import type { MapMouseEvent, MapRef } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { motion, useReducedMotion } from "framer-motion"
-import { Building2, LocateFixed, MapPin, Satellite, Map as MapIcon, Search, X } from "lucide-react"
+import {
+  Building2,
+  LocateFixed,
+  MapPin,
+  Satellite,
+  Map as MapIcon,
+  Search,
+  X,
+} from "lucide-react"
 
-import { Mascot, PrimaryCTA, tokens } from "./theme"
+import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 
 export interface LocationPinPickerProps {
   onConfirm: (pin: { latitude: number; longitude: number }) => void
   initial?: { latitude: number; longitude: number }
 }
 
-// 日本（東京）あたりを初期表示の中心にする
+// 日本(東京)あたりを初期表示の中心にする
 const DEFAULT_CENTER = {
   latitude: 35.68,
   longitude: 139.76,
 }
 const DEFAULT_ZOOM = 14
 
-// 地図の種類（ちず / 航空写真）。航空写真は地名ラベル付きで場所を選びやすい。
+// 地図の種類(ちず / 航空写真)。航空写真は地名ラベル付きで場所を選びやすい。
 const MAP_STYLES = {
   street: "mapbox://styles/mapbox/streets-v12",
   satellite: "mapbox://styles/mapbox/satellite-streets-v12",
@@ -29,12 +37,12 @@ const MAP_STYLES = {
 type MapStyleKey = keyof typeof MAP_STYLES
 
 type Pin = { latitude: number; longitude: number }
-/** kind: place=住所/地名, facility=学校など施設（POI） */
+/** kind: place=住所/地名, facility=学校など施設(POI) */
 type Suggestion = {
   id: string
-  /** 主表示（施設名・地名）。Googleのように太字で見せる */
+  /** 主表示(施設名・地名)。太字で見せる */
   label: string
-  /** 副表示（住所など）。薄い文字で2行目に */
+  /** 副表示(住所など)。薄い文字で2行目に */
   sublabel?: string
   latitude: number
   longitude: number
@@ -43,7 +51,7 @@ type Suggestion = {
 
 const C = tokens.color
 
-// ---- 検索（Mapbox Geocoding） ----
+// ---- 検索(Mapbox Geocoding) ----
 
 /** Mapbox Geocoding。住所・地名・POIを検索する。 */
 async function fetchMapboxSuggestions(
@@ -110,6 +118,32 @@ export function LocationPinPicker({
   const [locating, setLocating] = useState(false)
   const [mapStyle, setMapStyle] = useState<MapStyleKey>("street")
 
+  /** ラベルを日本語優先にする(子ども向け: 英語表記を避ける)。 */
+  const localizeLabels = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    try {
+      const layers = map.getStyle()?.layers ?? []
+      for (const layer of layers) {
+        if (layer.type !== "symbol") continue
+        // 道路番号シールドや出口番号は name を持たない(ref 等を表示)ため
+        // 書き換えると空ラベルになる。名前系レイヤーだけを対象にする。
+        if (/shield|road-number|road-exit|oneway/.test(layer.id)) continue
+        const textField = map.getLayoutProperty(layer.id, "text-field") as unknown
+        if (!textField) continue
+        const serialized = JSON.stringify(textField)
+        if (!serialized.includes("name")) continue
+        map.setLayoutProperty(layer.id, "text-field", [
+          "coalesce",
+          ["get", "name_ja"],
+          ["get", "name"],
+        ])
+      }
+    } catch {
+      // スタイルにより失敗しても地図機能は損なわない
+    }
+  }, [])
+
   // ピンを置きつつ地図をその地点へ移動
   const moveTo = useCallback((latitude: number, longitude: number, zoom = 16) => {
     setPin({ latitude, longitude })
@@ -127,7 +161,7 @@ export function LocationPinPicker({
     onConfirm({ latitude: pin.latitude, longitude: pin.longitude })
   }, [pin, onConfirm])
 
-  // --- 検索（住所・地名・施設を Mapbox で検索・デバウンス） ---
+  // --- 検索(住所・地名・施設を Mapbox で検索・デバウンス) ---
   useEffect(() => {
     const q = query.trim()
     if (!mapToken || q.length < 2) {
@@ -136,7 +170,7 @@ export function LocationPinPicker({
     }
     const controller = new AbortController()
     const timer = setTimeout(() => {
-      // 表示中の地図の中心・範囲に近い候補を優先（地域の関連性を上げる）
+      // 表示中の地図の中心・範囲に近い候補を優先(地域の関連性を上げる)
       const center = mapRef.current?.getCenter() ?? null
       const proximity = center ? { lng: center.lng, lat: center.lat } : null
       fetchMapboxSuggestions(q, mapToken, proximity, controller.signal)
@@ -145,7 +179,7 @@ export function LocationPinPicker({
           setSuggestions(results)
         })
         .catch(() => {
-          // abort / ネットワーク失敗は無視（検索なしでも地図タップは使える）
+          // abort / ネットワーク失敗は無視(検索なしでも地図タップは使える)
         })
     }, 320)
 
@@ -164,7 +198,7 @@ export function LocationPinPicker({
     [moveTo],
   )
 
-  // 現在地へ移動（任意・許可が必要）
+  // 現在地へ移動(任意・許可が必要)
   const handleLocate = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return
     setLocating(true)
@@ -178,24 +212,25 @@ export function LocationPinPicker({
     )
   }, [moveTo])
 
-  // トークンが無い場合は地図を出さずフォールバック表示（throwしない）
+  // トークンが無い場合は地図を出さずフォールバック表示(throwしない)
   if (!mapToken) {
     return (
       <div
-        className="flex h-full min-h-[300px] w-full flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed bg-[#FFF8EF] p-6 text-center"
+        className="flex h-full min-h-[300px] w-full flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed p-6 text-center"
         style={{
           borderColor: `${C.primary}55`,
+          background: C.card,
           boxShadow: tokens.shadow.soft,
         }}
       >
         <Mascot size="md" mood="think" />
-        <p className="text-[17px] font-extrabold" style={{ color: C.primaryStrong }}>
+        <p className="text-[16px] font-black" style={{ color: C.primaryStrong }}>
           <ruby>
             地図<rt>ちず</rt>
           </ruby>
           を よみこめなかったみたい
         </p>
-        <p className="text-[15px] font-medium" style={{ color: C.inkSoft }}>
+        <p className="text-[14px] font-bold" style={{ color: C.inkSoft }}>
           もういちど ためしてみてね
         </p>
       </div>
@@ -205,21 +240,22 @@ export function LocationPinPicker({
   const pinKey = pin ? `${pin.latitude.toFixed(5)},${pin.longitude.toFixed(5)}` : ""
 
   return (
-    <div
-      className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[24px] bg-white"
-      style={{
-        boxShadow: `0 0 0 4px ${C.primary}, ${tokens.shadow.soft}, ${tokens.shadow.card}`,
-      }}
-    >
-      {/* 地図エリア（flex-1 でモバイルでも大きく見やすく） */}
-      <div className="relative min-h-[240px] w-full flex-1">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
+      {/* 地図(白フレームの窓) */}
+      <div
+        className="relative min-h-[240px] w-full flex-1 overflow-hidden rounded-[18px] border-4 bg-white"
+        style={{ borderColor: "#FFFFFF", boxShadow: tokens.shadow.card }}
+      >
         <Map
           ref={mapRef}
           mapboxAccessToken={mapToken}
           mapStyle={MAP_STYLES[mapStyle]}
           initialViewState={initialViewState}
           onClick={handleMapClick}
+          onLoad={localizeLabels}
+          onStyleData={localizeLabels}
           cursor="crosshair"
+          attributionControl={false}
           style={{ width: "100%", height: "100%" }}
         >
           {pin && (
@@ -229,25 +265,26 @@ export function LocationPinPicker({
                 role="img"
                 aria-label="えらんだ ばしょの ピン"
                 className="relative flex flex-col items-center"
-                initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
-                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
-                transition={reduce ? { duration: 0.2 } : { ...tokens.spring }}
+                initial={reduce ? { opacity: 0 } : { y: -18, scale: 0.4, opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { y: 0, scale: 1, opacity: 1 }}
+                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 480, damping: 24 }}
               >
                 {!reduce && (
                   <motion.span
                     aria-hidden="true"
                     className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full"
                     style={{ background: C.primary }}
-                    initial={{ scale: 0.6, opacity: 0.45 }}
+                    initial={{ scale: 0.6, opacity: 0.4 }}
                     animate={{ scale: 1.9, opacity: 0 }}
                     transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
                   />
                 )}
                 <span
-                  className="relative grid h-14 w-14 place-items-center rounded-full text-white"
+                  className="relative grid h-[52px] w-[52px] place-items-center rounded-full"
                   style={{
-                    background: tokens.gradient.sky,
+                    background: C.primary,
                     boxShadow: `0 0 0 4px #fff, ${tokens.shadow.card}`,
+                    color: "#fff",
                   }}
                 >
                   <MapPin className="h-7 w-7" aria-hidden="true" strokeWidth={2.5} />
@@ -266,11 +303,11 @@ export function LocationPinPicker({
           )}
         </Map>
 
-        {/* 検索窓（上部オーバーレイ） */}
-        <div className="absolute inset-x-2 top-2 z-20">
+        {/* 検索窓(上部オーバーレイ) */}
+        <div className="absolute inset-x-2.5 top-2.5 z-20">
           <div
-            className="flex items-center gap-2 rounded-full bg-white px-3 py-2.5"
-            style={{ boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}` }}
+            className="flex items-center gap-2 rounded-full border bg-white px-3.5 py-2.5"
+            style={{ borderColor: "rgba(67,57,43,.1)", boxShadow: tokens.shadow.card }}
           >
             <Search className="h-5 w-5 shrink-0" style={{ color: C.primary }} aria-hidden="true" />
             <input
@@ -281,7 +318,7 @@ export function LocationPinPicker({
               placeholder="ばしょを さがす（れい: ○○小学校）"
               aria-label="ばしょの なまえで さがす"
               className="min-w-0 flex-1 bg-transparent text-[15px] font-bold outline-none placeholder:font-medium"
-              style={{ color: C.ink }}
+              style={{ color: C.ink, fontFamily: tokens.font.family }}
             />
             {query && (
               <button
@@ -291,7 +328,7 @@ export function LocationPinPicker({
                   setSuggestions([])
                 }}
                 aria-label="けんさくを けす"
-                className={`shrink-0 rounded-full p-1 hover:bg-black/5 ${tokens.cls.focus}`}
+                className={`shrink-0 rounded-full p-1.5 hover:bg-black/5 ${tokens.cls.focus}`}
               >
                 <X className="h-4 w-4" style={{ color: C.inkSoft }} aria-hidden="true" />
               </button>
@@ -303,8 +340,8 @@ export function LocationPinPicker({
             <ul
               role="listbox"
               aria-label="ばしょの こうほ"
-              className="mt-1.5 overflow-hidden rounded-[18px] bg-white"
-              style={{ boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}` }}
+              className="mt-1.5 overflow-hidden rounded-[16px] border bg-white"
+              style={{ borderColor: "rgba(67,57,43,.1)", boxShadow: tokens.shadow.card }}
             >
               {suggestions.map((s) => (
                 <li key={s.id}>
@@ -313,31 +350,31 @@ export function LocationPinPicker({
                     role="option"
                     aria-selected="false"
                     onClick={() => handleSelectSuggestion(s)}
-                    className="flex w-full items-center gap-2.5 px-3 py-3 text-left hover:bg-[#EAF4FF]"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left hover:bg-[#F2FAF6]"
                   >
                     {s.kind === "facility" ? (
                       <Building2
-                        className="mt-0.5 h-4 w-4 shrink-0"
+                        className="h-4 w-4 shrink-0"
                         style={{ color: C.primary }}
                         aria-label="しせつ"
                       />
                     ) : (
                       <MapPin
-                        className="mt-0.5 h-4 w-4 shrink-0"
+                        className="h-4 w-4 shrink-0"
                         style={{ color: C.accent }}
                         aria-hidden="true"
                       />
                     )}
                     <span className="min-w-0 flex-1">
                       <span
-                        className="block truncate text-[14px] font-bold leading-snug"
+                        className="block truncate text-[14px] font-black leading-snug"
                         style={{ color: C.ink }}
                       >
                         {s.label}
                       </span>
                       {s.sublabel && (
                         <span
-                          className="block truncate text-[12px] font-medium leading-snug"
+                          className="block truncate text-[11.5px] font-bold leading-snug"
                           style={{ color: C.inkSoft }}
                         >
                           {s.sublabel}
@@ -351,16 +388,16 @@ export function LocationPinPicker({
           )}
         </div>
 
-        {/* 地図の種類 切替（左下・ちず / 航空写真） */}
+        {/* 地図の種類 切替(左下) */}
         <div
           role="group"
           aria-label="ちずの しゅるいを えらぶ"
-          className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-full bg-white p-1"
-          style={{ boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}` }}
+          className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-full border bg-white p-1"
+          style={{ borderColor: "rgba(67,57,43,.1)", boxShadow: tokens.shadow.card }}
         >
           {([
             { key: "street", label: "ちず", Icon: MapIcon },
-            { key: "satellite", label: "こうくうしゃしん", Icon: Satellite },
+            { key: "satellite", label: "そらから", Icon: Satellite },
           ] as const).map(({ key, label, Icon }) => {
             const active = mapStyle === key
             return (
@@ -369,7 +406,7 @@ export function LocationPinPicker({
                 type="button"
                 onClick={() => setMapStyle(key)}
                 aria-pressed={active}
-                className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-extrabold transition-colors ${tokens.cls.focus}`}
+                className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-black transition-colors ${tokens.cls.focus}`}
                 style={{
                   background: active ? C.primary : "transparent",
                   color: active ? "#fff" : C.inkSoft,
@@ -382,13 +419,17 @@ export function LocationPinPicker({
           })}
         </div>
 
-        {/* 現在地ボタン（右下） */}
+        {/* 現在地ボタン(右下) */}
         <button
           type="button"
           onClick={handleLocate}
           aria-label="いまいる ばしょへ いどう"
-          className={`absolute bottom-3 right-3 z-20 grid h-12 w-12 place-items-center rounded-full bg-white ${tokens.cls.focus}`}
-          style={{ boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`, color: C.primary }}
+          className={`absolute bottom-3 right-3 z-20 grid h-12 w-12 place-items-center rounded-full border bg-white active:translate-y-[2px] transition-transform ${tokens.cls.focus}`}
+          style={{
+            borderColor: "rgba(67,57,43,.1)",
+            boxShadow: tokens.shadow.card,
+            color: C.primary,
+          }}
         >
           <LocateFixed
             className={`h-6 w-6 ${locating ? "animate-pulse" : ""}`}
@@ -396,39 +437,39 @@ export function LocationPinPicker({
           />
         </button>
 
-        {/* 下部の小さなヒント（候補表示中は隠す）。
-            左下トグル・右下ボタンと重ならないよう一段上に置く。 */}
-        {suggestions.length === 0 && (
+        {/* 下部の小さなヒント(候補表示中は隠す) */}
+        {suggestions.length === 0 && !pin && (
           <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center px-2">
-            <span className="rounded-full bg-black/55 px-3 py-1 text-[12px] font-bold text-white">
-              {pin ? "べつの ところも タップできるよ" : "ちずを タップして ピンを おいてね"}
+            <span
+              className="rounded-full px-3.5 py-1.5 text-[12px] font-black text-white"
+              style={{ background: "rgba(38,65,59,.72)", backdropFilter: "blur(4px)" }}
+            >
+              ちずを タップして ピンを おいてね
             </span>
           </div>
         )}
       </div>
 
-      {/* 決定バー（下部・固定） */}
-      <div
-        className="flex shrink-0 flex-col gap-2 px-4 py-3"
-        style={{ background: C.surfaceWarm }}
-      >
-        <div className="flex items-center gap-2">
+      {/* 決定バー(下部・固定) */}
+      <BottomBar className="-mx-3 px-3">
+        <div className="mb-2 flex items-center gap-2 px-1">
           <span className="shrink-0">
             <Mascot size="sm" mood={pin ? "cheer" : "happy"} />
           </span>
           <p
-            className="flex-1 text-[14px] font-bold leading-snug"
-            style={{ color: pin ? C.success : C.inkSoft }}
+            className="flex-1 text-[13.5px] font-black leading-snug"
+            style={{ color: pin ? C.primaryStrong : C.inkSoft }}
+            aria-live="polite"
           >
             {pin
-              ? "ピンを おいたよ！ いいばしょかな？"
-              : "さがす か ちずタップで ばしょを えらんでね"}
+              ? "ピンを おいたよ！ この ばしょで いい？"
+              : "けんさく か ちずタップで ばしょを えらんでね"}
           </p>
         </div>
-        <PrimaryCTA onClick={handleConfirm} disabled={!pin} className={tokens.cls.ctaBlue}>
+        <PrimaryCTA onClick={handleConfirm} disabled={!pin} variant="green">
           ここにする
         </PrimaryCTA>
-      </div>
+      </BottomBar>
     </div>
   )
 }

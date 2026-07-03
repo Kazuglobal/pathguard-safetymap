@@ -20,7 +20,15 @@ import {
 } from "@/lib/hunter/image-geometry"
 
 import { RubyText } from "./ruby-text"
-import { Celebrate, Mascot, PrimaryCTA, StatPill, tokens } from "./theme"
+import {
+  BottomBar,
+  Celebrate,
+  PhotoFrame,
+  PrimaryCTA,
+  SpeechBubble,
+  StatPill,
+  tokens,
+} from "./theme"
 
 const C = tokens.color
 
@@ -129,7 +137,7 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
   )
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 overflow-y-auto p-4">
+    <div className="mx-auto flex w-full max-w-2xl min-h-full flex-1 flex-col px-4 pt-1">
       {/* スクリーンリーダー向け: 見つけた安全の工夫を読み上げる(視覚カードとは独立に常設) */}
       <span className="sr-only" role="status" aria-live="polite">
         {active ? `${active.type}：${active.whyGood}` : ""}
@@ -137,133 +145,132 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
 
       <Celebrate show={allFound} />
 
-      <div className="flex items-center gap-2.5">
-        <Mascot size="sm" mood="happy" />
-        <p className="text-[15px] font-bold leading-snug" style={{ color: C.ink }}>
-          この みちの「<RubyText text="安全" />の くふう」を さがそう！
-          <br />
-          ガードレールや <RubyText text="歩道" />は あんしんの しるしだよ。
-        </p>
-      </div>
+      <div className="flex flex-1 flex-col gap-3">
+        <SpeechBubble mood="happy">
+          この みちの「<RubyText text="安全" />の くふう」を さがそう！ ガードレールや{" "}
+          <RubyText text="歩道" />は あんしんの しるしだよ。
+        </SpeechBubble>
 
-      <div className="flex items-center justify-center">
-        <StatPill
-          icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
-          label="みつけた"
-          value={`${foundIds.length}/${safePoints.length}`}
-          tone="green"
-        />
-      </div>
+        <div className="flex items-center justify-center">
+          <StatPill
+            icon={<ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
+            label="みつけた"
+            value={`${foundIds.length}/${safePoints.length}`}
+            tone="green"
+          />
+        </div>
 
-      <div
-        ref={containerRef}
-        role="button"
-        tabIndex={0}
-        aria-label="しゃしんの上を タップして、安全の くふうを さがそう"
-        onClick={handleTap}
-        onKeyDown={handleKeyDown}
-        className={tokens.cls.focus}
-        style={{
-          position: "relative",
-          width: "100%",
-          aspectRatio: "4 / 3",
-          borderRadius: tokens.radius.thumb,
-          overflow: "hidden",
-          background: C.headerNavy,
-          boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
-          cursor: "pointer",
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl}
-          alt="つうがくろの しゃしん"
-          draggable={false}
-          onLoad={(e) => {
-            const img = e.currentTarget
-            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-              setNatural({ w: img.naturalWidth, h: img.naturalHeight })
-            }
-          }}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            pointerEvents: "none",
-          }}
-        />
-
-        {safePoints.map((point) => {
-          const found = foundSet.has(point.id)
-          const center = {
-            x: point.region.x + point.region.w / 2,
-            y: point.region.y + point.region.h / 2,
-          }
-          return (
-            <motion.div
-              key={point.id}
-              initial={reduce ? { opacity: 0.7 } : { scale: 0.9, opacity: 0.7 }}
-              animate={
-                reduce
-                  ? { opacity: found ? 1 : 0.7 }
-                  : found
-                    ? { scale: 1, opacity: 1 }
-                    : { scale: [0.9, 1.05, 0.9], opacity: [0.6, 0.9, 0.6] }
-              }
-              transition={reduce ? { duration: 0.2 } : { duration: 1.8, repeat: found ? 0 : Infinity }}
-              aria-hidden="true"
+        <PhotoFrame tape={false}>
+          <div
+            ref={containerRef}
+            role="button"
+            tabIndex={0}
+            aria-label="しゃしんの上を タップして、安全の くふうを さがそう"
+            onClick={handleTap}
+            onKeyDown={handleKeyDown}
+            className={tokens.cls.focus}
+            style={{
+              position: "relative",
+              width: "100%",
+              aspectRatio: "4 / 3",
+              cursor: "pointer",
+              userSelect: "none",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt="つうがくろの しゃしん"
+              draggable={false}
+              onLoad={(e) => {
+                const img = e.currentTarget
+                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                  setNatural({ w: img.naturalWidth, h: img.naturalHeight })
+                }
+              }}
               style={{
                 position: "absolute",
-                ...place(center),
-                transform: "translate(-50%, -50%)",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
                 pointerEvents: "none",
               }}
+            />
+
+            {safePoints.map((point) => {
+              const found = foundSet.has(point.id)
+              const center = {
+                x: point.region.x + point.region.w / 2,
+                y: point.region.y + point.region.h / 2,
+              }
+              return (
+                <motion.div
+                  key={point.id}
+                  initial={reduce ? { opacity: 0.7 } : { scale: 0.9, opacity: 0.7 }}
+                  animate={
+                    reduce
+                      ? { opacity: found ? 1 : 0.7 }
+                      : found
+                        ? { scale: 1, opacity: 1 }
+                        : { scale: [0.9, 1.06, 0.9], opacity: [0.6, 0.95, 0.6] }
+                  }
+                  transition={reduce ? { duration: 0.2 } : { duration: 1.8, repeat: found ? 0 : Infinity }}
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    ...place(center),
+                    transform: "translate(-50%, -50%)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "grid",
+                      placeItems: "center",
+                      width: 44,
+                      height: 44,
+                      borderRadius: "50%",
+                      background: found ? C.primary : "rgba(21,158,114,.55)",
+                      boxShadow: `0 0 0 3px #fff, ${tokens.shadow.card}`,
+                      color: "#fff",
+                    }}
+                  >
+                    <ShieldCheck className="h-5 w-5" strokeWidth={2.6} />
+                  </span>
+                </motion.div>
+              )
+            })}
+          </div>
+        </PhotoFrame>
+
+        <AnimatePresence>
+          {active && (
+            <motion.div
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-start gap-2.5 rounded-[18px] px-4 py-3"
+              style={{ background: C.primarySoft, boxShadow: tokens.shadow.soft }}
             >
-              <span
-                style={{
-                  display: "grid",
-                  placeItems: "center",
-                  width: 42,
-                  height: 42,
-                  borderRadius: "50%",
-                  background: found ? C.success : "rgba(46,160,67,0.55)",
-                  border: "3px solid #fff",
-                  boxShadow: tokens.shadow.card,
-                  color: "#fff",
-                }}
-              >
-                <ShieldCheck className="h-5 w-5" strokeWidth={2.6} />
-              </span>
+              <Sparkles className="mt-0.5 h-5 w-5 shrink-0" style={{ color: C.primaryStrong }} aria-hidden="true" />
+              <p className="text-[14px] font-bold leading-relaxed" style={{ color: C.ink }}>
+                <span className="font-black" style={{ color: C.primaryStrong }}>
+                  <RubyText text={active.type} />：
+                </span>
+                <RubyText text={active.whyGood} />
+              </p>
             </motion.div>
-          )
-        })}
+          )}
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {active && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex items-start gap-2 rounded-[18px] px-4 py-3"
-            style={{ background: "#EAF7EE", boxShadow: tokens.shadow.soft }}
-          >
-            <Sparkles className="mt-0.5 h-5 w-5 shrink-0" style={{ color: C.success }} aria-hidden="true" />
-            <p className="text-[14px] font-bold leading-relaxed" style={{ color: C.ink }}>
-              <span className="font-extrabold" style={{ color: C.success }}>
-                <RubyText text={active.type} />：
-              </span>
-              <RubyText text={active.whyGood} />
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <PrimaryCTA onClick={onDone}>
-        {allFound ? "ぜんぶ みつけた！おわる" : "おわる"}
-      </PrimaryCTA>
+      <BottomBar className="-mx-4 px-4">
+        <PrimaryCTA onClick={onDone} variant={allFound ? "sun" : "paper"}>
+          {allFound ? "ぜんぶ みつけた！おわる" : "おわる"}
+        </PrimaryCTA>
+      </BottomBar>
     </div>
   )
 }
