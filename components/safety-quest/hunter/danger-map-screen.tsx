@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { ArrowLeft, ImageOff, MapPin, RefreshCw, Sparkles, Trash2 } from "lucide-react"
 
 import { splitFurigana } from "@/lib/hunter/furigana"
+import { localizeMapLabels } from "@/lib/hunter/map-labels"
 import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 import { RubyText } from "./ruby-text"
 
@@ -72,19 +73,7 @@ export function DangerMapScreen({
     const map = mapRef.current?.getMap()
     if (!map) return
     try {
-      const layers = map.getStyle()?.layers ?? []
-      for (const layer of layers) {
-        if (layer.type !== "symbol") continue
-        if (/shield|road-number|road-exit|oneway/.test(layer.id)) continue
-        const textField = map.getLayoutProperty(layer.id, "text-field") as unknown
-        if (!textField) continue
-        if (!JSON.stringify(textField).includes("name")) continue
-        map.setLayoutProperty(layer.id, "text-field", [
-          "coalesce",
-          ["get", "name_ja"],
-          ["get", "name"],
-        ])
-      }
+      localizeMapLabels(map)
     } catch {
       // 失敗しても地図機能は損なわない
     }
@@ -261,7 +250,6 @@ export function DangerMapScreen({
               initialViewState={initialViewState}
               attributionControl={false}
               onLoad={localizeLabels}
-              onStyleData={localizeLabels}
               style={{ width: "100%", height: "100%" }}
             >
               {pinned.map((p) => (
