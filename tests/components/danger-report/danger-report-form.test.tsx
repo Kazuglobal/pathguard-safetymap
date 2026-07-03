@@ -183,7 +183,7 @@ describe("DangerReportForm", () => {
     expect(screen.getByTestId("accident-panel")).toBeInTheDocument()
     expect(screen.queryByTestId("accident-loading")).not.toBeInTheDocument()
 
-    await user.type(screen.getByTestId("report-title"), "交差点の見通しが悪い")
+    await user.type(screen.getByRole("textbox", { name: "この場所の名前" }), "交差点の見通しが悪い")
     await user.click(screen.getByTestId("wizard-submit"))
 
     await waitFor(() => {
@@ -212,7 +212,7 @@ describe("DangerReportForm", () => {
     expect(screen.getByTestId("route-report-context")).toHaveTextContent("さくらの通学路")
 
     await goToSendStep(user)
-    await user.type(screen.getByTestId("report-title"), "見通しの悪い角")
+    await user.type(screen.getByRole("textbox", { name: "この場所の名前" }), "見通しの悪い角")
     await user.click(screen.getByTestId("wizard-submit"))
 
     await waitFor(() => {

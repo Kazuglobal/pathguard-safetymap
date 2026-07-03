@@ -1849,6 +1849,9 @@ export default function DangerReportForm({
                       </button>
                     ))}
                   </div>
+                  <label htmlFor="title" className="sr-only">
+                    この場所の名前
+                  </label>
                   <Input
                     id="title"
                     value={title}

@@ -75,6 +75,8 @@ export function AppOnboarding({
   const pathname = usePathname()
   const [index, setIndex] = useState(0)
   const [dir, setDir] = useState<1 | -1>(1)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const isLast = index === SLIDES.length - 1
   const slide = SLIDES[index]
 
@@ -124,6 +126,48 @@ export function AppOnboarding({
     }
   }, [open])
 
+  // モーダル表示中はキーボードフォーカスを内部に閉じ込め、終了時に呼び出し元へ戻す。
+  useEffect(() => {
+    if (!open) return
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    const dialog = dialogRef.current
+    dialog?.focus()
+
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !dialog) return
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute("hidden"))
+      if (focusable.length === 0) {
+        event.preventDefault()
+        dialog.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", onTab)
+    return () => {
+      document.removeEventListener("keydown", onTab)
+      const previous = previousFocusRef.current
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [open])
+
   // スワイプ判定(しきい値: 56px または 高速フリック)
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
@@ -163,6 +207,8 @@ export function AppOnboarding({
     <AnimatePresence>
       {open && (
         <motion.div
+          ref={dialogRef}
+          tabIndex={-1}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -310,13 +356,21 @@ export function AppOnboarding({
                         aria-current={active ? "step" : undefined}
                         aria-label={`${i + 1}ページ目`}
                         onClick={() => go(i)}
-                        className={`rounded-full transition-all duration-300 ${tankenTokens.cls.focus}`}
+                        className={`grid h-8 w-8 place-items-center rounded-full ${tankenTokens.cls.focus}`}
                         style={{
-                          width: active ? 26 : 9,
-                          height: 9,
-                          background: active ? C.primary : "rgba(67,57,43,.18)",
+                          touchAction: "manipulation",
                         }}
-                      />
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="block rounded-full transition-all duration-300"
+                          style={{
+                            width: active ? 26 : 9,
+                            height: 9,
+                            background: active ? C.primary : "rgba(67,57,43,.18)",
+                          }}
+                        />
+                      </button>
                     )
                   })}
                 </div>
