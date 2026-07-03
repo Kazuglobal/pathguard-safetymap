@@ -89,7 +89,15 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
   return (
     <div className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.75rem)] z-30">
       <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
-        <div className="overflow-visible rounded-[1.75rem] border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm">
+        <div
+          className="overflow-visible rounded-[1.75rem] border shadow-tanken-float"
+          style={{
+            background: "rgba(255,253,247,.95)",
+            borderColor: "rgba(67,57,43,.12)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
           {props.searchSlot}
         </div>
 
@@ -109,11 +117,22 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                   type="button"
                   aria-label={chip.label}
                   aria-pressed={isActive}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors ${
+                  className="chunky-press rounded-full border-2 px-4 py-2 text-[13px] font-black transition-colors"
+                  style={
                     isActive
-                      ? "border-sky-200 bg-sky-50 text-sky-900"
-                      : "border-slate-200 bg-white/95 text-slate-700"
-                  }`}
+                      ? {
+                          background: "#159E72",
+                          color: "#fff",
+                          borderColor: "rgba(67,57,43,.2)",
+                          boxShadow: "0 3px 0 #0C7A55",
+                        }
+                      : {
+                          background: "rgba(255,253,247,.95)",
+                          color: "#847661",
+                          borderColor: "rgba(67,57,43,.12)",
+                          boxShadow: "0 3px 0 rgba(67,57,43,.14)",
+                        }
+                  }
                   onClick={() => handleChipClick(chip.id)}
                 >
                   {chip.label}
@@ -124,7 +143,15 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
         </div>
 
         {activeSlot ? (
-          <div className="rounded-3xl border border-slate-200/90 bg-white/96 p-3 shadow-xl backdrop-blur-sm">
+          <div
+            className="rounded-3xl border p-3 shadow-tanken-float"
+            style={{
+              background: "rgba(255,253,247,.97)",
+              borderColor: "rgba(67,57,43,.12)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
             {activeSlot}
           </div>
         ) : null}

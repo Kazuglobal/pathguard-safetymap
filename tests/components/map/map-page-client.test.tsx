@@ -18,9 +18,9 @@ vi.mock("@/components/map/map-container", () => ({
   },
 }))
 
-vi.mock("@/components/map/usage-tutorial-dialog", () => ({
+vi.mock("@/components/onboarding/app-onboarding", () => ({
   default: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="usage-tutorial-dialog">tutorial-open</div> : null,
+    open ? <div data-testid="app-onboarding">onboarding-open</div> : null,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -33,6 +33,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/tutorial-storage", () => ({
   shouldShowTutorial: mocks.shouldShowTutorial,
+  markTutorialCompleted: vi.fn(),
 }))
 
 describe("MapPageClient", () => {
@@ -48,7 +49,7 @@ describe("MapPageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "使い方を確認" }))
 
-    expect(screen.getByTestId("usage-tutorial-dialog")).toBeInTheDocument()
+    expect(screen.getByTestId("app-onboarding")).toBeInTheDocument()
   })
 
   it("consumes the report query after auto-opening so the CTA can be triggered again", async () => {
@@ -56,22 +57,26 @@ describe("MapPageClient", () => {
 
     render(<MapPageClient />)
 
-    expect(mocks.mapContainer).toHaveBeenCalledWith(
-      expect.objectContaining({ autoOpenReport: true, preferredRouteId: "abc" }),
-    )
+    await waitFor(() => {
+      expect(mocks.mapContainer).toHaveBeenCalledWith(
+        expect.objectContaining({ autoOpenReport: true, preferredRouteId: "abc" }),
+      )
+    })
 
     await waitFor(() => {
       expect(mocks.replace).toHaveBeenCalledWith("/map?routeId=abc", { scroll: false })
     })
   })
 
-  it("passes through the selected route id from the query string", () => {
+  it("passes through the selected route id from the query string", async () => {
     mocks.useSearchParams.mockReturnValue(new URLSearchParams("routeId=route-42"))
 
     render(<MapPageClient />)
 
-    expect(mocks.mapContainer).toHaveBeenCalledWith(
-      expect.objectContaining({ autoOpenReport: false, preferredRouteId: "route-42" }),
-    )
+    await waitFor(() => {
+      expect(mocks.mapContainer).toHaveBeenCalledWith(
+        expect.objectContaining({ autoOpenReport: false, preferredRouteId: "route-42" }),
+      )
+    })
   })
 })

@@ -5,9 +5,8 @@ import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HelpCircle } from "lucide-react"
 
-import UsageTutorialDialog from "@/components/map/usage-tutorial-dialog"
+import AppOnboarding from "@/components/onboarding/app-onboarding"
 import { Button } from "@/components/ui/button"
-import { shouldShowTutorial } from "@/lib/tutorial-storage"
 
 const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   ssr: false,
@@ -26,14 +25,8 @@ export default function MapPageClient() {
   const autoOpenReport = searchParams.get("report") === "open"
   const preferredRouteId = searchParams.get("routeId")
 
-  useEffect(() => {
-    if (shouldShowTutorial()) {
-      const timer = setTimeout(() => {
-        setShowTutorial(true)
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [])
+  // 初回表示は AppOnboardingGate(layout-provider)が担当。
+  // ここでは右下の「使い方」ボタンからの再生のみ扱う。
 
   useEffect(() => {
     if (!autoOpenReport) return
@@ -66,9 +59,9 @@ export default function MapPageClient() {
         </Button>
       </div>
 
-      <UsageTutorialDialog
+      <AppOnboarding
         open={showTutorial}
-        onOpenChange={setShowTutorial}
+        onClose={() => setShowTutorial(false)}
       />
     </>
   )

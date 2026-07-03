@@ -1,10 +1,19 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Zen_Maru_Gothic } from "next/font/google"
 import "./globals.css"
 import { LayoutProvider } from "@/components/providers/layout-provider"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
+
+// アプリ全体のブランドフォント(たんけんノート)。日本語グリフを含むため preload しない。
+const zenMaru = Zen_Maru_Gothic({
+  weight: ["400", "500", "700", "900"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-app",
+  preload: false,
+})
 
 export const metadata: Metadata = {
   title: "PathGuardian - AI安全マップ",
@@ -36,7 +45,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="format-detection" content="telephone=no" />
       </head>
-      <body className={`${inter.className} overflow-x-hidden`}>
+      <body className={`${zenMaru.variable} ${inter.variable} font-app overflow-x-hidden`}>
         <LayoutProvider>
           {children}
         </LayoutProvider>

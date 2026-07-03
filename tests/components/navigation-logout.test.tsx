@@ -36,12 +36,33 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock framer-motion to avoid DOM warnings
-vi.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, layoutId, initial, ...props }: any) => <div {...props}>{children}</div>,
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}))
+vi.mock('framer-motion', () => {
+  const strip =
+    (Tag: any) =>
+    ({
+      children,
+      layoutId,
+      initial,
+      animate,
+      exit,
+      transition,
+      whileTap,
+      whileHover,
+      variants,
+      custom,
+      ...props
+    }: any) => <Tag {...props}>{children}</Tag>
+  return {
+    motion: {
+      div: strip('div'),
+      span: strip('span'),
+      button: strip('button'),
+      svg: strip('svg'),
+    },
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+    useReducedMotion: () => false,
+  }
+})
 
 // Mock notification bell
 vi.mock('@/components/notifications/notification-bell', () => ({
@@ -162,7 +183,7 @@ describe('Navigation Logout Functionality', () => {
     it('renders report action button (not a link) in bottom nav', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const reportButton = container.querySelector('button[aria-label="報告"]')
+      const reportButton = container.querySelector('button[aria-label="きけんハンター"]')
       expect(reportButton).toBeInTheDocument()
     })
   })

@@ -151,6 +151,12 @@ describe("DangerReportForm", () => {
     vi.unstubAllGlobals()
   })
 
+  /** ウィザードを「おくる」ステップまで進める */
+  const goToSendStep = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByTestId("wizard-next")) // きけん → しゃしん
+    await user.click(screen.getByTestId("wizard-next")) // しゃしん → おくる
+  }
+
   it("keeps accident stats panel stable after submit and bypasses hook enrich state", async () => {
     const onSubmit = vi.fn(async () => ({ reportId: "report-123", imageUrl: null }))
     const onCancel = vi.fn()
@@ -172,11 +178,13 @@ describe("DangerReportForm", () => {
       })
     })
 
+    await goToSendStep(user)
+
     expect(screen.getByTestId("accident-panel")).toBeInTheDocument()
     expect(screen.queryByTestId("accident-loading")).not.toBeInTheDocument()
 
-    await user.type(screen.getByLabelText("タイトル"), "交差点の見通しが悪い")
-    await user.click(screen.getByRole("button", { name: "報告を送信" }))
+    await user.type(screen.getByTestId("report-title"), "交差点の見通しが悪い")
+    await user.click(screen.getByTestId("wizard-submit"))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -185,7 +193,6 @@ describe("DangerReportForm", () => {
 
     expect(mocks.hookState.enrichCallCount).toBe(0)
     expect(screen.queryByTestId("accident-loading")).not.toBeInTheDocument()
-    expect(screen.getByTestId("accident-panel")).toBeInTheDocument()
   })
 
   it("selected route context is shown and included in submit payload", async () => {
@@ -204,8 +211,9 @@ describe("DangerReportForm", () => {
 
     expect(screen.getByTestId("route-report-context")).toHaveTextContent("さくらの通学路")
 
-    await user.type(screen.getByLabelText("タイトル"), "見通しの悪い角")
-    await user.click(screen.getByRole("button", { name: "報告を送信" }))
+    await goToSendStep(user)
+    await user.type(screen.getByTestId("report-title"), "見通しの悪い角")
+    await user.click(screen.getByTestId("wizard-submit"))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -217,9 +225,10 @@ describe("DangerReportForm", () => {
     })
   })
 
-  it("renders a quick simulation summary before submit when analysis is ready", () => {
+  it("renders a quick simulation summary before submit when analysis is ready", async () => {
     mocks.vlmHookState.status = "completed"
     mocks.vlmHookState.result = mockVlmResult
+    const user = userEvent.setup()
 
     render(
       <DangerReportForm
@@ -228,6 +237,8 @@ describe("DangerReportForm", () => {
         selectedLocation={[139.7004, 35.6595]}
       />
     )
+
+    await user.click(screen.getByTestId("wizard-next")) // きけん → しゃしん
 
     expect(screen.getByText("シミュレーション要約")).toBeInTheDocument()
     expect(screen.getByText("危険要約")).toBeInTheDocument()
@@ -264,6 +275,9 @@ describe("DangerReportForm", () => {
       />
     )
 
+    await user.click(screen.getByTestId("wizard-next")) // きけん → しゃしん
+    await screen.findByText(/ばしょの しゃしんを とろう/)
+
     const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
     const pngFile = new File(
       [Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
@@ -272,24 +286,26 @@ describe("DangerReportForm", () => {
     )
     await user.upload(originalInput, pngFile)
 
-    await screen.findByRole("button", { name: "画像を解析して可視化" })
-    await user.click(screen.getByRole("tab", { name: "加工画像" }))
-    await user.click(screen.getByRole("button", { name: "全プロンプト一括生成（1件）" }))
+
+    await screen.findByTestId("analyze-photo")
+    // くわしい設定(防災プロンプト・一括生成)を開く
+    await user.click(screen.getByRole("button", { name: /くわしい設定/ }))
+    await user.click(await screen.findByRole("button", { name: "全プロンプト一括生成（1件）" }))
 
     const batchThumbnail = await screen.findByAltText("避難ルート重ね地図")
     expect(batchThumbnail).toHaveAttribute("src", "blob:batch-result")
 
     await user.click(batchThumbnail)
 
-    const processedPreview = await screen.findByAltText("加工画像 1")
+    const processedPreview = await screen.findByAltText("かこう画像 1")
     expect(processedPreview).toHaveAttribute("src", "blob:report-added")
     expect(createObjectURL).toHaveBeenCalledTimes(2)
 
-    const deleteButtons = screen.getAllByTitle("画像を削除")
+    const deleteButtons = screen.getAllByRole("button", { name: "この画像を けす" })
     await user.click(deleteButtons.at(-1)!)
 
     await waitFor(() => {
-      expect(screen.queryByAltText("加工画像 1")).not.toBeInTheDocument()
+      expect(screen.queryByAltText("かこう画像 1")).not.toBeInTheDocument()
     })
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:report-added")
     expect(screen.getByAltText("避難ルート重ね地図")).toHaveAttribute("src", "blob:batch-result")

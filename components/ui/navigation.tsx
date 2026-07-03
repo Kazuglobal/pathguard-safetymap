@@ -12,16 +12,18 @@ import {
   User,
   LogOut,
   UserCheck,
-  Home,
   Route,
   Newspaper,
   BarChart3,
   Search,
 } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { isAdminUser } from "@/lib/admin"
 import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
+import { tankenTokens } from "@/lib/design/tanken"
+
+const C = tankenTokens.color
 
 interface NavigationProps {
   user?: any
@@ -42,6 +44,48 @@ type NavItem = {
   isAction?: boolean
 }
 
+/** ルペ(虫めがねの相棒)のミニ顔 — ボトムナビ中央ボタン用 */
+function LupeFace({ size = 34 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 124 124" aria-hidden="true">
+      {/* もち手(木) */}
+      <g transform="rotate(43 88 88)">
+        <rect x={83} y={80} width={13} height={34} rx={6.5} fill="#C98A4B" stroke={C.ink} strokeWidth={3} />
+      </g>
+      {/* レンズ外輪(みどり) */}
+      <circle cx={62} cy={62} r={34} fill={C.primary} stroke={C.ink} strokeWidth={3.4} />
+      {/* レンズ面(クリーム) */}
+      <circle cx={62} cy={62} r={26.5} fill="#FFF9EC" stroke={C.ink} strokeWidth={2} />
+      <path d="M44 50 q6 -10 18 -12" stroke="#fff" strokeWidth={5} strokeLinecap="round" fill="none" opacity={0.75} />
+      {/* ほっぺ・目・くち */}
+      <circle cx={47} cy={68} r={4.6} fill={C.berry} opacity={0.4} />
+      <circle cx={77} cy={68} r={4.6} fill={C.berry} opacity={0.4} />
+      <g fill={C.ink}>
+        <circle cx={52} cy={60} r={5.4} />
+        <circle cx={72} cy={60} r={5.4} />
+        <circle cx={50.2} cy={58} r={1.8} fill="#fff" />
+        <circle cx={70.2} cy={58} r={1.8} fill="#fff" />
+      </g>
+      <path d="M52 71 q10 10 20 0" stroke={C.ink} strokeWidth={3.6} strokeLinecap="round" fill="none" />
+      {/* 安全帽(黄) */}
+      <path
+        d="M40 36 Q42 18 62 18 Q82 18 84 36 L84 39 Q62 32 40 39 Z"
+        fill={C.sun}
+        stroke={C.ink}
+        strokeWidth={3.2}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M36 38.5 Q62 30 88 38.5 Q90 43 86 43.5 Q62 37 38 43.5 Q34 43 36 38.5 Z"
+        fill={C.sunDeep}
+        stroke={C.ink}
+        strokeWidth={3}
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function Navigation({
   user,
   onLogout,
@@ -52,6 +96,7 @@ export function Navigation({
   const pathname = usePathname()
   const isAdmin = isAdminUser(user)
   const [isReportOpen, setIsReportOpen] = React.useState(false)
+  const reduce = useReducedMotion()
 
   const mainNavItems: NavItem[] = [
     {
@@ -135,73 +180,98 @@ export function Navigation({
   }
 
   const topNavClass = cn(
-    "bg-white/95 backdrop-blur-md border-b border-gray-200 z-50",
+    "z-50 border-b",
     isOverlay ? "hidden md:block md:fixed md:top-0 md:inset-x-0" : "sticky top-0",
     hideTopNavMobile && "hidden md:block"
   )
 
   return (
     <>
-      <nav className={topNavClass}>
+      <nav
+        className={topNavClass}
+        style={{
+          background: "rgba(251,245,233,.92)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderColor: tankenTokens.border.faint,
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* ブランド */}
             <div className="flex items-center">
-              <Link href="/landing" className="flex items-center space-x-2 group">
-                <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">
-                  <span className="text-sky-600">Path</span>
-                  <span className="text-gray-900">Guardian</span>
+              <Link
+                href="/landing"
+                className="group flex items-center space-x-2 rounded-full px-1"
+              >
+                <motion.div
+                  whileHover={reduce ? undefined : { rotate: -8, scale: 1.06 }}
+                  transition={tankenTokens.spring}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border-2"
+                  style={{
+                    background: C.primary,
+                    borderColor: "rgba(67,57,43,.2)",
+                    boxShadow: "0 2px 0 rgba(12,122,85,.8)",
+                  }}
+                >
+                  <Shield className="h-5 w-5 text-white" strokeWidth={2.4} />
+                </motion.div>
+                <span className="text-xl font-black tracking-tight" style={{ color: C.ink }}>
+                  Path<span style={{ color: C.primary }}>Guardian</span>
                 </span>
               </Link>
             </div>
 
             {/* デスクトップ用ナビゲーション */}
-            <div className="hidden lg:flex items-center space-x-1">
+            <div className="hidden lg:flex items-center gap-1">
               {desktopNavItems.map((item) => {
                 const Icon = item.icon
                 const active = isActivePath(item)
                 return (
                   <Link key={item.href} href={item.href}>
-                    <Button
-                      variant={active ? "default" : "ghost"}
-                      size="sm"
+                    <span
                       className={cn(
-                        "relative group",
-                        active
-                          ? "bg-sky-100 text-sky-700 hover:bg-sky-200"
-                          : "hover:bg-gray-100",
-                        item.key === "admin-dashboard" &&
-                          "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 hover:from-purple-200 hover:to-pink-200"
+                        "relative inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition-colors",
+                        active ? "" : "hover:bg-[rgba(67,57,43,.06)]"
                       )}
+                      style={{
+                        color: active ? "#fff" : C.inkSoft,
+                      }}
                     >
-                      <Icon className="w-4 h-4" />
-                      <span className="ml-2">{item.label}</span>
                       {active && (
-                        <motion.div
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600 rounded-full"
-                          layoutId="activeTab"
-                          initial={false}
+                        <motion.span
+                          layoutId="activeTopTab"
+                          className="absolute inset-0 rounded-full"
+                          style={{ background: C.primary, boxShadow: "0 2px 0 " + C.primaryStrong }}
+                          transition={reduce ? { duration: 0 } : tankenTokens.spring}
                         />
                       )}
+                      <Icon className="relative h-4 w-4" strokeWidth={2.5} />
+                      <span className="relative">{item.label}</span>
                       {item.key === "admin-dashboard" && (
-                        <UserCheck className="w-3 h-3 ml-1 text-purple-600" />
+                        <UserCheck className="relative h-3 w-3" />
                       )}
-                    </Button>
+                    </span>
                   </Link>
                 )
               })}
               {/* デスクトップ: きけんハンターボタン */}
-              <Button
-                size="sm"
-                className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white hover:from-emerald-500 hover:to-teal-600 ml-2"
+              <button
+                type="button"
                 onClick={() => setIsReportOpen(true)}
+                className={cn(
+                  "chunky-press ml-2 inline-flex h-10 items-center gap-2 rounded-full border-2 px-4 text-sm font-black text-white",
+                  tankenTokens.cls.focus
+                )}
+                style={{
+                  background: C.accent,
+                  borderColor: "rgba(67,57,43,.18)",
+                  boxShadow: tankenTokens.shadow.pressAccent,
+                }}
               >
-                <Search className="w-4 h-4 mr-2" />
+                <Search className="h-4 w-4" strokeWidth={2.8} />
                 きけんハンター
-              </Button>
+              </button>
             </div>
 
             {/* 右側アクション */}
@@ -210,10 +280,10 @@ export function Navigation({
               {user ? (
                 <div className="hidden sm:flex items-center space-x-3">
                   <div className="flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-bold" style={{ color: C.ink }}>
                       {user.email?.split("@")[0] || "ユーザー"}
                     </span>
-                    <span className="text-xs text-gray-500">ログイン中</span>
+                    <span className="text-xs" style={{ color: C.inkFaint }}>ログイン中</span>
                   </div>
                   <Button
                     variant="ghost"
@@ -247,35 +317,51 @@ export function Navigation({
         </div>
       </nav>
 
-      {/* モバイルボトムナビ */}
-      <nav className={cn(
-        "fixed inset-x-0 bottom-0 z-50 border-t md:hidden",
-        isOverlay
-          ? "bg-white/90 backdrop-blur-lg border-gray-200/50 shadow-[0_-8px_30px_rgba(15,23,42,0.15)]"
-          : "bg-white/95 backdrop-blur border-gray-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]"
-      )}>
+      {/* モバイルボトムナビ(たんけんノートの持ち手) */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 border-t md:hidden"
+        style={{
+          background: "rgba(255,253,247,.94)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
+          borderColor: tankenTokens.border.faint,
+          boxShadow: "0 -1px 0 rgba(67,57,43,.04), 0 -12px 30px -18px rgba(67,57,43,.35)",
+        }}
+      >
         <div
-          className="mx-auto flex h-20 max-w-3xl items-center gap-1 px-4"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+          className="mx-auto flex h-[4.5rem] max-w-3xl items-stretch px-2"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
           {bottomNavItems.map((item) => {
             const Icon = item.icon
             const active = isActivePath(item)
-            const isEmphasized = item.emphasize
 
             if (item.isAction) {
               return (
                 <button
                   key={item.key}
                   type="button"
-                  className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all text-slate-500"
+                  className={cn(
+                    "relative flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 pb-1.5 text-[10.5px] font-black leading-tight",
+                    tankenTokens.cls.focus
+                  )}
+                  style={{ color: C.inkSoft }}
                   aria-label={item.label}
                   onClick={() => setIsReportOpen(true)}
                 >
-                  <span className="flex h-14 w-14 -mt-2 items-center justify-center rounded-full border-none bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-lg transition-all">
-                    <Icon className="h-6 w-6" />
-                  </span>
-                  <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
+                  <motion.span
+                    whileTap={reduce ? undefined : { scale: 0.9, y: 3 }}
+                    transition={tankenTokens.spring}
+                    className="absolute -top-5 flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-full border-2"
+                    style={{
+                      background: C.sun,
+                      borderColor: "rgba(67,57,43,.22)",
+                      boxShadow: `${tankenTokens.shadow.pressSun}, 0 10px 22px -10px rgba(226,168,18,.7)`,
+                    }}
+                  >
+                    <LupeFace size={40} />
+                  </motion.span>
+                  <span className="mt-auto block max-w-[72px] truncate whitespace-nowrap text-center">
                     {item.mobileLabel ?? item.label}
                   </span>
                 </button>
@@ -287,20 +373,27 @@ export function Navigation({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight transition-all",
-                  active ? "text-sky-600" : "text-slate-500"
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] leading-tight",
+                  active ? "font-black" : "font-bold",
+                  tankenTokens.cls.focus
                 )}
+                style={{ color: active ? C.primaryStrong : C.inkFaint }}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
               >
-                <span
-                  className={cn(
-                    "flex items-center justify-center rounded-full border bg-white shadow-sm transition-all",
-                    "h-10 w-10 border-transparent",
-                    active && "border-sky-200 bg-sky-50"
+                <span className="relative flex h-9 w-14 items-center justify-center">
+                  {active && (
+                    <motion.span
+                      layoutId="activeBottomTab"
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: C.primarySoft }}
+                      transition={reduce ? { duration: 0 } : tankenTokens.spring}
+                    />
                   )}
-                >
-                  <Icon className="h-5 w-5" />
+                  <Icon
+                    className="relative h-[1.35rem] w-[1.35rem]"
+                    strokeWidth={active ? 2.6 : 2.2}
+                  />
                 </span>
                 <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
                   {item.mobileLabel ?? item.label}

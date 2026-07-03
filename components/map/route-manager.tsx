@@ -1284,7 +1284,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                 selectedChildId={selectedChildId}
                 onSelectChild={setSelectedChildId}
               />
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <div
+                className="rounded-[16px] border px-4 py-3 text-sm font-bold"
+                style={{ borderColor: "rgba(67,57,43,.1)", background: "#FFFDF7", color: "#847661" }}
+              >
                 比較したいルートを2つ以上選ぶと、距離と所要時間をまとめて見比べられます。
               </div>
               {comparisonRoutes.length >= 2 && (

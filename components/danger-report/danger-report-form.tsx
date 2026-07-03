@@ -4,18 +4,40 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import NextImage from "next/image"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Upload, Loader2, Camera, ImageIcon, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
+import {
+  X,
+  Upload,
+  Loader2,
+  Camera,
+  ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  MapPin,
+  ArrowLeft,
+  ArrowRight,
+  Send,
+  Check,
+} from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
 import type { DangerReport } from "@/lib/types"
 import { compressImage, fileToBase64 } from "@/lib/image-utils"
 import { urlOrDataUrlToBlob } from "@/lib/data-url-utils"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { tankenTokens } from "@/lib/design/tanken"
+import {
+  TankenButton,
+  PaperCard,
+  WizardTrail,
+  StepSlider,
+  DangerTypePicker,
+  DangerLevelPicker,
+  StepHeading,
+  DANGER_TYPES,
+} from "./wizard/ui"
+import { motion, useReducedMotion } from "framer-motion"
 import {
   allPrompts,
   promptCategories,
@@ -81,6 +103,19 @@ type GeneratedPromptsState = {
   riskObservationTable?: string
 }
 
+const C = tankenTokens.color
+
+/** ウィザードの あしあと */
+const WIZARD_STEPS = ["きけん", "しゃしん", "おくる"] as const
+
+/** 種類ごとの「なまえ」候補(タップで入力) */
+const TITLE_SUGGESTIONS: Record<string, string[]> = {
+  traffic: ["くるまが おおい みち", "みとおしが わるい こうさてん", "しんごうの ない おうだんほどう"],
+  crime: ["くらくて ひとけが ない みち", "こわい こえかけが あった ばしょ", "みまもりが すくない ばしょ"],
+  disaster: ["あめで みずが たまる みち", "ふるい ブロックべい", "くずれそうな がけ・かべ"],
+  other: ["きになる ばしょ", "あぶないかもしれない ばしょ"],
+}
+
 const AUTO_GEN_DEBOUNCE_MS = 350
 const REGEN_COOLDOWN_MS = 1500
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
@@ -91,7 +126,17 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
 ])
 
 const readFileHeader = async (file: File, length: number) => {
-  const buffer = await file.slice(0, length).arrayBuffer()
+  const blob = file.slice(0, length)
+  if (typeof blob.arrayBuffer === "function") {
+    return new Uint8Array(await blob.arrayBuffer())
+  }
+  // Blob.arrayBuffer 未実装環境(旧Safari等)向けフォールバック
+  const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as ArrayBuffer)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsArrayBuffer(blob)
+  })
   return new Uint8Array(buffer)
 }
 
@@ -212,6 +257,11 @@ export default function DangerReportForm({
   const [showPromptDetails, setShowPromptDetails] = useState(false)
   // 手動解析トリガー（自動解析を無効化し、ボタンクリックで開始）
   const [manualAnalysisTriggered, setManualAnalysisTriggered] = useState(false)
+
+  // ウィザード進行状態(0:きけん 1:しゃしん 2:おくる 3:かんりょう)
+  const [step, setStep] = useState(0)
+  const [stepDir, setStepDir] = useState<1 | -1>(1)
+  const reduceMotion = useReducedMotion()
 
   // 一括生成用の状態
   const [batchLoading, setBatchLoading] = useState(false)
@@ -1104,6 +1154,10 @@ export default function DangerReportForm({
       // 親コンポーネントの送信ハンドラーを呼び出し、report IDとimage URLを取得
       const result = await onSubmit(reportData)
 
+      // 送信成功: かんりょう画面へ
+      setStepDir(1)
+      setStep(3)
+
       // Validate result before using for VLM analysis
       if (result?.reportId && result?.imageUrl) {
         // Store report metadata for VLM analysis
@@ -1164,36 +1218,55 @@ export default function DangerReportForm({
     preferredSimulationHazardKey
   )
 
-  // 画像削除ハンドラー（元画像）
+  // 画像削除ハンドラー（元画像）— 再選択でやり直せるため確認ダイアログは出さない
   const handleRemoveOriginalImage = () => {
-    if (window.confirm("この画像を削除してもよろしいですか？")) {
-      setOriginalImageFile(null)
-      setOriginalImagePreview(null)
-      if (originalFileInputRef.current) {
-        originalFileInputRef.current.value = ""
-      }
-      toast({
-        title: "画像を削除しました",
-        description: "元画像が削除されました。",
-      })
+    setOriginalImageFile(null)
+    setOriginalImagePreview(null)
+    if (originalFileInputRef.current) {
+      originalFileInputRef.current.value = ""
     }
+    toast({ title: "しゃしんを けしたよ" })
   }
 
   // 画像削除ハンドラー（加工画像）
   const handleRemoveProcessedImage = (index: number) => {
-    if (window.confirm("この加工画像を削除してもよろしいですか？")) {
-      const targetUrl = processedImagePreviews[index]
-      revokeBlobUrl(targetUrl)
-      setProcessedImageFiles((prev) => prev.filter((_, i) => i !== index))
-      setProcessedImagePreviews((prev) => prev.filter((_, i) => i !== index))
-      if (processedFileInputRef.current) {
-        processedFileInputRef.current.value = ""
-      }
-      toast({
-        title: "画像を削除しました",
-        description: "加工画像が削除されました。",
-      })
+    const targetUrl = processedImagePreviews[index]
+    revokeBlobUrl(targetUrl)
+    setProcessedImageFiles((prev) => prev.filter((_, i) => i !== index))
+    setProcessedImagePreviews((prev) => prev.filter((_, i) => i !== index))
+    if (processedFileInputRef.current) {
+      processedFileInputRef.current.value = ""
     }
+    toast({ title: "かこう画像を けしたよ" })
+  }
+
+  // ウィザードの前後移動
+  const goBack = () => {
+    setStepDir(-1)
+    setStep((s) => Math.max(s - 1, 0))
+  }
+
+  const goNext = () => {
+    if (step === 0) {
+      if (!selectedLocation) {
+        toast({
+          title: "ばしょが えらばれていないよ",
+          description: "ちずを タップして ばしょを えらんでね。",
+          variant: "destructive",
+        })
+        return
+      }
+      if (isGpsLocation && !isGpsLocationConfirmed) {
+        toast({
+          title: "ばしょの かくにんを してね",
+          description: "「この ばしょで OK」を おしてから すすんでね。",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+    setStepDir(1)
+    setStep((s) => Math.min(s + 1, 2))
   }
 
 
@@ -1210,140 +1283,166 @@ export default function DangerReportForm({
     setDangerLevel(Number.parseInt(value, 10))
   }
 
+  const selectedTypeInfo = DANGER_TYPES.find((t) => t.id === dangerType)
+  const titleSuggestions = TITLE_SUGGESTIONS[dangerType] ?? TITLE_SUGGESTIONS.other
+
   return (
-    <div className={isMobileFullscreen ? "px-4 py-2" : "p-3"}>
+    <div
+      className={
+        isMobileFullscreen ? "flex min-h-full flex-col px-4 pb-2 pt-3" : "flex flex-col p-4"
+      }
+      style={{ fontFamily: tankenTokens.font.family, wordBreak: "keep-all", overflowWrap: "break-word" }}
+      data-testid="danger-report-wizard"
+    >
       {/* ヘッダー - モバイルフルスクリーン時は親で表示するため非表示 */}
       {!isMobileFullscreen && (
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-bold">危険箇所の報告</h2>
-          <Button variant="ghost" size="icon" onClick={onCancel}>
-            <X className="h-4 w-4" />
-          </Button>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[17px] font-black" style={{ color: C.ink }}>
+            きけんを おしらせ
+          </h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="とじる"
+            className={`grid h-10 w-10 place-items-center rounded-full border-2 bg-white ${tankenTokens.cls.focus}`}
+            style={{ borderColor: tankenTokens.border.soft, color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
+          >
+            <X className="h-4 w-4" strokeWidth={2.6} />
+          </button>
         </div>
       )}
 
-      <form onSubmit={handleFormSubmit} className={isMobileFullscreen ? "space-y-4" : "space-y-3"}>
-        {selectedRouteName && (
-          <div
-            data-testid="route-report-context"
-            className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900"
-          >
-            <p className="font-medium">通学路の文脈で報告します</p>
-            <p className="text-xs text-sky-800">{selectedRouteName} に紐づく注意情報として扱います。</p>
-          </div>
-        )}
-        <div className="space-y-2">
-          <Label htmlFor="title">タイトル</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="危険箇所の名前や特徴"
-            maxLength={120}
-            required
-          />
+      {/* あしあと(進捗) */}
+      {step < 3 && (
+        <div className="mb-4">
+          <WizardTrail steps={WIZARD_STEPS} current={step} />
         </div>
+      )}
 
-        <div className="space-y-2">
-          <Label htmlFor="description">詳細説明（任意）</Label>
-          <Textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="危険箇所の詳細な説明や注意点"
-            className="resize-none"
-            maxLength={1000}
-          />
-        </div>
+      <form onSubmit={handleFormSubmit} className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1">
+          <StepSlider stepKey={step} direction={stepDir}>
+            {/* ------------------------------------------------------ *
+             * STEP 0: どんな きけん？
+             * ------------------------------------------------------ */}
+            {step === 0 && (
+              <div className="space-y-4">
+                {selectedRouteName && (
+                  <div
+                    data-testid="route-report-context"
+                    className="rounded-[14px] border px-3 py-2"
+                    style={{ background: C.skySoft, borderColor: "rgba(62,143,184,.25)" }}
+                  >
+                    <p className="text-[12.5px] font-black" style={{ color: "#2A6B8C" }}>
+                      つうがくろ「{selectedRouteName}」の おしらせに なるよ
+                    </p>
+                  </div>
+                )}
 
-        <div className="space-y-2">
-          <Label htmlFor="danger_type">危険タイプ</Label>
-          <Select value={dangerType} onValueChange={setDangerType}>
-            <SelectTrigger id="danger_type">
-              <SelectValue placeholder="危険タイプを選択" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="traffic">交通危険</SelectItem>
-              <SelectItem value="crime">犯罪危険</SelectItem>
-              <SelectItem value="disaster">災害危険</SelectItem>
-              <SelectItem value="other">その他</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+                {/* ばしょ */}
+                {selectedLocation ? (
+                  <PaperCard tone="green" className="flex items-center gap-3 p-3">
+                    <span
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 bg-white"
+                      style={{ borderColor: "rgba(21,158,114,.4)" }}
+                    >
+                      <MapPin className="h-5 w-5" style={{ color: C.primary }} strokeWidth={2.6} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-black leading-tight" style={{ color: C.ink }}>
+                        ちずに ピンを たてたよ
+                      </p>
+                      <p className="mt-0.5 text-[11.5px] font-bold leading-snug" style={{ color: C.inkSoft }}>
+                        ばしょを かえたいときは「地点を変更」からね
+                      </p>
+                    </div>
+                  </PaperCard>
+                ) : (
+                  <PaperCard tone="accent" className="flex items-center gap-3 p-3">
+                    <MapPin className="h-5 w-5 shrink-0" style={{ color: C.accentStrong }} />
+                    <p className="text-[13px] font-black" style={{ color: C.accentStrong }}>
+                      ちずを タップして ばしょを えらんでね
+                    </p>
+                  </PaperCard>
+                )}
 
-        <div className="space-y-2">
-          <Label htmlFor="danger_level">危険度（レベル {dangerLevel}）</Label>
-          <Select value={dangerLevel.toString()} onValueChange={handleDangerLevelChange}>
-            <SelectTrigger id="danger_level">
-              <SelectValue placeholder="危険度を選択" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">レベル1（軽度）</SelectItem>
-              <SelectItem value="2">レベル2</SelectItem>
-              <SelectItem value="3">レベル3（中度）</SelectItem>
-              <SelectItem value="4">レベル4</SelectItem>
-              <SelectItem value="5">レベル5（重度）</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-gray-500">1: 軽度 - 5: 重大</p>
-        </div>
-
-        {selectedLocation && accidentStatsStatus !== 'idle' && (
-          <div className="mt-4 border-t pt-4">
-            {accidentStatsStatus === 'loading' && <AccidentStatsLoading />}
-            {accidentStatsStatus === 'error' && (
-              <p className="text-xs text-amber-700">事故統計の取得に失敗しました（報告には影響しません）</p>
-            )}
-            {accidentStatsStatus === 'loaded' && accidentStats && (
-              <AccidentStatsPanel stats={accidentStats} mode="compact" />
-            )}
-          </div>
-        )}
-
-        {/* モバイルでは上部に表示して、長いフォームをスクロールせずに結果を確認しやすくする */}
-        {isMobileFullscreen && showVlmPanel && (
-          <VlmAnalysisPanel
-            status={vlmStatus}
-            result={vlmResult}
-            error={vlmError}
-            onRetry={retryVlmAnalysis}
-          />
-        )}
-
-        <div className="space-y-2">
-          <Label>画像（任意）</Label>
-          <Tabs value={activeImageTab} onValueChange={setActiveImageTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="original">元画像</TabsTrigger>
-              <TabsTrigger value="processed">加工画像</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="original" className="mt-2">
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <Button
+                {/* GPS確認(現在地由来のとき) */}
+                {isGpsLocation && selectedLocation && (
+                  <button
                     type="button"
-                    variant="outline"
+                    role="switch"
+                    aria-checked={isGpsLocationConfirmed}
+                    data-testid="gps-confirm-toggle"
+                    onClick={() => setIsGpsLocationConfirmed(!isGpsLocationConfirmed)}
+                    className={`flex w-full items-center gap-3 rounded-[16px] border-2 p-3 text-left ${tankenTokens.cls.focus}`}
+                    style={{
+                      background: isGpsLocationConfirmed ? C.primarySoft : C.sunSoft,
+                      borderColor: isGpsLocationConfirmed ? "rgba(21,158,114,.5)" : "rgba(226,168,18,.5)",
+                    }}
+                  >
+                    <span
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition-colors"
+                      style={{
+                        background: isGpsLocationConfirmed ? C.primary : "#fff",
+                        borderColor: isGpsLocationConfirmed ? C.primaryStrong : "rgba(67,57,43,.25)",
+                      }}
+                    >
+                      {isGpsLocationConfirmed && <Check className="h-4 w-4 text-white" strokeWidth={3.4} />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-black leading-tight" style={{ color: C.ink }}>
+                        いまいる ばしょで OK！
+                      </span>
+                      <span className="mt-0.5 block text-[11.5px] font-bold leading-snug" style={{ color: C.inkSoft }}>
+                        GPSの ばしょは すこし ずれることがあるよ。ちずの ピンを みてね。
+                      </span>
+                    </span>
+                  </button>
+                )}
+
+                <div>
+                  <StepHeading hint="ちかいものを 1つ えらんでね">どんな きけん？</StepHeading>
+                  <DangerTypePicker value={dangerType} onChange={setDangerType} />
+                </div>
+
+                <div>
+                  <StepHeading hint="こどもに とっての あぶなさで えらぼう">どれくらい あぶない？</StepHeading>
+                  <DangerLevelPicker value={dangerLevel} onChange={setDangerLevel} />
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------ *
+             * STEP 1: しゃしん (任意)
+             * ------------------------------------------------------ */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <StepHeading hint="なくても OK。あると みんなに つたわりやすいよ">
+                  ばしょの しゃしんを とろう
+                </StepHeading>
+
+                <div className="flex gap-2">
+                  <TankenButton
+                    variant="paper"
+                    className="flex-1"
                     onClick={() => {
                       if (originalFileInputRef.current) {
-                        originalFileInputRef.current.removeAttribute('capture');
-                        originalFileInputRef.current.click();
+                        originalFileInputRef.current.removeAttribute("capture")
+                        originalFileInputRef.current.click()
                       }
                     }}
-                    className="flex-1 min-h-[48px] touch-manipulation"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    ギャラリー
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
+                    <Upload className="h-4 w-4" strokeWidth={2.6} />
+                    アルバム
+                  </TankenButton>
+                  <TankenButton
+                    variant="green"
+                    className="flex-[1.4]"
                     onClick={() => handleCameraAccess(originalFileInputRef)}
-                    className="flex-1 min-h-[48px] touch-manipulation"
                   >
-                    <Camera className="h-4 w-4 mr-2" />
-                    📸 カメラ撮影
-                  </Button>
+                    <Camera className="h-5 w-5" strokeWidth={2.6} />
+                    カメラで パチリ
+                  </TankenButton>
                   <input
                     type="file"
                     accept="image/*"
@@ -1351,102 +1450,6 @@ export default function DangerReportForm({
                     className="hidden"
                     ref={originalFileInputRef}
                   />
-                </div>
-
-                {cameraError && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{cameraError}</p>
-                    <p className="text-xs text-red-500 mt-1">ファイルから選択することもできます</p>
-                  </div>
-                )}
-
-                {originalImagePreview ? (
-                  <>
-                    <div className="relative mt-2 border rounded-md overflow-hidden group">
-                      <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(originalImagePreview)}>
-                        <NextImage
-                          src={originalImagePreview || "/placeholder.svg?height=200&width=400"}
-                          alt="選択された元画像"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-90 hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveOriginalImage()
-                        }}
-                        title="画像を削除"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {/* 解析開始ボタン */}
-                    <Button
-                      type="button"
-                      variant="default"
-                      className="mt-2 w-full min-h-[48px] touch-manipulation bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                      onClick={() => {
-                        lastAutoGenKey.current = null // 再解析を許可するためにキーをリセット
-                        setManualAnalysisTriggered(true)
-                        setActiveImageTab('processed')
-                      }}
-                      disabled={autoGenLoading}
-                    >
-                      {autoGenLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          解析中...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          画像を解析して可視化
-                        </>
-                      )}
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center h-32 bg-gray-100 rounded-md">
-                    <div className="text-center">
-                      <ImageIcon className="h-8 w-8 mx-auto text-gray-400" />
-                      <p className="text-sm text-gray-500 mt-1">元画像がありません</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="processed" className="mt-2">
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (processedFileInputRef.current) {
-                        processedFileInputRef.current.removeAttribute('capture');
-                        processedFileInputRef.current.click();
-                      }
-                    }}
-                    className="flex-1 min-h-[48px] touch-manipulation"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    ギャラリー
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
-                    onClick={() => handleCameraAccess(processedFileInputRef)}
-                    className="flex-1 min-h-[48px] touch-manipulation"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    📸 カメラ撮影
-                  </Button>
                   <input
                     type="file"
                     accept="image/*"
@@ -1458,392 +1461,596 @@ export default function DangerReportForm({
                 </div>
 
                 {cameraError && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{cameraError}</p>
-                    <p className="text-xs text-red-500 mt-1">ファイルから選択することもできます</p>
+                  <PaperCard tone="danger" className="p-3">
+                    <p className="text-[12.5px] font-bold" style={{ color: C.danger }}>{cameraError}</p>
+                    <p className="mt-1 text-[11.5px] font-bold" style={{ color: C.inkSoft }}>
+                      アルバムから えらぶことも できるよ
+                    </p>
+                  </PaperCard>
+                )}
+
+                {originalImagePreview ? (
+                  <div>
+                    {/* ノートに貼った しゃしん */}
+                    <motion.div
+                      initial={reduceMotion ? false : { scale: 0.96, rotate: -1.6, opacity: 0 }}
+                      animate={{ scale: 1, rotate: -0.8, opacity: 1 }}
+                      transition={tankenTokens.spring}
+                      className="relative mx-auto w-full max-w-[340px] rounded-[16px] border bg-white p-2 pb-3"
+                      style={{ borderColor: tankenTokens.border.faint, boxShadow: tankenTokens.shadow.card }}
+                    >
+                      <div
+                        className="relative h-44 w-full cursor-pointer overflow-hidden rounded-[10px]"
+                        onClick={() => handleShowPreview(originalImagePreview)}
+                      >
+                        <NextImage
+                          src={originalImagePreview}
+                          alt="えらんだ しゃしん"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="しゃしんを けす"
+                        className={`absolute -right-2 -top-2 grid h-9 w-9 place-items-center rounded-full border-2 ${tankenTokens.cls.focus}`}
+                        style={{ background: C.danger, borderColor: "#fff", color: "#fff", boxShadow: tankenTokens.shadow.soft }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveOriginalImage()
+                        }}
+                      >
+                        <X className="h-4 w-4" strokeWidth={3} />
+                      </button>
+                    </motion.div>
+
+                    {/* AI 可視化 */}
+                    <div className="mt-3">
+                      <TankenButton
+                        variant="sun"
+                        className="w-full"
+                        disabled={autoGenLoading}
+                        testId="analyze-photo"
+                        onClick={() => {
+                          lastAutoGenKey.current = null
+                          setManualAnalysisTriggered(true)
+                        }}
+                      >
+                        {autoGenLoading ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            ルペが しらべてるよ…
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5" strokeWidth={2.6} />
+                            AIで きけんを みつける
+                          </>
+                        )}
+                      </TankenButton>
+                    </div>
+                  </div>
+                ) : (
+                  <PaperCard className="flex h-32 items-center justify-center">
+                    <div className="text-center">
+                      <ImageIcon className="mx-auto h-8 w-8" style={{ color: C.inkFaint }} />
+                      <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkFaint }}>
+                        まだ しゃしんが ないよ
+                      </p>
+                    </div>
+                  </PaperCard>
+                )}
+
+                {autoGenError && (
+                  <PaperCard tone="danger" className="p-3">
+                    <p className="text-[12.5px] font-bold" style={{ color: C.danger }}>
+                      うまく いかなかったみたい: {autoGenError}
+                    </p>
+                  </PaperCard>
+                )}
+
+                {/* 加工画像(AIが つくった「もしも」のしゃしん) */}
+                {processedImagePreviews.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-[13px] font-black" style={{ color: C.ink }}>
+                      AIが つくった「もしも」のしゃしん
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {processedImagePreviews.map((preview, idx) => (
+                        <div
+                          key={idx}
+                          className="relative min-w-[140px] overflow-hidden rounded-[12px] border bg-white p-1"
+                          style={{ borderColor: tankenTokens.border.faint, boxShadow: tankenTokens.shadow.soft }}
+                        >
+                          <div
+                            className="relative h-28 w-full cursor-pointer overflow-hidden rounded-[8px]"
+                            onClick={() => handleShowPreview(preview)}
+                          >
+                            {/* blob/data URL のため native img を使用(NextImage 最適化を回避) */}
+                            <img
+                              src={preview}
+                              alt={`かこう画像 ${idx + 1}`}
+                              className="absolute inset-0 h-full w-full object-cover"
+                              loading="lazy"
+                              onError={() => {
+                                toast({
+                                  title: "エラー",
+                                  description: "加工画像の読み込みに失敗しました",
+                                  variant: "destructive",
+                                })
+                              }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="この画像を けす"
+                            className={`absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full border-2 ${tankenTokens.cls.focus}`}
+                            style={{ background: C.danger, borderColor: "#fff", color: "#fff" }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleRemoveProcessedImage(idx)
+                            }}
+                          >
+                            <X className="h-3.5 w-3.5" strokeWidth={3} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Situation control */}
-                <div className="mt-3 p-3 border rounded-md bg-gray-50 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">生成モード:</label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          !useCustomPrompt
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                        }`}
-                        onClick={() => setUseCustomPrompt(false)}
-                      >
-                        標準シナリオ
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          useCustomPrompt
-                            ? 'bg-green-600 text-white border-green-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                        }`}
-                        onClick={() => setUseCustomPrompt(true)}
-                      >
-                        防災用プロンプト
-                      </button>
-                    </div>
-                  </div>
-
-                  {!useCustomPrompt ? (
-                    // 従来のシチュエーション選択
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="text-sm text-gray-700">シチュエーション:</label>
-                      <select
-                        className="border rounded px-2 py-1 text-sm flex-1 min-w-[140px]"
-                        value={situation}
-                        onChange={(e) => setSituation(e.target.value as Situation)}
-                      >
-                        {defaultSituations.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    // 防災用カスタムプロンプト選択
-                    <div className="space-y-2">
-                      {/* カテゴリ選択 */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-sm text-gray-700">対象:</label>
-                        <div className="flex gap-1 flex-wrap">
-                          {promptCategories.map((category) => (
-                            <button
-                              key={category.id}
-                              type="button"
-                              className={`px-2 py-1 text-xs rounded border transition-colors ${
-                                selectedCategory === category.id
-                                  ? 'bg-green-100 text-green-800 border-green-400'
-                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                              }`}
-                              onClick={() => handleCategoryChange(category.id)}
-                            >
-                              {category.icon} {category.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* プロンプト選択 */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-sm text-gray-700">プロンプト:</label>
-                        <select
-                          className="border rounded px-2 py-1 text-sm flex-1 min-w-[180px]"
-                          value={selectedPromptId}
-                          onChange={(e) => setSelectedPromptId(e.target.value)}
-                        >
-                          <option value="">-- 選択してください --</option>
-                          {promptCategories
-                            .find((c) => c.id === selectedCategory)
-                            ?.prompts.map((prompt) => (
-                              <option key={prompt.id} value={prompt.id}>
-                                {prompt.shortName}: {prompt.name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-
-                      {/* 選択されたプロンプトの詳細表示 */}
-                      {selectedPromptId && (
-                        <div className="bg-white border rounded p-2 text-xs">
+                {/* シチュエーション(「もしも」の条件) */}
+                {originalImagePreview && (
+                  <PaperCard className="space-y-3 p-3">
+                    <p className="text-[13px] font-black" style={{ color: C.ink }}>
+                      「もしも」を えらんで つくりなおす
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {defaultSituations.map((s) => {
+                        const active = !useCustomPrompt && situation === s.id
+                        return (
                           <button
+                            key={s.id}
                             type="button"
-                            className="flex items-center gap-1 text-gray-600 hover:text-gray-800"
-                            onClick={() => setShowPromptDetails(!showPromptDetails)}
+                            aria-pressed={active}
+                            onClick={() => {
+                              setUseCustomPrompt(false)
+                              setSituation(s.id as Situation)
+                            }}
+                            className={`rounded-full border-2 px-3 py-1.5 text-[12px] font-black transition-colors ${tankenTokens.cls.focus}`}
+                            style={{
+                              background: active ? C.primary : "#fff",
+                              color: active ? "#fff" : C.inkSoft,
+                              borderColor: active ? C.primaryStrong : "rgba(67,57,43,.14)",
+                            }}
                           >
-                            {showPromptDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                            {getSelectedPromptInfo()?.description}
+                            {s.name}
                           </button>
-                          {showPromptDetails && (
-                            <div className="mt-2 p-2 bg-gray-50 rounded max-h-32 overflow-y-auto text-gray-600 whitespace-pre-wrap">
-                              {getSelectedPromptInfo()?.prompt.slice(0, 500)}
-                              {(getSelectedPromptInfo()?.prompt.length || 0) > 500 && '...'}
+                        )
+                      })}
+                    </div>
+
+                    <TankenButton
+                      variant="paper"
+                      className="w-full min-h-[46px]"
+                      onClick={regenerateSituation}
+                      disabled={regenLoading || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
+                    >
+                      {regenLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          つくっているよ…
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          {useCustomPrompt ? "えらんだ おだいで つくる" : "この「もしも」で つくる"}
+                        </>
+                      )}
+                    </TankenButton>
+
+                    {/* くわしい設定(おうちの人・行政向け) */}
+                    <div className="border-t pt-2" style={{ borderColor: tankenTokens.border.faint }}>
+                      <button
+                        type="button"
+                        className={`flex items-center gap-1 text-[12px] font-black ${tankenTokens.cls.focus}`}
+                        style={{ color: C.inkSoft }}
+                        onClick={() => setUseCustomPrompt(!useCustomPrompt)}
+                        aria-expanded={useCustomPrompt}
+                      >
+                        {useCustomPrompt ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        くわしい設定（おうちの人向け: 防災プロンプト・一括生成）
+                      </button>
+
+                      {useCustomPrompt && (
+                        <div className="mt-2 space-y-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {promptCategories.map((category) => (
+                              <button
+                                key={category.id}
+                                type="button"
+                                className={`rounded-full border-2 px-2.5 py-1 text-[11.5px] font-black ${tankenTokens.cls.focus}`}
+                                style={{
+                                  background: selectedCategory === category.id ? C.primarySoft : "#fff",
+                                  color: selectedCategory === category.id ? C.primaryStrong : C.inkSoft,
+                                  borderColor:
+                                    selectedCategory === category.id ? "rgba(21,158,114,.45)" : "rgba(67,57,43,.14)",
+                                }}
+                                onClick={() => handleCategoryChange(category.id)}
+                              >
+                                {category.icon} {category.name}
+                              </button>
+                            ))}
+                          </div>
+
+                          <select
+                            className="w-full rounded-[12px] border-2 bg-white px-2 py-2 text-[13px] font-bold"
+                            style={{ borderColor: tankenTokens.border.soft, color: C.ink }}
+                            value={selectedPromptId}
+                            onChange={(e) => setSelectedPromptId(e.target.value)}
+                            aria-label="防災プロンプトを選択"
+                          >
+                            <option value="">-- おだいを えらぶ --</option>
+                            {promptCategories
+                              .find((c) => c.id === selectedCategory)
+                              ?.prompts.map((prompt) => (
+                                <option key={prompt.id} value={prompt.id}>
+                                  {prompt.shortName}: {prompt.name}
+                                </option>
+                              ))}
+                          </select>
+
+                          {selectedPromptId && (
+                            <div
+                              className="rounded-[12px] border bg-white p-2 text-[11.5px] font-bold"
+                              style={{ borderColor: tankenTokens.border.faint, color: C.inkSoft }}
+                            >
+                              <button
+                                type="button"
+                                className="flex items-center gap-1"
+                                onClick={() => setShowPromptDetails(!showPromptDetails)}
+                              >
+                                {showPromptDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                {getSelectedPromptInfo()?.description}
+                              </button>
+                              {showPromptDetails && (
+                                <div
+                                  className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap rounded p-2"
+                                  style={{ background: C.paperDeep }}
+                                >
+                                  {getSelectedPromptInfo()?.prompt.slice(0, 500)}
+                                  {(getSelectedPromptInfo()?.prompt.length || 0) > 500 && "..."}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <TankenButton
+                            variant="paper"
+                            className="w-full min-h-[44px] text-[13px]"
+                            onClick={batchGenerateAll}
+                            disabled={batchLoading}
+                          >
+                            {batchLoading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                {batchProgress
+                                  ? `つくっているよ ${batchProgress.current}/${batchProgress.total} — ${batchProgress.currentName}`
+                                  : "じゅんびちゅう..."}
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4" />
+                                全プロンプト一括生成（{allPrompts.length}件）
+                              </>
+                            )}
+                          </TankenButton>
+
+                          {batchImages.length > 0 && (
+                            <div className="border-t pt-2" style={{ borderColor: tankenTokens.border.faint }}>
+                              <button
+                                type="button"
+                                className="mb-2 flex items-center gap-1 text-[11.5px] font-black"
+                                style={{ color: C.inkSoft }}
+                                onClick={() => setShowBatchResults((v) => !v)}
+                              >
+                                {showBatchResults ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                一括生成結果（{batchImages.length}/{allPrompts.length}件）
+                              </button>
+                              {showBatchResults && (
+                                <div className="space-y-3">
+                                  {promptCategories.map((cat) => {
+                                    const catImgs = batchImages.filter((img) => img.targetAudience === cat.id)
+                                    if (catImgs.length === 0) return null
+                                    return (
+                                      <div key={cat.id}>
+                                        <p className="mb-1 text-[11px] font-bold" style={{ color: C.inkFaint }}>
+                                          {cat.name}
+                                        </p>
+                                        <div className="flex gap-2 overflow-x-auto pb-1">
+                                          {catImgs.map((img) => (
+                                            <div key={img.promptId} className="w-24 flex-none">
+                                              <div
+                                                className="group relative h-20 cursor-pointer overflow-hidden rounded-[10px] border"
+                                                style={{ borderColor: tankenTokens.border.faint }}
+                                                onClick={() => addBatchImageToReport(img)}
+                                                title={`${img.name} — タップしてレポートに追加`}
+                                              >
+                                                <img src={img.blobUrl} alt={img.name} className="h-full w-full object-cover" />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                                                  <span className="text-xs font-black text-white">ついか</span>
+                                                </div>
+                                              </div>
+                                              <p className="mt-0.5 truncate text-[10.5px] font-bold" style={{ color: C.inkFaint }}>
+                                                {img.shortName}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  )}
-
-                  {/* 再生成ボタン */}
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    onClick={regenerateSituation}
-                    disabled={regenLoading || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
-                    className="w-full"
-                  >
-                    {regenLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        生成中...
-                      </>
-                    ) : (
-                      <>
-                        {useCustomPrompt ? '選択したプロンプトで生成' : 'この条件で再生成'}
-                      </>
-                    )}
-                  </Button>
-
-                  {/* 一括生成ボタン */}
-                  <div className="border-t pt-3 mt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={batchGenerateAll}
-                      disabled={batchLoading}
-                      className="w-full"
-                    >
-                      {batchLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          {batchProgress
-                            ? `生成中 ${batchProgress.current}/${batchProgress.total} — ${batchProgress.currentName}`
-                            : '準備中...'}
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          全プロンプト一括生成（{allPrompts.length}件）
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* 一括生成結果 */}
-                  {batchImages.length > 0 && (
-                    <div className="border-t pt-2 mt-1">
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-2"
-                        onClick={() => setShowBatchResults(v => !v)}
-                      >
-                        {showBatchResults ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        一括生成結果（{batchImages.length}/{allPrompts.length}件）
-                      </button>
-                      {showBatchResults && (
-                        <div className="space-y-3">
-                          {promptCategories.map(cat => {
-                            const catImgs = batchImages.filter(img => img.targetAudience === cat.id)
-                            if (catImgs.length === 0) return null
-                            return (
-                              <div key={cat.id}>
-                                <p className="text-xs text-gray-500 mb-1">{cat.name}</p>
-                                <div className="flex gap-2 overflow-x-auto pb-1">
-                                  {catImgs.map(img => (
-                                    <div key={img.promptId} className="flex-none w-24">
-                                      <div
-                                        className="relative h-20 rounded overflow-hidden border cursor-pointer group"
-                                        onClick={() => addBatchImageToReport(img)}
-                                        title={`${img.name} — タップしてレポートに追加`}
-                                      >
-                                        <img
-                                          src={img.blobUrl}
-                                          alt={img.name}
-                                          className="w-full h-full object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                          <span className="text-white text-xs font-medium">追加</span>
-                                        </div>
-                                      </div>
-                                      <p className="text-xs text-gray-500 mt-0.5 truncate">{img.shortName}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {autoGenLoading && (
-                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
-                    解析と可視化候補を生成中...
-                  </div>
+                  </PaperCard>
                 )}
 
-                {autoGenError && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
-                    自動生成エラー: {autoGenError}
-                  </div>
-                )}
-
-                {processedImagePreviews.length > 0 ? (
-                  <div className="flex gap-2 overflow-x-auto mt-2">
-                    {processedImagePreviews.map((preview, idx) => (
-                      <div key={idx} className="relative border rounded-md overflow-hidden min-w-[150px] group">
-                        <div className="relative w-full h-32 cursor-pointer" onClick={() => handleShowPreview(preview)}>
-                          {/* Use native <img> for blob/data URLs — NextImage's optimization
-                              pipeline adds overhead for non-remote images and can cause jank */}
-                          <img
-                            src={preview}
-                            alt={`加工画像 ${idx + 1}`}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            loading="lazy"
-                            onError={() => {
-                              toast({
-                                title: "エラー",
-                                description: "加工画像の読み込みに失敗しました",
-                                variant: "destructive",
-                              });
-                            }}
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-90 hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRemoveProcessedImage(idx)
-                          }}
-                          title="画像を削除"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {/* 解析結果(想定リスク) */}
+                {riskAnalysis && (
+                  <PaperCard tone="sun" className="space-y-1.5 p-3">
+                    <p className="text-[13.5px] font-black" style={{ color: C.ink }}>
+                      ルペの はっけんメモ
+                    </p>
+                    {riskAnalysis.map((r, idx) => (
+                      <p key={idx} className="text-[12.5px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
+                        <span className="font-black" style={{ color: C.accentStrong }}>{r.category}</span>
+                        ：{r.risk} ─ どうする？: {r.measure}
+                      </p>
                     ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-32 bg-gray-100 rounded-md">
-                    <div className="text-center">
-                      <ImageIcon className="h-8 w-8 mx-auto text-gray-400" />
-                      <p className="text-sm text-gray-500 mt-1">加工画像がありません</p>
-                    </div>
-                  </div>
+                  </PaperCard>
+                )}
+
+                {simulationQuickSummary && (
+                  <SimulationQuickSummary
+                    summary={simulationQuickSummary.summary}
+                    action={simulationQuickSummary.action}
+                    imageUrl={previewSimulationImage}
+                  />
                 )}
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+            )}
 
-        {/* VLM Analysis Panel */}
-        {!isMobileFullscreen && showVlmPanel && (
-          <VlmAnalysisPanel
-            status={vlmStatus}
-            result={vlmResult}
-            error={vlmError}
-            onRetry={retryVlmAnalysis}
-          />
-        )}
+            {/* ------------------------------------------------------ *
+             * STEP 2: なまえを つけて おくる
+             * ------------------------------------------------------ */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <StepHeading hint="タップでも えらべるよ">この ばしょに なまえを つけよう</StepHeading>
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {titleSuggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setTitle(s)}
+                        className={`rounded-full border-2 px-3 py-1.5 text-[12px] font-black ${tankenTokens.cls.focus}`}
+                        style={{
+                          background: title === s ? C.primarySoft : "#fff",
+                          color: title === s ? C.primaryStrong : C.inkSoft,
+                          borderColor: title === s ? "rgba(21,158,114,.45)" : "rgba(67,57,43,.14)",
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="れい: みとおしが わるい こうさてん"
+                    maxLength={120}
+                    required
+                    data-testid="report-title"
+                    className="h-12 rounded-[14px] border-2 bg-white text-[15px] font-bold"
+                    style={{ borderColor: tankenTokens.border.soft, color: C.ink }}
+                  />
+                </div>
 
-        {/* 選択位置の表示 - モバイルフルスクリーン時は親で表示するため非表示 */}
-        {!isMobileFullscreen && (
-          selectedLocation ? (
-            <div className="text-sm text-blue-600">
-              選択位置: 緯度 {selectedLocation[1].toFixed(6)}, 経度 {selectedLocation[0].toFixed(6)}
-            </div>
-          ) : (
-            <div className="text-sm text-red-600">地図上で位置を選択してください</div>
-          )
-        )}
+                <div>
+                  <label htmlFor="description" className="mb-1 block text-[13px] font-black" style={{ color: C.ink }}>
+                    くわしい メモ（なくても OK）
+                  </label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="れい: 夕方は くるまが スピードを だしていて こわい"
+                    className="min-h-[84px] resize-none rounded-[14px] border-2 bg-white text-[14px] font-bold"
+                    style={{ borderColor: tankenTokens.border.soft, color: C.ink }}
+                    maxLength={1000}
+                  />
+                </div>
 
-        {selectedLocation && (
-          <p className="text-xs text-gray-500">
-            住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
-          </p>
-        )}
+                {/* まとめカード */}
+                <PaperCard className="space-y-2.5 p-3.5">
+                  <p className="text-[13px] font-black" style={{ color: C.inkFaint }}>
+                    おくる ないよう
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selectedTypeInfo && (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-[12.5px] font-black"
+                        style={{
+                          background: selectedTypeInfo.soft,
+                          borderColor: selectedTypeInfo.color,
+                          color: C.ink,
+                        }}
+                      >
+                        <selectedTypeInfo.icon className="h-3.5 w-3.5" style={{ color: selectedTypeInfo.color }} />
+                        {selectedTypeInfo.label}
+                      </span>
+                    )}
+                    <span
+                      className="inline-flex items-center rounded-full border-2 px-3 py-1 text-[12.5px] font-black"
+                      style={{ background: C.sunSoft, borderColor: C.sunDeep, color: C.ink }}
+                    >
+                      あぶなさ レベル{dangerLevel}
+                    </span>
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border-2 px-3 py-1 text-[12.5px] font-black"
+                      style={{ background: "#fff", borderColor: tankenTokens.border.soft, color: C.inkSoft }}
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      しゃしん {originalImagePreview ? 1 + processedImagePreviews.length : processedImagePreviews.length}まい
+                    </span>
+                  </div>
+                  {!selectedLocation && (
+                    <p className="text-[12px] font-black" style={{ color: C.danger }}>
+                      ばしょが えらばれていないよ。「地点を変更」から えらんでね。
+                    </p>
+                  )}
+                </PaperCard>
 
-        {isGpsLocation && selectedLocation && (
-          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-medium">GPS由来の位置は端末の推定値です。送信前に正しい地点か確認してください。</p>
-            <label className="flex items-start gap-2 text-sm text-amber-900">
-              <input
-                type="checkbox"
-                checked={isGpsLocationConfirmed}
-                onChange={(e) => setIsGpsLocationConfirmed(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>この地点が報告対象であることを確認しました</span>
-            </label>
-          </div>
-        )}
-
-        {/* 解析結果表示 */}
-        {riskAnalysis && (
-          <div className="space-y-2 rounded-md border p-4 text-sm">
-            <h3 className="font-bold text-base">想定リスクと簡易対策</h3>
-            {riskAnalysis.map((r, idx) => (
-              <p key={idx}>
-                • <span className="font-semibold">{r.category}</span> : {r.risk} ─ 対策: {r.measure}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {simulationQuickSummary && (
-          <SimulationQuickSummary
-            summary={simulationQuickSummary.summary}
-            action={simulationQuickSummary.action}
-            imageUrl={previewSimulationImage}
-          />
-        )}
-
-        {/* 送信ボタン */}
-        <div className={isMobileFullscreen
-          ? "bg-white border-t border-gray-200 px-4 pt-3 -mx-4 mt-6"
-          : "flex justify-end gap-2 pt-2"
-        }
-          style={isMobileFullscreen ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" } : undefined}
-        >
-          {isMobileFullscreen ? (
-            <Button
-              type="submit"
-              disabled={isSubmitting || !canSubmit}
-              className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  {uploadProgress > 0 && uploadProgress < 100 ? `${Math.round(uploadProgress)}%` : "送信中..."}
-                </>
-              ) : (
-                "報告を送信"
-              )}
-            </Button>
-          ) : (
-            <>
-              <Button type="button" variant="outline" onClick={onCancel}>
-                キャンセル
-              </Button>
-              <Button type="submit" disabled={isSubmitting || !canSubmit} className="min-w-[100px]">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {uploadProgress > 0 && uploadProgress < 100 ? `${Math.round(uploadProgress)}%` : "送信中..."}
-                  </>
-                ) : (
-                  "報告を送信"
+                {/* 交通事故データ(この場所の周辺情報) */}
+                {selectedLocation && accidentStatsStatus !== "idle" && (
+                  <div>
+                    {accidentStatsStatus === "loading" && <AccidentStatsLoading />}
+                    {accidentStatsStatus === "error" && (
+                      <p className="text-[11.5px] font-bold" style={{ color: C.accentStrong }}>
+                        事故統計の取得に失敗しました（報告には影響しません）
+                      </p>
+                    )}
+                    {accidentStatsStatus === "loaded" && accidentStats && (
+                      <AccidentStatsPanel stats={accidentStats} mode="compact" />
+                    )}
+                  </div>
                 )}
-              </Button>
-            </>
-          )}
+
+                <p className="text-[11px] font-bold leading-relaxed" style={{ color: C.inkFaint }}>
+                  住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
+                  おくった ないようは おとなの かくにんの あとに ちずへ のるよ。
+                </p>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------ *
+             * STEP 3: かんりょう
+             * ------------------------------------------------------ */}
+            {step === 3 && (
+              <div className="space-y-4 pb-4">
+                <div className="flex flex-col items-center pt-4 text-center">
+                  <motion.div
+                    initial={reduceMotion ? false : { scale: 0, rotate: -20 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 18 }}
+                    className="grid h-24 w-24 place-items-center rounded-full border-4"
+                    style={{
+                      background: C.primary,
+                      borderColor: "rgba(67,57,43,.2)",
+                      boxShadow: `0 5px 0 ${C.primaryStrong}, 0 18px 36px -16px rgba(12,122,85,.6)`,
+                    }}
+                  >
+                    <Check className="h-12 w-12 text-white" strokeWidth={3.6} />
+                  </motion.div>
+                  <motion.h3
+                    initial={reduceMotion ? false : { y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ ...tankenTokens.springSoft, delay: 0.12 }}
+                    className="mt-4 text-[20px] font-black"
+                    style={{ color: C.ink }}
+                  >
+                    おしらせ できたよ！
+                  </motion.h3>
+                  <motion.p
+                    initial={reduceMotion ? false : { y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ ...tankenTokens.springSoft, delay: 0.2 }}
+                    className="mt-1.5 max-w-[300px] text-[13px] font-bold leading-relaxed"
+                    style={{ color: C.inkSoft }}
+                  >
+                    ありがとう！ おとなの かくにんが おわると、ちずに のるよ。
+                  </motion.p>
+                </div>
+
+                {simulationQuickSummary && (
+                  <SimulationQuickSummary
+                    summary={simulationQuickSummary.summary}
+                    action={simulationQuickSummary.action}
+                    imageUrl={previewSimulationImage}
+                  />
+                )}
+
+                {showVlmPanel && (
+                  <VlmAnalysisPanel
+                    status={vlmStatus}
+                    result={vlmResult}
+                    error={vlmError}
+                    onRetry={retryVlmAnalysis}
+                  />
+                )}
+
+                <TankenButton variant="green" className="w-full" onClick={onCancel} testId="wizard-done-close">
+                  ちずに もどる
+                </TankenButton>
+              </div>
+            )}
+          </StepSlider>
         </div>
+
+        {/* フッターナビ */}
+        {step < 3 && (
+          <div
+            className="sticky bottom-0 z-10 -mx-4 mt-5 px-4 pt-3"
+            style={{
+              background: "linear-gradient(180deg, rgba(251,245,233,0) 0%, #FBF5E9 34%)",
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.6rem)",
+            }}
+          >
+            <div className="flex gap-2">
+              {step > 0 && (
+                <TankenButton variant="paper" onClick={goBack} className="flex-1" testId="wizard-back">
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2.8} />
+                  もどる
+                </TankenButton>
+              )}
+              {step < 2 ? (
+                <TankenButton variant="green" onClick={goNext} className="flex-[2]" testId="wizard-next">
+                  つぎへ
+                  <ArrowRight className="h-5 w-5" strokeWidth={2.8} />
+                </TankenButton>
+              ) : (
+                <TankenButton
+                  variant="accent"
+                  type="submit"
+                  disabled={isSubmitting || !canSubmit || !title.trim()}
+                  className="flex-[2]"
+                  testId="wizard-submit"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      {uploadProgress > 0 && uploadProgress < 100 ? `${Math.round(uploadProgress)}%` : "おくっているよ..."}
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-5 w-5" strokeWidth={2.6} />
+                      おくる
+                    </>
+                  )}
+                </TankenButton>
+              )}
+            </div>
+          </div>
+        )}
       </form>
 
       <ImagePreviewDialog isOpen={isPreviewOpen} imageUrl={previewImage} onClose={() => setIsPreviewOpen(false)} />
     </div>
   )
 }
-
-
-
-
-
-
