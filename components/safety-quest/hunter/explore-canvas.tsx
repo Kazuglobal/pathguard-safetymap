@@ -9,7 +9,8 @@
 //    (lib/hunter/image-geometry)。縦長写真でもズレない。
 //  - 外し回数/時間で段階ヒント: Lv1 あったかい・つめたい+方向 → Lv2 ゾーン発光
 //    → Lv3 薄枠開示。自動発見はしない(最後は必ず子のタップ)。
-//  - フィードバックは「実際にタップした場所」にアンカー(否定しないトーン維持)。
+//  - フィードバックは「実際にタップした場所」にアンカーしつつ、
+//    写真のふちで見切れないよう位置をクランプする。
 // =============================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -37,7 +38,7 @@ import {
 } from "@/lib/hunter/image-geometry"
 import { computeHintLevel, selectHintTarget } from "@/lib/hunter/hint"
 
-import { Celebrate, Mascot, StatPill, tokens } from "./theme"
+import { Celebrate, Mascot, PhotoFrame, StampSeal, StatPill, tokens } from "./theme"
 
 export interface ExploreCanvasProps {
   imageUrl: string
@@ -53,17 +54,24 @@ const C = tokens.color
 
 type Outcome = "hit" | "near" | "miss"
 
-/** 結果ごとの前向きメッセージ（否定しない・断定しないトーン） */
+/** 結果ごとの前向きメッセージ(否定しない・断定しないトーン) */
 const OUTCOME_MESSAGES: Record<Outcome, string> = {
+  hit: "よく きづいたね！",
+  near: "おしい！もう ちょっと！",
+  miss: "つぎは どこかな？",
+}
+
+/** 読み上げ用のくわしい文(表示チップは短く、SRにはあたたかく)。 */
+const OUTCOME_ANNOUNCE: Record<Outcome, string> = {
   hit: "これ あぶないかも！よく きづいたね！",
   near: "おしい！もう ちょっと！",
   miss: "つぎは どこかな？さがそう！",
 }
 
 const OUTCOME_CHIP: Record<Outcome, { bg: string; fg: string }> = {
-  hit: { bg: C.success, fg: "#FFFFFF" },
-  near: { bg: C.warning, fg: C.ink },
-  miss: { bg: C.primary, fg: "#FFFFFF" },
+  hit: { bg: C.primary, fg: "#FFFFFF" },
+  near: { bg: C.sun, fg: C.ink },
+  miss: { bg: "#FFFFFF", fg: C.ink },
 }
 
 const TEMPERATURE_LABEL: Record<HunterTemperature, string> = {
@@ -97,6 +105,8 @@ const DIRECTION_JP: Record<HunterDirection, string> = {
   left: "ひだり",
   right: "みぎ",
 }
+
+const clampPct = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
 
 export function ExploreCanvas(props: ExploreCanvasProps) {
   const { imageUrl, hazards, foundIds, onTap, lastTap, lastOutcome } = props
@@ -201,7 +211,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
       const dir = feedback.direction ? `、${DIRECTION_JP[feedback.direction]}のほう` : ""
       return `${TEMPERATURE_LABEL[feedback.temperature]}${dir}`
     }
-    return OUTCOME_MESSAGES[feedback.result]
+    return OUTCOME_ANNOUNCE[feedback.result]
   }, [feedback, hintLevel])
 
   const emitTap = useCallback(
@@ -244,6 +254,17 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
     [contain, box],
   )
 
+  /** フィードバック吹き出し用: ふちで見切れないようクランプした % 位置。 */
+  const placeClamped = useCallback(
+    (rel: { x: number; y: number }) => {
+      const raw = place(rel)
+      const left = clampPct(parseFloat(raw.left), 28, 72)
+      const top = clampPct(parseFloat(raw.top), 18, 82)
+      return { left: `${left}%`, top: `${top}%` }
+    },
+    [place],
+  )
+
   const isHit = feedback?.result === "hit"
 
   return (
@@ -258,34 +279,34 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
         points={isHit && feedback && feedback.points > 0 ? feedback.points : undefined}
       />
 
-      {/* 上部 HUD（やわらかい表現） */}
-      <div className="mb-2.5 flex items-center justify-center gap-2">
-        <StatPill
-          icon={<Search className="h-4 w-4" aria-hidden="true" />}
-          label="あと"
-          value={remaining > 0 ? `${remaining}こ` : "そろった！"}
-          tone="orange"
-        />
-        <StatPill
-          icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
-          label="みつけた"
-          value={foundCount}
-          tone="green"
-        />
+      {/* 上部 HUD(やわらかい表現)。全部見つけたら完了表示に切りかえる */}
+      <div className="mb-2.5 flex items-center justify-center gap-2.5">
+        {remaining > 0 ? (
+          <>
+            <StatPill
+              icon={<Search className="h-3.5 w-3.5" aria-hidden="true" />}
+              label="あと"
+              value={`${remaining}こ`}
+              tone="orange"
+            />
+            <StatPill
+              icon={<Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+              label="みつけた"
+              value={foundCount}
+              tone="green"
+            />
+          </>
+        ) : (
+          <StatPill
+            icon={<Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+            label="みつけた"
+            value={`ぜんぶ みつけた！`}
+            tone="green"
+          />
+        )}
       </div>
 
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          borderRadius: tokens.radius.thumb,
-          overflow: "hidden",
-          background: C.headerNavy,
-          boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
-          userSelect: "none",
-          WebkitTapHighlightColor: "transparent",
-        }}
-      >
+      <PhotoFrame tape={false}>
         <div
           ref={containerRef}
           role="button"
@@ -299,6 +320,8 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
             width: "100%",
             aspectRatio: "4 / 3",
             cursor: "pointer",
+            userSelect: "none",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
           {imageFailed ? (
@@ -311,7 +334,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                color: "#CDD9EF",
+                color: "#BFD2C9",
                 textAlign: "center",
                 padding: 16,
               }}
@@ -319,7 +342,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
               <span aria-hidden="true" style={{ fontSize: 40 }}>
                 🖼️
               </span>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>
+              <span style={{ fontSize: 15, fontWeight: 800 }}>
                 しゃしんを よみこめませんでした
               </span>
             </div>
@@ -356,9 +379,9 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
               style={{
                 position: "absolute",
                 ...placeRect(hintTarget, contain, box),
-                border: `3px dashed ${C.warning}`,
-                borderRadius: 16,
-                background: "rgba(255,193,7,0.10)",
+                border: `3px dashed ${C.sun}`,
+                borderRadius: 14,
+                background: "rgba(255,201,62,.12)",
                 zIndex: 2,
                 pointerEvents: "none",
               }}
@@ -373,7 +396,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
               animate={
                 reduce
                   ? { opacity: 0.5 }
-                  : { opacity: [0.15, 0.5, 0.15], scale: [0.9, 1.1, 0.9] }
+                  : { opacity: [0.15, 0.55, 0.15], scale: [0.9, 1.12, 0.9] }
               }
               transition={reduce ? { duration: 0.3 } : { duration: 1.8, repeat: Infinity }}
               style={{
@@ -382,25 +405,25 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                   x: hintTarget.region.x + hintTarget.region.w / 2,
                   y: hintTarget.region.y + hintTarget.region.h / 2,
                 }),
-                width: 84,
-                height: 84,
+                width: 88,
+                height: 88,
                 transform: "translate(-50%, -50%)",
                 borderRadius: "50%",
-                background: `radial-gradient(circle, ${C.warning}66 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${C.sun}72 0%, transparent 70%)`,
                 zIndex: 2,
                 pointerEvents: "none",
               }}
             />
           ) : null}
 
-          {/* 発見済みマーカー */}
+          {/* 発見済みマーカー(スタンプ) */}
           {foundHazards.map((hazard) => (
             <motion.div
               key={hazard.id}
-              initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
-              animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+              initial={reduce ? { opacity: 0 } : { scale: 2.1, opacity: 0, rotate: 14 }}
+              animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1, rotate: -6 }}
               transition={
-                reduce ? { duration: 0.2 } : { type: "spring", stiffness: 320, damping: 16 }
+                reduce ? { duration: 0.2 } : { type: "spring", stiffness: 380, damping: 20 }
               }
               aria-label={`みつけた きをつけるところ: ${hazard.type}`}
               role="img"
@@ -413,31 +436,14 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                 transform: "translate(-50%, -50%)",
                 zIndex: 3,
                 pointerEvents: "none",
+                filter: "drop-shadow(0 3px 6px rgba(38,65,59,.4))",
               }}
             >
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  background: tokens.gradient.treasure,
-                  border: "4px solid #FFFFFF",
-                  boxShadow: `0 0 0 4px ${C.warning}55, ${tokens.shadow.card}`,
-                  color: C.ink,
-                  fontWeight: 900,
-                  fontSize: 26,
-                  lineHeight: 1,
-                }}
-              >
-                !
-              </span>
+              <StampSeal size={50} label="はっけん" tone="accent" />
             </motion.div>
           ))}
 
-          {/* タップ結果フィードバック(実タップ位置にアンカー) */}
+          {/* タップ結果フィードバック(タップ位置にアンカー・ふちでクランプ) */}
           <AnimatePresence>
             {feedback ? (
               <motion.div
@@ -445,10 +451,10 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                 initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.8 }}
                 animate={reduce ? { opacity: 1 } : { opacity: 1, y: -12, scale: 1 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, y: -30, scale: 0.9 }}
-                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 320, damping: 18 }}
+                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 340, damping: 20 }}
                 style={{
                   position: "absolute",
-                  ...place({ x: feedback.x, y: feedback.y }),
+                  ...placeClamped({ x: feedback.x, y: feedback.y }),
                   transform: "translate(-50%, -50%)",
                   zIndex: 5,
                   pointerEvents: "none",
@@ -456,22 +462,9 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                   flexDirection: "column",
                   alignItems: "center",
                   gap: 6,
+                  maxWidth: "86%",
                 }}
               >
-                {feedback.result === "hit" && feedback.points > 0 ? (
-                  <span
-                    style={{
-                      fontWeight: 900,
-                      fontSize: 28,
-                      color: C.accent,
-                      textShadow:
-                        "-2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0 3px 6px rgba(30,60,90,.25)",
-                    }}
-                  >
-                    +{feedback.points}pt
-                  </span>
-                ) : null}
-
                 {/* Lv1: 温度感 + 方向ヒント(near/miss のとき) */}
                 {hintLevel >= 1 && feedback.result !== "hit" && feedback.temperature ? (
                   <span
@@ -479,12 +472,12 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                       display: "flex",
                       alignItems: "center",
                       gap: 4,
-                      padding: "3px 10px",
-                      borderRadius: tokens.radius.button,
-                      background: "rgba(11,37,81,0.72)",
+                      padding: "4px 11px",
+                      borderRadius: 9999,
+                      background: "rgba(38,65,59,.82)",
                       color: "#fff",
                       fontWeight: 800,
-                      fontSize: 13,
+                      fontSize: 12.5,
                       whiteSpace: "nowrap",
                     }}
                   >
@@ -495,32 +488,38 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
 
                 <span
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: tokens.radius.button,
+                    padding: "7px 14px",
+                    borderRadius: 9999,
                     background: OUTCOME_CHIP[feedback.result].bg,
                     color: OUTCOME_CHIP[feedback.result].fg,
-                    fontWeight: 800,
-                    fontSize: 16,
+                    fontWeight: 900,
+                    fontSize: 14.5,
                     whiteSpace: "nowrap",
-                    boxShadow: tokens.shadow.card,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "100%",
+                    boxShadow: `0 0 0 2.5px #fff, ${tokens.shadow.card}`,
                   }}
                 >
-                  {OUTCOME_MESSAGES[feedback.result]}
+                  {/* 全部見つけたあとの余分なタップに「つぎは？」と言わない */}
+                  {remaining <= 0 && feedback.result !== "hit"
+                    ? "もう ぜんぶ みつけたよ！"
+                    : OUTCOME_MESSAGES[feedback.result]}
                 </span>
               </motion.div>
             ) : null}
           </AnimatePresence>
 
-          {/* 発見時に よろこぶハンタくん */}
+          {/* 発見時に よろこぶルペ */}
           <AnimatePresence>
             {isHit ? (
               <motion.div
-                key="hunter-wow"
+                key="lupe-wow"
                 initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.5, y: 10 }}
                 animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6, y: 8 }}
-                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 300, damping: 16 }}
-                style={{ position: "absolute", right: 8, bottom: 8, zIndex: 6, pointerEvents: "none" }}
+                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 320, damping: 18 }}
+                style={{ position: "absolute", right: 6, bottom: 6, zIndex: 6, pointerEvents: "none" }}
               >
                 <Mascot size="sm" mood="wow" />
               </motion.div>
@@ -537,13 +536,13 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                 left: "50%",
                 transform: "translateX(-50%)",
                 zIndex: 2,
-                padding: "5px 14px",
-                borderRadius: tokens.radius.button,
-                background: "rgba(11, 37, 81, 0.6)",
+                padding: "6px 14px",
+                borderRadius: 9999,
+                background: "rgba(38,65,59,.66)",
                 backdropFilter: "blur(4px)",
                 color: "#FFFFFF",
-                fontSize: 13,
-                fontWeight: 700,
+                fontSize: 12.5,
+                fontWeight: 800,
                 whiteSpace: "nowrap",
                 pointerEvents: "none",
               }}
@@ -552,7 +551,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
             </div>
           ) : null}
         </div>
-      </div>
+      </PhotoFrame>
     </div>
   )
 }

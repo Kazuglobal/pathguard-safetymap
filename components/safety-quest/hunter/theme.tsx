@@ -1,18 +1,26 @@
 "use client"
 
 /**
- * きけんハンター 共通テーマ
+ * きけんハンター デザインファウンデーション「たんけんノート」
  *
- * 統合UIデザイン仕様（確定版）にもとづく Foundation ファイル。
- * 画面実装はここから tokens / Mascot / HunterShell / StatPill / PrimaryCTA / Celebrate を import する。
+ * 世界観: 紙のフィールドノート × スタンプラリー。
+ *  - クリーム紙の面に、森のみどり(primary)・安全オレンジ(accent)・帽子の黄(sun)。
+ *  - マスコットは虫めがねの相棒「ルペ」。見つける=このアプリの動詞そのもの。
+ *  - ボタンは押し込める「チャンキー」物理感。グラデ乱用はしない。
+ *  - モーションは短く・方向性があり・reduced-motion を必ず尊重。
  *
- * 設計原則:
- *  - 明るく・やさしく・あんしん感（ライトな空グラデ＋クリーム面＋ポップな達成演出）
- *  - 否定しない / 断定しない（「安全判定」ではなく「気をつける練習」）
- *  - アクセシブル（十分なコントラスト・タップ領域大きめ・aria・reduced-motion 尊重）
+ * ここから tokens / Mascot / HunterShell / StatPill / PrimaryCTA / Celebrate /
+ * Sticker / PaperPanel / SpeechBubble / BottomBar / screenMotion を import する。
  */
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import type { CSSProperties, ReactNode } from "react"
 import {
   AnimatePresence,
@@ -20,7 +28,7 @@ import {
   useReducedMotion,
   type Transition,
 } from "framer-motion"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Flag } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -30,154 +38,187 @@ import { cn } from "@/lib/utils"
 
 export const tokens = {
   color: {
-    primary: "#1E88E5",
-    primaryStrong: "#0D66C4",
-    accent: "#FF8A3D",
-    accentStrong: "#F2701F",
-    success: "#2FBF71",
-    warning: "#FFC23C",
-    combo: "#FF7FB0",
-    surface: "#FFFFFF",
-    surfaceWarm: "#FFF8EF",
-    headerNavy: "#0B2551",
-    ink: "#2B3A4A",
-    inkSoft: "#51677D",
-    bgFrom: "#EAF4FF",
-    bgTo: "#DCEBFF",
-    danger: "#D14343",
+    /** 紙面 */
+    paper: "#FBF5E9",
+    paperDeep: "#F3EAD6",
+    card: "#FFFDF7",
+    /** インク(文字) */
+    ink: "#43392B",
+    inkSoft: "#847661",
+    inkFaint: "#B7AB93",
+    /** 森のみどり(主行動・発見) */
+    primary: "#159E72",
+    primaryStrong: "#0C7A55",
+    primarySoft: "#DFF3E9",
+    /** 安全オレンジ(注意・励まし) */
+    accent: "#F4801F",
+    accentStrong: "#D8660A",
+    accentSoft: "#FDEBD7",
+    /** 帽子の黄(スタート・ごほうび) */
+    sun: "#FFC93E",
+    sunDeep: "#E2A812",
+    sunSoft: "#FFF3CE",
+    /** 写真フレーム・夜インク */
+    night: "#26413B",
+    /** ベリー(コンボ・ほっぺ) */
+    berry: "#F2699C",
+    danger: "#D95555",
+    dangerSoft: "#FBE9E9",
+    /** success は primary の別名(発見・完了) */
+    success: "#159E72",
   },
-  // 任意要素ですぐ使える Tailwind クラス文字列
-  cls: {
-    pageBg: "bg-gradient-to-b from-[#EAF4FF] to-[#DCEBFF]",
-    card:
-      "bg-white rounded-[24px] shadow-[0_2px_6px_rgba(30,60,90,.10),0_8px_20px_rgba(30,60,90,.12)]",
-    cardWarm:
-      "bg-[#FFF8EF] rounded-[24px] shadow-[0_2px_6px_rgba(30,60,90,.10),0_8px_20px_rgba(30,60,90,.12)]",
-    ctaTreasure: "bg-gradient-to-br from-[#FFC23C] to-[#FF8A3D] text-[#2B3A4A]",
-    ctaBlue: "bg-[#1E88E5] text-white",
-    focus:
-      "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E88E5]/35",
+  font: {
+    family:
+      'var(--font-hunter, "Zen Maru Gothic"), "Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", system-ui, sans-serif',
   },
-  radius: { card: 24, button: 9999, chip: 16, thumb: 20, marker: 9999 },
+  radius: { card: 22, panel: 18, chip: 12, button: 9999, photo: 18 },
   shadow: {
-    soft: "0 2px 6px rgba(30,60,90,.10)",
-    card: "0 8px 20px rgba(30,60,90,.12)",
-    pop: "0 6px 18px rgba(255,138,61,.35)",
-    focus: "0 0 0 4px rgba(30,136,229,.35)",
+    /** カードの浮き(紙の上の紙) */
+    card: "0 1.5px 0 rgba(67,57,43,.07), 0 14px 30px -18px rgba(67,57,43,.38)",
+    soft: "0 1px 0 rgba(67,57,43,.06), 0 6px 16px -10px rgba(67,57,43,.28)",
+    /** チャンキーボタンの土台 */
+    pressSun: "0 4px 0 #E2A812",
+    pressGreen: "0 4px 0 #0C7A55",
+    pressPaper: "0 3px 0 rgba(67,57,43,.16)",
   },
-  gradient: {
-    bg: "linear-gradient(180deg,#EAF4FF,#DCEBFF)",
-    sky: "linear-gradient(160deg,#5BB8FF,#1E88E5)",
-    treasure: "linear-gradient(45deg,#FFC23C,#FF8A3D)",
-    combo: "linear-gradient(45deg,#FF9F5A,#FF7FB0)",
+  cls: {
+    // ring 色は slash 記法(/40)だと生成されないことがあるため rgba 直書きで確実に
+    focus:
+      "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(21,158,114,0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FBF5E9]",
   },
-  spring: { type: "spring", stiffness: 260, damping: 18 },
+  spring: { type: "spring", stiffness: 420, damping: 32 } as Transition,
 } as const
 
-// framer-motion 用にゆるめに型付けした spring トランジション
-const SPRING: Transition = { type: "spring", stiffness: 260, damping: 18 }
 const C = tokens.color
 
 /* ------------------------------------------------------------------ *
- * Mascot — ハンタくん（丸い盾のヒーロー探検家・2.2頭身）
+ * 画面遷移モーション(方向つき)
+ *  forward: 右から入る / back: 左から入る。出る側は浅く動かしてパララックス感。
  * ------------------------------------------------------------------ */
 
-type MascotSize = "sm" | "md" | "lg"
-type MascotMood = "happy" | "cheer" | "think" | "wow"
+export type NavDirection = 1 | -1
 
-const MASCOT_PX: Record<MascotSize, number> = { sm: 48, md: 88, lg: 128 }
+export const SCREEN_EASE: Transition = { duration: 0.32, ease: [0.22, 1, 0.36, 1] }
 
-const MOOD_LABEL: Record<MascotMood, string> = {
-  happy: "わくわくしているハンタくん",
-  cheer: "おうえんしているハンタくん",
-  think: "かんがえているハンタくん",
-  wow: "びっくり して よろこんでいるハンタくん",
+export function screenVariants(reduce: boolean) {
+  if (reduce) {
+    return {
+      enter: () => ({ opacity: 0 }),
+      center: { opacity: 1 },
+      exit: () => ({ opacity: 0 }),
+    }
+  }
+  return {
+    enter: (dir: NavDirection) => ({ opacity: 0, x: 40 * dir, scale: 0.99 }),
+    center: { opacity: 1, x: 0, scale: 1 },
+    exit: (dir: NavDirection) => ({ opacity: 0, x: -28 * dir, scale: 0.995 }),
+  }
 }
 
-function MascotEyes({ mood }: { mood: MascotMood }) {
-  const stroke = C.ink
+/** コンテンツの順次せり上がり。 */
+export function riseIn(reduce: boolean | null, delay = 0) {
+  if (reduce) return {}
+  return {
+    initial: { opacity: 0, y: 14 },
+    animate: { opacity: 1, y: 0 },
+    transition: { ...SCREEN_EASE, delay },
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 紙テクスチャ & ノート柄 (data-uri / 追加アセット不要)
+ * ------------------------------------------------------------------ */
+
+/** ざらっとした紙の粒子(ごく薄く重ねる)。 */
+const PAPER_NOISE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E\")"
+
+/** 探検ノートの見返し柄: 点線ルート・ピン・星をまばらに。 */
+const ENDPAPER =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340' viewBox='0 0 340 340'%3E%3Cg fill='none' stroke='%2343392B' stroke-opacity='.055' stroke-width='3' stroke-linecap='round'%3E%3Cpath stroke-dasharray='1 14' d='M20 60 Q120 20 170 90 T320 120'/%3E%3Cpath stroke-dasharray='1 14' d='M40 300 Q140 240 220 280 T330 230'/%3E%3C/g%3E%3Cg fill='%2343392B' fill-opacity='.06'%3E%3Cpath d='M84 148c0-9 7-16 16-16s16 7 16 16c0 12-16 26-16 26s-16-14-16-26zm16 5a5 5 0 100-10 5 5 0 000 10z'/%3E%3Ccircle cx='262' cy='58' r='9' fill='none' stroke='%2343392B' stroke-opacity='.07' stroke-width='4'/%3E%3Cpath d='M268 65l10 10' stroke='%2343392B' stroke-opacity='.07' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M50 215l3.5 7 7.7 1-5.6 5.4 1.4 7.6-7-3.6-7 3.6 1.4-7.6-5.6-5.4 7.7-1z'/%3E%3Cpath d='M300 320l2.6 5.2 5.8.8-4.2 4 1 5.7-5.2-2.7-5.2 2.7 1-5.7-4.2-4 5.8-.8z'/%3E%3C/g%3E%3C/svg%3E\")"
+
+/* ------------------------------------------------------------------ *
+ * Mascot — ルペ(虫めがねの相棒・黄色い安全帽)
+ * ------------------------------------------------------------------ */
+
+type MascotSize = "sm" | "md" | "lg" | "xl"
+type MascotMood = "happy" | "cheer" | "think" | "wow"
+
+const MASCOT_PX: Record<MascotSize, number> = { sm: 52, md: 88, lg: 132, xl: 168 }
+
+const MOOD_LABEL: Record<MascotMood, string> = {
+  happy: "にこにこの ルペ",
+  cheer: "おうえんする ルペ",
+  think: "かんがえちゅうの ルペ",
+  wow: "びっくりして よろこぶ ルペ",
+}
+
+function LupeEyes({ mood }: { mood: MascotMood }) {
+  const ink = C.ink
   if (mood === "think") {
-    // 目を細め上向き
+    // 目は開けたまま少し上を見る(居眠りに見せない)
     return (
-      <g stroke={stroke} strokeWidth={3.5} strokeLinecap="round" fill="none">
-        <path d="M44 58 q6 -4 12 0" />
-        <path d="M64 58 q6 -4 12 0" />
+      <g fill={ink}>
+        <circle cx={52} cy={58.5} r={5} />
+        <circle cx={72} cy={58.5} r={5} />
+        <circle cx={51} cy={56.5} r={1.7} fill="#fff" />
+        <circle cx={71} cy={56.5} r={1.7} fill="#fff" />
+        <path d="M45 50 q6 -4 13 -2" stroke={ink} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+        <path d="M66 48 q7 -2 13 2" stroke={ink} strokeWidth={2.6} strokeLinecap="round" fill="none" />
       </g>
     )
   }
   if (mood === "cheer") {
-    // 片目ウインク（∩）＋まる目
     return (
       <g>
-        <path
-          d="M44 60 q6 -6 12 0"
-          stroke={stroke}
-          strokeWidth={3.5}
-          strokeLinecap="round"
-          fill="none"
-        />
-        <circle cx={70} cy={59} r={5.5} fill={stroke} />
-        <circle cx={68.2} cy={57.2} r={1.7} fill="#FFFFFF" />
+        <path d="M46 60 q6 -6 12 0" stroke={ink} strokeWidth={3.6} strokeLinecap="round" fill="none" />
+        <circle cx={72} cy={60} r={5.4} fill={ink} />
+        <circle cx={70.2} cy={58} r={1.8} fill="#fff" />
       </g>
     )
   }
   if (mood === "wow") {
-    // 目が★
     return (
-      <g fill={stroke}>
-        <Star cx={50} cy={59} r={6.5} />
-        <Star cx={70} cy={59} r={6.5} />
+      <g fill={ink}>
+        <SmallStar cx={52} cy={60} r={6.6} />
+        <SmallStar cx={72} cy={60} r={6.6} />
       </g>
     )
   }
-  // happy: まる目＋キラ
   return (
-    <g fill={stroke}>
-      <circle cx={50} cy={59} r={5.5} />
-      <circle cx={70} cy={59} r={5.5} />
-      <circle cx={48.2} cy={57.2} r={1.7} fill="#FFFFFF" />
-      <circle cx={68.2} cy={57.2} r={1.7} fill="#FFFFFF" />
+    <g fill={ink}>
+      <circle cx={52} cy={60} r={5.4} />
+      <circle cx={72} cy={60} r={5.4} />
+      <circle cx={50.2} cy={58} r={1.8} fill="#fff" />
+      <circle cx={70.2} cy={58} r={1.8} fill="#fff" />
     </g>
   )
 }
 
-function MascotMouth({ mood }: { mood: MascotMood }) {
-  if (mood === "wow") {
-    return <ellipse cx={60} cy={73} rx={6} ry={7} fill={C.accentStrong} />
-  }
+function LupeMouth({ mood }: { mood: MascotMood }) {
+  if (mood === "wow") return <ellipse cx={62} cy={74} rx={5.6} ry={6.6} fill={C.accentStrong} />
   if (mood === "think") {
-    return (
-      <path
-        d="M55 73 q5 3 10 0"
-        stroke={C.ink}
-        strokeWidth={3}
-        strokeLinecap="round"
-        fill="none"
-      />
-    )
+    return <path d="M57 74 q5 2.5 10 0" stroke={C.ink} strokeWidth={3.2} strokeLinecap="round" fill="none" />
   }
-  // happy / cheer: にっこり
   return (
-    <path
-      d="M50 71 q10 10 20 0"
-      stroke={C.ink}
-      strokeWidth={3.5}
-      strokeLinecap="round"
-      fill="none"
-    />
+    <path d="M52 71 q10 10 20 0" stroke={C.ink} strokeWidth={3.6} strokeLinecap="round" fill="none" />
   )
 }
 
-function Star({ cx, cy, r }: { cx: number; cy: number; r: number }) {
+function SmallStar({ cx, cy, r }: { cx: number; cy: number; r: number }) {
   const pts: string[] = []
   for (let i = 0; i < 10; i += 1) {
-    const rad = (Math.PI / 5) * i - Math.PI / 2
-    const rr = i % 2 === 0 ? r : r * 0.45
-    pts.push(`${cx + rr * Math.cos(rad)},${cy + rr * Math.sin(rad)}`)
+    const a = (Math.PI / 5) * i - Math.PI / 2
+    const rr = i % 2 === 0 ? r : r * 0.46
+    pts.push(`${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`)
   }
   return <polygon points={pts.join(" ")} />
 }
 
+/**
+ * ルペ本体。虫めがねのレンズが顔・上に黄色い安全帽・右下に木のもち手。
+ * ふわふわ浮遊(reduced 時は静止)。
+ */
 export function Mascot({
   size = "md",
   mood = "happy",
@@ -188,86 +229,76 @@ export function Mascot({
   const reduce = useReducedMotion()
   const px = MASCOT_PX[size]
 
-  // 呼吸/まばたきの軽いループ（reduced 時は静止）
-  const animate = reduce ? undefined : { y: [0, -3, 0] }
-  const transition: Transition | undefined = reduce
-    ? undefined
-    : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
-
   return (
     <motion.svg
       width={px}
       height={px}
-      viewBox="0 0 120 120"
+      viewBox="0 0 124 124"
       role="img"
       aria-label={MOOD_LABEL[mood]}
-      animate={animate}
-      transition={transition}
+      animate={reduce ? undefined : { y: [0, -4, 0], rotate: [0, -1.4, 0] }}
+      transition={reduce ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+      style={{ transformOrigin: "50% 60%" }}
     >
       {/* 接地影 */}
-      <ellipse cx={60} cy={113} rx={26} ry={5} fill="rgba(30,60,90,.12)" />
+      <ellipse cx={60} cy={116} rx={26} ry={4.5} fill="rgba(67,57,43,.14)" />
 
-      {/* おうかん（小さな王冠・ヒーローの印） */}
-      <g strokeLinejoin="round">
-        <path
-          d="M45 33 L48 18 L54 26 L60 15 L66 26 L72 18 L75 33 Z"
-          fill={C.warning}
-          stroke={C.accentStrong}
-          strokeWidth={2}
-        />
-        <circle cx={60} cy={16} r={2.6} fill={C.accent} />
+      {/* もち手(木) */}
+      <g transform="rotate(43 88 88)">
+        <rect x={83} y={80} width={13} height={34} rx={6.5} fill="#C98A4B" stroke={C.ink} strokeWidth={3} />
+        <rect x={86.4} y={84} width={2.6} height={24} rx={1.3} fill="#A96D33" opacity={0.7} />
       </g>
 
-      {/* 盾（バッジ）本体 */}
-      <path
-        d="M32 39 Q32 33 38 33 H82 Q88 33 88 39 V66 Q88 86 60 99 Q32 86 32 66 Z"
-        fill={C.primary}
-        stroke={C.primaryStrong}
-        strokeWidth={4}
-        strokeLinejoin="round"
-      />
-
-      {/* 上部ハイライト（立体感） */}
-      <path
-        d="M37 41 Q37 38 40 38 H80 Q83 38 83 41 V49 Q60 55 37 49 Z"
-        fill="#FFFFFF"
-        opacity={0.12}
-      />
-
-      {/* 顔パネル（白） */}
-      <ellipse cx={60} cy={62} rx={23} ry={20} fill="#FFFFFF" opacity={0.95} />
+      {/* レンズ外輪(みどり) */}
+      <circle cx={62} cy={62} r={34} fill={C.primary} stroke={C.ink} strokeWidth={3.4} />
+      {/* レンズ面(クリーム) */}
+      <circle cx={62} cy={62} r={26.5} fill="#FFF9EC" stroke={C.ink} strokeWidth={2} />
+      {/* レンズのつや */}
+      <path d="M44 50 q6 -10 18 -12" stroke="#fff" strokeWidth={5} strokeLinecap="round" fill="none" opacity={0.75} />
 
       {/* ほっぺ */}
-      <circle cx={45} cy={67} r={5} fill={C.combo} opacity={0.45} />
-      <circle cx={75} cy={67} r={5} fill={C.combo} opacity={0.45} />
+      <circle cx={47} cy={68} r={4.6} fill={C.berry} opacity={0.4} />
+      <circle cx={77} cy={68} r={4.6} fill={C.berry} opacity={0.4} />
 
-      {/* 目・口（表情） */}
-      <MascotEyes mood={mood} />
-      <MascotMouth mood={mood} />
+      <LupeEyes mood={mood} />
+      <LupeMouth mood={mood} />
 
-      {/* バッジの星（下部） */}
-      <g fill={C.warning} stroke={C.accentStrong} strokeWidth={1}>
-        <Star cx={60} cy={88} r={6} />
-      </g>
-
-      {/* キラキラ（cheer / wow で強調） */}
-      <g fill={C.warning}>
-        <Star cx={22} cy={44} r={mood === "wow" ? 5 : 3.4} />
-        <Star cx={98} cy={40} r={mood === "wow" ? 5 : 3.4} />
-        {(mood === "wow" || mood === "cheer") && <Star cx={101} cy={74} r={4} />}
-        {(mood === "wow" || mood === "cheer") && <Star cx={19} cy={72} r={4} />}
-      </g>
-
-      {/* think のときの「？」 */}
-      {mood === "think" && (
-        <text
-          x={97}
-          y={30}
-          fontSize={20}
-          fontWeight={800}
+      {/* 安全帽(黄) — レンズの上にちょこん */}
+      <g>
+        <path
+          d="M40 36 Q42 18 62 18 Q82 18 84 36 L84 39 Q62 32 40 39 Z"
+          fill={C.sun}
+          stroke={C.ink}
+          strokeWidth={3.2}
+          strokeLinejoin="round"
+        />
+        {/* つば */}
+        <path
+          d="M36 38.5 Q62 30 88 38.5 Q90 43 86 43.5 Q62 37 38 43.5 Q34 43 36 38.5 Z"
+          fill={C.sunDeep}
+          stroke={C.ink}
+          strokeWidth={3}
+          strokeLinejoin="round"
+        />
+        {/* 帽章(みどりの盾) */}
+        <path
+          d="M58 24 h8 q1.6 0 1.6 1.6 v4 q0 4 -5.6 6.4 q-5.6 -2.4 -5.6 -6.4 v-4 q0 -1.6 1.6 -1.6 Z"
           fill={C.primaryStrong}
-          aria-hidden="true"
-        >
+          stroke={C.ink}
+          strokeWidth={2}
+        />
+      </g>
+
+      {/* キラキラ */}
+      <g fill={C.sun} stroke={C.ink} strokeWidth={1.2}>
+        <SmallStar cx={22} cy={46} r={mood === "wow" || mood === "cheer" ? 5.4 : 4} />
+        <SmallStar cx={103} cy={40} r={mood === "wow" ? 5.6 : 4} />
+        {(mood === "wow" || mood === "cheer") && <SmallStar cx={104} cy={78} r={4.4} />}
+      </g>
+
+      {/* think の「?」 */}
+      {mood === "think" && (
+        <text x={98} y={30} fontSize={22} fontWeight={900} fill={C.accentStrong} aria-hidden="true">
           ?
         </text>
       )}
@@ -276,169 +307,309 @@ export function Mascot({
 }
 
 /* ------------------------------------------------------------------ *
- * HunterShell — モバイル枠＋グラデ背景＋任意の固定ヘッダー
+ * HunterShell — 紙のノート面 + ヘッダー + トレイル進捗
  * ------------------------------------------------------------------ */
+
+/** 進捗(みつけた数など)をトレイル(点線みち)で見せる。 */
+function TrailProgress({ current, total }: { current: number; total: number }) {
+  const safeTotal = Math.max(total, 1)
+  const clamped = Math.min(Math.max(current, 0), safeTotal)
+  const pct = (clamped / safeTotal) * 100
+  const reduce = useReducedMotion()
+
+  return (
+    <div className="mt-2 flex items-center gap-2" aria-hidden="false">
+      <div
+        role="progressbar"
+        aria-label="みつけた かず"
+        aria-valuenow={clamped}
+        aria-valuemin={0}
+        aria-valuemax={safeTotal}
+        className="relative h-3 flex-1 overflow-visible rounded-full"
+        style={{ background: "rgba(67,57,43,.10)" }}
+      >
+        {/* 点線みち */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-2 right-2"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(90deg, rgba(67,57,43,.28) 0 4px, transparent 4px 12px)",
+            backgroundSize: "12px 2px",
+            backgroundPosition: "0 center",
+            backgroundRepeat: "repeat-x",
+            height: 2,
+            top: "50%",
+            transform: "translateY(-1px)",
+          }}
+        />
+        <motion.div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ background: C.primary }}
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={reduce ? { duration: 0 } : tokens.spring}
+        />
+      </div>
+      <Flag className="h-4 w-4 shrink-0" style={{ color: pct >= 100 ? C.accent : C.inkFaint }} aria-hidden="true" />
+    </div>
+  )
+}
+
+interface ShellCtx {
+  onExit?: () => void
+}
+const ShellContext = createContext<ShellCtx>({})
+export const useShell = () => useContext(ShellContext)
 
 export function HunterShell({
   title,
   onBack,
+  onExit,
   headerRight,
   progress,
   children,
 }: {
   title?: string
   onBack?: () => void
+  /** アプリのホーム(landing)へ戻る動線 */
+  onExit?: () => void
   headerRight?: ReactNode
   progress?: { current: number; total: number }
   children: ReactNode
 }) {
+  const ctx = useMemo(() => ({ onExit }), [onExit])
   return (
-    // 外側: 画面いっぱいの背景。デスクトップ/タブレットでは中央寄せの「アプリカード」にする。
-    <div className="flex min-h-[100dvh] w-full justify-center bg-[#DCEBFF] sm:items-center sm:p-4 md:p-6 lg:p-8">
-      {/* 内側フレーム: スマホ=全画面 / タブレット・デスクトップ=画面幅に応じて拡大する角丸カード。 */}
+    <ShellContext.Provider value={ctx}>
       <div
-        className={cn(
-          "relative flex w-full max-w-md flex-col overflow-hidden md:max-w-2xl lg:max-w-3xl",
-          "h-[100dvh] sm:h-auto sm:min-h-[600px] sm:max-h-[calc(100dvh-2rem)] md:min-h-[680px] md:max-h-[calc(100dvh-3rem)] lg:max-h-[calc(100dvh-4rem)] sm:rounded-[32px] sm:shadow-[0_24px_60px_rgba(11,37,81,.28)] sm:ring-1 sm:ring-black/5",
-          tokens.cls.pageBg,
-        )}
+        data-hunter-root=""
+        className="flex min-h-[100dvh] w-full justify-center sm:items-center sm:p-4 md:p-8"
+        style={{
+          fontFamily: tokens.font.family,
+          background: `${ENDPAPER}, linear-gradient(175deg, ${C.paperDeep} 0%, #EBDFC6 100%)`,
+        }}
       >
-        {title && (
-          <header className="bg-[#0B2551] px-4 py-3 text-white md:px-6 md:py-4">
-            <div className="flex items-center gap-3">
-              {onBack && (
-                <button
-                  type="button"
-                  onClick={onBack}
-                  aria-label="もどる"
-                  className={cn(
-                    "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/15 hover:bg-white/25",
-                    tokens.cls.focus,
-                  )}
-                >
-                  <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-                </button>
-              )}
-              <h1 className="min-w-0 flex-1 truncate text-[16px] font-extrabold leading-tight md:text-[18px]">
-                {title}
-              </h1>
-              {headerRight && (
-                <div className="flex shrink-0 items-center gap-1.5">
+        {/* globals.css の `*:focus`(青アウトライン)を世界観に合わせて上書き。
+            マウス操作では消し、キーボード操作(:focus-visible)ではみどりのリングを保証する。 */}
+        <style>{`
+          [data-hunter-root] *:focus { outline: none; }
+          [data-hunter-root] *:focus-visible {
+            outline: 3px solid rgba(21, 158, 114, 0.55);
+            outline-offset: 2px;
+          }
+        `}</style>
+        {/* ノート本体 */}
+        <div
+          className={cn(
+            "relative flex w-full max-w-md flex-col overflow-hidden md:max-w-lg",
+            "h-[100dvh] sm:h-[min(920px,calc(100dvh-2rem))] md:h-[min(920px,calc(100dvh-4rem))]",
+            "sm:rounded-[30px] sm:border sm:border-[#43392B]/10",
+            "sm:shadow-[0_2px_0_rgba(67,57,43,.08),0_40px_80px_-40px_rgba(67,57,43,.5)]",
+          )}
+          style={{ background: `${PAPER_NOISE}, linear-gradient(180deg, ${C.paper} 0%, #F7EFDD 100%)` }}
+        >
+          {title ? (
+            <header className="relative z-20 shrink-0 px-4 pb-2.5 pt-[max(env(safe-area-inset-top),14px)]">
+              <div className="flex min-h-[44px] items-center gap-3">
+                {onBack ? (
+                  <motion.button
+                    type="button"
+                    onClick={onBack}
+                    aria-label="もどる"
+                    whileTap={{ scale: 0.92 }}
+                    className={cn(
+                      "grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 bg-white",
+                      "active:translate-y-[2px] transition-transform",
+                      tokens.cls.focus,
+                    )}
+                    style={{ borderColor: "rgba(67,57,43,.14)", color: C.ink, boxShadow: tokens.shadow.pressPaper }}
+                  >
+                    <ArrowLeft className="h-5 w-5" aria-hidden="true" strokeWidth={2.6} />
+                  </motion.button>
+                ) : (
+                  <span className="h-11 w-11 shrink-0" aria-hidden="true" />
+                )}
+
+                {/* タイトル(画面切替でやわらかくクロスフェード) */}
+                <div className="relative min-w-0 flex-1">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.h1
+                      key={title}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="truncate text-center text-[17px] font-black leading-tight"
+                      style={{ color: C.ink }}
+                    >
+                      {title}
+                    </motion.h1>
+                  </AnimatePresence>
+                  {/* 手描き風アンダーライン */}
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 120 6"
+                    className="mx-auto mt-1 block h-[5px] w-24"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M2 4 Q30 1 60 3.2 T118 2.6"
+                      fill="none"
+                      stroke={C.sun}
+                      strokeWidth={3.4}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+
+                <div className="flex h-11 w-11 shrink-0 items-center justify-end">
                   {headerRight}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {progress && progress.total > 0 && <RouteProgress {...progress} />}
-          </header>
-        )}
+              {progress && progress.total > 0 && <TrailProgress {...progress} />}
+            </header>
+          ) : null}
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-          {children}
-        </main>
+          {/* 分かち書き前提の改行制御: 単語(スペース区切り)の途中では折り返さない */}
+          <main
+            className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-contain [&_rt]:font-bold"
+            style={{ wordBreak: "keep-all", overflowWrap: "break-word" }}
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ShellContext.Provider>
   )
 }
 
-/** 宝の地図ルート風プログレス（角丸トラック＋success 塗り＋ピン） */
-function RouteProgress({ current, total }: { current: number; total: number }) {
-  const safeTotal = Math.max(total, 1)
-  const clamped = Math.min(Math.max(current, 0), safeTotal)
-  const pct = (clamped / safeTotal) * 100
+/* ------------------------------------------------------------------ *
+ * PaperPanel — 紙の上のカード
+ * ------------------------------------------------------------------ */
 
+export function PaperPanel({
+  children,
+  className,
+  tone = "card",
+  style,
+}: {
+  children: ReactNode
+  className?: string
+  tone?: "card" | "sun" | "green" | "accent"
+  style?: CSSProperties
+}) {
+  const bg =
+    tone === "sun" ? C.sunSoft : tone === "green" ? C.primarySoft : tone === "accent" ? C.accentSoft : C.card
   return (
-    <div className="mt-2.5">
-      <div
-        role="progressbar"
-        aria-label="ステージの すすみぐあい"
-        aria-valuenow={clamped}
-        aria-valuemin={0}
-        aria-valuemax={safeTotal}
-        className="relative h-2.5 w-full rounded-full bg-white/20"
-      >
-        <div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${pct}%`, background: C.success }}
-        />
-      </div>
-      <div className="mt-1.5 flex items-center justify-between">
-        {Array.from({ length: safeTotal }).map((_, i) => {
-          const done = i < clamped
-          return (
-            <span
-              key={i}
-              aria-hidden="true"
-              className="h-2.5 w-2.5 rounded-full"
-              style={{
-                background: done ? C.success : "rgba(255,255,255,.3)",
-                boxShadow: done ? `0 0 0 2px ${C.headerNavy}` : "none",
-              }}
-            />
-          )
-        })}
-      </div>
+    <div
+      className={cn("rounded-[22px] border", className)}
+      style={{
+        background: bg,
+        borderColor: "rgba(67,57,43,.09)",
+        boxShadow: tokens.shadow.soft,
+        ...style,
+      }}
+    >
+      {children}
     </div>
   )
 }
 
 /* ------------------------------------------------------------------ *
- * StatPill — HUD チップ（表示専用）
+ * Sticker — シール風チップ(ちょっと傾く)
  * ------------------------------------------------------------------ */
 
-type PillTone = "blue" | "orange" | "yellow" | "green"
+export function Sticker({
+  children,
+  tone = "sun",
+  tilt = -2,
+  className,
+}: {
+  children: ReactNode
+  tone?: "sun" | "green" | "accent" | "berry" | "paper"
+  tilt?: number
+  className?: string
+}) {
+  const palette: Record<string, { bg: string; fg: string }> = {
+    sun: { bg: C.sun, fg: C.ink },
+    green: { bg: C.primary, fg: "#fff" },
+    accent: { bg: C.accent, fg: "#fff" },
+    berry: { bg: C.berry, fg: "#fff" },
+    paper: { bg: "#fff", fg: C.ink },
+  }
+  const p = palette[tone]
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-black leading-none",
+        className,
+      )}
+      style={{
+        background: p.bg,
+        color: p.fg,
+        transform: `rotate(${tilt}deg)`,
+        boxShadow: `0 0 0 2.5px #fff, ${tokens.shadow.soft}`,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
 
-const TONE_COLOR: Record<PillTone, string> = {
-  blue: C.primary,
+/* ------------------------------------------------------------------ *
+ * StatPill — HUD チップ(シール調・表示専用)
+ * ------------------------------------------------------------------ */
+
+type PillTone = "green" | "orange" | "sun" | "berry"
+
+const PILL_ACCENT: Record<PillTone, string> = {
+  green: C.primary,
   orange: C.accent,
-  yellow: C.warning,
-  green: C.success,
+  sun: C.sunDeep,
+  berry: C.berry,
 }
 
 export function StatPill({
   icon,
   label,
   value,
-  tone = "blue",
+  tone = "green",
 }: {
   icon?: ReactNode
   label?: string
   value: ReactNode
   tone?: PillTone
 }) {
-  const accent = TONE_COLOR[tone]
+  const accent = PILL_ACCENT[tone]
   const ariaLabel = label ? `${label} ${stringifyValue(value)}` : undefined
 
   return (
     <div
-      className="inline-flex items-center gap-1.5 rounded-[16px] bg-white px-3 py-1.5"
-      style={{ boxShadow: tokens.shadow.soft }}
+      className="inline-flex items-center gap-2 rounded-2xl border bg-white px-3 py-1.5"
+      style={{
+        borderColor: "rgba(67,57,43,.10)",
+        boxShadow: `0 0 0 2px #fff, ${tokens.shadow.soft}`,
+      }}
       aria-label={ariaLabel}
     >
       {icon && (
         <span
           aria-hidden="true"
-          className="grid h-4 w-4 place-items-center"
-          style={{ color: accent }}
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-full"
+          style={{ color: "#fff", background: accent }}
         >
           {icon}
         </span>
       )}
-      <span className="flex flex-col leading-none">
+      <span className="flex flex-col leading-none" aria-hidden={ariaLabel ? "true" : undefined}>
         {label && (
-          <span
-            className="text-[13px] font-bold"
-            style={{ color: C.inkSoft }}
-            aria-hidden={ariaLabel ? "true" : undefined}
-          >
+          <span className="text-[11px] font-bold" style={{ color: C.inkSoft }}>
             {label}
           </span>
         )}
-        <span
-          className="text-[24px] font-extrabold tabular-nums"
-          style={{ color: C.ink }}
-          aria-hidden={ariaLabel ? "true" : undefined}
-        >
+        <span className="mt-0.5 text-[17px] font-black tabular-nums" style={{ color: C.ink }}>
           {typeof value === "number" ? <CountUp value={value} /> : value}
         </span>
       </span>
@@ -451,8 +622,8 @@ function stringifyValue(value: ReactNode): string {
   return ""
 }
 
-/** 数値のカウントアップ（reduced 時は即時表示） */
-function CountUp({ value }: { value: number }) {
+/** 数値のカウントアップ(reduced 時は即時)。 */
+export function CountUp({ value }: { value: number }) {
   const reduce = useReducedMotion()
   const [display, setDisplay] = useState(value)
   const fromRef = useRef(value)
@@ -464,7 +635,7 @@ function CountUp({ value }: { value: number }) {
       setDisplay(value)
       return
     }
-    const duration = 500
+    const duration = 460
     const start = performance.now()
     let raf = 0
     const tick = (now: number) => {
@@ -481,86 +652,193 @@ function CountUp({ value }: { value: number }) {
 }
 
 /* ------------------------------------------------------------------ *
- * PrimaryCTA — 大きく親しみやすい主ボタン
+ * PrimaryCTA — チャンキー(押し込める)主ボタン
  * ------------------------------------------------------------------ */
+
+type CTAVariant = "sun" | "green" | "paper"
+
+const CTA_STYLE: Record<CTAVariant, { bg: string; fg: string; press: string; border?: string }> = {
+  sun: { bg: C.sun, fg: C.ink, press: tokens.shadow.pressSun },
+  green: { bg: C.primary, fg: "#FFFFFF", press: tokens.shadow.pressGreen },
+  paper: { bg: "#FFFFFF", fg: C.ink, press: tokens.shadow.pressPaper, border: "rgba(67,57,43,.16)" },
+}
 
 export function PrimaryCTA({
   onClick,
   disabled,
   children,
+  variant = "sun",
   className,
+  size = "lg",
 }: {
   onClick?: () => void
   disabled?: boolean
   children: ReactNode
+  variant?: CTAVariant
   className?: string
+  size?: "lg" | "md"
 }) {
-  const reduce = useReducedMotion()
-  // className で塗りを上書きしない場合は たから色グラデを既定にする
-  const hasFill = className ? /\bbg-/.test(className) : false
-
+  const v = CTA_STYLE[variant]
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-disabled={disabled || undefined}
-      whileTap={disabled || reduce ? undefined : { scale: 0.94 }}
-      transition={SPRING}
-      style={{ boxShadow: disabled ? "none" : tokens.shadow.pop }}
       className={cn(
-        "inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full px-10 text-[18px] font-extrabold",
-        "transition-colors",
-        !hasFill && tokens.cls.ctaTreasure,
+        "inline-flex w-full items-center justify-center gap-2 rounded-full font-black",
+        size === "lg" ? "min-h-[58px] px-8 text-[17px]" : "min-h-[48px] px-6 text-[15px]",
+        "transition-[transform,box-shadow,background-color] duration-100",
+        !disabled && "active:translate-y-[4px] active:!shadow-none",
+        disabled && "cursor-not-allowed",
         tokens.cls.focus,
-        disabled
-          ? "cursor-not-allowed bg-[#D7DEE6] text-[#9AA8B6] grayscale"
-          : "",
         className,
       )}
+      style={{
+        background: disabled ? "#EDE5D3" : v.bg,
+        // 無効時も「ボタンがある」ことは判別できるコントラストを保つ
+        color: disabled ? "#8F8672" : v.fg,
+        boxShadow: disabled ? "none" : v.press,
+        border: disabled
+          ? "2px solid rgba(67,57,43,.14)"
+          : v.border
+            ? `2px solid ${v.border}`
+            : "2px solid transparent",
+      }}
     >
       {children}
-    </motion.button>
+    </button>
   )
 }
 
 /* ------------------------------------------------------------------ *
- * Celebrate — 発見/達成時の紙吹雪・星バースト＋「+pt」演出
+ * BottomBar — 画面下の固定アクション面(セーフエリア対応)
  * ------------------------------------------------------------------ */
 
-interface Particle {
-  id: number
-  x: number
-  rise: number
-  drift: number
-  rotate: number
-  delay: number
-  size: number
-  color: string
-  star: boolean
+export function BottomBar({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn("sticky bottom-0 z-20 mt-auto shrink-0 px-4 pt-3", className)}
+      style={{
+        paddingBottom: "max(env(safe-area-inset-bottom), 14px)",
+        background: "linear-gradient(180deg, rgba(251,245,233,0) 0%, #FBF5E9 32%)",
+      }}
+    >
+      {children}
+    </div>
+  )
 }
 
-const PARTY_COLORS = [C.warning, C.accent, C.combo, "#FF9F5A", C.success]
+/* ------------------------------------------------------------------ *
+ * SpeechBubble — ルペのひとこと
+ * ------------------------------------------------------------------ */
 
-function buildParticles(seed: number): Particle[] {
-  // seed で見た目を変えつつ、SSR/CSR の不一致を避けるため決定的に生成
-  const count = 15
-  let s = seed * 9301 + 49297
-  const rand = () => {
-    s = (s * 9301 + 49297) % 233280
-    return s / 233280
+export function SpeechBubble({
+  mood = "happy",
+  children,
+  className,
+}: {
+  mood?: MascotMood
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn("flex items-end gap-2.5", className)}>
+      <span className="shrink-0 -mb-1">
+        <Mascot size="sm" mood={mood} />
+      </span>
+      <div
+        className="relative flex-1 rounded-[18px] rounded-bl-[6px] border bg-white px-4 py-3"
+        style={{ borderColor: "rgba(67,57,43,.10)", boxShadow: tokens.shadow.soft }}
+      >
+        <p
+          className="text-[14px] font-bold leading-relaxed"
+          style={{ color: C.ink, wordBreak: "keep-all", overflowWrap: "anywhere" }}
+        >
+          {children}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * StampSeal — 「はっけん!」スタンプ(発見マーカー・ごほうび)
+ * ------------------------------------------------------------------ */
+
+export function StampSeal({
+  size = 52,
+  label = "はっけん",
+  tone = "green",
+}: {
+  size?: number
+  label?: string
+  tone?: "green" | "accent" | "sun"
+}) {
+  const color = tone === "green" ? C.primary : tone === "accent" ? C.accent : C.sunDeep
+  // ギザギザ円(スタンプの縁)
+  const teeth = 24
+  const pts: string[] = []
+  for (let i = 0; i < teeth * 2; i += 1) {
+    const a = (Math.PI / teeth) * i
+    const r = i % 2 === 0 ? 30 : 27.4
+    pts.push(`${32 + r * Math.cos(a)},${32 + r * Math.sin(a)}`)
   }
-  return Array.from({ length: count }).map((_, id) => ({
-    id,
-    x: 8 + rand() * 84,
-    rise: 120 + rand() * 160,
-    drift: (rand() - 0.5) * 120,
-    rotate: (rand() - 0.5) * 360,
-    delay: rand() * 0.15,
-    size: 8 + rand() * 8,
-    color: PARTY_COLORS[Math.floor(rand() * PARTY_COLORS.length)],
-    star: rand() > 0.5,
-  }))
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <polygon points={pts.join(" ")} fill="#fff" />
+      <polygon
+        points={pts.join(" ")}
+        fill={color}
+        opacity={0.92}
+        transform="scale(.94)"
+        style={{ transformOrigin: "32px 32px" }}
+      />
+      <circle cx={32} cy={32} r={22} fill="none" stroke="#fff" strokeWidth={2.4} strokeDasharray="3 4" />
+      <text
+        x={32}
+        y={32}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={label.length >= 4 ? 9.5 : label.length >= 3 ? 11.5 : 15}
+        fontWeight={900}
+        fill="#fff"
+        style={{ fontFamily: tokens.font.family }}
+      >
+        {label}
+      </text>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * Celebrate — Canvas 紙吹雪(紙片・星・まる) + 「+pt」
+ * ------------------------------------------------------------------ */
+
+interface ConfettiPiece {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  rot: number
+  vrot: number
+  size: number
+  color: string
+  shape: 0 | 1 | 2 // 0=紙片 1=星 2=まる
+  born: number
+}
+
+const PARTY = [C.sun, C.accent, C.primary, C.berry, "#7EC8E3"]
+
+function drawStar(ctx: CanvasRenderingContext2D, r: number) {
+  ctx.beginPath()
+  for (let i = 0; i < 10; i += 1) {
+    const a = (Math.PI / 5) * i - Math.PI / 2
+    const rr = i % 2 === 0 ? r : r * 0.46
+    ctx.lineTo(rr * Math.cos(a), rr * Math.sin(a))
+  }
+  ctx.closePath()
+  ctx.fill()
 }
 
 export function Celebrate({
@@ -571,7 +849,85 @@ export function Celebrate({
   points?: number
 }) {
   const reduce = useReducedMotion()
-  const particles = useMemo(() => buildParticles(points ?? 1), [points])
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  useEffect(() => {
+    if (!show || reduce) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const w = window.innerWidth
+    const h = window.innerHeight
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    ctx.scale(dpr, dpr)
+
+    const now = performance.now()
+    // 中央やや下から扇状に打ち上げ
+    const pieces: ConfettiPiece[] = Array.from({ length: 30 }, (_, i) => {
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5
+      const speed = 340 + Math.random() * 420
+      return {
+        x: w / 2 + (Math.random() - 0.5) * 90,
+        y: h * 0.62,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 14,
+        size: 7 + Math.random() * 8,
+        color: PARTY[i % PARTY.length],
+        shape: (i % 3) as 0 | 1 | 2,
+        born: now,
+      }
+    })
+
+    let raf = 0
+    let last = now
+    const LIFE = 1050
+
+    const tick = (t: number) => {
+      const dt = Math.min((t - last) / 1000, 0.032)
+      last = t
+      ctx.clearRect(0, 0, w, h)
+      let alive = false
+      for (const p of pieces) {
+        const age = t - p.born
+        if (age > LIFE) continue
+        alive = true
+        p.vy += 1350 * dt
+        p.vx *= 0.985
+        p.x += p.vx * dt
+        p.y += p.vy * dt
+        p.rot += p.vrot * dt
+        const fade = age > LIFE - 260 ? 1 - (age - (LIFE - 260)) / 260 : 1
+        ctx.save()
+        ctx.translate(p.x, p.y)
+        ctx.rotate(p.rot)
+        ctx.globalAlpha = fade
+        ctx.fillStyle = p.color
+        if (p.shape === 0) {
+          ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.66)
+        } else if (p.shape === 1) {
+          drawStar(ctx, p.size * 0.62)
+        } else {
+          ctx.beginPath()
+          ctx.arc(0, 0, p.size * 0.4, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.restore()
+      }
+      if (alive) raf = requestAnimationFrame(tick)
+      else ctx.clearRect(0, 0, w, h)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(raf)
+      ctx.clearRect(0, 0, w, h)
+    }
+  }, [show, reduce])
 
   return (
     <AnimatePresence>
@@ -579,68 +935,28 @@ export function Celebrate({
         <motion.div
           key="celebrate"
           aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
-          initial={{ opacity: reduce ? 0 : 1 }}
+          className="pointer-events-none fixed inset-0 z-50"
+          initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.18 }}
         >
-          {/* 紙吹雪/星バースト（reduced 時は出さない） */}
-          {!reduce &&
-            particles.map((p) => (
-              <motion.div
-                key={p.id}
-                className="absolute top-1/2 left-0"
-                style={{ left: `${p.x}%` }}
-                initial={{ y: 0, x: 0, opacity: 0, rotate: 0, scale: 0.6 }}
-                animate={{
-                  y: -p.rise,
-                  x: p.drift,
-                  opacity: [0, 1, 1, 0],
-                  rotate: p.rotate,
-                  scale: 1,
-                }}
-                transition={{ duration: 0.8, delay: p.delay, ease: "easeOut" }}
-              >
-                {p.star ? (
-                  <svg
-                    width={p.size}
-                    height={p.size}
-                    viewBox="0 0 24 24"
-                    fill={p.color}
-                  >
-                    <Star cx={12} cy={12} r={11} />
-                  </svg>
-                ) : (
-                  <span
-                    className="block rounded-[3px]"
-                    style={{
-                      width: p.size,
-                      height: p.size * 0.7,
-                      background: p.color,
-                    }}
-                  />
-                )}
-              </motion.div>
-            ))}
+          {!reduce && <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />}
 
-          {/* 中央の「+pt」ヒーロー数値 */}
           {typeof points === "number" && (
             <motion.div
-              className="absolute inset-x-0 top-[38%] flex justify-center"
-              initial={{ y: reduce ? 0 : 16, opacity: 0, scale: reduce ? 1 : 0.8 }}
-              animate={{ y: reduce ? 0 : -24, opacity: 1, scale: 1 }}
+              className="absolute inset-x-0 top-[36%] flex justify-center"
+              initial={{ y: reduce ? 0 : 18, opacity: 0, scale: reduce ? 1 : 0.7 }}
+              animate={{ y: reduce ? 0 : -26, opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              transition={reduce ? { duration: 0.2 } : SPRING}
+              transition={reduce ? { duration: 0.2 } : tokens.spring}
             >
               <span
-                className="text-[40px] font-extrabold"
-                style={{
-                  color: C.accent,
-                  textShadow: HERO_OUTLINE,
-                }}
+                className="text-[42px] font-black"
+                style={{ color: C.accent, textShadow: HERO_OUTLINE, fontFamily: tokens.font.family }}
               >
-                +{points}pt
+                +{points}
+                <span className="text-[24px]">pt</span>
               </span>
             </motion.div>
           )}
@@ -650,6 +966,50 @@ export function Celebrate({
   )
 }
 
-// ヒーロー数値の白縁取り
 const HERO_OUTLINE: CSSProperties["textShadow"] =
-  "-2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0 3px 6px rgba(30,60,90,.25)"
+  "-2.5px -2.5px 0 #fff, 2.5px -2.5px 0 #fff, -2.5px 2.5px 0 #fff, 2.5px 2.5px 0 #fff, 0 4px 10px rgba(67,57,43,.3)"
+
+/* ------------------------------------------------------------------ *
+ * PhotoFrame — ノートに貼った写真(ポラロイド + テープ)
+ * ------------------------------------------------------------------ */
+
+export function PhotoFrame({
+  children,
+  className,
+  tape = true,
+  tilt = 0,
+}: {
+  children: ReactNode
+  className?: string
+  tape?: boolean
+  tilt?: number
+}) {
+  return (
+    <div
+      className={cn("relative rounded-[18px] bg-white p-2 pb-3", className)}
+      style={{
+        boxShadow: tokens.shadow.card,
+        border: "1px solid rgba(67,57,43,.08)",
+        transform: tilt ? `rotate(${tilt}deg)` : undefined,
+      }}
+    >
+      {tape && (
+        <>
+          <span
+            aria-hidden="true"
+            className="absolute -top-2.5 left-6 z-10 h-5 w-14 -rotate-6 rounded-[3px]"
+            style={{ background: "rgba(255,201,62,.75)", boxShadow: "0 1px 3px rgba(67,57,43,.18)" }}
+          />
+          <span
+            aria-hidden="true"
+            className="absolute -top-2.5 right-6 z-10 h-5 w-14 rotate-6 rounded-[3px]"
+            style={{ background: "rgba(126,200,227,.7)", boxShadow: "0 1px 3px rgba(67,57,43,.18)" }}
+          />
+        </>
+      )}
+      <div className="overflow-hidden rounded-[12px]" style={{ background: C.night }}>
+        {children}
+      </div>
+    </div>
+  )
+}

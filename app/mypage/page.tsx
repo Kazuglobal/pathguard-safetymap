@@ -314,11 +314,15 @@ export default function MyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-32 pt-8 md:pb-16">
         <section>
-          <Card variant="gradient" className="relative overflow-hidden bg-gradient-to-br from-sky-500 via-sky-400 to-sky-600 text-white shadow-xl">
-            <div className="absolute -right-16 -top-10 h-36 w-36 rounded-full bg-white/20 blur-2xl" />
+          <Card
+            variant="gradient"
+            className="relative overflow-hidden border-2 text-white shadow-tanken-card"
+            style={{ background: "linear-gradient(150deg, #159E72 0%, #0C7A55 100%)", borderColor: "rgba(67,57,43,.18)" }}
+          >
+            <div className="absolute -right-16 -top-10 h-36 w-36 rounded-full bg-[#FFC93E]/25 blur-2xl" />
             <CardHeader className="relative pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">

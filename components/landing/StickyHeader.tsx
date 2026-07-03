@@ -17,17 +17,22 @@ export function StickyHeader() {
   const [activeTab, setActiveTab] = React.useState<string>("top")
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 md:hidden">
+    <header
+      className="fixed top-0 left-0 right-0 z-40 border-b md:hidden"
+      style={{ background: "rgba(251,245,233,.94)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderColor: "rgba(67,57,43,.1)" }}
+    >
       {/* メインヘッダー（モバイルのみ） */}
       <div className="flex items-center justify-between h-14 px-4">
         {/* ロゴ */}
         <Link href="/landing" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-xl border-2"
+            style={{ background: "#159E72", borderColor: "rgba(67,57,43,.2)", boxShadow: "0 2px 0 rgba(12,122,85,.8)" }}
+          >
+            <Shield className="w-5 h-5 text-white" strokeWidth={2.4} />
           </div>
-          <span className="text-xl font-bold">
-            <span className="text-sky-600">Path</span>
-            <span className="text-gray-900">Guardian</span>
+          <span className="text-xl font-black" style={{ color: "#43392B" }}>
+            Path<span style={{ color: "#159E72" }}>Guardian</span>
           </span>
         </Link>
 
@@ -62,22 +67,25 @@ export function StickyHeader() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors relative",
+                  "px-4 py-3 text-sm font-black whitespace-nowrap transition-colors relative",
                   activeTab === tab.id
-                    ? "text-red-600"
-                    : "text-gray-500 hover:text-gray-800"
+                    ? "text-[#0C7A55]"
+                    : "text-[#847661] hover:text-[#43392B]"
                 )}
               >
                 {tab.label}
                 {activeTab === tab.id && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 rounded-full" />
+                  <span className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full" style={{ background: "#FFC93E" }} />
                 )}
               </button>
             ))}
           </div>
         </div>
         {/* フェードグラデーション（右側） */}
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+        <div
+          className="pointer-events-none absolute right-0 top-0 bottom-0 w-8"
+          style={{ background: "linear-gradient(to left, #FBF5E9, transparent)" }}
+        />
       </div>
     </header>
   )

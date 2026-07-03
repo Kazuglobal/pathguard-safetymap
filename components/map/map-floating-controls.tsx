@@ -1,12 +1,23 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import type { MapDisplayOption } from "@/lib/map-display-options"
 import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
 import HelpDialog from "./help-dialog"
 import { useGamification } from "@/hooks/use-gamification"
 import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
+import { tankenTokens } from "@/lib/design/tanken"
+
+const C = tankenTokens.color
+
+/** 地図の上に浮く紙のピル(共通スタイル) */
+const floatPill = {
+  background: "rgba(255,253,247,.95)",
+  borderColor: "rgba(67,57,43,.12)",
+  boxShadow: tankenTokens.shadow.float,
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+} as const
 
 interface MapFloatingControlsProps {
   onAddReport: () => void
@@ -58,7 +69,8 @@ export default function MapFloatingControls({
   const legendBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
   }
-  const showMobileFocusedDock = isMobile && (isSelecting || isReportFormOpen)
+  // 地点選択中はポータルの下部確認バーが案内を担うため、ここでは出さない(案内の三重化を防ぐ)
+  const showMobileFocusedDock = isMobile && isReportFormOpen && !isSelecting
   const showMobileActionDock = isMobile && !showMobileFocusedDock
   const showLegend = !isMobile
 
@@ -66,31 +78,42 @@ export default function MapFloatingControls({
     <>
       {/* 右上: ユーティリティ */}
       <div
-        className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
+        className="absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 top-[calc(env(safe-area-inset-top,0px)+8.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]"
       >
         <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-        {/* ポイント・レベル表示 - モバイルではコンパクト表示 */}
-        <div className="flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1.5 sm:py-2 shadow-lg border border-gray-200/80">
-          <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-500" />
-          <span className="text-xs sm:text-sm font-medium text-gray-700">{points}<span className="hidden sm:inline">pt</span></span>
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-[10px] sm:text-xs font-bold text-blue-600">L{level}</span>
-          </div>
-        </div>
-
-        {/* ヘルプボタン */}
-        {!isMobile && (
-          <HelpDialog>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9 w-9 sm:h-10 sm:w-10 p-0 rounded-full bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/80 hover:bg-gray-50"
-              aria-label="アプリの使い方を表示"
+          {/* ポイント・レベル表示(スタンプらしく) */}
+          <div
+            className="flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 sm:px-3 sm:py-2"
+            style={floatPill}
+          >
+            <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: C.sunDeep }} strokeWidth={2.4} />
+            <span className="text-xs font-black sm:text-sm" style={{ color: C.ink }}>
+              {points}
+              <span className="hidden sm:inline">pt</span>
+            </span>
+            <div
+              className="flex h-5 w-5 items-center justify-center rounded-full sm:h-6 sm:w-6"
+              style={{ background: C.primarySoft }}
             >
-              <HelpCircle className="h-4 w-4" />
-            </Button>
-          </HelpDialog>
-        )}
+              <span className="text-[10px] font-black sm:text-xs" style={{ color: C.primaryStrong }}>
+                L{level}
+              </span>
+            </div>
+          </div>
+
+          {/* ヘルプボタン */}
+          {!isMobile && (
+            <HelpDialog>
+              <button
+                type="button"
+                className={`chunky-press grid h-10 w-10 place-items-center rounded-full border ${tankenTokens.cls.focus}`}
+                style={floatPill}
+                aria-label="アプリの使い方を表示"
+              >
+                <HelpCircle className="h-4 w-4" style={{ color: C.inkSoft }} strokeWidth={2.4} />
+              </button>
+            </HelpDialog>
+          )}
         </div>
       </div>
 
@@ -100,11 +123,11 @@ export default function MapFloatingControls({
         className="absolute right-3 z-20"
         style={displayDockBottomStyle}
       >
-        <div className="overflow-hidden rounded-full border border-gray-200/80 bg-white/95 shadow-lg backdrop-blur-sm">
+        <div className="overflow-hidden rounded-full border" style={floatPill}>
           <MapStyleSelector
             currentStyle={mapStyle}
             onChange={setMapStyle}
-            buttonClassName="h-11 rounded-full border-0 px-4 shadow-none"
+            buttonClassName="h-11 rounded-full border-0 px-4 shadow-none bg-transparent font-black"
             compactLabel={false}
             buttonLabel="表示"
             isMobile={isMobile}
@@ -120,57 +143,65 @@ export default function MapFloatingControls({
           className="absolute inset-x-3 z-20"
           style={{ bottom: mobileBottomNavClearance }}
         >
-          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-gray-200/80 bg-white/95 p-2 shadow-xl backdrop-blur-sm">
+          <div
+            className="grid grid-cols-3 gap-2 rounded-[22px] border p-2"
+            style={floatPill}
+          >
             {onToggleSidebar ? (
-              <Button
+              <button
+                type="button"
                 onClick={onToggleSidebar}
-                variant="outline"
-                size="sm"
-                className="h-12 border-gray-200 bg-white hover:bg-gray-50"
+                className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black ${tankenTokens.cls.focus}`}
+                style={{ borderColor: "rgba(67,57,43,.12)", color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
                 aria-label="危険地点一覧を開く"
               >
-                <List className="mr-1.5 h-4 w-4" />
+                <List className="h-4 w-4" strokeWidth={2.6} />
                 一覧
-              </Button>
+              </button>
             ) : (
               <div />
             )}
 
             {onReportAtCurrentLocation ? (
-              <Button
+              <button
+                type="button"
                 onClick={onReportAtCurrentLocation}
                 disabled={isAcquiringGPS}
-                variant="outline"
-                size="sm"
-                className="h-12 border-green-200 bg-white hover:bg-green-50"
+                className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
+                style={{ borderColor: "rgba(21,158,114,.35)", color: C.primaryStrong, boxShadow: tankenTokens.shadow.pressPaper }}
                 aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
               >
                 {isAcquiringGPS ? (
                   <>
-                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     取得中
                   </>
                 ) : (
                   <>
-                    <Crosshair className="mr-1.5 h-4 w-4 text-green-600" />
+                    <Crosshair className="h-4 w-4" strokeWidth={2.6} />
                     現在地
                   </>
                 )}
-              </Button>
+              </button>
             ) : (
               <div />
             )}
 
-            <Button
+            <button
+              type="button"
               onClick={onAddReport}
-              variant="default"
-              size="sm"
-              className="h-12 border-transparent bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
+              data-testid="mobile-report-button"
+              className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 text-[13px] font-black text-white ${tankenTokens.cls.focus}`}
+              style={{
+                background: C.accent,
+                borderColor: "rgba(67,57,43,.18)",
+                boxShadow: tankenTokens.shadow.pressAccent,
+              }}
               aria-label="危険箇所を報告する"
             >
-              <PlusCircle className="mr-1.5 h-4 w-4" />
-              危険を報告
-            </Button>
+              <PlusCircle className="h-4 w-4" strokeWidth={2.6} />
+              おしらせ
+            </button>
           </div>
         </div>
       )}
@@ -181,14 +212,14 @@ export default function MapFloatingControls({
           className="absolute inset-x-3 z-20"
           style={{ bottom: mobileBottomNavClearance }}
         >
-          <div className="rounded-2xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
-            <p className="text-sm font-semibold text-slate-900">
-              {isSelecting ? "地点選択中" : "報告入力中"}
+          <div className="rounded-[22px] border px-4 py-3" style={floatPill}>
+            <p className="text-sm font-black" style={{ color: C.ink }}>
+              {isSelecting ? "ばしょを えらんでいるよ" : "おしらせを かいているよ"}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs font-bold" style={{ color: C.inkSoft }}>
               {isSelecting
-                ? "地図をタップして地点を決めてください"
-                : "内容を確認して送信してください"}
+                ? "ちずを タップして ばしょを きめてね"
+                : "ないようを かくにんして おくってね"}
             </p>
           </div>
         </div>
@@ -200,26 +231,30 @@ export default function MapFloatingControls({
           className="absolute left-1/2 transform -translate-x-1/2 z-20"
           style={{ bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)" : "9.5rem" }}
         >
-          <Button
+          <button
+            type="button"
             onClick={onReportAtCurrentLocation}
             disabled={isReportFormOpen || !!isSelectingLocation || isAcquiringGPS}
-            variant="outline"
-            size="lg"
-            className="h-12 px-5 rounded-full shadow-lg bg-white/95 backdrop-blur-sm border border-green-200 hover:bg-green-50"
+            className={`chunky-press flex h-12 items-center justify-center gap-2 rounded-full border-2 px-5 text-sm font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
+            style={{
+              ...floatPill,
+              borderColor: "rgba(21,158,114,.35)",
+              color: C.primaryStrong,
+            }}
             aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
           >
             {isAcquiringGPS ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 位置取得中...
               </>
             ) : (
               <>
-                <Crosshair className="mr-2 h-4 w-4 text-green-600" />
+                <Crosshair className="h-4 w-4" strokeWidth={2.6} />
                 現在地で報告
               </>
             )}
-          </Button>
+          </button>
         </div>
       )}
 
@@ -229,58 +264,61 @@ export default function MapFloatingControls({
           className="absolute left-1/2 transform -translate-x-1/2 z-20"
           style={ctaBottomStyle}
         >
-          <Button
+          <button
+            type="button"
             onClick={onAddReport}
-            variant={isReportFormOpen || isSelectingLocation ? "secondary" : "default"}
-            size="lg"
-            className={`
-              h-14 px-6 rounded-full shadow-xl
-              ${!isReportFormOpen && !isSelectingLocation
-                ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-                : "bg-white/95 backdrop-blur-sm border border-gray-200"
-              }
-            `}
+            className={`chunky-press flex h-14 items-center justify-center gap-2 rounded-full border-2 px-7 text-[15px] font-black ${tankenTokens.cls.focus}`}
+            style={
+              !isReportFormOpen && !isSelectingLocation
+                ? {
+                    background: C.accent,
+                    color: "#fff",
+                    borderColor: "rgba(67,57,43,.18)",
+                    boxShadow: `${tankenTokens.shadow.pressAccent}, 0 16px 30px -14px rgba(216,102,10,.65)`,
+                  }
+                : { ...floatPill, color: C.inkSoft, borderColor: "rgba(67,57,43,.14)" }
+            }
             aria-label="危険箇所を報告する"
           >
             {isSelectingLocation ? (
               <>
-                <MapPin className="mr-2 h-5 w-5 animate-pulse" />
+                <MapPin className="h-5 w-5 animate-pulse" strokeWidth={2.6} />
                 地点選択中...
               </>
             ) : isReportFormOpen ? (
               <>
-                <MapPin className="mr-2 h-5 w-5" />
+                <MapPin className="h-5 w-5" strokeWidth={2.6} />
                 入力中...
               </>
             ) : (
               <>
-                <PlusCircle className="mr-2 h-5 w-5" />
-                報告
+                <PlusCircle className="h-5 w-5" strokeWidth={2.6} />
+                きけんを おしらせ
               </>
             )}
-          </Button>
+          </button>
         </div>
       )}
 
       {/* 危険種別レジェンド（コンパクト版） - 画面下部 */}
       {showLegend && (
         <div className="absolute left-3 z-10" style={legendBottomStyle}>
-          <div className="flex gap-1 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1.5 shadow-md border border-gray-200/60">
+          <div className="flex gap-1 rounded-full border px-2 py-1.5" style={floatPill}>
             <div className="flex items-center gap-1 px-1.5" title="交通危険">
-              <Car className="h-3.5 w-3.5 text-blue-600" />
-              <span className="text-xs text-gray-600 hidden sm:inline">交通</span>
+              <Car className="h-3.5 w-3.5" style={{ color: "#3E8FB8" }} />
+              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>交通</span>
             </div>
             <div className="flex items-center gap-1 px-1.5" title="犯罪危険">
-              <Shield className="h-3.5 w-3.5 text-red-600" />
-              <span className="text-xs text-gray-600 hidden sm:inline">犯罪</span>
+              <Shield className="h-3.5 w-3.5" style={{ color: C.danger }} />
+              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>犯罪</span>
             </div>
             <div className="flex items-center gap-1 px-1.5" title="災害危険">
-              <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-              <span className="text-xs text-gray-600 hidden sm:inline">災害</span>
+              <AlertTriangle className="h-3.5 w-3.5" style={{ color: C.accent }} />
+              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>災害</span>
             </div>
             <div className="flex items-center gap-1 px-1.5" title="その他">
-              <HelpCircle className="h-3.5 w-3.5 text-gray-500" />
-              <span className="text-xs text-gray-600 hidden sm:inline">他</span>
+              <HelpCircle className="h-3.5 w-3.5" style={{ color: C.inkFaint }} />
+              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>他</span>
             </div>
           </div>
         </div>

@@ -42,7 +42,7 @@ export default function RoutesPage() {
 
   if (isAuthChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white">
+      <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-4xl px-4 py-8">
           <div className="space-y-4">
             <Skeleton className="h-10 w-48" />
@@ -57,7 +57,7 @@ export default function RoutesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8 pb-32 md:pb-16">
         <header className="mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2">

@@ -44,6 +44,7 @@ import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
 import { classifyMapboxError } from "@/lib/mapbox-error-utils"
 import { shouldShowMapNavigationControl, syncMapNavigationControl } from "@/lib/mapbox-controls"
+import { localizeMapLabels } from "@/lib/hunter/map-labels"
 import { getRouteHazardRequestState } from "@/lib/route-hazard-request-state"
 import {
   HAZARD_TILE_CONFIG,
@@ -910,19 +911,12 @@ export default function MapContainer({
       setLocationSelectionSource("manual");
 
       if (isMobile) {
-        // モバイル：地点を選択するだけ（フォームはボトムバーの「この地点で報告する」ボタンで開く）
-        toast({
-          title: "地点を選択しました",
-          description: "「この地点で報告する」をタップして続行"
-        });
+        // モバイル：地点を選択するだけ（下部の確認バーが次の一歩を案内するため、
+        // トーストは出さない — 二重の案内はノイズになる）
       } else {
         // デスクトップ：地点選択後すぐにフォームを開く
         setIsReportFormOpen(true);
         setAwaitingLocationSelection(false);
-        toast({
-          title: "地点を選択しました",
-          description: "選択した地点で危険箇所を報告できます"
-        });
       }
     } else if (isReportFormOpen) {
       // フォームが開いている場合：モバイル・デスクトップ関係なく位置を更新
@@ -1004,11 +998,17 @@ export default function MapContainer({
         setMapError(`マップエラー: ${classifiedError.message}`)
       });
 
+      // 地名・施設名ラベルを日本語優先に(スタイル変更後も再適用。shield系は除外済み)
+      map.current.on("style.load", () => {
+        if (map.current) localizeMapLabels(map.current)
+      });
+
       map.current.on("load", () => {
         mapInitialized.current = true;
         addClickListener();
         setIsLoading(false);
         setMapStyleSyncToken((prev) => prev + 1)
+        if (map.current) localizeMapLabels(map.current)
         // Add controls after load
         if (map.current && navigationControlRef.current) {
           syncMapNavigationControl({
@@ -2173,9 +2173,8 @@ export default function MapContainer({
         toast({ title: "地点選択をキャンセルしました" });
         console.log("Location selection cancelled by user.");
       } else {
-        // 地点選択モードを開始
+        // 地点選択モードを開始(案内は下部の確認バーが担うためトーストは出さない)
         setAwaitingLocationSelection(true);
-        toast({ title: "地点選択", description: "地図をタップして報告地点を選択してください。" });
         console.log("Awaiting location selection... (mobile)");
         // この時点ではフォームは開かない
       }
@@ -2572,9 +2571,17 @@ export default function MapContainer({
           {/* Map Overlays: Selection Info, Error, Loading */}
           {isReportFormOpen && (
             <div className="absolute top-20 left-0 right-0 z-10 px-4 py-2 flex justify-center pointer-events-none">
-              <div className="bg-white/90 px-4 py-2 rounded-md shadow-md pointer-events-auto">
-                <p className="text-sm text-blue-600 font-medium">
-                  {selectedLocation ? "位置選択済み。地図クリックで変更可。" : "地図をクリックして位置を選択"}
+              <div
+                className="pointer-events-auto rounded-full border px-4 py-2"
+                style={{
+                  background: "rgba(255,253,247,.95)",
+                  borderColor: "rgba(67,57,43,.12)",
+                  boxShadow: "0 1px 0 rgba(67,57,43,.05), 0 10px 26px -14px rgba(67,57,43,.45)",
+                  fontFamily: 'var(--font-app, "Zen Maru Gothic"), sans-serif',
+                }}
+              >
+                <p className="text-sm font-black" style={{ color: "#0C7A55" }}>
+                  {selectedLocation ? "ばしょは えらんだよ。ちずを クリックすると かえられるよ" : "ちずを クリックして ばしょを えらんでね"}
                 </p>
               </div>
             </div>
@@ -2599,7 +2606,10 @@ export default function MapContainer({
           )}
           {/* Report Form - デスクトップ用（サイドパネル形式） */}
           {isReportFormOpen && !isMobile && (
-            <div className="absolute bottom-4 right-4 w-96 bg-white rounded-lg shadow-lg z-60 max-h-[calc(100vh-10rem)] overflow-y-auto">
+            <div
+              className="absolute bottom-4 right-4 z-60 max-h-[calc(100vh-10rem)] w-96 overflow-y-auto overflow-x-hidden rounded-[24px] border paper-surface"
+              style={{ borderColor: "rgba(67,57,43,.14)", boxShadow: "0 2px 0 rgba(67,57,43,.08), 0 30px 60px -30px rgba(67,57,43,.55)" }}
+            >
               <DangerReportForm
                 onSubmit={handleReportSubmit}
                 onCancel={() => setIsReportFormOpen(false)}
@@ -2613,26 +2623,28 @@ export default function MapContainer({
 
           {/* Report Form - モバイル用（フルスクリーンモーダル）- Portal経由でbodyに直接レンダリング */}
           {isReportFormOpen && isMobile && createPortal(
-            <div className="fixed inset-0 z-[60] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-white mobile-fullscreen-form">
+            <div className="fixed inset-0 z-[60] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden paper-surface mobile-fullscreen-form">
               {/* モバイルフォームヘッダー */}
-              <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white safe-area-top">
-                <Button
-                  variant="ghost"
-                  size="sm"
+              <div
+                className="safe-area-top flex flex-shrink-0 items-center justify-between border-b px-3 py-2.5"
+                style={{ borderColor: "rgba(67,57,43,.1)", fontFamily: 'var(--font-app, "Zen Maru Gothic"), sans-serif' }}
+              >
+                <button
+                  type="button"
                   onClick={() => {
                     setIsReportFormOpen(false);
                     // 地点選択モードに戻す
                     setAwaitingLocationSelection(true);
                   }}
-                  className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                  className="chunky-press inline-flex min-h-[40px] items-center gap-1 rounded-full border-2 bg-white px-3 text-[12.5px] font-black"
+                  style={{ borderColor: "rgba(67,57,43,.14)", color: "#0C7A55", boxShadow: "0 3px 0 rgba(67,57,43,.16)" }}
                 >
-                  <MapPin className="w-4 h-4" />
-                  <span>地点を変更</span>
-                </Button>
-                <h2 className="text-lg font-bold text-gray-800">危険箇所の報告</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                  <MapPin className="h-4 w-4" strokeWidth={2.6} />
+                  地点を変更
+                </button>
+                <h2 className="text-[16px] font-black" style={{ color: "#43392B" }}>きけんを おしらせ</h2>
+                <button
+                  type="button"
                   onClick={() => {
                     setIsReportFormOpen(false);
                     setSelectedLocation(null);
@@ -2642,43 +2654,16 @@ export default function MapContainer({
                       selectionMarker.current = null;
                     }
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="inline-flex min-h-[40px] items-center rounded-full px-3 text-[13px] font-black"
+                  style={{ color: "#847661" }}
                 >
-                  閉じる
-                </Button>
+                  とじる
+                </button>
               </div>
-
-              {/* 選択地点の表示 */}
-              {selectedLocation && (
-                <div className="flex-shrink-0 px-4 py-2 bg-blue-50 border-b border-blue-100">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <MapPin className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-blue-600 font-medium">選択中の地点</p>
-                      <p className="text-xs text-blue-800">
-                        緯度: {selectedLocation[1].toFixed(6)}, 経度: {selectedLocation[0].toFixed(6)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsReportFormOpen(false);
-                        setAwaitingLocationSelection(true);
-                      }}
-                      className="text-xs h-9 px-3 border-blue-200 text-blue-600 hover:bg-blue-50"
-                    >
-                      変更
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {/* フォーム本体 */}
               <div
-                className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain"
+                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain"
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <DangerReportForm
@@ -2704,37 +2689,33 @@ export default function MapContainer({
           )}
           {/* --- ▼▼▼ モバイル用地点選択UI（ボトムシート）- Portal経由でbodyに直接レンダリング ▼▼▼ --- */}
           {isMobile && awaitingLocationSelection && createPortal(
-            <>
-              {/* 上部のコンパクトなガイド */}
-              <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none">
-                <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-blue-200 px-4 py-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <p className="text-sm font-medium text-blue-800">地図をタップして地点を選択</p>
-                  </div>
-                </div>
-              </div>
-
+            <div style={{ fontFamily: 'var(--font-app, "Zen Maru Gothic"), sans-serif' }}>
+              {/* 案内は下部の確認バーに一本化(上部ピルとの二重案内を避ける) */}
               {/* 下部の確認バー - ナビゲーションバーの上に固定表示 */}
               <div className="fixed bottom-0 left-0 right-0 z-[60] mobile-bottom-bar">
-                <div className="bg-white rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] border-t border-gray-200">
+                <div
+                  className="rounded-t-[26px] border-t paper-surface"
+                  style={{ borderColor: "rgba(67,57,43,.12)", boxShadow: "0 -2px 0 rgba(67,57,43,.05), 0 -18px 40px -20px rgba(67,57,43,.5)" }}
+                >
                   {selectedLocation ? (
-                    <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <MapPin className="w-5 h-5 text-blue-600" />
+                    <div className="px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
+                      <div className="mb-4 flex items-center gap-3">
+                        <div
+                          className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full border-2 bg-white"
+                          style={{ borderColor: "rgba(21,158,114,.4)" }}
+                        >
+                          <MapPin className="h-5 w-5" style={{ color: "#159E72" }} strokeWidth={2.6} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base font-semibold text-gray-900">地点を選択しました</p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[15.5px] font-black" style={{ color: "#43392B" }}>ここに ピンを たてたよ！</p>
+                          <p className="text-[12px] font-bold" style={{ color: "#847661" }}>
+                            この ばしょで よければ すすんでね
                           </p>
                         </div>
                       </div>
-                      <div className="flex space-x-3">
-                        <Button
-                          size="default"
-                          variant="outline"
+                      <div className="flex gap-2.5">
+                        <button
+                          type="button"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             setSelectedLocation(null);
@@ -2743,151 +2724,55 @@ export default function MapContainer({
                               selectionMarker.current.remove();
                               selectionMarker.current = null;
                             }
-                            toast({ title: "地点選択をキャンセルしました" });
+                            toast({ title: "ばしょえらびを やめたよ" });
                           }}
-                          className="flex-1 h-12 text-base font-medium rounded-xl"
+                          className="chunky-press h-[52px] flex-1 rounded-full border-2 bg-white text-[14px] font-black"
+                          style={{ borderColor: "rgba(67,57,43,.14)", color: "#847661", boxShadow: "0 3px 0 rgba(67,57,43,.16)" }}
                         >
-                          キャンセル
-                        </Button>
-                        <Button
-                          size="default"
+                          やめる
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="confirm-location-button"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
                             setIsReportFormOpen(true);
                           }}
-                          className="flex-[2] h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md"
+                          className="chunky-press h-[52px] flex-[2] rounded-full border-2 text-[15px] font-black text-white"
+                          style={{ background: "#159E72", borderColor: "rgba(67,57,43,.18)", boxShadow: "0 4px 0 #0C7A55" }}
                         >
-                          この地点で報告する
-                        </Button>
+                          ここで おしらせを かく
+                        </button>
                       </div>
                     </div>
                   ) : (
                     <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                          <p className="text-sm text-gray-600">地図をタップして地点を選んでください</p>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: "#F4801F" }}></span>
+                          <p className="text-[13px] font-bold" style={{ color: "#847661" }}>ちずを タップして ばしょを えらんでね</p>
                         </div>
-                        <Button
-                          size="default"
-                          variant="ghost"
+                        <button
+                          type="button"
                           onClick={() => {
                             setAwaitingLocationSelection(false);
-                            toast({ title: "地点選択をキャンセルしました" });
+                            toast({ title: "ばしょえらびを やめたよ" });
                           }}
-                          className="text-gray-500 hover:text-gray-700 h-10 px-4"
+                          className="h-10 rounded-full px-4 text-[13px] font-black"
+                          style={{ color: "#847661" }}
                         >
-                          キャンセル
-                        </Button>
+                          やめる
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-            </>,
+            </div>,
             document.body
           )}
           {/* --- ▲▲▲ モバイル用地点選択UI ▲▲▲ --- */}
           
-          {/* --- ▼▼▼ デスクトップ用地点選択ヘルプ ▼▼▼ --- */}
-          {!isMobile && isReportFormOpen && !isHelpDismissed && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-blue-200 min-w-80">
-                <div className="px-4 py-3 bg-blue-50/50 rounded-t-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 text-sm">✚</span>
-                      </div>
-                      <p className="text-sm font-medium text-blue-800">地点選択モード</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsHelpVisible(false)}
-                      className="text-blue-600 hover:text-blue-800 h-6 px-2"
-                    >
-                      ×
-                    </Button>
-                  </div>
-                </div>
-                {isHelpVisible && (
-                  <div className="px-4 py-3">
-                    <p className="text-sm text-gray-700 mb-2">
-                      🖱️ <strong>クリック</strong>：地図上の任意の場所を選択
-                    </p>
-                    <p className="text-sm text-gray-700 mb-3">
-                      🤏 <strong>ドラッグ</strong>：青いマーカーを移動して位置調整
-                    </p>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsHelpVisible(false)}
-                        className="flex-1 text-gray-500 hover:text-gray-700"
-                      >
-                        説明を隠す
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsHelpDismissed(true);
-                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
-                        }}
-                        className="text-gray-400 hover:text-red-600"
-                      >
-                        完全に消す
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {!isHelpVisible && (
-                  <div className="px-4 py-2">
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsHelpVisible(true)}
-                        className="flex-1 text-blue-600 hover:text-blue-800"
-                      >
-                        💡 使い方を表示
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsHelpDismissed(true);
-                          toast({ title: "ヘルプを非表示にしました", description: "？ボタンから再表示できます" });
-                        }}
-                        className="text-gray-400 hover:text-red-600"
-                      >
-                        ×
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* --- ▼▼▼ ヘルプ再表示ボタン（デスクトップ） ▼▼▼ --- */}
-          {!isMobile && isReportFormOpen && isHelpDismissed && (
-            <div className="absolute top-4 right-4 z-10">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setIsHelpDismissed(false);
-                  setIsHelpVisible(true);
-                }}
-                className="w-8 h-8 p-0 bg-white/90 hover:bg-white border-blue-200 text-blue-600 shadow-lg rounded-full"
-              >
-                ？
-              </Button>
-            </div>
-          )}
-          {/* --- ▲▲▲ --- */}
 
         {/* Dialogs and Modals */}
         <ImagePreviewDialog isOpen={!!previewImage} imageUrl={previewImage} onClose={() => setPreviewImage(null)} />

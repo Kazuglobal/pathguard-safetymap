@@ -103,97 +103,109 @@
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
-  /* デスクトップでの報告ボタンの強調 */
+  /* デスクトップでの報告ボタンの強調(たんけんノート: チャンキー押し込み) */
   .desktop-report-button {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-    transition: all 0.2s ease-in-out;
+    background: #159e72;
+    box-shadow: 0 4px 0 #0c7a55;
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
   }
 
   .desktop-report-button:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
-    transform: translateY(-1px);
+    background: #12946a;
+  }
+
+  .desktop-report-button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #0c7a55;
   }
 }
 
 @layer base {
   :root {
-    /* ユーザーフレンドリーなカラーパレット */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* たんけんノート カラーパレット(紙のフィールドノート世界観) */
+    /* 紙面 #FBF5E9 / インク #43392B */
+    --background: 40 69% 95%;
+    --foreground: 35 22% 22%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* カード #FFFDF7 */
+    --card: 45 100% 98%;
+    --card-foreground: 35 22% 22%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 45 100% 98%;
+    --popover-foreground: 35 22% 22%;
 
-    /* よりアクセシブルなプライマリカラー */
-    --primary: 220 100% 55%;
-    --primary-foreground: 210 40% 98%;
+    /* 森のみどり #159E72 (主行動・発見) */
+    --primary: 161 77% 35%;
+    --primary-foreground: 45 100% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* 紙の重なり #F3EAD6 */
+    --secondary: 41 55% 90%;
+    --secondary-foreground: 35 22% 22%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 41 55% 90%;
+    --muted-foreground: 36 15% 45%;
 
-    --accent: 200 100% 85%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* みどりの淡面 #DFF3E9 (ホバー面) */
+    --accent: 150 46% 91%;
+    --accent-foreground: 161 77% 24%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* ベリーがかった赤 #D95555 */
+    --destructive: 0 63% 59%;
+    --destructive-foreground: 45 100% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 220 100% 55%;
+    /* 罫線: インクの薄まり */
+    --border: 37 28% 84%;
+    --input: 37 28% 84%;
+    --ring: 161 77% 35%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    /* 新しい親しみやすいカラー */
-    --success: 142 76% 36%;
+    /* 意味色 */
+    --success: 161 77% 35%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    /* 安全オレンジ #F4801F */
+    --warning: 27 91% 54%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
+    /* そら #3E8FB8 */
+    --info: 201 49% 48%;
     --info-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* よるのノート: 夜インク #26413B ベース */
+    --background: 168 26% 13%;
+    --foreground: 40 45% 92%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 168 24% 17%;
+    --card-foreground: 40 45% 92%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 168 24% 17%;
+    --popover-foreground: 40 45% 92%;
 
-    --primary: 220 100% 65%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 161 60% 45%;
+    --primary-foreground: 168 26% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 168 20% 22%;
+    --secondary-foreground: 40 45% 92%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 168 20% 22%;
+    --muted-foreground: 40 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 161 30% 24%;
+    --accent-foreground: 150 46% 88%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 40 45% 92%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 168 18% 26%;
+    --input: 168 18% 26%;
+    --ring: 161 60% 45%;
 
-    --success: 142 76% 46%;
+    --success: 161 60% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 60%;
+    --warning: 27 85% 58%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 58%;
+    --info: 201 49% 58%;
     --info-foreground: 0 0% 100%;
   }
 }
@@ -205,6 +217,8 @@
   
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-app, "Zen Maru Gothic"), "Hiragino Maru Gothic ProN",
+      "M PLUS Rounded 1c", system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -213,9 +227,13 @@
     scroll-behavior: smooth;
   }
 
-  /* フォーカス状態の改善 */
+  /* フォーカス状態: キーボード操作のときだけリングを見せる */
   *:focus {
-    outline: 2px solid hsl(var(--ring));
+    outline: none;
+  }
+
+  *:focus-visible {
+    outline: 3px solid hsl(var(--ring) / 0.55);
     outline-offset: 2px;
   }
 
@@ -617,6 +635,37 @@
 @keyframes accident-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.5); opacity: 0.5; }
+}
+
+/* ------------------------------------------------------------------
+   たんけんノート ユーティリティ
+   ------------------------------------------------------------------ */
+
+/* 紙の粒子(ごく薄いノイズ)を重ねた紙面 */
+.paper-surface {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #fbf5e9 0%, #f7efdd 100%);
+}
+
+/* チャンキーボタン(押し込める物理感) */
+.chunky-press {
+  transition: transform 0.13s ease-out, box-shadow 0.13s ease-out;
+}
+
+.chunky-press:active {
+  transform: translateY(3px);
+}
+
+/* すべてのモーションを reduced-motion で尊重する */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* 不審者アラートハイライトマーカー */

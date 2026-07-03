@@ -1,22 +1,25 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
 import Map, { Marker } from "react-map-gl/mapbox"
 import type { MapRef } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { motion, useReducedMotion } from "framer-motion"
 import { ArrowLeft, ImageOff, MapPin, RefreshCw, Sparkles, Trash2 } from "lucide-react"
 
-import { Mascot, PrimaryCTA, tokens } from "./theme"
+import { splitFurigana } from "@/lib/hunter/furigana"
+import { localizeMapLabels } from "@/lib/hunter/map-labels"
+import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 import { RubyText } from "./ruby-text"
 
 /**
- * きけんマップ（きろく）画面。
+ * たんけんの きろく(危険マップ)画面。
  *
  * - GET /api/hunter/photos で「自分の写真」だけを取得して、地図とリストで見せる。
- * - DELETE /api/hunter/photo/{id} で 1枚ずつ消せる（まちがい防止に かくにん2ステップ）。
+ * - DELETE /api/hunter/photo/{id} で 1枚ずつ消せる(まちがい防止に かくにん2ステップ)。
  * - 署名URL(signedUrl)は短TTL。読み込めない場合も一覧は壊さない。
- * - Mapbox トークンが無い / 取得失敗でも、リストだけで使える（throwしない）。
+ * - Mapbox トークンが無い / 取得失敗でも、リストだけで使える(throwしない)。
  */
 
 const C = tokens.color
@@ -39,8 +42,7 @@ interface HunterPhoto {
 /** severity → ピン/チップの色。 */
 function severityColor(severity: string | null | undefined): string {
   if (severity === "high") return C.danger
-  if (severity === "medium") return C.warning
-  if (severity === "low") return C.primary
+  if (severity === "medium") return C.accent
   return C.primary
 }
 
@@ -57,6 +59,7 @@ export function DangerMapScreen({
 }) {
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
   const mapRef = useRef<MapRef | null>(null)
+  const reduce = useReducedMotion()
 
   const [status, setStatus] = useState<Status>("loading")
   const [photos, setPhotos] = useState<readonly HunterPhoto[]>([])
@@ -64,6 +67,17 @@ export function DangerMapScreen({
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  /** ラベルを日本語優先にする(子ども向け: 英語表記を避ける)。 */
+  const localizeLabels = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    try {
+      localizeMapLabels(map)
+    } catch {
+      // 失敗しても地図機能は損なわない
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setStatus("loading")
@@ -156,7 +170,7 @@ export function DangerMapScreen({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
         <Mascot size="md" mood="think" />
-        <p className="text-[16px] font-extrabold" style={{ color: C.ink }}>
+        <p className="text-[15px] font-black" style={{ color: C.ink }}>
           きろくを よみこみ中…
         </p>
       </div>
@@ -165,12 +179,12 @@ export function DangerMapScreen({
 
   if (status === "error") {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
+      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
         <Mascot size="md" mood="think" />
-        <p className="text-[16px] font-bold leading-relaxed" style={{ color: C.ink }}>
+        <p className="text-[15px] font-bold leading-relaxed" style={{ color: C.ink }}>
           {errorMsg ?? "きろくを よみこめませんでした。"}
         </p>
-        <PrimaryCTA className={tokens.cls.ctaBlue} onClick={() => void load()}>
+        <PrimaryCTA variant="green" onClick={() => void load()}>
           <RefreshCw className="h-5 w-5" aria-hidden="true" />
           もう一度 よみこむ
         </PrimaryCTA>
@@ -181,110 +195,128 @@ export function DangerMapScreen({
 
   if (photos.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-8 text-center">
-        <Mascot size="lg" mood="happy" />
+      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center">
+        {/* 空っぽのノート(生成イラスト) */}
+        <motion.div
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+          className="relative w-full max-w-[300px] overflow-hidden rounded-[20px] border bg-white p-2"
+          style={{ borderColor: "rgba(67,57,43,.09)", boxShadow: tokens.shadow.card }}
+        >
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[13px]">
+            <Image
+              src="/images/hunter/records-empty.png"
+              alt="まっしろな たんけんノートと ルペ"
+              fill
+              sizes="300px"
+              className="object-cover"
+              draggable={false}
+            />
+          </div>
+        </motion.div>
         <div>
-          <h2 className="text-[20px] font-extrabold" style={{ color: C.primaryStrong }}>
-            まだ きろくは ないよ
+          <h2 className="text-[19px] font-black" style={{ color: C.ink }}>
+            きろくは まだ まっしろ
           </h2>
-          <p className="mt-2 text-[15px] font-bold leading-relaxed" style={{ color: C.ink }}>
-            <RubyText text="写真" />を しらべるとき「のこす」を オンにすると、
-            <br />
-            ここの <RubyText text="危険" />マップで あとから 見られるよ。
+          <p className="mt-2 text-[14px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
+            <RubyText text="写真" />を しらべるとき「きろくに のこす」を オンにすると、ここに たんけんの あしあとが たまっていくよ。
           </p>
         </div>
-        <PrimaryCTA onClick={onPlayNew}>
-          <Sparkles className="h-5 w-5" aria-hidden="true" />
-          <RubyText text="写真" />を しらべて あそぶ
-        </PrimaryCTA>
-        <BackButton onBack={onBack} />
+        <div className="flex w-full flex-col gap-2.5">
+          <PrimaryCTA onClick={onPlayNew}>
+            <Sparkles className="h-5 w-5" aria-hidden="true" />
+            さいしょの 1まいを しらべる
+          </PrimaryCTA>
+          <BackButton onBack={onBack} />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
-      {/* 地図（トークンが無いときは出さない） */}
-      {mapToken && (
-        <div
-          className="relative h-[220px] w-full shrink-0 overflow-hidden rounded-[20px] bg-white md:h-[300px]"
-          style={{ boxShadow: tokens.shadow.card }}
-        >
-          <Map
-            ref={mapRef}
-            mapboxAccessToken={mapToken}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
-            initialViewState={initialViewState}
-            attributionControl={false}
-            style={{ width: "100%", height: "100%" }}
+    <div className="mx-auto flex w-full max-w-2xl min-h-full flex-1 flex-col px-4 pt-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        {/* 地図(トークンが無いときは出さない) */}
+        {mapToken && (
+          <div
+            className="relative h-[200px] w-full shrink-0 overflow-hidden rounded-[18px] border-4 md:h-[280px]"
+            style={{ borderColor: "#fff", boxShadow: tokens.shadow.card }}
           >
-            {pinned.map((p) => (
-              <Marker
-                key={p.id}
-                latitude={p.pinLat}
-                longitude={p.pinLng}
-                anchor="bottom"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleFocus(p)}
-                  aria-label="きろくの ばしょ"
-                  className={`grid place-items-center rounded-full text-white ${tokens.cls.focus}`}
-                  style={{
-                    height: p.id === activeId ? 44 : 36,
-                    width: p.id === activeId ? 44 : 36,
-                    background: p.id === activeId ? C.accent : severityColor(p.topSeverity),
-                    boxShadow: `0 0 0 3px #fff, ${tokens.shadow.card}`,
-                  }}
-                >
-                  <MapPin className="h-5 w-5" aria-hidden="true" strokeWidth={2.5} />
-                </button>
-              </Marker>
-            ))}
-          </Map>
-        </div>
-      )}
+            <Map
+              ref={mapRef}
+              mapboxAccessToken={mapToken}
+              mapStyle="mapbox://styles/mapbox/streets-v12"
+              initialViewState={initialViewState}
+              attributionControl={false}
+              onLoad={localizeLabels}
+              style={{ width: "100%", height: "100%" }}
+            >
+              {pinned.map((p) => (
+                <Marker key={p.id} latitude={p.pinLat} longitude={p.pinLng} anchor="bottom">
+                  <button
+                    type="button"
+                    onClick={() => handleFocus(p)}
+                    aria-label="きろくの ばしょ"
+                    className={`grid place-items-center rounded-full text-white transition-all ${tokens.cls.focus}`}
+                    style={{
+                      height: p.id === activeId ? 44 : 36,
+                      width: p.id === activeId ? 44 : 36,
+                      background: p.id === activeId ? C.sunDeep : severityColor(p.topSeverity),
+                      boxShadow: `0 0 0 3px #fff, ${tokens.shadow.card}`,
+                    }}
+                  >
+                    <MapPin className="h-5 w-5" aria-hidden="true" strokeWidth={2.5} />
+                  </button>
+                </Marker>
+              ))}
+            </Map>
+          </div>
+        )}
 
-      {errorMsg && (
-        <p
-          role="alert"
-          className="rounded-[16px] px-4 py-3 text-[14px] font-extrabold"
-          style={{ background: "#FCE8E8", color: C.danger }}
-        >
-          {errorMsg}
-        </p>
-      )}
+        {errorMsg && (
+          <p
+            role="alert"
+            className="rounded-[14px] px-4 py-3 text-[13.5px] font-black"
+            style={{ background: C.dangerSoft, color: C.danger }}
+          >
+            {errorMsg}
+          </p>
+        )}
 
-      {/* リスト */}
-      <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
-        {photos.map((photo) => (
-          <PhotoRow
-            key={photo.id}
-            photo={photo}
-            active={photo.id === activeId}
-            confirming={photo.id === confirmId}
-            deleting={photo.id === deletingId}
-            onFocus={() => handleFocus(photo)}
-            onAskDelete={() => setConfirmId(photo.id)}
-            onCancelDelete={() => setConfirmId(null)}
-            onConfirmDelete={() => void handleDelete(photo.id)}
-          />
-        ))}
-      </ul>
-
-      <div className="flex shrink-0 flex-col gap-2">
-        <PrimaryCTA onClick={onPlayNew}>
-          <Sparkles className="h-5 w-5" aria-hidden="true" />
-          あたらしく <RubyText text="写真" />を しらべる
-        </PrimaryCTA>
-        <BackButton onBack={onBack} />
+        {/* リスト */}
+        <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pb-2">
+          {photos.map((photo) => (
+            <PhotoRow
+              key={photo.id}
+              photo={photo}
+              active={photo.id === activeId}
+              confirming={photo.id === confirmId}
+              deleting={photo.id === deletingId}
+              onFocus={() => handleFocus(photo)}
+              onAskDelete={() => setConfirmId(photo.id)}
+              onCancelDelete={() => setConfirmId(null)}
+              onConfirmDelete={() => void handleDelete(photo.id)}
+            />
+          ))}
+        </ul>
       </div>
+
+      <BottomBar className="-mx-4 px-4">
+        <div className="flex flex-col gap-2">
+          <PrimaryCTA onClick={onPlayNew}>
+            <Sparkles className="h-5 w-5" aria-hidden="true" />
+            あたらしく しゃしんを しらべる
+          </PrimaryCTA>
+          <BackButton onBack={onBack} />
+        </div>
+      </BottomBar>
     </div>
   )
 }
 
 /* ------------------------------------------------------------------ *
- * もどるボタン（共通・タップ領域 大きめ）
+ * もどるボタン(共通・タップ領域 大きめ)
  * ------------------------------------------------------------------ */
 
 function BackButton({ onBack }: { onBack: () => void }) {
@@ -292,7 +324,7 @@ function BackButton({ onBack }: { onBack: () => void }) {
     <button
       type="button"
       onClick={onBack}
-      className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full px-6 text-[15px] font-extrabold ${tokens.cls.focus}`}
+      className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full px-6 text-[14px] font-black ${tokens.cls.focus}`}
       style={{ color: C.primaryStrong }}
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -332,17 +364,18 @@ function PhotoRow({
     <li>
       <motion.div
         layout={reduce ? false : undefined}
-        className="flex items-center gap-3 rounded-[20px] bg-white p-2.5"
+        className="flex items-center gap-3 rounded-[18px] border bg-white p-2.5"
         style={{
-          boxShadow: active ? `0 0 0 3px ${C.accent}, ${tokens.shadow.soft}` : tokens.shadow.soft,
+          borderColor: active ? C.sunDeep : "rgba(67,57,43,.09)",
+          boxShadow: active ? `0 0 0 2px ${C.sun}, ${tokens.shadow.soft}` : tokens.shadow.soft,
         }}
       >
         <button
           type="button"
           onClick={onFocus}
           aria-label="この きろくを 地図で 見る"
-          className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-[14px] ${tokens.cls.focus}`}
-          style={{ background: C.surfaceWarm }}
+          className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-[12px] ${tokens.cls.focus}`}
+          style={{ background: C.paperDeep }}
         >
           {photo.signedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -353,18 +386,22 @@ function PhotoRow({
               draggable={false}
             />
           ) : (
-            <span className="grid h-full w-full place-items-center" style={{ color: C.inkSoft }}>
+            <span className="grid h-full w-full place-items-center" style={{ color: C.inkFaint }}>
               <ImageOff className="h-6 w-6" aria-hidden="true" />
             </span>
           )}
         </button>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="truncate text-[14px] font-extrabold" style={{ color: C.ink }}>
+          <span className="truncate text-[13.5px] font-black" style={{ color: C.ink }}>
             {dateText}
           </span>
-          <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: C.inkSoft }}>
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" style={{ color: hasPin ? C.primary : C.inkSoft }} />
+          <span className="flex items-center gap-1 text-[11.5px] font-bold" style={{ color: C.inkSoft }}>
+            <MapPin
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
+              style={{ color: hasPin ? C.primary : C.inkFaint }}
+            />
             {hasPin ? "ばしょ あり" : "ばしょ なし"}
           </span>
           {photo.dangers && photo.dangers.length > 0 ? (
@@ -372,10 +409,13 @@ function PhotoRow({
               {photo.dangers.map((d, i) => (
                 <span
                   key={i}
-                  className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white"
+                  className="rounded-full px-2 py-0.5 text-[10.5px] font-black text-white"
                   style={{ background: severityColor(photo.topSeverity) }}
                 >
-                  <RubyText text={d} />
+                  {/* 極小ルビは読めないため、タグ内はかなに開く */}
+                  {splitFurigana(d)
+                    .map((tk) => tk.r ?? tk.t)
+                    .join("")}
                 </span>
               ))}
             </span>
@@ -388,7 +428,7 @@ function PhotoRow({
               type="button"
               onClick={onConfirmDelete}
               disabled={deleting}
-              className={`rounded-full px-3 py-2 text-[13px] font-extrabold text-white disabled:opacity-60 ${tokens.cls.focus}`}
+              className={`rounded-full px-3.5 py-2.5 text-[12.5px] font-black text-white disabled:opacity-60 ${tokens.cls.focus}`}
               style={{ background: C.danger }}
             >
               {deleting ? "けし中…" : "けす"}
@@ -397,8 +437,8 @@ function PhotoRow({
               type="button"
               onClick={onCancelDelete}
               disabled={deleting}
-              className={`rounded-full px-3 py-2 text-[13px] font-extrabold disabled:opacity-60 ${tokens.cls.focus}`}
-              style={{ background: C.surfaceWarm, color: C.ink }}
+              className={`rounded-full px-3.5 py-2.5 text-[12.5px] font-black disabled:opacity-60 ${tokens.cls.focus}`}
+              style={{ background: C.paperDeep, color: C.ink }}
             >
               やめる
             </button>
@@ -409,7 +449,7 @@ function PhotoRow({
             onClick={onAskDelete}
             aria-label="この きろくを けす"
             className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${tokens.cls.focus}`}
-            style={{ background: C.surfaceWarm, color: C.danger }}
+            style={{ background: C.paperDeep, color: C.danger }}
           >
             <Trash2 className="h-5 w-5" aria-hidden="true" />
           </button>

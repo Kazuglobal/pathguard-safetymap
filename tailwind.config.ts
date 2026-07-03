@@ -19,7 +19,55 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        app: [
+          "var(--font-app)",
+          '"Zen Maru Gothic"',
+          '"Hiragino Maru Gothic ProN"',
+          '"M PLUS Rounded 1c"',
+          "system-ui",
+          "sans-serif",
+        ],
+        inter: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        "tanken-card":
+          "0 1.5px 0 rgba(67,57,43,.07), 0 14px 30px -18px rgba(67,57,43,.38)",
+        "tanken-soft":
+          "0 1px 0 rgba(67,57,43,.06), 0 6px 16px -10px rgba(67,57,43,.28)",
+        "tanken-float":
+          "0 1px 0 rgba(67,57,43,.05), 0 10px 26px -14px rgba(67,57,43,.45)",
+        "press-green": "0 4px 0 #0C7A55",
+        "press-sun": "0 4px 0 #E2A812",
+        "press-accent": "0 4px 0 #D8660A",
+        "press-paper": "0 3px 0 rgba(67,57,43,.16)",
+      },
       colors: {
+        paper: {
+          DEFAULT: "#FBF5E9",
+          deep: "#F3EAD6",
+          card: "#FFFDF7",
+        },
+        ink: {
+          DEFAULT: "#43392B",
+          soft: "#847661",
+          faint: "#B7AB93",
+        },
+        forest: {
+          DEFAULT: "#159E72",
+          strong: "#0C7A55",
+          soft: "#DFF3E9",
+        },
+        safety: {
+          DEFAULT: "#F4801F",
+          strong: "#D8660A",
+          soft: "#FDEBD7",
+        },
+        sun: {
+          DEFAULT: "#FFC93E",
+          deep: "#E2A812",
+          soft: "#FFF3CE",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

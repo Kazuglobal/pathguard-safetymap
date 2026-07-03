@@ -112,12 +112,13 @@ const CardIcon = React.forwardRef<
     color?: "primary" | "success" | "warning" | "error" | "info"
   }
 >(({ className, icon, color = "primary", ...props }, ref) => {
+  // たんけんノートの意味色(フラット + チャンキー土台)
   const colorClasses = {
-    primary: "bg-gradient-to-br from-blue-500 to-sky-600 text-white",
-    success: "bg-gradient-to-br from-green-500 to-emerald-600 text-white", 
-    warning: "bg-gradient-to-br from-yellow-500 to-orange-600 text-white",
-    error: "bg-gradient-to-br from-red-500 to-rose-600 text-white",
-    info: "bg-gradient-to-br from-blue-500 to-indigo-600 text-white",
+    primary: "bg-[#159E72] text-white shadow-[0_3px_0_#0C7A55]",
+    success: "bg-[#159E72] text-white shadow-[0_3px_0_#0C7A55]",
+    warning: "bg-[#F4801F] text-white shadow-[0_3px_0_#D8660A]",
+    error: "bg-[#D95555] text-white shadow-[0_3px_0_#B03E3E]",
+    info: "bg-[#3E8FB8] text-white shadow-[0_3px_0_#2E6E90]",
   }
   
   return (

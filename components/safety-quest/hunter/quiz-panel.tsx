@@ -1,10 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Check, Lightbulb, X } from "lucide-react"
 
 import { judgeQuizAnswer } from "@/lib/hunter/quiz"
+import { splitFurigana } from "@/lib/hunter/furigana"
 import type { HunterQuizAnswer, HunterQuizItem } from "@/lib/hunter/types"
 import {
   containRect,
@@ -13,7 +14,7 @@ import {
   type Size,
 } from "@/lib/hunter/image-geometry"
 import { RubyText } from "./ruby-text"
-import { Mascot, PrimaryCTA, StatPill, tokens } from "./theme"
+import { Mascot, PhotoFrame, PrimaryCTA, StatPill, Sticker, tokens } from "./theme"
 
 const C = tokens.color
 
@@ -24,6 +25,7 @@ export interface HunterQuizPanelProps {
 }
 
 export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanelProps) {
+  const reduce = useReducedMotion()
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<HunterQuizAnswer[]>([])
   const [revealed, setRevealed] = useState<{ answer: HunterQuizAnswer; correct: boolean } | null>(
@@ -118,42 +120,40 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
       </span>
 
       <div className="flex items-center justify-between">
-        <StatPill tone="blue" label="もんだい" value={`${index + 1} / ${items.length}`} />
+        <StatPill tone="green" label="もんだい" value={`${index + 1} / ${items.length}`} />
         {item.theme && (
-          <span
-            className="rounded-full px-3 py-1 text-[12px] font-extrabold text-white"
-            style={{ background: C.accent }}
-          >
-            <RubyText text={item.theme} />
-          </span>
+          <Sticker tone="accent" tilt={2}>
+            {/* 極小ルビは読めないため、タグ内はかなに開く */}
+            {splitFurigana(item.theme)
+              .map((tk) => tk.r ?? tk.t)
+              .join("")}
+          </Sticker>
         )}
       </div>
 
+      {/* 出題(ルペの吹き出し) */}
       <div className="flex items-start gap-2.5">
         <span className="shrink-0">
           <Mascot size="sm" mood={revealed ? (revealed.correct ? "wow" : "cheer") : "think"} />
         </span>
         <p
-          className="rounded-[18px] bg-white px-4 py-3 text-[16px] font-extrabold leading-relaxed"
-          style={{ color: C.ink, boxShadow: tokens.shadow.soft }}
+          className="flex-1 rounded-[18px] rounded-bl-[6px] border bg-white px-4 py-3 text-[15px] font-black leading-relaxed"
+          style={{ color: C.ink, borderColor: "rgba(67,57,43,.1)", boxShadow: tokens.shadow.soft }}
         >
           <RubyText text={item.question} />
         </p>
       </div>
 
       {item.kind === "place" ? (
-        <div
-          className="relative min-h-0 flex-1 overflow-hidden rounded-[20px]"
-          style={{ background: C.headerNavy, boxShadow: tokens.shadow.card }}
-        >
+        <PhotoFrame tape={false}>
           <div
             ref={imageRef}
             role="button"
             tabIndex={0}
             aria-label="しゃしんの上を タップして こたえよう"
             onClick={handleImageTap}
-            className={`relative h-full w-full ${tokens.cls.focus}`}
-            style={{ cursor: revealed ? "default" : "pointer" }}
+            className={`relative w-full ${tokens.cls.focus}`}
+            style={{ cursor: revealed ? "default" : "pointer", aspectRatio: "4 / 3" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -172,16 +172,16 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
             {/* 解答後: 正解の場所を温かく見せる(外しても否定しない) */}
             {revealed && item.answerRegion && (
               <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 320, damping: 16 }}
+                initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 340, damping: 18 }}
                 aria-hidden="true"
                 className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
                 style={{
                   ...answerMarkerPos(),
                   width: 52,
                   height: 52,
-                  background: revealed.correct ? C.success : C.warning,
+                  background: revealed.correct ? C.primary : C.sun,
                   color: revealed.correct ? "#fff" : C.ink,
                   boxShadow: `0 0 0 4px #fff, ${tokens.shadow.card}`,
                 }}
@@ -194,35 +194,45 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
               </motion.span>
             )}
             {!revealed && (
-              <span className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-                <span className="rounded-full bg-black/55 px-3 py-1 text-[12px] font-bold text-white">
+              <span className="pointer-events-none absolute inset-x-0 bottom-2.5 flex justify-center">
+                <span
+                  className="rounded-full px-3.5 py-1.5 text-[12px] font-black text-white"
+                  style={{ background: "rgba(38,65,59,.7)", backdropFilter: "blur(4px)" }}
+                >
                   しゃしんを タップして こたえてね
                 </span>
               </span>
             )}
           </div>
-        </div>
+        </PhotoFrame>
       ) : (
-        <div className="grid grid-cols-1 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5" role="group" aria-label="こたえの こうほ">
           {item.choices?.map((choice) => {
             const isCorrect = choice.id === item.correctChoiceId
             const isPicked = revealed?.answer.choiceId === choice.id
             const bg = !revealed
-              ? C.surface
+              ? "#FFFFFF"
               : isCorrect
-                ? C.success
+                ? C.primary
                 : isPicked
                   ? C.danger
-                  : C.surface
-            const color = !revealed ? C.ink : isCorrect || isPicked ? "#fff" : C.inkSoft
+                  : "#FFFFFF"
+            const color = !revealed ? C.ink : isCorrect || isPicked ? "#fff" : C.inkFaint
             return (
               <button
                 key={choice.id}
                 type="button"
                 disabled={Boolean(revealed)}
                 onClick={() => submit({ itemId: item.id, choiceId: choice.id })}
-                className={`flex items-center gap-2 rounded-[18px] px-4 py-3.5 text-left text-[15px] font-extrabold ${tokens.cls.focus}`}
-                style={{ background: bg, color, boxShadow: tokens.shadow.soft }}
+                className={`flex items-center gap-2.5 rounded-[18px] border-2 px-4 py-3.5 text-left text-[15px] font-black transition-[transform,background-color,color] ${
+                  revealed ? "" : "active:translate-y-[3px]"
+                } ${tokens.cls.focus}`}
+                style={{
+                  background: bg,
+                  color,
+                  borderColor: revealed && isCorrect ? C.primaryStrong : "rgba(67,57,43,.12)",
+                  boxShadow: revealed ? "none" : tokens.shadow.pressPaper,
+                }}
               >
                 {revealed && isCorrect && <Check className="h-5 w-5 shrink-0" strokeWidth={3} />}
                 {revealed && isPicked && !isCorrect && <X className="h-5 w-5 shrink-0" strokeWidth={3} />}
@@ -236,23 +246,26 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
       <AnimatePresence>
         {revealed && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col gap-2.5"
           >
             <div
-              className="flex items-start gap-2 rounded-[18px] px-4 py-3"
-              style={{ background: C.surfaceWarm, boxShadow: tokens.shadow.soft }}
+              className="flex items-start gap-2.5 rounded-[18px] px-4 py-3"
+              style={{ background: C.sunSoft, boxShadow: tokens.shadow.soft }}
             >
-              <Lightbulb className="mt-0.5 h-5 w-5 shrink-0" style={{ color: C.warning }} aria-hidden="true" />
+              <Lightbulb className="mt-0.5 h-5 w-5 shrink-0" style={{ color: C.sunDeep }} aria-hidden="true" />
               <p className="text-[14px] font-bold leading-relaxed" style={{ color: C.ink }}>
-                <span className="font-extrabold" style={{ color: revealed.correct ? C.success : C.accentStrong }}>
+                <span
+                  className="font-black"
+                  style={{ color: revealed.correct ? C.primaryStrong : C.accentStrong }}
+                >
                   {heading}
                 </span>
                 <RubyText text={item.explanation} />
               </p>
             </div>
-            <PrimaryCTA onClick={goNext}>
+            <PrimaryCTA onClick={goNext} variant={isLast ? "sun" : "green"}>
               {isLast ? "けっかを みる" : "つぎの もんだいへ"}
             </PrimaryCTA>
           </motion.div>

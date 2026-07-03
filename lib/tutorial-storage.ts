@@ -1,5 +1,6 @@
 const TUTORIAL_STORAGE_KEY = 'pathguard-tutorial-progress'
-const TUTORIAL_VERSION = "2.0"
+// 3.0: 絵本モードの新オンボーディング(app-onboarding)導入
+const TUTORIAL_VERSION = "3.0"
 
 export function shouldShowTutorial(): boolean {
   try {

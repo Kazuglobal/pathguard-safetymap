@@ -9,26 +9,35 @@
 // 失敗時はネイティブ FaceDetector、それも無ければ手動矩形のみにフォールバック。
 // 推論はすべてブラウザ内で完結し、未マスク画像は外部へ送らない
 // (CDN からは WASM とモデルのみを取得し、写真は fetch しない)。
+//
+// UI: 検出待ちの間も見出し・説明・スケルトンを即時表示して
+// 「無反応の空白」を作らない(初回は WASM 取得で数秒かかるため)。
 // =============================================
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Eye, RotateCcw, Sparkles, X } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { RotateCcw, Sparkles, X } from "lucide-react"
 import {
   buildBlurRegions,
   type DetectedFace,
 } from "@/lib/hunter/masking"
 import type { HunterRegion } from "@/lib/hunter/types"
-import { Mascot, PrimaryCTA, tokens } from "./theme"
+import {
+  BottomBar,
+  Mascot,
+  PrimaryCTA,
+  SpeechBubble,
+  Sticker,
+  tokens,
+} from "./theme"
 
-/** 丸ゴシックの親しみフォントスタック（テーマと統一） */
-const FONT_FAMILY =
-  '"M PLUS Rounded 1c","Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif'
+const C = tokens.color
 
 export interface MaskConfirmProps {
   /** ユーザーが選んだ元画像 (端末内のみで処理) */
   file: File
-  /** マスク済み dataURL のみを返す (未マスクは絶対に渡さない) */
-  onConfirm: (maskedDataUrl: string) => void
+  /** マスク済み dataURL のみを返す (未マスクは絶対に渡さない)。第2引数はぼかし数 */
+  onConfirm: (maskedDataUrl: string, maskedCount: number) => void
   /** キャンセル */
   onCancel: () => void
 }
@@ -241,6 +250,7 @@ function dragToRegion(drag: DragState): HunterRegion {
 
 export function MaskConfirm(props: MaskConfirmProps) {
   const { file, onConfirm, onCancel } = props
+  const reduce = useReducedMotion()
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   // 元画像を保持 (ぼかしは常に原画像から再描画して累積劣化を防ぐ)
@@ -250,11 +260,10 @@ export function MaskConfirm(props: MaskConfirmProps) {
   const [manualRegions, setManualRegions] = useState<HunterRegion[]>([])
   const [drag, setDrag] = useState<DragState | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  // 画像自体が壊れている等で読み込めなかった(先へ進ませない)
+  const [loadFailed, setLoadFailed] = useState<boolean>(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [displaySize, setDisplaySize] = useState<{ w: number; h: number }>({
-    w: 0,
-    h: 0,
-  })
+  const [, setDisplaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
 
   // --- 画像ロード + 自動検出 ---
   useEffect(() => {
@@ -284,7 +293,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
     img.onerror = () => {
       if (revoked) return
-      setErrorMessage("しゃしんを よみこめませんでした")
+      setLoadFailed(true)
       setIsLoading(false)
     }
 
@@ -324,7 +333,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
     if (drag) {
       const r = dragToRegion(drag)
       ctx.save()
-      ctx.strokeStyle = "#2563eb"
+      ctx.strokeStyle = "#159E72"
       ctx.lineWidth = Math.max(2, canvas.width / 240)
       ctx.setLineDash([canvas.width / 60, canvas.width / 120])
       ctx.strokeRect(
@@ -339,7 +348,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
   useEffect(() => {
     redraw()
-  }, [redraw])
+  }, [redraw, isLoading])
 
   // --- ポインタ → 相対座標 (0..1) ---
   const toRelative = useCallback(
@@ -419,7 +428,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
       // webp で出力: canvas 再エンコードは EXIF(GPS含む) を引き継がないため、
       // 保存時の EXIF/位置情報の残存をクライアント側でも防ぐ (サーバも webp 限定)。
       const maskedDataUrl = canvas.toDataURL("image/webp", 0.85)
-      onConfirm(maskedDataUrl)
+      onConfirm(maskedDataUrl, autoRegions.length + manualRegions.length)
     } catch (error) {
       console.error("マスク済み画像の生成に失敗:", error)
       setErrorMessage("しゃしんの ほぞんに しっぱいしました")
@@ -427,247 +436,158 @@ export function MaskConfirm(props: MaskConfirmProps) {
   }, [autoRegions, manualRegions, onConfirm])
 
   const totalRegions = autoRegions.length + manualRegions.length
-
-  const C = tokens.color
   const undoDisabled = manualRegions.length === 0
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: "1 1 0",
-        minHeight: 0,
-        gap: 12,
-        padding: 16,
-        borderRadius: tokens.radius.card,
-        background: C.surfaceWarm,
-        boxShadow: `${tokens.shadow.soft}, ${tokens.shadow.card}`,
-        width: "100%",
-        maxWidth: MAX_DISPLAY_WIDTH + 48,
-        margin: "0 auto",
-        boxSizing: "border-box",
-        color: C.ink,
-        fontFamily: FONT_FAMILY,
-      }}
-    >
-      {/* 見出し＋見守るハンタくん（おうちの人との やくそく 風） */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Mascot size="sm" mood="cheer" />
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 800,
-              lineHeight: 1.3,
-              color: C.ink,
-            }}
-          >
-            しゃしんを かくしてから つかおう
-          </h2>
-          <span style={{ fontSize: 13, fontWeight: 700, color: C.inkSoft }}>
-            おうちの人との やくそく
-          </span>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-md min-h-full flex-1 flex-col px-5 pt-2">
+      <div className="flex flex-1 flex-col gap-3.5">
+        <SpeechBubble mood={isLoading ? "think" : "cheer"}>
+          かお・なまえ・おうち・くるまの ナンバーを もやもやに かくすよ。
+          かくしたい ところは <b>ゆびで なぞって</b> ついかしてね。
+        </SpeechBubble>
 
-      {/* 注意文（warning 面の上は ink 文字固定・白文字禁止） */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "flex-start",
-          background: "#FFF6DD",
-          borderRadius: tokens.radius.chip,
-          padding: "12px 14px",
-        }}
-      >
-        <span
-          aria-hidden="true"
-          style={{
-            display: "grid",
-            placeItems: "center",
-            flexShrink: 0,
-            width: 28,
-            height: 28,
-            borderRadius: 9999,
-            background: C.warning,
-            color: C.ink,
-          }}
+        {/* 写真(白フレーム)。ロード中もスケルトンを出して空白を作らない */}
+        <div
+          className="relative mx-auto w-full rounded-[18px] border bg-white p-2"
+          style={{ borderColor: "rgba(67,57,43,.09)", boxShadow: tokens.shadow.card, maxWidth: MAX_DISPLAY_WIDTH + 16 }}
         >
-          <Eye size={17} strokeWidth={2.4} />
-        </span>
-        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: C.ink }}>
-          <ruby>
-            顔<rt>かお</rt>
-          </ruby>
-          ・
-          <ruby>
-            名前<rt>なまえ</rt>
-          </ruby>
-          ・お
-          <ruby>
-            家<rt>いえ</rt>
-          </ruby>
-          ・
-          <ruby>
-            車<rt>くるま</rt>
-          </ruby>
-          のナンバーが かくれているか かくにんしてね。
-          <br />
-          かくしたいところを ゆびで なぞって しかくを ついかできるよ。
-        </p>
-      </div>
-
-      <div
-        style={{
-          position: "relative",
-          flex: "1 1 0",
-          minHeight: 0,
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          role="img"
-          aria-label="ぼかしを かける しゃしん。ドラッグで かくす しかくを ついか"
-          style={{
-            display: "block",
-            maxWidth: "100%",
-            maxHeight: "100%",
-            width: "auto",
-            height: "auto",
-            borderRadius: tokens.radius.thumb,
-            border: `3px solid ${C.primary}`,
-            touchAction: "none",
-            cursor: "crosshair",
-            background: "#E2ECF6",
-          }}
-        />
-        {isLoading && (
           <div
+            className="relative overflow-hidden rounded-[12px]"
+            style={{ background: C.night, minHeight: isLoading ? undefined : 120 }}
+          >
+            {/* 読み込み失敗(壊れた画像など): 先へ進ませず、えらび直しへ誘導 */}
+            {loadFailed && (
+              <div className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 px-6 text-center">
+                <Mascot size="md" mood="think" />
+                <p className="text-[14.5px] font-black leading-relaxed" style={{ color: "#D9E5DE" }}>
+                  この しゃしんは よみこめなかったよ。
+                  <br />
+                  「やめる」から べつの 1まいを えらんでね。
+                </p>
+              </div>
+            )}
+
+            {/* ロード中スケルトン(4:3) */}
+            {isLoading && !loadFailed && (
+              <div className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-3">
+                {!reduce && (
+                  <motion.div
+                    aria-hidden="true"
+                    className="absolute inset-y-0 w-1/3"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent)",
+                    }}
+                    initial={{ left: "-35%" }}
+                    animate={{ left: ["-35%", "105%"] }}
+                    transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                )}
+                <Mascot size="md" mood="think" />
+                <span className="text-[13.5px] font-black" style={{ color: "#D9E5DE" }}>
+                  かおを じどうで さがしているよ…
+                </span>
+              </div>
+            )}
+
+            <canvas
+              ref={canvasRef}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              role="img"
+              aria-label="ぼかしを かける しゃしん。ドラッグで かくす しかくを ついか"
+              className={isLoading || loadFailed ? "hidden" : "block"}
+              style={{
+                maxWidth: "100%",
+                width: "100%",
+                height: "auto",
+                touchAction: "none",
+                cursor: "crosshair",
+              }}
+            />
+          </div>
+
+          {/* かくしている数(シール) */}
+          {!isLoading && !loadFailed && (
+            <div className="absolute -top-3 left-3 z-10">
+              <Sticker tone={totalRegions > 0 ? "green" : "paper"} tilt={-3}>
+                かくした ばしょ {totalRegions}こ
+                {autoRegions.length > 0 && `（じどう ${autoRegions.length}）`}
+              </Sticker>
+            </div>
+          )}
+        </div>
+
+        {errorMessage && (
+          <p
+            role="alert"
+            className="flex items-center gap-2 rounded-[14px] px-4 py-3 text-[13.5px] font-black"
+            style={{ background: C.dangerSoft, color: C.danger }}
+          >
+            {errorMessage}
+          </p>
+        )}
+
+        {/* やりなおし系(副ボタン・タップ領域 48px 以上) */}
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={undoDisabled}
+            aria-label="さいごに ついかした しかくを けす"
+            className={`inline-flex min-h-[48px] flex-1 items-center justify-center gap-1.5 rounded-full border-2 bg-white px-4 text-[14px] font-black transition-transform ${
+              undoDisabled ? "cursor-not-allowed opacity-45" : "active:translate-y-[2px]"
+            } ${tokens.cls.focus}`}
             style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              borderRadius: tokens.radius.thumb,
-              background: "rgba(255,248,239,.86)",
+              borderColor: "rgba(67,57,43,.14)",
+              color: C.ink,
+              boxShadow: undoDisabled ? "none" : tokens.shadow.pressPaper,
             }}
           >
-            <Mascot size="sm" mood="think" />
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.primaryStrong }}>
-              よみこみちゅう…
-            </span>
-          </div>
-        )}
+            <RotateCcw className="h-4 w-4" strokeWidth={2.6} aria-hidden="true" />
+            ひとつ もどす
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="ぼかしを やめて とじる"
+            className={`inline-flex min-h-[48px] flex-1 items-center justify-center gap-1.5 rounded-full border-2 bg-white px-4 text-[14px] font-black transition-transform active:translate-y-[2px] ${tokens.cls.focus}`}
+            style={{
+              borderColor: "rgba(67,57,43,.14)",
+              color: C.ink,
+              boxShadow: tokens.shadow.pressPaper,
+            }}
+          >
+            <X className="h-4 w-4" strokeWidth={2.6} aria-hidden="true" />
+            やめる
+          </button>
+        </div>
+
+        {/* 自動検出の結果をやさしく知らせる */}
+        <AnimatePresence>
+          {!isLoading && !loadFailed && autoRegions.length === 0 && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center text-[12.5px] font-bold"
+              style={{ color: C.inkSoft }}
+            >
+              かおは 見つからなかったよ。かくしたいところが あれば なぞってね。
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* かくしている ばしょの数（やさしい言い回し） */}
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.inkSoft }}>
-        かくしている ばしょ:{" "}
-        <span style={{ color: C.success, fontSize: 18, fontWeight: 800 }}>
-          {totalRegions}
-        </span>{" "}
-        こ
-        {autoRegions.length > 0 && `（じどう ${autoRegions.length} こ）`}
-      </p>
-
-      {errorMessage && (
-        <p
-          role="alert"
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 14,
-            fontWeight: 700,
-            color: C.danger,
-            background: "#FCEBEB",
-            borderRadius: tokens.radius.chip,
-            padding: "10px 12px",
-          }}
-        >
-          {errorMessage}
-        </p>
-      )}
-
-      {/* やりなおし系（副ボタン・タップ領域 48px 以上） */}
-      <div style={{ display: "flex", gap: 10 }}>
-        <button
-          type="button"
-          onClick={handleUndo}
-          disabled={undoDisabled}
-          aria-label="さいごに ついかした しかくを けす"
-          style={{
-            flex: "1 1 0",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            minHeight: 48,
-            padding: "0 14px",
-            borderRadius: 9999,
-            border: `2px solid ${undoDisabled ? "#E2E8F0" : "#CBD8E6"}`,
-            background: undoDisabled ? "#F2F5F9" : C.surface,
-            color: undoDisabled ? "#9AA8B6" : C.ink,
-            fontWeight: 700,
-            fontSize: 15,
-            fontFamily: FONT_FAMILY,
-            cursor: undoDisabled ? "not-allowed" : "pointer",
-          }}
-        >
-          <RotateCcw size={16} strokeWidth={2.4} aria-hidden="true" />
-          ひとつ もどす
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="ぼかしを やめて とじる"
-          style={{
-            flex: "1 1 0",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            minHeight: 48,
-            padding: "0 14px",
-            borderRadius: 9999,
-            border: "2px solid #CBD8E6",
-            background: C.surface,
-            color: C.ink,
-            fontWeight: 700,
-            fontSize: 15,
-            fontFamily: FONT_FAMILY,
-            cursor: "pointer",
-          }}
-        >
-          <X size={16} strokeWidth={2.4} aria-hidden="true" />
-          やめる
-        </button>
-      </div>
-
-      {/* 主ボタン（青CTA：この先へ進む安心アクション） */}
-      <PrimaryCTA
-        onClick={handleConfirm}
-        disabled={isLoading}
-        className={tokens.cls.ctaBlue}
-      >
-        <Sparkles size={20} strokeWidth={2.4} aria-hidden="true" />
-        この しゃしんを つかう
-      </PrimaryCTA>
+      {/* 主ボタン(みどり: この先へ進む安心アクション)。読み込み失敗時は進ませない */}
+      <BottomBar className="-mx-5 px-5">
+        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed} variant="green">
+          <Sparkles className="h-5 w-5" strokeWidth={2.4} aria-hidden="true" />
+          {isLoading ? "じゅんびちゅう…" : loadFailed ? "この しゃしんは つかえないよ" : "この しゃしんを つかう"}
+        </PrimaryCTA>
+      </BottomBar>
     </div>
   )
 }
