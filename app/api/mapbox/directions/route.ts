@@ -1,20 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { directionsService } from '@/lib/routing/directions'
 import { logApiUsage } from '@/lib/api-usage-logger'
+import { createServerClient } from '@/lib/supabase-server'
+import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
+import { isValidCoordinates } from '@/lib/coordinates'
+
+const MAX_BATCH_SIZE = 25
+
+async function requireAuth() {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  return user
+}
+
+const coordinatePairSchema = z
+  .tuple([z.number(), z.number()])
+  .refine(([lng, lat]) => isValidCoordinates(lat, lng), {
+    message: '緯度経度の範囲が不正です',
+  })
+
+const waypointSchema = z.object({ coordinates: coordinatePairSchema }).passthrough()
+
+const waypointsSchema = z.array(waypointSchema).min(1).max(MAX_BATCH_SIZE)
+
+function validateWaypoints(waypoints: unknown): NextResponse | null {
+  if (!waypointsSchema.safeParse(waypoints).success) {
+    return NextResponse.json(
+      { error: `waypointsが不正です(1〜${MAX_BATCH_SIZE}件、緯度経度の範囲内で指定してください)` },
+      { status: 400 }
+    )
+  }
+  return null
+}
+
+function validateCoordinatePair(value: unknown, label: string): NextResponse | null {
+  if (!coordinatePairSchema.safeParse(value).success) {
+    return NextResponse.json(
+      { error: `${label}の座標が不正です` },
+      { status: 400 }
+    )
+  }
+  return null
+}
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
+  const rate = await checkApiRateLimit(`mapbox-directions:${user.id}`)
+  if (!rate.success) {
+    return rateLimitedResponse(rate.reset)
+  }
+
   try {
     const body = await request.json()
     const { type, ...options } = body
 
     switch (type) {
-      case 'getRoute':
+      case 'getRoute': {
         if (!options.waypoints || !Array.isArray(options.waypoints)) {
           return NextResponse.json(
             { error: 'Waypoints array is required' },
             { status: 400 }
           )
         }
+
+        const waypointsError = validateWaypoints(options.waypoints)
+        if (waypointsError) return waypointsError
 
         const routeResult = await directionsService.getRoute(options)
 
@@ -27,14 +83,21 @@ export async function POST(request: NextRequest) {
 
         logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(routeResult.data)
+      }
 
-      case 'getMultiModalRoutes':
+      case 'getMultiModalRoutes': {
         if (!options.origin || !options.destination) {
           return NextResponse.json(
             { error: 'Origin and destination are required' },
             { status: 400 }
           )
         }
+
+        const originError = validateCoordinatePair(options.origin, 'origin')
+        if (originError) return originError
+
+        const destinationError = validateCoordinatePair(options.destination, 'destination')
+        if (destinationError) return destinationError
 
         if (!options.profiles || !Array.isArray(options.profiles)) {
           return NextResponse.json(
@@ -54,14 +117,18 @@ export async function POST(request: NextRequest) {
 
         logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(multiModalResult.data)
+      }
 
-      case 'optimizeWaypoints':
+      case 'optimizeWaypoints': {
         if (!options.waypoints || !Array.isArray(options.waypoints)) {
           return NextResponse.json(
             { error: 'Waypoints array is required' },
             { status: 400 }
           )
         }
+
+        const waypointsError = validateWaypoints(options.waypoints)
+        if (waypointsError) return waypointsError
 
         const optimizeResult = await directionsService.optimizeWaypoints(
           options.waypoints,
@@ -78,14 +145,18 @@ export async function POST(request: NextRequest) {
 
         logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(optimizeResult.data)
+      }
 
-      case 'getTrafficAwareRoute':
+      case 'getTrafficAwareRoute': {
         if (!options.waypoints || !Array.isArray(options.waypoints)) {
           return NextResponse.json(
             { error: 'Waypoints array is required' },
             { status: 400 }
           )
         }
+
+        const waypointsError = validateWaypoints(options.waypoints)
+        if (waypointsError) return waypointsError
 
         const trafficResult = await directionsService.getTrafficAwareRoute(options)
 
@@ -98,14 +169,18 @@ export async function POST(request: NextRequest) {
 
         logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(trafficResult.data)
+      }
 
-      case 'getAccessibilityRoute':
+      case 'getAccessibilityRoute': {
         if (!options.waypoints || !Array.isArray(options.waypoints)) {
           return NextResponse.json(
             { error: 'Waypoints array is required' },
             { status: 400 }
           )
         }
+
+        const waypointsError = validateWaypoints(options.waypoints)
+        if (waypointsError) return waypointsError
 
         const accessibilityResult = await directionsService.getAccessibilityRoute(
           options,
@@ -121,14 +196,18 @@ export async function POST(request: NextRequest) {
 
         logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(accessibilityResult.data)
+      }
 
-      case 'getLocalizedInstructions':
+      case 'getLocalizedInstructions': {
         if (!options.waypoints || !Array.isArray(options.waypoints)) {
           return NextResponse.json(
             { error: 'Waypoints array is required' },
             { status: 400 }
           )
         }
+
+        const waypointsError = validateWaypoints(options.waypoints)
+        if (waypointsError) return waypointsError
 
         if (!options.profile) {
           return NextResponse.json(
@@ -152,6 +231,7 @@ export async function POST(request: NextRequest) {
 
         logApiUsage({ api_provider: 'mapbox', api_endpoint: 'directions', request_count: 1, success: true })
         return NextResponse.json(localizedResult.data)
+      }
 
       default:
         return NextResponse.json(
@@ -169,10 +249,20 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
+  const rate = await checkApiRateLimit(`mapbox-directions:${user.id}`)
+  if (!rate.success) {
+    return rateLimitedResponse(rate.reset)
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const waypointsParam = searchParams.get('waypoints')
-    
+
     if (!waypointsParam) {
       return NextResponse.json(
         { error: 'Waypoints parameter is required' },
@@ -186,6 +276,9 @@ export async function GET(request: NextRequest) {
       const [lng, lat] = point.split(',').map(Number)
       return { coordinates: [lng, lat] as [number, number] }
     })
+
+    const waypointsError = validateWaypoints(waypoints)
+    if (waypointsError) return waypointsError
 
     const routeOptions = {
       waypoints,

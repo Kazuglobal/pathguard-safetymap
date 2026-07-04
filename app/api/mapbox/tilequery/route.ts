@@ -1,14 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { tilequeryService } from '@/lib/routing/tilequery'
 import type { TilequeryLayer } from '@/lib/routing/tilequery'
+import { createServerClient } from '@/lib/supabase-server'
+import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
+import { isValidCoordinates } from '@/lib/coordinates'
+
+const MAX_BATCH_SIZE = 10
+
+async function requireAuth() {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  return user
+}
+
+const coordinatePairSchema = z
+  .tuple([z.number(), z.number()])
+  .refine(([lng, lat]) => isValidCoordinates(lat, lng), {
+    message: '緯度経度の範囲が不正です',
+  })
+
+function validateCoordinatePair(value: unknown, label: string): NextResponse | null {
+  if (!coordinatePairSchema.safeParse(value).success) {
+    return NextResponse.json(
+      { error: `${label}の座標が不正です` },
+      { status: 400 }
+    )
+  }
+  return null
+}
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
+  const rate = await checkApiRateLimit(`mapbox-tilequery:${user.id}`)
+  if (!rate.success) {
+    return rateLimitedResponse(rate.reset)
+  }
+
   try {
     const body = await request.json()
     const { type, ...options } = body
 
     switch (type) {
-      case 'queryMapFeatures':
+      case 'queryMapFeatures': {
         if (!options.coordinates || !Array.isArray(options.coordinates)) {
           return NextResponse.json(
             { error: 'Coordinates array is required' },
@@ -16,8 +55,11 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        const coordinatesError = validateCoordinatePair(options.coordinates, 'coordinates')
+        if (coordinatesError) return coordinatesError
+
         const queryResult = await tilequeryService.queryMapFeatures(options)
-        
+
         if (!queryResult.success) {
           return NextResponse.json(
             { error: queryResult.error || 'Map features query failed' },
@@ -26,14 +68,18 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(queryResult.data)
+      }
 
-      case 'findNearbyPOIs':
+      case 'findNearbyPOIs': {
         if (!options.location || !Array.isArray(options.location)) {
           return NextResponse.json(
             { error: 'Location coordinates are required' },
             { status: 400 }
           )
         }
+
+        const locationError = validateCoordinatePair(options.location, 'location')
+        if (locationError) return locationError
 
         const poisResult = await tilequeryService.findNearbyPOIs(
           options.location,
@@ -50,8 +96,9 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(poisResult.data)
+      }
 
-      case 'analyzeRoutePOIs':
+      case 'analyzeRoutePOIs': {
         if (!options.routeGeometry) {
           return NextResponse.json(
             { error: 'Route geometry is required' },
@@ -74,14 +121,18 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(routeAnalysisResult.data)
+      }
 
-      case 'findEmergencyServices':
+      case 'findEmergencyServices': {
         if (!options.location || !Array.isArray(options.location)) {
           return NextResponse.json(
             { error: 'Location coordinates are required' },
             { status: 400 }
           )
         }
+
+        const locationError = validateCoordinatePair(options.location, 'location')
+        if (locationError) return locationError
 
         const emergencyResult = await tilequeryService.findEmergencyServices(
           options.location,
@@ -97,14 +148,18 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(emergencyResult.data)
+      }
 
-      case 'analyzeTransportation':
+      case 'analyzeTransportation': {
         if (!options.location || !Array.isArray(options.location)) {
           return NextResponse.json(
             { error: 'Location coordinates are required' },
             { status: 400 }
           )
         }
+
+        const locationError = validateCoordinatePair(options.location, 'location')
+        if (locationError) return locationError
 
         const transportResult = await tilequeryService.analyzeTransportation(
           options.location,
@@ -120,14 +175,18 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(transportResult.data)
+      }
 
-      case 'findSafetyFeatures':
+      case 'findSafetyFeatures': {
         if (!options.location || !Array.isArray(options.location)) {
           return NextResponse.json(
             { error: 'Location coordinates are required' },
             { status: 400 }
           )
         }
+
+        const locationError = validateCoordinatePair(options.location, 'location')
+        if (locationError) return locationError
 
         const safetyResult = await tilequeryService.findSafetyFeatures(
           options.location,
@@ -143,8 +202,9 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(safetyResult.data)
+      }
 
-      case 'batchQueryFeatures':
+      case 'batchQueryFeatures': {
         if (!options.requests || !Array.isArray(options.requests)) {
           return NextResponse.json(
             { error: 'Requests array is required' },
@@ -152,11 +212,24 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        if (options.requests.length > MAX_BATCH_SIZE) {
+          return NextResponse.json(
+            { error: `requestsは最大${MAX_BATCH_SIZE}件までです` },
+            { status: 400 }
+          )
+        }
+
+        for (const tilequeryRequest of options.requests) {
+          const requestCoordinatesError = validateCoordinatePair(tilequeryRequest?.coordinates, 'coordinates')
+          if (requestCoordinatesError) return requestCoordinatesError
+        }
+
         const batchResult = await tilequeryService.batchQueryFeatures(
           options.requests
         )
 
         return NextResponse.json(batchResult)
+      }
 
       default:
         return NextResponse.json(
@@ -174,10 +247,20 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (!user) {
+    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+
+  const rate = await checkApiRateLimit(`mapbox-tilequery:${user.id}`)
+  if (!rate.success) {
+    return rateLimitedResponse(rate.reset)
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const coordinatesParam = searchParams.get('coordinates')
-    
+
     if (!coordinatesParam) {
       return NextResponse.json(
         { error: 'Coordinates parameter is required' },
@@ -189,6 +272,9 @@ export async function GET(request: NextRequest) {
     // Expected format: "lng,lat"
     const [lng, lat] = coordinatesParam.split(',').map(Number)
     const coordinates: [number, number] = [lng, lat]
+
+    const coordinatesError = validateCoordinatePair(coordinates, 'coordinates')
+    if (coordinatesError) return coordinatesError
 
     const parsedLayers = searchParams
       .get('layers')
@@ -205,7 +291,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await tilequeryService.queryMapFeatures(tilequeryRequest)
-    
+
     if (!result.success) {
       return NextResponse.json(
         { error: result.error || 'Map features query failed' },
