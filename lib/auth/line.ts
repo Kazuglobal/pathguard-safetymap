@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto"
 import { z } from "zod"
 
 /**
@@ -122,7 +123,16 @@ export async function exchangeAndVerifyLineCode(params: {
   }
 }
 
-/** メール未許諾のLINEユーザーに割り当てる、決定的な合成メールアドレス。 */
-export function syntheticLineEmail(lineUserId: string): string {
-  return `line-${lineUserId.toLowerCase()}@${LINE_SYNTHETIC_EMAIL_DOMAIN}`
+/**
+ * メール未許諾のLINEユーザーに割り当てる、決定的な合成メールアドレス。
+ * 生のLINEユーザーIDではなくチャネルシークレットによるHMACから導出することで、
+ * ユーザーIDを知る第三者が通常サインアップでこのアドレスを先取り
+ * (アカウント事前乗っ取り)できないようにする。
+ */
+export function syntheticLineEmail(lineUserId: string, channelSecret: string): string {
+  const digest = createHmac("sha256", channelSecret)
+    .update(`line:${lineUserId}`)
+    .digest("hex")
+    .slice(0, 32)
+  return `line-${digest}@${LINE_SYNTHETIC_EMAIL_DOMAIN}`
 }

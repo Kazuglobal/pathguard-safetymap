@@ -14,6 +14,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   line_not_configured: "LINEログインは現在準備中です。メールアドレスでログインしてください。",
   line_state_mismatch: "LINEログインの有効期限が切れました。もう一度お試しください。",
   line_login_failed: "LINEログインに失敗しました。時間をおいて再試行してください。",
+  line_email_in_use:
+    "このLINEアカウントのメールアドレスは、すでに別の方法で登録されています。メールアドレスとパスワードでログインしてください。",
 }
 
 function GoogleIcon() {

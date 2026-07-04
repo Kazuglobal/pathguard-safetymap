@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       nonce,
     })
 
-    const email = profile.email ?? syntheticLineEmail(profile.userId)
+    const email = profile.email ?? syntheticLineEmail(profile.userId, credentials.channelSecret)
     const admin = getSupabaseAdmin()
 
     const metadata = {
@@ -68,12 +68,13 @@ export async function GET(request: Request) {
       ...(profile.avatarUrl ? { avatar_url: profile.avatarUrl } : {}),
     }
 
-    // 既存ユーザーなら email_exists で失敗するだけなので、そのまま続行してよい
+    // 既存ユーザーなら email_exists で失敗する(その場合は後段で本人性を検証する)
     const { error: createError } = await admin.auth.admin.createUser({
       email,
       email_confirm: true,
       user_metadata: metadata,
     })
+    const isNewUser = !createError
     if (createError) {
       const isExisting =
         createError.code === "email_exists" ||
@@ -87,6 +88,18 @@ export async function GET(request: Request) {
       email,
     })
     if (linkError) throw linkError
+
+    // アカウント事前乗っ取り対策:
+    // 既存アカウントに相乗りする場合は、そのアカウントが「同じLINEユーザーとして
+    // 作られたもの」であることを検証する。同じメールの通常登録アカウント等が
+    // 存在する場合は、勝手に紐付けずに明示的なエラーで拒否する。
+    if (!isNewUser) {
+      const existingLineUserId = linkData.user?.user_metadata?.line_user_id
+      if (existingLineUserId !== profile.userId) {
+        console.warn("LINE login blocked: email is already used by a non-LINE account")
+        return redirectWithError(url.origin, "line_email_in_use")
+      }
+    }
 
     const tokenHash = linkData.properties?.hashed_token
     if (!tokenHash) throw new Error("magiclink token_hash was not returned")
