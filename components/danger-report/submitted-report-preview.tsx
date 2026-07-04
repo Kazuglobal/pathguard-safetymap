@@ -16,6 +16,8 @@ import { X, ImageIcon, Loader2, Share2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import FamilyShareCard, { type FamilyShareCardProps } from "@/components/report/family-share-card"
 import { shareFamilyShareCard } from "@/lib/report-generation/family-share-card"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
+import { useDangerReportSignedImageUrl, useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
 /* ===== 型定義 ===== */
 interface SubmittedReportPreviewProps {
@@ -47,6 +49,13 @@ export default function SubmittedReportPreview({
   /* --- 加工画像用 state（複数） --- */
   const [procSrcs, setProcSrcs] = useState<string[]>([])
   const [procErrors, setProcErrors] = useState<boolean[]>([])
+
+  // danger-reports バケット非公開化に備え、アップロード直後に返ってくる
+  // 公開URL文字列を表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
+  const optionalSupabase = useOptionalSupabase()
+  const supabaseClient = optionalSupabase?.supabase ?? null
+  const signedOriginalSrc = useDangerReportSignedImageUrl(supabaseClient, originalSrc)
+  const signedProcSrcs = useDangerReportSignedImageUrls(supabaseClient, procSrcs)
 
   /* ===== URL 変更時の初期化 ===== */
   useEffect(() => {
@@ -142,7 +151,7 @@ export default function SubmittedReportPreview({
                 {originalImage && !originalError ? (
                   <div className="relative w-full h-80 bg-gray-50 rounded-md overflow-hidden">
                     <Image
-                      src={addCacheBuster(originalSrc) || "/placeholder.svg"}
+                      src={signedOriginalSrc || "/placeholder.svg"}
                       alt="報告の元画像"
                       fill
                       className="object-contain"
@@ -178,7 +187,7 @@ export default function SubmittedReportPreview({
               <TabsContent value="processed" className="mt-2">
                 {procSrcs.length > 0 ? (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {procSrcs.map((url, idx) => (
+                    {procSrcs.map((_url, idx) => (
                       <div
                         key={idx}
                         className="relative w-full overflow-hidden rounded-md border"
@@ -186,7 +195,7 @@ export default function SubmittedReportPreview({
                         {!procErrors[idx] ? (
                           <div className="relative h-48 w-full sm:h-64">
                             <Image
-                              src={addCacheBuster(url) || "/placeholder.svg"}
+                              src={(signedProcSrcs[idx] ?? null) || "/placeholder.svg"}
                               alt={`加工画像 ${idx + 1}`}
                               fill
                               className="object-contain"
@@ -269,7 +278,7 @@ export default function SubmittedReportPreview({
                 summary={shareCard.summary}
                 action={shareCard.action}
                 mapLabel={shareCard.mapLabel}
-                imageUrl={shareCard.imageUrl}
+                imageUrl={signedProcSrcs[0] ?? signedOriginalSrc ?? null}
               />
             </div>
           ) : null}

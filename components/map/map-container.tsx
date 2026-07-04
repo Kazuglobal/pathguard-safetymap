@@ -26,6 +26,8 @@ import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
+import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
+import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access"
 import {
   PUBLIC_DANGER_REPORT_STATUSES,
   resolveInitialDangerReportStatus,
@@ -160,7 +162,8 @@ async function reverseGeocodeLocation(latitude: number, longitude: number) {
 interface MapImagePopupContentProps {
   url: string
   hasError: boolean
-  onPreview: () => void
+  supabase: any
+  onPreview: (resolvedUrl: string) => void
   onRetry: () => void
   onImageError: () => void
 }
@@ -168,10 +171,18 @@ interface MapImagePopupContentProps {
 function MapImagePopupContent({
   url,
   hasError,
+  supabase,
   onPreview,
   onRetry,
   onImageError,
 }: MapImagePopupContentProps) {
+  // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
+  // 表示直前に短TTLの署名URLへ差し替える。
+  // 注意: この popup は mapboxgl.Popup + createRoot() による独立したReactツリーで
+  // 描画されるため、上位の SupabaseProvider context は継承されない。
+  // そのため supabase クライアントは props で明示的に受け取る。
+  const signedUrl = useDangerReportSignedImageUrl(supabase, url)
+
   if (hasError) {
     return (
       <div className="w-28 sm:w-36 rounded-xl border border-blue-100 bg-white/90 px-3 py-2 shadow-md">
@@ -183,15 +194,25 @@ function MapImagePopupContent({
     )
   }
 
+  if (!signedUrl) {
+    return (
+      <div className="w-28 sm:w-36 rounded-xl border border-blue-100 bg-white/90 px-3 py-2 shadow-md">
+        <div className="flex aspect-[4/3] w-full items-center justify-center">
+          <span className="text-xs text-slate-400">読み込み中...</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <button
       type="button"
       className="relative block w-28 sm:w-36 overflow-hidden rounded-xl shadow-md"
-      onClick={onPreview}
+      onClick={() => onPreview(signedUrl)}
     >
       <div className="relative aspect-[4/3] w-full">
         <Image
-          src={url}
+          src={signedUrl}
           alt="加工画像プレビュー"
           fill
           sizes="(max-width: 640px) 112px, 144px"
@@ -404,6 +425,9 @@ export default function MapContainer({
   // 管理者かどうかを判定する状態（MapHeaderから受け取るように変更する方が良いかも）
   const [isAdmin, setIsAdmin] = useState(false) // とりあえず残す
 
+  // 本人削除の判定に使うログインユーザーID（未ログイン時は null）
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
   // ユーザー情報を取得して isAdmin 状態を更新する useEffect
   useEffect(() => {
     let isMounted = true
@@ -426,18 +450,29 @@ export default function MapContainer({
               return
             }
             // リトライ後も失敗 = 未ログイン（正常）
-            if (isMounted) setIsAdmin(false)
+            if (isMounted) {
+              setIsAdmin(false)
+              setCurrentUserId(null)
+            }
             return
           }
           console.error("Error fetching user:", error)
-          if (isMounted) setIsAdmin(false)
+          if (isMounted) {
+            setIsAdmin(false)
+            setCurrentUserId(null)
+          }
           return
         }
 
         if (!user) {
-          if (isMounted) setIsAdmin(false)
+          if (isMounted) {
+            setIsAdmin(false)
+            setCurrentUserId(null)
+          }
           return
         }
+
+        if (isMounted) setCurrentUserId(user.id)
 
         const adminStatusResponse = await fetch("/api/auth/admin-status", {
           cache: "no-store",
@@ -688,7 +723,8 @@ export default function MapContainer({
         <MapImagePopupContent
           url={overlay.url}
           hasError={overlay.hasError ?? false}
-          onPreview={() => setPreviewImage(overlay.url)}
+          supabase={supabase}
+          onPreview={(resolvedUrl) => setPreviewImage(resolvedUrl)}
           onRetry={() =>
             setMapImageOverlays((prev) =>
               prev.map((entry) =>
@@ -706,7 +742,7 @@ export default function MapContainer({
         />
       )
     })
-  }, [mapImageOverlays, setPreviewImage])
+  }, [mapImageOverlays, setPreviewImage, supabase])
 
   useEffect(() => destroyAllMapImagePopups, [destroyAllMapImagePopups])
 
@@ -2110,14 +2146,26 @@ export default function MapContainer({
 
   // --- ▼▼▼ レポート削除処理関数 ▼▼▼ ---
   const handleDeleteReport = async (reportId: string) => {
-    if (!supabase || !isAdmin) {
-      // 管理者でない場合は何もしない（ボタンが表示されないはずだが念のため）
-      toast({ title: "権限エラー", description: "レポートの削除権限がありません。", variant: "destructive" });
-      return;
-    }
+    if (!supabase) return;
 
     const reportToDelete = dangerReports.find(r => r.id === reportId) || pendingReports.find(r => r.id === reportId);
     if (!reportToDelete) return; // 対象が見つからない場合は何もしない
+
+    // DB側のRLS（danger_reports_delete）は「管理者」または「本人のpendingレポート」のみ削除を許可している。
+    // UIの許可条件をそれに合わせておく（不一致だとボタンは出るのにDBで弾かれる、という事態を防ぐ）。
+    const isOwnReport = currentUserId != null && reportToDelete.user_id === currentUserId;
+    const canDelete = isAdmin || (isOwnReport && reportToDelete.status === 'pending');
+
+    if (!canDelete) {
+      toast({
+        title: "権限エラー",
+        description: isOwnReport
+          ? "審査中（pending）の投稿のみ削除できます。"
+          : "レポートの削除権限がありません。",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const confirmationMessage = `以下のレポートを削除しますか？\n\nID: ${reportId}\nタイトル: ${reportToDelete.title}\n\nこの操作は元に戻せません。`; // シンプルなメッセージに変更
     if (!window.confirm(confirmationMessage)) {
@@ -2135,10 +2183,31 @@ export default function MapContainer({
 
       if (deleteError) throw deleteError;
 
-      // 2. (任意) 関連する画像をストレージから削除する処理
-      // 必要であれば DangerReportDetailModal の deleteProcessedImage を参考に実装
+      // 2. 関連する画像をストレージから削除する（ベストエフォート。失敗してもDB削除自体は成功扱い）
+      let storageDeleteFailed = false;
+      const imageUrls = [reportToDelete.image_url, ...(reportToDelete.processed_image_urls ?? [])].filter(
+        (url): url is string => Boolean(url),
+      );
+      if (imageUrls.length > 0) {
+        const storagePaths = imageUrls
+          .map((url) => extractStoragePathFromPublicUrl(url, 'danger-reports'))
+          .filter((path): path is string => Boolean(path));
 
-      toast({ title: "削除成功", description: `レポート (ID: ${reportId}) を削除しました。` });
+        if (storagePaths.length > 0) {
+          const { error: storageError } = await supabase.storage.from('danger-reports').remove(storagePaths);
+          if (storageError) {
+            console.error("Error deleting report images from storage:", storageError);
+            storageDeleteFailed = true;
+          }
+        }
+      }
+
+      toast({
+        title: "削除成功",
+        description: storageDeleteFailed
+          ? `レポート (ID: ${reportId}) を削除しました。（画像の削除は一部失敗しました）`
+          : `レポート (ID: ${reportId}) を削除しました。`,
+      });
 
       // 3. ローカルの state を更新
       setDangerReports(prev => prev.filter(report => report.id !== reportId));
@@ -2481,6 +2550,7 @@ export default function MapContainer({
             filterOptions={filterOptions}
             onReportSelect={handleSidebarReportSelect}
             isAdmin={isAdmin}
+            currentUserId={currentUserId}
             onDeleteReport={handleDeleteReport}
             isMobile={isMobile}
             onClose={() => setIsSidebarOpen(false)}

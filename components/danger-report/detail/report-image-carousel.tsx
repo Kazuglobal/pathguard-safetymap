@@ -14,6 +14,8 @@ import {
 import type { DangerReport } from "@/lib/types"
 import { addCacheBuster } from "./report-detail-utils"
 import { ImageWithLongPress } from "./image-with-long-press"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
+import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
 interface ShowImageOptions {
   reportId?: string
@@ -47,6 +49,8 @@ export function ReportImageCarousel({
   const [api, setApi] = useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+  const optionalSupabase = useOptionalSupabase()
+  const supabaseClient = optionalSupabase?.supabase ?? null
 
   const processedUrls = report.processed_image_urls ?? []
   const cacheToken = useMemo(
@@ -72,6 +76,13 @@ export function ReportImageCarousel({
       index: idx,
     })
   })
+
+  // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
+  // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
+  const signedSlideUrls = useDangerReportSignedImageUrls(
+    supabaseClient,
+    slides.map((slide) => slide.url),
+  )
 
   const handleApiChange = useCallback((newApi: CarouselApi) => {
     setApi(newApi)
@@ -109,9 +120,10 @@ export function ReportImageCarousel({
         >
           <CarouselContent>
             {slides.map((slide, slideIdx) => {
-              const cachedUrl = addCacheBuster(slide.url, cacheToken)
+              const signedUrl = signedSlideUrls[slideIdx] ?? null
+              const cachedUrl = addCacheBuster(signedUrl, cacheToken)
               const imageSrc = cachedUrl ?? "/placeholder.svg"
-              const zoomSrc = cachedUrl ?? slide.url
+              const zoomSrc = cachedUrl ?? "/placeholder.svg"
 
               return (
                 <CarouselItem key={`${slide.type}-${slide.index}`}>

@@ -1937,6 +1937,7 @@ export default function DangerReportForm({
 
                 <p className="text-[11px] font-bold leading-relaxed" style={{ color: C.inkFaint }}>
                   住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
+                  投稿した写真は危険度のAI分析のため、外部AIサービス（Anthropic Claude / Google Gemini）へ送信されます。
                   おくった ないようは おとなの かくにんの あとに ちずへ のるよ。
                 </p>
               </div>

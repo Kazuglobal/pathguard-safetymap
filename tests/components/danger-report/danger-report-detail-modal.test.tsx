@@ -28,6 +28,13 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock("@/lib/danger-report-image-access", () => ({
+  useDangerReportSignedImageUrl: (
+    _client: unknown,
+    urlOrPath: string | null | undefined,
+  ) => urlOrPath ?? null,
+}))
+
 vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: (query: string) => {
     if (query.includes("any-pointer")) return mediaQueryState.anyPointerCoarse

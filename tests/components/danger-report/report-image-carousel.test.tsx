@@ -26,6 +26,19 @@ vi.mock("@/components/danger-report/detail/image-with-long-press", () => ({
   ),
 }))
 
+vi.mock("@/components/providers/supabase-provider", () => ({
+  useOptionalSupabase: () => ({ supabase: {} }),
+}))
+
+// 署名URL発行の非同期処理はこのテストの対象外なので、入力URLをそのまま返す
+// スタブに差し替え、既存のキャッシュバスター周りの挙動だけを検証する。
+vi.mock("@/lib/danger-report-image-access", () => ({
+  useDangerReportSignedImageUrls: (
+    _client: unknown,
+    urls: (string | null | undefined)[],
+  ) => urls.map((url) => url ?? null),
+}))
+
 const createReport = (overrides: Partial<DangerReport> = {}): DangerReport => ({
   id: "report-1",
   user_id: "user-1",

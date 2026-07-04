@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import Image from "next/image"; // Next.js の Image コンポーネント
 import { useSupabase } from "@/components/providers/supabase-provider"; // Supabaseフックをインポート
 import { v4 as uuidv4 } from 'uuid'; // ファイル名の一意性を高めるためにuuidをインポート
+import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access";
 
 // 親コンポーネントから渡されるレポート情報の型 (仮)
 // TODO: 실제 DangerReport 타입으로 변경
@@ -38,6 +39,9 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
+  // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
+  const signedOriginalImageUrl = useDangerReportSignedImageUrl(supabase, report.originalImageUrl || null);
 
   useEffect(() => {
     if (selectedFile) {
@@ -138,16 +142,22 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
           <div className="space-y-2">
             <Label htmlFor={`original-image-${report.id}`}>元画像</Label>
             {report.originalImageUrl ? (
-              <div className="relative w-full h-64 border rounded-md overflow-hidden">
-                <Image
-                  id={`original-image-${report.id}`}
-                  src={report.originalImageUrl}
-                  alt={`元画像 (報告ID: ${report.id})`}
-                  fill
-                  style={{ objectFit: "contain" }}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
-              </div>
+              signedOriginalImageUrl ? (
+                <div className="relative w-full h-64 border rounded-md overflow-hidden">
+                  <Image
+                    id={`original-image-${report.id}`}
+                    src={signedOriginalImageUrl}
+                    alt={`元画像 (報告ID: ${report.id})`}
+                    fill
+                    style={{ objectFit: "contain" }}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-64 w-full items-center justify-center rounded-md border bg-muted/30">
+                  <p className="text-sm text-muted-foreground">画像を読み込んでいます...</p>
+                </div>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">元画像はありません。</p>
             )}

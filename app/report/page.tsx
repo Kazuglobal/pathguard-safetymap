@@ -24,6 +24,7 @@ import {
   buildFamilyShareSummary,
   shareFamilyShareCard,
 } from "@/lib/report-generation/family-share-card"
+import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -176,6 +177,30 @@ export default function ReportHubPage() {
       subscription.unsubscribe()
     }
   }, [supabase])
+
+  // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
+  // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
+  // このページでは複数箇所(カテゴリカード/共有フィード/詳細シート)で同じ
+  // カバー画像URLを再利用するため、1枚ずつ署名し直さず raw URL → 署名URL の
+  // マップを一度だけ作って使い回す。
+  const allCoverUrls = useMemo(() => {
+    const seen = new Set<string>()
+    reports.forEach((report) => {
+      const cover = getCoverImage(report)
+      if (cover) seen.add(cover)
+    })
+    return Array.from(seen)
+  }, [reports])
+  const signedCoverUrls = useDangerReportSignedImageUrls(supabase, allCoverUrls)
+  const coverUrlMap = useMemo(() => {
+    const map = new Map<string, string | null>()
+    allCoverUrls.forEach((url, index) => {
+      map.set(url, signedCoverUrls[index] ?? null)
+    })
+    return map
+  }, [allCoverUrls, signedCoverUrls])
+  const resolveCoverUrl = (rawUrl: string | null | undefined): string | null =>
+    rawUrl ? coverUrlMap.get(rawUrl) ?? null : null
 
   // Report IDs for batch interactions hook
   const reportIds = useMemo(() => reports.map(r => r.id), [reports])
@@ -354,6 +379,7 @@ export default function ReportHubPage() {
   const renderShareCard = ({ report, cover, meta, tags, coordinates }: ShareFeedEntry) => {
     const interaction = interactions.get(report.id) ?? { liked: false, likeCount: 0, saved: false, saveCount: 0 }
     const isCaution = cautionStates[report.id] ?? false
+    const resolvedCover = resolveCoverUrl(cover)
 
     return (
       <div
@@ -377,14 +403,14 @@ export default function ReportHubPage() {
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${meta.badge}`}>{meta.label}</span>
         </div>
-        {cover ? (
+        {resolvedCover ? (
           <div className="mt-3" onClick={(e) => e.stopPropagation()}>
             <LongPressZoomableImage
-              src={cover}
+              src={resolvedCover}
               alt={`${meta.label}の共有画像`}
               wrapperClassName="overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
               className="h-44 sm:h-56 md:h-64 lg:h-72 w-full object-cover object-center cursor-zoom-in"
-              onClick={() => setPreviewImage(cover)}
+              onClick={() => setPreviewImage(resolvedCover)}
             />
           </div>
         ) : (
@@ -539,8 +565,8 @@ export default function ReportHubPage() {
                         className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                         aria-label={`${category.label}の投稿を表示`}
                       >
-                        {category.cover ? (
-                          <img src={category.cover} alt={`${category.label}の危険報告`} loading="lazy" className="h-32 sm:h-40 md:h-44 lg:h-52 w-full object-cover object-center" />
+                        {resolveCoverUrl(category.cover) ? (
+                          <img src={resolveCoverUrl(category.cover)!} alt={`${category.label}の危険報告`} loading="lazy" className="h-32 sm:h-40 md:h-44 lg:h-52 w-full object-cover object-center" />
                         ) : (
                           <div className={`flex h-32 sm:h-40 md:h-44 lg:h-52 w-full items-center justify-center rounded-2xl bg-gradient-to-br ${category.accent}`}>
                             <AlertTriangle className="h-8 w-8 text-white" />
@@ -648,13 +674,13 @@ export default function ReportHubPage() {
 
                 <div className="mt-4 space-y-6">
                   {/* レポート画像 */}
-                  {getCoverImage(selectedReport) && (
+                  {resolveCoverUrl(getCoverImage(selectedReport)) && (
                     <LongPressZoomableImage
-                      src={getCoverImage(selectedReport)!}
+                      src={resolveCoverUrl(getCoverImage(selectedReport))!}
                       alt="危険報告の画像"
                       wrapperClassName="w-full overflow-hidden rounded-xl"
                       className="h-48 w-full object-cover object-center"
-                      onClick={() => setPreviewImage(getCoverImage(selectedReport))}
+                      onClick={() => setPreviewImage(resolveCoverUrl(getCoverImage(selectedReport)))}
                     />
                   )}
 
@@ -695,7 +721,7 @@ export default function ReportHubPage() {
                         [selectedReport.prefecture, selectedReport.city, selectedReport.town],
                         [selectedReport.longitude, selectedReport.latitude],
                       )}
-                      imageUrl={getCoverImage(selectedReport)}
+                      imageUrl={resolveCoverUrl(getCoverImage(selectedReport))}
                     />
                   </div>
 
