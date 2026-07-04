@@ -41,6 +41,10 @@ export class FormsPageObject {
     return this.page.locator('button[type="submit"]:has-text("登録"), button[type="submit"]:has-text("Register"), button:has-text("登録")');
   }
 
+  get agreeToTermsCheckbox() {
+    return this.page.locator('[data-testid="agree-to-terms-checkbox"]');
+  }
+
   // Generic form elements
   get formInputs() {
     return this.page.locator('input, textarea, select');
@@ -75,6 +79,9 @@ export class FormsPageObject {
     await this.passwordInput.fill(password);
     if (await this.confirmPasswordInput.isVisible()) {
       await this.confirmPasswordInput.fill(password);
+    }
+    if (await this.agreeToTermsCheckbox.isVisible()) {
+      await this.agreeToTermsCheckbox.check();
     }
   }
 
