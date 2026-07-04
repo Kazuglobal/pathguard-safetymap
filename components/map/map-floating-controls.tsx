@@ -225,45 +225,39 @@ export default function MapFloatingControls({
         </div>
       )}
 
-      {/* 下部中央: 現在地で報告ボタン（デスクトップ） */}
-      {showPrimaryCta && onReportAtCurrentLocation && (
-        <div
-          className="absolute left-1/2 transform -translate-x-1/2 z-20"
-          style={{ bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)" : "9.5rem" }}
-        >
-          <button
-            type="button"
-            onClick={onReportAtCurrentLocation}
-            disabled={isReportFormOpen || !!isSelectingLocation || isAcquiringGPS}
-            className={`chunky-press flex h-12 items-center justify-center gap-2 rounded-full border-2 px-5 text-sm font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
-            style={{
-              ...floatPill,
-              borderColor: "rgba(21,158,114,.35)",
-              color: C.primaryStrong,
-            }}
-            aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
-          >
-            {isAcquiringGPS ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                位置取得中...
-              </>
-            ) : (
-              <>
-                <Crosshair className="h-4 w-4" strokeWidth={2.6} />
-                現在地で報告
-              </>
-            )}
-          </button>
-        </div>
-      )}
-
-      {/* 下部中央: 報告ボタン（メインCTA） */}
+      {/* 下部中央: 報告ドック（デスクトップ）。主CTAと現在地報告を1列にまとめ、迷いをなくす */}
       {showPrimaryCta && (
         <div
-          className="absolute left-1/2 transform -translate-x-1/2 z-20"
+          className="absolute left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2"
           style={ctaBottomStyle}
         >
+          {onReportAtCurrentLocation && (
+            <button
+              type="button"
+              onClick={onReportAtCurrentLocation}
+              disabled={isReportFormOpen || !!isSelectingLocation || isAcquiringGPS}
+              className={`chunky-press flex h-12 items-center justify-center gap-2 rounded-full border-2 px-4 text-sm font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
+              style={{
+                ...floatPill,
+                borderColor: "rgba(21,158,114,.35)",
+                color: C.primaryStrong,
+              }}
+              aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
+            >
+              {isAcquiringGPS ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  位置取得中...
+                </>
+              ) : (
+                <>
+                  <Crosshair className="h-4 w-4" strokeWidth={2.6} />
+                  現在地で報告
+                </>
+              )}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onAddReport}

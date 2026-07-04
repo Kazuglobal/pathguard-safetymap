@@ -19,11 +19,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { RouteCard } from "@/components/routes/route-card"
+import { RouteOverviewMap } from "@/components/routes/route-overview-map"
 import { ChildSelector } from "@/components/routes/child-selector"
 import { RouteComparisonTable } from "@/components/routes/route-comparison-table"
 import { RouteDangerReportDialog } from "@/components/routes/route-danger-report-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { useUserRoutes } from "@/hooks/use-user-routes"
+import { useRouteDangerCounts } from "@/hooks/use-route-danger-counts"
 import {
   Plus,
   RefreshCw,
@@ -434,6 +436,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     () => filteredRoutes.filter((route) => comparisonRouteIds.includes(route.id)),
     [comparisonRouteIds, filteredRoutes]
   )
+
+  const { counts: routeDangerCounts } = useRouteDangerCounts(filteredRoutes)
 
   useEffect(() => {
     setComparisonRouteIds((prev) =>
@@ -1284,12 +1288,14 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                 selectedChildId={selectedChildId}
                 onSelectChild={setSelectedChildId}
               />
-              <div
-                className="rounded-[16px] border px-4 py-3 text-sm font-bold"
-                style={{ borderColor: "rgba(67,57,43,.1)", background: "#FFFDF7", color: "#847661" }}
-              >
-                比較したいルートを2つ以上選ぶと、距離と所要時間をまとめて見比べられます。
-              </div>
+              {filteredRoutes.length > 1 && (
+                <div
+                  className="rounded-[16px] border px-4 py-3 text-sm font-bold"
+                  style={{ borderColor: "rgba(67,57,43,.1)", background: "#FFFDF7", color: "#847661" }}
+                >
+                  比較したいルートを2つ以上選ぶと、距離と所要時間をまとめて見比べられます。
+                </div>
+              )}
               {comparisonRoutes.length >= 2 && (
                 <RouteComparisonTable routes={comparisonRoutes} />
               )}
@@ -1307,6 +1313,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   showCompareToggle={filteredRoutes.length > 1}
                   isComparisonSelected={comparisonRouteIds.includes(route.id)}
                   onToggleCompare={handleToggleCompareRoute}
+                  dangerCount={routeDangerCounts[route.id]}
                 />
               ))}
               {filteredRoutes.length === 0 && (
@@ -1328,7 +1335,30 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
           touchAction: isDrawing ? "none" : "auto",
         }}
       >
-        {mapToken ? (
+        {mapToken && viewMode === "list" ? (
+          filteredRoutes.some((route) => route.route_geometry) ? (
+            // 一覧では登録ルート全体が見える読み取り専用マップ(日本語ラベル・自動フィット)
+            <RouteOverviewMap
+              routes={filteredRoutes.filter((route) => route.route_geometry)}
+              mapToken={mapToken}
+            />
+          ) : (
+            <div
+              className="flex h-full flex-col items-center justify-center gap-2 border-2 border-dashed text-center"
+              style={{
+                borderColor: "rgba(67,57,43,.14)",
+                background: "#F3EAD6",
+                color: "#847661",
+                borderRadius: 12,
+              }}
+            >
+              <MapIcon className="h-8 w-8" aria-hidden="true" />
+              <p className="text-sm font-bold">
+                ルートをかくと、ここに 通学路のちずが ひろがります
+              </p>
+            </div>
+          )
+        ) : mapToken ? (
           <Map
             ref={mapRef}
             mapboxAccessToken={mapToken}
@@ -1494,8 +1524,8 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                 : "クリックでポイント追加"}
           </div>
         )}
-        {/* Location Search Box */}
-        {mapToken && !(viewMode === "creation" && inputMode === "route") && (
+        {/* Location Search Box(作成・編集時のみ。一覧の読み取り専用マップでは出さない) */}
+        {mapToken && viewMode !== "list" && !(viewMode === "creation" && inputMode === "route") && (
           <div
             ref={searchRef}
             className="absolute right-3 top-3 z-10"

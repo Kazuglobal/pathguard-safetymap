@@ -33,33 +33,35 @@ interface Slide {
 const SLIDES: readonly Slide[] = [
   {
     image: "/images/onboarding/app-onboarding-1.png",
-    alt: "親子がテーブルで まちの冒険マップを広げ、ルペが照らしている絵",
+    alt: "親子がテーブルで通学路の安全ノートを広げ、ルペが照らしている絵",
     sticker: "その1",
-    title: "まちは ちいさな ぼうけんの ばしょ",
-    body: "PathGuardian(パスガーディアン)は、かぞくで まちの あんぜんを たしかめる ノートだよ。あいぼうの ルペと いっしょに つかってね。",
+    title: "かぞくでつかう つうがくろの安全ノート",
+    body: "PathGuardian(パスガーディアン)は、通学路の「気をつけて」を家族で見つけて、地図にのこせるアプリ。あいぼうの ルペと いっしょに つかってね。",
+    parentNote: "おうちの人へ: 準備は1分。お子さんと同じ画面で一緒に使えます。",
   },
   {
     image: "/images/onboarding/app-onboarding-2.png",
-    alt: "気になる場所をスマホで撮ると、地図にピンが立つ絵",
+    alt: "地図の上に注意ピンが並び、親子とルペがのぞきこんでいる絵",
     sticker: "その2",
-    title: "きになる ばしょを おしらせしよう",
-    body: "「ここ あぶないかも？」と おもったら、しゃしんを パチリ。ちずに スタンプが ついて、みんなに つたわるよ。",
-    parentNote: "おうちの人へ: 報告は承認制です。顔やナンバーはぼかしてから共有されます。",
+    title: "ちずを ひらくと「きをつけて」が みえる",
+    body: "近所の不審者情報・くるまの危険・みんなの報告が、ちずのピンで ひと目でわかるよ。",
+    parentNote: "警察・自治体の公開情報を3時間ごとに自動収集しています。",
   },
   {
     image: "/images/onboarding/app-onboarding-3.png",
-    alt: "夜、家族がソファでタブレットの安全カードを見ながら話している絵",
+    alt: "気になる場所をスマホで撮ると、地図にピンが立つ絵",
     sticker: "その3",
-    title: "かぞくで さくせんかいぎ",
-    body: "みつけた ばしょを いっしょに みて、「どう 気をつける？」を はなしてみよう。はなすほど、きづく目が そだつよ。",
-    parentNote: "家族共有カードで、通学路ごとの注意点を一緒に確認できます。",
+    title: "きになる ばしょは、しゃしんで パチリ",
+    body: "「ここ あぶないかも？」と おもったら、その場で ほうこく。ちずに スタンプが ついて、ご近所の かぞくにも つたわるよ。",
+    parentNote: "報告は承認制。顔やナンバーは加工してから共有されます。",
   },
   {
     image: "/images/onboarding/app-onboarding-4.png",
-    alt: "朝、子どもが光る安全ルートを歩いて登校し、ルペが見守る絵",
+    alt: "親子が学校までのルートを地図にえがき、ルペが旗をふって応援する絵",
     sticker: "その4",
-    title: "きょうも あんしん、いってきます！",
-    body: "じゅんびは ばっちり。まずは ちずを ひらいて、いつもの みちを みてみよう！",
+    title: "まずは つうがくろを 1本 とうろく！",
+    body: "とうろくすると、毎朝の「通学3分チェック」で わが子のルートの注意点が わかるよ。さっそく やってみよう！",
+    parentNote: "学校名と自宅周辺を選ぶだけ。あとから何本でも追加できます。",
   },
 ]
 
@@ -94,11 +96,11 @@ export function AppOnboarding({
   )
 
   const finish = useCallback(
-    (openMap: boolean) => {
+    (destination: "/routes" | "/map" | null) => {
       markTutorialCompleted()
       onClose()
-      if (openMap && pathname !== "/map") {
-        router.push("/map")
+      if (destination && pathname !== destination) {
+        router.push(destination)
       }
     },
     [onClose, pathname, router],
@@ -110,7 +112,7 @@ export function AppOnboarding({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") go(index + 1)
       if (e.key === "ArrowLeft") go(index - 1)
-      if (e.key === "Escape") finish(false)
+      if (e.key === "Escape") finish(null)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -252,7 +254,7 @@ export function AppOnboarding({
                 </span>
                 <button
                   type="button"
-                  onClick={() => finish(false)}
+                  onClick={() => finish(null)}
                   className={`inline-flex min-h-[40px] items-center gap-1 rounded-full px-3.5 text-[13px] font-black ${tankenTokens.cls.focus}`}
                   style={{ color: C.inkSoft }}
                   data-testid="onboarding-skip"
@@ -378,7 +380,7 @@ export function AppOnboarding({
                 <div className="mx-auto w-full max-w-[420px]">
                   <motion.button
                     type="button"
-                    onClick={() => (isLast ? finish(true) : go(index + 1))}
+                    onClick={() => (isLast ? finish("/routes") : go(index + 1))}
                     whileTap={reduce ? undefined : { scale: 0.97, y: 3 }}
                     transition={tankenTokens.spring}
                     data-testid="onboarding-next"
@@ -405,7 +407,7 @@ export function AppOnboarding({
                     {isLast ? (
                       <>
                         <MapIcon className="h-5 w-5" aria-hidden="true" strokeWidth={2.8} />
-                        ちずを ひらく！
+                        つうがくろを とうろくする
                       </>
                     ) : (
                       <>
@@ -414,6 +416,21 @@ export function AppOnboarding({
                       </>
                     )}
                   </motion.button>
+
+                  {/* 最終ページの代替導線。高さを常に確保してボタン位置が跳ねないようにする */}
+                  <div className="mt-2 flex min-h-[36px] items-center justify-center">
+                    {isLast ? (
+                      <button
+                        type="button"
+                        onClick={() => finish("/map")}
+                        className={`rounded-full px-4 py-1.5 text-[13px] font-black underline underline-offset-4 ${tankenTokens.cls.focus}`}
+                        style={{ color: C.inkSoft }}
+                        data-testid="onboarding-open-map"
+                      >
+                        あとで。まずは ちずを みてみる
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>

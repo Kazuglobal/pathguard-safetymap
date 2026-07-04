@@ -1,111 +1,85 @@
-"use client"
-
-import * as React from "react"
 import Link from "next/link"
-import { Map, ChevronRight, X, AlertTriangle } from "lucide-react"
+import { MapPin, ChevronRight } from "lucide-react"
 
+import { tankenTokens } from "@/lib/design/tanken"
+
+const C = tankenTokens.color
+
+/**
+ * リアルタイム危険マップへの誘導バナー。
+ * 以前はクリックすると偽のプレースホルダー地図モーダルが開く行き止まりだったが、
+ * 地図ページへ直接遷移するシンプルなリンクに改めた。
+ */
 export function HazardMapBanner() {
-  const [isModalOpen, setIsModalOpen] = React.useState(false)
-
   return (
-    <>
-      {/* バナー */}
-      <section className="px-4 py-6 md:py-10">
-        <div className="max-w-6xl mx-auto">
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="relative w-full overflow-hidden rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors p-6 md:p-10 text-left"
+    <section className="px-4 py-6 md:py-10">
+      <div className="mx-auto max-w-6xl">
+        <Link
+          href="/map"
+          className={`group relative block w-full overflow-hidden rounded-[22px] border p-6 text-left transition-transform active:translate-y-[2px] md:p-10 ${tankenTokens.cls.focus}`}
+          style={{
+            background: C.night,
+            borderColor: "rgba(255,255,255,.08)",
+            boxShadow: tankenTokens.shadow.card,
+          }}
         >
-          {/* コンテンツ */}
-          <div className="flex items-center justify-between gap-6">
+          {/* 点線ルートの装飾 */}
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full opacity-25"
+            viewBox="0 0 600 160"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M-10 130 Q 120 60 260 100 T 610 50"
+              fill="none"
+              stroke={C.sun}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="1 14"
+            />
+            <circle cx="260" cy="100" r="6" fill={C.accent} />
+            <circle cx="470" cy="72" r="6" fill={C.sun} />
+          </svg>
+
+          <div className="relative flex items-center justify-between gap-6">
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-2">
+              <p
+                className="mb-2 flex items-center gap-1.5 text-xs font-bold tracking-widest"
+                style={{ color: "rgba(255,255,255,.65)" }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2 w-2 animate-pulse rounded-full"
+                  style={{ background: C.sun }}
+                />
                 リアルタイム更新
               </p>
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-1 leading-snug">
-                今、どこが危ないかわかる！
+              <h3 className="mb-1 text-xl font-black leading-snug text-white md:text-2xl">
+                今、近所のどこに「気をつけて」があるか
               </h3>
-              <p className="text-slate-400 text-sm">リアルタイム危険マップ2025</p>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,.7)" }}>
+                不審者情報・交通の危険・みんなの報告を、1枚の地図で
+              </p>
             </div>
-            <div className="flex-shrink-0 flex flex-col items-center gap-1">
-              <span className="text-xs font-medium text-slate-400">マップを見る</span>
-              <ChevronRight className="w-6 h-6 text-white" />
-            </div>
+            <span
+              className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full transition-transform group-hover:translate-x-1"
+              style={{ background: C.sun, boxShadow: "0 3px 0 #E2A812" }}
+            >
+              <ChevronRight className="h-6 w-6" style={{ color: C.ink }} aria-hidden="true" />
+              <span className="sr-only">地図をひらく</span>
+            </span>
           </div>
-        </button>
-        </div>
-      </section>
 
-      {/* モーダル */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* 背景オーバーレイ */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsModalOpen(false)}
-            onKeyDown={(e) => e.key === "Escape" && setIsModalOpen(false)}
-            role="button"
-            tabIndex={0}
-            aria-label="閉じる"
-          />
-
-          {/* モーダルコンテンツ */}
-          <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            {/* ヘッダー */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h4 className="text-lg font-bold text-gray-900">危険マップ</h4>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="閉じる"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* マップエリア（プレースホルダー） */}
-            <div className="relative aspect-[4/3] bg-gray-100">
-              {/* 仮のマップ表示 */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <Map className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">マップを読み込み中...</p>
-                </div>
-              </div>
-
-              {/* 危険箇所マーカー（デモ用） */}
-              <div className="absolute top-1/4 left-1/3 flex items-center justify-center">
-                <span className="relative w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-2.5 h-2.5 text-white" />
-                </span>
-              </div>
-              <div className="absolute top-1/2 right-1/4 flex items-center justify-center">
-                <span className="relative w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-2.5 h-2.5 text-white" />
-                </span>
-              </div>
-              <div className="absolute bottom-1/3 left-1/2 flex items-center justify-center">
-                <span className="relative w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-2.5 h-2.5 text-white" />
-                </span>
-              </div>
-            </div>
-
-            {/* フッター */}
-            <div className="p-4 bg-gray-50">
-              <Link
-                href="/map"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
-              >
-                <Map className="w-5 h-5" />
-                詳細マップを開く
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+          <p
+            className="relative mt-4 flex items-center gap-1 text-xs font-bold"
+            style={{ color: C.sun }}
+          >
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+            地図をひらく
+          </p>
+        </Link>
+      </div>
+    </section>
   )
 }

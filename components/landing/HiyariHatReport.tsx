@@ -9,6 +9,9 @@ import { createBrowserClient } from "@supabase/ssr"
 import type { DangerReport } from "@/lib/types"
 import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
 import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
+import { tankenTokens } from "@/lib/design/tanken"
+
+const C = tankenTokens.color
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -50,6 +53,18 @@ const LANDING_REPORT_SELECT_COLUMNS = [
   "created_at",
   "updated_at",
 ].join(", ")
+
+/** 親が読める場所表示。住所があれば住所、なければ座標にフォールバック。 */
+function formatPlace(report: DangerReport): string | null {
+  const address = [report.prefecture, report.city, report.town]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" ")
+  if (address) return address
+  if (report.latitude != null && report.longitude != null) {
+    return `${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}`
+  }
+  return null
+}
 
 export function HiyariHatReport() {
   const [reports, setReports] = React.useState<DangerReport[]>([])
@@ -98,45 +113,55 @@ export function HiyariHatReport() {
   }
 
   return (
-    <section className="py-6 md:py-10 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-6 md:py-10" style={{ background: C.paperDeep }}>
+      <div className="mx-auto max-w-6xl">
         {/* セクションヘッダー */}
-        <div className="flex items-center justify-between px-4 mb-4 md:mb-6">
+        <div className="mb-4 flex items-center justify-between px-4 md:mb-6">
           <div className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 md:w-6 md:h-6 text-red-600" />
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">みんなのヒヤリハット報告</h2>
+            <MessageCircle className="h-5 w-5 md:h-6 md:w-6" style={{ color: C.accent }} aria-hidden="true" />
+            <h2 className="text-lg font-black md:text-xl" style={{ color: C.ink }}>
+              みんなのヒヤリハット報告
+            </h2>
           </div>
           <Link
             href="/report"
-            className="flex items-center gap-0.5 text-sm text-gray-500 hover:text-red-600 transition-colors"
+            className={`flex items-center gap-0.5 rounded-full text-sm font-bold ${tankenTokens.cls.focus}`}
+            style={{ color: C.primaryStrong }}
           >
             すべて見る
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
 
         {/* 投稿リスト */}
         {isLoading ? (
-          <div className="px-4 flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-red-500" />
+          <div className="flex items-center justify-center px-4 py-12">
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: C.accent }} aria-hidden="true" />
+            <span className="sr-only">読み込み中</span>
           </div>
         ) : reports.length === 0 ? (
-          <div className="px-4 text-center py-10 text-gray-500 text-sm">
-            まだ報告がありません
+          <div className="px-4 py-10 text-center text-sm" style={{ color: C.inkSoft }}>
+            まだ報告がありません。最初の「気をつけて」を地図に残してみましょう。
           </div>
         ) : (
-          <div className="px-4 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+          <div className="grid gap-4 px-4 md:grid-cols-3 md:gap-6">
             {reports.map((report) => {
               const thumb = thumbnailUrl(report)
               const dangerLabel = DANGER_TYPE_LABELS[report.danger_type ?? "other"] ?? "その他"
               const timeLabel = report.created_at ? formatRelativeTime(report.created_at) : ""
+              const placeLabel = formatPlace(report)
 
               return (
                 <article
                   key={report.id}
                   role="button"
                   tabIndex={0}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                  className={`flex cursor-pointer flex-col rounded-[22px] border p-4 transition-transform hover:-translate-y-0.5 ${tankenTokens.cls.focus}`}
+                  style={{
+                    background: C.card,
+                    borderColor: tankenTokens.border.faint,
+                    boxShadow: tankenTokens.shadow.soft,
+                  }}
                   onClick={() => openReportModal(report)}
                   onKeyDown={(e) => {
                     if (e.currentTarget !== e.target) return
@@ -147,28 +172,33 @@ export function HiyariHatReport() {
                   }}
                 >
                   {/* ヘッダー */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-xs font-bold"
+                      style={{ background: C.accentSoft, color: C.accentStrong }}
+                    >
                       {dangerLabel}
                     </span>
-                    <span className="text-xs text-gray-400">{timeLabel}</span>
+                    <span className="text-xs" style={{ color: C.inkFaint }}>
+                      {timeLabel}
+                    </span>
                   </div>
 
                   {/* タイトル */}
-                  <p className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                  <p className="mb-2 line-clamp-2 text-sm font-bold" style={{ color: C.ink }}>
                     {report.title ?? "ヒヤリハット報告"}
                   </p>
 
                   {/* 説明 */}
                   {report.description && (
-                    <p className="text-sm text-gray-700 leading-relaxed mb-3 line-clamp-3">
+                    <p className="mb-3 line-clamp-2 text-sm leading-relaxed" style={{ color: C.inkSoft }}>
                       {report.description}
                     </p>
                   )}
 
                   {/* 画像 */}
                   {thumb && (
-                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3">
+                    <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-[14px]">
                       <Image
                         src={thumb}
                         alt="投稿画像"
@@ -180,39 +210,44 @@ export function HiyariHatReport() {
                   )}
 
                   {/* 場所タグ */}
-                  {report.latitude != null && report.longitude != null && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-                      <MapPin className="w-3 h-3" />
-                      {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
+                  {placeLabel && (
+                    <div className="mb-3 flex items-center gap-1 text-xs" style={{ color: C.inkSoft }}>
+                      <MapPin className="h-3 w-3" aria-hidden="true" />
+                      {placeLabel}
                     </div>
                   )}
 
-                  {/* リアクションボタン */}
-                  <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                  {/* リアクションボタン(カード下端に揃える) */}
+                  <div
+                    className="mt-auto flex items-center gap-3 border-t pt-3"
+                    style={{ borderColor: tankenTokens.border.faint }}
+                  >
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggleReaction(report.id, "helpful") }}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                        "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors",
+                        tankenTokens.cls.focus,
                         reactions[report.id]?.helpful
                           ? "bg-blue-100 text-blue-600"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          : "bg-[#F3EAD6] text-[#847661] hover:bg-[#EDE2C8]"
                       )}
                     >
-                      <ThumbsUp className="w-4 h-4" />
+                      <ThumbsUp className="h-4 w-4" aria-hidden="true" />
                       参考になった
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); toggleReaction(report.id, "caution") }}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                        "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition-colors",
+                        tankenTokens.cls.focus,
                         reactions[report.id]?.caution
                           ? "bg-orange-100 text-orange-600"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          : "bg-[#F3EAD6] text-[#847661] hover:bg-[#EDE2C8]"
                       )}
                     >
-                      <AlertCircle className="w-4 h-4" />
+                      <AlertCircle className="h-4 w-4" aria-hidden="true" />
                       気をつける
                     </button>
                   </div>
@@ -223,10 +258,11 @@ export function HiyariHatReport() {
         )}
 
         {/* 投稿ボタン */}
-        <div className="px-4 mt-4 md:mt-6">
+        <div className="mt-4 px-4 text-center md:mt-6">
           <Link
             href="/map"
-            className="block w-full md:w-auto md:px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors text-center md:mx-auto md:inline-block"
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-8 py-3 text-base font-bold text-white transition-transform active:translate-y-1 active:shadow-none md:w-auto ${tankenTokens.cls.focus}`}
+            style={{ background: C.accent, boxShadow: tankenTokens.shadow.pressAccent }}
           >
             ヒヤリハットを報告する
           </Link>
