@@ -1,8 +1,10 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 import type { Database } from "@/lib/database.types";
 import { createServerClient } from "@/lib/supabase-server";
 import { isAdminEmail } from "@/lib/admin";
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context";
+import { extractStoragePathFromPublicUrl } from "@/lib/storage-path";
 // Node.js ランタイムを強制
 export const runtime = "nodejs";
 
@@ -10,6 +12,49 @@ const BUCKET_NAME = "danger-reports";
 let supabaseAdminClient: SupabaseClient<Database> | null | undefined;
 
 type ImageType = "processed" | "original";
+
+type ReencodedImage = {
+  buffer: Buffer;
+  contentType: string;
+  ext: string;
+};
+
+/**
+ * アップロード前に必ず sharp で再エンコードし、EXIF(GPS位置情報・機種情報・撮影時刻)を除去する。
+ * - rotate(): EXIFのOrientationを画素へ反映してから、そのEXIF自体は破棄する。
+ * - withMetadata()を呼ばない: sharpはデフォルトで出力にメタデータ(EXIF/ICC等)を引き継がないため、
+ *   GPS等の位置情報は確実に落ちる。
+ * - 出力フォーマットは元のcontentTypeに応じてjpeg/png/webpへ正規化する。
+ * 失敗時(壊れた画像等)はthrowし、呼び出し側で400を返す(生バッファのフォールスルーは行わない)。
+ */
+async function reencodeImageForUpload(
+  buffer: Buffer,
+  contentType: string,
+): Promise<ReencodedImage> {
+  const pipeline = sharp(buffer).rotate();
+
+  if (contentType === "image/png") {
+    return {
+      buffer: await pipeline.png().toBuffer(),
+      contentType: "image/png",
+      ext: "png",
+    };
+  }
+
+  if (contentType === "image/webp") {
+    return {
+      buffer: await pipeline.webp({ quality: 85 }).toBuffer(),
+      contentType: "image/webp",
+      ext: "webp",
+    };
+  }
+
+  return {
+    buffer: await pipeline.jpeg({ quality: 85 }).toBuffer(),
+    contentType: "image/jpeg",
+    ext: "jpg",
+  };
+}
 
 function parseImageType(value: FormDataEntryValue | null): ImageType {
   return value === "original" ? "original" : "processed";
@@ -20,19 +65,6 @@ function parseReplaceIndex(value: FormDataEntryValue | null): number | null {
   if (!/^-?\d+$/.test(value.trim())) return Number.NaN;
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) ? parsed : Number.NaN;
-}
-
-function extractStoragePathFromPublicUrl(publicUrl: string, bucketName: string): string | null {
-  try {
-    const url = new URL(publicUrl);
-    const marker = `/storage/v1/object/public/${bucketName}/`;
-    const idx = url.pathname.indexOf(marker);
-    if (idx < 0) return null;
-    const path = decodeURIComponent(url.pathname.slice(idx + marker.length));
-    return path || null;
-  } catch {
-    return null;
-  }
 }
 
 function getSupabaseAdminClient(): SupabaseClient<Database> | null {
@@ -127,17 +159,30 @@ export async function POST(req: Request) {
       );
     }
 
-    const buffer = Buffer.from(
+    const rawBuffer = Buffer.from(
       await readFileWithSentryContext({
         route: "/api/image/process",
         fieldName: "file",
         file,
       }),
     );
+
+    let reencoded: ReencodedImage;
+    try {
+      reencoded = await reencodeImageForUpload(rawBuffer, file.type || "");
+    } catch (reencodeError: unknown) {
+      const message =
+        reencodeError instanceof Error ? reencodeError.message : "unknown error";
+      return new Response(
+        JSON.stringify({
+          message: `画像の処理に失敗しました。壊れた画像またはサポートされていない形式です: ${message}`,
+        }),
+        { status: 400 },
+      );
+    }
+
     const timestamp = Date.now();
-    const rawExt = file.name.split(".").pop() || "bin";
-    const safeExt = /^[a-zA-Z0-9]+$/.test(rawExt) ? rawExt : "bin";
-    const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${safeExt}`;
+    const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${reencoded.ext}`;
     // danger-reports bucket enforces owner-scoped folder policies:
     // storage.foldername(name)[1] must match auth.uid().
     // Store under the report owner's folder to satisfy RLS consistently.
@@ -146,10 +191,10 @@ export async function POST(req: Request) {
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET_NAME)
-      .upload(filePath, buffer, {
+      .upload(filePath, reencoded.buffer, {
         cacheControl: "3600",
         upsert: false,
-        contentType: file.type || "application/octet-stream",
+        contentType: reencoded.contentType,
       });
 
     if (uploadError) {
