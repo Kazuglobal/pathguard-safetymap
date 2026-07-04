@@ -6,6 +6,8 @@ import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import { findDangersNearRoute } from "@/lib/geo/route-danger-finder"
 import type { DangerReport, UserRoute } from "@/lib/types"
 
+type DangerReportCoordinates = Pick<DangerReport, "latitude" | "longitude">
+
 export interface UseRouteDangerCountsResult {
   /** routeId ごとの、近くにある注意ポイント数。 */
   counts: Record<string, number>
@@ -57,7 +59,7 @@ export function useRouteDangerCounts(
       try {
         const { data, error } = await supabase
           .from("danger_reports")
-          .select("*")
+          .select("latitude, longitude")
           .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
 
         if (cancelled) return
@@ -67,7 +69,11 @@ export function useRouteDangerCounts(
           return
         }
 
-        const allDangers = data as DangerReport[]
+        const allDangers = (data as DangerReportCoordinates[]).filter(
+          (danger) =>
+            Number.isFinite(danger.latitude) &&
+            Number.isFinite(danger.longitude)
+        )
         const nextCounts: Record<string, number> = {}
 
         for (const route of routesRef.current) {

@@ -8,6 +8,8 @@
 import * as turf from '@turf/turf'
 import type { DangerReport } from '@/lib/types'
 
+type DangerCoordinates = Pick<DangerReport, 'latitude' | 'longitude'>
+
 /**
  * Creates a buffer polygon around a route geometry.
  *
@@ -51,11 +53,11 @@ export function createRouteBuffer(
  * @param bufferMeters - The buffer distance in meters (default: 100)
  * @returns Array of danger reports within the buffer zone
  */
-export function findDangersNearRoute(
+export function findDangersNearRoute<T extends DangerCoordinates>(
   routeGeometry: GeoJSON.LineString,
-  dangerReports: DangerReport[],
+  dangerReports: T[],
   bufferMeters: number = 100
-): DangerReport[] {
+): T[] {
   if (!dangerReports || dangerReports.length === 0) {
     return []
   }
