@@ -6,6 +6,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -110,6 +111,7 @@ export default function RegisterForm() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "登録中..." : "登録する"}
           </Button>
+          <SocialLoginButtons />
           <div className="text-center text-sm mt-2">
             すでにアカウントをお持ちの方は{" "}
             <Link href="/login" className="text-primary hover:underline">
