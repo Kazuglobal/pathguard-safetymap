@@ -83,6 +83,31 @@ vi.mock("@/lib/sentry-upload-context", () => ({
   readFileWithSentryContext: mocks.mockReadFileWithSentryContext,
 }))
 
+// route.ts はアップロード前に sharp で再エンコードする。テストではダミーバイト列
+// (実際の画像データではない) を渡すため、sharp 呼び出しをスタブして
+// 「受け取ったバッファをそのまま返す」擬似再エンコードにする。
+vi.mock("sharp", () => {
+  const makePipeline = (input: Buffer) => ({
+    rotate: vi.fn(function (this: unknown) {
+      return this
+    }),
+    jpeg: vi.fn(function (this: unknown) {
+      return this
+    }),
+    png: vi.fn(function (this: unknown) {
+      return this
+    }),
+    webp: vi.fn(function (this: unknown) {
+      return this
+    }),
+    toBuffer: vi.fn(async () => input),
+  })
+
+  return {
+    default: vi.fn((input: Buffer) => makePipeline(input)),
+  }
+})
+
 import { POST } from "@/app/api/image/process/route"
 
 async function expectResponseStatus(response: Response, expectedStatus: number) {

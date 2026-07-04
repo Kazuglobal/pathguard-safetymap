@@ -17,6 +17,7 @@ vi.mock("next/navigation", () => ({
     push: mocks.push,
     refresh: mocks.refresh,
   }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock("next/link", () => ({

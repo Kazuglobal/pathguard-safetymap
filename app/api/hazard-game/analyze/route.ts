@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       if (pointsError) {
         console.error("Error updating points:", pointsError)
       } else {
-        console.log(`Points awarded to user ${user.id}: ${pipelineResult.score.score}`)
+        console.log(`Points awarded to user ${user.id.slice(0, 8)}***: ${pipelineResult.score.score}`)
       }
     } catch (pointsError) {
       console.error("Error in points transaction:", pointsError)

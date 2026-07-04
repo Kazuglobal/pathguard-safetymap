@@ -15,8 +15,28 @@ import { useSupabase } from "@/components/providers/supabase-provider";
 import type { Database } from "@/lib/database.types";
 import type { ReportWithProfile } from "@/lib/admin-reports-service";
 import { Button } from "@/components/ui/button";
+import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access";
 
 type ReportImageInsert = Database["public"]["Tables"]["report_images"]["Insert"];
+
+/**
+ * 元画像へのダウンロードリンク。danger-reports バケット非公開化に備え、
+ * DB保存済みの公開URL文字列を表示直前に短TTLの署名URLへ差し替える。
+ * (テーブルの行ごとにフックを1回だけ呼び出すため、独立したコンポーネントに分離)
+ */
+function ReportImageDownloadLink({ imageUrl }: { imageUrl: string | null }) {
+  const { supabase } = useSupabase();
+  const signedUrl = useDangerReportSignedImageUrl(supabase, imageUrl);
+
+  if (!imageUrl) return <>画像なし</>;
+  if (!signedUrl) return <span className="text-muted-foreground">読み込み中...</span>;
+
+  return (
+    <a href={signedUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+      画像表示
+    </a>
+  );
+}
 
 export default function AdminDashboardPage() {
   const { supabase } = useSupabase();
@@ -144,18 +164,7 @@ export default function AdminDashboardPage() {
                 </TableCell>
                 <TableCell>{report.danger_type}</TableCell>
                 <TableCell>
-                  {report.image_url ? (
-                    <a
-                      href={report.image_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      画像表示
-                    </a>
-                  ) : (
-                    "画像なし"
-                  )}
+                  <ReportImageDownloadLink imageUrl={report.image_url} />
                 </TableCell>
                 <TableCell>
                   {report.processed_image_urls && report.processed_image_urls.length > 0 ? (

@@ -28,6 +28,8 @@ import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
+import { useDangerReportSignedImageUrl, useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
 interface ReportDetailModalProps {
   isOpen: boolean
@@ -57,6 +59,13 @@ export default function ReportDetailModal({
   // useEffect の依存配列用に、report の有無を確認しつつ値を取得
   const reportImageUrl = report?.image_url;
   const reportProcessedUrls = report?.processed_image_urls;
+
+  // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
+  // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
+  const optionalSupabase = useOptionalSupabase()
+  const supabaseClient = optionalSupabase?.supabase ?? null
+  const signedOriginalUrl = useDangerReportSignedImageUrl(supabaseClient, reportImageUrl ?? null)
+  const signedProcessedUrls = useDangerReportSignedImageUrls(supabaseClient, reportProcessedUrls ?? [])
 
   useEffect(() => { // フック 3 (無条件呼び出し)
     // Effect 内で report が存在するか再度確認しても良い
@@ -279,17 +288,23 @@ export default function ReportDetailModal({
                     {/* 元画像 */}
                     <TabsContent value="original" className="mt-2">
                       {report.image_url ? (
-                        <div className="relative w-full h-64 md:h-96">
-                          <Image
-                            src={report.image_url}
-                            alt="危険箇所の元画像"
-                            fill
-                            className="object-contain"
-                            onError={() => {
-                              // サイレント失敗 - ユーザーには画像が表示されないことで認識される
-                            }}
-                          />
-                        </div>
+                        signedOriginalUrl ? (
+                          <div className="relative w-full h-64 md:h-96">
+                            <Image
+                              src={signedOriginalUrl}
+                              alt="危険箇所の元画像"
+                              fill
+                              className="object-contain"
+                              onError={() => {
+                                // サイレント失敗 - ユーザーには画像が表示されないことで認識される
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-64 bg-gray-100 rounded-md">
+                            <p className="text-gray-500">画像を読み込んでいます...</p>
+                          </div>
+                        )
                       ) : (
                         <div className="flex items-center justify-center h-64 bg-gray-100 rounded-md">
                           <p className="text-gray-500">元画像はありません</p>
@@ -341,24 +356,33 @@ export default function ReportDetailModal({
 
                       {processedUrls.length > 0 ? (
                         <div className="flex gap-2 overflow-x-auto">
-                          {processedUrls.map((url, idx) => (
+                          {processedUrls.map((url, idx) => {
+                            const signedUrl = signedProcessedUrls[idx] ?? null
+                            return (
                             <div
                               key={idx}
                               className="relative border rounded-md overflow-hidden min-w-[150px]"
                             >
                               <div className="relative w-full h-32 md:h-96">
-                                <Image
-                                  src={url}
-                                  alt={`加工画像 ${idx + 1}`}
-                                  fill
-                                  className="object-contain"
-                                  onError={() => {
-                                    // サイレント失敗 - ユーザーには画像が表示されないことで認識される
-                                  }}
-                                />
+                                {signedUrl ? (
+                                  <Image
+                                    src={signedUrl}
+                                    alt={`加工画像 ${idx + 1}`}
+                                    fill
+                                    className="object-contain"
+                                    onError={() => {
+                                      // サイレント失敗 - ユーザーには画像が表示されないことで認識される
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
+                                    読み込み中...
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-64 bg-gray-100 rounded-md">

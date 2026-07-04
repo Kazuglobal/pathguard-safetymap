@@ -52,6 +52,10 @@ describe("safety quest API routes", () => {
   })
 
   it("GET /api/safety-quest/challenges returns approved public report photos without coordinates", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: "https://signed.example.com/route.jpg" },
+      error: null,
+    })
     const order = vi.fn().mockReturnThis()
     const limit = vi.fn().mockResolvedValue({
       data: [
@@ -59,7 +63,8 @@ describe("safety quest API routes", () => {
           id: "report-1",
           title: "交差点",
           status: "approved",
-          image_url: "https://example.com/route.jpg",
+          image_url:
+            "https://project.supabase.co/storage/v1/object/public/danger-reports/route.jpg",
           processed_image_url: null,
           processed_image_urls: null,
           city: "福岡市",
@@ -82,6 +87,9 @@ describe("safety quest API routes", () => {
 
     vi.mocked(getSupabaseAdmin).mockReturnValue({
       from: vi.fn().mockReturnValue({ select }),
+      storage: {
+        from: vi.fn().mockReturnValue({ createSignedUrl }),
+      },
     } as any)
 
     const { GET } = await import("@/app/api/safety-quest/challenges/route")
@@ -95,7 +103,9 @@ describe("safety quest API routes", () => {
       id: "report-report-1",
       sourceType: "report",
       areaLabel: "福岡市 中央区",
+      imageUrl: "https://signed.example.com/route.jpg",
     })
+    expect(createSignedUrl).toHaveBeenCalledWith("route.jpg", 3600)
     expect(JSON.stringify(body.challenges[0])).not.toContain("latitude")
     expect(JSON.stringify(body.challenges[0])).not.toContain("longitude")
   })

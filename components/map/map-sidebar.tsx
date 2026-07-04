@@ -27,6 +27,7 @@ interface MapSidebarProps {
   }
   onReportSelect: (report: DangerReport) => void
   isAdmin?: boolean // 管理者フラグ（オプショナル）
+  currentUserId?: string | null // ログイン中のユーザーID（本人削除の判定に使用）
   onDeleteReport?: (reportId: string) => Promise<void> // 削除関数（オプショナル）
   isMobile?: boolean // モバイル表示フラグ
   onClose?: () => void // モバイルでサイドバーを閉じる関数
@@ -41,6 +42,7 @@ export default function MapSidebar({
   filterOptions,
   onReportSelect,
   isAdmin = false,
+  currentUserId = null,
   onDeleteReport,
   isMobile = false,
   onClose,
@@ -60,6 +62,11 @@ export default function MapSidebar({
   }
 
   const hasActiveFilters = getActiveFiltersCount() > 0
+
+  // DB側のRLS（danger_reports_delete）に合わせ、削除ボタンは
+  // 「管理者」または「本人のpendingレポート」のときのみ表示する。
+  const canDeleteReport = (report: DangerReport) =>
+    isAdmin || (!!currentUserId && report.user_id === currentUserId && report.status === "pending")
 
   const resetFilters = () => {
     onFilterChange({
@@ -358,7 +365,7 @@ export default function MapSidebar({
                             <span className="text-xs text-gray-500">{formatDate(report.created_at)}</span>
                           </div>
                         </CardContent>
-                        {isAdmin && onDeleteReport && (
+                        {onDeleteReport && canDeleteReport(report) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -423,7 +430,7 @@ export default function MapSidebar({
                             <span className="text-xs text-gray-500">{formatDate(report.created_at)}</span>
                           </div>
                         </CardContent>
-                        {isAdmin && onDeleteReport && (
+                        {onDeleteReport && canDeleteReport(report) && (
                           <Button
                             variant="ghost"
                             size="icon"

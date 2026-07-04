@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Lightbulb, Brain, AlertTriangle, Eye, ArrowUpRight, Target, CheckCircle, XCircle, Search } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { AiDisclaimerNote } from "@/components/ui/ai-disclaimer-note"
 import type { PipelineAnalysisResultWithComparison, UserMarkingResult, DetectionItem } from "@/lib/hazard-game-types"
 import { computeFallbackCell, findNonOverlappingLabelY } from "@/lib/hazard-game-overlay-layout"
 import { ScoreBreakdown } from "./score-breakdown"
@@ -365,6 +366,9 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
 
       {/* Detection Categories */}
       <DetectionCategories vision={result.vision} />
+
+      {/* AI分析の免責文言(T-10) */}
+      <AiDisclaimerNote />
 
       {/* Think Results */}
       {(result.think.contextualRisks.length > 0 ||

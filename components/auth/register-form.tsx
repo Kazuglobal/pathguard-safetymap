@@ -6,9 +6,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -31,9 +33,20 @@ export default function RegisterForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!agreedToTerms) {
+      toast({
+        title: "利用規約への同意が必要です",
+        description: "利用規約・プライバシーポリシーに同意のうえ、チェックを入れてください。",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -105,11 +118,38 @@ export default function RegisterForm() {
             />
             <p className="text-xs text-gray-500">パスワードは8文字以上で設定してください。</p>
           </div>
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="agreeToTerms"
+              checked={agreedToTerms}
+              onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+              data-testid="agree-to-terms-checkbox"
+            />
+            <Label htmlFor="agreeToTerms" className="text-xs font-normal leading-snug text-gray-600">
+              <Link
+                href="/terms"
+                target="_blank"
+                className="inline-flex min-h-[24px] items-center align-middle text-primary hover:underline"
+              >
+                利用規約
+              </Link>
+              および
+              <Link
+                href="/privacy"
+                target="_blank"
+                className="inline-flex min-h-[24px] items-center align-middle text-primary hover:underline"
+              >
+                プライバシーポリシー
+              </Link>
+              に同意する
+            </Label>
+          </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "登録中..." : "登録する"}
           </Button>
+          <SocialLoginButtons />
           <div className="text-center text-sm mt-2">
             すでにアカウントをお持ちの方は{" "}
             <Link href="/login" className="text-primary hover:underline">

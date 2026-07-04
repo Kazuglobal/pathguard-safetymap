@@ -111,9 +111,7 @@ const getOpenAIClient = (): OpenAI => {
       console.log('Initializing OpenAI client...')
       const apiKey = validateOpenAIConfig()
       console.log('API key length:', apiKey.length)
-      console.log('API key prefix:', apiKey.substring(0, 30) + '...')
-      console.log('API key suffix:', '...' + apiKey.substring(apiKey.length - 10))
-      
+
       openaiClient = new OpenAI({
         apiKey,
         organization: process.env.OPENAI_ORG_ID,
@@ -268,7 +266,6 @@ export async function analyzeImageForHazards(
   console.log('Input image base64 length:', imageBase64?.length ?? 0)
   console.log('User detected hazards:', userDetectedHazards)
   console.log('API key available:', !!process.env.OPENAI_API_KEY)
-  console.log('API key format check:', process.env.OPENAI_API_KEY?.substring(0, 20) + '...')
   console.log('Current timestamp:', new Date().toISOString())
   
   // Check circuit breaker before making API call

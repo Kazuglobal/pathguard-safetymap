@@ -40,6 +40,7 @@ import {
   type HazardCategory,
 } from "@/lib/vlm-analysis"
 import type { VlmAnalysisStatus } from "@/hooks/use-vlm-analysis"
+import { AiDisclaimerNote } from "@/components/ui/ai-disclaimer-note"
 import { SimulationQuickSummary } from "./simulation-quick-summary"
 
 interface VlmAnalysisPanelProps {
@@ -306,6 +307,8 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
           </Tabs>
         </div>
       )}
+
+      <AiDisclaimerNote />
     </div>
   )
 }

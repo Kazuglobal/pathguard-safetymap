@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   '/3d-route-poc',
   '/xroad',
   '/admin',
+  '/tools',
 ]
 
 function isProtectedPath(pathname: string): boolean {

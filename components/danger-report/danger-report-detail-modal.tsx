@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { AlertTriangle, Share2, Loader2 } from "lucide-react"
+import { AlertTriangle, Share2, Loader2, Flag } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { ImageZoomOverlay } from "@/components/ui/image-zoom-overlay"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
@@ -18,6 +18,8 @@ import {
 } from "@/lib/report-generation/family-share-card"
 import { SUSPICIOUS_DANGER_TYPE, buildSuspiciousAlertStaticMapUrl, resolveAlertRadius } from "@/lib/suspicious-alert"
 import { getMapboxToken } from "@/lib/mapbox-config"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
+import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access"
 import { ReportHeroHeader } from "./detail/report-hero-header"
 import { ReportImageCarousel } from "./detail/report-image-carousel"
 import { ReportAdminImageUpload } from "./detail/report-admin-image-upload"
@@ -52,9 +54,12 @@ export default function DangerReportDetailModal({
   // Zoom overlay state
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
   const [processedImageUrls, setProcessedImageUrls] = useState<string[]>([])
+  const optionalSupabase = useOptionalSupabase()
+  const supabaseClient = optionalSupabase?.supabase ?? null
   const { toast } = useToast()
   const shareCardRef = useRef<HTMLDivElement | null>(null)
   const [isSharing, setIsSharing] = useState(false)
+  const [isReporting, setIsReporting] = useState(false)
 
   // Accident stats
   const {
@@ -91,6 +96,11 @@ export default function DangerReportDetailModal({
     })
   }, [report?.id, report?.latitude, report?.longitude, fetchStats, resetAccidentStats])
 
+  // 家族・SNS共有カードに埋め込む写真。danger-reports バケット非公開化に備え、
+  // DB保存済みの公開URL文字列を共有カードのレンダリング直前に署名URLへ差し替える。
+  const rawSharePhotoUrl = report?.image_url ?? processedImageUrls[0] ?? null
+  const signedSharePhotoUrl = useDangerReportSignedImageUrl(supabaseClient, rawSharePhotoUrl)
+
   if (!report) return null
   const reportForDisplay: DangerReport = {
     ...report,
@@ -106,7 +116,7 @@ export default function DangerReportDetailModal({
         mapboxToken: getMapboxToken() ?? "",
       })
     : null
-  const sharePhotoUrl = report.image_url ?? processedImageUrls[0] ?? null
+  const sharePhotoUrl = signedSharePhotoUrl
   const baseMapLabel = buildFamilyShareMapLabel(
     [report.prefecture, report.city, report.town],
     [report.longitude, report.latitude],
@@ -133,6 +143,32 @@ export default function DangerReportDetailModal({
       toast({ title: "共有に失敗しました", description: "もう一度お試しください。", variant: "destructive" })
     } finally {
       setIsSharing(false)
+    }
+  }
+
+  const handleReportAbuse = async () => {
+    if (!window.confirm("この投稿を「不適切な内容」として運営に通報しますか？")) return
+    setIsReporting(true)
+    try {
+      const response = await fetch("/api/abuse-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_report_id: report.id }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.error || "通報に失敗しました")
+      }
+      toast({ title: "通報しました", description: "ご協力ありがとうございます。運営が内容を確認します。" })
+    } catch (error) {
+      console.error("通報に失敗しました:", error)
+      toast({
+        title: "通報に失敗しました",
+        description: "時間をおいてもう一度お試しください。",
+        variant: "destructive",
+      })
+    } finally {
+      setIsReporting(false)
     }
   }
   const dialogContentClassName = isTouchDevice
@@ -209,6 +245,19 @@ export default function DangerReportDetailModal({
             <p>
               この情報は一般ユーザーからの報告に基づいています。状況は変化している可能性があります。
             </p>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-gray-500 hover:text-red-600"
+              onClick={handleReportAbuse}
+              disabled={isReporting}
+            >
+              <Flag className="h-3.5 w-3.5" />
+              {isReporting ? "送信中..." : "通報する"}
+            </Button>
           </div>
         </div>
 

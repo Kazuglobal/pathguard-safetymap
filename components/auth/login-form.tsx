@@ -6,6 +6,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -181,6 +182,7 @@ export default function LoginForm() {
           <Button type="button" variant="outline" className="w-full" onClick={handleDemoLogin} disabled={isLoading}>
             デモユーザーで試す
           </Button>
+          <SocialLoginButtons />
           <div className="text-center text-sm mt-2">
             アカウントをお持ちでない方は{" "}
             <Link href="/register" className="text-primary hover:underline">

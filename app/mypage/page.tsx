@@ -39,9 +39,13 @@ import {
   Check,
   Compass,
   Sparkles,
+  Trash2,
 } from "lucide-react"
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
+import { useToast } from "@/components/ui/use-toast"
+import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
+import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
 interface ReportSummary extends Pick<
   DangerReport,
@@ -84,6 +88,7 @@ export default function MyPage() {
   const { supabase } = useSupabase()
   const router = useRouter()
   const reduceMotion = useReducedMotion()
+  const { toast } = useToast()
   const { level, points, isLoading: isGamificationLoading } = useGamification()
   const { missions, progress, isLoading: isMissionsLoading } = useMissions()
   const { routes, isLoading: isRoutesLoading } = useUserRoutes()
@@ -92,6 +97,7 @@ export default function MyPage() {
   const [reports, setReports] = useState<ReportSummary[]>([])
   const [userName, setUserName] = useState("ゲスト")
   const [isReportsLoading, setIsReportsLoading] = useState(true)
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [profileKey, setProfileKey] = useState(0)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -213,6 +219,11 @@ export default function MyPage() {
     return images.slice(0, 6)
   }, [reports])
 
+  // danger-reports バケット非公開化に備え、コレクション表示直前にDB保存済みの
+  // 公開URL文字列を短TTLの署名URLへ差し替える(取得中/失敗時は null)。
+  const collectionImageUrls = useMemo(() => collectionImages.map((item) => item.src), [collectionImages])
+  const signedCollectionImageUrls = useDangerReportSignedImageUrls(supabase, collectionImageUrls)
+
   // レベル/ポイントは脇役。進捗バーの計算のみ残す。
   const safeLevel = Math.max(level, 1)
   const previousThreshold = Math.max((safeLevel - 1) * 500, 0)
@@ -257,6 +268,56 @@ export default function MyPage() {
   const setupLoading = isRoutesLoading || isReportsLoading || push.state === "loading"
   const completedSteps = setupSteps.filter((step) => step.done).length
   const allStepsDone = !setupLoading && completedSteps === setupSteps.length
+
+  // 自分の投稿（審査中のもののみ）を削除する。DB側のRLSも「本人のpendingレポートのみ」削除可能に制限されている。
+  const handleDeleteReport = async (reportId: string) => {
+    if (!supabase) return
+    const target = reports.find((r) => r.id === reportId)
+    if (!target) return
+    if (target.status !== "pending") return // 審査中以外は削除不可（ボタンも出さないが念のため）
+
+    const confirmed = window.confirm(
+      `「${target.title || "タイトル未設定"}」を削除しますか？\n\nこの操作は元に戻せません。`,
+    )
+    if (!confirmed) return
+
+    setDeletingReportId(reportId)
+    try {
+      const { error: deleteError } = await supabase.from("danger_reports").delete().eq("id", reportId)
+      if (deleteError) throw deleteError
+
+      // 関連画像をストレージから削除（ベストエフォート。失敗してもDB削除自体は成功扱い）
+      let storageDeleteFailed = false
+      const imageUrls = [target.image_url, ...(target.processed_image_urls ?? [])].filter(
+        (url): url is string => Boolean(url),
+      )
+      if (imageUrls.length > 0) {
+        const storagePaths = imageUrls
+          .map((url) => extractStoragePathFromPublicUrl(url, "danger-reports"))
+          .filter((path): path is string => Boolean(path))
+        if (storagePaths.length > 0) {
+          const { error: storageError } = await supabase.storage.from("danger-reports").remove(storagePaths)
+          if (storageError) {
+            console.error("投稿画像の削除に失敗しました", storageError)
+            storageDeleteFailed = true
+          }
+        }
+      }
+
+      setReports((prev) => prev.filter((r) => r.id !== reportId))
+      toast({
+        title: "削除しました",
+        description: storageDeleteFailed
+          ? "投稿を削除しました。（画像の削除は一部失敗しました）"
+          : "投稿を削除しました。",
+      })
+    } catch (error) {
+      console.error("投稿の削除に失敗しました", error)
+      toast({ title: "削除に失敗しました", description: "もう一度お試しください。", variant: "destructive" })
+    } finally {
+      setDeletingReportId(null)
+    }
+  }
 
   const handleSignOut = async () => {
     if (!supabase || signOutInFlightRef.current) return
@@ -377,17 +438,34 @@ export default function MyPage() {
             label: report.status,
             variant: "outline" as const,
           }
+          const canDelete = report.status === "pending"
           return (
             <div
               key={report.id}
               className="flex items-center justify-between gap-3 rounded-xl border p-4"
               style={innerPanelStyle}
             >
-              <div>
-                <p className="text-sm font-semibold" style={{ color: t.color.ink }}>{report.title || "タイトル未設定"}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold" style={{ color: t.color.ink }}>{report.title || "タイトル未設定"}</p>
                 <p className="mt-1 text-xs" style={{ color: t.color.inkSoft }}>{formatDate(report.created_at)}</p>
               </div>
-              <Badge variant={statusInfo.variant} className="whitespace-nowrap">{statusInfo.label}</Badge>
+              <div className="flex flex-shrink-0 items-center gap-2">
+                <Badge variant={statusInfo.variant} className="whitespace-nowrap">{statusInfo.label}</Badge>
+                {canDelete && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-500 hover:bg-red-50"
+                    onClick={() => handleDeleteReport(report.id)}
+                    disabled={deletingReportId === report.id}
+                    aria-label="この投稿を削除"
+                    title="審査中の投稿を削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           )
         })}
@@ -416,16 +494,25 @@ export default function MyPage() {
 
     return (
       <div className="grid grid-cols-3 gap-2">
-        {collectionImages.map((item) => (
-          <div key={item.id} className="overflow-hidden rounded-xl border" style={innerPanelStyle}>
-            <img
-              src={item.src}
-              alt="アップロード画像"
-              loading="lazy"
-              className="h-20 w-full object-cover"
-            />
-          </div>
-        ))}
+        {collectionImages.map((item, index) => {
+          const signedSrc = signedCollectionImageUrls[index] ?? null
+          return (
+            <div key={item.id} className="overflow-hidden rounded-xl border" style={innerPanelStyle}>
+              {signedSrc ? (
+                <img
+                  src={signedSrc}
+                  alt="アップロード画像"
+                  loading="lazy"
+                  className="h-20 w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-full items-center justify-center bg-gray-50">
+                  <Skeleton className="h-full w-full" />
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     )
   }

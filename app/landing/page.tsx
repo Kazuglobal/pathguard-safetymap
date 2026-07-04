@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   StickyHeader,
   LandingHero,
@@ -72,7 +73,18 @@ export default function LandingPage() {
           <p className="text-sm font-bold" style={{ color: tankenTokens.color.inkSoft }}>
             Path<span style={{ color: tankenTokens.color.primary }}>Guardian</span>
           </p>
-          <p className="mt-1 text-xs" style={{ color: tankenTokens.color.inkFaint }}>
+          <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+            <Link href="/terms" className="underline-offset-4 hover:underline" style={{ color: tankenTokens.color.inkSoft }}>
+              利用規約
+            </Link>
+            <Link href="/privacy" className="underline-offset-4 hover:underline" style={{ color: tankenTokens.color.inkSoft }}>
+              プライバシーポリシー
+            </Link>
+            <Link href="/contact" className="underline-offset-4 hover:underline" style={{ color: tankenTokens.color.inkSoft }}>
+              お問い合わせ
+            </Link>
+          </nav>
+          <p className="mt-2 text-xs" style={{ color: tankenTokens.color.inkFaint }}>
             © {currentYear} PathGuardian. All rights reserved.
           </p>
         </footer>

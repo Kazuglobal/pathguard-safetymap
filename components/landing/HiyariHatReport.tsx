@@ -32,6 +32,11 @@ const DANGER_TYPE_LABELS: Record<string, string> = {
   other: "その他",
 }
 
+// danger_reports_public_preview VIEW には image_url / processed_image_url /
+// processed_image_urls を含めていない(danger-reports storage バケットは非公開化
+// されており、匿名ユーザーは元々これらのURLへアクセスできないため)。
+// 存在しない列を SELECT すると PostgREST がエラーを返し、報告一覧全体が
+// 空表示になってしまうので、ここでは列一覧から除外する。
 const LANDING_REPORT_SELECT_COLUMNS = [
   "id",
   "title",
@@ -41,9 +46,6 @@ const LANDING_REPORT_SELECT_COLUMNS = [
   "status",
   "latitude",
   "longitude",
-  "image_url",
-  "processed_image_url",
-  "processed_image_urls",
   "prefecture",
   "prefecture_code",
   "city",
@@ -86,8 +88,12 @@ export function HiyariHatReport() {
 
     async function fetchReports() {
       try {
+        // 未ログイン(anon)からは緯度経度を約1.1km四方へ丸めた公開プレビュー
+        // VIEW (danger_reports_public_preview) のみを参照する。
+        // ベーステーブル danger_reports への anon SELECT は閉じている
+        // (supabase/migrations/20260704090300_restrict_public_read_and_storage.sql)。
         const { data, error } = await supabase
-          .from("danger_reports")
+          .from("danger_reports_public_preview")
           .select(LANDING_REPORT_SELECT_COLUMNS)
           .in("status", ["approved", "published", "resolved"])
           .order("created_at", { ascending: false })
