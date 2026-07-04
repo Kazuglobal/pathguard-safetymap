@@ -36,17 +36,34 @@ Match the attached reference illustration EXACTLY in style:
 
 const SLIDES = [
   {
+    // その1: かぞくでつかう つうがくろの安全ノート(これは何のアプリ？)
     filename: "app-onboarding-1.png",
-    prompt: `Scene: A parent and child sit together at a cozy table at home, leaning over a
-large hand-drawn adventure map of their town spread out like a field notebook.
-The map shows a dotted route from a small house to a school, with a few cute
-round pins (green, orange, yellow) along the way. The mascot Lupe (magnifying
-glass with yellow cap) hovers over the map, glowing softly, pointing at the route.
-Mood: curious, warm, "our town is a little adventure".
+    prompt: `Scene: A parent and an elementary-school child sit together at a cozy table at
+home, leaning over an open field notebook. On the notebook pages, a simple
+hand-drawn town map shows a dotted route from a small house to a school building
+with a red roof and a clock. The house and school are drawn as pure pictures
+with ABSOLUTELY NO labels, letters, words or captions anywhere — not on the
+notebook, not under the buildings. The mascot Lupe (magnifying glass with
+yellow cap) hovers above the notebook, glowing softly, warmly welcoming them.
+Mood: "this is our family's safety notebook", warm and inviting first page.
 ${STYLE_RULES}`,
   },
   {
+    // その2: ちずを ひらくと「きをつけて」が みえる(地図の価値)
     filename: "app-onboarding-2.png",
+    prompt: `Scene: A large, friendly bird's-eye hand-drawn town map fills most of the frame,
+like a picture-book spread: small houses, a school with a red roof, a park, a
+river, crosswalks. On the map stand several cute round map pins in orange,
+yellow and green (no text on pins). The parent and child stand at the bottom
+edge of the map looking at it together, the child pointing excitedly at an
+orange pin. Lupe the magnifying-glass mascot hovers over one pin, magnifying it
+with a soft glow.
+Mood: "open the map, and the town's watch-out spots appear at a glance".
+${STYLE_RULES}`,
+  },
+  {
+    // その3: きになる ばしょは、しゃしんで パチリ(報告)
+    filename: "app-onboarding-3.png",
     prompt: `Scene: On a small Japanese street corner, the child points at a spot near a
 crosswalk while the parent takes a photo with a smartphone. From the phone, a
 soft beam connects to a cute round map pin popping up above the spot, with tiny
@@ -55,23 +72,15 @@ Mood: "when we find something to be careful about, we tell the map".
 ${STYLE_RULES}`,
   },
   {
-    filename: "app-onboarding-3.png",
-    prompt: `Scene: Evening at home. Parent and child sit on a sofa looking together at a
-tablet showing a simple card with a photo and a small map. Speech bubbles WITHOUT
-any text (just a heart and a small exclamation mark icon) float above them as
-they talk. Lupe the magnifying-glass mascot sits on the sofa armrest, listening.
-Warm lamp light, cozy living room.
-Mood: family strategy meeting, talking together about safety.
-${STYLE_RULES}`,
-  },
-  {
+    // その4: まずは つうがくろを 1本 とうろく！(最初の行動)
     filename: "app-onboarding-4.png",
-    prompt: `Scene: Bright morning. The child, wearing yellow cap and randoseru, walks
-happily along a street toward a school in the distance. The route ahead is shown
-as a glowing dotted line with small green check-mark pins along it. The parent
-waves from the house gate. Lupe the magnifying-glass mascot flies alongside the
-child like a guardian. Small birds and a clear sky.
-Mood: "off we go, safe and confident!".
+    prompt: `Scene: The parent and child kneel over a large hand-drawn town map spread on the
+floor, together drawing a bold dotted route line with a big orange crayon from
+their small house to the school with a red roof. The freshly drawn route glows
+gently. Lupe the magnifying-glass mascot flies beside them cheerfully waving a
+tiny yellow flag, celebrating. A few small green check-mark pins pop up along
+the drawn route.
+Mood: "let's register our school route — the adventure begins!", proud and fun.
 ${STYLE_RULES}`,
   },
 ]
@@ -115,7 +124,13 @@ async function generateImage(slide, refBase64) {
 async function main() {
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true })
   const refBase64 = fs.readFileSync(STYLE_REF).toString("base64")
-  for (const slide of SLIDES) {
+  // 引数でスライド番号を指定すると、そのスライドだけ再生成できる。
+  // 例: node scripts/generate-app-onboarding-images.mjs 1 3
+  const onlyNumbers = process.argv.slice(2).map(Number).filter((n) => Number.isInteger(n) && n >= 1)
+  const targets = onlyNumbers.length > 0
+    ? SLIDES.filter((_, i) => onlyNumbers.includes(i + 1))
+    : SLIDES
+  for (const slide of targets) {
     let ok = false
     for (let attempt = 1; attempt <= 3 && !ok; attempt++) {
       try {

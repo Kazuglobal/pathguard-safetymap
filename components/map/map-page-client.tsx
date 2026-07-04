@@ -7,6 +7,7 @@ import { HelpCircle } from "lucide-react"
 
 import AppOnboarding from "@/components/onboarding/app-onboarding"
 import { Button } from "@/components/ui/button"
+import { tankenTokens } from "@/lib/design/tanken"
 
 const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   ssr: false,
@@ -50,7 +51,14 @@ export default function MapPageClient() {
         <Button
           type="button"
           variant="outline"
-          className="rounded-full border-sky-200 bg-white/95 shadow-lg backdrop-blur-sm h-10 w-10 p-0 md:h-auto md:w-auto md:px-4"
+          className={`h-10 w-10 rounded-full border p-0 font-black md:h-auto md:w-auto md:px-4 ${tankenTokens.cls.focus}`}
+          style={{
+            background: "rgba(255,253,247,.95)",
+            borderColor: "rgba(67,57,43,.12)",
+            color: tankenTokens.color.inkSoft,
+            boxShadow: tankenTokens.shadow.float,
+            backdropFilter: "blur(10px)",
+          }}
           onClick={() => setShowTutorial(true)}
           aria-label="使い方を確認"
         >

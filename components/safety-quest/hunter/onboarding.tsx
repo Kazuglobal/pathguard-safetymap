@@ -243,15 +243,14 @@ export function Onboarding({
         className="shrink-0 px-5 pt-2"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 18px)" }}
       >
-        <div className="mb-4 flex items-center justify-center gap-2" role="tablist" aria-label="ページ">
+        <div className="mb-4 flex items-center justify-center gap-2" role="group" aria-label="ガイドのページ">
           {SLIDES.map((s, i) => {
             const active = i === index
             return (
               <button
                 key={s.image}
                 type="button"
-                role="tab"
-                aria-selected={active}
+                aria-current={active ? "step" : undefined}
                 aria-label={`${i + 1}ページ目`}
                 onClick={() => go(i)}
                 className={`rounded-full transition-all duration-300 ${tokens.cls.focus}`}

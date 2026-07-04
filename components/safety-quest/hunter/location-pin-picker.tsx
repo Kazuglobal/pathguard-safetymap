@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 
+import { localizeMapLabels } from "@/lib/hunter/map-labels"
 import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 
 export interface LocationPinPickerProps {
@@ -123,22 +124,7 @@ export function LocationPinPicker({
     const map = mapRef.current?.getMap()
     if (!map) return
     try {
-      const layers = map.getStyle()?.layers ?? []
-      for (const layer of layers) {
-        if (layer.type !== "symbol") continue
-        // 道路番号シールドや出口番号は name を持たない(ref 等を表示)ため
-        // 書き換えると空ラベルになる。名前系レイヤーだけを対象にする。
-        if (/shield|road-number|road-exit|oneway/.test(layer.id)) continue
-        const textField = map.getLayoutProperty(layer.id, "text-field") as unknown
-        if (!textField) continue
-        const serialized = JSON.stringify(textField)
-        if (!serialized.includes("name")) continue
-        map.setLayoutProperty(layer.id, "text-field", [
-          "coalesce",
-          ["get", "name_ja"],
-          ["get", "name"],
-        ])
-      }
+      localizeMapLabels(map)
     } catch {
       // スタイルにより失敗しても地図機能は損なわない
     }

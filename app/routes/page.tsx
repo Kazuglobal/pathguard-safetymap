@@ -6,7 +6,10 @@ import { useSupabase } from "@/components/providers/supabase-provider"
 import { RouteManager } from "@/components/map/route-manager"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Route as RouteIcon } from "lucide-react"
+import { tankenTokens } from "@/lib/design/tanken"
 import type { UserRoute } from "@/lib/types"
+
+const C = tankenTokens.color
 
 export default function RoutesPage() {
   const router = useRouter()
@@ -57,15 +60,15 @@ export default function RoutesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: C.paper }}>
       <div className="mx-auto max-w-4xl px-4 py-8 pb-32 md:pb-16">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <RouteIcon className="h-6 w-6 text-primary" />
-            通学路管理
+          <h1 className="flex items-center gap-2 text-2xl font-black" style={{ color: C.ink }}>
+            <RouteIcon className="h-6 w-6" style={{ color: C.primary }} />
+            うちの子の通学路
           </h1>
-          <p className="text-muted-foreground mt-1">
-            通学路を登録・管理して、安全な通学をサポートします
+          <p className="mt-1" style={{ color: C.inkSoft }}>
+            いつもの道をとうろくすると、毎朝の「通学3分チェック」で注意点がわかります
           </p>
         </header>
 

@@ -17,6 +17,11 @@ vi.mock("@/components/map/map-style-selector", () => ({
   default: () => <div data-testid="map-style-selector" />,
 }))
 
+// HelpDialog は ui/dialog のグローバルモックと干渉するため丸ごと差し替える
+vi.mock("@/components/map/help-dialog", () => ({
+  default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}))
+
 const defaultProps = {
   onAddReport: vi.fn(),
   isReportFormOpen: false,

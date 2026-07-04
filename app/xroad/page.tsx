@@ -1,261 +1,245 @@
 "use client"
 
-import { useState } from 'react';
-import MapWrapper from '@/components/map/map-wrapper';
-import XRoadLayer from '@/components/map/xroad-layer';
-import SafeRouteSearch from '@/components/map/safe-route-search';
-import SchoolTrafficDashboard from '@/components/map/school-traffic-dashboard';
-import RestrictionAlerts from '@/components/map/restriction-alerts';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Link from 'next/link';
-import { ExternalLink, MapPin } from 'lucide-react';
+import { useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import MapWrapper from '@/components/map/map-wrapper'
+import XRoadLayer from '@/components/map/xroad-layer'
+import { tankenTokens, ENDPAPER, PAPER_NOISE } from '@/lib/design/tanken'
+import { Car, Info, MapPin, ShieldCheck } from 'lucide-react'
+
+const T = tankenTokens
+const C = T.color
 
 /**
- * xROADデータプラットフォーム統合マップページ
- * すべての追加機能を含む完全版
+ * 交通の安全ページ（保護者向け）
+ *
+ * 国土交通省の道路データをもとに、通学路まわりの「交通のあぶなさ」を
+ * 地図でたしかめるためのページ。世界観は「たんけんノート」。
+ *
+ * 方針:
+ *  - 偽データは一切表示しない。国のデータを地図に重ねるのは保護者が明示的に
+ *    操作したときだけ（初期表示では外部APIを呼ばない）。
+ *  - データが取れない場合はサマリを出さない（そもそも推測値を作らない）。
  */
-export default function XRoadIntegratedPage() {
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [visibleLayers, setVisibleLayers] = useState({
-    roads: true,
-    restrictions: false,
-    traffic: false,
-  });
-
-  // レイヤーの表示・非表示を切り替える関数
-  const toggleLayer = (layerName: 'roads' | 'restrictions' | 'traffic') => {
-    setVisibleLayers((prev) => ({
-      ...prev,
-      [layerName]: !prev[layerName],
-    }));
-  };
+export default function TrafficSafetyPage() {
+  // 国の道路データを地図に重ねるか。初期は false（=読み込み時に外部APIを呼ばない）。
+  const [showRoadData, setShowRoadData] = useState(false)
 
   return (
-    <div className="container py-6">
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">xROAD 道路データ統合</CardTitle>
-          <CardDescription>
-            国土交通省道路データプラットフォーム（xROAD）の機能を統合した学校安全マップシステム
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            このページでは、学校安全マップの機能と国土交通省の道路データを組み合わせた様々な機能を体験することができます。
-            下記のデモから各機能を試してみてください。
+    <main
+      className="min-h-[100dvh] w-full"
+      style={{
+        fontFamily: T.font.family,
+        color: C.ink,
+        background: `${ENDPAPER}, linear-gradient(175deg, ${C.paper} 0%, #F4ECDA 100%)`,
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      }}
+    >
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8">
+        {/* ヘッダー: このページが何かを保護者の言葉で */}
+        <header className="mb-5">
+          <Sticker>つうがくろの あんぜん</Sticker>
+          <h1 className="mt-3 text-[26px] font-black leading-tight sm:text-[32px]">
+            くるまの事故が多いのはどこ？
+          </h1>
+          <p className="mt-2 text-[15px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
+            国の道路データをもとに、通学路のまわりの交通のあぶなさを地図でたしかめられます。
           </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-            <DemoCard 
-              title="道路データ表示"
-              description="xROADから取得した道路データをマップ上に表示します。"
-              icon={<MapPin className="h-8 w-8 text-blue-500" />}
-              href="#map"
-            />
-            
-            <DemoCard 
-              title="安全ルート検索"
-              description="交通量データを考慮した安全な通学路を検索します。"
-              icon={<MapPin className="h-8 w-8 text-green-500" />}
-              href="#map"
-            />
-            
-            <DemoCard 
-              title="通学路の安全度評価"
-              description="交通量と危険報告を統合した安全性評価を表示します。"
-              icon={<MapPin className="h-8 w-8 text-yellow-500" />}
-              href="#map"
-            />
-            
-            <DemoCard 
-              title="規制情報アラート"
-              description="通学路周辺の道路規制情報をリアルタイムで確認できます。"
-              icon={<MapPin className="h-8 w-8 text-red-500" />}
-              href="#map"
-            />
-            
-            <DemoCard 
-              title="学校周辺交通状況"
-              description="学校周辺の交通量データをダッシュボードで表示します。"
-              icon={<MapPin className="h-8 w-8 text-purple-500" />}
-              href="#map"
-            />
-            
-            <DemoCard 
-              title="小学校周辺の交通量表示"
-              description="小学校周辺の交通量データを地図上に可視化します。"
-              icon={<MapPin className="h-8 w-8 text-indigo-500" />}
-              href="/xroad/example-page"
-              isExternal
+        </header>
+
+        {/* 主役: 地図 */}
+        <Panel className="p-3 sm:p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                style={{ background: C.primarySoft, color: C.primaryStrong }}
+              >
+                <Car className="h-4 w-4" strokeWidth={2.6} />
+              </span>
+              <div>
+                <h2 className="text-[16px] font-black leading-none">交通のちず</h2>
+                <p className="mt-1 text-[12px] font-bold leading-none" style={{ color: C.inkFaint }}>
+                  地図をうごかして 通学路のまわりを見てみましょう
+                </p>
+              </div>
+            </div>
+
+            <ToggleChip
+              pressed={showRoadData}
+              onClick={() => setShowRoadData((v) => !v)}
+              label="国の道路データを重ねる"
             />
           </div>
-        </CardContent>
-      </Card>
 
-      <div id="map" className="mb-6">
-        <Tabs defaultValue="map" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="map">マップ表示</TabsTrigger>
-            <TabsTrigger value="layers">レイヤー設定</TabsTrigger>
-            <TabsTrigger value="info">使い方</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="map" className="h-[600px] relative">
+          {/* 地図本体。MapWrapper の高さは 100vh 固定のため、枠でクリップして収める */}
+          <div
+            className="relative w-full overflow-hidden"
+            style={{
+              height: 'clamp(260px, 48vh, 440px)',
+              borderRadius: T.radius.panel,
+              border: `1px solid ${T.border.soft}`,
+              background: C.paperDeep,
+            }}
+          >
             <MapWrapper>
-              {visibleLayers.roads && <XRoadLayer 
-                layerId="xroad-roads"
-                dataType="roads"
-                visible={true}
-                layerOptions={{
-                  paint: {
-                    'line-color': '#3388ff',
-                    'line-width': 2,
-                  },
-                }}
-              />}
-              {visibleLayers.restrictions && <RestrictionAlerts 
-                userRoutes={[
-                  {
-                    id: 'route-1',
-                    name: '自宅-学校ルート',
-                    bounds: {
-                      north: 35.7844,
-                      south: 35.5844,
-                      east: 139.8530,
-                      west: 139.6530,
-                    }
-                  }
-                ]}
-              />}
-              {visibleLayers.traffic && <SchoolTrafficDashboard 
-                schoolId="school-1"
-                schoolName="サンプル小学校"
-                schoolLocation={[139.7530, 35.6844]}
-                radius={500}
-              />}
-              <SafeRouteSearch />
+              {showRoadData && (
+                <XRoadLayer
+                  layerId="road-data"
+                  dataType="roads"
+                  visible={showRoadData}
+                  layerOptions={{ paint: { 'line-color': C.accent, 'line-width': 2 } }}
+                />
+              )}
             </MapWrapper>
-          </TabsContent>
-          
-          <TabsContent value="layers">
-            <Card>
-              <CardHeader>
-                <CardTitle>レイヤー設定</CardTitle>
-                <CardDescription>表示するデータレイヤーを選択してください</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">道路データ</span>
-                  <Button 
-                    variant={visibleLayers.roads ? "default" : "outline"} 
-                    onClick={() => toggleLayer('roads')}
-                  >
-                    {visibleLayers.roads ? '表示中' : '非表示'}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">規制情報</span>
-                  <Button 
-                    variant={visibleLayers.restrictions ? "default" : "outline"} 
-                    onClick={() => toggleLayer('restrictions')}
-                  >
-                    {visibleLayers.restrictions ? '表示中' : '非表示'}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">交通量データ</span>
-                  <Button 
-                    variant={visibleLayers.traffic ? "default" : "outline"} 
-                    onClick={() => toggleLayer('traffic')}
-                  >
-                    {visibleLayers.traffic ? '表示中' : '非表示'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="info">
-            <Card>
-              <CardHeader>
-                <CardTitle>使い方</CardTitle>
-                <CardDescription>xROADデータプラットフォーム統合マップの使い方</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-semibold">1. マップの操作</h3>
-                  <p className="text-sm text-muted-foreground">マップはドラッグで移動、スクロールでズームイン/アウトできます。</p>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold">2. レイヤーの切り替え</h3>
-                  <p className="text-sm text-muted-foreground">「レイヤー設定」タブで表示するデータを選択できます。</p>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold">3. 安全ルート検索</h3>
-                  <p className="text-sm text-muted-foreground">マップ左側のパネルから出発地と目的地を入力し、「ルート検索」ボタンをクリックします。</p>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold">4. 交通量データの表示</h3>
-                  <p className="text-sm text-muted-foreground">「交通量データ」レイヤーを有効にすると、学校周辺の交通量が表示されます。</p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <p className="text-xs text-muted-foreground">
-                  このサービスは、交通量API機能を使用していますが、サービスの内容は国土交通省によって保証されたものではありません。
-                </p>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-}
+          </div>
 
-// デモカードコンポーネント
-interface DemoCardProps {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  href: string;
-  isExternal?: boolean;
-}
+          {/*
+            サマリ枠（いつ・どこ・どれくらい近いか）はここに置く想定。
+            現状は保護者に見せられる確かな集計データが無いため、推測値を作らず非表示にする。
+            実データが取れるようになったら、この位置に1行サマリを出す。
+          */}
 
-function DemoCard({ title, description, icon, href, isExternal = false }: DemoCardProps) {
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{title}</CardTitle>
-          {icon}
+          <p className="mt-3 flex items-start gap-2 px-1 text-[12.5px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
+            <Info className="mt-0.5 h-4 w-4 shrink-0" style={{ color: C.sky }} aria-hidden="true" />
+            <span>
+              「国の道路データを重ねる」を押すと、国土交通省の道路データを地図に表示します。
+              地域や時間帯によっては、データが見つからないことがあります。
+            </span>
+          </p>
+        </Panel>
+
+        {/* 二次的な情報は折りたたみで */}
+        <div className="mt-5 space-y-3">
+          <Accordion summary="地図の見かた" icon={<MapPin className="h-4 w-4" strokeWidth={2.6} />}>
+            <ul className="space-y-2 text-[14px] font-bold leading-relaxed">
+              <li>ドラッグで地図をうごかし、ピンチやスクロールで拡大・縮小できます。</li>
+              <li>車がよく通る大きな道は、お子さんにとって注意が必要な場所です。</li>
+              <li>通学路が大きな道とまじわる交差点を、重点的に見てみましょう。</li>
+            </ul>
+          </Accordion>
+
+          <Accordion summary="このデータについて" icon={<ShieldCheck className="h-4 w-4" strokeWidth={2.6} />}>
+            <div className="space-y-2 text-[14px] font-bold leading-relaxed">
+              <p>
+                地図に重ねられる道路データは、国が公開している道路データプラットフォームのものです。
+                交通量や道路の情報は地域ごとに整備状況がちがい、すべての道で見られるわけではありません。
+              </p>
+              <p style={{ color: C.inkSoft }}>
+                表示される情報は参考です。実際の交通のようすは、時間帯やその日の状況によって変わります。
+              </p>
+            </div>
+          </Accordion>
         </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardContent>
-      <CardFooter className="pt-2">
-        {isExternal ? (
-          <Link href={href} className="w-full">
-            <Button variant="outline" className="w-full">
-              <span>詳細を見る</span>
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        ) : (
-          <Link href={href} className="w-full">
-            <Button variant="outline" className="w-full">
-              表示する
-            </Button>
-          </Link>
-        )}
-      </CardFooter>
-    </Card>
-  );
-} 
+
+        {/* 出典表記 */}
+        <footer className="mt-6 border-t pt-4 text-[12px] font-bold leading-relaxed" style={{ borderColor: T.border.faint, color: C.inkFaint }}>
+          出典: 国土交通省 xROAD（道路データプラットフォーム）。
+          表示される情報は参考であり、国土交通省が内容を保証するものではありません。
+        </footer>
+      </div>
+    </main>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * ページ内プレゼンテーション部品（たんけんノート・トークン準拠）
+ * ------------------------------------------------------------------ */
+
+function Panel({ children, className = '', style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
+  return (
+    <section
+      className={className}
+      style={{
+        background: `${PAPER_NOISE}, ${C.card}`,
+        borderRadius: T.radius.card,
+        border: `1px solid ${T.border.faint}`,
+        boxShadow: T.shadow.card,
+        ...style,
+      }}
+    >
+      {children}
+    </section>
+  )
+}
+
+function Sticker({ children }: { children: ReactNode }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-black leading-none"
+      style={{
+        background: C.sun,
+        color: C.ink,
+        transform: 'rotate(-2deg)',
+        boxShadow: `0 0 0 2.5px #fff, ${T.shadow.soft}`,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+function ToggleChip({ pressed, onClick, label }: { pressed: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
+      className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 text-[13.5px] font-black transition-[transform,box-shadow] duration-100 active:translate-y-[3px] active:!shadow-none ${T.cls.focus}`}
+      style={{
+        background: pressed ? C.primary : '#FFFFFF',
+        color: pressed ? '#FFFFFF' : C.ink,
+        border: `2px solid ${pressed ? 'transparent' : T.border.soft}`,
+        boxShadow: pressed ? T.shadow.pressGreen : T.shadow.pressPaper,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        className="grid h-4 w-4 place-items-center rounded-full text-[10px]"
+        style={{ background: pressed ? 'rgba(255,255,255,.9)' : C.inkFaint, color: pressed ? C.primaryStrong : '#fff' }}
+      >
+        {pressed ? '✓' : ''}
+      </span>
+      {label}
+    </button>
+  )
+}
+
+function Accordion({ summary, icon, children }: { summary: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <details
+      className="group overflow-hidden"
+      style={{
+        background: C.card,
+        borderRadius: T.radius.panel,
+        border: `1px solid ${T.border.faint}`,
+        boxShadow: T.shadow.soft,
+      }}
+    >
+      <summary
+        className={`flex min-h-[52px] cursor-pointer list-none items-center gap-2.5 px-4 text-[15px] font-black ${T.cls.focus}`}
+      >
+        <span
+          aria-hidden="true"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{ background: C.primarySoft, color: C.primaryStrong }}
+        >
+          {icon}
+        </span>
+        <span className="flex-1">{summary}</span>
+        <span
+          aria-hidden="true"
+          className="text-[13px] font-black transition-transform duration-200 group-open:rotate-180"
+          style={{ color: C.inkFaint }}
+        >
+          ▾
+        </span>
+      </summary>
+      <div className="px-4 pb-4 pt-1" style={{ color: C.ink }}>
+        {children}
+      </div>
+    </details>
+  )
+}

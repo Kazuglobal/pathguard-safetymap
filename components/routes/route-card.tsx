@@ -1,13 +1,34 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Pencil, Trash2, Star, Clock, MapPin, FileText, GitCompareArrows } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Pencil,
+  Trash2,
+  Star,
+  Clock,
+  MapPin,
+  FileText,
+  GitCompareArrows,
+  Share2,
+  MoreHorizontal,
+  Map as MapIcon,
+  PencilLine,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
+import { tankenTokens } from "@/lib/design/tanken"
 import type { UserRoute } from "@/lib/types"
-import { RouteShareActions } from "@/components/routes/route-share-actions"
 
 export interface RouteCardProps {
   route: UserRoute
@@ -21,11 +42,15 @@ export interface RouteCardProps {
   showCompareToggle?: boolean
   isComparisonSelected?: boolean
   onToggleCompare?: (route: UserRoute) => void
+  /** 通学路の近くにある注意ポイント数。未取得のときは undefined。 */
+  dangerCount?: number
 }
+
+const { color, border, radius, shadow, cls } = tankenTokens
 
 function formatDistance(meters: number | null): string {
   if (meters === null) {
-    return "-"
+    return "きょりはこれから"
   }
   if (meters < 1000) {
     return `${meters}m`
@@ -35,9 +60,38 @@ function formatDistance(meters: number | null): string {
 
 function formatTime(minutes: number | null): string {
   if (minutes === null) {
-    return "-"
+    return "じかんはこれから"
   }
-  return `${minutes}分`
+  return `約${minutes}分`
+}
+
+interface MetricPillProps {
+  testId: string
+  icon: React.ReactNode
+  children: React.ReactNode
+  tone?: "ink" | "accent" | "primary"
+  muted?: boolean
+}
+
+function MetricPill({ testId, icon, children, tone = "ink", muted = false }: MetricPillProps) {
+  const toneColor =
+    tone === "accent" ? color.accentStrong : tone === "primary" ? color.primaryStrong : color.ink
+  return (
+    <span
+      data-testid={testId}
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold"
+      style={{
+        background: muted ? color.paperDeep : color.paper,
+        color: muted ? color.inkSoft : toneColor,
+        border: `1px solid ${border.faint}`,
+      }}
+    >
+      <span aria-hidden className="inline-flex" style={{ color: muted ? color.inkFaint : toneColor }}>
+        {icon}
+      </span>
+      {children}
+    </span>
+  )
 }
 
 export function RouteCard({
@@ -52,7 +106,15 @@ export function RouteCard({
   showCompareToggle = false,
   isComparisonSelected = false,
   onToggleCompare,
+  dangerCount,
 }: RouteCardProps) {
+  const hasGeometry = Boolean(route.route_geometry)
+  const distanceKnown = route.distance_meters !== null
+  const timeKnown = route.estimated_time_minutes !== null
+  const showDangerFrame = hasGeometry && typeof dangerCount === "number"
+
+  const stop = (event: React.MouseEvent) => event.stopPropagation()
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
@@ -60,29 +122,9 @@ export function RouteCard({
     }
   }
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onEdit(route)
-  }
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onDelete(route)
-  }
-
-  const handleSetPrimaryClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onSetPrimary(route)
-  }
-
-  const handleGenerateReportClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onGenerateReport?.(route)
-  }
-
-  const handleCompareToggleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onToggleCompare?.(route)
+  const runAction = (event: React.MouseEvent, action: () => void) => {
+    event.stopPropagation()
+    action()
   }
 
   return (
@@ -91,128 +133,220 @@ export function RouteCard({
       role="article"
       tabIndex={0}
       className={cn(
-        "cursor-pointer transition-all duration-200 hover:shadow-md",
-        isSelected && "selected ring-2 ring-primary border-primary"
+        "cursor-pointer border transition-shadow duration-200 hover:shadow-lg",
+        cls.focus,
+        isSelected && "selected"
       )}
+      style={{
+        background: color.card,
+        borderColor: isSelected ? color.primary : border.soft,
+        borderRadius: radius.card,
+        boxShadow: isSelected ? `0 0 0 3px ${color.primarySoft}, ${shadow.card}` : shadow.card,
+      }}
       onClick={() => onClick(route)}
       onKeyDown={handleKeyDown}
     >
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex-1 min-w-0">
+      <div className="flex flex-col gap-3 p-4">
+        {/* 見出し: 通学路名を主役に、対象の子どもとお気に入りを添える */}
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
             <div className="mb-1 flex flex-wrap items-center gap-2">
-              <h3
-                data-testid="route-name"
-                className="min-w-0 flex-1 text-base font-semibold"
-              >
-                {route.name}
-              </h3>
-              <Badge
+              <span
                 data-testid="route-child-badge"
-                variant="outline"
-                className="shrink-0"
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black"
+                style={{ background: color.primarySoft, color: color.primaryStrong }}
               >
-                {route.child_name?.trim() || "共通"}
-              </Badge>
+                {route.child_name?.trim() || "みんなの通学路"}
+              </span>
               {route.is_favorite && (
-                <Badge
+                <span
                   data-testid="primary-badge"
-                  variant="default"
-                  className="shrink-0"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black"
+                  style={{ background: color.sunSoft, color: color.sunDeep }}
                 >
-                  <Star className="w-3 h-3 mr-1" />
-                  お気に入り
-                </Badge>
+                  <Star className="h-3 w-3" aria-hidden />
+                  よく使う道
+                </span>
               )}
             </div>
-
-            <p
-              data-testid="route-description"
-              className="text-sm text-muted-foreground truncate mb-2"
+            <h3
+              data-testid="route-name"
+              className="min-w-0 flex-1 text-lg font-black leading-snug"
+              style={{ color: color.ink }}
             >
-              {route.description || ""}
-            </p>
-
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span
-                data-testid="route-distance"
-                className="flex items-center gap-1"
-              >
-                <MapPin className="w-4 h-4" />
-                {formatDistance(route.distance_meters)}
-              </span>
-              <span
-                data-testid="route-time"
-                className="flex items-center gap-1"
-              >
-                <Clock className="w-4 h-4" />
-                {formatTime(route.estimated_time_minutes)}
-              </span>
-            </div>
+              {route.name}
+            </h3>
           </div>
 
-          <div className="flex items-center gap-1 self-end shrink-0 sm:self-start">
-            {showCompareToggle && onToggleCompare && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
-                data-testid="compare-route-button"
-                variant={isComparisonSelected ? "default" : "ghost"}
-                size="icon"
-                className={cn("h-8 w-8", isComparisonSelected && "bg-sky-600 hover:bg-sky-700")}
-                onClick={handleCompareToggleClick}
-                aria-label={isComparisonSelected ? "比較対象から外す" : "比較対象に追加"}
-                aria-pressed={isComparisonSelected}
-              >
-                <GitCompareArrows className="w-4 h-4" />
-              </Button>
-            )}
-            {onShare && <RouteShareActions route={route} onShare={onShare} />}
-            {!route.is_favorite && (
-              <Button
-                data-testid="set-primary-button"
+                type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
-                onClick={handleSetPrimaryClick}
-                aria-label="お気に入りに設定"
+                className={cn("h-9 w-9 shrink-0 rounded-full", cls.focus)}
+                style={{ color: color.inkSoft }}
+                onClick={stop}
+                aria-label="その他の操作"
               >
-                <Star className="w-4 h-4" />
+                <MoreHorizontal className="h-5 w-5" />
               </Button>
-            )}
-            {onGenerateReport && route.route_geometry && (
-              <Button
-                data-testid="generate-report-button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleGenerateReportClick}
-                aria-label="危険箇所レポートを生成"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[12rem]">
+              <DropdownMenuLabel>この通学路の操作</DropdownMenuLabel>
+              {!route.is_favorite && (
+                <DropdownMenuItem
+                  data-testid="set-primary-button"
+                  aria-label="よく使う道に設定"
+                  onClick={(e) => runAction(e, () => onSetPrimary(route))}
+                >
+                  <Star className="h-4 w-4" aria-hidden />
+                  よく使う道にする
+                </DropdownMenuItem>
+              )}
+              {onGenerateReport && hasGeometry && (
+                <DropdownMenuItem
+                  data-testid="generate-report-button"
+                  aria-label="危険箇所レポートを作成"
+                  onClick={(e) => runAction(e, () => onGenerateReport(route))}
+                >
+                  <FileText className="h-4 w-4" aria-hidden />
+                  きけんレポートをつくる
+                </DropdownMenuItem>
+              )}
+              {onShare && (
+                <DropdownMenuItem
+                  data-testid="share-route-button"
+                  aria-label="家族に共有"
+                  onClick={(e) => runAction(e, () => onShare(route))}
+                >
+                  <Share2 className="h-4 w-4" aria-hidden />
+                  家族に共有する
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                data-testid="edit-route-button"
+                aria-label="ルートを編集"
+                onClick={(e) => runAction(e, () => onEdit(route))}
               >
-                <FileText className="w-4 h-4" />
-              </Button>
-            )}
-            <Button
-              data-testid="edit-route-button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleEditClick}
-              aria-label="ルートを編集"
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
-            <Button
-              data-testid="delete-route-button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-              onClick={handleDeleteClick}
-              aria-label="ルートを削除"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+                <Pencil className="h-4 w-4" aria-hidden />
+                なまえ・メモを編集
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="delete-route-button"
+                aria-label="ルートを削除"
+                onClick={(e) => runAction(e, () => onDelete(route))}
+                style={{ color: color.danger }}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                削除する
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </CardContent>
+
+        {route.description ? (
+          <p
+            data-testid="route-description"
+            className="truncate text-sm"
+            style={{ color: color.inkSoft }}
+          >
+            {route.description}
+          </p>
+        ) : (
+          <p data-testid="route-description" className="sr-only" />
+        )}
+
+        {/* みちのり: ダッシュではなく読める言葉で */}
+        <div className="flex flex-wrap items-center gap-2">
+          <MetricPill
+            testId="route-time"
+            icon={<Clock className="h-4 w-4" />}
+            tone="primary"
+            muted={!timeKnown}
+          >
+            {formatTime(route.estimated_time_minutes)}
+          </MetricPill>
+          <MetricPill
+            testId="route-distance"
+            icon={<MapPin className="h-4 w-4" />}
+            muted={!distanceKnown}
+          >
+            {formatDistance(route.distance_meters)}
+          </MetricPill>
+          {showDangerFrame && (
+            <MetricPill
+              testId="route-danger-count"
+              icon={
+                dangerCount && dangerCount > 0 ? (
+                  <TriangleAlert className="h-4 w-4" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4" />
+                )
+              }
+              tone={dangerCount && dangerCount > 0 ? "accent" : "primary"}
+            >
+              {dangerCount && dangerCount > 0 ? `注意ポイント ${dangerCount}か所` : "注意ポイントなし"}
+            </MetricPill>
+          )}
+        </div>
+
+        {/* 主要操作は明示ボタンで。比較は控えめなチップに */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button
+            type="button"
+            className={cn("chunky-press h-10 rounded-full px-4 font-black text-white", cls.focus)}
+            style={{
+              background: color.primary,
+              boxShadow: shadow.pressGreen,
+            }}
+            onClick={(e) => runAction(e, () => onClick(route))}
+          >
+            {hasGeometry ? (
+              <>
+                <MapIcon className="h-4 w-4" aria-hidden />
+                地図で見る
+              </>
+            ) : (
+              <>
+                <PencilLine className="h-4 w-4" aria-hidden />
+                ルートをかいてみる
+              </>
+            )}
+          </Button>
+
+          {showCompareToggle && onToggleCompare && (
+            <Button
+              data-testid="compare-route-button"
+              type="button"
+              variant="ghost"
+              className={cn("chunky-press h-10 rounded-full border-2 px-3 font-black", cls.focus)}
+              style={
+                isComparisonSelected
+                  ? {
+                      background: color.sky,
+                      borderColor: color.sky,
+                      color: "#ffffff",
+                      boxShadow: shadow.pressPaper,
+                    }
+                  : {
+                      background: color.card,
+                      borderColor: border.soft,
+                      color: color.inkSoft,
+                      boxShadow: shadow.pressPaper,
+                    }
+              }
+              onClick={(e) => runAction(e, () => onToggleCompare(route))}
+              aria-label={isComparisonSelected ? "比較対象から外す" : "比較対象に追加"}
+              aria-pressed={isComparisonSelected}
+            >
+              <GitCompareArrows className="h-4 w-4" aria-hidden />
+              くらべる
+            </Button>
+          )}
+        </div>
+      </div>
     </Card>
   )
 }
