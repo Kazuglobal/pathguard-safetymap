@@ -440,9 +440,14 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const { counts: routeDangerCounts } = useRouteDangerCounts(filteredRoutes)
 
   useEffect(() => {
-    setComparisonRouteIds((prev) =>
-      prev.filter((routeId) => filteredRoutes.some((route) => route.id === routeId))
-    )
+    // Bail out and return the same array when nothing was actually removed - .filter()
+    // always allocates a new array even for a no-op, and returning a new-but-equal
+    // reference here would make React think state changed on every render, re-firing
+    // this effect (via the filteredRoutes dep) forever if routes is ever non-memoized.
+    setComparisonRouteIds((prev) => {
+      const next = prev.filter((routeId) => filteredRoutes.some((route) => route.id === routeId))
+      return next.length === prev.length ? prev : next
+    })
     setSelectedRouteId((prev) =>
       prev && !filteredRoutes.some((route) => route.id === prev) ? null : prev
     )

@@ -21,9 +21,17 @@ import {
 } from '../fixtures/routes'
 
 // Mock useUserRoutes hook
+//
+// IMPORTANT: `routes` must stay referentially stable across calls. RouteManager's
+// `filteredRoutes` useMemo depends on it, and a downstream effect calls
+// `setComparisonRouteIds(prev => prev.filter(...))`, which always returns a *new*
+// array even when nothing was removed. A fresh `routes: []` literal on every call
+// (as a factory like `vi.fn(() => ({...}))` produces) makes that effect re-fire on
+// every render forever, hanging the test in an infinite re-render loop until the
+// process OOMs. Reuse the shared `mockEmptyRoutes` reference instead of `[]`.
 vi.mock('@/hooks/use-user-routes', () => ({
   useUserRoutes: vi.fn(() => ({
-    routes: [],
+    routes: mockEmptyRoutes,
     primaryRoute: null,
     isLoading: false,
     error: null,
@@ -670,8 +678,12 @@ describe('RouteManager Component', () => {
         return false
       })
       const { useUserRoutes } = await import('@/hooks/use-user-routes')
+      // `error: hookError` must stay dynamic (it's mutated after addRoute rejects),
+      // so this needs mockImplementation rather than mockReturnValue - but `routes`
+      // must still be the shared stable reference, not a fresh `[]` per call. See
+      // the note on the default useUserRoutes mock above for why that matters.
       vi.mocked(useUserRoutes).mockImplementation(() => ({
-        routes: [],
+        routes: mockEmptyRoutes,
         primaryRoute: null,
         isLoading: false,
         error: hookError,
