@@ -90,10 +90,13 @@ describe('usePushSubscription', () => {
     })
 
     expect(result.current.state).toBe('subscribed')
+    // 保存済みの値を反映しつつ、後から追加されたキーはデフォルト(true)で補完される
     expect(result.current.preferences).toEqual({
       danger_reports: false,
       news: true,
       magazine: false,
+      local_alerts: true,
+      daily_digest: true,
     })
   })
 
@@ -135,6 +138,8 @@ describe('usePushSubscription', () => {
       danger_reports: true,
       news: true,
       magazine: true,
+      local_alerts: true,
+      daily_digest: true,
     })
   })
 })

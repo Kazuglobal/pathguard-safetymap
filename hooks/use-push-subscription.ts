@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { NotificationPreferences } from '@/lib/notifications/builders'
+import { getStoredRegion } from '@/lib/user-region'
 
 /**
  * Base64URL → Uint8Array 変換 (VAPID公開鍵用)
@@ -33,6 +34,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   news: true,
   magazine: true,
   local_alerts: true,
+  daily_digest: true,
 }
 
 async function fetchSavedPreferences(endpoint: string): Promise<NotificationPreferences | null> {
@@ -84,7 +86,8 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         if (sub) {
           const savedPreferences = await fetchSavedPreferences(sub.endpoint)
           if (savedPreferences) {
-            setPreferences(savedPreferences)
+            // 後から追加されたキー（daily_digest等）を持たない既存行はデフォルトで補完する
+            setPreferences({ ...DEFAULT_PREFERENCES, ...savedPreferences })
           }
           setSubscription(sub)
           setState('subscribed')
@@ -138,6 +141,7 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
           p256dh: keys.p256dh,
           auth: keys.auth,
           preferences,
+          prefecture: getStoredRegion(),
         }),
       })
 
@@ -193,6 +197,8 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
           body: JSON.stringify({
             endpoint: subscription.endpoint,
             preferences: newPrefs,
+            // 設定更新のタイミングで通知の地域出し分け先も同期する
+            prefecture: getStoredRegion(),
           }),
         })
 

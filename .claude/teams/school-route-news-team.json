@@ -1,7 +1,19 @@
 {
   "team_name": "通学路の安全ニュースチーム",
-  "description": "全国で起きた通学路関連のリアルタイムニュースを取得・検証・記事化・公開するチーム",
-  "version": "2.0.0",
+  "description": "全国の通学路関連ニュースを取得・検証・記事化し、保護者の毎朝のチェック習慣を支えるチーム。速報・日次・客観的。恐怖ではなく「確認して安心」を報酬に設計する。",
+  "version": "3.0.0",
+  "editorial_principles": {
+    "mission": "保護者が毎朝1分で「今日の見守りに必要なこと」を確認し、安心して1日を始められる状態を作る",
+    "daily_habit_rules": [
+      "トリガーの固定: 毎朝7:00までに更新完了、7:30のダイジェスト通知に間に合わせる",
+      "完了感の保証: 1日の新規公開は最大5本。読み切れる有限のフィードを維持する",
+      "自分ごと化: location.prefecture は47都道府県の正式名称または「全国」に正規化する。地域絞込を壊す記事は公開しない",
+      "恐怖で終わらせない: accident/suspicious 記事は actionAdvice（そなえの一言）必須。恐怖だけ残す記事は公開禁止",
+      "事実のみ: 複数ソースまたは公式発表で確認できた情報のみ記事化。誤報・デマ・未確認情報の記事化は禁止",
+      "個人特定情報の禁止: 被害児童の学年・氏名・学校名・詳細な自宅位置は記載しない。場所は市区町村＋町名まで",
+      "防犯情報の完全性: 不審者の身体的特徴・服装・手口など防犯上必要な情報は削らない。そなえの一言との併記で両立させる"
+    ]
+  },
   "agents": [
     {
       "id": "news-fetcher",
@@ -12,7 +24,8 @@
         "通学路事故・事件のニュース検索",
         "都道府県別のローカルニュース収集",
         "警察・自治体の発表情報取得",
-        "SNSでの関連情報モニタリング",
+        "発生地域（都道府県・市区町村）の正確な特定と正規化",
+        "infrastructure/policy/community の前向きニュースを毎日最低1本探索する",
         "ニュースソースの優先度付け"
       ],
       "tools": ["WebSearch", "WebFetch", "Read", "Write"],
@@ -20,9 +33,11 @@
         "通学路 事故 速報",
         "スクールゾーン 交通事故",
         "登下校 児童 事故",
-        "通学中 小学生",
-        "横断歩道 児童",
-        "見守り活動 不審者"
+        "通学路 不審者",
+        "児童 声かけ事案",
+        "通学路 ガードレール 設置",
+        "通学路 安全対策 自治体",
+        "見守りボランティア スクールガード"
       ],
       "output_format": {
         "type": "news_items",
@@ -35,14 +50,15 @@
       "role": "情報検証担当",
       "description": "収集したニュースの正確性と信頼性を検証する",
       "responsibilities": [
-        "ソースの信頼性評価",
+        "ソースの信頼性評価（警察・自治体公式 > 防犯メールアーカイブ > 大手メディア）",
         "複数ソースによるクロスチェック",
         "日時・場所・詳細の正確性確認",
         "誤報・デマの除外",
-        "公式発表との照合"
+        "個人特定情報（児童の学年・氏名・学校名・詳細な自宅位置）の混入チェック",
+        "週次傾向記事の集計数値の検算"
       ],
       "tools": ["WebSearch", "WebFetch", "Read"],
-      "input_from": ["news-fetcher"],
+      "input_from": ["news-fetcher", "trend-analyst"],
       "output_format": {
         "type": "verified_news",
         "fields": ["original_item", "verification_status", "confidence_score", "verified_sources", "notes"]
@@ -52,24 +68,28 @@
       "id": "news-writer",
       "name": "ニュースライター",
       "role": "記事執筆担当",
-      "description": "検証済みニュースを読みやすい記事に編集する",
+      "description": "検証済みニュースを、防犯情報の完全性と「そなえの一言」を両立した記事に編集する",
       "responsibilities": [
         "客観的で正確な記事執筆",
-        "保護者・教育関係者向けの分かりやすい表現",
-        "重要ポイントの抽出",
-        "関連情報・対策のアドバイス追加",
-        "適切な見出し・要約の作成"
+        "不審者の特徴・手口など防犯上必要な情報の完全な記載",
+        "accident/suspicious 記事への actionAdvice（そなえの一言）の必須付与",
+        "keyPoints を「①最重要ファクト ②そなえの一言」の順で作成",
+        "本文の末尾を必ず行動提案または前向きな情報で締める",
+        "location の正規化（prefecture=正式名称、city=市区町村、area=町名・区名）"
       ],
       "tools": ["Write", "Edit", "Read"],
       "input_from": ["fact-checker"],
       "output_format": {
         "type": "news_article",
-        "fields": ["title", "excerpt", "content", "key_points", "location", "category", "tags", "sources"]
+        "fields": ["title", "excerpt", "content", "key_points", "action_advice", "location", "category", "tags", "sources", "news_type"]
       },
       "constraints": {
         "max_title_length": 50,
         "max_excerpt_length": 150,
-        "tone": "客観的・冷静・保護者目線"
+        "action_advice_length": "30〜60字・1行・具体的な動作（「気をつけましょう」禁止）",
+        "action_advice_required_for": ["accident", "suspicious"],
+        "no_fear_ending": true,
+        "tone": "客観的・冷静・保護者を責めない・煽らない"
       }
     },
     {
@@ -99,24 +119,76 @@
       "id": "image-generator",
       "name": "画像ジェネレーター",
       "role": "画像生成担当",
-      "description": "ニュース記事用のサムネイルと図解を生成する",
+      "description": "ニュース記事用のサムネイルを記事ごとに新規生成する",
       "responsibilities": [
-        "ニュース内容に適したサムネイル画像生成",
-        "地図・位置情報の可視化",
-        "事故状況の図解（抽象的表現）",
-        "安全対策のインフォグラフィック",
-        "日本向けデザインの適用"
+        "ニュース内容に適したサムネイル画像の新規生成（既存画像の使い回し禁止）",
+        "事故状況の図解（抽象的表現のみ）",
+        "カテゴリカラーに合わせたトーン設計",
+        "日本向けデザインの適用（黄色い帽子・ランドセル・横断歩道・見守り）"
       ],
       "tools": ["Bash", "Write", "Read"],
       "input_from": ["news-writer"],
       "output_format": {
         "type": "generated_images",
-        "fields": ["thumbnail_path", "content_images", "alt_texts"]
+        "fields": ["thumbnail_path", "alt_texts"]
       },
       "constraints": {
         "style": "日本向けイラスト",
         "no_realistic_accident_scenes": true,
-        "focus_on_safety_awareness": true
+        "no_suspicious_person_depiction": true,
+        "no_thumbnail_reuse": true,
+        "output_path": "public/images/school-route-news/thumbnails/{slug}.png"
+      }
+    },
+    {
+      "id": "trend-analyst",
+      "name": "週次傾向アナリスト",
+      "role": "週次ロールアップ担当（毎週月曜のみ）",
+      "description": "Supabase local_safety_alerts と NEWS_ITEMS の直近7日分を集計し、「今週、全国で何が起きたか」の傾向記事を作成する",
+      "responsibilities": [
+        "local_safety_alerts 直近7日分のカテゴリ別件数・都道府県分布・時間帯分布の集計",
+        "NEWS_ITEMS 直近7日分のカテゴリ内訳集計と前週比の算出",
+        "毎週同じ骨格での傾向記事執筆（総件数と内訳 → 目立った傾向1つ → 今週のそなえ1つ → 地域フィルターへの導線）",
+        "newsType: weekly_trend、tags「週次傾向」、category は当該週の支配的カテゴリを設定",
+        "母数と収集範囲の限界の明記（過剰一般化の禁止）"
+      ],
+      "tools": ["Bash", "Read", "Write"],
+      "input_from": [],
+      "output_format": {
+        "type": "weekly_trend_article",
+        "fields": ["title", "excerpt", "content", "key_points", "action_advice", "category", "tags", "aggregation_data"]
+      },
+      "constraints": {
+        "schedule": "monday_only",
+        "max_highlighted_trends": 1,
+        "must_state_data_scope": true,
+        "no_overgeneralization": "小さい母数で「全国的に急増」等と書かない"
+      }
+    },
+    {
+      "id": "regional-coverage-auditor",
+      "name": "地域カバレッジ監査担当",
+      "role": "公開前監査・地域パーソナライズ品質担当",
+      "description": "地域絞込・ダイジェスト・Push通知が正しく機能するためのデータ品質を公開前に保証し、Layer 2クラスタのLayer 1昇格候補を検知する",
+      "responsibilities": [
+        "location.prefecture が47都道府県の正式名称または「全国」であることの検証",
+        "accident/suspicious 記事の actionAdvice 存在チェック",
+        "本文が恐怖・不安の記述で終わっていないことの確認",
+        "個人特定情報の最終チェック",
+        "thumbnailUrl の実在確認と他記事画像の流用検知",
+        "slug/id の一意性、1日5本以内の確認",
+        "local_safety_alerts で同一都道府県・同一カテゴリが7日間に3件以上のクラスタを検知し、地域傾向記事の候補として報告",
+        "lib/landing-news-preview.ts が NEWS_ITEMS からの自動導出のままであることの確認（手動配列の復活を検知したら差し戻し）"
+      ],
+      "tools": ["Read", "Grep", "Bash"],
+      "input_from": ["seo-optimizer", "image-generator"],
+      "output_format": {
+        "type": "audit_report",
+        "fields": ["passed", "violations", "cluster_candidates", "rejected_items"]
+      },
+      "constraints": {
+        "gate": true,
+        "note": "1項目でも不合格なら公開せず該当エージェントへ差し戻す"
       }
     },
     {
@@ -130,6 +202,7 @@
         "文部科学省 学校安全ポータルの確認",
         "Supabase local_safety_alerts テーブルへのINSERT（重複はON CONFLICT DO NOTHING）",
         "発生日時の正規化（ISO8601 UTC形式への変換）",
+        "prefecture/city の正式名称への正規化（Layer 1と同一の地域整合性ルール）",
         "カテゴリ分類（suspicious / voice_call / following / other）"
       ],
       "tools": ["WebSearch", "WebFetch", "Bash"],
@@ -152,93 +225,102 @@
       },
       "schedule": "every_2_hours",
       "independent_from_daily_workflow": true,
-      "note": "Layer 2 エージェント。日次ワークフローとは独立して2時間毎に実行する。Push通知はCron /api/cron/local-safety-alerts が自動送信する。"
+      "note": "Layer 2 エージェント。日次ワークフローとは独立して定期実行する。Push通知は Cron /api/cron/local-safety-alerts が送信するが、JST 22:00〜翌7:30 発生分は個別配信せず翌朝のダイジェスト（/api/cron/daily-news-digest）に集約される。"
     }
   ],
   "workflow": {
-    "trigger": "manual",
-    "schedule": "daily",
-    "time": "07:00",
-    "steps": [
-      {
-        "step": 1,
-        "agent": "news-fetcher",
-        "action": "fetch_news",
-        "timeout": "10m",
-        "depends_on": []
-      },
-      {
-        "step": 2,
-        "agent": "fact-checker",
-        "action": "verify_news",
-        "timeout": "5m",
-        "depends_on": [1]
-      },
-      {
-        "step": 3,
-        "agent": "news-writer",
-        "action": "write_articles",
-        "timeout": "10m",
-        "depends_on": [2]
-      },
-      {
-        "step": 4,
-        "agent": "seo-optimizer",
-        "action": "optimize_seo",
-        "timeout": "5m",
-        "depends_on": [3]
-      },
-      {
-        "step": 5,
-        "agent": "image-generator",
-        "action": "generate_images",
-        "timeout": "10m",
-        "depends_on": [3]
-      }
+    "daily": {
+      "trigger": "manual",
+      "schedule": "daily",
+      "time": "07:00",
+      "deadline_note": "7:30の朝ダイジェスト通知に間に合わせるため、7:00までに全ステップを完了させる",
+      "steps": [
+        { "step": 1, "agent": "news-fetcher", "action": "fetch_news", "timeout": "10m", "depends_on": [] },
+        { "step": 2, "agent": "fact-checker", "action": "verify_news", "timeout": "5m", "depends_on": [1] },
+        { "step": 3, "agent": "news-writer", "action": "write_articles", "timeout": "10m", "depends_on": [2] },
+        { "step": 4, "agent": "seo-optimizer", "action": "optimize_seo", "timeout": "5m", "depends_on": [3] },
+        { "step": 5, "agent": "image-generator", "action": "generate_images", "timeout": "10m", "depends_on": [3] },
+        { "step": 6, "agent": "regional-coverage-auditor", "action": "pre_publish_audit", "timeout": "5m", "depends_on": [4, 5] }
+      ]
+    },
+    "weekly": {
+      "trigger": "manual",
+      "schedule": "monday",
+      "time": "06:30",
+      "steps": [
+        { "step": 1, "agent": "trend-analyst", "action": "aggregate_and_write_weekly_trend", "timeout": "15m", "depends_on": [] },
+        { "step": 2, "agent": "fact-checker", "action": "verify_aggregation", "timeout": "5m", "depends_on": [1] },
+        { "step": 3, "agent": "image-generator", "action": "generate_images", "timeout": "10m", "depends_on": [1] },
+        { "step": 4, "agent": "regional-coverage-auditor", "action": "pre_publish_audit", "timeout": "5m", "depends_on": [2, 3] }
+      ]
+    }
+  },
+  "push_strategy": {
+    "daily_digest": {
+      "cron_route": "/api/cron/daily-news-digest",
+      "cron_schedule_utc": "30 22 * * *",
+      "local_time": "07:30 JST",
+      "preference_key": "daily_digest",
+      "max_per_day": 1,
+      "payload_style": "おはようございます。昨日から今朝までに全国でX件の通学路情報。1分でチェック",
+      "zero_day_behavior": "0件の日も安心文面で送る（ユーザー設定でオプトアウト可能）",
+      "dedup_rule": "送信時に夜間（JST 22:00〜7:30）発生の未通知 local_safety_alerts の push_notified_at をダイジェスト送信時刻で埋め、Layer 2の二重通知を防ぐ"
+    },
+    "local_alerts": {
+      "cron_route": "/api/cron/local-safety-alerts",
+      "cron_schedule_utc": "0 */2 * * *",
+      "preference_key": "local_alerts",
+      "target_categories": ["suspicious", "voice_call"],
+      "quiet_hours_jst": "22:00-07:30",
+      "quiet_hours_behavior": "個別配信せず翌朝のダイジェストへ集約",
+      "burst_suppression": "同一都道府県で1サイクル3件以上の新規アラートは「{都道府県}で新しい事案N件」の1通に束ねる"
+    },
+    "principle": "通知は構造上、朝のダイジェスト1通＋日中の緊急個別速報のみ。daily_digest と local_alerts は独立にオプトアウト可能"
+  },
+  "action_phrase_library": {
+    "description": "「そなえの一言」の語彙集。Layer 2アラートのUI表示にはコード側の lib/local-alert-action-phrases.ts を使用し、本ライブラリは記事執筆時の参照用。事案の手口に対応した行動を最優先し、汎用句への逃げを避ける",
+    "suspicious": [
+      "「つ・み・き・お・に」を夕食のときに一緒に復唱する",
+      "防犯ブザーが鳴るか・電池が残っているかを今夜いっしょに確認する",
+      "通学路の「こども110番の家」の場所を子どもと1つ確認する"
+    ],
+    "voice_call": [
+      "「知らない人に誘われたら、その場で大声・すぐ逃げる」を帰宅後に再確認する",
+      "「名前・学校を聞かれても答えなくていい」と伝える"
+    ],
+    "following": [
+      "下校で1人になる区間を子どもと確認し、できるだけ2人以上で歩ける待ち合わせを決める",
+      "「後ろが気になったらお店や110番の家に入っていい」と伝える"
+    ],
+    "accident": [
+      "横断歩道の手前で止まって左右を見る練習を、明日の登校で1回いっしょにやる",
+      "薄暗い時間帯の下校がある日は、反射材やライトの点灯を今夜確認する"
+    ],
+    "general": [
+      "アプリのマップで通学路の危険箇所を1分だけ見直す"
     ]
   },
   "categories": [
-    {
-      "id": "accident",
-      "name": "交通事故",
-      "color": "#EF4444",
-      "icon": "AlertTriangle",
-      "keywords": ["事故", "衝突", "はねられ", "巻き込まれ"]
-    },
-    {
-      "id": "suspicious",
-      "name": "不審者情報",
-      "color": "#F97316",
-      "icon": "AlertCircle",
-      "keywords": ["不審者", "声かけ", "つきまとい", "写真撮影"]
-    },
-    {
-      "id": "infrastructure",
-      "name": "インフラ整備",
-      "color": "#3B82F6",
-      "icon": "Construction",
-      "keywords": ["整備", "設置", "改良", "工事"]
-    },
-    {
-      "id": "policy",
-      "name": "施策・対策",
-      "color": "#8B5CF6",
-      "icon": "FileText",
-      "keywords": ["施策", "対策", "計画", "予算"]
-    },
-    {
-      "id": "community",
-      "name": "地域活動",
-      "color": "#22C55E",
-      "icon": "Users",
-      "keywords": ["見守り", "ボランティア", "パトロール", "活動"]
-    }
+    { "id": "accident", "name": "交通事故", "color": "#EF4444", "icon": "AlertTriangle", "keywords": ["事故", "衝突", "はねられ", "巻き込まれ"] },
+    { "id": "suspicious", "name": "不審者情報", "color": "#F97316", "icon": "AlertCircle", "keywords": ["不審者", "声かけ", "つきまとい", "写真撮影"] },
+    { "id": "infrastructure", "name": "インフラ整備", "color": "#3B82F6", "icon": "Construction", "keywords": ["整備", "設置", "改良", "工事"] },
+    { "id": "policy", "name": "施策・対策", "color": "#8B5CF6", "icon": "FileText", "keywords": ["施策", "対策", "計画", "予算"] },
+    { "id": "community", "name": "地域活動", "color": "#22C55E", "icon": "Users", "keywords": ["見守り", "ボランティア", "パトロール", "活動"] }
   ],
+  "news_types": {
+    "note": "category とは独立した optional 判別子。既存の category union は変更しない",
+    "values": [
+      { "id": "daily", "name": "日次ニュース", "default": true },
+      { "id": "weekly_trend", "name": "週次傾向", "schedule": "monday", "tags_required": ["週次傾向"], "ui_behavior": "フィードの「今週の傾向」枠に最新1件をピン留め" }
+    ]
+  },
   "output_directory": "content/school-route-news",
   "metadata": {
     "language": "ja",
     "target_regions": ["全国", "都道府県別"],
-    "update_frequency": "daily",
-    "retention_days": 90
+    "update_frequency": "daily + weekly_trend(monday)",
+    "retention_days": 90,
+    "daily_publish_cap": 5,
+    "data_single_source": "lib/school-route-news.ts の NEWS_ITEMS（lib/landing-news-preview.ts は自動導出・手動配列禁止）"
   }
 }

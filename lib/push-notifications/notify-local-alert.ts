@@ -14,12 +14,27 @@ const db = () => getSupabaseAdmin() as any
 
 import { broadcastPush } from '@/lib/web-push'
 import {
+  buildLocalAlertBatchPushPayload,
   buildLocalAlertPushPayload,
   type LocalAlertCategory,
 } from '@/lib/notifications/builders'
 
 /** プッシュ通知を送る対象カテゴリ */
 const PUSH_TARGET_CATEGORIES: LocalAlertCategory[] = ['suspicious', 'voice_call']
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+/**
+ * 静音時間帯（JST 22:00〜翌7:30）かどうかを判定する。
+ * この時間帯の個別Pushは行わず、翌朝のダイジェスト通知に集約する。
+ */
+export function isWithinQuietHoursJst(now: Date = new Date()): boolean {
+  const jst = new Date(now.getTime() + JST_OFFSET_MS)
+  const hour = jst.getUTCHours()
+  const minute = jst.getUTCMinutes()
+  if (hour >= 22 || hour < 7) return true
+  return hour === 7 && minute < 30
+}
 
 export interface LocalAlertForNotification {
   id: string
@@ -111,5 +126,18 @@ export async function notifyUsersForLocalAlert(
     description: alert.description,
   })
 
+  return broadcastPush(payload, 'local_alerts')
+}
+
+/**
+ * 同一都道府県でアラートが集中した際のまとめ通知（バースト抑制）。
+ * 返り値は送信成功件数。
+ */
+export async function notifyUsersForLocalAlertBatch(params: {
+  prefecture: string
+  count: number
+  latestAlertId: string
+}): Promise<number> {
+  const payload = buildLocalAlertBatchPushPayload(params)
   return broadcastPush(payload, 'local_alerts')
 }

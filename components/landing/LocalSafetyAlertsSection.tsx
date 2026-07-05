@@ -1,13 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, MapPin, Clock, ExternalLink, Leaf } from "lucide-react"
+import { AlertCircle, MapPin, Clock, ExternalLink, Leaf, Sparkles } from "lucide-react"
 import {
   useLocalSafetyAlerts,
   formatRelativeTime,
   isBreakingAlert,
   type LocalAlertCategory,
 } from "@/hooks/use-local-safety-alerts"
+import { getActionPhraseForAlert } from "@/lib/local-alert-action-phrases"
+import {
+  NATIONWIDE,
+  getRegionChipOptions,
+  getStoredRegion,
+  setStoredRegion,
+} from "@/lib/user-region"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -21,31 +28,21 @@ const CATEGORY_CONFIG: Record<LocalAlertCategory, { label: string; color: string
   other:      { label: "その他",     color: "#847661" },
 }
 
-const PREFECTURE_OPTIONS = [
-  "全国", "北海道", "宮城県", "東京都", "神奈川県",
-  "埼玉県", "千葉県", "愛知県", "大阪府", "兵庫県", "福岡県",
-]
-
-const PREFECTURE_STORAGE_KEY = "pathguardian:selected_prefecture"
-
 // --- コンポーネント ---
 
 export function LocalSafetyAlertsSection() {
-  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string>("全国")
+  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string>(NATIONWIDE)
   const [mounted, setMounted] = React.useState(false)
 
   // localStorage から都道府県を復元（SSR 対策で useEffect 内で実施）
   React.useEffect(() => {
     setMounted(true)
-    const stored = localStorage.getItem(PREFECTURE_STORAGE_KEY)
-    if (stored && PREFECTURE_OPTIONS.includes(stored)) {
-      setSelectedPrefecture(stored)
-    }
+    setSelectedPrefecture(getStoredRegion())
   }, [])
 
   const handlePrefectureChange = React.useCallback((pref: string) => {
     setSelectedPrefecture(pref)
-    localStorage.setItem(PREFECTURE_STORAGE_KEY, pref)
+    setStoredRegion(pref)
   }, [])
 
   const { alerts, isLoading, error } = useLocalSafetyAlerts({
@@ -53,7 +50,7 @@ export function LocalSafetyAlertsSection() {
     limitHours: 24,
   })
 
-  const areaLabel = selectedPrefecture === "全国" ? "全国" : selectedPrefecture
+  const areaLabel = selectedPrefecture === NATIONWIDE ? "全国" : selectedPrefecture
 
   return (
     <section className="py-6 md:py-10" style={{ background: C.accentSoft }}>
@@ -88,7 +85,7 @@ export function LocalSafetyAlertsSection() {
               <span className="flex-shrink-0 text-xs font-bold" style={{ color: C.inkSoft }}>
                 地域:
               </span>
-              {PREFECTURE_OPTIONS.map((pref) => {
+              {getRegionChipOptions(selectedPrefecture).map((pref) => {
                 const active = selectedPrefecture === pref
                 return (
                   <button
@@ -209,6 +206,18 @@ export function LocalSafetyAlertsSection() {
 
                       <p className="line-clamp-3 text-sm leading-snug" style={{ color: C.ink }}>
                         {alert.description}
+                      </p>
+
+                      {/* そなえの一言（恐怖で終わらせない原則） */}
+                      <p
+                        className="mt-1.5 flex items-start gap-1 rounded-[10px] px-2 py-1.5 text-xs leading-snug"
+                        style={{ background: C.primarySoft, color: C.primaryStrong }}
+                      >
+                        <Sparkles className="mt-0.5 h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                        <span>
+                          <span className="font-bold">そなえ: </span>
+                          {getActionPhraseForAlert(alert.id, alert.category)}
+                        </span>
                       </p>
 
                       <div className="mt-1 flex items-center justify-between">
