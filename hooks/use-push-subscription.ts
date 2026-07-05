@@ -59,6 +59,40 @@ async function fetchSavedPreferences(endpoint: string): Promise<NotificationPref
   }
 }
 
+async function getExistingPushSubscription(): Promise<PushSubscription | null> {
+  if (typeof window === 'undefined') return null
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null
+
+  const registration = await navigator.serviceWorker.getRegistration()
+  return (await registration?.pushManager.getSubscription()) ?? null
+}
+
+export async function syncPushSubscriptionRegion(prefecture: string): Promise<void> {
+  try {
+    const sub = await getExistingPushSubscription()
+    if (!sub) return
+
+    const savedPreferences = await fetchSavedPreferences(sub.endpoint)
+    const preferences = { ...DEFAULT_PREFERENCES, ...(savedPreferences ?? {}) }
+
+    const res = await fetch('/api/push/subscribe', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        preferences,
+        prefecture,
+      }),
+    })
+
+    if (!res.ok) {
+      console.error('[push] sync region API error', res.status)
+    }
+  } catch (err) {
+    console.error('[push] sync region error', err)
+  }
+}
+
 export function usePushSubscription(): UsePushSubscriptionReturn {
   const [state, setState] = useState<PushSubscriptionState>('loading')
   const [subscription, setSubscription] = useState<PushSubscription | null>(null)

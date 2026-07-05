@@ -114,7 +114,11 @@ export async function fetchAllPushSubscriptions(): Promise<PushSubscriptionRow[]
       .select('*')
       .range(offset, offset + PAGE_SIZE - 1)
 
-    if (error || !subs || subs.length === 0) break
+    if (error) {
+      console.error('[web-push] Failed to fetch push subscriptions', error)
+      throw error
+    }
+    if (!subs || subs.length === 0) break
 
     all.push(...(subs as PushSubscriptionRow[]))
 

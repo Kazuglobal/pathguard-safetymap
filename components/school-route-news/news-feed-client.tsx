@@ -42,6 +42,7 @@ import {
   getStoredRegion,
   setStoredRegion,
 } from "@/lib/user-region"
+import { syncPushSubscriptionRegion } from "@/hooks/use-push-subscription"
 import { NewsItemCard, CATEGORY_ICONS } from "./news-item-card"
 
 const ALERT_CATEGORY_LABELS: Record<LocalAlertCategory, string> = {
@@ -85,6 +86,7 @@ export function NewsFeedClient({ items }: NewsFeedClientProps) {
   const handlePrefectureChange = React.useCallback((pref: string) => {
     setSelectedPrefecture(pref)
     setStoredRegion(pref)
+    void syncPushSubscriptionRegion(pref)
   }, [])
 
   const { alerts } = useLocalSafetyAlerts({

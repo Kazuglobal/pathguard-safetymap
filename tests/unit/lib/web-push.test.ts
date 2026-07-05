@@ -125,3 +125,25 @@ describe('sendPushToUser', () => {
     expect(webpush.sendNotification).not.toHaveBeenCalled()
   })
 })
+
+describe('fetchAllPushSubscriptions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'test-public-key'
+    process.env.VAPID_PRIVATE_KEY = 'test-private-key'
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key'
+  })
+
+  it('サブスクリプション取得に失敗した場合はエラーを呼び出し元へ伝播する', async () => {
+    const dbError = new Error('db down')
+    const mockRange = vi.fn().mockResolvedValue({ data: null, error: dbError })
+    const mockSelect = vi.fn().mockReturnValue({ range: mockRange })
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect })
+    vi.mocked(getSupabaseAdmin).mockReturnValue({ from: mockFrom } as any)
+
+    const { fetchAllPushSubscriptions } = await import('@/lib/web-push')
+
+    await expect(fetchAllPushSubscriptions()).rejects.toBe(dbError)
+  })
+})

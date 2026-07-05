@@ -15,6 +15,7 @@ import {
   getStoredRegion,
   setStoredRegion,
 } from "@/lib/user-region"
+import { syncPushSubscriptionRegion } from "@/hooks/use-push-subscription"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -43,6 +44,7 @@ export function LocalSafetyAlertsSection() {
   const handlePrefectureChange = React.useCallback((pref: string) => {
     setSelectedPrefecture(pref)
     setStoredRegion(pref)
+    void syncPushSubscriptionRegion(pref)
   }, [])
 
   const { alerts, isLoading, error } = useLocalSafetyAlerts({
