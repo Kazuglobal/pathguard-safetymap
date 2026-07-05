@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
+import { verifyOrRegenerateImages } from "@/lib/disaster-image-verification"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
@@ -53,11 +54,28 @@ export async function POST(req: NextRequest) {
     }
 
 
+    // 生成プロンプトに是正サフィックスを足して呼び直せるようにする（再生成用）。
+    const runGeneration = (correctiveSuffix?: string) =>
+      generateImageWithGeminiWithModel({
+        prompt: correctiveSuffix ? [prompt, correctiveSuffix].filter(Boolean).join("\n\n") : prompt,
+        imageBase64,
+        imageMimeType,
+        model: FORCED_IMAGE_MODEL,
+      })
+
     let routeTimeoutId: ReturnType<typeof setTimeout> | undefined
     const result = await (async () => {
       try {
         return await Promise.race([
-          generateImageWithGeminiWithModel({ prompt, imageBase64, imageMimeType, model: FORCED_IMAGE_MODEL }),
+          (async () => {
+            // 一次生成 → 生成後の機械検証。混入・匿名化漏れがあれば1回だけ是正再生成する。
+            const first = await runGeneration()
+            const verified = await verifyOrRegenerateImages({
+              images: first.images,
+              regenerate: async (correctiveSuffix) => (await runGeneration(correctiveSuffix)).images,
+            })
+            return { images: verified.images, model: first.model, warning: verified.warning }
+          })(),
           new Promise<never>((_, reject) => {
             routeTimeoutId = setTimeout(
               () => reject(new Error("画像生成がタイムアウトしました。しばらく待ってから再度お試しください。")),
@@ -81,7 +99,10 @@ export async function POST(req: NextRequest) {
         success: true,
       })
     } catch { /* fire-and-forget */ }
-    return NextResponse.json({ images: result.images })
+    return NextResponse.json({
+      images: result.images,
+      ...(result.warning ? { warning: result.warning } : {}),
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     try {
