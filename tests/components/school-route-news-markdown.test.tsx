@@ -19,7 +19,7 @@ describe("school route news markdown rendering", () => {
   it("renders GFM tables with an overflow wrapper and styled cells", async () => {
     render(
       await NewsDetailPage({
-        params: Promise.resolve({ slug: "spring-suspicious-alert-school-route-20260313" }),
+        params: Promise.resolve({ slug: "sendai-aoba-kawadaira-repeated-suspicious-20260706" }),
       })
     )
 
@@ -27,10 +27,10 @@ describe("school route news markdown rendering", () => {
     expect(table.parentElement).toHaveClass("overflow-x-auto", "mb-4")
     expect(table).toHaveClass("w-full", "border-collapse", "border", "border-gray-200", "text-sm")
 
-    const columnHeader = within(table).getByRole("columnheader", { name: "合言葉" })
+    const columnHeader = within(table).getByRole("columnheader", { name: "発生日" })
     expect(columnHeader).toHaveClass("border", "border-gray-200", "bg-gray-50")
 
-    const cell = within(table).getByRole("cell", { name: "知らない人についていかない" })
+    const cell = within(table).getByRole("cell", { name: "2人で下校途中の女子小学生ら" })
     expect(cell).toHaveClass("border", "border-gray-200", "px-4", "py-2", "text-gray-600")
   })
 })
