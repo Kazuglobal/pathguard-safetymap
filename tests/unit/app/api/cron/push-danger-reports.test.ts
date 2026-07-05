@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/supabase-admin', () => ({
@@ -28,9 +28,22 @@ function makeRequest(secret = 'test-secret') {
 }
 
 describe('GET /api/cron/push-danger-reports', () => {
+  const originalVercel = process.env.VERCEL
+
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.CRON_SECRET = 'test-secret'
+    // verifyCronSecret は Vercel 環境外では認証をスキップするため、
+    // 認証ロジックを検証するテストでは VERCEL を立てて本番相当の分岐を通す。
+    process.env.VERCEL = '1'
+  })
+
+  afterEach(() => {
+    if (originalVercel === undefined) {
+      delete process.env.VERCEL
+    } else {
+      process.env.VERCEL = originalVercel
+    }
   })
 
   it('CRON_SECRET 認証が通らない場合は401を返す', async () => {

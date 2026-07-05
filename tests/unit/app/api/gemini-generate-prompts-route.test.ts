@@ -1,3 +1,7 @@
+// @vitest-environment node
+// API ルート（runtime = "nodejs"）の multipart/form-data 解析には undici ネイティブの
+// File/Request/formData() が必要。jsdom 環境では req.formData() が例外を投げ、ルートの
+// フォールバック分岐に落ちて Sentry コンテキスト設定まで到達しないため node 環境で実行する。
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => {

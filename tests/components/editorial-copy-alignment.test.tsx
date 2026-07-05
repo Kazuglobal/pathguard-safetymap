@@ -22,7 +22,7 @@ describe("editorial copy alignment", () => {
     render(<SchoolRouteNewsSection />)
 
     expect(
-      screen.getByText("【全国】2026年9月から生活道路の法定速度を30km/hに引き下げ—通学路の安全対策が大きく前進")
+      screen.getByText("【福岡県北九州市】小倉北区泉台で女児ら「SNSにのせる」とスマホで撮影される事案—40〜50代男が原付で接近")
     ).toBeInTheDocument()
   })
 
@@ -66,14 +66,15 @@ describe("editorial copy alignment", () => {
   it("relabels breaking badges as curated highlights instead of速報", () => {
     render(<SchoolRouteNewsPage />)
 
-    expect(screen.getByText("注目")).toBeInTheDocument()
+    // 速報扱いの記事が複数あるため 注目 バッジも複数描画される。
+    expect(screen.getAllByText("注目").length).toBeGreaterThan(0)
     expect(screen.queryByText("速報")).not.toBeInTheDocument()
   })
 
   it("keeps the curated highlight label on the school route news detail page", async () => {
     render(
       await NewsDetailPage({
-        params: Promise.resolve({ slug: "fukuoka-asakura-bicycle-accident-20260119" }),
+        params: Promise.resolve({ slug: "kitakyushu-kokurakita-izumidai-suspicious-sns-20260420" }),
       })
     )
 
