@@ -7,8 +7,9 @@
 // - 不確実・高リスクは needs_review に回し、自動公開しない。
 // - 写真添付は本モジュールでは内容を検証できないため、安全側に needs_review とする
 //   （顔/ナンバー/表札の写り込みリスクを自動公開しない）。
-// - ここは純関数。実際のLLM/画像ビジョン審査は将来このverdictを置き換える拡張点。
-//   LLM呼び出しが失敗した場合も、本ヒューリスティックを安全側フォールバックに使う。
+// - ここは純関数。実際のLLM/画像ビジョン審査は lib/suspicious-alert-moderation-ai.ts の
+//   moderateSuspiciousAlertWithAi が担い、本モジュールはその「判定の下限」かつ
+//   LLM呼び出し失敗時の安全側フォールバックとして機能する（AIは判定を厳しくする方向にのみ作用）。
 // =============================================
 
 export type ModerationStatus = "approved" | "needs_review" | "rejected"
