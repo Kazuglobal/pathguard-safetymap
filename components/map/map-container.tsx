@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
-import Image from "next/image"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
-import DangerReportForm, { type DangerReportSubmitPayload } from "../danger-report/danger-report-form"
+import { type DangerReportSubmitPayload } from "../danger-report/danger-report-form"
 import type { DangerReport } from "@/lib/types"
-import { AlertTriangle, Car, Shield, HelpCircle, Trash2, MapPin, UserX } from "lucide-react"
+import { AlertTriangle, Trash2, UserX } from "lucide-react"
 import Map3DToggle from "./map-3d-toggle"
 import { Button } from "@/components/ui/button"
 import MapSearch from "./map-search"
@@ -18,8 +17,6 @@ import DangerReportDetailModal from "../danger-report/danger-report-detail-modal
 import { useToast } from "@/components/ui/use-toast"
 import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { createRoot } from "react-dom/client"
-import { createPortal } from "react-dom"
-import { addPoints } from "@/lib/gamification"
 import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
@@ -27,20 +24,28 @@ import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
-import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access"
+import { useEventCallback } from "@/hooks/use-event-callback"
+import { useAdminStatus } from "@/hooks/use-admin-status"
+import { useDangerReports } from "@/hooks/use-danger-reports"
+import { useDangerReportSubmit, type SubmittedReportState } from "@/hooks/use-danger-report-submit"
+import { useMapImageOverlays, type MapImageOverlayEntry } from "@/hooks/use-map-image-overlays"
+import { useDangerMarkers } from "@/hooks/use-danger-markers"
+import { AccidentStatsOverlay } from "@/components/map/accident-stats-overlay"
+import { MapReportForms } from "@/components/map/map-report-forms"
+import { MobileLocationSheet } from "@/components/map/mobile-location-sheet"
+import { MapStatusOverlays } from "@/components/map/map-status-overlays"
 import {
-  PUBLIC_DANGER_REPORT_STATUSES,
-  resolveInitialDangerReportStatus,
-  shouldRetryDangerReportInsertAsPending,
-} from "@/lib/danger-report-status"
+  layerExists,
+  sourceExists,
+  safeAddLayer,
+  safeRemoveLayer,
+  safeAddSource,
+} from "@/lib/map/mapbox-layer-utils"
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
-import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
-import { X } from "lucide-react"
-import { buildRouteReportNotification } from "@/hooks/use-notifications"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
@@ -56,11 +61,6 @@ import {
 } from "@/lib/hazard-scenarios"
 import { buildRouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
 import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety-scorer"
-import {
-  buildFamilyShareAction,
-  buildFamilyShareMapLabel,
-  buildFamilyShareSummary,
-} from "@/lib/report-generation/family-share-card"
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
 import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
@@ -85,210 +85,12 @@ if (!tokenValidation.isValid) {
 
 mapboxgl.accessToken = mapboxToken || ""
 
-const REVERSE_GEOCODE_DECIMALS = 3
-
-function toCoarseCoordinate(value: number, decimals = REVERSE_GEOCODE_DECIMALS): number {
-  const factor = 10 ** decimals
-  return Math.round(value * factor) / factor
-}
-
-async function reverseGeocodeLocation(latitude: number, longitude: number) {
-  const token = getMapboxToken()
-  if (!token) {
-    console.warn("Mapbox token is missing; skip reverse geocoding.")
-    return { prefecture: null as string | null, city: null as string | null }
-  }
-
-  if (!isValidCoordinates(latitude, longitude)) {
-    console.warn("Invalid coordinates for reverse geocoding", { latitude, longitude })
-    return { prefecture: null as string | null, city: null as string | null }
-  }
-
-  // Send coarse coordinates (~100m) to reduce precise-location exposure to external services.
-  const coarseLatitude = toCoarseCoordinate(latitude)
-  const coarseLongitude = toCoarseCoordinate(longitude)
-
-  try {
-    const params = new URLSearchParams({
-      access_token: token,
-      language: "ja",
-      types: "region,place,locality,district",
-      limit: "5",
-    })
-
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${coarseLongitude},${coarseLatitude}.json?${params.toString()}`,
-    )
-
-    if (!response.ok) {
-      console.warn("Reverse geocoding request failed", response.status)
-      return { prefecture: null, city: null }
-    }
-
-    const data = await response.json()
-    const features: any[] = Array.isArray(data?.features) ? data.features : []
-
-    let prefecture: string | null = null
-    let city: string | null = null
-
-    const processFeature = (feature: any) => {
-      if (!feature) return
-      const types: string[] = feature.place_type ?? []
-      if (!prefecture && types.includes("region")) {
-        prefecture = feature.text ?? feature.place_name ?? null
-      }
-      if (
-        !city &&
-        (types.includes("place") || types.includes("locality") || types.includes("district"))
-      ) {
-        city = feature.text ?? feature.place_name ?? null
-      }
-      if (Array.isArray(feature.context)) {
-        feature.context.forEach(processFeature)
-      }
-    }
-
-    features.forEach(processFeature)
-
-    return { prefecture, city }
-  } catch (error) {
-    console.warn("Reverse geocoding lookup failed", error)
-    return { prefecture: null, city: null }
-  }
-}
-
 // --- 型定義 ---
-// 送信済みレポートの状態用
-interface MapImagePopupContentProps {
-  url: string
-  hasError: boolean
-  supabase: any
-  onPreview: (resolvedUrl: string) => void
-  onRetry: () => void
-  onImageError: () => void
-}
-
-function MapImagePopupContent({
-  url,
-  hasError,
-  supabase,
-  onPreview,
-  onRetry,
-  onImageError,
-}: MapImagePopupContentProps) {
-  // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
-  // 表示直前に短TTLの署名URLへ差し替える。
-  // 注意: この popup は mapboxgl.Popup + createRoot() による独立したReactツリーで
-  // 描画されるため、上位の SupabaseProvider context は継承されない。
-  // そのため supabase クライアントは props で明示的に受け取る。
-  const signedUrl = useDangerReportSignedImageUrl(supabase, url)
-
-  if (hasError) {
-    return (
-      <div className="w-28 sm:w-36 rounded-xl border border-blue-100 bg-white/90 px-3 py-2 shadow-md">
-        <p className="mb-2 text-center text-xs text-slate-500">画像を読み込めませんでした</p>
-        <Button type="button" variant="outline" size="sm" className="h-8 w-full" onClick={onRetry}>
-          再試行
-        </Button>
-      </div>
-    )
-  }
-
-  if (!signedUrl) {
-    return (
-      <div className="w-28 sm:w-36 rounded-xl border border-blue-100 bg-white/90 px-3 py-2 shadow-md">
-        <div className="flex aspect-[4/3] w-full items-center justify-center">
-          <span className="text-xs text-slate-400">読み込み中...</span>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      className="relative block w-28 sm:w-36 overflow-hidden rounded-xl shadow-md"
-      onClick={() => onPreview(signedUrl)}
-    >
-      <div className="relative aspect-[4/3] w-full">
-        <Image
-          src={signedUrl}
-          alt="加工画像プレビュー"
-          fill
-          sizes="(max-width: 640px) 112px, 144px"
-          className="object-cover"
-          onError={onImageError}
-          priority
-        />
-      </div>
-    </button>
-  )
-}
-
-interface SubmittedReportState {
-  reportId: string
-  title: string
-  summary: string
-  action: string | null
-  mapLabel: string
-  location: [number, number]
-  originalImage: string | null
-  processedImages: string[] // 複数画像に対応
-}
-
-interface MapImageOverlayEntry {
-  id: string
-  url: string
-  reportId?: string
-  reportTitle?: string | null
-  type?: "original" | "processed"
-  index?: number
-  coordinates: [number, number]
-  hasError?: boolean
-}
+// SubmittedReportState / MapImageOverlayEntry はそれぞれ hooks/use-danger-report-submit.ts /
+// hooks/use-map-image-overlays.tsx へ移動（import 済み）
 
 type LocationSelectionSource = "manual" | "gps" | null
 type ActiveARKind = "nearby" | "parent_child_route"
-
-function isAbortLikeError(error: unknown): boolean {
-  if (!error) return false
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error !== null && "message" in error
-        ? String((error as { message?: unknown }).message ?? "")
-        : String(error)
-
-  return (
-    message.includes("The operation was aborted") ||
-    message.includes("operation was aborted") ||
-    message.includes("aborted") ||
-    message.includes("AbortError")
-  )
-}
-
-function isTransientFetchError(error: unknown): boolean {
-  if (!error) return false
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error !== null && "message" in error
-        ? String((error as { message?: unknown }).message ?? "")
-        : String(error)
-
-  return (
-    isAbortLikeError(error) ||
-    message.includes("fetch failed") ||
-    message.includes("Failed to fetch") ||
-    message.includes("NetworkError") ||
-    message.includes("network_error") ||
-    message.includes("timeout")
-  )
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 // MapContainer コンポーネント
 interface MapContainerProps {
@@ -304,7 +106,6 @@ export default function MapContainer({
   const { toast } = useToast()
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
-  const [dangerReports, setDangerReports] = useState<DangerReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null)
@@ -317,6 +118,13 @@ export default function MapContainer({
     dateRange: "all",
     showPending: true,
   })
+  // 危険レポート取得（公開済み＋自分の pending）。挙動はそのままフックへ抽出。
+  const {
+    dangerReports,
+    pendingReports,
+    setDangerReports,
+    setPendingReports,
+  } = useDangerReports({ supabase, filterOptions, toast, setIsLoading })
   const [mapError, setMapError] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [is3DEnabled, setIs3DEnabled] = useState(false)
@@ -327,17 +135,11 @@ export default function MapContainer({
   const mapInitialized = useRef(false)
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [mapImageOverlays, setMapImageOverlays] = useState<MapImageOverlayEntry[]>([])
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false) // ReportDetailModal 用
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // モバイルでのサイドバー表示状態
-  const reportsFetchAbortRef = useRef<AbortController | null>(null)
-  const reportsFetchRequestIdRef = useRef(0)
   const clickListenerAdded = useRef(false)
   const styleChangeInProgress = useRef(false)
   const mapClickHandler = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null)
-  const mapImagePopupRefs = useRef<Map<string, mapboxgl.Popup>>(new Map())
-  const mapImagePopupRootRefs = useRef<Map<string, ReturnType<typeof createRoot>>>(new Map())
   const accidentMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const accidentMarkerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const routeHazardMarkersRef = useRef<mapboxgl.Marker[]>([])
@@ -375,21 +177,6 @@ export default function MapContainer({
     reset: resetClickedLocationStats,
   } = useAccidentStats()
 
-  const destroyAllMapImagePopups = useCallback(() => {
-    const popupRefs = mapImagePopupRefs.current
-    const rootRefs = mapImagePopupRootRefs.current
-
-    rootRefs.forEach((root) => {
-      Promise.resolve().then(() => root.unmount())
-    })
-    rootRefs.clear()
-
-    popupRefs.forEach((popup) => {
-      popup.remove()
-    })
-    popupRefs.clear()
-  }, [])
-
   const clearRouteHazardMarkers = useCallback(() => {
     routeHazardMarkersRef.current.forEach((marker) => marker.remove())
     routeHazardMarkersRef.current = []
@@ -419,82 +206,8 @@ export default function MapContainer({
   // 送信された報告のプレビューモーダルの状態
   const [isSubmittedPreviewOpen, setIsSubmittedPreviewOpen] = useState(false)
 
-  // 審査中の報告を保持する状態を追加
-  const [pendingReports, setPendingReports] = useState<DangerReport[]>([])
-
-  // 管理者かどうかを判定する状態（MapHeaderから受け取るように変更する方が良いかも）
-  const [isAdmin, setIsAdmin] = useState(false) // とりあえず残す
-
-  // 本人削除の判定に使うログインユーザーID（未ログイン時は null）
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-
-  // ユーザー情報を取得して isAdmin 状態を更新する useEffect
-  useEffect(() => {
-    let isMounted = true
-    let retryCount = 0
-    const maxRetries = 3
-
-    const checkAdminStatus = async () => {
-      if (!supabase) return
-      try {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser()
-        if (error) {
-          // "Auth session missing"はセッション同期待ち、リトライする
-          if (error.message?.includes("Auth session missing")) {
-            if (retryCount < maxRetries && isMounted) {
-              retryCount++
-              setTimeout(checkAdminStatus, 500 * retryCount)
-              return
-            }
-            // リトライ後も失敗 = 未ログイン（正常）
-            if (isMounted) {
-              setIsAdmin(false)
-              setCurrentUserId(null)
-            }
-            return
-          }
-          console.error("Error fetching user:", error)
-          if (isMounted) {
-            setIsAdmin(false)
-            setCurrentUserId(null)
-          }
-          return
-        }
-
-        if (!user) {
-          if (isMounted) {
-            setIsAdmin(false)
-            setCurrentUserId(null)
-          }
-          return
-        }
-
-        if (isMounted) setCurrentUserId(user.id)
-
-        const adminStatusResponse = await fetch("/api/auth/admin-status", {
-          cache: "no-store",
-        })
-        if (!adminStatusResponse.ok) {
-          throw new Error(`Admin status request failed: ${adminStatusResponse.status}`)
-        }
-
-        const adminStatus = (await adminStatusResponse.json()) as { isAdmin?: boolean }
-        if (isMounted) {
-          setIsAdmin(Boolean(adminStatus.isAdmin))
-        }
-      } catch (err) {
-        console.error("Error in checkAdminStatus:", err)
-        if (isMounted) setIsAdmin(false) // エラー時は念のため false に
-      }
-    }
-    checkAdminStatus()
-    return () => {
-      isMounted = false
-    }
-  }, [supabase]) // supabase クライアントが変わった時にも再チェック
+  // 管理者判定・ログインユーザーID取得（挙動はそのままフックへ抽出）
+  const { isAdmin, currentUserId } = useAdminStatus(supabase)
 
   // --- ▼▼▼ モバイル判定と地点選択待ち state を追加 ▼▼▼ ---
   const isMobile = useMediaQuery("(max-width: 768px)"); // md ブレークポイント (Tailwind)
@@ -508,13 +221,7 @@ export default function MapContainer({
   const [alertFocusedId, setAlertFocusedId] = useState<string | null>(null);
   const [isSuspiciousSubmitting, setIsSuspiciousSubmitting] = useState(false);
   const suspiciousMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  // handleMapClick が初期化時の古いクロージャで登録されても最新値を読めるよう ref に同期する
-  const isSuspiciousAlertOpenRef = useRef(false);
   const suspiciousAlertSearchParams = useSearchParams();
-
-  useEffect(() => {
-    isSuspiciousAlertOpenRef.current = isSuspiciousAlertOpen;
-  }, [isSuspiciousAlertOpen]);
 
   // 報告メニューから ?suspiciousAlert=1 で来たら専用フォームを開く
   useEffect(() => {
@@ -607,6 +314,12 @@ export default function MapContainer({
   const mapCanvasClassName = `absolute inset-0${isMobile ? " rounded-3xl overflow-hidden ring-1 ring-blue-100/60" : ""}`;
 
   const combinedReports = useMemo(() => [...dangerReports, ...pendingReports], [dangerReports, pendingReports]);
+  // 地図上の画像プレビューポップアップ管理。挙動はそのままフックへ抽出。
+  const {
+    setMapImageOverlays,
+    previewImage,
+    setPreviewImage,
+  } = useMapImageOverlays({ mapRef: map, supabase, combinedReports })
   const selectedUserRoute = useMemo<UserRoute | null>(() => {
     if (!selectedUserRouteId) return null
     return userRoutes.find((route) => route.id === selectedUserRouteId) ?? null
@@ -647,16 +360,6 @@ export default function MapContainer({
   )
 
   useEffect(() => {
-    setMapImageOverlays((prev) => {
-      if (prev.length === 0) return prev
-
-      const validReportIds = new Set(combinedReports.map((report) => report.id))
-      const filtered = prev.filter((overlay) => !overlay.reportId || validReportIds.has(overlay.reportId))
-      return filtered.length === prev.length ? prev : filtered
-    })
-  }, [combinedReports])
-
-  useEffect(() => {
     if (selectedUserRouteId) return
 
     if (preferredRouteId && userRoutes.some((route) => route.id === preferredRouteId)) {
@@ -667,110 +370,6 @@ export default function MapContainer({
     if (!primaryRoute) return
     setSelectedUserRouteId(primaryRoute.id)
   }, [preferredRouteId, primaryRoute, selectedUserRouteId, userRoutes])
-
-  useEffect(() => {
-    if (!map.current) return
-
-    const mapInstance = map.current
-    const popupRefs = mapImagePopupRefs.current
-    const rootRefs = mapImagePopupRootRefs.current
-    const activeOverlayIds = new Set(mapImageOverlays.map((overlay) => overlay.id))
-
-    popupRefs.forEach((popup, id) => {
-      if (!activeOverlayIds.has(id)) {
-        popup.remove()
-        popupRefs.delete(id)
-
-        const root = rootRefs.get(id)
-        if (root) {
-          Promise.resolve().then(() => root.unmount())
-          rootRefs.delete(id)
-        }
-      }
-    })
-
-    mapImageOverlays.forEach((overlay) => {
-      if (!overlay.coordinates) return
-
-      let popup = popupRefs.get(overlay.id)
-      if (!popup) {
-        popup = new mapboxgl.Popup({
-          closeButton: true,
-          closeOnClick: false,
-          anchor: "top",
-          offset: [0, -18],
-          className: "map-image-popup",
-        }).addTo(mapInstance)
-
-        popup.on("close", () => {
-          setMapImageOverlays((prev) => prev.filter((entry) => entry.id !== overlay.id))
-        })
-
-        popupRefs.set(overlay.id, popup)
-      }
-
-      popup.setLngLat(overlay.coordinates)
-
-      let root = rootRefs.get(overlay.id)
-      if (!root) {
-        const container = document.createElement("div")
-        popup.setDOMContent(container)
-        root = createRoot(container)
-        rootRefs.set(overlay.id, root)
-      }
-
-      root.render(
-        <MapImagePopupContent
-          url={overlay.url}
-          hasError={overlay.hasError ?? false}
-          supabase={supabase}
-          onPreview={(resolvedUrl) => setPreviewImage(resolvedUrl)}
-          onRetry={() =>
-            setMapImageOverlays((prev) =>
-              prev.map((entry) =>
-                entry.id === overlay.id ? { ...entry, hasError: false } : entry
-              )
-            )
-          }
-          onImageError={() =>
-            setMapImageOverlays((prev) =>
-              prev.map((entry) =>
-                entry.id === overlay.id ? { ...entry, hasError: true } : entry
-              )
-            )
-          }
-        />
-      )
-    })
-  }, [mapImageOverlays, setPreviewImage, supabase])
-
-  useEffect(() => destroyAllMapImagePopups, [destroyAllMapImagePopups])
-
-  // --- Mapbox GL JS Helper Functions ---
-  const layerExists = (mapInstance: mapboxgl.Map, layerId: string): boolean => {
-    try { return !!mapInstance.getLayer(layerId) } catch (e) { return false }
-  }
-  const sourceExists = (mapInstance: mapboxgl.Map, sourceId: string): boolean => {
-    try { return !!mapInstance.getSource(sourceId) } catch (e) { return false }
-  }
-  const safeAddLayer = (mapInstance: mapboxgl.Map, layerId: string, layerConfig: any) => {
-    if (!layerExists(mapInstance, layerId)) {
-      try { mapInstance.addLayer(layerConfig); return true }
-      catch (error) { console.error(`Error adding layer ${layerId}:`, error); return false }
-    } return false
-  }
-  const safeRemoveLayer = (mapInstance: mapboxgl.Map, layerId: string) => {
-    if (layerExists(mapInstance, layerId)) {
-      try { mapInstance.removeLayer(layerId); return true }
-      catch (error) { console.error(`Error removing layer ${layerId}:`, error); return false }
-    } return false
-  }
-  const safeAddSource = (mapInstance: mapboxgl.Map, sourceId: string, sourceConfig: any) => {
-    if (!sourceExists(mapInstance, sourceId)) {
-      try { mapInstance.addSource(sourceId, sourceConfig); return true }
-      catch (error) { console.error(`Error adding source ${sourceId}:`, error); return false }
-    } return false
-  }
 
   // --- 3D Mode Logic ---
   const toggle3DMode = () => {
@@ -923,8 +522,9 @@ export default function MapContainer({
     accidentMarkerTimerRef.current = timerId
   }, []);
 
-  // --- ▼▼▼ handleMapClick を修正 ▼▼▼ ---
-  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+  // --- ▼▼▼ handleMapClick（useEventCallback で常に最新 state を読む） ▼▼▼ ---
+  // Mapbox へ一度だけ登録されても stale closure にならないよう useEventCallback 経由にする。
+  const handleMapClick = useEventCallback((e: mapboxgl.MapMouseEvent) => {
     const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
     console.log(`Map clicked at: ${coordinates}. isMobile=${isMobile}, awaitingLocationSelection=${awaitingLocationSelection}, isReportFormOpen=${isReportFormOpen}`);
     dismissTransientMapUi({
@@ -933,8 +533,9 @@ export default function MapContainer({
     })
 
     // 不審者アラート入力中は、地図クリックで中心点を指定する（プレビュー円・ピンは effect 側で更新）。
-    // ref 経由で読むことで、マップ初期化前にフォームが開いた場合（?suspiciousAlert=1 直接遷移）でも確実に分岐する。
-    if (isSuspiciousAlertOpenRef.current) {
+    // useEventCallback により常に最新の isSuspiciousAlertOpen を読むため、マップ初期化前に
+    // フォームが開いた場合（?suspiciousAlert=1 直接遷移）でも確実に分岐する。
+    if (isSuspiciousAlertOpen) {
       setSelectedLocation(coordinates);
       setLocationSelectionSource("manual");
       return;
@@ -978,7 +579,7 @@ export default function MapContainer({
         setIsSidebarOpen(true);
       }
     }
-  };
+  });
   // --- ▲▲▲ ---
 
   const addClickListener = () => {
@@ -1120,25 +721,12 @@ export default function MapContainer({
   }, [isReportFormOpen, submittedReport]); // submittedReport dependency added
 
   // --- Location Selection Mode: Ensure click listener is active ---
-  // awaitingLocationSelection / isSuspiciousAlertOpen の変化時に最新の handleMapClick を再登録し、
-  // 各モードのクロージャ（不審者アラート分岐など）が確実に最新になるようにする。
+  // handleMapClick は useEventCallback で常に最新 state を読むため、モード変化ごとの再登録
+  // （旧 stale closure 対策）は不要。ここではリスナー未登録時の保険の付け直しだけ行う。
   useEffect(() => {
     if (!map.current || !mapInitialized.current) return;
-    if (awaitingLocationSelection || isSuspiciousAlertOpen) {
-      if (!clickListenerAdded.current || !mapClickHandler.current) {
-        addClickListener();
-      } else {
-        if (mapClickHandler.current) {
-          map.current.off("click", mapClickHandler.current);
-        }
-        mapClickHandler.current = handleMapClick;
-        map.current.on("click", mapClickHandler.current);
-      }
-    } else if (clickListenerAdded.current && mapClickHandler.current) {
-      // どのモードでもない通常状態に戻ったら、最新（分岐なし）の handleMapClick を再登録する
-      map.current.off("click", mapClickHandler.current);
-      mapClickHandler.current = handleMapClick;
-      map.current.on("click", mapClickHandler.current);
+    if ((awaitingLocationSelection || isSuspiciousAlertOpen) && !clickListenerAdded.current) {
+      addClickListener();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awaitingLocationSelection, isSuspiciousAlertOpen]);
@@ -1402,202 +990,20 @@ export default function MapContainer({
     }
   }, [awaitingLocationSelection, isReportFormOpen, isHelpDismissed]);
 
-  // --- Data Fetching ---
-  useEffect(() => {
-    if (!supabase) return; // Ensure supabase is initialized
-
-    const requestId = reportsFetchRequestIdRef.current + 1
-    reportsFetchRequestIdRef.current = requestId
-
-    reportsFetchAbortRef.current?.abort()
-    const abortController = new AbortController()
-    reportsFetchAbortRef.current = abortController
-
-    const fetchDangerReports = async () => {
-      setIsLoading(true);
-      try {
-        const retryDelaysMs = [0, 250, 800]
-
-        for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
-          if (attempt > 0) {
-            await sleep(retryDelaysMs[attempt])
-          }
-
-          try {
-            // Use cached session state to avoid unnecessary auth network calls on each filter change.
-            const { data: sessionData } = await supabase.auth.getSession();
-            const userId = sessionData.session?.user?.id;
-
-            // Base query for publicly visible reports
-            let approvedQuery = supabase
-              .from("danger_reports")
-              .select(`*`) // Select を最初に戻す
-              .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
-              .abortSignal(abortController.signal);
-
-            // Filter by danger type
-            if (filterOptions.dangerType !== "all") {
-              // 型エラーを回避するために as any を一時的に使う
-              approvedQuery = (approvedQuery as any).eq('danger_type', filterOptions.dangerType);
-            }
-            // Filter by danger level
-            if (filterOptions.dangerLevel !== "all") {
-              approvedQuery = (approvedQuery as any).eq('danger_level', parseInt(filterOptions.dangerLevel, 10));
-            }
-            // Filter by date range
-            if (filterOptions.dateRange !== "all") {
-              const now = new Date();
-              let startDate = new Date(0); // Default to beginning of time
-              if (filterOptions.dateRange === "week") startDate.setDate(now.getDate() - 7);
-              else if (filterOptions.dateRange === "month") startDate.setMonth(now.getMonth() - 1);
-              else if (filterOptions.dateRange === "year") startDate.setFullYear(now.getFullYear() - 1);
-              approvedQuery = (approvedQuery as any).gte('created_at', startDate.toISOString());
-            }
-
-            const { data: approvedData, error: approvedError } = await approvedQuery.order("created_at", { ascending: false });
-
-            if (approvedError) throw approvedError;
-            if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current) return;
-            setDangerReports((approvedData ?? []) as DangerReport[]);
-
-            // Fetch user's pending reports if logged in and filter is enabled
-            let userPendingReports: DangerReport[] = [];
-            if (userId && filterOptions.showPending) {
-              const { data: pendingData, error: pendingError } = await supabase
-                .from("danger_reports")
-                .select(`*`) // Select を最初に戻す
-                .eq("status", "pending")
-                .eq("user_id", userId)
-                .abortSignal(abortController.signal)
-                .order("created_at", { ascending: false });
-
-              if (pendingError) console.error("Error fetching pending reports:", pendingError);
-              else userPendingReports = (pendingData ?? []) as DangerReport[];
-            }
-
-            if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current) return;
-            setPendingReports(userPendingReports);
-            return
-          } catch (attemptError: any) {
-            if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current) return
-
-            const canRetry = isTransientFetchError(attemptError) && attempt < retryDelaysMs.length - 1
-            if (canRetry) {
-              console.warn(`[danger_reports] transient fetch error (attempt ${attempt + 1}), retrying...`, attemptError)
-              continue
-            }
-
-            throw attemptError
-          }
-        }
-      } catch (error: any) {
-        if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current || isAbortLikeError(error)) {
-          return
-        }
-        console.error("Error fetching reports object:", error); // オブジェクト全体
-        console.error("Error fetching reports message:", error?.message); // メッセージ
-        console.error("Error fetching reports stack:", error?.stack); // スタックトレース
-        console.error("Error fetching reports stringified:", JSON.stringify(error)); // JSON文字列化
-
-        toast({ title: "データ取得エラー", description: `危険箇所データの取得エラー: ${error?.message || '詳細不明'}`, variant: "destructive" }); // messageがない場合も考慮
-        setDangerReports([]);
-        setPendingReports([]);
-      } finally {
-        if (requestId !== reportsFetchRequestIdRef.current) return;
-        setIsLoading(false);
-      }
-    };
-
-    fetchDangerReports();
-    return () => {
-      abortController.abort()
-    }
-  }, [supabase, filterOptions, toast]);
-
   // --- Marker Rendering ---
-  const getDangerTypeMarkerClass = (dangerType: string) => {
-    return `danger-marker-${dangerType}` || 'danger-marker-other'; // Simplified
-  };
-
-    useEffect(() => {
-      if (!map.current || !mapInitialized.current) return;
-
-      // Remove existing markers before adding new ones
-      document.querySelectorAll('.danger-marker, .pending-marker').forEach(marker => marker.remove());
-
-      const addMarker = (report: DangerReport, isPending: boolean) => {
-        const markerElement = document.createElement("div");
-        const typeClass = getDangerTypeMarkerClass(report.danger_type);
-        markerElement.className = `${isPending ? 'pending-marker' : 'danger-marker'} danger-level-${report.danger_level} ${typeClass}`; // クラス名は残す
-        markerElement.style.cursor = 'pointer';
-
-        // --- ▼▼▼ 危険度に基づく色分け ▼▼▼ ---
-        const getDangerLevelColor = (level: number) => {
-          switch (level) {
-            case 1:
-              return '#22c55e' // green-500
-            case 2:
-              return '#22c55e' // green-500
-            case 3:
-              return '#eab308' // yellow-500
-            case 4:
-              return '#f97316' // orange-500
-            case 5:
-              return '#ef4444' // red-500
-            default:
-              return '#6b7280' // gray-500
-          }
-        }
-        
-        const backgroundColor = getDangerLevelColor(report.danger_level);
-        markerElement.style.backgroundColor = backgroundColor;
-        markerElement.style.border = '2px solid white';
-        markerElement.style.borderRadius = '50%';
-        markerElement.style.width = '24px';
-        markerElement.style.height = '24px';
-        markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-        // --- ▲▲▲ 危険度に基づく色分け ▲▲▲ ---
-
-        // Render icon inside marker
-        const root = createRoot(markerElement);
-        let IconComponent: React.ElementType = HelpCircle; // Default icon
-        if (report.danger_type === "traffic") IconComponent = Car;
-        else if (report.danger_type === "crime") IconComponent = Shield;
-        else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
-        else if (report.danger_type === SUSPICIOUS_DANGER_TYPE) IconComponent = UserX;
-        root.render(<IconComponent className="h-5 w-5 text-white" />); // Adjusted size
-
-        new mapboxgl.Marker(markerElement)
-          .setLngLat([report.longitude, report.latitude])
-          .addTo(map.current!); // Add to map
-
-        markerElement.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          setSelectedReport(report); // Set selected report for modal
-          setIsDetailModalOpen(true);
-
-          // Add gamification points (consider moving this logic)
-          if (supabase && report.user_id) { // Check if supabase and user_id exist
-            try { await addPoints(supabase, report.user_id, 5); }
-            catch (err) { console.error("Error adding points on marker click:", err); }
-          }
-        });
-      };
-
-      try {
-        // Add markers for approved reports
-        dangerReports.forEach(report => addMarker(report, false));
-
-        // Add markers for pending reports if filter is enabled
-        if (filterOptions.showPending) {
-          pendingReports.forEach(report => addMarker(report, true));
-        }
-      } catch (error) {
-        console.error("Error adding markers:", error);
-      }
-    // Re-evaluate dependencies: mapStyle might not be needed if markers don't change with style
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dangerReports, pendingReports, filterOptions.showPending, mapInitialized.current]); // Removed mapStyle, is3DEnabled, selectedLocation
+  // 危険レポートの地図マーカー描画。挙動はそのままフックへ抽出。
+  useDangerMarkers({
+    mapRef: map,
+    mapInitializedRef: mapInitialized,
+    dangerReports,
+    pendingReports,
+    showPending: filterOptions.showPending,
+    supabase,
+    onSelectReport: (report) => {
+      setSelectedReport(report)
+      setIsDetailModalOpen(true)
+    },
+  })
 
   useEffect(() => {
     if (!map.current || !mapInitialized.current) return
@@ -1798,246 +1204,16 @@ export default function MapContainer({
     });
   };
 
-  const handleReportSubmit = async (
-    reportData: DangerReportSubmitPayload & { imageFile?: File | null },
-    options?: { suppressPreview?: boolean; suppressSuccessToast?: boolean }
-  ): Promise<{ reportId: string; imageUrl: string | null }> => {
-    if (!supabase || !selectedLocation) { // Check supabase and selectedLocation
-      toast({ title: "エラー", description: "地図上で位置を選択してください。", variant: "destructive" });
-      throw new Error("地図上で位置を選択してください。");
-    }
-
-    if (!isValidCoordinates(selectedLocation[1], selectedLocation[0])) {
-      toast({ title: "エラー", description: "位置情報が不正です。地図で地点を再選択してください。", variant: "destructive" });
-      throw new Error("位置情報が不正です。地図で地点を再選択してください。");
-    }
-
-    // insert するデータからファイル・画像URL配列を除外（アップロードは API 側へ一本化）
-    const {
-      imageFile: legacyImageFile,
-      originalImageFile,
-      processedImageFiles,
-      route_context_id,
-      route_context_name,
-      image_url: _ignoredImageUrl,
-      processed_image_urls: _ignoredProcessedImageUrls,
-      ...reportDataToInsert
-    } = reportData;
-
-    const originalFileToUpload =
-      (originalImageFile instanceof File ? originalImageFile : null)
-      ?? (legacyImageFile instanceof File ? legacyImageFile : null);
-    const processedFilesToUpload = (processedImageFiles || []).filter(
-      (file): file is File => file instanceof File,
-    );
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({ title: "認証エラー", description: "ユーザー情報が取得できませんでした。", variant: "destructive" });
-        throw new Error("ユーザー情報が取得できませんでした。");
-      }
-
-      // 1. 基本情報をまず INSERT (processed_image_urls は含めないか NULL)
-      console.log("Inserting basic report data...");
-
-      const locationDetails = selectedLocation
-        ? await reverseGeocodeLocation(selectedLocation[1], selectedLocation[0])
-        : { prefecture: null as string | null, city: null as string | null };
-
-      const initialStatus = resolveInitialDangerReportStatus(reportDataToInsert.status);
-
-      const insertReport = async (status: string) =>
-        supabase
-          .from("danger_reports")
-          .insert({
-            ...reportDataToInsert, // imageFile を除外したデータ
-            user_id: user.id,
-            latitude: selectedLocation[1],
-            longitude: selectedLocation[0],
-            prefecture: locationDetails.prefecture,
-            city: locationDetails.city,
-            status,
-            title: reportDataToInsert.title || '無題の報告',
-            danger_type: reportDataToInsert.danger_type || 'other',
-            danger_level: reportDataToInsert.danger_level || 1,
-            // processed_image_urls は API 側で設定されるため、ここでは設定しない (NULL or default)
-            // processed_image_urls: [], // ← 削除
-          })
-          .select()
-          .single();
-
-      let { data: insertedData, error: insertError } = await insertReport(initialStatus);
-
-      // Some environments enforce stricter insert checks for "published".
-      // Retry once as "pending" to avoid blocking report submissions.
-      if (shouldRetryDangerReportInsertAsPending(initialStatus, insertError)) {
-        console.warn("[danger_reports] insert blocked for published, retrying as pending", insertError);
-        const retryResult = await insertReport("pending");
-        insertedData = retryResult.data;
-        insertError = retryResult.error;
-      }
-
-      if (insertError) throw insertError;
-      if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
-
-      const newReportId = insertedData.id;
-      console.log(`Report inserted successfully with ID: ${newReportId}`);
-
-      if (route_context_name) {
-        const routeNotification = buildRouteReportNotification({
-          userId: user.id,
-          reportId: newReportId,
-          reportTitle: reportDataToInsert.title || "無題の報告",
-          routeId: route_context_id,
-          routeName: route_context_name,
-        })
-
-        const { error: notificationError } = await supabase
-          .from("notifications")
-          .insert(routeNotification)
-
-        if (notificationError) {
-          console.warn("route notification insert failed", notificationError)
-        }
-      }
-
-      // 危険レポートアラート: 通学路300m圏内のユーザーにプッシュ通知 (fire-and-forget)
-      fetch('/api/push/notify-danger-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: newReportId }),
-      }).catch(() => {
-        // プッシュ通知の失敗はレポート投稿の成功に影響しない
-      })
-
-      // 2. 画像があれば、画像処理 API を呼び出す（original / processed）
-      let finalReportData = insertedData as DangerReport; // 型アサーション
-      if (newReportId && (originalFileToUpload || processedFilesToUpload.length > 0)) {
-        console.log(`Calling /api/image/process for report ID: ${newReportId}`);
-
-        const uploadViaApi = async (file: File, imageType: "original" | "processed") => {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("reportId", newReportId);
-          formData.append("imageType", imageType);
-          const response = await fetch("/api/image/process", {
-            method: "POST",
-            body: formData,
-          });
-          let data: any = {};
-          try {
-            data = await response.json();
-          } catch {
-            data = {};
-          }
-          if (!response.ok) {
-            throw new Error(data.message || `画像処理APIエラー: status=${response.status}`);
-          }
-          return data;
-        };
-
-        try {
-          if (originalFileToUpload) {
-            const originalResult = await uploadViaApi(originalFileToUpload, "original");
-            finalReportData = {
-              ...finalReportData,
-              image_url: originalResult.imageUrl || finalReportData.image_url || null,
-            };
-          }
-
-          for (const processedFile of processedFilesToUpload) {
-            const processedResult = await uploadViaApi(processedFile, "processed");
-            finalReportData = {
-              ...finalReportData,
-              processed_image_urls: processedResult.updatedUrls || finalReportData.processed_image_urls || [],
-            };
-          }
-
-          if (originalFileToUpload || processedFilesToUpload.length > 0) {
-            toast({ title: "画像処理完了", description: "画像がアップロード・処理されました。" });
-          }
-        } catch (apiError: any) {
-          console.error("Error calling /api/image/process:", apiError);
-          toast({
-            title: "画像処理エラー",
-            description: `レポートは保存されましたが、画像の処理に失敗しました: ${apiError.message || "不明なエラー"}`,
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.log("No image file provided or report ID missing, skipping image processing.");
-      }
-
-
-      // 3. 後続処理 (トースト、ポイント、プレビュー、ローカル状態更新)
-      if (!options?.suppressSuccessToast) {
-        toast({ title: "報告完了", description: "危険箇所報告が送信されました。" }); // 最終的な完了トースト
-      }
-
-      // Gamification (エラーがあっても続行)
-      try {
-        if (user?.id) { // user.id が存在するか確認
-           await addPoints(supabase, user.id, 20);
-           if (!options?.suppressSuccessToast) {
-             toast({ title: "ポイント獲得", description: "報告送信で +20pt 獲得しました。" });
-           }
-        } else {
-           console.warn("User ID not found for gamification points.");
-        }
-      } catch (e: any) { console.error("Gamification error:", e); }
-
-      // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)
-      if (selectedLocation && !options?.suppressPreview) {
-        setSubmittedReport({
-          reportId: newReportId,
-          title: finalReportData.title || "無題の報告",
-          summary: buildFamilyShareSummary(finalReportData.description, finalReportData.title),
-          action: buildFamilyShareAction(
-            finalReportData.learning_checkpoints,
-            selectedUserRoute?.name
-              ? `${selectedUserRoute.name}で立ち止まる場所と待機位置を確認する`
-              : null,
-          ),
-          mapLabel: buildFamilyShareMapLabel(
-            [route_context_name ?? selectedUserRoute?.name ?? null, finalReportData.prefecture, finalReportData.city],
-            selectedLocation,
-          ),
-          location: selectedLocation,
-          originalImage: finalReportData.image_url || null,
-          processedImages: finalReportData.processed_image_urls || [],
-        });
-      } else {
-        console.error("Selected location is null, cannot set submitted report state.");
-        // selectedLocation が null の場合のエラーハンドリングが必要な場合がある
-      }
-
-      // TEMP: Keep form open to show VLM analysis results
-      // setIsReportFormOpen(false); // Close form
-
-      // プレビューモーダル表示 (API の結果を反映したデータで判断)
-      if (!options?.suppressPreview && (finalReportData.image_url || (finalReportData.processed_image_urls && finalReportData.processed_image_urls.length > 0))) {
-        // selectedLocation が null の場合でもプレビューは表示できるかもしれない
-        // ただし、SubmittedReportPreview が location を期待している場合は問題
-        if (selectedLocation) {
-            setIsSubmittedPreviewOpen(true);
-        }
-      }
-
-      // ローカル状態を更新 (API の結果を反映したデータを使う)
-      setPendingReports(prev => [finalReportData, ...prev]);
-
-      // Return report ID and image URL for VLM analysis
-      return {
-        reportId: newReportId,
-        imageUrl: finalReportData.image_url || null,
-      };
-    } catch (error: any) {
-      console.error("Error submitting report:", error);
-      toast({ title: "送信エラー", description: `報告の送信エラー: ${error.message}`, variant: "destructive" });
-      throw error; // Re-throw so form can handle it
-    }
-  };
+  // 危険レポート送信（INSERT →画像処理API →ポイント/プレビュー/state更新）。挙動はそのままフックへ抽出。
+  const handleReportSubmit = useDangerReportSubmit({
+    supabase,
+    selectedLocation,
+    selectedUserRoute,
+    toast,
+    setSubmittedReport,
+    setIsSubmittedPreviewOpen,
+    setPendingReports,
+  })
 
   // 不審者アラートの送信: 既存の挿入/画像パイプラインを再利用し、AI一次審査で公開可否を決める
   const handleSuspiciousAlertSubmit = async (payload: SuspiciousAlertFormPayload) => {
@@ -2494,50 +1670,14 @@ export default function MapContainer({
         )}
 
         {/* 事故統計パネル - 地図クリック時に表示 */}
-        {clickedLocationStatsStatus !== 'idle' && !awaitingLocationSelection && !isReportFormOpen && (
-          <div className={`absolute z-40 ${
-            isMobile
-              ? 'bottom-4 left-4 right-4 max-h-[60vh]'
-              : 'top-24 right-4 w-96 max-h-[calc(100vh-8rem)]'
-          } overflow-y-auto`}>
-            {clickedLocationStatsStatus === 'loading' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-lg">
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                  <span className="ml-3 text-gray-600">事故統計を取得中...</span>
-                </div>
-              </div>
-            )}
-            {clickedLocationStatsStatus === 'error' && (
-              <div className="bg-white rounded-xl border border-red-200 p-4 shadow-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-red-600 font-medium">事故統計の取得に失敗しました</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetClickedLocationStats}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-            {clickedLocationStatsStatus === 'loaded' && clickedLocationStats && (
-              <div className="relative bg-white rounded-xl shadow-lg border border-gray-200">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetClickedLocationStats}
-                  className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-white/90 hover:bg-white"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <AccidentStatsPanel stats={clickedLocationStats} mode="full" />
-              </div>
-            )}
-          </div>
-        )}
+        <AccidentStatsOverlay
+          status={clickedLocationStatsStatus}
+          stats={clickedLocationStats}
+          isMobile={isMobile}
+          awaitingLocationSelection={awaitingLocationSelection}
+          isReportFormOpen={isReportFormOpen}
+          onReset={resetClickedLocationStats}
+        />
 
         {/* Sidebar (フローティング) */}
         <div className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ${!isSidebarOpen ? '-translate-x-full' : ''}`}>
@@ -2619,229 +1759,64 @@ export default function MapContainer({
           </div>
         )}
 
-        {/* モバイルマップヒント */}
-        {showMobileMapHint && (
-          <div
-            className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+6.75rem)]"
-          >
-            <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
-              <MapPin className="h-4 w-4 text-blue-500" />
-              <span>ここが地図エリアです</span>
-              <button
-                type="button"
-                onClick={() => setShowMobileMapHint(false)}
-                className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none"
-                aria-label="地図エリアのヒントを閉じる"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-          {/* Map Overlays: Selection Info, Error, Loading */}
-          {isReportFormOpen && (
-            <div className="absolute top-20 left-0 right-0 z-10 px-4 py-2 flex justify-center pointer-events-none">
-              <div
-                className="pointer-events-auto rounded-full border px-4 py-2"
-                style={{
-                  background: "rgba(255,253,247,.95)",
-                  borderColor: "rgba(67,57,43,.12)",
-                  boxShadow: "0 1px 0 rgba(67,57,43,.05), 0 10px 26px -14px rgba(67,57,43,.45)",
-                  fontFamily: 'var(--font-app, "Zen Maru Gothic"), sans-serif',
-                }}
-              >
-                <p className="text-sm font-black" style={{ color: "#0C7A55" }}>
-                  {selectedLocation ? "ばしょは えらんだよ。ちずを クリックすると かえられるよ" : "ちずを クリックして ばしょを えらんでね"}
-                </p>
-              </div>
-            </div>
-          )}
-          {mapError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-30">
-              <div className="max-w-md p-4 bg-white rounded-lg shadow-lg text-center">
-                <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                <h3 className="text-lg font-bold mb-2">マップエラー</h3>
-                <p>{mapError}</p>
-                <Button className="mt-4" variant="outline" onClick={() => window.location.reload()}>再読み込み</Button>
-              </div>
-            </div>
-          )}
-          {isLoading && !mapError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-30">
-              <div className="p-4 bg-white rounded-lg shadow-lg text-center">
-                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p>読み込み中...</p>
-              </div>
-            </div>
-          )}
-          {/* Report Form - デスクトップ用（サイドパネル形式） */}
-          {isReportFormOpen && !isMobile && (
-            <div
-              className="absolute bottom-4 right-4 z-60 max-h-[calc(100vh-10rem)] w-96 overflow-y-auto overflow-x-hidden rounded-[24px] border paper-surface"
-              style={{ borderColor: "rgba(67,57,43,.14)", boxShadow: "0 2px 0 rgba(67,57,43,.08), 0 30px 60px -30px rgba(67,57,43,.55)" }}
-            >
-              <DangerReportForm
-                onSubmit={handleReportSubmit}
-                onCancel={() => setIsReportFormOpen(false)}
-                selectedLocation={selectedLocation}
-                locationSource={locationSelectionSource}
-                selectedRouteId={selectedUserRoute?.id ?? null}
-                selectedRouteName={selectedUserRoute?.name ?? null}
-              />
-            </div>
-          )}
-
-          {/* Report Form - モバイル用（フルスクリーンモーダル）- Portal経由でbodyに直接レンダリング */}
-          {isReportFormOpen && isMobile && createPortal(
-            <div className="fixed inset-0 z-[60] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden paper-surface mobile-fullscreen-form">
-              {/* モバイルフォームヘッダー */}
-              <div
-                className="safe-area-top flex flex-shrink-0 items-center justify-between border-b px-3 py-2.5"
-                style={{ borderColor: "rgba(67,57,43,.1)", fontFamily: 'var(--font-app, "Zen Maru Gothic"), sans-serif' }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsReportFormOpen(false);
-                    // 地点選択モードに戻す
-                    setAwaitingLocationSelection(true);
-                  }}
-                  className="chunky-press inline-flex min-h-[40px] items-center gap-1 rounded-full border-2 bg-white px-3 text-[12.5px] font-black"
-                  style={{ borderColor: "rgba(67,57,43,.14)", color: "#0C7A55", boxShadow: "0 3px 0 rgba(67,57,43,.16)" }}
-                >
-                  <MapPin className="h-4 w-4" strokeWidth={2.6} />
-                  地点を変更
-                </button>
-                <h2 className="text-[16px] font-black" style={{ color: "#43392B" }}>きけんを おしらせ</h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsReportFormOpen(false);
-                    setSelectedLocation(null);
-                    setLocationSelectionSource(null);
-                    if (selectionMarker.current) {
-                      selectionMarker.current.remove();
-                      selectionMarker.current = null;
-                    }
-                  }}
-                  className="inline-flex min-h-[40px] items-center rounded-full px-3 text-[13px] font-black"
-                  style={{ color: "#847661" }}
-                >
-                  とじる
-                </button>
-              </div>
-
-              {/* フォーム本体 */}
-              <div
-                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain"
-                style={{ WebkitOverflowScrolling: "touch" }}
-              >
-                <DangerReportForm
-                  onSubmit={handleReportSubmit}
-                  onCancel={() => {
-                    setIsReportFormOpen(false);
-                    setSelectedLocation(null);
-                    setLocationSelectionSource(null);
-                    if (selectionMarker.current) {
-                      selectionMarker.current.remove();
-                      selectionMarker.current = null;
-                    }
-                  }}
-                  selectedLocation={selectedLocation}
-                  locationSource={locationSelectionSource}
-                  selectedRouteId={selectedUserRoute?.id ?? null}
-                  selectedRouteName={selectedUserRoute?.name ?? null}
-                  isMobileFullscreen={true}
-                />
-              </div>
-            </div>,
-            document.body
-          )}
-          {/* --- ▼▼▼ モバイル用地点選択UI（ボトムシート）- Portal経由でbodyに直接レンダリング ▼▼▼ --- */}
-          {isMobile && awaitingLocationSelection && createPortal(
-            <div style={{ fontFamily: 'var(--font-app, "Zen Maru Gothic"), sans-serif' }}>
-              {/* 案内は下部の確認バーに一本化(上部ピルとの二重案内を避ける) */}
-              {/* 下部の確認バー - ナビゲーションバーの上に固定表示 */}
-              <div className="fixed bottom-0 left-0 right-0 z-[60] mobile-bottom-bar">
-                <div
-                  className="rounded-t-[26px] border-t paper-surface"
-                  style={{ borderColor: "rgba(67,57,43,.12)", boxShadow: "0 -2px 0 rgba(67,57,43,.05), 0 -18px 40px -20px rgba(67,57,43,.5)" }}
-                >
-                  {selectedLocation ? (
-                    <div className="px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
-                      <div className="mb-4 flex items-center gap-3">
-                        <div
-                          className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full border-2 bg-white"
-                          style={{ borderColor: "rgba(21,158,114,.4)" }}
-                        >
-                          <MapPin className="h-5 w-5" style={{ color: "#159E72" }} strokeWidth={2.6} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[15.5px] font-black" style={{ color: "#43392B" }}>ここに ピンを たてたよ！</p>
-                          <p className="text-[12px] font-bold" style={{ color: "#847661" }}>
-                            この ばしょで よければ すすんでね
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAwaitingLocationSelection(false);
-                            setSelectedLocation(null);
-                            setLocationSelectionSource(null);
-                            if (selectionMarker.current) {
-                              selectionMarker.current.remove();
-                              selectionMarker.current = null;
-                            }
-                            toast({ title: "ばしょえらびを やめたよ" });
-                          }}
-                          className="chunky-press h-[52px] flex-1 rounded-full border-2 bg-white text-[14px] font-black"
-                          style={{ borderColor: "rgba(67,57,43,.14)", color: "#847661", boxShadow: "0 3px 0 rgba(67,57,43,.16)" }}
-                        >
-                          やめる
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="confirm-location-button"
-                          onClick={() => {
-                            setAwaitingLocationSelection(false);
-                            setIsReportFormOpen(true);
-                          }}
-                          className="chunky-press h-[52px] flex-[2] rounded-full border-2 text-[15px] font-black text-white"
-                          style={{ background: "#159E72", borderColor: "rgba(67,57,43,.18)", boxShadow: "0 4px 0 #0C7A55" }}
-                        >
-                          ここで おしらせを かく
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="px-4 pt-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: "#F4801F" }}></span>
-                          <p className="text-[13px] font-bold" style={{ color: "#847661" }}>ちずを タップして ばしょを えらんでね</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAwaitingLocationSelection(false);
-                            toast({ title: "ばしょえらびを やめたよ" });
-                          }}
-                          className="h-10 rounded-full px-4 text-[13px] font-black"
-                          style={{ color: "#847661" }}
-                        >
-                          やめる
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
-          {/* --- ▲▲▲ モバイル用地点選択UI ▲▲▲ --- */}
+        {/* 各種ステータス表示（モバイルヒント・地点選択ピル・エラー・読み込み中） */}
+        <MapStatusOverlays
+          showMobileMapHint={showMobileMapHint}
+          onDismissHint={() => setShowMobileMapHint(false)}
+          isReportFormOpen={isReportFormOpen}
+          selectedLocation={selectedLocation}
+          mapError={mapError}
+          isLoading={isLoading}
+        />
+          {/* 危険レポート入力フォーム（デスクトップ=右下 / モバイル=Portalフルスクリーン） */}
+          <MapReportForms
+            isReportFormOpen={isReportFormOpen}
+            isMobile={isMobile}
+            onSubmit={handleReportSubmit}
+            selectedLocation={selectedLocation}
+            locationSource={locationSelectionSource}
+            selectedRouteId={selectedUserRoute?.id ?? null}
+            selectedRouteName={selectedUserRoute?.name ?? null}
+            onDesktopCancel={() => setIsReportFormOpen(false)}
+            onMobileChangeLocation={() => {
+              setIsReportFormOpen(false);
+              // 地点選択モードに戻す
+              setAwaitingLocationSelection(true);
+            }}
+            onMobileClose={() => {
+              setIsReportFormOpen(false);
+              setSelectedLocation(null);
+              setLocationSelectionSource(null);
+              if (selectionMarker.current) {
+                selectionMarker.current.remove();
+                selectionMarker.current = null;
+              }
+            }}
+          />
+          {/* モバイル用地点選択UI（ボトムシート）- Portal経由でbodyに直接レンダリング */}
+          <MobileLocationSheet
+            isMobile={isMobile}
+            awaitingLocationSelection={awaitingLocationSelection}
+            selectedLocation={selectedLocation}
+            onCancelWithLocation={() => {
+              setAwaitingLocationSelection(false);
+              setSelectedLocation(null);
+              setLocationSelectionSource(null);
+              if (selectionMarker.current) {
+                selectionMarker.current.remove();
+                selectionMarker.current = null;
+              }
+              toast({ title: "ばしょえらびを やめたよ" });
+            }}
+            onConfirm={() => {
+              setAwaitingLocationSelection(false);
+              setIsReportFormOpen(true);
+            }}
+            onCancelWaiting={() => {
+              setAwaitingLocationSelection(false);
+              toast({ title: "ばしょえらびを やめたよ" });
+            }}
+          />
           
 
         {/* Dialogs and Modals */}
