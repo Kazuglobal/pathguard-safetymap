@@ -5,7 +5,7 @@ vi.mock("@/lib/gemini-hazard", () => ({
 }))
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
-import { analyzeHunterImage, buildHunterPrompt } from "@/lib/hunter/hunter-ai"
+import { analyzeHunterImage, buildHunterPrompt, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
 import { HUNTER_GENERATION_CONFIG } from "@/lib/hunter/ai-request-schema"
 import { DISPLAY_CONF_MIN } from "@/lib/hunter/sanitize"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
@@ -140,5 +140,81 @@ describe("analyzeHunterImage", () => {
     const r = await analyzeHunterImage("data:image/png;base64,x", opts)
     expect(r.mode).toBe("guide")
     expect(r.fallbackReason).toBe("ai_error")
+  })
+
+  it("retries once on a transient 503 and recovers to explore mode", async () => {
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable - overloaded"))
+      .mockResolvedValueOnce(aiJson([pt()]))
+    const r = await analyzeHunterImage("data:image/png;base64,x", opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(2)
+    expect(r.mode).toBe("explore")
+    expect(r.hazards).toHaveLength(1)
+  })
+
+  it("retries once on a 429 rate limit and recovers", async () => {
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini request failed: 429 Too Many Requests - quota"))
+      .mockResolvedValueOnce(aiJson([pt()]))
+    const r = await analyzeHunterImage("data:image/png;base64,x", opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(2)
+    expect(r.mode).toBe("explore")
+  })
+
+  it("retries once on empty candidates (no text output) and recovers", async () => {
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini response did not contain text output"))
+      .mockResolvedValueOnce(aiJson([pt()]))
+    const r = await analyzeHunterImage("data:image/png;base64,x", opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(2)
+    expect(r.mode).toBe("explore")
+  })
+
+  it("does NOT retry a permanent 400 (bad request) — one call, guide(ai_error)", async () => {
+    vi.mocked(callGeminiVision).mockRejectedValue(
+      new Error("Gemini request failed: 400 Bad Request - invalid schema"),
+    )
+    const r = await analyzeHunterImage("data:image/png;base64,x", opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(1)
+    expect(r.fallbackReason).toBe("ai_error")
+  })
+
+  it("does not retry transient errors when allowRetry is false", async () => {
+    vi.mocked(callGeminiVision).mockRejectedValue(
+      new Error("Gemini request failed: 503 Service Unavailable"),
+    )
+    const r = await analyzeHunterImage("data:image/png;base64,x", { ...opts, allowRetry: false })
+    expect(callGeminiVision).toHaveBeenCalledTimes(1)
+    expect(r.fallbackReason).toBe("ai_error")
+  })
+
+  it("gives up with guide(ai_error) after a transient error persists across the retry", async () => {
+    vi.mocked(callGeminiVision).mockRejectedValue(
+      new Error("Gemini request failed: 503 Service Unavailable"),
+    )
+    const r = await analyzeHunterImage("data:image/png;base64,x", opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(2)
+    expect(r.fallbackReason).toBe("ai_error")
+  })
+})
+
+describe("isRetryableGeminiError", () => {
+  it("treats 429 and 5xx as retryable", () => {
+    expect(isRetryableGeminiError(new Error("Gemini request failed: 429 Too Many Requests"))).toBe(true)
+    expect(isRetryableGeminiError(new Error("Gemini request failed: 500 Internal"))).toBe(true)
+    expect(isRetryableGeminiError(new Error("Gemini request failed: 503 Service Unavailable"))).toBe(true)
+  })
+
+  it("treats empty candidates and network blips as retryable", () => {
+    expect(isRetryableGeminiError(new Error("Gemini response did not contain text output"))).toBe(true)
+    expect(isRetryableGeminiError(new TypeError("fetch failed"))).toBe(true)
+    expect(isRetryableGeminiError(new Error("ECONNRESET"))).toBe(true)
+  })
+
+  it("treats 4xx (except 429) and input errors as permanent", () => {
+    expect(isRetryableGeminiError(new Error("Gemini request failed: 400 Bad Request"))).toBe(false)
+    expect(isRetryableGeminiError(new Error("Gemini request failed: 403 Forbidden"))).toBe(false)
+    expect(isRetryableGeminiError(new Error("画像データが不足しています"))).toBe(false)
+    expect(isRetryableGeminiError(new Error("network down"))).toBe(false)
   })
 })

@@ -10,11 +10,11 @@ describe("school route news release readiness regressions", () => {
     const allNewsItems = getAllNewsItems()
     const latestNews = getLatestNews(2)
 
-    expect(allNewsItems[0]?.slug).toBe("residential-road-30kmh-law-reform-20260318")
-    expect(allNewsItems[1]?.slug).toBe("spring-suspicious-alert-school-route-20260313")
+    expect(allNewsItems[0]?.slug).toBe("kitakyushu-kokurakita-izumidai-suspicious-sns-20260420")
+    expect(allNewsItems[1]?.slug).toBe("hakodate-aoyagi-candy-handover-20260417")
     expect(latestNews.map((item) => item.slug)).toEqual([
-      "residential-road-30kmh-law-reform-20260318",
-      "spring-suspicious-alert-school-route-20260313",
+      "kitakyushu-kokurakita-izumidai-suspicious-sns-20260420",
+      "hakodate-aoyagi-candy-handover-20260417",
     ])
   })
 

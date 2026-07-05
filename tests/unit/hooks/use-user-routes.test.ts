@@ -48,6 +48,8 @@ describe('useUserRoutes Hook', () => {
           })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
         },
       },
@@ -83,6 +85,8 @@ describe('useUserRoutes Hook', () => {
       const mockSupabase = {
         from: vi.fn(),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
         },
       }
@@ -111,6 +115,8 @@ describe('useUserRoutes Hook', () => {
           })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -137,6 +143,8 @@ describe('useUserRoutes Hook', () => {
           })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -167,6 +175,8 @@ describe('useUserRoutes Hook', () => {
           })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -195,6 +205,8 @@ describe('useUserRoutes Hook', () => {
           insert: vi.fn(() => Promise.resolve({ data: { id: 'new-route' }, error: null })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -226,6 +238,8 @@ describe('useUserRoutes Hook', () => {
           insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: null }, error: null })),
         },
       }
@@ -258,6 +272,8 @@ describe('useUserRoutes Hook', () => {
           insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -290,6 +306,8 @@ describe('useUserRoutes Hook', () => {
           insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -335,6 +353,8 @@ describe('useUserRoutes Hook', () => {
           update: mockUpdate,
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -371,6 +391,8 @@ describe('useUserRoutes Hook', () => {
           update: mockUpdate,
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -409,6 +431,8 @@ describe('useUserRoutes Hook', () => {
           delete: mockDelete,
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -445,6 +469,8 @@ describe('useUserRoutes Hook', () => {
           })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -515,6 +541,8 @@ describe('useUserRoutes Hook', () => {
           })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }
@@ -551,6 +579,8 @@ describe('useUserRoutes Hook', () => {
           insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
         })),
         auth: {
+          getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
           getUser: vi.fn(() => Promise.resolve({ data: { user: mockUser }, error: null })),
         },
       }

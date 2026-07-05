@@ -477,7 +477,17 @@ function isMarkdownSeparatorRow(cells: string[]): boolean {
 
 function isMarkdownHeaderRow(cells: string[]): boolean {
   const normalizedCells = cells.map((cell) => cell.replace(/\s+/g, ""))
-  return normalizedCells.includes("ハザード") || normalizedCells.includes("想定リスク(例)") || normalizedCells.includes("想定リスク")
+  if (
+    normalizedCells.includes("ハザード") ||
+    normalizedCells.includes("想定リスク(例)") ||
+    normalizedCells.includes("想定リスク")
+  ) {
+    return true
+  }
+  // 英語表のヘッダー行（| Hazard | Expected Risks | ... |）もデータ行として
+  // 取り込まないようにスキップする。
+  const lowerCells = normalizedCells.map((cell) => cell.toLowerCase())
+  return lowerCells.includes("hazard") || lowerCells.some((cell) => cell.startsWith("expectedrisk"))
 }
 
 function normalizeSimulationHazardKey(value: string | null | undefined): SimulationHazardKey | null {

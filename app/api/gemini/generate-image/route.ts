@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
+import { verifyOrRegenerateImages } from "@/lib/disaster-image-verification"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
-import { estimateImageGenerationCost } from "@/lib/api-cost-calculator"
+import { calculateCost, estimateImageGenerationCost } from "@/lib/api-cost-calculator"
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
 
 export const runtime = "nodejs"
@@ -10,9 +11,14 @@ export const maxDuration = 180
 
 const ROUTE_TIMEOUT_MS = 175_000 // maxDuration(180s) - 5s buffer
 const FORCED_IMAGE_MODEL = FORCED_GEMINI_IMAGE_MODEL
+const VERIFICATION_MODEL_FOR_COST = "gemini-2.5-flash"
+const ESTIMATED_VERIFICATION_INPUT_TOKENS = 1400
+const ESTIMATED_VERIFICATION_OUTPUT_TOKENS = 120
 
 export async function POST(req: NextRequest) {
   let modelName = FORCED_IMAGE_MODEL
+  let apiRequestCount = 0
+  let estimatedCostUsd = 0
   try {
     // 認証チェック - ログインユーザーのみ使用可能
     const supabase = await createServerClient()
@@ -53,11 +59,41 @@ export async function POST(req: NextRequest) {
     }
 
 
+    // 生成プロンプトに是正サフィックスを足して呼び直せるようにする（再生成用）。
+    const runGeneration = async (correctiveSuffix?: string) => {
+      apiRequestCount += 1
+      const result = await generateImageWithGeminiWithModel({
+        prompt: correctiveSuffix ? [prompt, correctiveSuffix].filter(Boolean).join("\n\n") : prompt,
+        imageBase64,
+        imageMimeType,
+        model: FORCED_IMAGE_MODEL,
+      })
+      modelName = result.model
+      return result
+    }
+
     let routeTimeoutId: ReturnType<typeof setTimeout> | undefined
     const result = await (async () => {
       try {
         return await Promise.race([
-          generateImageWithGeminiWithModel({ prompt, imageBase64, imageMimeType, model: FORCED_IMAGE_MODEL }),
+          (async () => {
+            // 一次生成 → 生成後の機械検証。混入・匿名化漏れがあれば1回だけ是正再生成する。
+            const first = await runGeneration()
+            const verified = await verifyOrRegenerateImages({
+              images: first.images,
+              regenerate: async (correctiveSuffix) => (await runGeneration(correctiveSuffix)).images,
+            })
+            apiRequestCount += verified.verificationRequestCount
+            estimatedCostUsd =
+              estimateImageGenerationCost(first.model, apiRequestCount - verified.verificationRequestCount) +
+              calculateCost({
+                provider: "gemini",
+                model: VERIFICATION_MODEL_FOR_COST,
+                inputTokens: verified.verificationRequestCount * ESTIMATED_VERIFICATION_INPUT_TOKENS,
+                outputTokens: verified.verificationRequestCount * ESTIMATED_VERIFICATION_OUTPUT_TOKENS,
+              })
+            return { images: verified.images, model: first.model, warning: verified.warning }
+          })(),
           new Promise<never>((_, reject) => {
             routeTimeoutId = setTimeout(
               () => reject(new Error("画像生成がタイムアウトしました。しばらく待ってから再度お試しください。")),
@@ -76,16 +112,27 @@ export async function POST(req: NextRequest) {
         api_provider: 'gemini',
         api_endpoint: 'generate-image',
         model_name: modelName,
-        request_count: 1,
-        estimated_cost_usd: estimateImageGenerationCost(modelName, 1),
+        request_count: apiRequestCount,
+        estimated_cost_usd: estimatedCostUsd,
         success: true,
       })
     } catch { /* fire-and-forget */ }
-    return NextResponse.json({ images: result.images })
+    return NextResponse.json({
+      images: result.images,
+      ...(result.warning ? { warning: result.warning } : {}),
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     try {
-      logApiUsage({ api_provider: 'gemini', api_endpoint: 'generate-image', model_name: modelName, request_count: 1, estimated_cost_usd: 0, success: false, error_message: message })
+      logApiUsage({
+        api_provider: 'gemini',
+        api_endpoint: 'generate-image',
+        model_name: modelName,
+        request_count: Math.max(apiRequestCount, 1),
+        estimated_cost_usd: estimatedCostUsd,
+        success: false,
+        error_message: message,
+      })
     } catch { /* fire-and-forget */ }
     const statusCode = (() => {
       if (/unauthorized|forbidden|api.?key|401|403/i.test(message)) return 401

@@ -36,17 +36,17 @@ describe("validateHunterResponse", () => {
     expect(r.dangerPoints[0].quiz.choices).toHaveLength(4)
   })
 
-  it("drops only the broken danger points (missing region / missing quiz)", () => {
+  it("drops only points whose region cannot be recovered (quiz breakage is salvaged)", () => {
     const r = validateHunterResponse({
       dangerPoints: [
         rawPoint(),
-        rawPoint({ region: undefined }), // broken: no region
-        rawPoint({ quiz: undefined }), // broken: no quiz material
+        rawPoint({ region: undefined }), // broken beyond repair: no tap target -> dropped
+        rawPoint({ quiz: undefined }), // salvaged: kept, sanitize supplies the kind fallback quiz
         rawPoint({ kind: "popout_spot" }),
       ],
     })
-    expect(r.dangerPoints).toHaveLength(2)
-    expect(r.dangerPoints.map((p) => p.kind)).toEqual(["blind_corner", "popout_spot"])
+    expect(r.dangerPoints).toHaveLength(3)
+    expect(r.dangerPoints.map((p) => p.kind)).toEqual(["blind_corner", "blind_corner", "popout_spot"])
   })
 
   it("coerces an unknown kind to 'other'", () => {
@@ -55,11 +55,47 @@ describe("validateHunterResponse", () => {
     expect(r.dangerPoints[0].kind).toBe("other")
   })
 
-  it("drops a point whose quiz has fewer than 2 choices", () => {
+  it("keeps a point whose quiz has fewer than 2 choices (quiz nulled, point salvaged)", () => {
     const r = validateHunterResponse({
       dangerPoints: [rawPoint({ quiz: { question: "?", choices: ["one"], explanation: "x" } })],
     })
-    expect(r.dangerPoints).toHaveLength(0)
+    expect(r.dangerPoints).toHaveLength(1)
+    // 壊れたクイズは undefined 化され、点は保持される(sanitize が kind 既定クイズで補完)。
+    expect(r.dangerPoints[0].quiz).toBeUndefined()
+  })
+
+  it("coerces an uppercase / padded severity instead of dropping the point", () => {
+    const r = validateHunterResponse({
+      dangerPoints: [rawPoint({ severity: "High" }), rawPoint({ kind: "flood_dip", severity: " LOW " })],
+    })
+    expect(r.dangerPoints).toHaveLength(2)
+    expect(r.dangerPoints[0].severity).toBe("high")
+    expect(r.dangerPoints[1].severity).toBe("low")
+  })
+
+  it("nulls an out-of-enum severity but keeps the point (sanitize fills from kind)", () => {
+    const r = validateHunterResponse({ dangerPoints: [rawPoint({ severity: "critical" })] })
+    expect(r.dangerPoints).toHaveLength(1)
+    expect(r.dangerPoints[0].severity).toBeUndefined()
+  })
+
+  it("does not let a stringy imageUsable collapse the danger points", () => {
+    const r = validateHunterResponse({
+      imageUsable: "true", // 文字列。旧実装ではトップ検証が全滅し dangerPoints=[] になっていた
+      dangerPoints: [rawPoint(), rawPoint({ kind: "popout_spot" })],
+    })
+    expect(r.imageUsable).toBe(true)
+    expect(r.dangerPoints).toHaveLength(2)
+  })
+
+  it("honors a stringy imageUsable=false", () => {
+    const r = validateHunterResponse({ imageUsable: "false", dangerPoints: [rawPoint()] })
+    expect(r.imageUsable).toBe(false)
+  })
+
+  it("ignores a mistyped version field without dropping the danger points", () => {
+    const r = validateHunterResponse({ version: 1, dangerPoints: [rawPoint()] })
+    expect(r.dangerPoints).toHaveLength(1)
   })
 
   it("distinguishes imageUsable=false", () => {

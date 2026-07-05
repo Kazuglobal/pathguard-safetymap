@@ -1,11 +1,13 @@
 // =============================================
 // きけんハンター 生AI出力スキーマ (zod) — 関心分離
 // 専用ハンターAIが返す「生の」JSONをここで検証する。
-// - トップレベルは緩く受け、dangerPoints は要素ごとに safeParse して
-//   壊れた要素だけドロップ(全滅させない)。
+// - トップレベルは1フィールドの型崩れで全滅させない(付随フィールドは
+//   各々 .catch で握りつぶし、dangerPoints を巻き添えにしない)。
 // - 未知 kind は "other" に矯正。
-// - quiz 素材(question/choices/explanation)が無い point はドロップ
-//   (place→choice フォールバック元データを構造保証)。
+// - danger point の必須は region のみ。severity/confidence/文言/quiz の
+//   型崩れは .catch で undefined 化し、点そのものは保持する(sanitize が
+//   kind 既定の severity・子ども文・クイズで補完する)。写真に置けない
+//   (region 不正)点だけをドロップする。
 // types.ts はこの生AI型に依存しない(ドメイン型と分離)。
 // =============================================
 
@@ -43,7 +45,8 @@ export interface RawDangerPoint {
   whyDangerous?: string
   safeAction?: string
   accidentLink?: string | null
-  quiz: RawAiQuiz
+  /** 欠落・破損時は undefined。sanitize が kind 既定クイズへ補完する。 */
+  quiz?: RawAiQuiz
 }
 
 export interface RawSafePoint {
@@ -74,37 +77,67 @@ const quizSchema = z.object({
   explanation: z.string().min(1),
 })
 
+// 大文字/前後空白の severity("High"・" medium ")も拾う。未知値・非文字列は
+// undefined へ倒し、点を落とさない(sanitize が kind 既定 severity で補完)。
+const severitySchema = z
+  .preprocess(
+    (v) => (typeof v === "string" ? v.trim().toLowerCase() : undefined),
+    z.enum(["high", "medium", "low"]).optional(),
+  )
+  .catch(undefined)
+
+// "true"/"false"(文字列)や 0/1 も真偽へ寄せる。判別不能は undefined
+// (= 呼び出し側で既定 true。「使えない」と誤断定しない)。
+const imageUsableSchema = z
+  .preprocess((v) => {
+    if (typeof v === "boolean") return v
+    if (typeof v === "string") {
+      const s = v.trim().toLowerCase()
+      if (s === "true" || s === "1" || s === "yes") return true
+      if (s === "false" || s === "0" || s === "no") return false
+    }
+    return undefined
+  }, z.boolean().optional())
+  .catch(undefined)
+
+// danger point の必須は region のみ。付随フィールドは .catch で型崩れを
+// undefined 化し、点そのものは保持する(sanitize が既定値・子ども文で補完)。
 const dangerPointSchema = z.object({
   kind: zKind,
-  kidType: z.string().optional(),
+  kidType: z.string().optional().catch(undefined),
   region: regionSchema,
-  severity: z.enum(["high", "medium", "low"]).optional(),
-  confidence: zNum.optional(),
-  whyDangerous: z.string().optional(),
-  safeAction: z.string().optional(),
-  accidentLink: z.string().nullable().optional(),
-  quiz: quizSchema, // 必須: quiz 素材が無い point はドロップ
+  severity: severitySchema,
+  confidence: zNum.optional().catch(undefined),
+  whyDangerous: z.string().optional().catch(undefined),
+  safeAction: z.string().optional().catch(undefined),
+  accidentLink: z.string().nullable().optional().catch(undefined),
+  // 壊れた/欠落クイズでも点は落とさない。素材の検証・差し替えは sanitize が担う。
+  quiz: quizSchema.optional().catch(undefined),
 })
 
 const safePointSchema = z.object({
-  kind: zKind.optional(),
-  kidType: z.string().optional(),
-  region: regionSchema.optional(),
-  whyGood: z.string().optional(),
+  kind: zKind.optional().catch(undefined),
+  kidType: z.string().optional().catch(undefined),
+  region: regionSchema.optional().catch(undefined),
+  whyGood: z.string().optional().catch(undefined),
 })
 
+// 付随フィールド1つの型崩れで dangerPoints を巻き添えにしないよう、
+// 各フィールドを独立に .catch する(version など未使用キーは自然に無視)。
 const topSchema = z.object({
-  version: z.string().nullable().optional(),
-  imageUsable: z.boolean().nullable().optional(),
-  dangerPoints: z.array(z.unknown()).nullable().optional(),
-  safePoints: z.array(z.unknown()).nullable().optional(),
-  noHazardFollow: z.string().nullable().optional(),
+  imageUsable: imageUsableSchema,
+  dangerPoints: z.array(z.unknown()).optional().catch([]),
+  safePoints: z.array(z.unknown()).optional().catch([]),
+  noHazardFollow: z.string().nullable().optional().catch(null),
 })
 
 /**
- * 生AI応答を検証して、壊れた要素を落とした構造を返す。
- * - imageUsable は欠落時 true(=「使えない」と誤断定しない)。
- * - dangerPoints/safePoints は要素単位 safeParse で壊れた要素のみドロップ。
+ * 生AI応答を検証して、可能な限り救い出した構造を返す。
+ * - imageUsable は欠落・判別不能時 true(=「使えない」と誤断定しない)。
+ * - 付随フィールドの型崩れ(stringy imageUsable / 数値 version 等)で
+ *   dangerPoints 全体を巻き添えにしない。
+ * - dangerPoints/safePoints は要素単位 safeParse。region を復元できない
+ *   要素だけをドロップし、severity/quiz 等の破損は保持したまま後段へ渡す。
  */
 export function validateHunterResponse(raw: unknown): ValidatedHunterResponse {
   const top = topSchema.safeParse(raw)

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/web-push', () => ({
@@ -19,10 +19,23 @@ function makeRequest(body: unknown, secret = 'test-secret') {
 }
 
 describe('POST /api/push/notify-content', () => {
+  const originalVercel = process.env.VERCEL
+
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.resetModules()
     process.env.CRON_SECRET = 'test-secret'
+    // verifyCronSecret は Vercel 環境外では認証をスキップするため、
+    // 認証ロジックを検証するテストでは VERCEL を立てて本番相当の分岐を通す。
+    process.env.VERCEL = '1'
+  })
+
+  afterEach(() => {
+    if (originalVercel === undefined) {
+      delete process.env.VERCEL
+    } else {
+      process.env.VERCEL = originalVercel
+    }
   })
 
   it('CRON_SECRET認証が通らない場合は401を返す', async () => {

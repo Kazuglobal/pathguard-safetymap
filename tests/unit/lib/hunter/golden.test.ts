@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest"
 import { validateHunterResponse } from "@/lib/hunter/ai-schema"
 import { MAX_HAZARDS, sanitizeDangerPoints } from "@/lib/hunter/sanitize"
 import { buildQuizItemsFromAi } from "@/lib/hunter/quiz"
-import { KID_COPY_BY_KIND, KID_LABEL_BY_KIND } from "@/lib/hunter/kid-copy"
+import { KID_COPY_BY_KIND, KID_LABEL_BY_KIND, KID_QUIZ_FALLBACK_BY_KIND } from "@/lib/hunter/kid-copy"
 
 import ideal from "./golden/ideal.json"
 import duplicates from "./golden/duplicates.json"
@@ -20,6 +20,11 @@ import giantBbox from "./golden/giant-bbox.json"
 import lowConfidenceMixed from "./golden/low-confidence-mixed.json"
 import empty from "./golden/empty.json"
 import imageUnusable from "./golden/image-unusable.json"
+// 現実的な破損フィクスチャ(旧パイプラインはこれらを丸ごとフォールバックへ落としていた)
+import stringyImageUsable from "./golden/stringy-imageusable.json"
+import uppercaseSeverity from "./golden/uppercase-severity.json"
+import missingQuiz from "./golden/missing-quiz.json"
+import messyRecoverable from "./golden/messy-recoverable.json"
 
 /** route 相当の後処理(imageUsable ガートは route の責務なので別途確認)。 */
 function runPipeline(raw: unknown, sessionId = "g") {
@@ -111,9 +116,62 @@ describe("golden: image-unusable", () => {
   })
 
   it("never exceeds the hazard cap on any fixture", () => {
-    for (const raw of [ideal, duplicates, englishMixed, giantBbox, lowConfidenceMixed, empty, imageUnusable]) {
+    for (const raw of [
+      ideal, duplicates, englishMixed, giantBbox, lowConfidenceMixed, empty, imageUnusable,
+      stringyImageUsable, uppercaseSeverity, missingQuiz, messyRecoverable,
+    ]) {
       const { hazards } = runPipeline(raw)
       expect(hazards.length).toBeLessThanOrEqual(MAX_HAZARDS)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// サルベージ回帰: 「1フィールドの型崩れで全滅」していた破損応答を救い出す。
+// 旧パイプライン(トップ検証の atomic 失敗 / 要素の全ドロップ)では、いずれも
+// hazards=0 → route が guide(empty) フォールバックへ落としていた。
+// ---------------------------------------------------------------------------
+describe("salvage: stringy imageUsable no longer collapses the whole response", () => {
+  it("recovers all three distinct danger points despite imageUsable:'true'", () => {
+    const { validated, hazards } = runPipeline(stringyImageUsable)
+    expect(validated.imageUsable).toBe(true)
+    expect(hazards.map((h) => h.kind)).toEqual([
+      "blind_corner",
+      "popout_spot",
+      "crossing_no_signal",
+    ])
+  })
+})
+
+describe("salvage: uppercase / padded severity is coerced, not dropped", () => {
+  it("keeps both points and normalizes severity case", () => {
+    const { hazards } = runPipeline(uppercaseSeverity)
+    expect(hazards).toHaveLength(2)
+    const bySeverity = Object.fromEntries(hazards.map((h) => [h.kind, h.severity]))
+    expect(bySeverity.blind_corner).toBe("high")
+    expect(bySeverity.turning_car).toBe("medium")
+  })
+})
+
+describe("salvage: a point survives a missing / one-choice quiz", () => {
+  it("keeps both points and substitutes the verified kind-default quiz", () => {
+    const { hazards, materials } = runPipeline(missingQuiz)
+    expect(hazards.map((h) => h.kind)).toEqual(["crossing_no_signal", "blind_corner"])
+    // どちらも生クイズが使えない → kind 既定のフォールバック素材で補完される。
+    expect(materials[0]).toEqual(KID_QUIZ_FALLBACK_BY_KIND.crossing_no_signal)
+    expect(materials[1]).toEqual(KID_QUIZ_FALLBACK_BY_KIND.blind_corner)
+  })
+})
+
+describe("salvage: a realistically messy response keeps every recoverable point", () => {
+  it("recovers 3 points (stringy imageUsable/version, upper severity, stringy confidence, missing quiz) and drops only the region-less one", () => {
+    const { hazards } = runPipeline(messyRecoverable)
+    expect(hazards.map((h) => h.kind)).toEqual([
+      "blind_corner",
+      "popout_spot",
+      "crossing_no_signal",
+    ])
+    // region の無い turning_car は写真に置けないため唯一ドロップされる。
+    expect(hazards.some((h) => h.kind === "turning_car")).toBe(false)
   })
 })
