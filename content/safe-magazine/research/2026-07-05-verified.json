@@ -1,0 +1,480 @@
+{
+  "verification_date": "2026-07-05",
+  "verifier": "fact-checker",
+  "method": "全13件についてWebFetchで実際にsource_urlへアクセスし、可能な限りWebSearchで別ソースをクロスチェックした。アクセス不能・内容不一致の項目はNEEDS_REVISIONまたはREJECTEDとし、推測での確認済み扱いはしていない。",
+  "total_items": 13,
+  "summary": {
+    "APPROVED": 10,
+    "NEEDS_REVISION": 3,
+    "REJECTED": 0
+  },
+  "items": [
+    {
+      "original_item_id": "A1",
+      "title": "仙台市青葉区で下校中の女子小学生が腕をつかまれ道を聞かれ続ける不審者事案",
+      "verification_status": "NEEDS_REVISION",
+      "confidence_level": 0.6,
+      "sources_checked": [
+        {
+          "url": "https://www.gaccom.jp/safety/detail-1810265",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "宮城県警察『みやぎセキュリティメール』からの転載と明記。7/3(金)17時ごろ、青葉区双葉ヶ丘1丁目、女子小学生が女に腕をつかまれしつこく道を聞かれた、という具体的な加害者特徴（身長170cm・がっちり型・白Tシャツ・黒帽子・黒ボディバッグ）まで一致"
+        },
+        {
+          "url": "https://www.police.pref.miyagi.jp/kentai/kodomojosei/hassei.html",
+          "reliability": "high",
+          "confirms": false,
+          "note": "宮城県警公式の『取扱状況』ページは集計統計のみで個別事案の記載なし。原典アーカイブに到達できず直接照合はできなかった"
+        },
+        {
+          "url": "https://www.police.pref.miyagi.jp/seian/gaitohanzai/securitymail/",
+          "reliability": "high",
+          "confirms": false,
+          "note": "みやぎセキュリティメールの登録案内ページのみで、過去配信のアーカイブは非公開"
+        },
+        {
+          "url": "https://fushinsha-joho.co.jp/search.cgi?pref=宮城県",
+          "reliability": "medium",
+          "confirms": "partial",
+          "note": "独立系の別アグリゲーター『日本不審者情報センター』に『07/04 仙台市青葉区 双葉ケ丘（暴行）』の記載を発見。場所は一致するが日付が1日ずれており（発生7/3 vs 掲載7/4の可能性）、分類も『暴行』で原文の『腕をつかまれ道を聞かれ続けた』と完全一致とは言えない部分的な裏付けにとどまる"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年7月3日(金)午後5時ごろ発生（ガッコム掲載日は7/4）",
+        "location": "仙台市青葉区双葉ヶ丘1丁目地内路上",
+        "details": "下校中の女子小学生1人が見知らぬ女に腕をつかまれしつこく道を尋ねられた。加害者の身体的特徴が詳細に記録されている。情報源は宮城県警察『みやぎセキュリティメール』"
+      },
+      "corrections": [],
+      "notes": "内容自体は警察発表転載の典型的な形式で具体性が高く矛盾はないが、最低2ソースでの独立確認という基準を厳密には満たせなかった（原典アーカイブ非公開、別アグリゲーターは部分一致のみ）。記事化する場合は『宮城県警察(みやぎセキュリティメール)発表情報』であることを明記し、日付（発生日7/3・情報公開日7/4）を正確に書き分けることを推奨。",
+      "approved_for_publication": false
+    },
+    {
+      "original_item_id": "A2",
+      "title": "大阪・河内長野市でスクールバスが対向車線に進入、6台絡む事故で生徒ら5人けが",
+      "verification_status": "NEEDS_REVISION",
+      "confidence_level": 0.55,
+      "sources_checked": [
+        {
+          "url": "https://news.yahoo.co.jp/articles/2f1018bfc43c25014e9f3c4dc71743cd1cb2fcca",
+          "reliability": "medium-high",
+          "confirms": "partial",
+          "note": "朝日新聞配信。日時(6/25 18:20頃)・場所(河内長野市高向、大阪外環状線=国道170号交差点)・運転手情報(67歳、和歌山県橋本市)・逮捕容疑(過失運転致傷)は確認できたが、負傷者数の内訳記述がツール要約内で内部矛盾していた"
+        },
+        {
+          "url": "https://www.ktv.jp/news/articles/?id=27966",
+          "reliability": "medium-high",
+          "confirms": true,
+          "note": "関西テレビ。見出し・WebSearch経由で確認（直接WebFetchは404）。『6台絡む事故で5人けが』"
+        },
+        {
+          "url": "https://news.web.nhk/newsweb/na/na-k10015160481000",
+          "reliability": "high",
+          "confirms": true,
+          "note": "NHKニュース。WebSearch経由で確認。中学生2人・高校生1人を含む5人けが、命に別条なしと明記"
+        },
+        {
+          "url": "https://news.yahoo.co.jp/articles/34a5fbb46d50f4be60ae20275ac6dd9f7bfc7eb0",
+          "reliability": "medium-high",
+          "confirms": false,
+          "note": "読売テレビ。『バスに乗っていた中高生など18人が重軽傷』と、他社と大きく異なる負傷者数を報道（居眠り運転の可能性という独自情報も）"
+        },
+        {
+          "url": "検索経由: 読売新聞オンライン記事",
+          "reliability": "medium-high",
+          "confirms": false,
+          "note": "『中学生・高校生ら12人が救急搬送』とさらに異なる数字"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年6月25日午後6時20分ごろ",
+        "location": "大阪府河内長野市高向、大阪外環状線(国道170号)の交差点",
+        "details": "スクールバス(中高生15人+運転手1人)が対向車線に進入し、右折待ちの車4台・バイク1台と衝突（計6台）。運転手は67歳男性(和歌山県橋本市)、過失運転致傷容疑で逮捕。運転手は『なぜ逆走したか分からない』と説明。読売テレビは道路にブレーキ痕がなく居眠り運転の可能性を報道"
+      },
+      "corrections": [
+        {
+          "original": "11人負傷、うち生徒ら5人",
+          "corrected": "報道により負傷者数が食い違う：朝日新聞・NHK・関西テレビは『5人けが（うち中学生2人・高校生1人、命に別条なし）』、読売新聞は『12人搬送』、読売テレビ独自報道は『18人重軽傷』",
+          "reason": "候補記事にある『11人負傷、うち生徒ら5人』という具体的な数字は、確認できたどの一次報道にも一致しなかった。時間経過で負傷者数の発表が更新された可能性が高いが、現時点でどれが最新確定値か特定できない"
+        }
+      ],
+      "notes": "事故の基本事実(日時・場所・対向車線進入・運転手情報・逮捕)は複数の全国ネット局・全国紙で強く裏付けられ信頼性は高い。ただし人身被害の規模（5人〜18人）に報道間で大きな幅があり、要求されていた『死傷者数の内訳の裏取り』は完了できず未解決。記事化する場合は具体的な人数を断定せず『報道により負傷者数に幅があり5〜18人』と幅を持たせるか、最も多くの一次報道が一致する『5人けが（うち生徒3人）』を採用し、読売系の18人報道は続報として別途言及することを推奨。",
+      "approved_for_publication": false
+    },
+    {
+      "original_item_id": "V1",
+      "title": "三重・松阪で見守りボランティア団体を防犯功労で表彰",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.7,
+      "sources_checked": [
+        {
+          "url": "https://news.yahoo.co.jp/articles/7e38fe7f0b6a47369cfe5f509fbb2585fe40f4f6",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "配信元は地方紙『夕刊三重』（フッターに著作権表記あり）。2026年6月30日13:30、松阪地区生活安全協会主催の表彰式で『川井町児童見守り隊』(8人)、『まるごと見守り隊』(10人)を表彰。個人表彰(前野邦子さん76歳、岡勲さん66歳)も追加で確認"
+        },
+        {
+          "url": "https://www.city.matsusaka.mie.jp/site/bouhan-anzen/seiankyou-01.html",
+          "reliability": "high",
+          "confirms": "partial",
+          "note": "松阪市公式サイトで『松阪地区生活安全協会』が実在の団体であることを確認。個別表彰の記載はないが主催団体の実在性を裏付け"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年6月30日午後1時30分",
+        "location": "三重県松阪市",
+        "details": "松阪地区生活安全協会が防犯功労者表彰式を実施。『川井町児童見守り隊』(代表:田中宗男、8人)と『まるごと見守り隊』(代表:山下一義、10人)を表彰"
+      },
+      "corrections": [],
+      "notes": "地方紙単独ソースだが、主催団体は市公式サイトで実在確認済み。低リスクな地域ニュースであり内容に矛盾なし。追加情報として個人表彰者2名も判明",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "V2",
+      "title": "静岡・伊豆の国市で商工会青年部が通学路見守り",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.8,
+      "sources_checked": [
+        {
+          "url": "https://news.yahoo.co.jp/articles/34ca163bbdbcbc9ec24809fbb05283e4ff1c62c3",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "みんなの経済新聞ネットワーク配信。大仁小学校(伊豆の国市三福)、2012年から続く『絆』感謝運動、6月10日に広瀬神社前と大仁小学校前で実施"
+        },
+        {
+          "url": "https://izunokuni.keizai.biz/headline/60",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "原典と見られる『伊豆の国経済新聞』(みんなの経済新聞ネットワークの地域版)本体記事で同一内容を確認。独立した二次配信ではなく同一系列の原記事だが、内容の正確な転載であることを裏付け"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年6月10日",
+        "location": "静岡県伊豆の国市三福・大仁小学校周辺",
+        "details": "伊豆の国市商工会青年部が2012年から続く『絆』感謝運動の一環として、広瀬神社前と大仁小学校前で登校児童への声かけ見守りを実施"
+      },
+      "corrections": [],
+      "notes": "地域経済メディアの原記事とYahoo配信版が完全に一致。矛盾なし",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "V3",
+      "title": "千葉・四街道市「新1年生もう慣れたかな作戦」",
+      "verification_status": "NEEDS_REVISION",
+      "confidence_level": 0.6,
+      "sources_checked": [
+        {
+          "url": "https://news.yahoo.co.jp/articles/68f7731a7b642f508c1fe806a3590d3ba419256f",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "チバテレ配信。キャンペーン名『新1年生もう慣れたかな作戦』、千葉県警調べで例年6月に小学生(特に低学年)の事故が増加する傾向、市内全小学校の通学路で2025年から独自展開、と記載"
+        },
+        {
+          "url": "https://www.police.pref.chiba.jp/police_department/yotsukaido/notice_list.html",
+          "reliability": "high",
+          "confirms": false,
+          "note": "四街道警察署の公式お知らせページには『新1年生もう慣れたかな作戦』という名称の記載がない（同署は『止まってくれてありがとう!in四街道』等、別の交通安全キャンペーンは実施している実績あり）"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年6月5日ごろ(記事公開日)",
+        "location": "千葉県四街道市内全小学校の通学路",
+        "details": "四街道警察署と地域ボランティアが横断歩道で見守り強化。千葉県警のデータで例年6月に新1年生を含む低学年の事故が増える傾向があるとされる"
+      },
+      "corrections": [],
+      "notes": "四街道署が季節ごとの交通安全キャンペーンを実施していること自体は同署サイトで確認できるが、『新1年生もう慣れたかな作戦』という固有名称と『市内全小学校で展開』という規模感はチバテレ単独報道のみで、警察の公式発表では確認できなかった。記事化前に四街道警察署への直接確認、または名称を『四街道署による見守り強化(チバテレ報道)』程度にぼかすことを推奨",
+      "approved_for_publication": false
+    },
+    {
+      "original_item_id": "V4",
+      "title": "三重・松阪市でクマ(後にイノシシと判明)のふん発見、見守りボランティア同行",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.85,
+      "sources_checked": [
+        {
+          "url": "https://news.yahoo.co.jp/articles/6e2688cb603ee842a73bd96672268881790ea937",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "夕刊三重配信(第一報)。6月8日午前8時半ごろ、松阪市桂瀬町の水田でこぶし大のふん発見。市立大河内小学校(68人)の校区で連絡アプリにより注意喚起。松阪農林事務所→兵庫県の野生動物保護管理事務所へ照会し『クマの可能性』と連絡があった経緯を確認"
+        },
+        {
+          "url": "https://news.yahoo.co.jp/articles/9118ad9ece10280b3cae244b181e325403c2771f",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "夕刊三重配信(訂正報)。静岡県環境test センターでのDNA鑑定の結果、6月15日18時30分にイノシシ(Sus scrofa)と判明したと通知。6月16日に地元・校区小中学校へ連絡"
+        }
+      ],
+      "verified_facts": {
+        "date": "発見:6月8日 → クマの可能性連絡:6月8日午後 → DNA鑑定結果でイノシシと判明:6月15日18:30 → 学校への訂正連絡:6月16日",
+        "location": "三重県松阪市桂瀬町の水田(JAみえなか笹川支店東側)",
+        "details": "当初『クマのふんの可能性』と発表されたが、静岡県環境test センターでのDNA鑑定でイノシシと確定。大河内小学校区で見守りボランティア同行の登下校対応が取られた"
+      },
+      "corrections": [
+        {
+          "original": "クマ(後にイノシシと判明)",
+          "corrected": "『クマの可能性』という段階的発表→約1週間後にDNA鑑定でイノシシと確定、という訂正の全経緯を記事内で明示すべき",
+          "reason": "単に『クマが出た』とだけ書くと、既に否定された情報の再拡散になり保護者に無用な不安を与えるリスクがある"
+        }
+      ],
+      "notes": "同一媒体(夕刊三重)の第一報と訂正報の両方をYahoo!ニュース経由で確認でき、訂正の時系列(発見→クマ疑い→DNA鑑定→イノシシ確定)が具体的に裏付けられた。記事化する場合は『行政の初期対応で最悪を想定して警戒し、後に鑑定で安全側に訂正された』という前向きな安全対応事例として扱い、見出しで『クマ出没』を強調しすぎないこと。訂正の経緯そのものが記事価値（誤情報のリスク管理の好例）",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "V5",
+      "title": "金沢市の見守りボランティアが自宅の塀を撤去",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.85,
+      "sources_checked": [
+        {
+          "url": "https://www.hokkoku.co.jp/articles/-/2072958",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "北國新聞本紙。京念好夫さん(80)、大浦小学校スクールサポート隊、高さ1.8m×幅9mのコンクリート塀を撤去しフェンスへ変更、アンパンマン看板『とまれ』『みぎみて ひだりみて』設置、を確認"
+        },
+        {
+          "url": "https://news.yahoo.co.jp/articles/66c433dca16fffb01007854e8c0c8e1cd50f8606",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "北國新聞社配信のYahoo!ニュース版で同一内容を確認(3経路目のdメニューニュース版でも同一内容を確認)"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年4月9日までに(新学期に合わせて)",
+        "location": "石川県金沢市木越2丁目、大浦小学校通学路",
+        "details": "スクールサポート隊の京念好夫さん(80)が、児童が車にひかれそうになる場面を目撃したことをきっかけに自宅前の塀(高さ約1.8m、幅約9m)を撤去し見通しを改善、フェンスに変更"
+      },
+      "corrections": [],
+      "notes": "同一記事が北國新聞本紙・Yahoo!ニュース・dメニューニュースの3経路で内容一致。矛盾なし。人物の善意による具体的行動という強い訴求力のあるエピソード",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "S1",
+      "title": "香川県教委、ライフジャケット活用の水泳授業を実施",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.85,
+      "sources_checked": [
+        {
+          "url": "https://news.ksb.co.jp/article/16665750",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "KSB瀬戸内海放送本体記事。高松市立亀阜小学校、3年生約50人、大人用・子ども用計440着を無料貸出中、2026年度は10校で実施予定、を確認"
+        },
+        {
+          "url": "検索経由: OHK岡山放送、RSK山陽放送の同時期関連報道",
+          "reliability": "medium-high",
+          "confirms": true,
+          "note": "他の地元放送局(OHK、RSK)も同時期に香川県の同様のライフジャケット活用水難事故防止授業を報道しており、県教委の取り組み自体の実在性が複数局で裏付けられた"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年6月23日ごろ(記事公開)",
+        "location": "香川県高松市立亀阜小学校",
+        "details": "3年生約50人がライフセーバーを講師にライフジャケット着用法を学びプールで浮力体験。香川県教委が大人用・子ども用計440着を無料貸出中。2026年度は計10校で実施予定"
+      },
+      "corrections": [],
+      "notes": "複数の地元放送局が同時期に同じ県教委施策を報道しており、内容の信頼性は高い",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "S2",
+      "title": "文科省、登下校中を含む熱中症事故防止を通知",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.9,
+      "sources_checked": [
+        {
+          "url": "https://www.mext.go.jp/a_menu/kenko/anzen/1417343_00056.htm",
+          "reliability": "high",
+          "confirms": true,
+          "note": "文部科学省公式サイト。令和8年5月8日付、通知番号『8教参学第1号』、暑さ指数(WBGT)に基づく判断や気温25〜30℃の時期からの予防的措置を要請。学校管理下(登下校中含む)の熱中症を独立行政法人日本スポーツ振興センター調べで2,813件と明記"
+        }
+      ],
+      "verified_facts": {
+        "date": "令和8年5月8日付(8教参学第1号)",
+        "location": "全国(文科省から都道府県教委等への通知)",
+        "details": "学校管理下(登下校中含む)の熱中症2,813件(日本スポーツ振興センター調べ)を踏まえ、WBGT活用等の具体策を教育委員会等に依頼"
+      },
+      "corrections": [],
+      "notes": "政府一次情報源(文科省公式サイト)で通知番号・日付・統計数値まで完全一致。単独ソースだが公的機関の公式発表であり基準上『信頼性:高』としてクロスチェック要件を満たす",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "S3",
+      "title": "令和8年度「こどもの事故防止週間」7/13〜19、テーマは転落事故防止",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.95,
+      "sources_checked": [
+        {
+          "url": "https://www.cfa.go.jp/policies/child-safety-actions/special-week-2026",
+          "reliability": "high",
+          "confirms": true,
+          "note": "こども家庭庁公式サイト上に実在するページであることを確認（最優先で検証、架空URLではなかった）。実施期間『令和8年7月13日(月)〜7月19日(日)』、テーマ『身の回りに潜む転落事故の危機〜こどもの転落事故は「環境づくり」で防ぐことができます〜』を確認。ポスター・ハンドブック等の関連資料の提供も明記"
+        }
+      ],
+      "verified_facts": {
+        "date": "実施期間:令和8年7月13日(月)〜7月19日(日)",
+        "location": "全国",
+        "details": "こども家庭庁が定める『こどもの事故防止週間』。今年度テーマは転落事故防止で、環境整備による予防を強調"
+      },
+      "corrections": [],
+      "notes": "指示された最優先確認事項(URLの実在性)をクリア。政府一次情報源で信頼性最高。実施時期が7/13〜19と目前に迫っており記事の即時性・実用性が高い",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "D1",
+      "title": "日本損害保険協会「全国交通事故多発交差点マップ2024年版」公表",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.85,
+      "sources_checked": [
+        {
+          "url": "https://www.sonpo.or.jp/about/useful/kousaten/2024/",
+          "reliability": "high",
+          "confirms": true,
+          "note": "日本損害保険協会公式サイト。全国1位=池袋六ツ又交差点(17件)、交差点付近事故発生割合58.2%(全290,895件中169,284件)を確認"
+        },
+        {
+          "url": "検索経由: jafmate.jp, response.jp, trucknews.biz, netdenjd.com 等",
+          "reliability": "medium-high",
+          "confirms": true,
+          "note": "複数の専門メディア・業界メディアが『池袋六ツ又交差点が2年連続ワースト1位、17件』と一致した内容で報道。死亡0件・重傷2件・軽傷15件という詳細内訳、六差路の複雑な形状という事故要因分析も一致"
+        }
+      ],
+      "verified_facts": {
+        "date": "2025年9月16日公表(対象データは2024年の人身事故)",
+        "location": "全国(都道府県別ワースト交差点)",
+        "details": "全国1位は東京・池袋六ツ又交差点(17件、2年連続)。全人身事故に占める交差点付近発生割合は58.2%。年次で更新される公式統計資料で、通学路安全点検資料として業界団体自身が活用を推奨している"
+      },
+      "corrections": [],
+      "notes": "【現役性の判断】公表自体は2025年9月で今日(2026-07-05)から見て約10か月前だが、これは年1回更新される最新版統計(2024年データ)であり、次の更新(2025年データ版)は例年9月ごろと推測されるため、現時点で日本損害保険協会が提供する『最新版』である点に変わりはない。ただしファクトチェック基準の新鮮度区分（1か月以上=背景情報としてのみ使用）に従い、本記事では『最新ニュース』としてではなく『通学路の危険交差点を点検する際の公式参考資料』という背景情報の枠で扱うことを条件にAPPROVEDとする",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "D2",
+      "title": "都道府県別 交通事故発生ランキング最新版(2025年データ)",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.85,
+      "sources_checked": [
+        {
+          "url": "https://www.insweb.co.jp/car/kisochishiki/jidosha-jiko/jiko-ranking.html",
+          "reliability": "medium",
+          "confirms": true,
+          "note": "インズウェブ(民間保険比較サイト)は一次情報ではないが、本文中で『警察庁交通局「令和7年中の交通死亡事故の発生状況及び道路交通法違反取締り状況等について」』『一般財団法人自動車検査登録情報協会』を明示的に出典として引用。2025年全国事故件数287,023件、東京都30,176件、滋賀県3.85人という数値は本文に一字一句記載されていることを確認。ページ最終更新日は2026年6月3日で候補記事の日付と一致"
+        }
+      ],
+      "verified_facts": {
+        "date": "2026年6月3日更新(対象データは2025年)",
+        "location": "全国・都道府県別",
+        "details": "2025年全国交通事故件数287,023件。件数最多は東京都30,176件、次いで大阪府25,056件、愛知県24,793件。人口10万人当たり死者数は滋賀県3.85人が最多"
+      },
+      "corrections": [
+        {
+          "original": "(補足情報として発見)個別交差点データとして池袋六ツ又交差点が『15件』と記載されている箇所がある",
+          "corrected": "D1のsonpo.or.jp(2024年データ)では同交差点は『17件』。本体の都道府県ランキング(2025年データ)とは対象年が異なるため矛盾ではない可能性が高いが、記事内で交差点単位の数字を引用する場合はD1(sonpo協会・2024年版)を優先し、D2の交差点言及部分は使用しないことを推奨",
+          "reason": "同一交差点で異なる件数が2ソースに出ており、対象年の違いによる可能性が高いものの誤引用を避けるため"
+        }
+      ],
+      "notes": "都道府県別集計の核心数値(287,023件、東京30,176件、滋賀3.85人)は警察庁一次統計への出典明記があり、そのまま引用可能。ただし民間サイトの二次集計である点を踏まえ、記事中では出典を『警察庁交通局統計(インズウェブ調べ)』のように明記することを推奨",
+      "approved_for_publication": true
+    },
+    {
+      "original_item_id": "P1",
+      "title": "自転車青切符、施行1か月で告知件数2,147件",
+      "verification_status": "APPROVED",
+      "confidence_level": 0.98,
+      "sources_checked": [
+        {
+          "url": "https://jafmate.jp/car/traffic_topics_20260520_1199203.html",
+          "reliability": "medium-high",
+          "confirms": true,
+          "note": "JAF Mate Online。総件数2,147件、一時不停止846件(40%)、ながらスマホ713件(33%)、信号無視298件(14%)を確認"
+        },
+        {
+          "url": "https://www.npa.go.jp/news/release/2026/20260514.pdf",
+          "reliability": "high",
+          "confirms": true,
+          "note": "【政府一次発表資料に到達・PDF本文を直接確認済み】警察庁交通局交通企画課『自転車に対する交通反則通告制度導入後1月間の運用状況について』(令和8年5月14日付広報資料)。告知件数2,147件、指定場所一時不停止846件(40%)、携帯電話使用713件(33%)、信号無視298件(14%)、しゃ断踏切立入156件(7%)、通行区分違反63件(3%)、その他71件(3%)、指導警告票交付数135,855件、と全数値が完全一致"
+        },
+        {
+          "url": "検索経由: 時事ドットコム、Infoseek(毎日新聞配信)、くるまのニュース(Yahoo)、ライブドアニュース",
+          "reliability": "medium-high",
+          "confirms": true,
+          "note": "複数の全国紙・専門メディアが同じ警察庁発表を報道しており、数値はすべて一致"
+        }
+      ],
+      "verified_facts": {
+        "date": "警察庁発表日:2026年5月14日(施行日:2026年4月1日)",
+        "location": "全国",
+        "details": "自転車青切符制度導入後1か月間(暫定値)の告知件数2,147件。違反種別:指定場所一時不停止846件(40%)、携帯電話使用(ながらスマホ)713件(33%)、信号無視298件(14%)、しゃ断踏切立入156件(7%)、通行区分違反(右側通行)63件(3%)、その他71件(3%)。指導警告票交付数は135,855件(前年月平均の1.5倍に増加)"
+      },
+      "corrections": [],
+      "notes": "警察庁の一次発表PDFに直接到達し、二次報道(JAF Mate Online)の数値が一字一句正確であることを確認できた最高信頼度の項目。算数チェックも実施：846+713+298+156+63+71=2,147件で合計が一致し矛盾なし",
+      "approved_for_publication": true
+    }
+  ],
+  "approved_for_publication_ranked": [
+    {
+      "id": "P1",
+      "title": "自転車青切符、施行1か月で告知件数2,147件",
+      "relevance_score": 8,
+      "reason": "警察庁一次資料で完全確認できた最高信頼度の政策アップデート。自転車通学・利用のある家庭に直接関係する実用的な数値情報"
+    },
+    {
+      "id": "S3",
+      "title": "令和8年度「こどもの事故防止週間」7/13〜19、テーマは転落事故防止",
+      "relevance_score": 8,
+      "reason": "こども家庭庁公式・URL実在確認済み。実施時期が目前(7/13〜)で即時性・行動喚起力が高い"
+    },
+    {
+      "id": "V4",
+      "title": "三重・松阪市でクマ(後にイノシシと判明)のふん発見、見守りボランティア同行",
+      "relevance_score": 7,
+      "reason": "訂正の全経緯を裏付けられた珍しい事例。誤情報リスク管理という教育的価値のある切り口で記事化可能"
+    },
+    {
+      "id": "D1",
+      "title": "日本損害保険協会「全国交通事故多発交差点マップ2024年版」公表",
+      "relevance_score": 7,
+      "reason": "通学路の危険交差点点検に直接使える公式データ。背景資料としての運用を条件にAPPROVED"
+    },
+    {
+      "id": "D2",
+      "title": "都道府県別 交通事故発生ランキング最新版(2025年データ)",
+      "relevance_score": 6,
+      "reason": "警察庁統計への出典明記を確認。地域別リスク比較の参考情報として有用"
+    },
+    {
+      "id": "S1",
+      "title": "香川県教委、ライフジャケット活用の水泳授業を実施",
+      "relevance_score": 6,
+      "reason": "夏季の実用的安全対策。複数地元局の報道で裏付け済み"
+    },
+    {
+      "id": "V5",
+      "title": "金沢市の見守りボランティアが自宅の塀を撤去",
+      "relevance_score": 6,
+      "reason": "3経路で内容一致確認済みの強い人間ドラマ。保護者への訴求力が高い"
+    },
+    {
+      "id": "S2",
+      "title": "文科省、登下校中を含む熱中症事故防止を通知",
+      "relevance_score": 5,
+      "reason": "政府一次情報だが季節の定例的な注意喚起で差別化要素は小さい"
+    },
+    {
+      "id": "V2",
+      "title": "静岡・伊豆の国市で商工会青年部が通学路見守り",
+      "relevance_score": 5,
+      "reason": "原記事とYahoo配信版が一致確認済みの地域美談。汎用的な内容"
+    },
+    {
+      "id": "V1",
+      "title": "三重・松阪で見守りボランティア団体を防犯功労で表彰",
+      "relevance_score": 4,
+      "reason": "地方紙単独ソースの定例表彰ニュース。優先度は最も低い"
+    }
+  ],
+  "needs_revision_before_publication": [
+    {"id": "A1", "issue": "二次ソースでの完全な独立確認ができず(部分一致のみ)。発表元と日付の明記を条件に再検討可"},
+    {"id": "A2", "issue": "負傷者数が報道間で5人/12人/18人と大きく食い違う。数字を断定せず幅を持たせるか最新の確定報を要追跡"},
+    {"id": "V3", "issue": "キャンペーン名と『市内全小学校で展開』の規模感が単一の地方局報道のみで、警察公式発表で確認できず"}
+  ]
+}

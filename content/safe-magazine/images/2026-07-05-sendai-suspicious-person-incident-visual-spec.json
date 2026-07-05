@@ -1,0 +1,56 @@
+{
+  "article_id": "2026-07-05-sendai-suspicious-person-incident",
+  "thumbnail": {
+    "description": "仙台市の住宅街の通学路を思わせる夕方（17時頃）の穏やかな街並み。黄色い通学帽と赤いランドセルの女の子が一人で、後ろ姿または注意深く前を向いて落ち着いて歩いている。加害者や不審者は一切描写しない。少し先の民家に黄色い三角の『子ども110番の家』プレートが温かく光って見え、『助けはすぐそこにある』という前向きなメッセージを伝える。既存記事（ながら見守りのすすめ／声かけ事案の時間帯統計）と同じ、日本のアニメ調・温かみのあるイラストスタイルに統一。",
+    "dimensions": "1200x630",
+    "style": "illustration",
+    "color_scheme": {
+      "primary": "#EF4444",
+      "background": "#FFFFFF"
+    },
+    "text_overlay": {
+      "title": "下校中の女児に声かけ被害——他人事ではない3つの備え",
+      "position": "bottom-left"
+    },
+    "suggested_stock_keywords": [
+      "通学路 夕方 イラスト",
+      "子ども110番の家",
+      "黄色い通学帽 ランドセル 後ろ姿",
+      "住宅街 見守り 防犯",
+      "小学生 下校 一人"
+    ]
+  },
+  "image_prompts": {
+    "thumbnail": {
+      "prompt": "Create a warm, reassuring Japanese illustration for a school-safety awareness article about staying safe from strangers on the way home from school. The focus is entirely on protection and calm preparedness, not on any scary event.\n\nScene elements (Japanese specific):\n- A quiet Japanese residential neighborhood street (住宅街の通学路), early evening around 5pm (夕方17時頃), soft warm golden-orange dusk sky with long gentle shadows\n- A single Japanese elementary school girl walking calmly along the sidewalk, shown from behind or in a three-quarter back view, wearing a bright yellow school safety cap (黄色い通学帽) and a red randoseru backpack (ランドセル)\n- Her posture is relaxed, upright and alert but not afraid — she is simply walking home with quiet confidence, looking ahead or slightly over her shoulder in a calm, watchful way (never crying, never distressed)\n- The street is otherwise empty and peaceful; she is the only person visible in the scene\n- A short distance ahead on the same street, a traditional Japanese house with a small front garden displays a bright yellow triangular \"子ども110番の家\" (Child Safety House) plate mounted near its gate, glowing warmly as a visible, reachable symbol of help\n- Traditional Japanese houses with tiled roofs and low garden walls line the quiet street\n- A streetlamp is just beginning to glow in the dusk light, reinforcing a sense of safety and visibility\n- Overall composition should feel safe, cared-for, and quietly hopeful — the message is \"help is close by,\" not \"something bad is happening\"\n\nMood: Calm, warm, reassuring, quietly empowering — a serious subject treated with an educational and protective tone, never frightening or suspenseful\nStyle: Soft Japanese editorial illustration, anime/manga inspired warmth, gentle shading, consistent with the existing warm community-safety illustration series (matching the visual style of the \"ながら見守り\" and \"声かけ事案統計\" article thumbnails)\nColor palette: Warm dusk oranges and soft purples/blues in the sky, bright yellow accents for the safety cap and the \"子ども110番の家\" plate, muted warm neighborhood tones",
+      "style_guidance": "illustration",
+      "negative_prompt": "Do not depict: any perpetrator, adult stranger, or suspicious figure of any kind near the child (the girl must be alone on the street); any real or identifiable human faces or real people; any recreation or reenactment of the actual Sendai incident, real crime-scene photography, or real news photography; realistic photographic style (must remain a stylized illustration); the child crying, restrained, grabbed, touched, cornered, or otherwise shown as a suffering victim; violent, frightening, dark, or suspenseful imagery (no shadows implying danger, no ominous framing); any text, captions, logos, or watermarks rendered inside the image itself; specific brand logos or copyrighted characters.",
+      "aspect_ratio": "16:9"
+    },
+    "content_images": []
+  },
+  "infographics": [],
+  "ui_components": [
+    {
+      "type": "badge",
+      "usage": "既存の CategoryBadge をそのまま再利用（新規コンポーネント不要）。カテゴリ accident-news、メインカラー #EF4444。",
+      "props": {
+        "category": "accident-news",
+        "size": "md"
+      }
+    },
+    {
+      "type": "card",
+      "usage": "既存の SafeMagazineCard をそのまま再利用（新規コンポーネント不要）。サムネイルはイラストのみで、タイトルはカード側のテキストオーバーレイ/キャプションで表示する想定（画像内に文字は焼き込まない）。",
+      "props": {
+        "variant": "featured"
+      }
+    }
+  ],
+  "accessibility": {
+    "alt_texts": [
+      "仙台市の住宅街の通学路を思わせる夕方の情景。黄色い通学帽と赤いランドセルを背負った女の子が一人で落ち着いて歩いており、少し先の民家に黄色い三角の『子ども110番の家』のプレートが見える、安心感を伝えるイラスト。"
+    ],
+    "color_contrast": "WCAG AA準拠"
+  }
+}
