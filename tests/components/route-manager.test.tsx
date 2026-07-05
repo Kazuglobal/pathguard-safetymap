@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { RouteManager } from '@/components/map/route-manager'
+import { RouteManager, pruneComparisonRouteIds } from '@/components/map/route-manager'
 import {
   mockRoutes,
   mockEmptyRoutes,
@@ -74,6 +74,25 @@ vi.mock('react-map-gl/mapbox', () => ({
 describe('RouteManager Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe('comparison route pruning', () => {
+    it('keeps the same route id array reference when no ids are removed', () => {
+      const previousRouteIds = ['route-1', 'route-2']
+
+      const result = pruneComparisonRouteIds(previousRouteIds, mockRoutes)
+
+      expect(result).toBe(previousRouteIds)
+    })
+
+    it('returns a filtered route id array when hidden routes are removed', () => {
+      const previousRouteIds = ['route-1', 'missing-route']
+
+      const result = pruneComparisonRouteIds(previousRouteIds, mockRoutes)
+
+      expect(result).toEqual(['route-1'])
+      expect(result).not.toBe(previousRouteIds)
+    })
   })
 
   describe('Rendering', () => {

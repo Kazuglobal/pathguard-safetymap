@@ -62,6 +62,17 @@ interface RouteManagerProps {
   onRouteSelect?: (route: UserRoute) => void
 }
 
+export function pruneComparisonRouteIds(
+  previousRouteIds: string[],
+  visibleRoutes: Pick<UserRoute, "id">[]
+) {
+  const nextRouteIds = previousRouteIds.filter((routeId) =>
+    visibleRoutes.some((route) => route.id === routeId)
+  )
+
+  return nextRouteIds.length === previousRouteIds.length ? previousRouteIds : nextRouteIds
+}
+
 interface RouteFormFieldsProps {
   routeName: string
   routeDescription: string
@@ -440,14 +451,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const { counts: routeDangerCounts } = useRouteDangerCounts(filteredRoutes)
 
   useEffect(() => {
-    // Bail out and return the same array when nothing was actually removed - .filter()
-    // always allocates a new array even for a no-op, and returning a new-but-equal
-    // reference here would make React think state changed on every render, re-firing
-    // this effect (via the filteredRoutes dep) forever if routes is ever non-memoized.
-    setComparisonRouteIds((prev) => {
-      const next = prev.filter((routeId) => filteredRoutes.some((route) => route.id === routeId))
-      return next.length === prev.length ? prev : next
-    })
+    setComparisonRouteIds((prev) => pruneComparisonRouteIds(prev, filteredRoutes))
     setSelectedRouteId((prev) =>
       prev && !filteredRoutes.some((route) => route.id === prev) ? null : prev
     )
