@@ -62,6 +62,17 @@ interface RouteManagerProps {
   onRouteSelect?: (route: UserRoute) => void
 }
 
+export function pruneComparisonRouteIds(
+  previousRouteIds: string[],
+  visibleRoutes: Pick<UserRoute, "id">[]
+) {
+  const nextRouteIds = previousRouteIds.filter((routeId) =>
+    visibleRoutes.some((route) => route.id === routeId)
+  )
+
+  return nextRouteIds.length === previousRouteIds.length ? previousRouteIds : nextRouteIds
+}
+
 interface RouteFormFieldsProps {
   routeName: string
   routeDescription: string
@@ -440,9 +451,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const { counts: routeDangerCounts } = useRouteDangerCounts(filteredRoutes)
 
   useEffect(() => {
-    setComparisonRouteIds((prev) =>
-      prev.filter((routeId) => filteredRoutes.some((route) => route.id === routeId))
-    )
+    setComparisonRouteIds((prev) => pruneComparisonRouteIds(prev, filteredRoutes))
     setSelectedRouteId((prev) =>
       prev && !filteredRoutes.some((route) => route.id === prev) ? null : prev
     )

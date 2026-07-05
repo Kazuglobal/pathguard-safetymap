@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { RouteManager } from '@/components/map/route-manager'
+import { RouteManager, pruneComparisonRouteIds } from '@/components/map/route-manager'
 import {
   mockRoutes,
   mockEmptyRoutes,
@@ -21,9 +21,17 @@ import {
 } from '../fixtures/routes'
 
 // Mock useUserRoutes hook
+//
+// IMPORTANT: `routes` must stay referentially stable across calls. RouteManager's
+// `filteredRoutes` useMemo depends on it, and a downstream effect calls
+// `setComparisonRouteIds(prev => prev.filter(...))`, which always returns a *new*
+// array even when nothing was removed. A fresh `routes: []` literal on every call
+// (as a factory like `vi.fn(() => ({...}))` produces) makes that effect re-fire on
+// every render forever, hanging the test in an infinite re-render loop until the
+// process OOMs. Reuse the shared `mockEmptyRoutes` reference instead of `[]`.
 vi.mock('@/hooks/use-user-routes', () => ({
   useUserRoutes: vi.fn(() => ({
-    routes: [],
+    routes: mockEmptyRoutes,
     primaryRoute: null,
     isLoading: false,
     error: null,
@@ -66,6 +74,25 @@ vi.mock('react-map-gl/mapbox', () => ({
 describe('RouteManager Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe('comparison route pruning', () => {
+    it('keeps the same route id array reference when no ids are removed', () => {
+      const previousRouteIds = ['route-1', 'route-2']
+
+      const result = pruneComparisonRouteIds(previousRouteIds, mockRoutes)
+
+      expect(result).toBe(previousRouteIds)
+    })
+
+    it('returns a filtered route id array when hidden routes are removed', () => {
+      const previousRouteIds = ['route-1', 'missing-route']
+
+      const result = pruneComparisonRouteIds(previousRouteIds, mockRoutes)
+
+      expect(result).toEqual(['route-1'])
+      expect(result).not.toBe(previousRouteIds)
+    })
   })
 
   describe('Rendering', () => {
@@ -670,8 +697,12 @@ describe('RouteManager Component', () => {
         return false
       })
       const { useUserRoutes } = await import('@/hooks/use-user-routes')
+      // `error: hookError` must stay dynamic (it's mutated after addRoute rejects),
+      // so this needs mockImplementation rather than mockReturnValue - but `routes`
+      // must still be the shared stable reference, not a fresh `[]` per call. See
+      // the note on the default useUserRoutes mock above for why that matters.
       vi.mocked(useUserRoutes).mockImplementation(() => ({
-        routes: [],
+        routes: mockEmptyRoutes,
         primaryRoute: null,
         isLoading: false,
         error: hookError,

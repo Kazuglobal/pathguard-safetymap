@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/local-alert-fetcher",
       "schedule": "0 */3 * * *"
+    },
+    {
+      "path": "/api/cron/local-safety-alerts",
+      "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/daily-news-digest",
+      "schedule": "30 22 * * *"
     }
   ]
 }

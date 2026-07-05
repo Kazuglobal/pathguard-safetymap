@@ -11,9 +11,17 @@ import type { NotificationPreferences } from "@/lib/notifications/builders"
 const t = tankenTokens
 
 const PREFERENCE_LABELS: Record<
-  "danger_reports" | "news" | "magazine",
+  "danger_reports" | "daily_digest" | "local_alerts" | "news" | "magazine",
   { label: string; description: string }
 > = {
+  daily_digest: {
+    label: "朝のダイジェスト",
+    description: "毎朝7:30に、昨日から今朝までの通学路情報をまとめてお知らせ（1日1通）",
+  },
+  local_alerts: {
+    label: "地域の安全アラート",
+    description: "お住まいの地域で声かけ・不審者情報が確認されたとき（夜間分は朝のダイジェストにまとめます）",
+  },
   danger_reports: {
     label: "危険レポートアラート",
     description: "登録通学路300m圏内に危険報告が投稿されたとき",
@@ -96,7 +104,7 @@ export function MypageNotificationCard({ push }: { push: UsePushSubscriptionRetu
                   </p>
                 </div>
                 <Switch
-                  checked={preferences[key as keyof NotificationPreferences]}
+                  checked={preferences[key as keyof NotificationPreferences] ?? true}
                   onCheckedChange={(checked) => updatePreferences({ [key]: checked })}
                   aria-label={PREFERENCE_LABELS[key].label}
                 />

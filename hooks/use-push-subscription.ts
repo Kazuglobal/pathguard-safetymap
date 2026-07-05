@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { NotificationPreferences } from '@/lib/notifications/builders'
+import { getStoredRegion } from '@/lib/user-region'
 
 /**
  * Base64URL → Uint8Array 変換 (VAPID公開鍵用)
@@ -33,6 +34,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   news: true,
   magazine: true,
   local_alerts: true,
+  daily_digest: true,
 }
 
 async function fetchSavedPreferences(endpoint: string): Promise<NotificationPreferences | null> {
@@ -54,6 +56,40 @@ async function fetchSavedPreferences(endpoint: string): Promise<NotificationPref
     return data.preferences
   } catch {
     return null
+  }
+}
+
+async function getExistingPushSubscription(): Promise<PushSubscription | null> {
+  if (typeof window === 'undefined') return null
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null
+
+  const registration = await navigator.serviceWorker.getRegistration()
+  return (await registration?.pushManager.getSubscription()) ?? null
+}
+
+export async function syncPushSubscriptionRegion(prefecture: string): Promise<void> {
+  try {
+    const sub = await getExistingPushSubscription()
+    if (!sub) return
+
+    const savedPreferences = await fetchSavedPreferences(sub.endpoint)
+    const preferences = { ...DEFAULT_PREFERENCES, ...(savedPreferences ?? {}) }
+
+    const res = await fetch('/api/push/subscribe', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        preferences,
+        prefecture,
+      }),
+    })
+
+    if (!res.ok) {
+      console.error('[push] sync region API error', res.status)
+    }
+  } catch (err) {
+    console.error('[push] sync region error', err)
   }
 }
 
@@ -84,7 +120,8 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         if (sub) {
           const savedPreferences = await fetchSavedPreferences(sub.endpoint)
           if (savedPreferences) {
-            setPreferences(savedPreferences)
+            // 後から追加されたキー（daily_digest等）を持たない既存行はデフォルトで補完する
+            setPreferences({ ...DEFAULT_PREFERENCES, ...savedPreferences })
           }
           setSubscription(sub)
           setState('subscribed')
@@ -138,6 +175,7 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
           p256dh: keys.p256dh,
           auth: keys.auth,
           preferences,
+          prefecture: getStoredRegion(),
         }),
       })
 
@@ -193,6 +231,8 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
           body: JSON.stringify({
             endpoint: subscription.endpoint,
             preferences: newPrefs,
+            // 設定更新のタイミングで通知の地域出し分け先も同期する
+            prefecture: getStoredRegion(),
           }),
         })
 

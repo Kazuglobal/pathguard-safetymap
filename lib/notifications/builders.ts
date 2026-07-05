@@ -10,6 +10,8 @@ export interface NotificationPreferences {
   news: boolean
   magazine: boolean
   local_alerts: boolean
+  /** 朝のダイジェスト通知（毎朝7:30 JST・1日1通）。未設定はオプトイン扱い（送信する） */
+  daily_digest?: boolean
 }
 
 export interface PushPayload {
@@ -121,6 +123,67 @@ export function buildLocalAlertPushPayload(params: {
     data: {
       url: `/local-alerts?id=${params.alertId}`,
       type: 'local_alerts',
+    },
+  }
+}
+
+/**
+ * 同一都道府県でアラートが集中した際のまとめ通知（バースト抑制）。
+ * 個別に何通も送る代わりに1通へ束ねて通知疲れを防ぐ。
+ */
+export function buildLocalAlertBatchPushPayload(params: {
+  prefecture: string
+  count: number
+  latestAlertId: string
+}): PushPayload {
+  return {
+    title: `【速報】${params.prefecture}で新しい事案${params.count}件`,
+    body: '直近2時間に複数の情報が届いています。アプリでまとめて確認できます。',
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
+    tag: `local-alert-batch-${params.latestAlertId}`,
+    data: {
+      url: '/school-route-news',
+      type: 'local_alerts',
+    },
+  }
+}
+
+/**
+ * 朝のダイジェスト通知（毎朝7:30 JST・1日1通）。
+ * 0件の日も「安心」を届ける（完了感・恐怖に頼らないリテンションの一部）。
+ * prefecture / localAlertCount を渡すと地域別の文面になる（自分ごと化）。
+ */
+export function buildDailyDigestPushPayload(params: {
+  date: string
+  newsCount: number
+  alertCount: number
+  prefecture?: string | null
+  localAlertCount?: number
+}): PushPayload {
+  const total = params.newsCount + params.alertCount
+  const regional = params.prefecture != null && params.localAlertCount !== undefined
+
+  let body: string
+  if (total === 0) {
+    body = 'この24時間、新しい事案の情報はありません。いつもどおりの朝です。'
+  } else if (regional && params.localAlertCount! > 0) {
+    body = `昨日から今朝までに全国で${total}件・${params.prefecture}で${params.localAlertCount}件の通学路情報。1分でチェックしましょう。`
+  } else if (regional) {
+    body = `昨日から今朝までに全国で${total}件。${params.prefecture}では新しい事案はありません。`
+  } else {
+    body = `昨日から今朝までに全国で${total}件の通学路情報があります。1分でチェックしましょう。`
+  }
+
+  return {
+    title: 'けさの通学路ダイジェスト',
+    body,
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
+    tag: `daily-digest-${params.date}`,
+    data: {
+      url: '/school-route-news',
+      type: 'daily_digest',
     },
   }
 }

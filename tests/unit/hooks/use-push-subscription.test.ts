@@ -7,6 +7,7 @@ const mockSubscribe = vi.fn()
 const mockUnsubscribe = vi.fn()
 const mockRequestPermission = vi.fn()
 const mockRegister = vi.fn()
+const mockGetRegistration = vi.fn()
 const mockReady = Promise.resolve({
   pushManager: {
     getSubscription: mockGetSubscription,
@@ -25,6 +26,7 @@ Object.defineProperty(global, 'Notification', {
 Object.defineProperty(global.navigator, 'serviceWorker', {
   value: {
     register: mockRegister,
+    getRegistration: mockGetRegistration,
     ready: mockReady,
   },
   writable: true,
@@ -41,6 +43,7 @@ describe('usePushSubscription', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'test-vapid-public-key'
+    mockGetRegistration.mockResolvedValue(null)
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({}),
@@ -90,10 +93,13 @@ describe('usePushSubscription', () => {
     })
 
     expect(result.current.state).toBe('subscribed')
+    // 保存済みの値を反映しつつ、後から追加されたキーはデフォルト(true)で補完される
     expect(result.current.preferences).toEqual({
       danger_reports: false,
       news: true,
       magazine: false,
+      local_alerts: true,
+      daily_digest: true,
     })
   })
 
@@ -135,6 +141,65 @@ describe('usePushSubscription', () => {
       danger_reports: true,
       news: true,
       magazine: true,
+      local_alerts: true,
+      daily_digest: true,
+    })
+  })
+
+  it('地域変更時に既存push subscriptionのprefectureを同期する', async () => {
+    const mockSub = {
+      endpoint: 'https://example.com/push',
+      toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
+    }
+    mockGetRegistration.mockResolvedValueOnce({
+      pushManager: {
+        getSubscription: vi.fn().mockResolvedValue(mockSub),
+      },
+    })
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          subscribed: true,
+          preferences: {
+            danger_reports: false,
+            news: true,
+            magazine: true,
+            local_alerts: true,
+            daily_digest: false,
+          },
+        }),
+      } as any)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ updated: true }),
+      } as any)
+
+    const { syncPushSubscriptionRegion } = await import('@/hooks/use-push-subscription')
+    await syncPushSubscriptionRegion('東京都')
+
+    expect(mockGetRegistration).toHaveBeenCalledWith()
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      `/api/push/subscribe?endpoint=${encodeURIComponent(mockSub.endpoint)}`
+    )
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/push/subscribe',
+      expect.objectContaining({ method: 'PATCH' })
+    )
+
+    const body = JSON.parse((vi.mocked(global.fetch).mock.calls[1][1] as RequestInit).body as string)
+    expect(body).toEqual({
+      endpoint: mockSub.endpoint,
+      prefecture: '東京都',
+      preferences: {
+        danger_reports: false,
+        news: true,
+        magazine: true,
+        local_alerts: true,
+        daily_digest: false,
+      },
     })
   })
 })

@@ -1,4 +1,23 @@
 // 通学路の安全ニュース データユーティリティ
+//
+// 注意: このモジュールは NEWS_ITEMS（記事全文）を含むため、クライアント
+// コンポーネントから直接importしない。フィード用の型・純関数は
+// lib/school-route-news-feed.ts からimportすること。
+
+import {
+  NEWS_CATEGORIES,
+  computeDailyDigest,
+  findLatestWeeklyTrend,
+  formatNewsDate,
+  toJstDateKey,
+  type DailyDigestSummary,
+  type NewsCategory,
+  type SchoolRouteNewsFeedItem,
+  type SchoolRouteNewsType,
+} from "./school-route-news-feed"
+
+export { NEWS_CATEGORIES, computeDailyDigest, findLatestWeeklyTrend, formatNewsDate, toJstDateKey }
+export type { DailyDigestSummary, NewsCategory, SchoolRouteNewsFeedItem, SchoolRouteNewsType }
 
 export interface SchoolRouteNewsItem {
   id: string
@@ -22,56 +41,74 @@ export interface SchoolRouteNewsItem {
   thumbnailUrl?: string
   isBreaking?: boolean
   verifiedAt?: string
+  /** そなえの一言（30〜60字の具体行動）。accident/suspicious では必須運用 */
+  actionAdvice?: string
+  /** 省略時は "daily"。週次ロールアップ記事のみ "weekly_trend" */
+  newsType?: SchoolRouteNewsType
 }
-
-export type NewsCategory = "accident" | "suspicious" | "infrastructure" | "policy" | "community"
-
-// カテゴリーの定義
-export const NEWS_CATEGORIES = {
-  "accident": {
-    label: "交通事故",
-    color: "#EF4444",
-    bgColor: "bg-red-500",
-    textColor: "text-red-600",
-    bgLight: "bg-red-50",
-    icon: "AlertTriangle"
-  },
-  "suspicious": {
-    label: "不審者情報",
-    color: "#F97316",
-    bgColor: "bg-orange-500",
-    textColor: "text-orange-600",
-    bgLight: "bg-orange-50",
-    icon: "AlertCircle"
-  },
-  "infrastructure": {
-    label: "インフラ整備",
-    color: "#3B82F6",
-    bgColor: "bg-blue-500",
-    textColor: "text-blue-600",
-    bgLight: "bg-blue-50",
-    icon: "Construction"
-  },
-  "policy": {
-    label: "施策・対策",
-    color: "#8B5CF6",
-    bgColor: "bg-purple-500",
-    textColor: "text-purple-600",
-    bgLight: "bg-purple-50",
-    icon: "FileText"
-  },
-  "community": {
-    label: "地域活動",
-    color: "#22C55E",
-    bgColor: "bg-green-500",
-    textColor: "text-green-600",
-    bgLight: "bg-green-50",
-    icon: "Users"
-  }
-} as const
 
 // サンプルニュースデータ（実際はAPIから取得）
 export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
+  {
+    id: "news-2026-07-06-001",
+    slug: "national-weekly-trend-20260706",
+    title: "【週次傾向】6月29日〜7月5日の収集アラートは0件——夏休み前に確認したい3つの約束",
+    excerpt: "本アプリが都道府県警察の公開防犯情報などを巡回して収集した6月29日〜7月5日の新規地域アラートは0件でした（前週も0件）。収集範囲には限りがあり「全国で事案ゼロ」を意味しません。夏休みを前に、家庭で確認しておきたい3つの約束を紹介します。",
+    content: `## 今週の集計（2026年6月29日〜7月5日）
+
+毎週月曜に、本アプリが収集した全国の地域安全情報を同じ形式で振り返ります。
+
+| 項目 | 今週 | 前週（6/22〜6/28） |
+|------|------|------------------|
+| 新規収集アラート | 0件 | 0件 |
+| うち声かけ・不審者・つきまとい | 0件 | 0件 |
+| 編集部の新規記事 | 0件 | 0件 |
+
+**集計対象**: 本アプリの自動収集（各都道府県警察の公開防犯情報・自治体の安全安心メール公開アーカイブ等）および編集部記事。収集開始からの累計は21件です（2026年7月6日時点）。
+
+### この数字の読み方（たいせつな注意）
+
+本アプリの収集は公開情報の巡回に基づくもので、**全国のすべての事案を網羅するものではありません**。「0件」は「全国で事案が1件もなかった」という意味ではなく、「本アプリの収集範囲で新しい記録がなかった」という意味です。お住まいの地域の一次情報は、各都道府県警察の防犯情報ページや自治体の安全安心メールもあわせてご確認ください。
+
+## 今週の傾向
+
+今週はデータ上の新規記録がなく、傾向の分析はありません。静かな週でした。
+
+この定点観測は毎週月曜、同じ形式で「件数・カテゴリ内訳・時間帯」を追いかけます。数字が動いたときに「いつもと違う」と気づけることが、この欄の役割です。
+
+## 今週のそなえ
+
+7月中旬以降、多くの地域で夏休みが始まり、子どもの行動範囲と自由時間が一気に広がります。事案の有無にかかわらず、今週のうちに家族で「3つの約束」を確認しておきましょう。
+
+1. **行っていい場所**: 行き先を必ず伝える。新しく行く場所は、最初は大人と一緒に
+2. **帰る時間**: 帰宅時刻を決め、遅れるときの連絡方法も決めておく
+3. **駆け込み先**: 困ったときに駆け込める場所（お店・交番・こども110番の家）を通り道ごとに1つ確認
+
+## あなたの地域で確認するには
+
+フィード上部の地域フィルターでお住まいの都道府県を選ぶと、「あなたの地域」欄に直近24時間のアラートが表示されます。夏休みの家庭での備え全般は、SAFE MAGAZINEの特集「【夏休み前に】熱中症2,813件・事故防止週間・浮く水泳授業に学ぶ守り方」もあわせてどうぞ。`,
+    category: "policy",
+    categoryLabel: "週次傾向",
+    categoryColor: "#8B5CF6",
+    categoryIcon: "FileText",
+    publishedDate: "2026-07-06T07:00:00+09:00",
+    location: {
+      prefecture: "全国"
+    },
+    tags: ["週次傾向", "定点観測", "夏休み", "地域アラート", "全国"],
+    sources: [
+      "mapsefe 地域安全アラート収集データ（local_safety_alerts、2026年6月22日〜7月5日分、2026年7月6日集計）"
+    ],
+    keyPoints: [
+      "6月29日〜7月5日に本アプリが新規収集した地域アラートは0件（前週も0件・収集範囲には限りあり）",
+      "夏休み前に「行っていい場所・帰る時間・駆け込み先」の3つの約束を子どもと確認する"
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-weekly-trend-20260706.png",
+    isBreaking: false,
+    verifiedAt: "2026-07-06T07:00:00+09:00",
+    actionAdvice: "夏休み前に「行っていい場所・帰る時間・駆け込み先」の3つの約束を子どもと決めておく",
+    newsType: "weekly_trend"
+  },
   {
     id: "news-2026-04-20-001",
     slug: "kitakyushu-kokurakita-izumidai-suspicious-sns-20260420",
@@ -139,7 +176,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/tokyo-suspicious-20260206.png",
     isBreaking: true,
-    verifiedAt: "2026-05-01T09:00:00+09:00"
+    verifiedAt: "2026-05-01T09:00:00+09:00",
+    actionAdvice: "「知らない人にスマホを向けられたら、背を向けてその場を離れる」を今晩子どもと練習する"
   },
   {
     id: "news-2026-04-17-001",
@@ -213,7 +251,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/spring-suspicious-alert.png",
     isBreaking: true,
-    verifiedAt: "2026-05-01T09:00:00+09:00"
+    verifiedAt: "2026-05-01T09:00:00+09:00",
+    actionAdvice: "「知らない人から物をもらいそうになったら『いりません』と言って離れる」を家で練習する"
   },
   {
     id: "news-2026-04-06-001",
@@ -488,7 +527,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/spring-suspicious-alert.png",
     isBreaking: true,
-    verifiedAt: "2026-03-29T09:00:00+09:00"
+    verifiedAt: "2026-03-29T09:00:00+09:00",
+    actionAdvice: "「名前や家の場所を聞かれても答えなくていい」と今日の帰宅後に子どもへ伝える"
   },
   {
     id: "news-2026-03-09-001",
@@ -553,7 +593,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/tokyo-suspicious-20260206.png",
     isBreaking: true,
-    verifiedAt: "2026-03-29T09:00:00+09:00"
+    verifiedAt: "2026-03-29T09:00:00+09:00",
+    actionAdvice: "下校で1人になる区間を子どもと確認し、駆け込める店・交番・こども110番の家を1つ決めておく"
   },
   {
     id: "news-2026-02-25-001",
@@ -620,7 +661,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/spring-suspicious-alert.png",
     isBreaking: false,
-    verifiedAt: "2026-03-29T09:00:00+09:00"
+    verifiedAt: "2026-03-29T09:00:00+09:00",
+    actionAdvice: "ランドセルの防犯ブザーがすぐ引ける位置にあるか・鳴るかを今夜いっしょに確認する"
   },
   {
     id: "news-2026-03-18-001",
@@ -742,7 +784,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "「いかのおすし」を子どもに再確認し、防犯ブザーの携帯・点検を徹底"
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/spring-suspicious-alert.png",
-    verifiedAt: "2026-03-21T09:00:00+09:00"
+    verifiedAt: "2026-03-21T09:00:00+09:00",
+    actionAdvice: "「いかのおすし」を夕食のときに子どもと一緒に復唱し、防犯ブザーの電池を確認する"
   },
   {
     id: "news-2026-03-10-001",
@@ -882,7 +925,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/new-first-grader-safety.png",
     isBreaking: false,
-    verifiedAt: "2026-03-21T09:00:00+09:00"
+    verifiedAt: "2026-03-21T09:00:00+09:00",
+    actionAdvice: "次の登校で、信号のない交差点の手前で止まって左右を見る練習を1回いっしょにやる"
   },
   {
     id: "news-2026-02-09-001",
@@ -1175,10 +1219,16 @@ export function getLatestNews(count: number = 5): SchoolRouteNewsItem[] {
   return getAllNewsItems().slice(0, count)
 }
 
-// 日付をフォーマット
-export function formatNewsDate(dateString: string): string {
-  const date = new Date(dateString)
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+// ---- 今日のダイジェスト（デイリーハビット設計 v3） ----
+
+// 「今日は全国でX件・あなたの地域でY件」の集計
+export function getTodaysDigest(prefecture: string, now: Date = new Date()): DailyDigestSummary {
+  return computeDailyDigest(NEWS_ITEMS, prefecture, now)
+}
+
+// 最新の週次傾向記事（フィードの「今週の傾向」枠にピン留めする）
+export function getLatestWeeklyTrend(): SchoolRouteNewsItem | undefined {
+  return findLatestWeeklyTrend(getAllNewsItems())
 }
 
 // 相対時間を取得

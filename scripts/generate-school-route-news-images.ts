@@ -282,6 +282,28 @@ Mood: Cooperative, protective, hopeful community spirit
 Focus: Volunteer watch activities protecting children on school routes
 ${QUALITY_SUFFIX}`,
     description: "新学期見守り活動強化"
+  },
+  {
+    slug: "national-weekly-trend-20260706",
+    filename: "national-weekly-trend-20260706.png",
+    prompt: `Create a calm Japanese infographic-style illustration for a weekly school route safety trend report.
+
+Visual elements:
+- A clean weekly calendar page motif shown ONLY as seven blank squares with soft checkmark icons (no letters, no day names)
+- A soft stylized map of Japan silhouette in the background
+- A simple flat line chart motif staying at the bottom axis (calm, reassuring, zero incidents)
+- Elementary school children with yellow caps and randoseru walking safely in summer morning light
+- A parent checking a smartphone with a peaceful expression (blank glowing screen, no UI text)
+- Early summer greenery (no cherry blossoms), hints of approaching summer break
+
+STRICT RULE: Absolutely NO text of any kind anywhere in the image. No Japanese characters, no Latin letters, no numbers, no words on the calendar, chart, phone screen, or background. Purely pictorial.
+
+Style: Modern Japanese editorial infographic, calm and analytical
+Color palette: Soft purple and blue for analysis/report, warm green accents for reassurance
+Mood: Peaceful, informative, trustworthy weekly review
+Focus: Weekly data review and family preparedness, NOT danger or fear
+${QUALITY_SUFFIX}`,
+    description: "週次傾向レポート（2026年7月6日号）"
   }
 ]
 
@@ -292,6 +314,13 @@ async function generateImage(config: NewsImageConfig): Promise<void> {
   }
 
   const outputPath = path.join(outputDir, config.filename)
+
+  // 公開済みサムネイルの意図しない再生成（上書き）を防ぐ。
+  // 作り直したい場合は該当ファイルを削除してから実行する
+  if (fs.existsSync(outputPath)) {
+    console.log(`Skip (exists): ${config.filename}`)
+    return
+  }
 
   console.log(`Generating: ${config.filename}`)
 
