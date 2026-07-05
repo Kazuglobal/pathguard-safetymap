@@ -517,6 +517,165 @@ ${QUALITY_SUFFIX}`,
         description: "通学路で親子で点検したい5つの危険ポイントの図解"
       }
     ]
+  },
+  {
+    articleId: "2026-07-05-bicycle-blue-ticket-one-month-report",
+    articleSlug: "bicycle-blue-ticket-one-month-report",
+    category: "policy-update",
+    title: "自転車青切符 施行1か月・暫定値（一時不停止40%・ながらスマホ33%）",
+    thumbnailPrompt: `Create a Japanese editorial illustration continuing the visual world of the earlier 青切符 (blue traffic ticket) explainer article, showing a calm, reassuring one-month policy-update scene — NOT a violation or accident scene.
+
+Scene elements:
+- Two Japanese middle/high school students (16+ years old), wearing school uniforms (gakuran or blazer, same visual world as the previous article), riding bicycles on their school commute
+- Both students wear properly fastened bicycle safety helmets (自転車用ヘルメット) — clearly visible, correctly worn
+- They are stopped calmly with one foot down at a painted stop line (一時停止線) at a quiet residential intersection (住宅街の交差点), heads turned to look both ways before proceeding — a peaceful, rule-following, everyday moment
+- A small "止まれ" (STOP) road sign and stop-line road marking are visible at the intersection corner
+- Ordinary Japanese residential houses line both sides of the quiet street, soft morning light, no other vehicles nearby
+- Bicycles have visible safety equipment (front light, reflector); no smartphone in either student's hand
+
+Corner stamp badge (top-right corner of the frame):
+- A small circular or rectangular ink-stamp-style badge overlaid in the corner, resembling an official Japanese hanko/rubber-stamp seal, textured like real stamp ink, slightly rotated as a genuine stamp would be
+- Ink color: deep indigo-blue or vermillion-red
+- The badge contains ONLY the Japanese text "施行1か月" on the first line and "暫定値" on the second line — exactly these two short lines, nothing else
+- Do not render any other text, caption, or banner anywhere else in the image
+
+Mood: calm, reassuring, educational — celebrating correct, compliant behavior, not fear-based messaging
+Style: Clear Japanese editorial illustration, same art direction as the original 青切符 explainer (soft cel-shading, clean line work), slightly serious but approachable tone
+Color palette: Blue accents referencing 青切符 (blue ticket), a soft violet/purple undertone for the policy-update category, warm neutral street tones, deep red or indigo for the stamp ink only
+
+Strictly avoid (negative prompt): collision or near-miss imagery, a bicycle falling or a rider on the ground, scattered belongings, ambulance or police emergency lights, any frightening or violent imagery, realistic/identifiable human faces, real bicycle or phone brand logos, any recreation of a real accident scene, any text other than the two specified stamp lines, watermarks or signatures.
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "violation-breakdown",
+        prompt: `Create a clean Japanese-style editorial infographic showing a horizontal bar chart of bicycle blue-ticket violation categories during the first month after enforcement began.
+
+Layout:
+- Title text at top: "自転車青切符 施行1か月間の違反内訳"
+- Subtitle directly below the title, smaller text: "暫定値（2026年5月14日公表・施行後1か月間）"
+- A horizontal bar chart with exactly 6 bars, longest at top, ordered by size, each bar labeled with its Japanese category name, count, and percentage:
+  1. "指定場所一時不停止" — 846件 — 40%
+  2. "携帯電話使用等（ながらスマホ）" — 713件 — 33%
+  3. "信号無視" — 298件 — 14%
+  4. "しゃ断踏切立入" — 156件 — 7%
+  5. "通行区分違反（右側通行）" — 63件 — 3%
+  6. "その他" — 71件 — 3%
+- Bars 1 and 2 (指定場所一時不停止 and ながらスマホ) rendered in a warm caution color (orange/amber) since together they exceed 70% of all cases; bars 3-6 rendered in a cooler neutral blue/gray tone
+- Small footer text at the bottom: "出典: 警察庁交通局交通企画課"
+- A small simple icon of a stop-line/crosswalk near bar 1, and a small simple smartphone icon near bar 2, both flat and minimal (no faces, no brand logos)
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the Japanese text listed above (title, subtitle, 6 category labels with their exact counts and percentages, and the footer source line) — no additional text, no extra captions, no invented numbers
+- Numbers and percentages must exactly match: 846件/40%, 713件/33%, 298件/14%, 156件/7%, 63件/3%, 71件/3%
+- Do not omit the "暫定値" (provisional figure) subtitle — it must be clearly legible
+
+Style: Clean modern Japanese flat-design infographic, professional and trustworthy, high contrast for readability, generous white space, grid-aligned bars
+Color palette: Warm amber/orange for the top two caution categories, cool blue/gray for the remaining categories, soft violet accent for policy-update branding, white/cream background
+Mood: Informative, neutral, trustworthy — a factual government-style data report, not alarming
+
+Strictly avoid (negative prompt): realistic or identifiable human faces, real accident scene recreation, real brand logos (phone brands, bicycle brands, police insignia), watermarks or signatures, any numbers or labels other than the ones specified above, 3D photorealistic rendering (must stay flat infographic style).
+${QUALITY_SUFFIX}`,
+        description: "施行1か月間の違反内訳（暫定値）の割合グラフ"
+      }
+    ]
+  },
+  {
+    articleId: "2026-07-05-summer-break-safety-2026",
+    articleSlug: "summer-break-safety-2026",
+    category: "safety-tips",
+    title: "夏休み前に守る、熱中症・転落・水難の3つの対策",
+    thumbnailPrompt: `Create a bright, hopeful Japanese illustration of a family preparing for a safe summer break, set on a sunny elementary school commute route just before summer vacation begins.
+
+Scene elements (Japanese specific):
+- A Japanese elementary school child (低学年, first-to-third grade) wearing a bright yellow safety cap (黄色い通学帽) and carrying a red or black randoseru backpack (ランドセル)
+- The child's parent (mother or father) walking beside them, smiling, helping adjust the child's water bottle strap (水筒) so it sits at an easy-to-reach angle
+- A soft-sided tote or cooler bag near the parent, showing the top of a folded child-size life jacket (ライフジャケット) peeking out — packed and ready for a pool or beach trip
+- A wide-brimmed sun hat or a cooling neck towel visible tucked in the child's bag pocket
+- Bright blue summer sky (青空) with tall, puffy cumulonimbus clouds (入道雲) in the background
+- A quiet Japanese residential school-route street with low tile-roofed houses, a marked crosswalk, and green roadside shrubs or a few sunflowers (ひまわり) in bloom
+- Warm, clear midday sunlight without harsh shadows
+
+Key visual themes:
+- Preparation, not danger: parent and child are calmly getting ready together, not reacting to a hazard
+- Water bottle + sun hat = heat-safety readiness
+- Life jacket peeking from the bag = water-safety readiness
+- Cumulonimbus clouds + bright blue sky + sunflowers = distinctly Japanese summer setting
+- The mood should read as anticipation and excitement for summer, with safety folded in naturally
+
+Mood: Bright, warm, encouraging, and forward-looking — a proactive "getting ready together" feeling, never frightening or alarming
+Style: Soft Japanese anime/manga inspired editorial illustration, gentle shading, family-friendly and warm aesthetic
+Color palette: Vivid summer blue sky, sunny yellow safety-cap accent, fresh green foliage, warm skin tones, soft white clouds
+
+Avoid (negative prompt): realistic/photographic human faces, identifiable or real children, any real accident scene or depiction of a child falling/drowning/collapsing, frightening or alarming imagery, real brand logos or trademarks, visible text or signage other than generic shapes, blood or injury imagery
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "three-risks-checklist",
+        prompt: `Create a clean, friendly Japanese-style infographic table comparing three summer safety risks for elementary school children: heat stroke, falls, and water accidents. NO extra title text in the image — the captions listed below are the only Japanese text allowed.
+
+Layout: A table-style grid with 3 rows and 2 labeled columns, plus a small icon on the left of each row. Use a soft cream or white background with generous spacing between rows so it reads clearly as a table, not a busy scene.
+
+Row 1 — icon: a simple flat-illustration water bottle (水筒) in blue/white. Row color accent: warm orange.
+- Column "起きやすい場所" (Where it happens): a small illustration of a sunny school-route street with a child walking under strong sunlight, no shade
+- Column "今すぐできる行動" (What to do now): a small illustration of a water bottle placed in an easy-to-reach backpack side pocket, with a small shade/tree icon nearby
+- Row label caption: "熱中症"
+
+Row 2 — icon: a simple flat-illustration open window with a small safety lock (窓) in soft green/gray. Row color accent: soft teal.
+- Column "起きやすい場所": a small illustration of a home balcony/veranda with a window, kept calm and non-alarming (no child depicted falling)
+- Column "今すぐできる行動": a small illustration of a hand installing a window auxiliary lock, and moving a plant pot away from the window ledge
+- Row label caption: "転落"
+
+Row 3 — icon: a simple flat-illustration child-size life jacket (ライフジャケット) in orange/yellow. Row color accent: aqua blue.
+- Column "起きやすい場所": a small illustration of a pool or river/beach setting, calm water, sunny day
+- Column "今すぐできる行動": a small illustration of a child wearing a life jacket floating calmly on their back, smiling, arms out
+- Row label caption: "水難"
+
+Column headers (render exactly once at the top of the table, in Japanese): "起きやすい場所" and "今すぐできる行動". Row labels (render exactly once per row, in Japanese, in a small badge to the left of each row): "熱中症", "転落", "水難".
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the 2 column headers and the 3 row labels listed above, exactly as written, with no other Japanese or English text anywhere on the image.
+- Do not add extra captions, numbers, or banner text inside the illustration cells.
+- Keep the table grid lines simple and thin so the layout reads clearly at a glance.
+
+Style: Clean, warm Japanese flat-illustration infographic, soft rounded icons, gentle color blocking per row, reassuring and instructional tone — never frightening
+Color palette: Soft cream background, warm orange for the heat-stroke row, soft teal/green for the falls row, aqua blue for the water-accident row, warm neutral grid lines
+Mood: Calm, clear, practical — a family reference chart, not a warning poster
+
+Avoid (negative prompt): realistic/photographic human faces, identifiable or real children, any depiction of a child mid-fall, drowning, or in visible distress, blood or injury imagery, real brand logos, frightening or alarming visual elements, extra or garbled text
+${QUALITY_SUFFIX}`,
+        description: "「熱中症・転落・水難」3つのリスクと対策の一覧表インフォグラフィック（起きやすい場所×今すぐできる行動、水筒・窓・ライフジャケットのアイコン付き）"
+      },
+      {
+        id: "accident-prevention-week-calendar",
+        prompt: `Create a clean, printable Japanese-style weekly calendar infographic for "こどもの事故防止週間" (Children's Accident Prevention Week), covering July 13–19, 2026, with one simple fall-prevention home-safety check assigned to each day. NO extra title text beyond what is specified below.
+
+Layout: A 7-cell calendar grid (can be one row of 7 or two rows), one cell per day, Monday through Sunday, in chronological order. Each cell contains: the date and day-of-week label, a small flat-icon illustration representing that day's check, and one short caption line below the icon. Give each cell a soft checkbox-style corner so it reads as something a family could print and physically check off.
+
+Day cells (render exactly as specified, in order):
+1. "7/13 (月)" — icon: a balcony air-conditioner outdoor unit with an arrow pointing it away from the railing — caption: "室外機の位置を確認"
+2. "7/14 (火)" — icon: a window with its lock highlighted at a high position — caption: "窓の鍵の高さを確認"
+3. "7/15 (水)" — icon: a hand installing a small auxiliary window lock — caption: "補助錠を取り付ける"
+4. "7/16 (木)" — icon: a window screen (網戸) with a small "do not lean" symbol — caption: "網戸に寄りかからない"
+5. "7/17 (金)" — icon: a staircase handrail with a non-slip strip — caption: "階段の手すりを確認"
+6. "7/18 (土)" — icon: a parent and child talking calmly near a balcony door — caption: "家族でルールを確認"
+7. "7/19 (日)" — icon: a checklist with a checkmark and a small star — caption: "1週間の点検をふりかえる"
+
+Header text (render exactly once, above the grid): "こどもの事故防止週間 7/13-7/19"
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the header text, the 7 date/day labels, and the 7 captions listed above, exactly as written, with no additional Japanese or English text.
+- Keep icons simple, flat, and calm — no depiction of a child mid-fall or in danger.
+- Ensure all 7 day cells are visually equal in size, evenly spaced, and in correct chronological order (Mon→Sun, 7/13→7/19).
+
+Style: Clean, friendly Japanese printable calendar design, soft pastel color blocking, gentle rounded icons, family-reference aesthetic suitable for printing and posting on a refrigerator
+Color palette: Soft pastel cream/white background, warm coral or soft orange accent for checkboxes, calm blue-green for icons, no harsh red warning colors
+Mood: Encouraging, practical, achievable — a gentle weekly habit tracker, not a warning poster
+
+Avoid (negative prompt): realistic/photographic human faces, identifiable or real children, any depiction of a child falling or in danger, blood or injury imagery, real brand logos, frightening or alarming visual elements, extra or garbled text, incorrect date/day pairings
+${QUALITY_SUFFIX}`,
+        description: "「こどもの事故防止週間」（2026年7月13日〜19日）の1週間カレンダービジュアル。転落防止の点検項目を1日1つ配置し、保存・印刷して使える構成。"
+      }
+    ]
   }
 ]
 
