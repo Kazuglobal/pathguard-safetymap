@@ -6,24 +6,17 @@ import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
-import { type DangerReportSubmitPayload } from "../danger-report/danger-report-form"
 import type { DangerReport } from "@/lib/types"
-import { AlertTriangle, Trash2, UserX } from "lucide-react"
-import Map3DToggle from "./map-3d-toggle"
-import { Button } from "@/components/ui/button"
 import MapSearch from "./map-search"
 import ImagePreviewDialog from "../danger-report/image-preview-dialog"
 import DangerReportDetailModal from "../danger-report/danger-report-detail-modal" // 以前の履歴から推測
 import { useToast } from "@/components/ui/use-toast"
 import SubmittedReportPreview from "../danger-report/submitted-report-preview"
-import { createRoot } from "react-dom/client"
-import { jsArrayToPgLiteral } from "@/lib/arrayLiteral"; // ヘルパー関数をインポート
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { isValidCoordinates } from "@/lib/coordinates"
-import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { useAdminStatus } from "@/hooks/use-admin-status"
 import { useDangerReports } from "@/hooks/use-danger-reports"
@@ -34,13 +27,18 @@ import { AccidentStatsOverlay } from "@/components/map/accident-stats-overlay"
 import { MapReportForms } from "@/components/map/map-report-forms"
 import { MobileLocationSheet } from "@/components/map/mobile-location-sheet"
 import { MapStatusOverlays } from "@/components/map/map-status-overlays"
+import { useMap3DMode } from "@/hooks/use-map-3d-mode"
+import { useHazardTileLayers } from "@/hooks/use-hazard-tile-layers"
+import { useSelectedRouteLayer } from "@/hooks/use-selected-route-layer"
+import { useRouteHazards } from "@/hooks/use-route-hazards"
+import { useRouteHazardMarkers } from "@/hooks/use-route-hazard-markers"
+import { useDeleteDangerReport } from "@/hooks/use-delete-danger-report"
+import { useSuspiciousAlert } from "@/hooks/use-suspicious-alert"
 import {
-  layerExists,
-  sourceExists,
-  safeAddLayer,
-  safeRemoveLayer,
-  safeAddSource,
-} from "@/lib/map/mapbox-layer-utils"
+  ThreeDPanelContent,
+  ARPanelContent,
+  SuspiciousPanelContent,
+} from "@/components/map/map-top-overlay-panels"
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
@@ -52,28 +50,14 @@ import { HazardImageModal } from "@/components/map/hazard-image-modal"
 import { classifyMapboxError } from "@/lib/mapbox-error-utils"
 import { shouldShowMapNavigationControl, syncMapNavigationControl } from "@/lib/mapbox-controls"
 import { localizeMapLabels } from "@/lib/hunter/map-labels"
-import { getRouteHazardRequestState } from "@/lib/route-hazard-request-state"
-import {
-  HAZARD_TILE_CONFIG,
-  buildHazardExplanation,
-  getHazardAreaLabel,
-  getHazardEvacuationPoints,
-} from "@/lib/hazard-scenarios"
 import { buildRouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
 import { buildRouteSafetyEvidenceItems } from "@/lib/safety-scoring/route-safety-scorer"
 import type { HazardImageResult, HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 import MapTopOverlay, { type MapTopOverlayPanel } from "@/components/map/map-top-overlay"
 import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
-import { useSearchParams } from "next/navigation"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
-import SuspiciousAlertForm, { type SuspiciousAlertFormPayload } from "../danger-report/suspicious-alert-form"
-import {
-  SUSPICIOUS_DANGER_TYPE,
-  DEFAULT_ALERT_RADIUS_M,
-  resolveAlertRadius,
-  getAlertFitBounds,
-} from "@/lib/suspicious-alert"
+import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -127,7 +111,6 @@ export default function MapContainer({
   } = useDangerReports({ supabase, filterOptions, toast, setIsLoading })
   const [mapError, setMapError] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState("streets-v12")
-  const [is3DEnabled, setIs3DEnabled] = useState(false)
   const [isARMode, setIsARMode] = useState(false)
   const [activeARKind, setActiveARKind] = useState<ActiveARKind>("nearby")
   const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
@@ -142,8 +125,13 @@ export default function MapContainer({
   const mapClickHandler = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null)
   const accidentMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const accidentMarkerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const routeHazardMarkersRef = useRef<mapboxgl.Marker[]>([])
-  const routeHazardPopupRef = useRef<mapboxgl.Popup | null>(null)
+
+  // 3D表示（terrain/sky/pitch）の切り替え。挙動はそのままフックへ抽出。
+  const { is3DEnabled, toggle3DMode, enable3DMode, disable3DMode } = useMap3DMode({
+    mapRef: map,
+    styleChangeInProgressRef: styleChangeInProgress,
+    setMapError,
+  })
 
   const {
     routes: userRoutes,
@@ -154,10 +142,6 @@ export default function MapContainer({
     flood: false,
     tsunami: false,
   })
-  const [routeHazards, setRouteHazards] = useState<RouteHazardMarker[]>([])
-  const [isRouteHazardsLoading, setIsRouteHazardsLoading] = useState(false)
-  const [routeHazardError, setRouteHazardError] = useState<string | null>(null)
-  const [routeHazardsFetchedAt, setRouteHazardsFetchedAt] = useState<string | null>(null)
   const [activeHazardMarker, setActiveHazardMarker] = useState<RouteHazardMarker | null>(null)
   const [isHazardModalOpen, setIsHazardModalOpen] = useState(false)
   const [selectedHazardScenarioKey, setSelectedHazardScenarioKey] = useState<string | null>(null)
@@ -177,29 +161,6 @@ export default function MapContainer({
     reset: resetClickedLocationStats,
   } = useAccidentStats()
 
-  const clearRouteHazardMarkers = useCallback(() => {
-    routeHazardMarkersRef.current.forEach((marker) => marker.remove())
-    routeHazardMarkersRef.current = []
-  }, [])
-
-  const clearRouteHazardPopup = useCallback(() => {
-    routeHazardPopupRef.current?.remove()
-    routeHazardPopupRef.current = null
-  }, [])
-
-  const fitRouteBounds = useCallback((route: UserRoute) => {
-    if (!map.current || !route.route_geometry?.coordinates?.length) return
-
-    const bounds = new mapboxgl.LngLatBounds()
-    route.route_geometry.coordinates.forEach((coordinate) => {
-      bounds.extend(coordinate as [number, number])
-    })
-
-    if (!bounds.isEmpty()) {
-      map.current.fitBounds(bounds, { padding: 80, duration: 800 })
-    }
-  }, [])
-
   // 送信された報告の情報を保持する状態 (型を更新)
   const [submittedReport, setSubmittedReport] = useState<SubmittedReportState | null>(null)
 
@@ -213,77 +174,6 @@ export default function MapContainer({
   const isMobile = useMediaQuery("(max-width: 768px)"); // md ブレークポイント (Tailwind)
   const [awaitingLocationSelection, setAwaitingLocationSelection] = useState(false);
 
-  // --- 不審者アラート 地図化 ---
-  const [isSuspiciousAlertOpen, setIsSuspiciousAlertOpen] = useState(false);
-  // 「表示」パネルの不審者情報トグル（3D/AR/事故ヒートマップ/ハザードと同様）
-  const [isSuspiciousVisible, setIsSuspiciousVisible] = useState(false);
-  const [alertDraftRadius, setAlertDraftRadius] = useState<number>(DEFAULT_ALERT_RADIUS_M);
-  const [alertFocusedId, setAlertFocusedId] = useState<string | null>(null);
-  const [isSuspiciousSubmitting, setIsSuspiciousSubmitting] = useState(false);
-  const suspiciousMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const suspiciousAlertSearchParams = useSearchParams();
-
-  // 報告メニューから ?suspiciousAlert=1 で来たら専用フォームを開く
-  useEffect(() => {
-    if (!suspiciousAlertSearchParams) return;
-    if (suspiciousAlertSearchParams.get("suspiciousAlert") === "1") {
-      setIsSuspiciousAlertOpen(true);
-    }
-  }, [suspiciousAlertSearchParams]);
-
-  // 表示する不審者アラート（承認済み＋自分のpending）に、入力中ドラフトを加える
-  const suspiciousAlertReports = useMemo(() => {
-    const base = [...dangerReports, ...pendingReports].filter(
-      (r) => r.danger_type === SUSPICIOUS_DANGER_TYPE,
-    );
-    if (
-      isSuspiciousAlertOpen &&
-      selectedLocation &&
-      isValidCoordinates(selectedLocation[1], selectedLocation[0])
-    ) {
-      base.push({
-        id: "__suspicious_draft__",
-        danger_type: SUSPICIOUS_DANGER_TYPE,
-        danger_level: 4,
-        latitude: selectedLocation[1],
-        longitude: selectedLocation[0],
-        alert_radius_m: alertDraftRadius,
-      } as DangerReport);
-    }
-    return base;
-  }, [dangerReports, pendingReports, isSuspiciousAlertOpen, selectedLocation, alertDraftRadius]);
-
-  // 入力中: 中心に大きいパルスマーカーを置き、円全体が収まるよう自動フィットする
-  useEffect(() => {
-    const m = map.current;
-    if (!m) return;
-    if (suspiciousMarkerRef.current) {
-      suspiciousMarkerRef.current.remove();
-      suspiciousMarkerRef.current = null;
-    }
-    if (
-      !isSuspiciousAlertOpen ||
-      !selectedLocation ||
-      !isValidCoordinates(selectedLocation[1], selectedLocation[0])
-    ) {
-      setAlertFocusedId(null);
-      return;
-    }
-    const el = document.createElement("div");
-    el.className = "suspicious-alert-marker";
-    suspiciousMarkerRef.current = new mapboxgl.Marker(el).setLngLat(selectedLocation).addTo(m);
-    setAlertFocusedId("__suspicious_draft__");
-    const bounds = getAlertFitBounds(selectedLocation, alertDraftRadius);
-    if (bounds) {
-      try {
-        m.fitBounds(bounds as any, { padding: 80, duration: 600, maxZoom: 17 });
-      } catch (e) {
-        console.error("fitBounds for suspicious alert failed", e);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuspiciousAlertOpen, selectedLocation, alertDraftRadius]);
-  
   // ヘルプの表示状態管理
   const [isHelpVisible, setIsHelpVisible] = useState(true);
   const [isHelpDismissed, setIsHelpDismissed] = useState(false);
@@ -324,10 +214,83 @@ export default function MapContainer({
     if (!selectedUserRouteId) return null
     return userRoutes.find((route) => route.id === selectedUserRouteId) ?? null
   }, [selectedUserRouteId, userRoutes])
+  // 通学路ハザードのAPI取得。挙動はそのままフックへ抽出。
+  const {
+    routeHazards,
+    isRouteHazardsLoading,
+    routeHazardError,
+    routeHazardsFetchedAt,
+    setRouteHazardError,
+    resetRouteHazards,
+  } = useRouteHazards({ selectedUserRoute, hazardLayerVisibility })
   const visibleRouteHazards = useMemo(
     () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
     [hazardLayerVisibility, routeHazards],
   )
+  // ハザードマーカーのポップアップから「災害イメージを見る」を開く
+  const handleHazardDetailOpen = useCallback((hazard: RouteHazardMarker) => {
+    setActiveHazardMarker(hazard)
+    setSelectedHazardScenarioKey(hazard.scenario_key)
+    setHazardImageResult(null)
+    setHazardImageError(null)
+    setIsHazardModalOpen(true)
+  }, [])
+  // ハザードのマーカー/ポップアップ描画、選択経路ライン、ハザードタイル。挙動はそのままフックへ抽出。
+  const { clearRouteHazardMarkers, clearRouteHazardPopup } = useRouteHazardMarkers({
+    mapRef: map,
+    mapInitializedRef: mapInitialized,
+    visibleRouteHazards,
+    onHazardDetail: handleHazardDetailOpen,
+  })
+  useSelectedRouteLayer({
+    mapRef: map,
+    mapInitializedRef: mapInitialized,
+    selectedUserRoute,
+    mapStyleSyncToken,
+  })
+  useHazardTileLayers({
+    mapRef: map,
+    mapInitializedRef: mapInitialized,
+    hazardLayerVisibility,
+    mapStyleSyncToken,
+  })
+  // 危険レポート送信（INSERT →画像処理API →ポイント/プレビュー/state更新）。挙動はそのままフックへ抽出。
+  // 不審者アラートフックからも使うため、利用箇所より前で生成する。
+  const handleReportSubmit = useDangerReportSubmit({
+    supabase,
+    selectedLocation,
+    selectedUserRoute,
+    toast,
+    setSubmittedReport,
+    setIsSubmittedPreviewOpen,
+    setPendingReports,
+  })
+  // 不審者アラートの地図フロー一式（表示トグル・?suspiciousAlert=1・ドラフト円・送信/AI審査反映）。
+  // 挙動はそのままフックへ抽出。
+  const {
+    isSuspiciousAlertOpen,
+    setIsSuspiciousAlertOpen,
+    isSuspiciousVisible,
+    setIsSuspiciousVisible,
+    setAlertDraftRadius,
+    alertFocusedId,
+    setAlertFocusedId,
+    isSuspiciousSubmitting,
+    suspiciousAlertReports,
+    clearSuspiciousDraftMarker,
+    handleSuspiciousAlertSubmit,
+  } = useSuspiciousAlert({
+    mapRef: map,
+    selectedLocation,
+    setSelectedLocation,
+    setLocationSelectionSource,
+    dangerReports,
+    pendingReports,
+    setDangerReports,
+    setPendingReports,
+    submitDangerReport: handleReportSubmit,
+    toast,
+  })
   const {
     dangers: routeDangers,
     isLoading: isRouteDangersLoading,
@@ -370,50 +333,6 @@ export default function MapContainer({
     if (!primaryRoute) return
     setSelectedUserRouteId(primaryRoute.id)
   }, [preferredRouteId, primaryRoute, selectedUserRouteId, userRoutes])
-
-  // --- 3D Mode Logic ---
-  const toggle3DMode = () => {
-    if (!map.current || styleChangeInProgress.current) return;
-    const newIs3DEnabled = !is3DEnabled;
-    setIs3DEnabled(newIs3DEnabled);
-    try {
-      if (newIs3DEnabled) {
-        if (!map.current.loaded()) map.current.once("load", enable3DMode);
-        else enable3DMode();
-      } else {
-        disable3DMode();
-      }
-    } catch (error) {
-      console.error("Error toggling 3D mode:", error);
-      setMapError("3Dモードの切り替え中にエラーが発生しました。");
-      setIs3DEnabled(!newIs3DEnabled); // Revert state on error
-    }
-  };
-
-  const enable3DMode = () => {
-    if (!map.current) return;
-    try {
-      if (!sourceExists(map.current, "mapbox-dem")) {
-        safeAddSource(map.current, "mapbox-dem", { type: "raster-dem", url: "mapbox://mapbox.mapbox-terrain-dem-v1", tileSize: 512, maxzoom: 14 });
-      }
-      map.current.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
-      if (!layerExists(map.current, "sky")) {
-        safeAddLayer(map.current, "sky", { id: "sky", type: "sky", paint: { "sky-type": "atmosphere", "sky-atmosphere-sun": [0.0, 0.0], "sky-atmosphere-sun-intensity": 15 } });
-      }
-      map.current.setPitch(60);
-      map.current.setBearing(30);
-    } catch (error) { console.error("Error enabling 3D mode:", error); throw error; }
-  };
-
-  const disable3DMode = () => {
-    if (!map.current) return;
-    try {
-      map.current.setTerrain(null);
-      safeRemoveLayer(map.current, "sky");
-      map.current.setPitch(0);
-      map.current.setBearing(0);
-    } catch (error) { console.error("Error disabling 3D mode:", error); throw error; }
-  };
 
   // --- Marker and Map Interaction Logic ---
   const updateSelectionMarker = (coordinates: [number, number], isSubmitted = false) => {
@@ -781,170 +700,6 @@ export default function MapContainer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]); // Removed is3DEnabled from dependency array to prevent loop
 
-  useEffect(() => {
-    if (!map.current || !mapInitialized.current) return
-
-    const mapInstance = map.current
-
-    const syncLayer = (hazardType: HazardType) => {
-      const config = HAZARD_TILE_CONFIG[hazardType]
-      const sourceId = `${config.id}-source`
-      const layerId = `${config.id}-layer`
-
-      if (!hazardLayerVisibility[hazardType]) {
-        safeRemoveLayer(mapInstance, layerId)
-        if (sourceExists(mapInstance, sourceId)) {
-          try {
-            mapInstance.removeSource(sourceId)
-          } catch (error) {
-            console.error(`Error removing source ${sourceId}:`, error)
-          }
-        }
-        return
-      }
-
-      if (!sourceExists(mapInstance, sourceId)) {
-        safeAddSource(mapInstance, sourceId, {
-          type: "raster",
-          tiles: [config.tileUrl],
-          tileSize: 256,
-          attribution: "国土交通省 重ねるハザードマップ",
-        })
-      }
-
-      if (!layerExists(mapInstance, layerId)) {
-        safeAddLayer(mapInstance, layerId, {
-          id: layerId,
-          type: "raster",
-          source: sourceId,
-          paint: {
-            "raster-opacity": hazardType === "flood" ? 0.72 : 0.78,
-          },
-        })
-      }
-    }
-
-    syncLayer("flood")
-    syncLayer("tsunami")
-  }, [hazardLayerVisibility, mapStyleSyncToken])
-
-  useEffect(() => {
-    if (!map.current || !mapInitialized.current) return
-
-    const mapInstance = map.current
-    const sourceId = "selected-user-route-source"
-    const layerId = "selected-user-route-layer"
-
-    safeRemoveLayer(mapInstance, layerId)
-    if (sourceExists(mapInstance, sourceId)) {
-      try {
-        mapInstance.removeSource(sourceId)
-      } catch (error) {
-        console.error(`Error removing source ${sourceId}:`, error)
-      }
-    }
-
-    if (!selectedUserRoute?.route_geometry?.coordinates?.length) return
-
-    safeAddSource(mapInstance, sourceId, {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        properties: {},
-        geometry: selectedUserRoute.route_geometry,
-      },
-    })
-
-    safeAddLayer(mapInstance, layerId, {
-      id: layerId,
-      type: "line",
-      source: sourceId,
-      layout: {
-        "line-join": "round",
-        "line-cap": "round",
-      },
-      paint: {
-        "line-color": "#1d4ed8",
-        "line-width": 5,
-        "line-opacity": 0.88,
-      },
-    })
-  }, [mapStyleSyncToken, selectedUserRoute])
-
-  useEffect(() => {
-    const requestState = getRouteHazardRequestState(selectedUserRoute, hazardLayerVisibility)
-
-    if (!selectedUserRoute?.route_geometry?.coordinates?.length) {
-      setRouteHazards([])
-      setRouteHazardError(null)
-      setRouteHazardsFetchedAt(null)
-      setIsRouteHazardsLoading(requestState.isLoading)
-      return
-    }
-
-    if (!requestState.shouldFetch) {
-      setRouteHazardError(null)
-      setIsRouteHazardsLoading(requestState.isLoading)
-      return
-    }
-
-    let cancelled = false
-    setIsRouteHazardsLoading(requestState.isLoading)
-    setRouteHazardError(null)
-
-    fetch(`/api/hazard/route-risks?routeId=${encodeURIComponent(selectedUserRoute.id)}`)
-      .then(async (response) => {
-        const body = await response.json()
-        if (!response.ok) {
-          throw new Error(body.error || "危険箇所の取得に失敗しました")
-        }
-        return body
-      })
-      .then((body) => {
-        if (cancelled) return
-        const markers = Array.isArray(body.markers)
-          ? body.markers.map((marker: RouteHazardMarker) => ({
-              ...marker,
-              area_label: marker.area_label ?? getHazardAreaLabel(marker.area_context),
-              explanation:
-                marker.explanation ??
-                buildHazardExplanation({
-                  hazardType: marker.hazard_type,
-                  depthLabel: marker.depth_label,
-                }),
-              evacuation_points:
-                marker.evacuation_points?.length
-                  ? marker.evacuation_points
-                  : getHazardEvacuationPoints(marker.hazard_type),
-            }))
-          : []
-        setRouteHazards(markers)
-        setRouteHazardsFetchedAt(new Date().toISOString())
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return
-        const message =
-          error instanceof Error ? error.message : "危険箇所の取得に失敗しました"
-        setRouteHazardError(message)
-        setRouteHazards([])
-        setRouteHazardsFetchedAt(null)
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsRouteHazardsLoading(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [hazardLayerVisibility, selectedUserRoute])
-
-  useEffect(() => {
-    if (!selectedUserRoute) return
-    fitRouteBounds(selectedUserRoute)
-  }, [fitRouteBounds, selectedUserRoute])
-
   // --- Accident Heatmap: fetch data on map move ---
   useEffect(() => {
     if (!map.current || !accidentHeatmap.isVisible) return
@@ -1005,105 +760,6 @@ export default function MapContainer({
     },
   })
 
-  useEffect(() => {
-    if (!map.current || !mapInitialized.current) return
-
-    clearRouteHazardMarkers()
-    clearRouteHazardPopup()
-
-    visibleRouteHazards.forEach((hazard) => {
-      const markerElement = document.createElement("button")
-      markerElement.type = "button"
-      markerElement.className = "route-hazard-marker"
-      markerElement.style.width = "30px"
-      markerElement.style.height = "30px"
-      markerElement.style.borderRadius = "9999px"
-      markerElement.style.border = "2px solid white"
-      markerElement.style.background = hazard.hazard_type === "tsunami" ? "#1d4ed8" : "#f97316"
-      markerElement.style.color = "white"
-      markerElement.style.boxShadow = "0 6px 16px rgba(15,23,42,0.28)"
-      markerElement.style.cursor = "pointer"
-
-      const root = createRoot(markerElement)
-      root.render(<AlertTriangle className="h-4 w-4" />)
-
-      const markerInstance = new mapboxgl.Marker(markerElement)
-        .setLngLat(hazard.coordinates)
-        .addTo(map.current!)
-
-      markerElement.addEventListener("click", (event) => {
-        event.stopPropagation()
-        clearRouteHazardPopup()
-
-        const popupContent = document.createElement("div")
-        popupContent.className = "space-y-3 p-1"
-
-        const title = document.createElement("div")
-        title.innerHTML = `<div style="font-weight:700;font-size:14px;">${hazard.title}</div><div style="font-size:12px;color:#475569;">${hazard.summary}</div>`
-        popupContent.appendChild(title)
-
-        const meta = document.createElement("div")
-        meta.style.fontSize = "12px"
-        meta.style.color = "#334155"
-        meta.textContent = `${hazard.area_label} / ${hazard.depth_label}`
-        popupContent.appendChild(meta)
-
-        const button = document.createElement("button")
-        button.type = "button"
-        button.textContent = "災害イメージを見る"
-        button.style.width = "100%"
-        button.style.borderRadius = "8px"
-        button.style.border = "0"
-        button.style.padding = "8px 12px"
-        button.style.background = "#0f172a"
-        button.style.color = "#fff"
-        button.style.fontSize = "12px"
-        button.style.fontWeight = "600"
-        button.style.cursor = "pointer"
-        button.addEventListener("click", () => {
-          setActiveHazardMarker(hazard)
-          setSelectedHazardScenarioKey(hazard.scenario_key)
-          setHazardImageResult(null)
-          setHazardImageError(null)
-          setIsHazardModalOpen(true)
-        })
-        popupContent.appendChild(button)
-
-        routeHazardPopupRef.current = new mapboxgl.Popup({
-          closeButton: true,
-          closeOnClick: false,
-          offset: 16,
-          maxWidth: "280px",
-        })
-          .setLngLat(hazard.coordinates)
-          .setDOMContent(popupContent)
-          .addTo(map.current!)
-      })
-
-      routeHazardMarkersRef.current.push(markerInstance)
-    })
-
-    return () => {
-      clearRouteHazardMarkers()
-      clearRouteHazardPopup()
-    }
-  }, [clearRouteHazardMarkers, clearRouteHazardPopup, visibleRouteHazards])
-
-  // --- Helper Labels/Colors (Consider moving to utils) ---
-  const getDangerTypeLabel = (type: string) => {
-    switch (type) {
-      case "traffic": return "交通危険"; case "crime": return "犯罪危険";
-      case "disaster": return "災害危険"; case "other": return "その他";
-      default: return type;
-    }
-  };
-  const getDangerLevelColor = (level: number) => {
-    switch (level) {
-      case 1: return "#4ade80"; case 2: return "#a3e635"; case 3: return "#facc15";
-      case 4: return "#fb923c"; case 5: return "#f87171"; default: return "#94a3b8";
-    }
-  };
-
   const toggleARMode = useCallback(() => {
     setActiveARKind("nearby")
     setIsARMode((prev) => !prev)
@@ -1126,26 +782,21 @@ export default function MapContainer({
   // --- Event Handlers ---
   const handleRouteSelectionChange = useCallback((routeId: string) => {
     setSelectedUserRouteId(routeId)
-    setRouteHazardError(null)
-    setRouteHazards([])
-    setRouteHazardsFetchedAt(null)
+    resetRouteHazards()
     setActiveHazardMarker(null)
     setHazardImageResult(null)
     setHazardImageError(null)
-  }, [])
+  }, [resetRouteHazards])
 
   const handleHazardLayerToggle = useCallback((hazardType: HazardType, checked: boolean) => {
     setHazardLayerVisibility((prev) => ({ ...prev, [hazardType]: checked }))
   }, [])
 
   const handleRouteHazardSelect = useCallback((hazard: RouteHazardMarker) => {
-    setActiveHazardMarker(hazard)
-    setSelectedHazardScenarioKey(hazard.scenario_key)
-    setHazardImageResult(null)
-    setHazardImageError(null)
-    setIsHazardModalOpen(true)
+    handleHazardDetailOpen(hazard)
     flyToLocation(hazard.coordinates[0], hazard.coordinates[1], 16)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleHazardDetailOpen])
 
   const handleGenerateHazardImage = useCallback(async () => {
     if (!activeHazardMarker) return
@@ -1204,108 +855,6 @@ export default function MapContainer({
     });
   };
 
-  // 危険レポート送信（INSERT →画像処理API →ポイント/プレビュー/state更新）。挙動はそのままフックへ抽出。
-  const handleReportSubmit = useDangerReportSubmit({
-    supabase,
-    selectedLocation,
-    selectedUserRoute,
-    toast,
-    setSubmittedReport,
-    setIsSubmittedPreviewOpen,
-    setPendingReports,
-  })
-
-  // 不審者アラートの送信: 既存の挿入/画像パイプラインを再利用し、AI一次審査で公開可否を決める
-  const handleSuspiciousAlertSubmit = async (payload: SuspiciousAlertFormPayload) => {
-    if (!selectedLocation) {
-      toast({ title: "場所を選んでください", description: "住所検索・現在地・地図タップで地点を指定できます。", variant: "destructive" });
-      return;
-    }
-    setIsSuspiciousSubmitting(true);
-    try {
-      const radius = resolveAlertRadius(payload.radiusM);
-      const memo = payload.memo?.trim() ?? "";
-      const reportPayload: DangerReportSubmitPayload = {
-        title: memo ? memo.slice(0, 40) : "不審者情報",
-        description: memo || null,
-        danger_type: SUSPICIOUS_DANGER_TYPE,
-        danger_level: 4,
-        alert_radius_m: radius,
-        status: "pending",
-        ai_moderation_status: "pending",
-        originalImageFile: payload.originalImageFile ?? null,
-      };
-
-      const { reportId } = await handleReportSubmit(reportPayload, {
-        suppressPreview: true,
-        suppressSuccessToast: true,
-      });
-
-      const moderationResponse = await fetch("/api/suspicious-alert/moderate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId }),
-      });
-
-      type ModerationResponseBody = {
-        verdict?: { status?: string; reason?: string; score?: number }
-        report?: DangerReport
-        error?: string
-      };
-      const moderationBody = (await moderationResponse.json().catch(() => ({}))) as ModerationResponseBody;
-
-      if (!moderationResponse.ok || !moderationBody.verdict || !moderationBody.report) {
-        console.error("AI一次審査に失敗しました:", moderationBody.error ?? moderationResponse.statusText);
-        toast({
-          title: "アラートを受け付けました",
-          description: "自動審査に失敗したため、内容確認のうえ公開されます（あなたの地図には表示中）。",
-        });
-      } else if (moderationBody.verdict.status === "approved") {
-        setPendingReports((prev) => prev.filter((r) => r.id !== reportId));
-        setDangerReports((prev) => [
-          moderationBody.report as DangerReport,
-          ...prev.filter((r) => r.id !== reportId),
-        ]);
-        toast({
-          title: "アラートを地図に公開しました",
-          description: "危険エリアを全員の地図に表示しています。",
-        });
-      } else {
-        setPendingReports((prev) =>
-          prev.map((r) => (r.id === reportId ? { ...r, ...(moderationBody.report as DangerReport) } : r)),
-        );
-        toast({
-          title: "アラートを受け付けました",
-          description: "内容確認のうえ公開されます（あなたの地図には表示中）。",
-        });
-      }
-
-      // 円全体が見えるようにフィットしてフォームを閉じる
-      const bounds = getAlertFitBounds(selectedLocation, radius);
-      if (bounds && map.current) {
-        try {
-          map.current.fitBounds(bounds as any, { padding: 80, maxZoom: 17 });
-        } catch (e) {
-          console.error("fitBounds after submit failed", e);
-        }
-      }
-      setIsSuspiciousAlertOpen(false);
-      setIsSuspiciousVisible(true); // 投稿直後は自分のアラートを地図に表示したままにする
-      setAlertFocusedId(reportId ?? null);
-      setSelectedLocation(null);
-      setLocationSelectionSource(null);
-      if (suspiciousMarkerRef.current) {
-        suspiciousMarkerRef.current.remove();
-        suspiciousMarkerRef.current = null;
-      }
-    } catch (error) {
-      console.error("不審者アラートの送信に失敗しました:", error);
-      // handleReportSubmit 側でエラートーストは表示済み
-    } finally {
-      setIsSuspiciousSubmitting(false);
-    }
-  };
-
   const handleSidebarReportSelect = (report: DangerReport) => {
     setSelectedReport(report);
     setIsDetailModalOpen(true);
@@ -1320,89 +869,21 @@ export default function MapContainer({
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // --- ▼▼▼ レポート削除処理関数 ▼▼▼ ---
-  const handleDeleteReport = async (reportId: string) => {
-    if (!supabase) return;
-
-    const reportToDelete = dangerReports.find(r => r.id === reportId) || pendingReports.find(r => r.id === reportId);
-    if (!reportToDelete) return; // 対象が見つからない場合は何もしない
-
-    // DB側のRLS（danger_reports_delete）は「管理者」または「本人のpendingレポート」のみ削除を許可している。
-    // UIの許可条件をそれに合わせておく（不一致だとボタンは出るのにDBで弾かれる、という事態を防ぐ）。
-    const isOwnReport = currentUserId != null && reportToDelete.user_id === currentUserId;
-    const canDelete = isAdmin || (isOwnReport && reportToDelete.status === 'pending');
-
-    if (!canDelete) {
-      toast({
-        title: "権限エラー",
-        description: isOwnReport
-          ? "審査中（pending）の投稿のみ削除できます。"
-          : "レポートの削除権限がありません。",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const confirmationMessage = `以下のレポートを削除しますか？\n\nID: ${reportId}\nタイトル: ${reportToDelete.title}\n\nこの操作は元に戻せません。`; // シンプルなメッセージに変更
-    if (!window.confirm(confirmationMessage)) {
-      return; // キャンセルされたら何もしない
-    }
-
-    try {
-      setIsLoading(true); // 処理中の表示
-
-      // 1. DBからレポートを削除
-      const { error: deleteError } = await supabase
-        .from('danger_reports')
-        .delete()
-        .eq('id', reportId);
-
-      if (deleteError) throw deleteError;
-
-      // 2. 関連する画像をストレージから削除する（ベストエフォート。失敗してもDB削除自体は成功扱い）
-      let storageDeleteFailed = false;
-      const imageUrls = [reportToDelete.image_url, ...(reportToDelete.processed_image_urls ?? [])].filter(
-        (url): url is string => Boolean(url),
-      );
-      if (imageUrls.length > 0) {
-        const storagePaths = imageUrls
-          .map((url) => extractStoragePathFromPublicUrl(url, 'danger-reports'))
-          .filter((path): path is string => Boolean(path));
-
-        if (storagePaths.length > 0) {
-          const { error: storageError } = await supabase.storage.from('danger-reports').remove(storagePaths);
-          if (storageError) {
-            console.error("Error deleting report images from storage:", storageError);
-            storageDeleteFailed = true;
-          }
-        }
-      }
-
-      toast({
-        title: "削除成功",
-        description: storageDeleteFailed
-          ? `レポート (ID: ${reportId}) を削除しました。（画像の削除は一部失敗しました）`
-          : `レポート (ID: ${reportId}) を削除しました。`,
-      });
-
-      // 3. ローカルの state を更新
-      setDangerReports(prev => prev.filter(report => report.id !== reportId));
-      setPendingReports(prev => prev.filter(report => report.id !== reportId));
-
-      // 4. (任意) 選択中のレポートだったら選択解除
-      if (selectedReport?.id === reportId) {
-        setSelectedReport(null);
-        setIsDetailModalOpen(false);
-      }
-
-    } catch (error: any) {
-      console.error("Error deleting report:", error);
-      toast({ title: "削除エラー", description: `レポートの削除中にエラーが発生しました: ${error.message}`, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  // --- ▲▲▲ レポート削除処理関数 ▲▲▲ ---
+  // レポート削除（権限チェック → confirm → DB/画像削除 → state更新）。挙動はそのままフックへ抽出。
+  const handleDeleteReport = useDeleteDangerReport({
+    supabase,
+    dangerReports,
+    pendingReports,
+    setDangerReports,
+    setPendingReports,
+    selectedReport,
+    setSelectedReport,
+    setIsDetailModalOpen,
+    setIsLoading,
+    isAdmin,
+    currentUserId,
+    toast,
+  })
 
   // --- ▼▼▼ 報告ボタンクリック時のハンドラーを MapHeader に渡すための関数 ▼▼▼ ---
   const handleAddReportClick = () => {
@@ -1544,51 +1025,16 @@ export default function MapContainer({
               />
             }
             threeDPanelSlot={
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">3D表示</p>
-                  <p className="text-xs text-slate-500">建物と地形を立体表示して周辺の見通しを確認できます。</p>
-                </div>
-                <Map3DToggle
-                  is3DEnabled={is3DEnabled}
-                  onToggle={toggle3DMode}
-                  className="h-11 w-full justify-center border border-slate-200 bg-white"
-                />
-              </div>
+              <ThreeDPanelContent is3DEnabled={is3DEnabled} onToggle={toggle3DMode} />
             }
             arPanelSlot={
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">AR表示</p>
-                  <p className="text-xs text-slate-500">周辺の危険報告を現地視点で重ねて確認できます。</p>
-                </div>
-                <Button
-                  type="button"
-                  variant={isARMode ? "default" : "outline"}
-                  className="h-11 w-full justify-center"
-                  onClick={toggleARMode}
-                >
-                  {isARMode ? "ARを閉じる" : "ARを開く"}
-                </Button>
-                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-3">
-                  <p className="text-sm font-semibold text-amber-950">親子で通学路確認</p>
-                  <p className="mt-1 text-xs leading-5 text-amber-800">
-                    選択中の通学路に近い危険ポイントだけを、子ども向けの短い注意で確認します。
-                  </p>
-                  <Button
-                    type="button"
-                    variant={isARMode && activeARKind === "parent_child_route" ? "default" : "outline"}
-                    className="mt-3 h-11 w-full justify-center"
-                    onClick={handleOpenParentChildARMode}
-                    disabled={!selectedUserRoute}
-                  >
-                    親子で通学路確認
-                  </Button>
-                  {!selectedUserRoute && (
-                    <p className="mt-2 text-xs text-amber-700">先に通学路を選択してください。</p>
-                  )}
-                </div>
-              </div>
+              <ARPanelContent
+                isARMode={isARMode}
+                isParentChildARActive={isARMode && activeARKind === "parent_child_route"}
+                hasSelectedRoute={Boolean(selectedUserRoute)}
+                onToggleAR={toggleARMode}
+                onOpenParentChildAR={handleOpenParentChildARMode}
+              />
             }
             heatmapPanelSlot={
               <AccidentHeatmapControls
@@ -1619,40 +1065,16 @@ export default function MapContainer({
               />
             }
             suspiciousPanelSlot={
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">不審者情報</p>
-                  <p className="text-xs text-slate-500">
-                    不審者の目撃エリアを、半径つきのオレンジの円で地図に表示します。
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant={isSuspiciousVisible ? "default" : "outline"}
-                  className={`h-11 w-full justify-center ${isSuspiciousVisible ? "bg-orange-500 text-white hover:bg-orange-600" : "border-orange-200 text-orange-700 hover:bg-orange-50"}`}
-                  onClick={() => setIsSuspiciousVisible((v) => !v)}
-                >
-                  {isSuspiciousVisible ? "地図から非表示にする" : "地図に表示する"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 w-full justify-center"
-                  onClick={() => {
-                    setActiveTopPanel(null)
-                    setIsSuspiciousVisible(true)
-                    setIsSuspiciousAlertOpen(true)
-                  }}
-                >
-                  <UserX className="mr-2 h-4 w-4 text-orange-600" />
-                  不審者アラートを投稿
-                </Button>
-                {suspiciousAlertReports.length === 0 && (
-                  <p className="text-xs text-slate-400">
-                    まだ不審者情報がありません。「不審者アラートを投稿」から登録できます。
-                  </p>
-                )}
-              </div>
+              <SuspiciousPanelContent
+                isSuspiciousVisible={isSuspiciousVisible}
+                hasReports={suspiciousAlertReports.length > 0}
+                onToggleVisible={() => setIsSuspiciousVisible((v) => !v)}
+                onOpenAlertForm={() => {
+                  setActiveTopPanel(null)
+                  setIsSuspiciousVisible(true)
+                  setIsSuspiciousAlertOpen(true)
+                }}
+              />
             }
           />
         )}
@@ -1748,10 +1170,7 @@ export default function MapContainer({
                 onCancel={() => {
                   setIsSuspiciousAlertOpen(false);
                   setAlertFocusedId(null);
-                  if (suspiciousMarkerRef.current) {
-                    suspiciousMarkerRef.current.remove();
-                    suspiciousMarkerRef.current = null;
-                  }
+                  clearSuspiciousDraftMarker();
                 }}
                 isSubmitting={isSuspiciousSubmitting}
               />
