@@ -112,6 +112,50 @@ ${accidentBlock}${ctx}
 const RETRY_SUFFIX =
   "\n\n前回の出力はJSONとして読み取れませんでした。説明・前置き・コードフェンスを一切付けず、有効なJSONオブジェクトだけを出力してください。"
 
+/** 一時的失敗の再試行前バックオフ(429/過負荷の即時再試行を避けつつ、合計レイテンシは有界)。 */
+const RETRY_BACKOFF_MS = 400
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Gemini呼び出しの失敗が「再試行で回復し得る一時的失敗」かを判定する。
+ * callGeminiVision は構造化エラーを投げない(lib/gemini-hazard.ts は構造変更禁止)ため、
+ * 例外メッセージから分類する。429(レート超過)/5xx(サーバ過負荷)/空candidates/
+ * ネットワーク瞬断のみ true。400/401/403 や画像不正など「再試行しても直らない」失敗は
+ * false を返し、無駄な待ち時間を作らない。
+ */
+export function isRetryableGeminiError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "")
+  const status = msg.match(/failed:\s*(\d{3})/)
+  if (status) {
+    const code = Number(status[1])
+    return code === 429 || code >= 500
+  }
+  if (/did not contain text output/i.test(msg)) return true // 空candidates
+  if (/fetch failed|Failed to fetch|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(msg)) return true
+  return false // 不明・入力起因は保守的に再試行しない
+}
+
+/**
+ * 低温度+構造化出力でGeminiを呼ぶ。一時的失敗のときだけ、短いバックオフを挟んで
+ * 1回だけ再試行する(合計2コールで有界)。恒久的失敗は即座に投げ直す。
+ */
+async function callHunterVision(
+  imageBase64: string,
+  prompt: string,
+  allowRetry: boolean,
+): Promise<string> {
+  try {
+    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG)
+  } catch (err) {
+    if (!allowRetry || !isRetryableGeminiError(err)) throw err
+    await sleep(RETRY_BACKOFF_MS)
+    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG)
+  }
+}
+
 /**
  * マスク済み画像を専用ハンターAIで解析し、HunterAnalyzeResult を返す。
  * いかなる失敗(ネットワーク/JSON破損/空/解析不能)も throw せず guide で吸収する。
@@ -124,9 +168,10 @@ export async function analyzeHunterImage(
   const prompt = buildHunterPrompt(accidentContext, accidentSummary)
 
   // 1) Gemini 呼び出し(throw は ai_error ガイド)。低温度+構造化出力で精度を底上げ。
+  //    一時的失敗(429/5xx/空candidates/瞬断)は callHunterVision が1回だけ再試行する。
   let text: string
   try {
-    text = await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG)
+    text = await callHunterVision(imageBase64, prompt, allowRetry)
   } catch {
     return buildGuideMode(accidentSummary, "ai_error", [], sessionId)
   }

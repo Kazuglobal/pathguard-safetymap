@@ -108,18 +108,18 @@ function iou(a: HunterRegion, b: HunterRegion): number {
   return union > 0 ? inter / union : 0
 }
 
-/** 空・英語混入の文言は kind 既定文へ置換する(英語ラベルを画面に出さない)。 */
-function safeCopy(text: string | undefined, fallback: string): string {
-  if (!text) return fallback
+/** 空・英語混入・非文字列の文言は kind 既定文へ置換する(英語ラベルを画面に出さない)。 */
+function safeCopy(text: unknown, fallback: string): string {
+  if (typeof text !== "string") return fallback
   const trimmed = text.trim()
   if (trimmed.length === 0) return fallback
   if (/[A-Za-z]/.test(trimmed)) return fallback
   return trimmed
 }
 
-/** 空文字・空白のみ・英語混入を弾く(quiz 素材の各フィールド用)。 */
-function isCleanKidText(text: string | undefined): text is string {
-  if (!text) return false
+/** 空文字・空白のみ・英語混入・非文字列を弾く(quiz 素材の各フィールド用)。 */
+function isCleanKidText(text: unknown): text is string {
+  if (typeof text !== "string") return false
   const trimmed = text.trim()
   if (trimmed.length === 0) return false
   if (/[A-Za-z]/.test(trimmed)) return false
@@ -132,13 +132,16 @@ function isCleanKidText(text: string | undefined): text is string {
  * quiz は question・choices(正解=index0)・explanation の対応関係が崩れると
  * 誤った正解を教えてしまうため、1フィールドでも不正なら quiz 全体を
  * kind 既定のフォールバックへ丸ごと差し替える(部分置換はしない)。
+ * quiz 自体が欠落(undefined)・非配列 choices でも、点を落とさず kind 既定へ倒す。
  */
-function safeQuiz(quiz: RawAiQuiz, kind: HunterDangerKind): RawAiQuiz {
+function safeQuiz(quiz: RawAiQuiz | undefined, kind: HunterDangerKind): RawAiQuiz {
   const fallback = KID_QUIZ_FALLBACK_BY_KIND[kind]
   if (
+    !quiz ||
+    !Array.isArray(quiz.choices) ||
+    quiz.choices.length < 2 ||
     !isCleanKidText(quiz.question) ||
     !isCleanKidText(quiz.explanation) ||
-    quiz.choices.length < 2 ||
     !quiz.choices.every((choice) => isCleanKidText(choice))
   ) {
     return { question: fallback.question, choices: [...fallback.choices], explanation: fallback.explanation }
