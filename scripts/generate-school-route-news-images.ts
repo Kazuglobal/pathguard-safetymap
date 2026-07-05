@@ -304,6 +304,44 @@ Mood: Peaceful, informative, trustworthy weekly review
 Focus: Weekly data review and family preparedness, NOT danger or fear
 ${QUALITY_SUFFIX}`,
     description: "週次傾向レポート（2026年7月6日号）"
+  },
+  {
+    slug: "sendai-aoba-kawadaira-repeated-suspicious-20260706",
+    filename: "sendai-aoba-kawadaira-repeated-suspicious-20260706.png",
+    prompt: `Create a Japanese safety awareness illustration about repeated voice-calling incidents targeting children on a school route in a residential neighborhood.
+
+Scene elements (abstract, NOT depicting any actual person or incident):
+- A quiet Japanese residential street in early summer, seen from a distance/wide angle
+- Two elementary school girls with yellow safety caps and randoseru walking together, viewed from behind, small in the frame
+- A faint, shadowy silhouette suggestion of an unseen presence at the edge of the frame (indistinct, not a depicted person)
+- Warning/alert atmosphere without being frightening
+- A "3 times in 3 weeks" repeated-pattern feeling conveyed through three faint overlapping street-corner motifs or a subtle repeating path marking
+
+STRICT RULE: No text of any kind anywhere in the image.
+
+Style: Somber but reassuring Japanese editorial illustration, NOT graphic or violent
+Focus on the value of walking together (complementing the safety), not on depicting a threatening figure
+Color palette: Muted orange/amber warning accents on a calm residential background
+${QUALITY_SUFFIX}`,
+    description: "仙台市青葉区川平 声かけ事案クラスタ（2026年7月6日号）"
+  },
+  {
+    slug: "okayama-koto-guardrail-installed-20260627",
+    filename: "okayama-koto-guardrail-installed-20260627.png",
+    prompt: `Create a bright, reassuring Japanese illustration about a new guardrail installed beside an irrigation canal along a school route.
+
+Visual elements:
+- A newly installed metal guardrail running along a narrow canal/waterway beside a quiet residential road
+- Elementary school children with yellow caps and randoseru walking safely on the protected side of the guardrail
+- Green rice-paddy or canal-side scenery typical of Okayama, Japan
+- Bright daylight, clear blue sky, a sense of relief and improved safety
+- No text of any kind anywhere in the image
+
+Style: Clean, bright Japanese editorial infographic illustration
+Color palette: Blue/gray for the guardrail and infrastructure, green for the safe surroundings
+Mood: Reassuring, community safety improvement, everyday life
+${QUALITY_SUFFIX}`,
+    description: "岡山市古都学区 通学路ガードレール設置（2026年7月6日号）"
   }
 ]
 
