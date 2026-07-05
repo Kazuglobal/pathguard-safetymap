@@ -37,6 +37,10 @@ function img(dataUrl: string): GeneratedImage {
 }
 
 const FIRST_IMAGES: GeneratedImage[] = [img("data:image/png;base64,first-image-payload-aaaaaaaaaaaaaaaaaaaa")]
+const MULTI_IMAGES: GeneratedImage[] = [
+  img("data:image/png;base64,first-image-payload-aaaaaaaaaaaaaaaaaaaa"),
+  img("data:image/png;base64,second-image-payload-cccccccccccccccccccc"),
+]
 const REGEN_IMAGES: GeneratedImage[] = [img("data:image/png;base64,regen-image-payload-bbbbbbbbbbbbbbbbbbbbb")]
 
 describe("verifyOrRegenerateImages", () => {
@@ -56,6 +60,7 @@ describe("verifyOrRegenerateImages", () => {
 
     expect(outcome.images).toEqual(FIRST_IMAGES)
     expect(outcome.warning).toBeUndefined()
+    expect(outcome.verificationRequestCount).toBe(1)
     expect(mocks.callGeminiVision).toHaveBeenCalledTimes(1)
     expect(regenerate).not.toHaveBeenCalled()
   })
@@ -70,6 +75,7 @@ describe("verifyOrRegenerateImages", () => {
 
     expect(outcome.images).toEqual(REGEN_IMAGES)
     expect(outcome.warning).toBeUndefined()
+    expect(outcome.verificationRequestCount).toBe(2)
     expect(mocks.callGeminiVision).toHaveBeenCalledTimes(2)
     expect(regenerate).toHaveBeenCalledTimes(1)
     const suffix = regenerate.mock.calls[0][0]
@@ -87,18 +93,36 @@ describe("verifyOrRegenerateImages", () => {
 
     expect(outcome.images).toEqual([])
     expect(outcome.warning).toBe(IMAGE_VERIFICATION_FAILED_WARNING)
+    expect(outcome.verificationRequestCount).toBe(2)
     expect(mocks.callGeminiVision).toHaveBeenCalledTimes(2)
     expect(regenerate).toHaveBeenCalledTimes(1)
   })
 
-  it("検証コール自体が失敗: 現行動作を維持して生成画像を採用（再生成しない）", async () => {
+  it("複数画像の2枚目が検証NGなら、是正再生成してから採用する", async () => {
+    mocks.callGeminiVision
+      .mockResolvedValueOnce(CLEAN_RESULT)
+      .mockResolvedValueOnce(DIRTY_RESULT)
+      .mockResolvedValueOnce(CLEAN_RESULT)
+    const regenerate = vi.fn(async () => REGEN_IMAGES)
+
+    const outcome = await verifyOrRegenerateImages({ images: MULTI_IMAGES, regenerate })
+
+    expect(outcome.images).toEqual(REGEN_IMAGES)
+    expect(outcome.warning).toBeUndefined()
+    expect(outcome.verificationRequestCount).toBe(3)
+    expect(mocks.callGeminiVision).toHaveBeenCalledTimes(3)
+    expect(regenerate).toHaveBeenCalledTimes(1)
+  })
+
+  it("検証コール自体が失敗: 未検証画像を採用せず warning を返す", async () => {
     mocks.callGeminiVision.mockRejectedValueOnce(new Error("Gemini request failed: 503"))
     const regenerate = vi.fn(async () => REGEN_IMAGES)
 
     const outcome = await verifyOrRegenerateImages({ images: FIRST_IMAGES, regenerate })
 
-    expect(outcome.images).toEqual(FIRST_IMAGES)
-    expect(outcome.warning).toBeUndefined()
+    expect(outcome.images).toEqual([])
+    expect(outcome.warning).toBe(IMAGE_VERIFICATION_FAILED_WARNING)
+    expect(outcome.verificationRequestCount).toBe(1)
     expect(mocks.callGeminiVision).toHaveBeenCalledTimes(1)
     expect(regenerate).not.toHaveBeenCalled()
   })
@@ -110,6 +134,7 @@ describe("verifyOrRegenerateImages", () => {
 
     expect(outcome.images).toEqual([])
     expect(outcome.warning).toBeUndefined()
+    expect(outcome.verificationRequestCount).toBe(0)
     expect(mocks.callGeminiVision).not.toHaveBeenCalled()
     expect(regenerate).not.toHaveBeenCalled()
   })
@@ -122,6 +147,7 @@ describe("verifyOrRegenerateImages", () => {
 
     expect(outcome.images).toEqual([])
     expect(outcome.warning).toBe(IMAGE_VERIFICATION_FAILED_WARNING)
+    expect(outcome.verificationRequestCount).toBe(1)
     // 再生成が空なので再検証は行わない
     expect(mocks.callGeminiVision).toHaveBeenCalledTimes(1)
   })

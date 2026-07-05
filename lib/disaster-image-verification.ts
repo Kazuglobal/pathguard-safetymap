@@ -27,6 +27,8 @@ export interface VerifiedGenerationOutcome {
   readonly images: GeneratedImage[]
   /** 生成画像を採用できなかった場合の日本語警告（フォールバック表示用）。 */
   readonly warning?: string
+  /** 生成後検証のためにVisionへ投げたリクエスト数（コスト/監視ログ用）。 */
+  readonly verificationRequestCount: number
 }
 
 /** 検証を通らず生成画像を採用できなかったときにクライアントへ返す警告文。 */
@@ -102,6 +104,32 @@ export function buildCorrectiveSuffix(verification: GeneratedImageVerification):
   return lines.join("\n")
 }
 
+function mergeVerifications(
+  verifications: readonly GeneratedImageVerification[],
+): GeneratedImageVerification {
+  return {
+    readableText: verifications.some((v) => v.readableText),
+    textSamples: [...new Set(verifications.flatMap((v) => v.textSamples))].slice(0, 5),
+    faces: verifications.some((v) => v.faces),
+    licensePlates: verifications.some((v) => v.licensePlates),
+    otherPrivacyRisk: [...new Set(verifications.flatMap((v) => v.otherPrivacyRisk))].slice(0, 5),
+  }
+}
+
+async function verifyGeneratedImages(
+  images: readonly GeneratedImage[],
+  onAttempt?: () => void,
+): Promise<GeneratedImageVerification> {
+  const results: GeneratedImageVerification[] = []
+
+  for (const image of images) {
+    onAttempt?.()
+    results.push(await verifyGeneratedImage(image.dataUrl))
+  }
+
+  return mergeVerifications(results)
+}
+
 function parseVerification(raw: string): GeneratedImageVerification {
   let obj: any
   try {
@@ -144,7 +172,7 @@ export async function verifyGeneratedImage(
  * - 検証OK: 生成画像をそのまま採用（追加コストは検証1コールのみ）。
  * - 検証NG: 是正サフィックスで1回だけ再生成 → 再検証OKなら採用。
  * - 再検証もNG（または再生成が画像を返さない）: 生成画像を採用せず warning を返す（フォールバックへ合流）。
- * - 検証呼び出し自体が失敗: 現行動作を維持し、その時点の画像を採用する。
+ * - 検証呼び出し自体が失敗: 未検証画像を採用せず warning を返す。
  *
  * @param images   一次生成の画像群（先頭を代表画像として検証）。
  * @param regenerate 是正サフィックスを受け取り再生成した画像群を返すコールバック。
@@ -158,20 +186,23 @@ export async function verifyOrRegenerateImages({
 }): Promise<VerifiedGenerationOutcome> {
   // 画像が無い場合は既存の「画像なし」パスをそのまま踏襲（検証しない）。
   if (images.length === 0) {
-    return { images }
+    return { images, verificationRequestCount: 0 }
   }
 
   let verification: GeneratedImageVerification
+  let verificationRequestCount = 0
   try {
-    verification = await verifyGeneratedImage(images[0].dataUrl)
+    verification = await verifyGeneratedImages(images, () => {
+      verificationRequestCount += 1
+    })
   } catch (error) {
-    // 検証呼び出し自体の失敗は生成機能を壊さない。現行動作を維持して採用する。
-    console.error("[ImageVerification] 検証呼び出しに失敗したため生成画像をそのまま採用します", error)
-    return { images }
+    // 未検証の生成画像は返さない。表示側は warning を受けてフォールバックする。
+    console.error("[ImageVerification] 検証呼び出しに失敗したため生成画像を破棄します", error)
+    return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING, verificationRequestCount }
   }
 
   if (isImageClean(verification)) {
-    return { images }
+    return { images, verificationRequestCount }
   }
 
   // 検出内容をフィードバックして1回だけ再生成。
@@ -183,23 +214,25 @@ export async function verifyOrRegenerateImages({
   })
   const regenerated = await regenerate(buildCorrectiveSuffix(verification))
   if (regenerated.length === 0) {
-    return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING }
+    return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING, verificationRequestCount }
   }
 
   let reVerification: GeneratedImageVerification
   try {
-    reVerification = await verifyGeneratedImage(regenerated[0].dataUrl)
+    reVerification = await verifyGeneratedImages(regenerated, () => {
+      verificationRequestCount += 1
+    })
   } catch (error) {
-    // 再検証の呼び出し失敗も現行動作を維持し、是正再生成した画像を採用する。
-    console.error("[ImageVerification] 再検証の呼び出しに失敗したため再生成画像を採用します", error)
-    return { images: regenerated }
+    // 再生成後も検証できなければ未検証画像は返さない。
+    console.error("[ImageVerification] 再検証の呼び出しに失敗したため再生成画像を破棄します", error)
+    return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING, verificationRequestCount }
   }
 
   if (isImageClean(reVerification)) {
-    return { images: regenerated }
+    return { images: regenerated, verificationRequestCount }
   }
 
   // 是正再生成でも通らなければ生成画像を採用しない（検証不能な画像を黙って通さない）。
   console.warn("[ImageVerification] 是正再生成後も検証を通らなかったため生成画像を破棄します")
-  return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING }
+  return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING, verificationRequestCount }
 }
