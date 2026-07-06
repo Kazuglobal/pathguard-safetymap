@@ -52,6 +52,67 @@ function normalizeType(type: string | null | undefined): keyof typeof BASE_CONTE
   return type in BASE_CONTENT ? (type as keyof typeof BASE_CONTENT) : "other"
 }
 
+interface SpecificHint {
+  keywords: string[]
+  /** 「おうちのかたへ」に足す、その場所固有のひとこと(保護者向け) */
+  concern: string
+  /** その場所固有の現地確認項目 */
+  checkpoint: string
+}
+
+/**
+ * 報告の本文(タイトル・説明)キーワードから、その場所固有の一言と現地確認項目を導く。
+ * これで同じ danger_type でも内容が違えば「おうちのかたへ」が変わり、定型文の
+ * 重複感が薄れる。全て安全側の一般的助言に限定し、誤情報や過度な断定は作らない。
+ * 優先順は「より具体的・危険度の高い事象」を上に置く(先頭一致を採用)。
+ */
+const SPECIFIC_HINTS: SpecificHint[] = [
+  {
+    keywords: ["ブロック", "塀", "へい", "フェンス", "倒壊", "電柱", "落下"],
+    concern: "地震などで塀や電柱が倒れてこないか、いっしょに見ておきましょう",
+    checkpoint: "倒れてきそうな塀・電柱から離れて歩く",
+  },
+  {
+    keywords: ["川", "用水", "水路", "氾濫", "増水"],
+    concern: "増水したときは水辺に近づかないよう、迂回できる道を決めておきましょう",
+    checkpoint: "増水時に近づかない迂回路を親子で決める",
+  },
+  {
+    keywords: ["見通し", "みとおし", "カーブ", "曲が"],
+    concern: "見通しが悪く車や自転車が急に現れやすいので、止まる位置を決めておきましょう",
+    checkpoint: "見通しが悪い地点で一度止まる位置を決める",
+  },
+  {
+    keywords: ["スピード", "速い", "はやい", "飛び出", "とびだ"],
+    concern: "車がスピードを出しやすいので、渡る前に止まる習慣をつけましょう",
+    checkpoint: "車の速さと、渡る前に止まる位置を確認する",
+  },
+  {
+    keywords: ["暗", "夜", "街灯", "照明", "人通り", "人目", "死角"],
+    concern: "暗い時間帯は人通りが少なくなりやすいので、明るい道を選びましょう",
+    checkpoint: "暗くなる時間帯の明るさと人通りを確認する",
+  },
+  {
+    keywords: ["雨", "水たまり", "すべ", "滑"],
+    concern: "雨の日は足もとが滑りやすいので、走らずゆっくり歩きましょう",
+    checkpoint: "雨の日に滑りやすい場所を親子で確認する",
+  },
+  {
+    keywords: ["工事", "こうじ"],
+    concern: "工事で歩く場所が変わりやすいので、毎回どこを歩くか確認しましょう",
+    checkpoint: "工事で歩く場所が変わっていないか確認する",
+  },
+]
+
+function deriveSpecificHint(report: DangerReport): SpecificHint | null {
+  const sourceText = `${report.title ?? ""} ${report.description ?? ""}`.toLowerCase()
+  return (
+    SPECIFIC_HINTS.find((hint) =>
+      hint.keywords.some((keyword) => sourceText.includes(keyword.toLowerCase()))
+    ) ?? null
+  )
+}
+
 function buildAttentionTags(report: DangerReport): string[] {
   const tags = new Set<string>(["現地確認"])
   const sourceText = `${report.title} ${report.description ?? ""}`.toLowerCase()
@@ -88,10 +149,18 @@ export function createARLearningContent(report: DangerReport): ARLearningContent
   }
 
   const template = BASE_CONTENT[normalizeType(report.danger_type)]
+  const hint = deriveSpecificHint(report)
+
+  // 本文キーワードに合致すれば、その場所固有の一言・確認項目を差し込む。
+  // 同じタイプでも内容が違えば文言が変わり、定型文の重複感が薄れる。
+  const summary = hint ? `${template.summary} とくに、${hint.concern}。` : template.summary
+  const checkpoints = hint
+    ? Array.from(new Set([hint.checkpoint, ...template.checkpoints])).slice(0, 3)
+    : template.checkpoints
 
   return {
-    summary: template.summary,
-    checkpoints: template.checkpoints,
+    summary,
+    checkpoints,
     attentionTags: buildAttentionTags(report),
   }
 }
