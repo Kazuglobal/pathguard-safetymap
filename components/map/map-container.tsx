@@ -16,6 +16,8 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
+import { useInitialMapView } from "@/hooks/use-initial-map-view"
+import { CURRENT_LOCATION_ZOOM } from "@/lib/map-center"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { useAdminStatus } from "@/hooks/use-admin-status"
@@ -136,7 +138,18 @@ export default function MapContainer({
   const {
     routes: userRoutes,
     primaryRoute,
+    isLoading: isUserRoutesLoading,
   } = useUserRoutes()
+  // 初期表示センター（登録ルート → 現在地 → 東京フォールバックの優先順で決定）
+  const {
+    initialView: initialMapView,
+    lateCurrentLocation,
+  } = useInitialMapView({
+    primaryRoute,
+    routes: userRoutes,
+    isRoutesLoading: Boolean(isUserRoutesLoading),
+  })
+  const lateLocationConsumedRef = useRef(false)
   const [selectedUserRouteId, setSelectedUserRouteId] = useState<string | null>(null)
   const [hazardLayerVisibility, setHazardLayerVisibility] = useState<Record<HazardType, boolean>>({
     flood: false,
@@ -510,8 +523,9 @@ export default function MapContainer({
   };
 
   // --- Map Initialization ---
+  // initialMapView が確定するまで初期化を待つ（ルート取得中のみ。東京が一瞬見えるのを防ぐ）
   useEffect(() => {
-    if (!mapContainer.current || mapInitialized.current || !supabase) return;
+    if (!mapContainer.current || mapInitialized.current || !supabase || !initialMapView) return;
 
     if (!mapboxgl.supported()) {
       setMapError("このブラウザはMapboxをサポートしていません。WebGLが有効か確認してください。"); setIsLoading(false); return;
@@ -533,8 +547,8 @@ export default function MapContainer({
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: `mapbox://styles/mapbox/${mapStyle}`, // Initial style from state
-        center: [139.6917, 35.6895], // Tokyo center
-        zoom: 12,
+        center: initialMapView.center,
+        zoom: initialMapView.zoom,
         attributionControl: true,
       });
 
@@ -596,7 +610,16 @@ export default function MapContainer({
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase]); // Add supabase dependency
+  }, [supabase, initialMapView]);
+
+  // 東京フォールバックで初期化した後に現在地が取れた場合、一度だけそこへ移動する
+  useEffect(() => {
+    if (!lateCurrentLocation || lateLocationConsumedRef.current) return
+    if (!map.current || !mapInitialized.current) return
+    lateLocationConsumedRef.current = true
+    flyToLocation(lateCurrentLocation[0], lateCurrentLocation[1], CURRENT_LOCATION_ZOOM)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lateCurrentLocation, isLoading])
 
   useEffect(() => {
     if (!map.current || !mapInitialized.current || !navigationControlRef.current) return
@@ -923,6 +946,8 @@ export default function MapContainer({
   // GPS位置取得成功時: 地図を移動してフォームを開く
   useEffect(() => {
     if (!gpsLocation || gpsConsumedRef.current) return
+    // 地図初期化前に消費すると flyTo が空振りするため、load 完了(isLoading=false)まで待つ
+    if (!map.current || !mapInitialized.current) return
     if (!isValidCoordinates(gpsLocation[1], gpsLocation[0])) {
       resetGPSLocation()
       toast({
@@ -947,7 +972,7 @@ export default function MapContainer({
       description: "現在地は端末の推定値です。地図で確認・調整してから報告してください。",
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gpsLocation])
+  }, [gpsLocation, isLoading])
   // --- ▲▲▲ 現在地で報告ハンドラー ▲▲▲ ---
 
   const mapDisplayOverlayOptions = useMemo(
