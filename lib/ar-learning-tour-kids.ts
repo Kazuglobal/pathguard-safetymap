@@ -48,6 +48,14 @@ export function createKidsHazardCue(report: DangerReport): KidsHazardCue {
     }
   }
 
+  if (dangerType === "construction" || includesAny(sourceText, ["工事", "こうじ"])) {
+    return {
+      shortMessage: "こうじで あるく ばしょが かわっているよ",
+      action: "くるまみちに はみださないで、ゆっくり あるこう",
+      dangerKind: "こうじ",
+    }
+  }
+
   if (dangerType === "disaster" || includesAny(sourceText, ["災害", "避難", "川", "水"])) {
     return {
       shortMessage: "いつもとちがう日は、むりに通らないようにしよう",
