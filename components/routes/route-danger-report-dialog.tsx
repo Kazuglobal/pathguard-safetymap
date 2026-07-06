@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -120,6 +121,7 @@ export function RouteDangerReportDialog({
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [selectedImageUrls, setSelectedImageUrls] = useState<Record<string, string>>({})
+  const [includeSchoolSummary, setIncludeSchoolSummary] = useState(false)
 
   const summary = useMemo(() => createReportSummary(dangers), [dangers])
 
@@ -178,6 +180,7 @@ export function RouteDangerReportDialog({
         generatedAt: new Date().toISOString(),
         summary,
         selectedImageUrls,
+        includeSchoolSummary,
       }
 
       let blob: Blob
@@ -205,7 +208,7 @@ export function RouteDangerReportDialog({
     } finally {
       setIsExporting(false)
     }
-  }, [route, dangers, summary, exportFormat, selectedImageUrls])
+  }, [route, dangers, summary, exportFormat, selectedImageUrls, includeSchoolSummary])
 
   const handleRetry = useCallback(() => {
     refetch()
@@ -322,6 +325,30 @@ export function RouteDangerReportDialog({
                       </Label>
                     </div>
                   </RadioGroup>
+                </div>
+              )}
+
+              {/* School Summary Opt-in */}
+              {dangers.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="include-school-summary"
+                    checked={includeSchoolSummary}
+                    onCheckedChange={(checked) =>
+                      setIncludeSchoolSummary(checked === true)
+                    }
+                  />
+                  <div className="grid gap-0.5">
+                    <Label
+                      htmlFor="include-school-summary"
+                      className="cursor-pointer text-sm font-medium"
+                    >
+                      学校・地域共有用サマリーページを含める
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      写真・詳細説明を除いた1ページをレポート末尾に追加します
+                    </p>
+                  </div>
                 </div>
               )}
 
