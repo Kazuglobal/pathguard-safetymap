@@ -23,6 +23,7 @@ import {
   getDangerImageOptions,
   resolveDangerDisplayImageUrl,
 } from "@/lib/report-generation/route-danger-report"
+import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
 import { getMapboxToken } from "@/lib/mapbox-config"
 import type { UserRoute, DangerReport, ReportExportFormat } from "@/lib/types"
 
@@ -32,27 +33,9 @@ interface RouteDangerReportDialogProps {
   route: UserRoute
 }
 
-function getDangerLevelBadgeVariant(level: number): "destructive" | "secondary" | "outline" {
-  switch (level) {
-    case 3:
-      return "destructive"
-    case 2:
-      return "secondary"
-    default:
-      return "outline"
-  }
-}
-
-function getDangerLevelLabel(level: number): string {
-  switch (level) {
-    case 3:
-      return "高"
-    case 2:
-      return "中"
-    case 1:
-    default:
-      return "低"
-  }
+function formatDangerLevelBadge(level: number): string {
+  const presentation = getDangerLevelPresentation(level)
+  return `${presentation.stars} ${presentation.kidLabel}`
 }
 
 interface DangerListItemProps {
@@ -80,8 +63,11 @@ function DangerListItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium text-sm truncate">{danger.title}</span>
-          <Badge variant={getDangerLevelBadgeVariant(danger.danger_level)} className="shrink-0">
-            {getDangerLevelLabel(danger.danger_level)}
+          <Badge
+            variant={getDangerLevelPresentation(danger.danger_level).badgeVariant}
+            className="shrink-0"
+          >
+            {formatDangerLevelBadge(danger.danger_level)}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">{danger.danger_type}</p>
@@ -275,9 +261,9 @@ export function RouteDangerReportDialog({
                     {Object.entries(summary.byLevel).map(([level, count]) => (
                       <Badge
                         key={level}
-                        variant={getDangerLevelBadgeVariant(parseInt(level, 10))}
+                        variant={getDangerLevelPresentation(parseInt(level, 10)).badgeVariant}
                       >
-                        レベル{level}: {count}件
+                        {formatDangerLevelBadge(parseInt(level, 10))}: {count}件
                       </Badge>
                     ))}
                   </div>
