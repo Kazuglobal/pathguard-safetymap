@@ -111,6 +111,37 @@ export function getMapMarkerLabel(index: number): string {
   return MAP_MARKER_LABELS[index] ?? MAP_MARKER_LABELS[MAP_MARKER_LABELS.length - 1]
 }
 
+/**
+ * 危険箇所ID→マーカーラベルの対応表を作る。
+ *
+ * 地図ピンは「座標が正規化できた箇所だけ」を順に採番するため、
+ * カード・チェックリスト側が report.dangers の生インデックスで採番すると
+ * 不正座標の箇所が混じった時に番号がズレる。全セクションはこの関数の
+ * 結果を使うことで、地図ピンと必ず同じ番号になる。
+ * 地図に載らない箇所(不正座標)には、載る箇所の後に続きの番号を振る。
+ */
+export function assignDangerMarkerLabels(dangers: DangerReport[]): Map<string, string> {
+  const labels = new Map<string, string>()
+  const unmappable: DangerReport[] = []
+  let nextIndex = 0
+
+  for (const danger of dangers) {
+    if (toNormalizedDangerPoint(danger) !== null) {
+      labels.set(danger.id, getMapMarkerLabel(nextIndex))
+      nextIndex += 1
+    } else {
+      unmappable.push(danger)
+    }
+  }
+
+  for (const danger of unmappable) {
+    labels.set(danger.id, getMapMarkerLabel(nextIndex))
+    nextIndex += 1
+  }
+
+  return labels
+}
+
 function buildPathOverlay(routeCoordinates: [number, number][]): string {
   if (routeCoordinates.length < 2) {
     return ''

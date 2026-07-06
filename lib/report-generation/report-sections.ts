@@ -22,8 +22,8 @@ import { getDangerLevelPresentation } from './danger-level-presentation'
 import {
   MAP_CALLOUT_LIMIT,
   MAP_CALLOUT_THUMBNAIL_LIMIT,
+  assignDangerMarkerLabels,
   generateOverviewMapUrl,
-  getMapMarkerLabel,
 } from './report-map'
 import { resolveDangerDisplayImageUrl } from './report-images'
 import {
@@ -251,7 +251,12 @@ export function buildMapSection(
   mapImg.style.border = `2px solid ${C.borderFaint}`
   root.appendChild(mapImg)
 
-  appendMapCallouts(root, report.dangers, report.selectedImageUrls)
+  appendMapCallouts(
+    root,
+    report.dangers,
+    assignDangerMarkerLabels(report.dangers),
+    report.selectedImageUrls
+  )
 
   return root
 }
@@ -259,6 +264,7 @@ export function buildMapSection(
 function appendMapCallouts(
   parent: HTMLElement,
   dangers: DangerReport[],
+  markerLabels: Map<string, string>,
   selectedImageUrls?: Record<string, string>
 ): void {
   if (dangers.length === 0) {
@@ -283,7 +289,7 @@ function appendMapCallouts(
     row.style.borderRadius = `${reportTheme.radius.panel}px`
 
     const marker = document.createElement('div')
-    marker.textContent = getMapMarkerLabel(index)
+    marker.textContent = markerLabels.get(danger.id) ?? ''
     marker.style.width = '24px'
     marker.style.height = '24px'
     marker.style.flexShrink = '0'
@@ -352,7 +358,7 @@ function appendMapCallouts(
 
 export function buildDangerCardSection(
   danger: DangerReport,
-  index: number,
+  markerLabel: string,
   selectedImageUrls?: Record<string, string>
 ): HTMLDivElement {
   const root = createSectionRoot('tanken')
@@ -370,7 +376,7 @@ export function buildDangerCardSection(
 
   card.appendChild(
     createHeadingBand({
-      text: `ちゅういポイント ${getMapMarkerLabel(index)}`,
+      text: `ちゅういポイント ${markerLabel}`,
       accentColor: presentation.colorHex,
       rightText: `${presentation.stars} ${presentation.kidLabel}`,
       rightTextColor: presentation.colorHex,
@@ -513,6 +519,7 @@ export function buildDangerCardSection(
 export function buildChecklistSection(dangers: DangerReport[]): HTMLDivElement {
   const root = createSectionRoot('tanken')
   root.dataset.reportSection = 'checklist'
+  const markerLabels = assignDangerMarkerLabels(dangers)
 
   root.appendChild(
     createHeadingBand({
@@ -535,7 +542,7 @@ export function buildChecklistSection(dangers: DangerReport[]): HTMLDivElement {
   list.style.flexDirection = 'column'
   list.style.gap = '8px'
 
-  dangers.forEach((danger, index) => {
+  dangers.forEach((danger) => {
     const cue = createKidsHazardCue(danger)
 
     const row = document.createElement('div')
@@ -550,7 +557,7 @@ export function buildChecklistSection(dangers: DangerReport[]): HTMLDivElement {
     row.appendChild(createCheckboxSquare())
 
     const label = document.createElement('span')
-    label.textContent = `${getMapMarkerLabel(index)} ${danger.title} — ${cue.action}`
+    label.textContent = `${markerLabels.get(danger.id) ?? ''} ${danger.title} — ${cue.action}`
     label.style.fontSize = '13px'
     label.style.fontWeight = 'bold'
     label.style.color = C.ink
@@ -678,6 +685,7 @@ export function buildSchoolSummarySection(
 
   // 箇所一覧(タイトル・場所・レベルのみ)
   if (report.dangers.length > 0) {
+    const markerLabels = assignDangerMarkerLabels(report.dangers)
     const table = document.createElement('table')
     table.style.width = '100%'
     table.style.borderCollapse = 'collapse'
@@ -696,11 +704,11 @@ export function buildSchoolSummarySection(
     }
     table.appendChild(headerRow)
 
-    report.dangers.forEach((danger, index) => {
+    report.dangers.forEach((danger) => {
       const presentation = getDangerLevelPresentation(danger.danger_level)
       const tr = document.createElement('tr')
       const cells = [
-        getMapMarkerLabel(index),
+        markerLabels.get(danger.id) ?? '',
         danger.title,
         formatLocation(danger) || '-',
         danger.danger_type,
@@ -763,9 +771,16 @@ export function buildReportSections(
   ]
 
   if (report.dangers.length > 0) {
-    report.dangers.forEach((danger, index) => {
-      sections.push(buildDangerCardSection(danger, index, report.selectedImageUrls))
-    })
+    const markerLabels = assignDangerMarkerLabels(report.dangers)
+    for (const danger of report.dangers) {
+      sections.push(
+        buildDangerCardSection(
+          danger,
+          markerLabels.get(danger.id) ?? '',
+          report.selectedImageUrls
+        )
+      )
+    }
     sections.push(buildChecklistSection(report.dangers))
   } else {
     const empty = createSectionRoot('tanken')

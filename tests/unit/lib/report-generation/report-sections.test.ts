@@ -19,6 +19,7 @@ import {
 } from '@/lib/report-generation/report-sections'
 import { createKidsHazardCue } from '@/lib/ar-learning-tour-kids'
 import { createARLearningContent } from '@/lib/ar-learning-tour'
+import { assignDangerMarkerLabels } from '@/lib/report-generation/report-map'
 import { createReportSummary } from '@/lib/report-generation/route-danger-report'
 import { mockRoutes } from '../../../fixtures/routes'
 import {
@@ -100,7 +101,7 @@ describe('report-sections', () => {
 
     it('includes the kid-facing danger explanation and action from createKidsHazardCue', () => {
       const cue = createKidsHazardCue(trafficDanger)
-      const section = buildDangerCardSection(trafficDanger, 0)
+      const section = buildDangerCardSection(trafficDanger, '1')
 
       expect(section.textContent).toContain('なにが あぶない?')
       expect(section.textContent).toContain(cue.shortMessage)
@@ -110,7 +111,7 @@ describe('report-sections', () => {
 
     it('includes the parent-facing summary and checkpoints from createARLearningContent', () => {
       const learning = createARLearningContent(trafficDanger)
-      const section = buildDangerCardSection(trafficDanger, 0)
+      const section = buildDangerCardSection(trafficDanger, '1')
 
       expect(section.textContent).toContain('おうちのかたへ')
       expect(section.textContent).toContain(learning.summary)
@@ -125,7 +126,7 @@ describe('report-sections', () => {
         learning_summary: 'LLMが生成した保護者向け解説',
         learning_checkpoints: ['LLM生成チェック1', 'LLM生成チェック2'],
       })
-      const section = buildDangerCardSection(withLearning, 0)
+      const section = buildDangerCardSection(withLearning, '1')
 
       expect(section.textContent).toContain('LLMが生成した保護者向け解説')
       expect(section.textContent).toContain('LLM生成チェック1')
@@ -133,7 +134,7 @@ describe('report-sections', () => {
 
     it('renders level 4 with four stars and the strongest label (regression: level-4 bug)', () => {
       const level4 = createMockDangerReport({ ...trafficDanger, danger_level: 4 })
-      const section = buildDangerCardSection(level4, 0)
+      const section = buildDangerCardSection(level4, '1')
       const html = section.outerHTML
 
       expect(section.textContent).toContain('★★★★ いちばんちゅうい')
@@ -141,13 +142,13 @@ describe('report-sections', () => {
       expect(/ef4444|rgb\(239,\s*68,\s*68\)/i.test(html)).toBe(true)
     })
 
-    it('uses the same marker label as the map pins', () => {
-      const section = buildDangerCardSection(trafficDanger, 9) // 10番目 → ラベル'0'
+    it('renders the marker label passed by the caller', () => {
+      const section = buildDangerCardSection(trafficDanger, '0')
       expect(section.textContent).toContain('ちゅういポイント 0')
     })
 
     it('renders the selected photo with the report image when available', () => {
-      const section = buildDangerCardSection(trafficDanger, 0)
+      const section = buildDangerCardSection(trafficDanger, '1')
       const img = section.querySelector('img')
       expect(img?.src).toBe(trafficDanger.image_url)
     })
@@ -158,7 +159,7 @@ describe('report-sections', () => {
         image_url: null,
         processed_image_urls: null,
       })
-      const section = buildDangerCardSection(noImage, 0)
+      const section = buildDangerCardSection(noImage, '1')
       expect(section.querySelector('img')).toBeNull()
     })
   })
@@ -247,6 +248,33 @@ describe('report-sections', () => {
           (section) => section.dataset.reportSection !== 'school-summary'
         )
       ).toBe(true)
+    })
+
+    it('keeps card/checklist numbering aligned with map pins when a danger has invalid coordinates', () => {
+      // 地図ピンは「座標が正規化できた箇所」だけを順に採番する。
+      // 生インデックスで採番すると、不正座標の報告が混じった時に番号がズレる(回帰)。
+      const invalidCoords = createMockDangerReport({
+        id: 'invalid-coords',
+        title: '座標が壊れた報告',
+        latitude: Number.NaN,
+        longitude: Number.NaN,
+      })
+      const validCoords = createMockDangerReport({
+        id: 'valid-coords',
+        title: '有効な座標の報告',
+      })
+
+      const labels = assignDangerMarkerLabels([invalidCoords, validCoords])
+      // 地図に載る箇所が先頭番号、載らない箇所は後ろに続く
+      expect(labels.get('valid-coords')).toBe('1')
+      expect(labels.get('invalid-coords')).toBe('2')
+
+      const report = createMockReport([invalidCoords, validCoords])
+      const sections = buildReportSections(report, MOCK_TOKEN)
+      const validCard = sections.find(
+        (section) => section.dataset.dangerId === 'valid-coords'
+      )
+      expect(validCard?.textContent).toContain('ちゅういポイント 1')
     })
 
     it('renders an empty-state section when there are no dangers', () => {
