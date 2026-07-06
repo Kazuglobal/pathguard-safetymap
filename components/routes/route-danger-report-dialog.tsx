@@ -25,6 +25,8 @@ import {
   resolveDangerDisplayImageUrl,
 } from "@/lib/report-generation/route-danger-report"
 import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
+import { createDangerReportSignedUrl } from "@/lib/danger-report-image-access"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
 import { getMapboxToken } from "@/lib/mapbox-config"
 import type { UserRoute, DangerReport, ReportExportFormat } from "@/lib/types"
 
@@ -117,6 +119,7 @@ export function RouteDangerReportDialog({
   route,
 }: RouteDangerReportDialogProps) {
   const { dangers, isLoading, error, refetch } = useRouteDangers(route.id)
+  const supabase = useOptionalSupabase()?.supabase ?? null
   const [exportFormat, setExportFormat] = useState<ReportExportFormat>("pdf")
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -173,6 +176,24 @@ export function RouteDangerReportDialog({
         throw new Error("Mapboxトークンが設定されていません")
       }
 
+      // danger-reports バケットは非公開化済み。DB保存済みの公開URLはそのままでは
+      // 4xx になるため、表示予定の画像を短TTLの署名URLへ差し替える。署名できない
+      // ものは保存済みURLのまま渡り、生成側で読込失敗プレースホルダに落ちる。
+      const signedImageUrls: Record<string, string> = {}
+      if (supabase) {
+        const storedUrls = new Set<string>()
+        for (const danger of dangers) {
+          const stored = resolveDangerDisplayImageUrl(danger, selectedImageUrls)
+          if (stored) storedUrls.add(stored)
+        }
+        await Promise.all(
+          Array.from(storedUrls).map(async (stored) => {
+            const signed = await createDangerReportSignedUrl(supabase, stored)
+            if (signed) signedImageUrls[stored] = signed
+          })
+        )
+      }
+
       const report = {
         route,
         dangers,
@@ -181,6 +202,7 @@ export function RouteDangerReportDialog({
         summary,
         selectedImageUrls,
         includeSchoolSummary,
+        signedImageUrls,
       }
 
       let blob: Blob
@@ -208,7 +230,7 @@ export function RouteDangerReportDialog({
     } finally {
       setIsExporting(false)
     }
-  }, [route, dangers, summary, exportFormat, selectedImageUrls, includeSchoolSummary])
+  }, [route, dangers, summary, exportFormat, selectedImageUrls, includeSchoolSummary, supabase])
 
   const handleRetry = useCallback(() => {
     refetch()

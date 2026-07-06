@@ -322,7 +322,8 @@ export function buildMapSection(
     root,
     report.dangers,
     assignDangerMarkerLabels(report.dangers),
-    report.selectedImageUrls
+    report.selectedImageUrls,
+    report.signedImageUrls
   )
 
   return root
@@ -332,7 +333,8 @@ function appendMapCallouts(
   parent: HTMLElement,
   dangers: DangerReport[],
   markerLabels: Map<string, string>,
-  selectedImageUrls?: Record<string, string>
+  selectedImageUrls?: Record<string, string>,
+  signedImageUrls?: Record<string, string>
 ): void {
   if (dangers.length === 0) {
     return
@@ -391,7 +393,7 @@ function appendMapCallouts(
 
     const imageUrl =
       index < MAP_CALLOUT_THUMBNAIL_LIMIT
-        ? resolveDangerDisplayImageUrl(danger, selectedImageUrls)
+        ? resolveDangerDisplayImageUrl(danger, selectedImageUrls, signedImageUrls)
         : null
     if (imageUrl) {
       const thumb = createReportImage(imageUrl, `${danger.title}の写真`, {
@@ -431,7 +433,8 @@ function appendMapCallouts(
 export function buildDangerCardSection(
   danger: DangerReport,
   markerLabel: string,
-  selectedImageUrls?: Record<string, string>
+  selectedImageUrls?: Record<string, string>,
+  signedImageUrls?: Record<string, string>
 ): HTMLDivElement {
   const root = createSectionRoot('tanken')
   root.dataset.reportSection = 'danger-card'
@@ -473,7 +476,7 @@ export function buildDangerCardSection(
   )
 
   // 写真(テープで貼ったポラロイド風)
-  const imageUrl = resolveDangerDisplayImageUrl(danger, selectedImageUrls)
+  const imageUrl = resolveDangerDisplayImageUrl(danger, selectedImageUrls, signedImageUrls)
   if (imageUrl) {
     const frame = document.createElement('div')
     frame.style.position = 'relative'
@@ -858,7 +861,8 @@ export function buildReportSections(
         buildDangerCardSection(
           danger,
           markerLabels.get(danger.id) ?? '',
-          report.selectedImageUrls
+          report.selectedImageUrls,
+          report.signedImageUrls
         )
       )
     }

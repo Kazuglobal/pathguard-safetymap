@@ -54,7 +54,13 @@ export function getDangerImageOptions(danger: DangerReport): DangerImageOption[]
 
 export function resolveDangerDisplayImageUrl(
   danger: DangerReport,
-  selectedImageUrls?: Record<string, string>
+  selectedImageUrls?: Record<string, string>,
+  /**
+   * DB保存済みの公開URL文字列 → 表示用URL(署名URL)の対応表。
+   * danger-reports バケットは非公開化済みで、保存済みの getPublicUrl 形式は
+   * そのままでは 4xx になる。生成前に署名URLへ差し替えたものをここで渡す。
+   */
+  signedImageUrls?: Record<string, string>
 ): string | null {
   const options = getDangerImageOptions(danger)
   if (options.length === 0) {
@@ -62,11 +68,17 @@ export function resolveDangerDisplayImageUrl(
   }
 
   const selectedImageUrl = selectedImageUrls?.[danger.id]
-  if (selectedImageUrl && options.some((option) => option.url === selectedImageUrl)) {
-    return selectedImageUrl
+  const storedUrl =
+    selectedImageUrl && options.some((option) => option.url === selectedImageUrl)
+      ? selectedImageUrl
+      : options[0]?.url ?? null
+
+  if (!storedUrl) {
+    return null
   }
 
-  return options[0]?.url ?? null
+  // 署名URLが用意されていれば差し替える(無ければ保存済みURLのまま)。
+  return signedImageUrls?.[storedUrl] ?? storedUrl
 }
 
 export function sanitizeImageUrl(url: string | null): string | null {
