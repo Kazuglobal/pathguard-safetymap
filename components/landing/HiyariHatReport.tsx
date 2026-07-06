@@ -79,7 +79,7 @@ export function HiyariHatReport() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedReport, setSelectedReport] = React.useState<DangerReport | null>(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
-  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string>(NATIONWIDE)
+  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string | null>(null)
   const [mounted, setMounted] = React.useState(false)
   const reportIds = React.useMemo(() => reports.map((report) => report.id), [reports])
   const { reactions, toggleReaction } = useLandingReportReactions(reportIds)
@@ -100,10 +100,14 @@ export function HiyariHatReport() {
   }, [])
 
   React.useEffect(() => {
+    if (!mounted || !selectedPrefecture) return
+
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+    const abortController = new AbortController()
+    let ignore = false
 
     async function fetchReports() {
       setIsLoading(true)
@@ -116,6 +120,7 @@ export function HiyariHatReport() {
           .from("danger_reports_public_preview")
           .select(LANDING_REPORT_SELECT_COLUMNS)
           .in("status", ["approved", "published", "resolved"])
+          .abortSignal(abortController.signal)
 
         if (selectedPrefecture !== NATIONWIDE) {
           query = query.eq("prefecture", selectedPrefecture)
@@ -126,16 +131,23 @@ export function HiyariHatReport() {
           .limit(5)
 
         if (error) throw error
+        if (ignore || abortController.signal.aborted) return
         setReports((data ?? []) as unknown as DangerReport[])
-      } catch {
+      } catch (error) {
+        if (ignore || abortController.signal.aborted) return
         // Silently fail — landing page continues to work
       } finally {
+        if (ignore || abortController.signal.aborted) return
         setIsLoading(false)
       }
     }
 
     fetchReports()
-  }, [selectedPrefecture])
+    return () => {
+      ignore = true
+      abortController.abort()
+    }
+  }, [mounted, selectedPrefecture])
 
   const thumbnailUrl = (report: DangerReport): string | undefined => {
     if (report.processed_image_urls && report.processed_image_urls.length > 0) {
@@ -166,7 +178,7 @@ export function HiyariHatReport() {
         </div>
 
         {/* 都道府県フィルター */}
-        {mounted && (
+        {mounted && selectedPrefecture && (
           <div className="mb-4 px-4">
             <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
               <span className="flex-shrink-0 text-xs font-bold" style={{ color: C.inkSoft }}>

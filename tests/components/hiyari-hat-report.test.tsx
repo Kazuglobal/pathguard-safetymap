@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   limit: vi.fn(),
   order: vi.fn(),
   eq: vi.fn(),
+  abortSignal: vi.fn(),
   inFilter: vi.fn(),
   select: vi.fn(),
   from: vi.fn(),
@@ -116,7 +117,8 @@ describe("HiyariHatReport", () => {
     })
     mocks.order.mockReturnValue({ limit: mocks.limit })
     mocks.eq.mockReturnValue({ order: mocks.order })
-    mocks.inFilter.mockReturnValue({ order: mocks.order, eq: mocks.eq })
+    mocks.abortSignal.mockReturnValue({ order: mocks.order, eq: mocks.eq })
+    mocks.inFilter.mockReturnValue({ abortSignal: mocks.abortSignal })
     mocks.select.mockReturnValue({ in: mocks.inFilter })
     mocks.from.mockReturnValue({ select: mocks.select })
     mocks.createBrowserClient.mockReturnValue({ from: mocks.from })

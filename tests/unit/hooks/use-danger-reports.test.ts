@@ -25,15 +25,25 @@ function createQueryBuilder(data: unknown[]) {
   return builder
 }
 
-function makeSupabase(approvedData: unknown[]) {
+function makeSupabase(approvedData: unknown[], userId: string | null = null) {
   const approvedBuilder = createQueryBuilder(approvedData)
-  const from = vi.fn(() => approvedBuilder)
+  const pendingBuilder = createQueryBuilder([])
+  let fromCallCount = 0
+  const from = vi.fn(() => {
+    fromCallCount += 1
+    return fromCallCount === 1 ? approvedBuilder : pendingBuilder
+  })
   return {
     supabase: {
-      auth: { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) },
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: userId ? { user: { id: userId } } : null },
+        }),
+      },
       from,
     },
     approvedBuilder,
+    pendingBuilder,
   }
 }
 
@@ -48,14 +58,19 @@ const baseFilterOptions = {
 // 呼ぶ。filterOptions/toast/setIsLoading をその都度リテラルで作ると参照が変わり続け、
 // useEffect の依存配列 [filterOptions, toast, setIsLoading] が毎回変化してフェッチが
 // 無限に再実行されてしまう。テスト側で一度だけ生成した安定参照を渡す。
-function renderUseDangerReports(filterOptions: Parameters<typeof useDangerReports>[0]["filterOptions"], approvedData: unknown[] = []) {
-  const { supabase, approvedBuilder } = makeSupabase(approvedData)
+function renderUseDangerReports(
+  filterOptions: Parameters<typeof useDangerReports>[0]["filterOptions"],
+  approvedData: unknown[] = [],
+  userId: string | null = null,
+  enabled = true,
+) {
+  const { supabase, approvedBuilder, pendingBuilder } = makeSupabase(approvedData, userId)
   const toast = vi.fn()
   const setIsLoading = vi.fn()
   const rendered = renderHook(() =>
-    useDangerReports({ supabase, filterOptions, toast, setIsLoading }),
+    useDangerReports({ supabase, filterOptions, toast, setIsLoading, enabled }),
   )
-  return { ...rendered, approvedBuilder }
+  return { ...rendered, approvedBuilder, pendingBuilder }
 }
 
 describe("useDangerReports", () => {
@@ -106,5 +121,38 @@ describe("useDangerReports", () => {
       ["latitude", 36],
       ["longitude", 140],
     ])
+  })
+
+  it("ログインユーザーの pending 報告にも prefecture と bounds を適用する", async () => {
+    const bounds = { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 }
+    const { pendingBuilder } = renderUseDangerReports(
+      { ...baseFilterOptions, prefecture: "東京都", bounds },
+      [],
+      "user-1",
+    )
+
+    await waitFor(() => expect(pendingBuilder.calls.order).toBeTruthy())
+
+    expect(pendingBuilder.calls.eq).toEqual([
+      ["status", "pending"],
+      ["user_id", "user-1"],
+      ["prefecture", "東京都"],
+    ])
+    expect(pendingBuilder.calls.gte).toEqual([
+      ["latitude", 35],
+      ["longitude", 139],
+    ])
+    expect(pendingBuilder.calls.lte).toEqual([
+      ["latitude", 36],
+      ["longitude", 140],
+    ])
+  })
+
+  it("enabled=false の間は取得を開始しない", async () => {
+    const { approvedBuilder } = renderUseDangerReports(baseFilterOptions, [], null, false)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(approvedBuilder.calls.order).toBeUndefined()
   })
 })

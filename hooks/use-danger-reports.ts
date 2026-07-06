@@ -31,6 +31,7 @@ interface UseDangerReportsParams {
   filterOptions: DangerReportFilterOptions
   toast: ReturnType<typeof useToast>["toast"]
   setIsLoading: Dispatch<SetStateAction<boolean>>
+  enabled?: boolean
 }
 
 /**
@@ -43,6 +44,7 @@ export function useDangerReports({
   filterOptions,
   toast,
   setIsLoading,
+  enabled = true,
 }: UseDangerReportsParams) {
   const [dangerReports, setDangerReports] = useState<DangerReport[]>([])
   // 審査中の報告を保持する状態
@@ -51,7 +53,7 @@ export function useDangerReports({
   const reportsFetchRequestIdRef = useRef(0)
 
   useEffect(() => {
-    if (!supabase) return // Ensure supabase is initialized
+    if (!supabase || !enabled) return // Ensure supabase is initialized and caller is ready
 
     const requestId = reportsFetchRequestIdRef.current + 1
     reportsFetchRequestIdRef.current = requestId
@@ -123,12 +125,26 @@ export function useDangerReports({
             // Fetch user's pending reports if logged in and filter is enabled
             let userPendingReports: DangerReport[] = []
             if (userId && filterOptions.showPending) {
-              const { data: pendingData, error: pendingError } = await supabase
+              let pendingQuery = supabase
                 .from("danger_reports")
                 .select(`*`) // Select を最初に戻す
                 .eq("status", "pending")
                 .eq("user_id", userId)
                 .abortSignal(abortController.signal)
+
+              if (filterOptions.prefecture && filterOptions.prefecture !== NATIONWIDE) {
+                pendingQuery = (pendingQuery as any).eq('prefecture', filterOptions.prefecture)
+              }
+              if (filterOptions.bounds) {
+                const { minLng, minLat, maxLng, maxLat } = filterOptions.bounds
+                pendingQuery = (pendingQuery as any)
+                  .gte('latitude', minLat)
+                  .lte('latitude', maxLat)
+                  .gte('longitude', minLng)
+                  .lte('longitude', maxLng)
+              }
+
+              const { data: pendingData, error: pendingError } = await pendingQuery
                 .order("created_at", { ascending: false })
 
               if (pendingError) console.error("Error fetching pending reports:", pendingError)
@@ -172,7 +188,7 @@ export function useDangerReports({
     return () => {
       abortController.abort()
     }
-  }, [supabase, filterOptions, toast, setIsLoading])
+  }, [supabase, filterOptions, toast, setIsLoading, enabled])
 
   return { dangerReports, pendingReports, setDangerReports, setPendingReports }
 }

@@ -119,7 +119,13 @@ export default function MapContainer({
     pendingReports,
     setDangerReports,
     setPendingReports,
-  } = useDangerReports({ supabase, filterOptions: dangerReportsFilterOptions, toast, setIsLoading })
+  } = useDangerReports({
+    supabase,
+    filterOptions: dangerReportsFilterOptions,
+    toast,
+    setIsLoading,
+    enabled: Boolean(mapBounds),
+  })
   const [mapError, setMapError] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [isARMode, setIsARMode] = useState(false)
