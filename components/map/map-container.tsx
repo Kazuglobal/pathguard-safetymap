@@ -21,7 +21,7 @@ import { CURRENT_LOCATION_ZOOM } from "@/lib/map-center"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { useAdminStatus } from "@/hooks/use-admin-status"
-import { useDangerReports } from "@/hooks/use-danger-reports"
+import { useDangerReports, type DangerReportBounds } from "@/hooks/use-danger-reports"
 import { useDangerReportSubmit, type SubmittedReportState } from "@/hooks/use-danger-report-submit"
 import { useMapImageOverlays, type MapImageOverlayEntry } from "@/hooks/use-map-image-overlays"
 import { useDangerMarkers } from "@/hooks/use-danger-markers"
@@ -60,6 +60,7 @@ import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
 import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
+import { getStoredRegion, setStoredRegion } from "@/lib/user-region"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -103,14 +104,22 @@ export default function MapContainer({
     dangerLevel: "all",
     dateRange: "all",
     showPending: true,
+    prefecture: getStoredRegion(),
   })
+  // 地図の現在の表示範囲（bbox）。大量報告時に全件取得しないための絞り込みに使う。
+  const [mapBounds, setMapBounds] = useState<DangerReportBounds | null>(null)
+  const boundsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dangerReportsFilterOptions = useMemo(
+    () => ({ ...filterOptions, bounds: mapBounds }),
+    [filterOptions, mapBounds],
+  )
   // 危険レポート取得（公開済み＋自分の pending）。挙動はそのままフックへ抽出。
   const {
     dangerReports,
     pendingReports,
     setDangerReports,
     setPendingReports,
-  } = useDangerReports({ supabase, filterOptions, toast, setIsLoading })
+  } = useDangerReports({ supabase, filterOptions: dangerReportsFilterOptions, toast, setIsLoading })
   const [mapError, setMapError] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [isARMode, setIsARMode] = useState(false)
@@ -588,6 +597,24 @@ export default function MapContainer({
           })
         }
         map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
+
+        // 危険レポートのbbox絞り込み用に、表示範囲を初期化＆パン/ズームのたびに更新する
+        const updateMapBounds = () => {
+          if (!map.current) return
+          const bounds = map.current.getBounds()
+          if (!bounds) return
+          setMapBounds({
+            minLng: bounds.getWest(),
+            minLat: bounds.getSouth(),
+            maxLng: bounds.getEast(),
+            maxLat: bounds.getNorth(),
+          })
+        }
+        updateMapBounds()
+        map.current.on("moveend", () => {
+          if (boundsDebounceRef.current) clearTimeout(boundsDebounceRef.current)
+          boundsDebounceRef.current = setTimeout(updateMapBounds, 300)
+        })
       });
     } catch (error: any) {
       console.error("Error initializing map:", error);
@@ -596,6 +623,8 @@ export default function MapContainer({
     }
 
     return () => {
+      if (boundsDebounceRef.current) clearTimeout(boundsDebounceRef.current)
+      boundsDebounceRef.current = null
       accidentMarkerRef.current?.remove()
       accidentMarkerRef.current = null
       if (accidentMarkerTimerRef.current) clearTimeout(accidentMarkerTimerRef.current)
@@ -870,9 +899,13 @@ export default function MapContainer({
         next.dangerType === prev.dangerType &&
         next.dangerLevel === prev.dangerLevel &&
         next.dateRange === prev.dateRange &&
-        next.showPending === prev.showPending
+        next.showPending === prev.showPending &&
+        next.prefecture === prev.prefecture
       ) {
         return prev
+      }
+      if (next.prefecture !== prev.prefecture) {
+        setStoredRegion(next.prefecture)
       }
       return next
     });

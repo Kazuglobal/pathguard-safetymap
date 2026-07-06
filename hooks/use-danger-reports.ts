@@ -5,12 +5,25 @@ import type { DangerReport } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import { isAbortLikeError, isTransientFetchError, sleep } from "@/lib/map/map-fetch-utils"
+import { NATIONWIDE } from "@/lib/user-region"
+
+/** 地図の現在の表示範囲。bbox絞り込みに使う（lng/lat の緯度経度） */
+export interface DangerReportBounds {
+  minLng: number
+  minLat: number
+  maxLng: number
+  maxLat: number
+}
 
 interface DangerReportFilterOptions {
   dangerType: string
   dangerLevel: string
   dateRange: string
   showPending: boolean
+  /** 都道府県での絞り込み。未指定または NATIONWIDE("全国") なら絞り込まない */
+  prefecture?: string
+  /** 地図の表示範囲での絞り込み。未指定なら絞り込まない（全件取得） */
+  bounds?: DangerReportBounds | null
 }
 
 interface UseDangerReportsParams {
@@ -69,6 +82,19 @@ export function useDangerReports({
               .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
               .abortSignal(abortController.signal)
 
+            // Filter by prefecture (region)
+            if (filterOptions.prefecture && filterOptions.prefecture !== NATIONWIDE) {
+              approvedQuery = (approvedQuery as any).eq('prefecture', filterOptions.prefecture)
+            }
+            // Filter by map viewport (bbox) — 大量報告時に全件取得しないための絞り込み
+            if (filterOptions.bounds) {
+              const { minLng, minLat, maxLng, maxLat } = filterOptions.bounds
+              approvedQuery = (approvedQuery as any)
+                .gte('latitude', minLat)
+                .lte('latitude', maxLat)
+                .gte('longitude', minLng)
+                .lte('longitude', maxLng)
+            }
             // Filter by danger type
             if (filterOptions.dangerType !== "all") {
               // 型エラーを回避するために as any を一時的に使う

@@ -10,6 +10,12 @@ import type { DangerReport } from "@/lib/types"
 import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
 import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
 import { tankenTokens } from "@/lib/design/tanken"
+import {
+  NATIONWIDE,
+  getRegionChipOptions,
+  getStoredRegion,
+  setStoredRegion,
+} from "@/lib/user-region"
 
 const C = tankenTokens.color
 
@@ -73,11 +79,24 @@ export function HiyariHatReport() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedReport, setSelectedReport] = React.useState<DangerReport | null>(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string>(NATIONWIDE)
+  const [mounted, setMounted] = React.useState(false)
   const reportIds = React.useMemo(() => reports.map((report) => report.id), [reports])
   const { reactions, toggleReaction } = useLandingReportReactions(reportIds)
   const openReportModal = React.useCallback((report: DangerReport) => {
     setSelectedReport(report)
     setIsModalOpen(true)
+  }, [])
+
+  // localStorage から都道府県を復元（SSR 対策で useEffect 内で実施）
+  React.useEffect(() => {
+    setMounted(true)
+    setSelectedPrefecture(getStoredRegion())
+  }, [])
+
+  const handlePrefectureChange = React.useCallback((pref: string) => {
+    setSelectedPrefecture(pref)
+    setStoredRegion(pref)
   }, [])
 
   React.useEffect(() => {
@@ -87,15 +106,22 @@ export function HiyariHatReport() {
     )
 
     async function fetchReports() {
+      setIsLoading(true)
       try {
         // 未ログイン(anon)からは緯度経度を約1.1km四方へ丸めた公開プレビュー
         // VIEW (danger_reports_public_preview) のみを参照する。
         // ベーステーブル danger_reports への anon SELECT は閉じている
         // (supabase/migrations/20260704090300_restrict_public_read_and_storage.sql)。
-        const { data, error } = await supabase
+        let query = supabase
           .from("danger_reports_public_preview")
           .select(LANDING_REPORT_SELECT_COLUMNS)
           .in("status", ["approved", "published", "resolved"])
+
+        if (selectedPrefecture !== NATIONWIDE) {
+          query = query.eq("prefecture", selectedPrefecture)
+        }
+
+        const { data, error } = await query
           .order("created_at", { ascending: false })
           .limit(5)
 
@@ -109,7 +135,7 @@ export function HiyariHatReport() {
     }
 
     fetchReports()
-  }, [])
+  }, [selectedPrefecture])
 
   const thumbnailUrl = (report: DangerReport): string | undefined => {
     if (report.processed_image_urls && report.processed_image_urls.length > 0) {
@@ -139,6 +165,36 @@ export function HiyariHatReport() {
           </Link>
         </div>
 
+        {/* 都道府県フィルター */}
+        {mounted && (
+          <div className="mb-4 px-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
+              <span className="flex-shrink-0 text-xs font-bold" style={{ color: C.inkSoft }}>
+                地域:
+              </span>
+              {getRegionChipOptions(selectedPrefecture).map((pref) => {
+                const active = selectedPrefecture === pref
+                return (
+                  <button
+                    key={pref}
+                    type="button"
+                    onClick={() => handlePrefectureChange(pref)}
+                    aria-pressed={active}
+                    className={`flex-shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${tankenTokens.cls.focus}`}
+                    style={
+                      active
+                        ? { background: C.accent, color: "#fff", borderColor: C.accent }
+                        : { background: C.card, color: C.inkSoft, borderColor: tankenTokens.border.soft }
+                    }
+                  >
+                    {pref}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* 投稿リスト */}
         {isLoading ? (
           <div className="flex items-center justify-center px-4 py-12">
@@ -147,7 +203,9 @@ export function HiyariHatReport() {
           </div>
         ) : reports.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm" style={{ color: C.inkSoft }}>
-            まだ報告がありません。最初の「気をつけて」を地図に残してみましょう。
+            {selectedPrefecture === NATIONWIDE
+              ? "まだ報告がありません。最初の「気をつけて」を地図に残してみましょう。"
+              : `${selectedPrefecture}ではまだ報告がありません。最初の「気をつけて」を地図に残してみましょう。`}
           </div>
         ) : (
           <div className="grid gap-4 px-4 md:grid-cols-3 md:gap-6">
