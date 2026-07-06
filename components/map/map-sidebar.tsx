@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { getRegionChipOptions } from "@/lib/user-region"
 
 interface MapSidebarProps {
   dangerReports: DangerReport[]
@@ -24,6 +25,7 @@ interface MapSidebarProps {
     dangerLevel: string
     dateRange: string
     showPending: boolean // 審査中の報告を表示するかどうかのフラグを追加
+    prefecture: string // 地域(都道府県)での絞り込み。NATIONWIDE("全国")で無絞り込み
   }
   onReportSelect: (report: DangerReport) => void
   isAdmin?: boolean // 管理者フラグ（オプショナル）
@@ -52,6 +54,8 @@ export default function MapSidebar({
   const isMobileView = isMobile || isMobileDevice
 
   // フィルターの状態を計算
+  // 地域は「ホーム地域」として持続させたい設定なので、一時的なフィルターの
+  // 件数・リセット対象には含めない（resetFilters も参照）。
   const getActiveFiltersCount = () => {
     let count = 0
     if (filterOptions.dangerType !== "all") count++
@@ -71,9 +75,9 @@ export default function MapSidebar({
   const resetFilters = () => {
     onFilterChange({
       dangerType: "all",
-      dangerLevel: "all", 
+      dangerLevel: "all",
       dateRange: "all",
-      showPending: true
+      showPending: true,
     })
   }
 
@@ -231,6 +235,24 @@ export default function MapSidebar({
                     </Button>
                   </div>
                 )}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">地域</label>
+                  <Select
+                    value={filterOptions.prefecture}
+                    onValueChange={(value) => onFilterChange({ prefecture: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="全国" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getRegionChipOptions(filterOptions.prefecture).map((pref) => (
+                        <SelectItem key={pref} value={pref}>
+                          {pref}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">危険タイプ</label>
                   <Select

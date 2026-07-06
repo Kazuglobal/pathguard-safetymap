@@ -5,12 +5,25 @@ import type { DangerReport } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import { isAbortLikeError, isTransientFetchError, sleep } from "@/lib/map/map-fetch-utils"
+import { NATIONWIDE } from "@/lib/user-region"
+
+/** 地図の現在の表示範囲。bbox絞り込みに使う（lng/lat の緯度経度） */
+export interface DangerReportBounds {
+  minLng: number
+  minLat: number
+  maxLng: number
+  maxLat: number
+}
 
 interface DangerReportFilterOptions {
   dangerType: string
   dangerLevel: string
   dateRange: string
   showPending: boolean
+  /** 都道府県での絞り込み。未指定または NATIONWIDE("全国") なら絞り込まない */
+  prefecture?: string
+  /** 地図の表示範囲での絞り込み。未指定なら絞り込まない（全件取得） */
+  bounds?: DangerReportBounds | null
 }
 
 interface UseDangerReportsParams {
@@ -18,6 +31,7 @@ interface UseDangerReportsParams {
   filterOptions: DangerReportFilterOptions
   toast: ReturnType<typeof useToast>["toast"]
   setIsLoading: Dispatch<SetStateAction<boolean>>
+  enabled?: boolean
 }
 
 /**
@@ -30,6 +44,7 @@ export function useDangerReports({
   filterOptions,
   toast,
   setIsLoading,
+  enabled = true,
 }: UseDangerReportsParams) {
   const [dangerReports, setDangerReports] = useState<DangerReport[]>([])
   // 審査中の報告を保持する状態
@@ -38,7 +53,7 @@ export function useDangerReports({
   const reportsFetchRequestIdRef = useRef(0)
 
   useEffect(() => {
-    if (!supabase) return // Ensure supabase is initialized
+    if (!supabase || !enabled) return // Ensure supabase is initialized and caller is ready
 
     const requestId = reportsFetchRequestIdRef.current + 1
     reportsFetchRequestIdRef.current = requestId
@@ -69,6 +84,19 @@ export function useDangerReports({
               .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
               .abortSignal(abortController.signal)
 
+            // Filter by prefecture (region)
+            if (filterOptions.prefecture && filterOptions.prefecture !== NATIONWIDE) {
+              approvedQuery = (approvedQuery as any).eq('prefecture', filterOptions.prefecture)
+            }
+            // Filter by map viewport (bbox) — 大量報告時に全件取得しないための絞り込み
+            if (filterOptions.bounds) {
+              const { minLng, minLat, maxLng, maxLat } = filterOptions.bounds
+              approvedQuery = (approvedQuery as any)
+                .gte('latitude', minLat)
+                .lte('latitude', maxLat)
+                .gte('longitude', minLng)
+                .lte('longitude', maxLng)
+            }
             // Filter by danger type
             if (filterOptions.dangerType !== "all") {
               // 型エラーを回避するために as any を一時的に使う
@@ -97,12 +125,26 @@ export function useDangerReports({
             // Fetch user's pending reports if logged in and filter is enabled
             let userPendingReports: DangerReport[] = []
             if (userId && filterOptions.showPending) {
-              const { data: pendingData, error: pendingError } = await supabase
+              let pendingQuery = supabase
                 .from("danger_reports")
                 .select(`*`) // Select を最初に戻す
                 .eq("status", "pending")
                 .eq("user_id", userId)
                 .abortSignal(abortController.signal)
+
+              if (filterOptions.prefecture && filterOptions.prefecture !== NATIONWIDE) {
+                pendingQuery = (pendingQuery as any).eq('prefecture', filterOptions.prefecture)
+              }
+              if (filterOptions.bounds) {
+                const { minLng, minLat, maxLng, maxLat } = filterOptions.bounds
+                pendingQuery = (pendingQuery as any)
+                  .gte('latitude', minLat)
+                  .lte('latitude', maxLat)
+                  .gte('longitude', minLng)
+                  .lte('longitude', maxLng)
+              }
+
+              const { data: pendingData, error: pendingError } = await pendingQuery
                 .order("created_at", { ascending: false })
 
               if (pendingError) console.error("Error fetching pending reports:", pendingError)
@@ -146,7 +188,7 @@ export function useDangerReports({
     return () => {
       abortController.abort()
     }
-  }, [supabase, filterOptions, toast, setIsLoading])
+  }, [supabase, filterOptions, toast, setIsLoading, enabled])
 
   return { dangerReports, pendingReports, setDangerReports, setPendingReports }
 }
