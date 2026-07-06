@@ -119,6 +119,8 @@ export interface RouteDangerReport {
   generatedAt: string
   summary: RouteDangerSummary
   selectedImageUrls?: Record<string, string>
+  // 学校・地域共有用サマリーページ(写真・詳細説明なし)を末尾に含めるか
+  includeSchoolSummary?: boolean
 }
 
 export interface RouteDangerSummary {
