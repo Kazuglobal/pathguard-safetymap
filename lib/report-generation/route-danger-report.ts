@@ -10,6 +10,7 @@ import type {
   RouteDangerReport,
   RouteDangerSummary,
 } from '@/lib/types'
+import { getDangerLevelPresentation } from './danger-level-presentation'
 
 interface MapDimensions {
   width: number
@@ -114,18 +115,10 @@ export function generateOverviewMapUrl(
 }
 
 /**
- * Gets the marker color based on danger level.
+ * Gets the marker color based on danger level (1-4, hash-less hex for Mapbox pins).
  */
 function getDangerLevelColor(level: number): string {
-  switch (level) {
-    case 3:
-      return 'ef4444' // red-500
-    case 2:
-      return 'f97316' // orange-500
-    case 1:
-    default:
-      return 'eab308' // yellow-500
-  }
+  return getDangerLevelPresentation(level).pinColor
 }
 
 function getMapMarkerLabel(index: number): string {
@@ -896,15 +889,7 @@ export async function generateImageReport(
 }
 
 function getDangerLevelBorderColor(level: number): string {
-  switch (level) {
-    case 3:
-      return '#ef4444' // red-500
-    case 2:
-      return '#f97316' // orange-500
-    case 1:
-    default:
-      return '#eab308' // yellow-500
-  }
+  return getDangerLevelPresentation(level).colorHex
 }
 
 function formatDate(isoString: string): string {
