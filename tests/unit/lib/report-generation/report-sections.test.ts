@@ -162,6 +162,21 @@ describe('report-sections', () => {
       const section = buildDangerCardSection(noImage, '1')
       expect(section.querySelector('img')).toBeNull()
     })
+
+    it('replaces a failed photo with an informative placeholder (broken-image graceful degradation)', () => {
+      // 旧ストレージパスの画像が 400/404 を返すと、空の灰色枠のままだった。
+      // error 発火時に「読み込めませんでした」プレースホルダへ差し替わることを検証。
+      const section = buildDangerCardSection(trafficDanger, '1')
+      const img = section.querySelector('img')
+      expect(img).not.toBeNull()
+
+      img!.dispatchEvent(new Event('error'))
+
+      expect(section.querySelector('img')).toBeNull()
+      const placeholder = section.querySelector('[data-photo-placeholder="broken"]')
+      expect(placeholder).not.toBeNull()
+      expect(placeholder?.textContent).toContain('よみこめませんでした')
+    })
   })
 
   describe('buildChecklistSection', () => {

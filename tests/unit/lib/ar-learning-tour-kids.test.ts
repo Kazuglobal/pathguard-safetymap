@@ -60,6 +60,33 @@ describe("ar-learning-tour-kids", () => {
     expect(cue.dangerKind).toBe("こうじ")
   })
 
+  it("災害タイプは本文に「歩道」が含まれても災害の注意を優先する（誤マッチ回帰）", () => {
+    // 実データ「フェンスの倒壊」(disaster)の説明に「歩道ふさがり」が含まれ、
+    // 本来の災害助言でなく「歩道がせまいから…」という無関係な助言が出ていた。
+    const cue = createKidsHazardCue(
+      createMockDangerReport({
+        danger_type: "disaster",
+        title: "フェンスの倒壊",
+        description: "電柱倒壊による電線落下・歩道ふさがり",
+      }),
+    )
+
+    expect(cue.dangerKind).toBe("災害")
+    expect(cue.shortMessage).toBe("いつもとちがう日は、むりに通らないようにしよう")
+  })
+
+  it("交通タイプは本文に「雨」が含まれても交通の注意を優先する", () => {
+    const cue = createKidsHazardCue(
+      createMockDangerReport({
+        danger_type: "traffic",
+        title: "雨の日に見通しが悪い交差点",
+        description: "雨天時に車が見えにくい",
+      }),
+    )
+
+    expect(cue.dangerKind).toBe("交通")
+  })
+
   it("50m以内だけ接近中として扱う", () => {
     expect(isApproachingHazard(49.9)).toBe(true)
     expect(isApproachingHazard(50)).toBe(true)

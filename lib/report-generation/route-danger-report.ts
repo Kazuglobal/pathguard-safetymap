@@ -22,9 +22,29 @@ export type { MapDimensions } from './report-map'
 export { getDangerImageOptions, resolveDangerDisplayImageUrl } from './report-images'
 export type { DangerImageOption } from './report-images'
 
-const HTML2CANVAS_SCALE = 2
+// A4印刷で十分な解像度(約160dpi相当)を保ちつつ、共有可能なファイルサイズに
+// 収めるためのラスタ倍率。2.0だと危険箇所5件で30MB超になりメール添付上限を
+// 超えるため1.5に抑える。テキストは1.5でも鮮明。
+const HTML2CANVAS_SCALE = 1.5
 const IMAGE_TIMEOUT_MS = 15000
 const PDF_MARGIN_MM = 10
+// 写真・地図を含むセクションはJPEGで符号化してファイルサイズを抑える
+// (共有=LINE/メール前提。PNGだと危険箇所5件で40MB超になり実用外だった)。
+// テキスト主体のセクションはPNGのまま(平坦領域はPNGの方が軽く、文字も鮮明)。
+const JPEG_QUALITY = 0.9
+
+type SectionImageFormat = 'PNG' | 'JPEG'
+
+/** セクションが写真・地図(<img>)を含むかで符号化形式を決める。 */
+function pickSectionFormat(section: HTMLElement): SectionImageFormat {
+  return section.querySelector('img') ? 'JPEG' : 'PNG'
+}
+
+function encodeCanvas(canvas: HTMLCanvasElement, format: SectionImageFormat): string {
+  return format === 'JPEG'
+    ? canvas.toDataURL('image/jpeg', JPEG_QUALITY)
+    : canvas.toDataURL('image/png')
+}
 
 /**
  * Creates a summary of danger reports.
@@ -115,6 +135,9 @@ export async function generatePDFReport(
 
   const sections = buildReportSections(report, mapboxToken)
   const canvases = await renderSectionsToCanvases(sections)
+  // 符号化形式は「レンダリング後」のDOMで判定する(写真読込失敗時は<img>が
+  // プレースホルダに差し替わっており、テキスト扱いでPNGにできる)。
+  const formats = sections.map((section) => pickSectionFormat(section))
 
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -143,6 +166,7 @@ export async function generatePDFReport(
     for (const sectionIndex of sectionIndexes) {
       const canvas = canvases[sectionIndex]
       const heightMm = heightsMm[sectionIndex]
+      const format = formats[sectionIndex]
       if (heightMm <= 0) {
         continue
       }
@@ -155,11 +179,12 @@ export async function generatePDFReport(
           contentHeight,
           marginMm: PDF_MARGIN_MM,
           heightMm,
+          format,
         })
       } else {
         pdf.addImage(
-          canvas.toDataURL('image/png'),
-          'PNG',
+          encodeCanvas(canvas, format),
+          format,
           PDF_MARGIN_MM,
           y,
           contentWidth,
@@ -178,6 +203,7 @@ interface OversizedCanvasLayout {
   contentHeight: number
   marginMm: number
   heightMm: number
+  format: SectionImageFormat
 }
 
 /**
@@ -189,19 +215,19 @@ function addOversizedCanvas(
   canvas: HTMLCanvasElement,
   layout: OversizedCanvasLayout
 ): void {
-  const { contentWidth, contentHeight, marginMm, heightMm } = layout
-  const imgData = canvas.toDataURL('image/png')
+  const { contentWidth, contentHeight, marginMm, heightMm, format } = layout
+  const imgData = encodeCanvas(canvas, format)
 
   let heightLeft = heightMm
   let position = marginMm
 
-  pdf.addImage(imgData, 'PNG', marginMm, position, contentWidth, heightMm)
+  pdf.addImage(imgData, format, marginMm, position, contentWidth, heightMm)
   heightLeft -= contentHeight
 
   while (heightLeft > 0) {
     position = heightLeft - heightMm + marginMm
     pdf.addPage()
-    pdf.addImage(imgData, 'PNG', marginMm, position, contentWidth, heightMm)
+    pdf.addImage(imgData, format, marginMm, position, contentWidth, heightMm)
     heightLeft -= contentHeight
   }
 }

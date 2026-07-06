@@ -98,11 +98,73 @@ function createCheckboxSquare(): HTMLSpanElement {
   return box
 }
 
-function createReportImage(url: string, alt: string): HTMLImageElement {
+interface PhotoFallback {
+  /** プレースホルダの表示サイズ(元画像の枠に合わせる) */
+  width: string
+  height: string
+  radius: string
+  /** サムネイル等の小枠ではテキストを省き、アイコンのみにする */
+  compact?: boolean
+  /** プレースホルダの見出し(既定: 写真の読込失敗) */
+  label?: string
+}
+
+/**
+ * 画像の読込に失敗したときに表示するプレースホルダ。
+ * 旧ストレージパスの画像が 400/404 を返すケースで、空の灰色枠だと
+ * 「写真なし」なのか「読込失敗」なのか親に判別できないため、明示する。
+ */
+function createBrokenPhotoPlaceholder(fallback: PhotoFallback): HTMLDivElement {
+  const ph = document.createElement('div')
+  ph.dataset.photoPlaceholder = 'broken'
+  ph.style.width = fallback.width
+  ph.style.height = fallback.height
+  ph.style.boxSizing = 'border-box'
+  ph.style.display = 'flex'
+  ph.style.flexDirection = 'column'
+  ph.style.alignItems = 'center'
+  ph.style.justifyContent = 'center'
+  ph.style.gap = '4px'
+  ph.style.borderRadius = fallback.radius
+  ph.style.backgroundColor = '#f3f4f6'
+  ph.style.border = `1px dashed ${C.borderFaint}`
+  ph.style.color = C.inkFaint
+
+  const glyph = document.createElement('div')
+  glyph.textContent = '🖼'
+  glyph.style.fontSize = fallback.compact ? '15px' : '24px'
+  glyph.style.opacity = '0.7'
+  glyph.style.lineHeight = '1'
+  ph.appendChild(glyph)
+
+  if (!fallback.compact) {
+    const label = document.createElement('div')
+    label.textContent = fallback.label ?? 'しゃしんを よみこめませんでした'
+    label.style.fontSize = '11px'
+    label.style.fontWeight = 'bold'
+    label.style.textAlign = 'center'
+    ph.appendChild(label)
+  }
+
+  return ph
+}
+
+function createReportImage(
+  url: string,
+  alt: string,
+  fallback?: PhotoFallback
+): HTMLImageElement {
   const img = document.createElement('img')
   img.crossOrigin = 'anonymous' // Enable CORS for html2canvas
   img.src = url
   img.alt = alt
+  if (fallback) {
+    // 読込失敗時はキャプチャ前にDOMを差し替える(error は waitForImages より
+    // 先に発火し得るため、img を querySelector から外して待ち時間も短縮できる)。
+    img.addEventListener('error', () => {
+      img.replaceWith(createBrokenPhotoPlaceholder(fallback))
+    })
+  }
   return img
 }
 
@@ -245,7 +307,12 @@ export function buildMapSection(
     mapboxToken,
     { width: 750, height: 400 }
   )
-  const mapImg = createReportImage(mapUrl, '通学路と危険箇所の地図')
+  const mapImg = createReportImage(mapUrl, '通学路と危険箇所の地図', {
+    width: '100%',
+    height: '260px',
+    radius: `${reportTheme.radius.panel}px`,
+    label: 'ちずを よみこめませんでした',
+  })
   mapImg.style.width = '100%'
   mapImg.style.borderRadius = `${reportTheme.radius.panel}px`
   mapImg.style.border = `2px solid ${C.borderFaint}`
@@ -327,7 +394,12 @@ function appendMapCallouts(
         ? resolveDangerDisplayImageUrl(danger, selectedImageUrls)
         : null
     if (imageUrl) {
-      const thumb = createReportImage(imageUrl, `${danger.title}の写真`)
+      const thumb = createReportImage(imageUrl, `${danger.title}の写真`, {
+        width: '76px',
+        height: '54px',
+        radius: '6px',
+        compact: true,
+      })
       thumb.style.width = '76px'
       thumb.style.height = '54px'
       thumb.style.objectFit = 'cover'
@@ -414,9 +486,13 @@ export function buildDangerCardSection(
     frame.appendChild(createTapeDecoration('left'))
     frame.appendChild(createTapeDecoration('right'))
 
-    const img = createReportImage(imageUrl, `${danger.title}の写真`)
+    const img = createReportImage(imageUrl, `${danger.title}の写真`, {
+      width: '100%',
+      height: '180px',
+      radius: '8px',
+    })
     img.style.width = '100%'
-    img.style.maxHeight = '300px'
+    img.style.maxHeight = '240px'
     img.style.objectFit = 'contain'
     img.style.borderRadius = '8px'
     img.style.backgroundColor = '#f3f4f6'
@@ -675,7 +751,12 @@ export function buildSchoolSummarySection(
       mapboxToken,
       { width: 750, height: 400 }
     )
-    const mapImg = createReportImage(mapUrl, '通学路と危険箇所の地図')
+    const mapImg = createReportImage(mapUrl, '通学路と危険箇所の地図', {
+      width: '100%',
+      height: '260px',
+      radius: '8px',
+      label: '地図を読み込めませんでした',
+    })
     mapImg.style.width = '100%'
     mapImg.style.borderRadius = '8px'
     mapImg.style.border = '1px solid #e5e7eb'
