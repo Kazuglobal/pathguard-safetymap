@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -23,6 +24,13 @@ import {
   getDangerImageOptions,
   resolveDangerDisplayImageUrl,
 } from "@/lib/report-generation/route-danger-report"
+import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
+import {
+  createDangerReportSignedUrl,
+  useDangerReportSignedImageUrls,
+} from "@/lib/danger-report-image-access"
+import { useOptionalSupabase } from "@/components/providers/supabase-provider"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { getMapboxToken } from "@/lib/mapbox-config"
 import type { UserRoute, DangerReport, ReportExportFormat } from "@/lib/types"
 
@@ -32,27 +40,9 @@ interface RouteDangerReportDialogProps {
   route: UserRoute
 }
 
-function getDangerLevelBadgeVariant(level: number): "destructive" | "secondary" | "outline" {
-  switch (level) {
-    case 3:
-      return "destructive"
-    case 2:
-      return "secondary"
-    default:
-      return "outline"
-  }
-}
-
-function getDangerLevelLabel(level: number): string {
-  switch (level) {
-    case 3:
-      return "高"
-    case 2:
-      return "中"
-    case 1:
-    default:
-      return "低"
-  }
+function formatDangerLevelBadge(level: number): string {
+  const presentation = getDangerLevelPresentation(level)
+  return `${presentation.stars} ${presentation.kidLabel}`
 }
 
 interface DangerListItemProps {
@@ -60,6 +50,7 @@ interface DangerListItemProps {
   index: number
   selectedImageUrl?: string
   onImageSelectionChange: (dangerId: string, imageUrl: string) => void
+  supabase: SupabaseClient | null
 }
 
 function DangerListItem({
@@ -67,10 +58,17 @@ function DangerListItem({
   index,
   selectedImageUrl,
   onImageSelectionChange,
+  supabase,
 }: DangerListItemProps) {
   const imageOptions = getDangerImageOptions(danger)
   const activeImageUrl =
     selectedImageUrl ?? resolveDangerDisplayImageUrl(danger) ?? undefined
+
+  // danger-reports バケットは非公開のため、サムネイル表示用に保存済みの公開URLを
+  // 署名URLへ差し替える(選択値=RadioGroupItem value は保存済みURLのまま維持し、
+  // handleDownload 側の署名処理と対応させる)。
+  const optionUrls = useMemo(() => imageOptions.map((option) => option.url), [imageOptions])
+  const signedThumbnailUrls = useDangerReportSignedImageUrls(supabase, optionUrls)
 
   return (
     <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
@@ -80,8 +78,11 @@ function DangerListItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium text-sm truncate">{danger.title}</span>
-          <Badge variant={getDangerLevelBadgeVariant(danger.danger_level)} className="shrink-0">
-            {getDangerLevelLabel(danger.danger_level)}
+          <Badge
+            variant={getDangerLevelPresentation(danger.danger_level).badgeVariant}
+            className="shrink-0"
+          >
+            {formatDangerLevelBadge(danger.danger_level)}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">{danger.danger_type}</p>
@@ -100,6 +101,7 @@ function DangerListItem({
             >
               {imageOptions.map((option, optionIndex) => {
                 const optionId = `${danger.id}-image-${optionIndex}`
+                const thumbnailUrl = signedThumbnailUrls[optionIndex] ?? null
                 return (
                   <label
                     key={option.url}
@@ -107,11 +109,18 @@ function DangerListItem({
                     className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3 py-2"
                   >
                     <RadioGroupItem value={option.url} id={optionId} />
-                    <img
-                      src={option.url}
-                      alt={option.label}
-                      className="h-14 w-20 rounded-md object-cover"
-                    />
+                    {thumbnailUrl ? (
+                      <img
+                        src={thumbnailUrl}
+                        alt={option.label}
+                        className="h-14 w-20 rounded-md object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="h-14 w-20 flex-shrink-0 rounded-md bg-muted"
+                        aria-hidden="true"
+                      />
+                    )}
                     <span className="text-xs font-medium text-foreground">{option.label}</span>
                   </label>
                 )
@@ -130,10 +139,12 @@ export function RouteDangerReportDialog({
   route,
 }: RouteDangerReportDialogProps) {
   const { dangers, isLoading, error, refetch } = useRouteDangers(route.id)
+  const supabase = useOptionalSupabase()?.supabase ?? null
   const [exportFormat, setExportFormat] = useState<ReportExportFormat>("pdf")
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [selectedImageUrls, setSelectedImageUrls] = useState<Record<string, string>>({})
+  const [includeSchoolSummary, setIncludeSchoolSummary] = useState(false)
 
   const summary = useMemo(() => createReportSummary(dangers), [dangers])
 
@@ -185,6 +196,24 @@ export function RouteDangerReportDialog({
         throw new Error("Mapboxトークンが設定されていません")
       }
 
+      // danger-reports バケットは非公開化済み。DB保存済みの公開URLはそのままでは
+      // 4xx になるため、表示予定の画像を短TTLの署名URLへ差し替える。署名できない
+      // ものは保存済みURLのまま渡り、生成側で読込失敗プレースホルダに落ちる。
+      const signedImageUrls: Record<string, string> = {}
+      if (supabase) {
+        const storedUrls = new Set<string>()
+        for (const danger of dangers) {
+          const stored = resolveDangerDisplayImageUrl(danger, selectedImageUrls)
+          if (stored) storedUrls.add(stored)
+        }
+        await Promise.all(
+          Array.from(storedUrls).map(async (stored) => {
+            const signed = await createDangerReportSignedUrl(supabase, stored)
+            if (signed) signedImageUrls[stored] = signed
+          })
+        )
+      }
+
       const report = {
         route,
         dangers,
@@ -192,6 +221,8 @@ export function RouteDangerReportDialog({
         generatedAt: new Date().toISOString(),
         summary,
         selectedImageUrls,
+        includeSchoolSummary,
+        signedImageUrls,
       }
 
       let blob: Blob
@@ -219,7 +250,7 @@ export function RouteDangerReportDialog({
     } finally {
       setIsExporting(false)
     }
-  }, [route, dangers, summary, exportFormat, selectedImageUrls])
+  }, [route, dangers, summary, exportFormat, selectedImageUrls, includeSchoolSummary, supabase])
 
   const handleRetry = useCallback(() => {
     refetch()
@@ -275,9 +306,9 @@ export function RouteDangerReportDialog({
                     {Object.entries(summary.byLevel).map(([level, count]) => (
                       <Badge
                         key={level}
-                        variant={getDangerLevelBadgeVariant(parseInt(level, 10))}
+                        variant={getDangerLevelPresentation(parseInt(level, 10)).badgeVariant}
                       >
-                        レベル{level}: {count}件
+                        {formatDangerLevelBadge(parseInt(level, 10))}: {count}件
                       </Badge>
                     ))}
                   </div>
@@ -295,6 +326,7 @@ export function RouteDangerReportDialog({
                         index={index}
                         selectedImageUrl={selectedImageUrls[danger.id]}
                         onImageSelectionChange={handleImageSelectionChange}
+                        supabase={supabase}
                       />
                     ))}
                   </div>
@@ -336,6 +368,30 @@ export function RouteDangerReportDialog({
                       </Label>
                     </div>
                   </RadioGroup>
+                </div>
+              )}
+
+              {/* School Summary Opt-in */}
+              {dangers.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="include-school-summary"
+                    checked={includeSchoolSummary}
+                    onCheckedChange={(checked) =>
+                      setIncludeSchoolSummary(checked === true)
+                    }
+                  />
+                  <div className="grid gap-0.5">
+                    <Label
+                      htmlFor="include-school-summary"
+                      className="cursor-pointer text-sm font-medium"
+                    >
+                      学校・地域共有用サマリーページを含める
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      写真・詳細説明を除いた1ページをレポート末尾に追加します
+                    </p>
+                  </div>
                 </div>
               )}
 

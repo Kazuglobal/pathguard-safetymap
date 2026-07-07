@@ -86,6 +86,73 @@ describe("createARLearningContent", () => {
     expect(content.checkpoints).toHaveLength(2)
     expect(content.attentionTags).toContain("現地確認")
   })
+
+  it("differentiates same-type reports by their content keywords (reduces duplication)", () => {
+    // 同じ disaster でも内容が違えば「おうちのかたへ」が変わることを検証。
+    const wall = createARLearningContent(
+      createMockReport({
+        id: "d-wall",
+        danger_type: "disaster",
+        title: "ブロック塀倒壊の恐れ",
+        description: "大地震でブロックが倒壊する可能性あり",
+      })
+    )
+    const river = createARLearningContent(
+      createMockReport({
+        id: "d-river",
+        danger_type: "disaster",
+        title: "用水路のそば",
+        description: "増水時に用水路へ転落する危険",
+      })
+    )
+
+    // 固有の一言が差し込まれ、要約が同一でなくなる
+    expect(wall.summary).not.toBe(river.summary)
+    expect(wall.summary).toContain("塀や電柱")
+    expect(river.summary).toContain("水辺")
+    // 固有チェック項目が先頭に入る
+    expect(wall.checkpoints[0]).toBe("倒れてきそうな塀・電柱から離れて歩く")
+    expect(river.checkpoints[0]).toBe("増水時に近づかない迂回路を親子で決める")
+    // 型テンプレートの一般項目も残る(合計3件まで)
+    expect(wall.checkpoints).toContain("避難しやすい方向を把握する")
+    expect(wall.checkpoints.length).toBeLessThanOrEqual(3)
+  })
+
+  it("maps danger_type='suspicious' to the crime (防犯) template", () => {
+    const content = createARLearningContent(
+      createMockReport({
+        danger_type: "suspicious",
+        danger_level: 4,
+        title: "知らない人が声をかけてきた",
+        description: "知らない人が声をかけてきた",
+      })
+    )
+
+    // crime テンプレート(死角・逃げ込める場所)になる
+    expect(content.summary).toContain("死角")
+    expect(content.checkpoints).toEqual(
+      expect.arrayContaining(["逃げ込める場所が近くにあるか確認する"])
+    )
+  })
+
+  it("leaves guidance as the plain type template when no keyword matches", () => {
+    const content = createARLearningContent(
+      createMockReport({
+        danger_type: "disaster",
+        title: "気になる地点",
+        description: "とくに記載なし",
+      })
+    )
+
+    // キーワード不一致 → テンプレートそのまま(固有の一言は足さない)
+    expect(content.summary).toBe(
+      "天候や災害時に通りにくくなる可能性があり、普段と違う危険が出やすい場所です。"
+    )
+    expect(content.checkpoints).toEqual([
+      "雨の日に水がたまりそうな場所を確認する",
+      "避難しやすい方向を把握する",
+    ])
+  })
 })
 
 describe("buildARLearningTourStops", () => {

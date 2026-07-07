@@ -229,6 +229,15 @@ describe('RouteDangerReportDialog', () => {
       expect(screen.getAllByText('表示写真の選択').length).toBeGreaterThan(0)
       expect(screen.getByRole('radio', { name: /加工画像 1/ })).toBeInTheDocument()
       expect(screen.getAllByRole('radio', { name: /報告画像/ }).length).toBeGreaterThan(0)
+
+      // 非公開バケット対応: サムネイルは署名URL経由で表示し、DB保存済みの生の
+      // 公開URLを <img src> に直接使わない(署名前は表示しない)。回帰防止。
+      expect(
+        document.querySelector('img[src="https://example.com/danger1_processed.jpg"]')
+      ).toBeNull()
+      expect(
+        document.querySelector('img[src="https://example.com/danger1.jpg"]')
+      ).toBeNull()
     })
 
     it('defaults to the original report image when no image has been selected', async () => {
@@ -365,6 +374,117 @@ describe('RouteDangerReportDialog', () => {
 
       const downloadButton = screen.getByRole('button', { name: /ダウンロード/i })
       expect(downloadButton).toBeDisabled()
+    })
+  })
+
+  describe('School Summary Opt-in', () => {
+    it('shows the school summary checkbox when dangers exist', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      const checkbox = screen.getByRole('checkbox', { name: /学校・地域共有用/ })
+      expect(checkbox).toBeInTheDocument()
+      expect(checkbox).not.toBeChecked()
+    })
+
+    it('does not show the checkbox when there are no dangers', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockEmptyDangerReports,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      expect(
+        screen.queryByRole('checkbox', { name: /学校・地域共有用/ })
+      ).not.toBeInTheDocument()
+    })
+
+    it('passes includeSchoolSummary: false to report generation by default', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+      const reportGenerationModule = await import('@/lib/report-generation/route-danger-report')
+      const mapboxConfigModule = await import('@/lib/mapbox-config')
+      vi.spyOn(mapboxConfigModule, 'getMapboxToken').mockReturnValue('pk.test-token')
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /ダウンロード/i }))
+
+      await waitFor(() => {
+        expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledTimes(1)
+      })
+
+      expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledWith(
+        expect.objectContaining({ includeSchoolSummary: false }),
+        expect.any(String)
+      )
+    })
+
+    it('passes includeSchoolSummary: true when the checkbox is checked', async () => {
+      const { useRouteDangers } = await import('@/hooks/use-route-dangers')
+      vi.mocked(useRouteDangers).mockReturnValue({
+        dangers: mockDangerReportsNearRoute,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      })
+      const reportGenerationModule = await import('@/lib/report-generation/route-danger-report')
+      const mapboxConfigModule = await import('@/lib/mapbox-config')
+      vi.spyOn(mapboxConfigModule, 'getMapboxToken').mockReturnValue('pk.test-token')
+
+      render(
+        <RouteDangerReportDialog
+          open={true}
+          onClose={mockOnClose}
+          route={mockRoute}
+        />
+      )
+
+      fireEvent.click(screen.getByRole('checkbox', { name: /学校・地域共有用/ }))
+      fireEvent.click(screen.getByRole('button', { name: /ダウンロード/i }))
+
+      await waitFor(() => {
+        expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledTimes(1)
+      })
+
+      expect(reportGenerationModule.generatePDFReport).toHaveBeenCalledWith(
+        expect.objectContaining({ includeSchoolSummary: true }),
+        expect.any(String)
+      )
     })
   })
 

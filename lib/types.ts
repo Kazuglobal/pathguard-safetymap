@@ -119,6 +119,12 @@ export interface RouteDangerReport {
   generatedAt: string
   summary: RouteDangerSummary
   selectedImageUrls?: Record<string, string>
+  // 学校・地域共有用サマリーページ(写真・詳細説明なし)を末尾に含めるか
+  includeSchoolSummary?: boolean
+  // DB保存済みの公開URL文字列 → 表示用の署名URL。danger-reports バケットは
+  // 非公開化済みのため、生成前に署名URLへ差し替えたものを渡す(未指定なら
+  // 保存済みURLのまま＝読込失敗時はプレースホルダ表示にフォールバック)。
+  signedImageUrls?: Record<string, string>
 }
 
 export interface RouteDangerSummary {

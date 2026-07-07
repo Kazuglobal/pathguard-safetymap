@@ -303,6 +303,29 @@ describe('route-danger-report', () => {
 
       expect(selectedUrl).toBe('https://example.com/danger1.jpg')
     })
+
+    it('swaps the stored URL for a signed URL when a mapping is provided', () => {
+      // 非公開バケット対応: 保存済み公開URL → 署名URL へ差し替える。
+      const signedUrl = resolveDangerDisplayImageUrl(
+        mockDangerReportsNearRoute[0],
+        undefined,
+        {
+          'https://example.com/danger1.jpg': 'https://signed.example.com/danger1?token=abc',
+        }
+      )
+
+      expect(signedUrl).toBe('https://signed.example.com/danger1?token=abc')
+    })
+
+    it('keeps the stored URL when no signed mapping matches', () => {
+      const url = resolveDangerDisplayImageUrl(
+        mockDangerReportsNearRoute[0],
+        undefined,
+        { 'https://example.com/other.jpg': 'https://signed.example.com/other?token=xyz' }
+      )
+
+      expect(url).toBe('https://example.com/danger1.jpg')
+    })
   })
 
   describe('generatePDFReport', () => {
