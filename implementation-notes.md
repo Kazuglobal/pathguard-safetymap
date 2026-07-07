@@ -158,3 +158,6 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 - vitest safety-quest-client: 11/11 緑(分割直後・全削除後の個別実行)
 - vitest フル(tests/unit+tests/components): 1538 passed / 6 failed — 6件はすべて上記X1(既存)+X2(flaky、個別緑)
 - 削除ファイルのbasename grep: 全バッチで残存参照ゼロを削除直前に確認
+
+### 追記(2026-07-08): X1の既存テスト失敗を修正
+- [D4] gemini-generate-image-route.test.ts の失敗5件は「7/5のroute改修(calculateCost使用開始)にモックが追従していない」テスト側の不備と判断し、@/lib/api-cost-calculator モックに calculateCost を追加(実装は無変更)。修正後 6/6 緑

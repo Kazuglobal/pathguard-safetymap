@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
   const mockGenerateImage = vi.fn()
   const mockLogApiUsage = vi.fn()
   const mockCalculateImageGenerationCost = vi.fn(() => 0.01)
+  const mockCalculateCost = vi.fn(() => 0)
   const mockSetContext = vi.fn()
   const mockAddBreadcrumb = vi.fn()
   const mockReadFileWithSentryContext = vi.fn(async () => new ArrayBuffer(4))
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => {
     mockGenerateImage,
     mockLogApiUsage,
     mockCalculateImageGenerationCost,
+    mockCalculateCost,
     mockSetContext,
     mockAddBreadcrumb,
     mockReadFileWithSentryContext,
@@ -39,6 +41,7 @@ vi.mock("@/lib/api-usage-logger", () => ({
 
 vi.mock("@/lib/api-cost-calculator", () => ({
   estimateImageGenerationCost: mocks.mockCalculateImageGenerationCost,
+  calculateCost: mocks.mockCalculateCost,
 }))
 
 vi.mock("@/lib/sentry-upload-context", () => ({
