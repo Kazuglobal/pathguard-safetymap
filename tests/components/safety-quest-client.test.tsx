@@ -268,7 +268,7 @@ describe("SafetyQuestClient", () => {
     expect(screen.getByText("撮影しました。あぶないサイン +1")).toBeInTheDocument()
   })
 
-  it("makes utility buttons and secondary tabs visibly respond", async () => {
+  it("makes notification and help utility buttons visibly respond", async () => {
     const user = userEvent.setup()
     render(<SafetyQuestClient />)
 
@@ -277,6 +277,11 @@ describe("SafetyQuestClient", () => {
 
     await user.click(screen.getByRole("button", { name: "ヘルプ" }))
     expect(screen.getByText("画面の青いボタンを押すと、次の安全アクションに進めます。")).toBeInTheDocument()
+  })
+
+  it("makes team tabs and ranking event controls visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
 
     await user.click(screen.getByRole("button", { name: /協力ミッション/ }))
     await user.click(screen.getByRole("button", { name: "かぞくチーム" }))
@@ -285,6 +290,11 @@ describe("SafetyQuestClient", () => {
     await user.click(screen.getByRole("button", { name: /ランキング/ }))
     await user.click(screen.getByRole("button", { name: "イベントに参加する!" }))
     expect(screen.getByText("イベント参加中! 今日の安全チャレンジを続けよう")).toBeInTheDocument()
+  })
+
+  it("makes avatar, encyclopedia, and room controls visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
 
     await user.click(screen.getByRole("button", { name: /アバター/ }))
     await user.click(screen.getByRole("button", { name: "カラー" }))
