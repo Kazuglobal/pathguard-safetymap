@@ -10,6 +10,7 @@ import type { DangerReport } from "@/lib/types"
 import MapSearch from "./map-search"
 import ImagePreviewDialog from "../danger-report/image-preview-dialog"
 import DangerReportDetailModal from "../danger-report/danger-report-detail-modal" // 以前の履歴から推測
+import { findNearbyReports } from "@/lib/nearby-reports"
 import { useToast } from "@/components/ui/use-toast"
 import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -1206,6 +1207,20 @@ export default function MapContainer({
           map={map.current}
           geoJSON={accidentHeatmap.geoJSON}
           isVisible={accidentHeatmap.isVisible}
+          onShowNearbyReports={([lng, lat]) => {
+            // 事故地点の300m以内で最寄りの危険報告を開く(相互参照導線)
+            const nearby = findNearbyReports({
+              latitude: lat,
+              longitude: lng,
+              reports: combinedReports,
+            })
+            if (nearby.length === 0) {
+              toast({ title: "この近くに報告はありません" })
+              return
+            }
+            setSelectedReport(nearby[0].report)
+            setIsDetailModalOpen(true)
+          }}
         />
 
         {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
@@ -1309,6 +1324,8 @@ export default function MapContainer({
           onClose={() => setIsDetailModalOpen(false)}
           report={selectedReport}
           isAdmin={isAdmin}
+          allReports={combinedReports}
+          onNearbyReportSelect={(nearby) => setSelectedReport(nearby)}
           onAccidentNavigate={(coords) => {
             if (!isValidCoordinates(coords[1], coords[0])) {
               toast({
