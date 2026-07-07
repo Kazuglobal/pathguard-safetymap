@@ -1,0 +1,11 @@
+/* LP専用フォントユーティリティ(app/lp/layout.tsx の next/font 変数を参照) */
+.font-lp-display {
+  font-family: var(--font-lp-display), "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+
+.font-lp-body {
+  font-family: var(--font-lp-body), var(--font-inter), "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+/* reveal対象の初期非表示はCSSでは行わない(JS無効環境で本文が永久に不可視になるため)。
+   初期状態はGSAP側(fromToのimmediateRender)がJS実行時にのみ設定する。 */

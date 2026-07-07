@@ -13,10 +13,30 @@
 - [D2] 制作順: プロダクト分析→絵コンテ(storyboard-creator)→映像プロンプト(video-prompt-adapter)→画像/動画実生成→/lp実装→検証ゲート
 
 ## Deviations(元プロンプト・計画からの逸脱)
-- (なし)
+- [X1] 実生成先をHiggsfield→Gemini APIへ変更 / Higgsfieldがクレジット残0(freeプラン)で生成不能だったため、
+       リポジトリで実績のある GEMINI_API_KEY(gemini-3.1-flash-image-preview / gemini-omni-flash-preview)で
+       画像5点+動画7カットを実生成した / 品質面の問題なし。Higgsfieldでの再生成が必要なら要クレジット購入
+- [X2] 絵コンテパネル画像(モノクロ線画)は生成せず、構図は言語化して動画プロンプトに消化(omni-flashアダプタの規則) /
+       理由: パネルは中間生成物でHPに載らないため。パネルプロンプト一式はstoryboardファイルに保存済みで後から生成可能
+- [X3] CUT01が安全フィルタで1回ブロック → 「見送りの手を振る」文脈明示に書き換えて成功
+- [X4] CUT05(アプリUI)とCUT09(エンドカード)はAI生成でなく実アプリのスクリーンショット+HTMLレンダリングで制作(正確性・ブランド一貫のため)
+- [X5] editorial-ad-prompt-factory / page-expansion-director 不在 → 広告コピー/ページ構成設計を自前で代替(ユーザー承認済み)
+
+## 検証結果(2026-07-08)
+- typecheck: エラー0 / vitest tests/components/lp: 10 passed / pnpm build: exit 0(全ルートコンパイル成功)
+- Playwright実機スクリーンショット: デスクトップ7点+モバイル2点で全セクション表示確認(2回イテレーション)
+- adversarial-review(code-reviewer新規コンテキスト): CONFIRMED 3件→全て修正
+  (C1: JS無効時に本文不可視→CSS初期非表示を撤廃しGSAP fromToに一本化 / C2: LpHero・LpVideoテスト追加(10件に増強) / C3: 字幕VTT+track追加)。
+  PLAUSIBLE 6件中4件修正(P1 clamp/P3 コントラスト/P4 key/P5 preload簡素化)、P2(framer-motion特性)・P6(年跨ぎ)は許容として見送り
+
+## 学び(gotchas)
+- ログインUIのPlaywrightクリックはReactハイドレーション完了前だと**無反応で失われる**。waitForSelector直後のクリック禁止、6s程度待つ
+- ffmpegで静止PNGをoverlay+fadeする場合は `-loop 1` 必須(ないとt=0の完全透明フレームだけが使われテロップが消える)
+- Gemini Omni Flash(video)は child の手が離れる等の表現が安全フィルタに当たりうる。家庭的文脈(school departure等)を明示すると通る
 
 ## Open Questions(未解決)
 - [Q1] 公開(Vercel本番反映)のタイミング — ローカル検証完了後に別途確認
+- [Q2] 紹介動画のBGM(現状は生成環境音のみ、HP埋め込みはミュート自動再生なので実害なし)
 
 ---
 
