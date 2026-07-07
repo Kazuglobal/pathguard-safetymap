@@ -182,3 +182,10 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 ### 追記(2026-07-08): X1の既存テスト失敗を修正
 - [D4] gemini-generate-image-route.test.ts の失敗5件は「7/5のroute改修(calculateCost使用開始)にモックが追従していない」テスト側の不備と判断し、@/lib/api-cost-calculator モックに calculateCost を追加(実装は無変更)。修正後 6/6 緑
 - X1修正後のフル再実行: 1543 passed / 1 failed — 残る1件はX2のflaky(safety-quest長尺テスト、個別実行3回連続緑)。タイムアウト延長は禁止手段のため対処せず、フェーズ2でテスト追加する際にこの長尺テスト(7画面連続操作)の分割を推奨として残す
+
+### 追記(2026-07-08): 分割フェーズ2完了
+- [D5] サイド画面10個を components/safety-quest/*-screen.tsx へ逐語移動。本体1921→968行。画面ローカルデータ(teamMembers/collectionItems/heroCards)は使用画面に同梱
+- [X3] フェーズ2適用スクリプトのlucide import置換regexがreact importに誤マッチし、useState importが一時消失 / 即時Edit修復し tsc 0エラー・テスト緑を確認 / 教訓: import書き換えは「from句まで含めた完全一致」でアンカーすること
+- [X4] 長尺テスト分割は3分割では不足(アバター+図鑑+ルームがフル実行負荷でなおタイムアウト)→4分割で解消。11→15ケース、アサーション無変更
+- 最終検証: tsc --noEmit エラー0 / vitest フル 1557/1557 全緑(flaky解消を確認)
+- 残: フェーズ3(コアループ画面5個)で本体968→約400行の見込み
