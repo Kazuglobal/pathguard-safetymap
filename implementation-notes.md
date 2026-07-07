@@ -208,3 +208,10 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 - 本体 safety-quest-client.tsx: 968→385行(当初2277行から-83%、規約200-400行目安に到達)。抽出ファイル全て200行未満
 - 検証: tsc --noEmit エラー0 / safety-quest 14/14緑 / フル実行は初回3failed→即時再実行で全緑(並行セッションがapp/lpを編集・実行中でマシン高負荷。実行時間111→190秒に悪化しており負荷起因flakeと判断)
 - 残: renderedScreen useMemo依存配列の未使用points(挙動同一のため温存中)/ DailyScreenのポイント表示ハードコード — 分割完了につき別チケットで判断可
+
+### 追記(2026-07-08): 残課題の処理完了
+- [D7] テスト補強3件を追加(rewardKeys→コレクション解放の結線検証はローカル解放と区別するためsecretキーで実施 / ステージノード連動起動 / フィード取得失敗フォールバック)。全て既存挙動のカバレッジ化で即緑
+- [D8] ポイント・コイン表示のハードコード解消をTDDで実施(RED→GREEN)。DailyScreenにpoints/coins props追加、本体ヘッダのコイン「120」固定をcoins stateに配線(coinsは加算されるのに一切表示されていなかった)。表示値が変わる仕様変更: ヘッダのコインは120→1,250(初期値)になる
+- [D9] 死に変数foundCountを削除。useMemo依存のpointsはDailyScreen配線により正当化され、coinsを追加(温存していた要確認事項2件はこれで解消)
+- 検証: safety-quest 18/18緑 / tsc 0 / フル実行は初回1failed→即時再実行で全緑(並行セッション負荷による既知flakeパターン)
+- 残るOpen Questions: DailyScreen/ヘッダの「レベル 12」等の固定値はゲーミフィケーション設計(レベル制)自体が未実装のため対象外とした
