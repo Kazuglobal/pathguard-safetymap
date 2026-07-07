@@ -105,3 +105,24 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 ## Open Questions(未解決)
 - [Q1] レベル5データの将来的な扱い(入力も4段階化するか)は別途製品判断待ち
 - [Q2] vlm-analysis.ts の getRiskLevelLabel(1〜5、「低リスク」等)は別ドメイン(AIルート分析)として今回触れていない。danger_level と統一すべきかは別判断
+
+---
+
+## Implementation Notes — safety-quest分割フェーズ1 + dead codeクリーンアップ (2026-07-08)
+
+指示書: .deepsec/fable5-instruction-safety-quest-client-split-phase1.md / .deepsec/dead-code-audit-2026-07-08.md
+ブランチ: refactor/cleanup-2026-07-08(codex/danger-report-region-filter-stability の HEAD ab6935332 から分岐)
+
+### Assumptions(置いた前提)
+- [A1] shadcn/ui未使用在庫21ファイルは温存(ユーザー未回答のためデフォルト採用)
+- [A2] 作業ツリーの既存未コミット変更(tsconfig.json, .claude/*)はコミットに含めない(対象ファイルのみ git add)
+- [A3] vitestフル実行は間欠タイムアウトの既知問題があるため、削除バッチ毎の検証は typecheck+grep とし、フル vitest は分割後と全削除後の2回に集約
+
+### Decisions(ユーザー回答で確定)
+- [D1] 分割フェーズ1と dead code A群+D群を本ブランチで順に実行(2026-07-08 AskUserQuestion)
+- [D2] C群(openai-image / push-settings-panel / accident-heatmap-control-layout)は温存
+- [D3] lib/gemini-image-generator.ts は7/2移行の残骸として削除対象に含める
+
+### Open Questions(未解決)
+- [Q1] push-settings-panel.tsx は Push通知本番稼働中なのに未配線 — 配線し忘れか意図的か要製品判断
+- [Q2] shadcn在庫を削除するなら radix系依存の棚卸しとセットで別途実施

@@ -35,6 +35,21 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SAMPLE_SAFETY_QUEST_CHALLENGES, type SafetyQuestChallenge } from "@/lib/safety-quest"
+import { HAZARD_TARGET_COUNT, getDailyMissions, type DailyProgress } from "@/lib/safety-quest-daily-missions"
+import { buildSafetyQuestAttemptMarkers, getChallengeHazardPoints } from "@/lib/safety-quest-hazard-points"
+import { readFileAsDataUrl } from "@/lib/read-file-as-data-url"
+import {
+  BattleHp,
+  GameHeader,
+  ItemChip,
+  MissionLine,
+  ProgressBar,
+  RewardStat,
+  SAFETY_QUEST_HELP_EVENT,
+  StatusPill,
+} from "@/components/safety-quest/quest-primitives"
+import { DangerCloud, KidAvatar, KidDetective, Mascot, PlayerFace } from "@/components/safety-quest/quest-characters"
+import { StreetPhotoScene } from "@/components/safety-quest/street-photo-scene"
 
 type Screen =
   | "map"
@@ -87,43 +102,6 @@ const mapNodes = [
   { id: 4, x: 71, y: 55, stars: 1, label: "公園前", locked: false },
   { id: 5, x: 86, y: 36, stars: 0, label: "商店街", locked: true },
 ]
-
-const HAZARD_TARGET_COUNT = 3
-
-type DailyProgress = {
-  hazardFinds: number
-  quizCorrect: number
-  clearedStages: number
-}
-
-function getDailyMissions(progress: DailyProgress) {
-  const hazardFinds = Math.min(progress.hazardFinds, HAZARD_TARGET_COUNT)
-  const quizCorrect = Math.min(progress.quizCorrect, 2)
-
-  return [
-    {
-      title: "あぶない場所を3つ見つけよう",
-      progress: hazardFinds >= HAZARD_TARGET_COUNT ? "クリア!" : `${hazardFinds}/${HAZARD_TARGET_COUNT}`,
-      reward: "+100pt",
-      icon: Target,
-      tint: "blue",
-    },
-    {
-      title: "横断歩道をわたろう",
-      progress: progress.clearedStages > 0 ? "クリア!" : "0/1",
-      reward: "+80pt",
-      icon: Shield,
-      tint: "green",
-    },
-    {
-      title: "クイズに2問こたえよう",
-      progress: quizCorrect >= 2 ? "クリア!" : `${quizCorrect}/2`,
-      reward: "+120pt",
-      icon: CircleHelp,
-      tint: "orange",
-    },
-  ]
-}
 
 const teamMembers = [
   ["そうた", "1,250 pt"],
@@ -198,8 +176,8 @@ export default function SafetyQuestClient() {
   useEffect(() => {
     const showHelp = () => setNotificationMessage("画面の青いボタンを押すと、次の安全アクションに進めます。")
 
-    window.addEventListener("safety-quest-help", showHelp)
-    return () => window.removeEventListener("safety-quest-help", showHelp)
+    window.addEventListener(SAFETY_QUEST_HELP_EVENT, showHelp)
+    return () => window.removeEventListener(SAFETY_QUEST_HELP_EVENT, showHelp)
   }, [])
 
   const handleHazardMark = (id: string) => {
@@ -469,164 +447,6 @@ export default function SafetyQuestClient() {
   )
 }
 
-function GameHeader({
-  title,
-  subtitle,
-  compact = false,
-  onBack,
-  right,
-}: {
-  title: string
-  subtitle?: string
-  compact?: boolean
-  onBack?: () => void
-  right?: React.ReactNode
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 border-b border-white/60 bg-gradient-to-b from-white/95 to-white/72 px-4 backdrop-blur",
-        compact ? "h-14" : "h-[70px]",
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={!onBack}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[#c9e5fb] bg-white text-[#0d4f92] shadow-sm"
-          aria-label="戻る"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-black leading-tight text-[#0b2551] sm:text-xl">{title}</h2>
-          {subtitle && <p className="truncate text-xs font-bold text-[#52708f]">{subtitle}</p>}
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {right}
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent("safety-quest-help"))}
-          className="grid h-9 w-9 place-items-center rounded-full border-2 border-[#c9e5fb] bg-white text-[#0d4f92] shadow-sm"
-          aria-label="ヘルプ"
-        >
-          <CircleHelp className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function StatusPill({ icon, value, className }: { icon: React.ReactNode; value: string; className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-10 items-center gap-2 rounded-full border-2 border-[#d5e9fb] bg-white px-3 text-[#102a55] shadow-sm",
-        className,
-      )}
-    >
-      {icon}
-      {value}
-    </span>
-  )
-}
-
-function ProgressBar({ value, color = "#17b26a" }: { value: number; color?: string }) {
-  return (
-    <div className="h-3 overflow-hidden rounded-full bg-[#d7e9f7] shadow-inner">
-      <div className="h-full rounded-full" style={{ width: `${Math.min(100, value)}%`, background: color }} />
-    </div>
-  )
-}
-
-function PlayerFace({ size = "md", className }: { size?: "sm" | "md" | "lg"; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "relative shrink-0 overflow-hidden rounded-full border-[3px] border-white bg-[#ffe2bd] shadow-md",
-        size === "sm" && "h-9 w-9",
-        size === "md" && "h-12 w-12",
-        size === "lg" && "h-16 w-16",
-        className,
-      )}
-    >
-      <div className="absolute left-1/2 top-0 h-[34%] w-[84%] -translate-x-1/2 rounded-b-full bg-[#243142]" />
-      <span className="absolute left-[29%] top-[45%] h-1.5 w-1.5 rounded-full bg-[#1f2937]" />
-      <span className="absolute right-[29%] top-[45%] h-1.5 w-1.5 rounded-full bg-[#1f2937]" />
-      <span className="absolute left-1/2 top-[62%] h-1.5 w-4 -translate-x-1/2 rounded-b-full border-b-2 border-[#ef6f6c]" />
-    </div>
-  )
-}
-
-function Mascot({ size = "md", className, pose = "happy" }: { size?: "sm" | "md" | "lg"; className?: string; pose?: "happy" | "point" | "jump" }) {
-  return (
-    <div
-      className={cn(
-        "relative shrink-0",
-        size === "sm" && "h-20 w-16",
-        size === "md" && "h-28 w-24",
-        size === "lg" && "h-40 w-32",
-        className,
-      )}
-    >
-      <div className="absolute bottom-[8%] left-[5%] h-[36%] w-[24%] rotate-[-18deg] rounded-full bg-[#174b87]" />
-      <div className="absolute bottom-[8%] right-[5%] h-[36%] w-[24%] rotate-[18deg] rounded-full bg-[#174b87]" />
-      <div
-        className="absolute left-1/2 top-[8%] h-[78%] w-[76%] -translate-x-1/2 border-[4px] border-[#0f4d8c] bg-gradient-to-b from-[#5ed1ff] to-[#1f73c9] shadow-lg"
-        style={{ clipPath: "polygon(50% 0%, 91% 15%, 80% 77%, 50% 100%, 20% 77%, 9% 15%)" }}
-      />
-      <div className="absolute left-1/2 top-[25%] h-[34%] w-[50%] -translate-x-1/2 rounded-full border-2 border-[#0f4d8c] bg-[#fff3dd]">
-        <span className="absolute left-[27%] top-[40%] h-1.5 w-1.5 rounded-full bg-[#111827]" />
-        <span className="absolute right-[27%] top-[40%] h-1.5 w-1.5 rounded-full bg-[#111827]" />
-        <span className="absolute left-1/2 top-[62%] h-2 w-5 -translate-x-1/2 rounded-b-full border-b-2 border-[#ef6f6c]" />
-      </div>
-      <div
-        className={cn(
-          "absolute top-[39%] h-[9%] w-[32%] rounded-full bg-[#fff7d6] shadow",
-          pose === "point" ? "right-[-8%] -rotate-12" : "left-[-8%] rotate-12",
-        )}
-      />
-      <div
-        className={cn(
-          "absolute top-[39%] h-[9%] w-[32%] rounded-full bg-[#fff7d6] shadow",
-          pose === "point" ? "left-[4%] rotate-[35deg]" : "right-[-8%] -rotate-12",
-        )}
-      />
-      {pose === "jump" && <div className="absolute bottom-0 left-1/2 h-2 w-20 -translate-x-1/2 rounded-full bg-black/10 blur-sm" />}
-    </div>
-  )
-}
-
-function KidAvatar({ color = "#22c55e", hat = "ぼうし", className }: { color?: string; hat?: string; className?: string }) {
-  const hatColor = hat === "ヘルメット" ? "#facc15" : hat === "キャップ" ? "#3b82f6" : hat === "ねこ耳" ? "#f5b7c8" : color
-  return (
-    <div className={cn("relative h-64 w-40", className)}>
-      <div className="absolute left-1/2 top-12 h-24 w-24 -translate-x-1/2 rounded-full border-4 border-[#9a6a43] bg-[#ffe0bd] shadow-md">
-        <div className="absolute left-1/2 top-0 h-8 w-20 -translate-x-1/2 rounded-b-full bg-[#523525]" />
-        <span className="absolute left-[28%] top-[47%] h-2 w-2 rounded-full bg-[#111827]" />
-        <span className="absolute right-[28%] top-[47%] h-2 w-2 rounded-full bg-[#111827]" />
-        <span className="absolute left-1/2 top-[68%] h-2 w-8 -translate-x-1/2 rounded-b-full border-b-[3px] border-[#ef6f6c]" />
-      </div>
-      <div className="absolute left-1/2 top-7 h-12 w-28 -translate-x-1/2 rounded-t-[48px] rounded-b-[18px] border-4 border-[#31583b] shadow" style={{ background: hatColor }} />
-      {hat === "ねこ耳" && (
-        <>
-          <span className="absolute left-8 top-3 h-8 w-7 rotate-[-20deg] rounded-t-full bg-[#f5b7c8]" />
-          <span className="absolute right-8 top-3 h-8 w-7 rotate-[20deg] rounded-t-full bg-[#f5b7c8]" />
-        </>
-      )}
-      <div className="absolute left-1/2 top-[132px] h-20 w-28 -translate-x-1/2 rounded-[24px] border-4 border-[#31583b]" style={{ background: color }} />
-      <div className="absolute left-5 top-[140px] h-16 w-8 rotate-[18deg] rounded-full border-4 border-[#31583b] bg-[#ffe0bd]" />
-      <div className="absolute right-5 top-[140px] h-16 w-8 rotate-[-18deg] rounded-full border-4 border-[#31583b] bg-[#ffe0bd]" />
-      <div className="absolute bottom-0 left-10 h-16 w-8 rounded-full bg-[#2563eb]" />
-      <div className="absolute bottom-0 right-10 h-16 w-8 rounded-full bg-[#2563eb]" />
-      <div className="absolute bottom-[-4px] left-7 h-5 w-12 rounded-full bg-[#27563b]" />
-      <div className="absolute bottom-[-4px] right-7 h-5 w-12 rounded-full bg-[#27563b]" />
-    </div>
-  )
-}
-
 function AdventureMapScreen({
   challenges,
   selectedChallenge,
@@ -797,41 +617,6 @@ function StageNode({
   )
 }
 
-function getChallengeHazardPoints(challenge: SafetyQuestChallenge) {
-  const points = challenge.aiDetections.flatMap((detection, detectionIndex) =>
-    detection.positions.map((position, positionIndex) => ({
-      id: `${challenge.id}-${detectionIndex}-${positionIndex}`,
-      label: detection.label,
-      description: detection.description,
-      x: Math.min(92, Math.max(8, (position.x + position.width / 2) * 100)),
-      y: Math.min(88, Math.max(12, (position.y + position.height / 2) * 100)),
-    })),
-  )
-
-  if (points.length > 0) return points
-
-  return [
-    { id: `${challenge.id}-fallback-1`, label: "見通し", description: "見通しに注意しましょう。", x: 41, y: 31 },
-    { id: `${challenge.id}-fallback-2`, label: "飛び出し", description: "飛び出しに注意しましょう。", x: 70, y: 41 },
-    { id: `${challenge.id}-fallback-3`, label: "車のかげ", description: "車のかげに注意しましょう。", x: 55, y: 58 },
-  ]
-}
-
-function buildSafetyQuestAttemptMarkers(challenge: SafetyQuestChallenge, foundHazards: readonly string[]) {
-  return getChallengeHazardPoints(challenge)
-    .filter((point) => foundHazards.includes(point.id))
-    .map((point, index) => ({
-      id: point.id,
-      x: Math.max(0, Math.min(0.95, point.x / 100 - 0.06)),
-      y: Math.max(0, Math.min(0.95, point.y / 100 - 0.06)),
-      width: 0.12,
-      height: 0.12,
-      label: point.label,
-      category: "hazard",
-      timestamp: index + 1,
-    }))
-}
-
 function HazardChallengeScreen({
   challenge,
   foundHazards,
@@ -965,70 +750,6 @@ function HazardMarker({
       {found ? <Check className="h-8 w-8 rounded-full bg-[#22c55e] p-1 text-white" /> : <span className="h-5 w-5 rounded-full border-2 border-white bg-[#ef4444]" />}
     </button>
   )
-}
-
-function StreetPhotoScene({ ar = false, imageUrl }: { ar?: boolean; imageUrl?: string }) {
-  const displayImage = imageUrl && !imageUrl.startsWith("/placeholder")
-
-  return (
-    <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#89d0ff] via-[#cceeff] to-[#8dc68d]">
-      {displayImage && <img src={imageUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />}
-      {!displayImage && (
-        <>
-      <div className="absolute left-10 top-8 h-16 w-28 rounded-full bg-white/80 blur-sm" />
-      <div className="absolute right-20 top-12 h-12 w-24 rounded-full bg-white/80 blur-sm" />
-      <div className="absolute bottom-[43%] left-0 h-28 w-full bg-[#7fc77d]" />
-      {Array.from({ length: 8 }).map((_, index) => (
-        <div
-          key={index}
-          className="absolute bottom-[43%] h-28 w-20 rounded-t-[28px] border-2 border-white/40 shadow"
-          style={{
-            left: `${index * 14 - 4}%`,
-            background: index % 2 ? "#d5eefc" : "#f7d9a1",
-          }}
-        >
-          <div className="mx-auto mt-5 grid w-12 grid-cols-2 gap-2">
-            {Array.from({ length: 4 }).map((_, child) => (
-              <span key={child} className="h-4 rounded-sm bg-white/70" />
-            ))}
-          </div>
-        </div>
-      ))}
-      <div className="absolute bottom-0 left-1/2 h-[58%] w-[96%] -translate-x-1/2 bg-[#53585f]" style={{ clipPath: "polygon(36% 0,64% 0,100% 100%,0 100%)" }} />
-      <div className="absolute bottom-0 left-1/2 h-[58%] w-[14%] -translate-x-1/2 bg-[#f8fafc]/70" style={{ clipPath: "polygon(42% 0,58% 0,78% 100%,22% 100%)" }} />
-      {Array.from({ length: 8 }).map((_, index) => (
-        <span
-          key={index}
-          className="absolute left-1/2 h-3 w-20 -translate-x-1/2 rounded-full bg-white"
-          style={{ bottom: `${10 + index * 9}%`, width: `${80 - index * 6}px` }}
-        />
-      ))}
-      <div className="absolute left-[23%] top-[30%] h-[38%] w-3 rounded-full bg-[#5b4636]" />
-      <div className="absolute left-[21%] top-[27%] h-16 w-16 rounded-full border-4 border-[#ff742f] bg-white/70" />
-      <div className="absolute right-[24%] top-[35%] h-[34%] w-3 rounded-full bg-[#4b5563]" />
-      <div className="absolute right-[20%] top-[28%] h-14 w-14 rotate-45 rounded-sm border-4 border-[#ffce2e] bg-[#1f2937]" />
-        </>
-      )}
-      {ar && <div className="absolute inset-5 rounded-[28px] border-2 border-white/60 shadow-[inset_0_0_0_9999px_rgba(4,20,40,.08)]" />}
-    </div>
-  )
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result)
-        return
-      }
-
-      reject(new Error("Could not read the selected file."))
-    }
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read the selected file."))
-    reader.readAsDataURL(file)
-  })
 }
 
 function PatrolScreen({ onBack, onReward }: { onBack: () => void; onReward: () => void }) {
@@ -1268,18 +989,6 @@ function RewardsScreen({ onMap, onNext }: { onMap: () => void; onNext: () => voi
   )
 }
 
-function RewardStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-[24px] border-2 border-[#d8e8f7] bg-white p-4 shadow-sm">
-      {icon}
-      <div>
-        <p className="text-xs font-black text-[#52708f]">{label}</p>
-        <p className="text-3xl font-black text-[#f97316]">{value}</p>
-      </div>
-    </div>
-  )
-}
-
 function DailyScreen({ missions, onMission }: { missions: ReturnType<typeof getDailyMissions>; onMission: () => void }) {
   return (
     <div className="h-full bg-gradient-to-b from-[#9ddcff] via-[#eaffff] to-[#fff1cf] p-5">
@@ -1453,47 +1162,6 @@ function QuizBattleScreen({
   )
 }
 
-function BattleHp({ name, hp, value, align = "left" }: { name: string; hp: string; value: number; align?: "left" | "right" }) {
-  return (
-    <div className={cn("rounded-[18px] border-2 border-white bg-white/88 p-2 shadow-lg", align === "right" && "text-right")}>
-      <div className={cn("mb-1 flex items-center gap-2", align === "right" && "flex-row-reverse")}>
-        <PlayerFace size="sm" className={align === "right" ? "bg-[#c4b5fd]" : undefined} />
-        <span className="text-sm font-black">{name}</span>
-      </div>
-      <ProgressBar value={value} color={align === "right" ? "#22c55e" : "#ef4444"} />
-      <p className="mt-1 text-xs font-black text-[#52708f]">HP {hp}</p>
-    </div>
-  )
-}
-
-function DangerCloud() {
-  return (
-    <div className="relative h-full w-full">
-      <div className="absolute inset-x-8 top-8 h-28 rounded-full bg-[#7e3fa4]" />
-      <div className="absolute left-4 top-12 h-24 w-24 rounded-full bg-[#7e3fa4]" />
-      <div className="absolute right-4 top-12 h-24 w-24 rounded-full bg-[#7e3fa4]" />
-      <div className="absolute left-1/2 top-14 h-24 w-28 -translate-x-1/2 rounded-full bg-[#612b84]" />
-      <span className="absolute left-[38%] top-[42%] h-3 w-3 rounded-full bg-[#facc15]" />
-      <span className="absolute right-[38%] top-[42%] h-3 w-3 rounded-full bg-[#facc15]" />
-      <span className="absolute left-1/2 top-[56%] h-5 w-12 -translate-x-1/2 rounded-b-full border-b-[5px] border-[#ff6b6b]" />
-      <div className="absolute bottom-10 left-7 h-12 w-5 -rotate-12 rounded-full bg-[#612b84]" />
-      <div className="absolute bottom-10 right-7 h-12 w-5 rotate-12 rounded-full bg-[#612b84]" />
-    </div>
-  )
-}
-
-function ItemChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-[16px] border-2 border-[#0d66c4] bg-[#f8fbff] p-3">
-      {icon}
-      <div>
-        <p className="text-xs font-black text-[#31516f]">{label}</p>
-        <p className="text-sm font-black">{value}</p>
-      </div>
-    </div>
-  )
-}
-
 function MysteryScreen({ onBack }: { onBack: () => void }) {
   const [solved, setSolved] = useState(false)
 
@@ -1550,17 +1218,6 @@ function MysteryScreen({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function KidDetective() {
-  return (
-    <div className="relative h-28 w-28 shrink-0">
-      <PlayerFace size="lg" className="absolute left-7 top-4" />
-      <div className="absolute left-8 top-0 h-8 w-20 rounded-full bg-[#a96b2d]" />
-      <div className="absolute left-11 top-[70px] h-24 w-20 rounded-[24px] bg-[#b87935]" />
-      <Search className="absolute right-0 top-10 h-12 w-12 rounded-full border-4 border-[#895022] bg-white/80 p-1 text-[#895022]" />
     </div>
   )
 }
@@ -2259,18 +1916,6 @@ function RoomScreen({ onBack, onExplore }: { onBack: () => void; onExplore: () =
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function MissionLine({ label, value, progress }: { label: string; value: number; progress: string }) {
-  return (
-    <div className="mb-3">
-      <div className="mb-1 flex justify-between text-sm font-black">
-        <span>{label}</span>
-        <span>{progress}</span>
-      </div>
-      <ProgressBar value={value} color="#14b8a6" />
     </div>
   )
 }
