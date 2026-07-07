@@ -34,6 +34,19 @@
 - ffmpegで静止PNGをoverlay+fadeする場合は `-loop 1` 必須(ないとt=0の完全透明フレームだけが使われテロップが消える)
 - Gemini Omni Flash(video)は child の手が離れる等の表現が安全フィルタに当たりうる。家庭的文脈(school departure等)を明示すると通る
 
+## 追加ラウンド2(2026-07-08 ユーザーフィードバック対応)
+- [D3] 機能紹介動画は Remotion(tools/feature-video, 独立package.json)+Gemini Omni Flash b-roll のハイブリッドで制作。
+       48秒/6機能/実アプリ画面+実生成クリップ。レンダーは system Chrome(--browser-executable)
+- [D4] プライバシー対応: モック地図・動画内地図を東京駅・丸の内(中立地)で撮り直し。旧スクリーンショット(開発者生活圏)は差し替え済み
+- [D5] AIぽさ除去: Three.js粒子を削除、ホログラム画像2点(feature-map-watch/og-image)を自然な写真に再生成、
+       動画CUT06もホログラム無し版に差し替え
+- [D6] デザインは getquoti.ai 参照×親子チックに刷新: Zen Maru Gothic 900見出し/クリーム#F3EFE4×チャコール#2B2723/
+       ピル型フローティングナビ/ステッカー風カード(回転+オフセット影)/マーキー/課題カードデッキ
+- [X6] PhoneFrameのアスペクト比バグ修正(枠のborder分で中身が左右クロップされ「見切れ」ていた→padding方式で390:844を内側に保持)
+- [X7] Remotion初回レンダーはGoogle Fonts全ウェイト読込(610リクエスト)でタイムアウト→loadFontにweights/subsets指定で解決
+- [X8] アプリの「現在地」ボタンは地図移動でなく「現在地で報告」フロー。撮影はウィザードを閉じてから行う手順に変更
+- 検証(ラウンド2): tsc 0 / vitest lp 12 passed / pnpm build exit 0 / スクリーンショット(デスクトップ8+モバイル2)で全セクション確認
+
 ## Open Questions(未解決)
 - [Q1] 公開(Vercel本番反映)のタイミング — ローカル検証完了後に別途確認
 - [Q2] 紹介動画のBGM(現状は生成環境音のみ、HP埋め込みはミュート自動再生なので実害なし)

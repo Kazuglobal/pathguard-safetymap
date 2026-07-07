@@ -33,14 +33,14 @@ export function LpVideo() {
   }, [])
 
   return (
-    <section id="video" ref={sectionRef} className="bg-[#101B2E] py-28 md:py-36">
+    <section id="video" ref={sectionRef} className="bg-[#26221E] py-28 md:py-36">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <p data-reveal className="mb-4 text-center text-sm font-semibold tracking-[0.2em] text-[#E8A33D]">
           MOVIE
         </p>
         <h2
           data-reveal
-          className="font-lp-display text-center text-3xl font-semibold text-white md:text-[2.6rem]"
+          className="font-lp-display text-center text-3xl font-black text-white md:text-[2.6rem]"
         >
           {LP_VIDEO.headline}
         </h2>
@@ -48,7 +48,10 @@ export function LpVideo() {
           {LP_VIDEO.caption}
         </p>
 
-        <div data-reveal className="mt-12 overflow-hidden rounded-3xl shadow-[0_56px_120px_-40px_rgba(0,0,0,0.7)]">
+        <div
+          data-reveal
+          className="mt-12 rotate-1 overflow-hidden rounded-[1.8rem] border-[3px] border-[#E8A33D] shadow-[12px_12px_0_rgba(0,0,0,0.5)]"
+        >
           <video
             ref={videoRef}
             className="aspect-video w-full bg-black"

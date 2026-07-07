@@ -19,10 +19,28 @@ export const LP_HERO = {
 
 export const LP_PROBLEM = {
   eyebrow: "毎朝の、小さな不安",
-  headline: "見送ったあとの通学路を、親は見ることができない。",
-  body: [
-    "交差点、見通しの悪い角、人通りの少ない路地。子どもが毎日歩く道には、大人が気づきにくい「ヒヤリ」がひそんでいます。",
-    "けれど、その危険がどこにあるのかは、地図にも通知にも載っていない — PathGuardian は、この「見えない」をなくすために作られました。",
+  headline: ["見送ったあとの通学路を、", "親は見ることができない。"],
+  outro:
+    "PathGuardian は、この「見えない・聞けない・間に合わない」をなくすために作られました。",
+  cards: [
+    {
+      tag: "見えない",
+      title: "危険は、\n地図に載っていない",
+      body: "交差点、見通しの悪い角、人通りの少ない路地。大人が気づきにくい「ヒヤリ」は、ふつうの地図には描かれていません。",
+      color: "coral",
+    },
+    {
+      tag: "聞けない",
+      title: "「今日どうだった?」で終わる会話",
+      body: "帰ってきた子どもに聞いても、通学路の話はなかなか出てきません。どこが危なかったかは、本人も気づいていないから。",
+      color: "amber",
+    },
+    {
+      tag: "間に合わない",
+      title: "知ったときには、\nもう遅い",
+      body: "不審者や事故の情報は、回覧板やニュースで知る頃には何日も経っています。ほしいのは「今」の情報です。",
+      color: "green",
+    },
   ],
 } as const
 
@@ -143,6 +161,14 @@ export const LP_FAQ = [
     a: "日本全国でご利用いただけます。危険マップはお住まいの地域の報告が集まるほど充実していきます。",
   },
 ] as const
+
+export const LP_FEATURE_TOUR = {
+  src: "/videos/lp/pathguardian-features.mp4",
+  headline: "60秒でわかる 機能ツアー",
+  caption: "実際の画面といっしょに、6つの機能をぎゅっとまとめました。",
+} as const
+
+export const LP_MARQUEE_WORDS = ["いってらっしゃい", "いってきます", "きをつけてね", "ただいま", "おかえり"] as const
 
 export const LP_VIDEO = {
   src: "/videos/lp/pathguardian-intro.mp4",

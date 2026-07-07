@@ -5,16 +5,13 @@ import React from "react"
 import { LpFeatures } from "@/components/lp/lp-features"
 import { LpHero } from "@/components/lp/lp-hero"
 import { LpVideo } from "@/components/lp/lp-video"
+import { LpFeatureTour } from "@/components/lp/lp-feature-tour"
+import { LpProblem } from "@/components/lp/lp-problem"
 import { LpFaq } from "@/components/lp/lp-faq"
 import { LpHow } from "@/components/lp/lp-how"
 import { LpTrust } from "@/components/lp/lp-trust"
 import { LpCtaFooter } from "@/components/lp/lp-cta-footer"
 import { LP_FAQ, LP_FEATURES, LP_HERO, LP_CTA, LP_META, LP_VIDEO } from "@/lib/lp-content"
-
-// Three.js/R3Fはjsdomで動かないためヒーロー粒子はモック
-vi.mock("@/components/lp/hero-particles", () => ({
-  HeroParticles: () => <div data-testid="hero-particles-mock" />,
-}))
 
 vi.mock("next/image", () => ({
   default: (props: React.ComponentProps<"img"> & { fill?: boolean; priority?: boolean }) => {
@@ -104,6 +101,29 @@ describe("LPセクションのレンダリング", () => {
       expect(observe).toHaveBeenCalledTimes(1)
       unmount()
       expect(disconnect).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("LpProblem が課題カード3枚を表示する", () => {
+    render(<LpProblem />)
+    expect(screen.getByText("見えない")).toBeInTheDocument()
+    expect(screen.getByText("聞けない")).toBeInTheDocument()
+    expect(screen.getByText("間に合わない")).toBeInTheDocument()
+  })
+
+  it("LpFeatureTour が機能ツアー動画を配線する", () => {
+    class MockIntersectionObserver {
+      observe = vi.fn()
+      disconnect = vi.fn()
+      unobserve = vi.fn()
+    }
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver)
+    try {
+      const { container } = render(<LpFeatureTour />)
+      const video = container.querySelector("video")
+      expect(video).toHaveAttribute("src", "/videos/lp/pathguardian-features.mp4")
     } finally {
       vi.unstubAllGlobals()
     }

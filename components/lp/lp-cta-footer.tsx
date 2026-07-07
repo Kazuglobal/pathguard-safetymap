@@ -6,7 +6,7 @@ import { LP_CTA } from "@/lib/lp-content"
 
 export function LpCtaFooter() {
   return (
-    <footer className="relative overflow-hidden bg-[#16233A]">
+    <footer className="relative overflow-hidden bg-[#2B2723]">
       {/* CTA */}
       <div className="relative">
         <div className="absolute inset-0 opacity-25">
@@ -17,12 +17,12 @@ export function LpCtaFooter() {
             sizes="100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-[#16233A]/70" />
+          <div className="absolute inset-0 bg-[#2B2723]/70" />
         </div>
         <div className="relative mx-auto max-w-4xl px-5 py-28 text-center md:px-8 md:py-36">
           <h2
             data-reveal
-            className="font-lp-display text-3xl font-semibold leading-snug text-white md:text-[2.6rem] md:leading-[1.35]"
+            className="font-lp-display text-3xl font-black leading-snug text-white md:text-[2.6rem] md:leading-[1.35]"
           >
             {LP_CTA.headline.map((line) => (
               <span key={line} className="block">
@@ -36,13 +36,13 @@ export function LpCtaFooter() {
           <div data-reveal className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
               href={LP_CTA.primary.href}
-              className="rounded-full bg-[#E8A33D] px-10 py-4 text-base font-bold text-[#16233A] shadow-xl shadow-[#E8A33D]/30 transition-transform hover:scale-[1.04] active:scale-[0.98]"
+              className="font-lp-display -rotate-1 rounded-full bg-[#E8A33D] px-10 py-4 text-base font-black text-[#2B2723] shadow-[6px_6px_0_rgba(0,0,0,0.45)] transition-transform hover:-translate-y-0.5 hover:rotate-0 hover:scale-[1.03] active:scale-[0.98]"
             >
               {LP_CTA.primary.label}
             </Link>
             <Link
               href={LP_CTA.secondary.href}
-              className="rounded-full border border-white/25 px-10 py-4 text-base font-medium text-white/90 transition-colors hover:border-white/50 hover:text-white"
+              className="font-lp-display rounded-full border-2 border-white/40 px-10 py-4 text-base font-bold text-white/90 transition-colors hover:border-white hover:text-white"
             >
               {LP_CTA.secondary.label}
             </Link>

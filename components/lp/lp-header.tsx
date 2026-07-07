@@ -1,9 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
 
 const NAV_LINKS = [
   { label: "課題", href: "#problem" },
@@ -14,61 +12,41 @@ const NAV_LINKS = [
 ]
 
 export function LpHeader() {
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
-    onScroll()
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
   return (
     <motion.header
-      initial={{ y: -64, opacity: 0 }}
+      initial={{ y: -72, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-colors duration-300",
-        scrolled
-          ? "border-b border-[#16233A]/8 bg-[#FBF9F5]/85 backdrop-blur-md"
-          : "bg-transparent",
-      )}
+      className="fixed inset-x-0 top-3 z-50 px-3 md:top-5"
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 md:px-8">
-        <Link href="/lp" className="flex items-baseline gap-0.5 text-lg font-bold tracking-tight">
-          <span className={scrolled ? "text-[#16233A]" : "text-white"}>Path</span>
+      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between rounded-full border-2 border-[#2B2723]/10 bg-[#F3EFE4]/95 py-2 pl-5 pr-2 shadow-[0_12px_32px_-12px_rgba(43,39,35,0.35)] backdrop-blur-md md:h-16 md:pl-7">
+        <Link href="/lp" className="font-lp-display flex items-baseline gap-0.5 text-lg font-black tracking-tight">
+          <span className="text-[#2B2723]">Path</span>
           <span className="text-[#E8A33D]">Guardian</span>
         </Link>
 
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav className="hidden items-center gap-6 md:flex">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-[#E8A33D]",
-                scrolled ? "text-[#16233A]/70" : "text-white/80",
-              )}
+              className="text-sm font-bold text-[#2B2723]/70 transition-colors hover:text-[#C77E1B]"
             >
               {link.label}
             </a>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className={cn(
-              "hidden text-sm font-medium transition-colors hover:text-[#E8A33D] sm:block",
-              scrolled ? "text-[#16233A]/70" : "text-white/80",
-            )}
+            className="hidden rounded-full bg-[#2B2723] px-5 py-2.5 text-sm font-bold text-white transition-transform hover:scale-[1.03] active:scale-[0.98] sm:block"
           >
             ログイン
           </Link>
           <Link
             href="/register"
-            className="rounded-full bg-[#E8A33D] px-5 py-2 text-sm font-bold text-[#16233A] shadow-lg shadow-[#E8A33D]/25 transition-transform hover:scale-[1.03] active:scale-[0.98]"
+            className="font-lp-display rounded-full bg-[#E8A33D] px-5 py-2.5 text-sm font-black text-[#2B2723] transition-transform hover:scale-[1.03] active:scale-[0.98]"
           >
             無料ではじめる
           </Link>

@@ -3,8 +3,10 @@
 import { useRef } from "react"
 import { LpHeader } from "@/components/lp/lp-header"
 import { LpHero } from "@/components/lp/lp-hero"
+import { LpMarquee } from "@/components/lp/lp-marquee"
 import { LpProblem } from "@/components/lp/lp-problem"
 import { LpFeatures } from "@/components/lp/lp-features"
+import { LpFeatureTour } from "@/components/lp/lp-feature-tour"
 import { LpVideo } from "@/components/lp/lp-video"
 import { LpShowcase } from "@/components/lp/lp-showcase"
 import { LpHow } from "@/components/lp/lp-how"
@@ -18,11 +20,13 @@ export function LpPage() {
   useLpScrollReveal(scopeRef)
 
   return (
-    <div ref={scopeRef} className="font-lp-body bg-[#FBF9F5] text-[#16233A] antialiased">
+    <div ref={scopeRef} className="font-lp-body bg-[#F3EFE4] text-[#2B2723] antialiased">
       <LpHeader />
       <LpHero />
+      <LpMarquee />
       <LpProblem />
       <LpFeatures />
+      <LpFeatureTour />
       <LpVideo />
       <LpShowcase />
       <LpHow />

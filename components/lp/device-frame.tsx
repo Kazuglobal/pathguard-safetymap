@@ -10,24 +10,26 @@ interface PhoneFrameProps {
   priority?: boolean
 }
 
-/** スマートフォン風フレームに実アプリのスクリーンショットを収める */
+/** スマートフォン風フレームに実アプリのスクリーンショットを収める。
+    枠(パディング)の内側をスクリーンショットと同じ 390:844 に保ち、UIが左右に見切れないようにする */
 export function PhoneFrame({ src, alt, className, priority = false }: PhoneFrameProps) {
   return (
     <div
       className={cn(
-        "relative aspect-[390/844] w-full overflow-hidden rounded-[2.6rem] border-[10px] border-slate-900 bg-slate-900 shadow-[0_40px_80px_-24px_rgba(15,26,43,0.45)]",
+        "w-full rounded-[2.6rem] bg-slate-900 p-[10px] shadow-[0_40px_80px_-24px_rgba(43,39,35,0.45)]",
         className,
       )}
     >
-      <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        priority={priority}
-        sizes="(max-width: 768px) 60vw, 320px"
-        className="rounded-[2rem] object-cover object-top"
-      />
+      <div className="relative aspect-[390/844] overflow-hidden rounded-[2rem]">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          priority={priority}
+          sizes="(max-width: 768px) 60vw, 320px"
+          className="object-cover object-top"
+        />
+      </div>
     </div>
   )
 }
@@ -43,7 +45,7 @@ export function BrowserFrame({ src, alt, className }: BrowserFrameProps) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_48px_96px_-32px_rgba(15,26,43,0.4)]",
+        "overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_48px_96px_-32px_rgba(43,39,35,0.4)]",
         className,
       )}
     >

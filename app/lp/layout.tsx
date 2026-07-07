@@ -1,10 +1,10 @@
 import type React from "react"
-import { Shippori_Mincho, Zen_Kaku_Gothic_New } from "next/font/google"
+import { Zen_Maru_Gothic, Zen_Kaku_Gothic_New } from "next/font/google"
 import "./lp.css"
 
-// 見出し用の明朝(プレミアム・信頼感)。日本語グリフを含むため preload しない。
-const shippori = Shippori_Mincho({
-  weight: ["500", "600", "700"],
+// 見出し用の極太丸ゴシック(親子チック×チャンキー)。日本語グリフを含むため preload しない。
+const zenMaru = Zen_Maru_Gothic({
+  weight: ["700", "900"],
   subsets: ["latin"],
   display: "swap",
   variable: "--font-lp-display",
@@ -21,5 +21,5 @@ const zenKaku = Zen_Kaku_Gothic_New({
 })
 
 export default function LpLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`lp-root ${shippori.variable} ${zenKaku.variable}`}>{children}</div>
+  return <div className={`lp-root ${zenMaru.variable} ${zenKaku.variable}`}>{children}</div>
 }
