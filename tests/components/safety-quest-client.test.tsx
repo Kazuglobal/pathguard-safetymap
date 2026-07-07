@@ -45,6 +45,14 @@ const postedChallenge = {
   ],
 }
 
+const secondPostedChallenge = {
+  ...postedChallenge,
+  id: "report-2",
+  reportId: "2",
+  title: "公園前の横断歩道",
+  areaLabel: "福岡市 東区",
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -221,6 +229,77 @@ describe("SafetyQuestClient", () => {
     const body = JSON.parse(String(privatePracticeCall?.[1]?.body))
     expect(body.imageBase64).toMatch(/^data:image\/png;base64,/)
     expect(body.userMarkers).toEqual([])
+  })
+
+  it("unlocks collection items returned by the attempts API as rewardKeys", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ challenges: [postedChallenge] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: { rewardKeys: ["secret"] } }),
+      })
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<SafetyQuestClient />)
+    await screen.findByText("投稿写真の交差点")
+    await user.click(screen.getByRole("button", { name: "出発する" }))
+    await findAllHazards(user)
+    await user.click(screen.getByRole("button", { name: "クイズへすすむ" }))
+    await user.click(screen.getByRole("button", { name: "とてもあぶない!" }))
+    await user.click(screen.getAllByRole("button", { name: "報酬へ" })[0])
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/safety-quest/attempts",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+
+    await user.click(screen.getByRole("button", { name: /ガチャ・コレクション/ }))
+
+    const secretCard = screen.getByText("ひみつ").closest("div")
+    expect(secretCard).not.toBeNull()
+    await waitFor(() => {
+      expect(within(secretCard!).getByText("NEW!")).toBeInTheDocument()
+    })
+  })
+
+  it("starts the cycled challenge when a map stage node is tapped", async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ challenges: [postedChallenge, secondPostedChallenge] }),
+    }))
+
+    render(<SafetyQuestClient />)
+    await screen.findByText("投稿写真の交差点")
+
+    await user.click(screen.getByRole("button", { name: "みまもり坂" }))
+
+    expect(screen.getByText("危険なところをタップしよう!")).toBeInTheDocument()
+    expect(screen.getByText("公園前の横断歩道")).toBeInTheDocument()
+    expect(screen.getByText("福岡市 東区")).toBeInTheDocument()
+  })
+
+  it("keeps the sample challenge playable when the challenge feed request fails", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockRejectedValue(new Error("network down"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<SafetyQuestClient />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/safety-quest/challenges", expect.anything())
+    })
+
+    expect(screen.getByText("見通しの悪い交差点")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "出発する" }))
+    expect(screen.getByText("危険なところをタップしよう!")).toBeInTheDocument()
+    expect(screen.getByText("サンプル通学路")).toBeInTheDocument()
   })
 
   it("makes the shared back button return secondary screens to the adventure map", async () => {
