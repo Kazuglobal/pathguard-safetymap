@@ -106,7 +106,6 @@ env.defaults.json
 .trae/
 .windsurf/
 .zencoder/
-skills/
 .worktrees/
 
 # -----------------------------------------
