@@ -292,7 +292,7 @@ describe("SafetyQuestClient", () => {
     expect(screen.getByText("イベント参加中! 今日の安全チャレンジを続けよう")).toBeInTheDocument()
   })
 
-  it("makes avatar, encyclopedia, and room controls visibly respond", async () => {
+  it("makes avatar customization controls visibly respond", async () => {
     const user = userEvent.setup()
     render(<SafetyQuestClient />)
 
@@ -303,6 +303,11 @@ describe("SafetyQuestClient", () => {
     expect(screen.getByText("アバターを初期状態に戻しました")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "このアバターで けってい!" }))
     expect(screen.getByText("アバターを保存しました: ぼうし")).toBeInTheDocument()
+  })
+
+  it("makes encyclopedia and room controls visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
 
     await user.click(screen.getByRole("button", { name: /ヒーロー図鑑/ }))
     await user.click(screen.getByRole("button", { name: "バッジ" }))
