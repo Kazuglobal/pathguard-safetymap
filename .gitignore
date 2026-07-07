@@ -2,12 +2,16 @@
 # 依存パッケージ
 # -----------------------------------------
 /node_modules
+# pnpm 管理のため npm の lockfile は追跡しない(正は pnpm-lock.yaml)
+package-lock.json
 
 # -----------------------------------------
 # Next.js
 # -----------------------------------------
 /.next/
 /.next-dev/
+/.next-dev-codex/
+/.next-verify/
 /out/
 /next-runtime*/
 /.next-runtime*/

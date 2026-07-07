@@ -1,6 +1,0 @@
-{
-  "/api/gemini/generate-image/route": "app/api/gemini/generate-image/route.js",
-  "/landing/page": "app/landing/page.js",
-  "/map/page": "app/map/page.js",
-  "/login/page": "app/login/page.js"
-}
