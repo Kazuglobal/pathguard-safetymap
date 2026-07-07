@@ -189,3 +189,9 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 - [X4] 長尺テスト分割は3分割では不足(アバター+図鑑+ルームがフル実行負荷でなおタイムアウト)→4分割で解消。11→15ケース、アサーション無変更
 - 最終検証: tsc --noEmit エラー0 / vitest フル 1557/1557 全緑(flaky解消を確認)
 - 残: フェーズ3(コアループ画面5個)で本体968→約400行の見込み
+
+### 追記(2026-07-08): 分割フェーズ3完了 — 目標達成
+- [D6] コアループ画面5個(AdventureMap+MapIllustration+StageNode/HazardChallenge+HazardMarker/QuizBattle/Rewards/Daily)を抽出。Screen型は components/safety-quest/screen-types.ts へ
+- 本体 safety-quest-client.tsx: 968→385行(当初2277行から-83%、規約200-400行目安に到達)。抽出ファイル全て200行未満
+- 検証: tsc --noEmit エラー0 / safety-quest 14/14緑 / フル実行は初回3failed→即時再実行で全緑(並行セッションがapp/lpを編集・実行中でマシン高負荷。実行時間111→190秒に悪化しており負荷起因flakeと判断)
+- 残: renderedScreen useMemo依存配列の未使用points(挙動同一のため温存中)/ DailyScreenのポイント表示ハードコード — 分割完了につき別チケットで判断可
