@@ -1,3 +1,25 @@
+# Implementation Notes — PathGuardian 紹介HP(/lp)作成 (2026-07-08)
+
+## Assumptions(置いた前提)
+- [A1] HPは同リポジトリの `app/lp` に新設。既存 `/landing`・アプリ本体は不変更(ユーザー確認済み)
+- [A2] 主対象者=保護者、目的=利用開始促進、日本語のみ(ユーザー確認済み)
+- [A3] デザインはたんけんノートではなくプレミアム・モダン系。GSAP+Framer Motion、品質が出せる範囲でThree.js(ユーザー指示)
+- [A4] 画像・紹介動画は実生成(課金承諾済み)。プロダクトモックは実アプリのスクリーンショットをデバイスフレームに収める方式を第一候補とする(生成モックより正確なため)
+- [A5] 本番デプロイは行わずローカル検証まで(公開は別途確認)。※デプロイ項目は未選択のため保守的デフォルト維持
+- [A6] editorial-ad-prompt-factory / page-expansion-director は環境に不在 → 同等役割を既存スキル(image-taste-frontend / high-end-visual-design等)+自前設計で代替(ユーザー確認済み)
+
+## Decisions(代わりに下した判断)
+- [D1] GSAPをdependenciesに追加する(未導入)。framer-motion / three / @react-three/fiber / drei は導入済みを利用
+- [D2] 制作順: プロダクト分析→絵コンテ(storyboard-creator)→映像プロンプト(video-prompt-adapter)→画像/動画実生成→/lp実装→検証ゲート
+
+## Deviations(元プロンプト・計画からの逸脱)
+- (なし)
+
+## Open Questions(未解決)
+- [Q1] 公開(Vercel本番反映)のタイミング — ローカル検証完了後に別途確認
+
+---
+
 # Implementation Notes — 見送り改善4項目の実装 (2026-07-08)
 
 ## Assumptions(置いた前提)
@@ -126,3 +148,13 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 ### Open Questions(未解決)
 - [Q1] push-settings-panel.tsx は Push通知本番稼働中なのに未配線 — 配線し忘れか意図的か要製品判断
 - [Q2] shadcn在庫を削除するなら radix系依存の棚卸しとセットで別途実施
+
+### Deviations(2026-07-08 実行結果)
+- [X1] 最終フルvitestで gemini-generate-image-route.test.ts が5件失敗 / 削除5ファイルを一時復元して再実行しても同一失敗を確認 / 今回の変更と無関係の既存問題(@/lib/api-cost-calculator モックに calculateCost 未定義。関連3ファイルの最終コミットは7/5の493938f9e)。修正は本タスクのスコープ外として温存
+- [X2] safety-quest-client.test.tsx の1件がフル実行時のみ失敗(負荷起因のflaky)/ 個別再実行で11/11緑を2回確認 / 既知の「フル実行間欠タイムアウト」と同класス
+
+### 検証結果(2026-07-08 最終)
+- typecheck: エラー0(分割後・各削除バッチ後・全削除後)
+- vitest safety-quest-client: 11/11 緑(分割直後・全削除後の個別実行)
+- vitest フル(tests/unit+tests/components): 1538 passed / 6 failed — 6件はすべて上記X1(既存)+X2(flaky、個別緑)
+- 削除ファイルのbasename grep: 全バッチで残存参照ゼロを削除直前に確認
