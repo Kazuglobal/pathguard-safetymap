@@ -6,7 +6,17 @@ import type { getDailyMissions } from "@/lib/safety-quest-daily-missions"
 import { StatusPill } from "@/components/safety-quest/quest-primitives"
 import { Mascot, PlayerFace } from "@/components/safety-quest/quest-characters"
 
-export function DailyScreen({ missions, onMission }: { missions: ReturnType<typeof getDailyMissions>; onMission: () => void }) {
+export function DailyScreen({
+  missions,
+  points,
+  coins,
+  onMission,
+}: {
+  missions: ReturnType<typeof getDailyMissions>
+  points: number
+  coins: number
+  onMission: () => void
+}) {
   return (
     <div className="h-full bg-gradient-to-b from-[#9ddcff] via-[#eaffff] to-[#fff1cf] p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -16,8 +26,8 @@ export function DailyScreen({ missions, onMission }: { missions: ReturnType<type
           <StatusPill icon={<Shield className="h-4 w-4 text-[#0d66c4]" />} value="レベル 12" />
         </div>
         <div className="flex gap-2">
-          <StatusPill icon={<Star className="h-4 w-4 fill-[#facc15] text-[#eab308]" />} value="2,840 pt" />
-          <StatusPill icon={<Sparkles className="h-4 w-4 text-[#0ea5e9]" />} value="120" />
+          <StatusPill icon={<Star className="h-4 w-4 fill-[#facc15] text-[#eab308]" />} value={`${points.toLocaleString()} pt`} />
+          <StatusPill icon={<Sparkles className="h-4 w-4 text-[#0ea5e9]" />} value={coins.toLocaleString()} />
           <button type="button" className="grid h-10 w-10 place-items-center rounded-full border-2 border-[#cde5f9] bg-white">
             <Bell className="h-5 w-5" />
           </button>

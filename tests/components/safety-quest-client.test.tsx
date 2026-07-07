@@ -177,6 +177,22 @@ describe("SafetyQuestClient", () => {
     expect(within(hazardMission!).getByText("クリア!")).toBeInTheDocument()
   })
 
+  it("shows live point and coin totals on the daily screen instead of hardcoded values", async () => {
+    const user = userEvent.setup()
+    await openChallenge(user)
+    await findAllHazards(user)
+    await user.click(screen.getByRole("button", { name: "クイズへすすむ" }))
+    await user.click(screen.getByRole("button", { name: "とてもあぶない!" }))
+    await user.click(screen.getAllByRole("button", { name: "報酬へ" })[0])
+    await user.click(screen.getByRole("button", { name: "つぎのステージへ!" }))
+
+    // 2,840pt 初期値 + 危険発見50×3 + クイズ正解80 + クリア250 = 3,320pt
+    // コイン 1,250 初期値 + 10×3 + 20 + 90 = 1,390
+    expect(screen.queryByText("2,840 pt")).not.toBeInTheDocument()
+    expect(screen.getAllByText("3,320 pt").length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText("1,390").length).toBeGreaterThanOrEqual(2)
+  })
+
   it("offers a private practice photo upload with child privacy guidance", async () => {
     const user = userEvent.setup()
     render(<SafetyQuestClient />)

@@ -84,7 +84,6 @@ export default function SafetyQuestClient() {
   const [selectedChallenge, setSelectedChallenge] = useState<SafetyQuestChallenge>(SAMPLE_SAFETY_QUEST_CHALLENGES[0])
   const [notificationMessage, setNotificationMessage] = useState("")
 
-  const foundCount = foundHazards.length
   const quizIsCorrect = quizAnswer === "danger"
   const dailyMissions = useMemo(() => getDailyMissions(dailyProgress), [dailyProgress])
 
@@ -237,7 +236,7 @@ export default function SafetyQuestClient() {
       case "rewards":
         return <RewardsScreen onMap={resetCoreLoop} onNext={() => setScreen("daily")} />
       case "daily":
-        return <DailyScreen missions={dailyMissions} onMission={() => openChallenge(selectedChallenge)} />
+        return <DailyScreen missions={dailyMissions} points={points} coins={coins} onMission={() => openChallenge(selectedChallenge)} />
       case "quiz":
         return (
           <QuizBattleScreen
@@ -277,6 +276,7 @@ export default function SafetyQuestClient() {
   }, [
     avatarColor,
     challenges,
+    coins,
     dailyMissions,
     equippedHat,
     foundHazards,
@@ -315,7 +315,7 @@ export default function SafetyQuestClient() {
           <div className="flex flex-wrap items-center gap-2 text-sm font-black">
             <StatusPill icon={<Star className="h-4 w-4 fill-[#facc15] text-[#f59e0b]" />} value={`${points.toLocaleString()} pt`} />
             <StatusPill icon={<Shield className="h-4 w-4 text-[#2563eb]" />} value="レベル 12" />
-            <StatusPill icon={<Sparkles className="h-4 w-4 text-[#0ea5e9]" />} value="120" />
+            <StatusPill icon={<Sparkles className="h-4 w-4 text-[#0ea5e9]" />} value={coins.toLocaleString()} />
             <button
               type="button"
               onClick={() => setNotificationMessage("今日の安全通知: 夕方は見通しの悪い交差点に気をつけよう")}
