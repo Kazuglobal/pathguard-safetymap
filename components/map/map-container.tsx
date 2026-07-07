@@ -84,11 +84,14 @@ type ActiveARKind = "nearby" | "parent_child_route"
 interface MapContainerProps {
   autoOpenReport?: boolean
   preferredRouteId?: string | null
+  /** Push通知などのディープリンクから最初に開く報告ID */
+  initialReportId?: string | null
 }
 
 export default function MapContainer({
   autoOpenReport = false,
   preferredRouteId = null,
+  initialReportId = null,
 }: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -137,6 +140,7 @@ export default function MapContainer({
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false) // ReportDetailModal 用
+  const openedDeepLinkReportIdRef = useRef<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // モバイルでのサイドバー表示状態
   const clickListenerAdded = useRef(false)
   const styleChangeInProgress = useRef(false)
@@ -178,6 +182,41 @@ export default function MapContainer({
   const [hazardImageError, setHazardImageError] = useState<string | null>(null)
   const [isHazardImageLoading, setIsHazardImageLoading] = useState(false)
   const [mapStyleSyncToken, setMapStyleSyncToken] = useState(0)
+
+  // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
+  // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
+  useEffect(() => {
+    if (!supabase || !initialReportId) return
+    if (openedDeepLinkReportIdRef.current === initialReportId) return
+    openedDeepLinkReportIdRef.current = initialReportId
+
+    let cancelled = false
+    const openDeepLinkedReport = async () => {
+      const { data, error } = await supabase
+        .from("danger_reports")
+        .select("*")
+        .eq("id", initialReportId)
+        .maybeSingle()
+
+      if (cancelled) return
+      if (error || !data) {
+        toast({
+          title: "報告を表示できません",
+          description: "報告が削除されたか、表示する権限がありません。",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedReport(data as DangerReport)
+      setIsDetailModalOpen(true)
+    }
+
+    void openDeepLinkedReport()
+    return () => {
+      cancelled = true
+    }
+  }, [initialReportId, supabase, toast])
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()

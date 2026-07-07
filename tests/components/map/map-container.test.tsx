@@ -451,7 +451,11 @@ function lastMap() {
   return map
 }
 
-function renderMapContainer(props?: { autoOpenReport?: boolean; preferredRouteId?: string | null }) {
+function renderMapContainer(props?: {
+  autoOpenReport?: boolean
+  preferredRouteId?: string | null
+  initialReportId?: string | null
+}) {
   const utils = render(<MapContainer {...props} />)
   return utils
 }
@@ -509,6 +513,27 @@ afterEach(() => {
 })
 
 describe('MapContainer characterization', () => {
+  describe('報告ディープリンク', () => {
+    it('一覧に含まれない本人の報告もID指定で取得して詳細を開く', async () => {
+      const rejectedReport = sampleReport({ id: 'rejected-1', status: 'rejected' })
+      const maybeSingle = vi.fn(async () => ({ data: rejectedReport, error: null }))
+      const eq = vi.fn(() => ({ maybeSingle }))
+      const select = vi.fn(() => ({ eq }))
+      const from = vi.fn(() => ({ select }))
+      h.supabase = { from }
+
+      renderMapContainer({ initialReportId: 'rejected-1' })
+
+      await waitFor(() => {
+        expect(h.captured.detailModal).toEqual(
+          expect.objectContaining({ isOpen: true, report: rejectedReport }),
+        )
+      })
+      expect(from).toHaveBeenCalledWith('danger_reports')
+      expect(eq).toHaveBeenCalledWith('id', 'rejected-1')
+    })
+  })
+
   describe('初期化とローディング', () => {
     it('マウント時はローディング中で、map の load イベントで解除される', () => {
       renderMapContainer()

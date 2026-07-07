@@ -60,6 +60,18 @@ export function useDangerMarkers({
     const map = mapRef.current
     if (!map || !mapInitializedRef.current) return;
 
+    const markerResources: Array<{
+      marker: mapboxgl.Marker
+      unmount?: () => void
+    }> = []
+
+    const removeRenderedMarkers = () => {
+      for (const { marker, unmount } of markerResources.splice(0)) {
+        marker.remove()
+        unmount?.()
+      }
+    }
+
     const addMarker = (
       report: DangerReport,
       isPending: boolean,
@@ -89,9 +101,10 @@ export function useDangerMarkers({
       else if (report.danger_type === SUSPICIOUS_DANGER_TYPE) IconComponent = UserX;
       root.render(<IconComponent className="h-5 w-5 text-white" />); // Adjusted size
 
-      new mapboxgl.Marker(markerElement)
+      const marker = new mapboxgl.Marker(markerElement)
         .setLngLat(displayLngLat)
         .addTo(map); // Add to map
+      markerResources.push({ marker, unmount: () => root.unmount() })
 
       markerElement.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -138,7 +151,8 @@ export function useDangerMarkers({
         `このあたりに${count}件の報告があります。タップで拡大します`,
       );
 
-      new mapboxgl.Marker(markerElement).setLngLat(lngLat).addTo(map);
+      const marker = new mapboxgl.Marker(markerElement).setLngLat(lngLat).addTo(map);
+      markerResources.push({ marker })
 
       markerElement.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -151,10 +165,8 @@ export function useDangerMarkers({
     };
 
     const renderMarkers = () => {
-      // Remove existing markers before adding new ones
-      document
-        .querySelectorAll('.danger-marker, .pending-marker, .danger-cluster-marker')
-        .forEach(marker => marker.remove());
+      // Mapbox 側のイベント購読も含めて前回の Marker を破棄する。
+      removeRenderedMarkers()
 
       const entries: MarkerEntry[] = [
         ...dangerReports.map((report) => ({ report, isPending: false })),
@@ -200,6 +212,7 @@ export function useDangerMarkers({
 
     return () => {
       map.off('zoomend', renderMarkers);
+      removeRenderedMarkers()
     };
   // Re-evaluate dependencies: mapStyle might not be needed if markers don't change with style
   // eslint-disable-next-line react-hooks/exhaustive-deps
