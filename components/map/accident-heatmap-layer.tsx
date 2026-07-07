@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useCallback } from 'react'
+import { useEventCallback } from '@/hooks/use-event-callback'
 import mapboxgl from 'mapbox-gl'
 import type { AccidentGeoJSON } from '@/lib/traffic-accident-heatmap'
 import { HEATMAP_MAX_ZOOM, CIRCLE_MIN_ZOOM, getSeverityLabel } from '@/lib/traffic-accident-heatmap'
@@ -315,36 +316,31 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyRepo
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const layersAddedRef = useRef(false)
   const latestGeoJSONRef = useRef<AccidentGeoJSON | null>(geoJSON)
-  // クリックハンドラは一度だけ登録されるため、最新のコールバックをrefで参照する
-  const latestNearbyHandlerRef = useRef<AccidentHeatmapLayerProps["onShowNearbyReports"]>(onShowNearbyReports)
 
   useEffect(() => {
     latestGeoJSONRef.current = geoJSON
   }, [geoJSON])
 
-  useEffect(() => {
-    latestNearbyHandlerRef.current = onShowNearbyReports
-  }, [onShowNearbyReports])
-
   // -------------------------------------------------------------------------
   // Popup on circle click
   // -------------------------------------------------------------------------
 
-  const handleCircleClick = useCallback((e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+  // Mapboxへ一度だけ登録されるハンドラで最新のpropsを読むため useEventCallback を使う。
+  // 最新値参照のための同期refを新設しないこと(map-container の handleMapClick と同じ規約)
+  const handleCircleClick = useEventCallback((e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
     if (!e.features || e.features.length === 0) return
     const mapInstance = e.target as mapboxgl.Map
 
     const feature = e.features[0]
     const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number]
     const props = (feature.properties ?? {}) as Record<string, unknown>
-    const nearbyHandler = latestNearbyHandlerRef.current
     const content = buildAccidentPopupContent(
       props,
-      nearbyHandler
+      onShowNearbyReports
         ? {
             onShowNearbyReports: () => {
               popupRef.current?.remove()
-              nearbyHandler(coords)
+              onShowNearbyReports(coords)
             },
           }
         : undefined,
@@ -359,7 +355,7 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyRepo
       .setLngLat(coords)
       .setDOMContent(content)
       .addTo(mapInstance)
-  }, [])
+  })
 
   const handleMouseEnter = useCallback((e: mapboxgl.MapMouseEvent) => {
     (e.target as mapboxgl.Map).getCanvas().style.cursor = 'pointer'

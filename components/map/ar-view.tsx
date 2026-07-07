@@ -43,6 +43,7 @@ import { createKidsHazardCue, isApproachingHazard } from "@/lib/ar-learning-tour
 import { trackEvent } from "@/lib/analytics"
 import { buildRouteLearningSessionPayload } from "@/lib/route-learning-session-payload"
 import { getARSafetySuppression } from "@/lib/ar-safety"
+import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
 import { ARLearningReviewCard } from "./ar-learning-review"
@@ -724,12 +725,11 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           <p className="text-xs font-semibold tracking-wide text-amber-200">選択中の通学路</p>
           <p className="mt-1 text-sm font-bold">{mode.routeName}</p>
           {mode.childName && <p className="mt-1 text-xs text-slate-200">{mode.childName}</p>}
-          {isLocationAccuracyLow && (
-            <p className="mt-2 text-xs text-amber-100">位置精度が低いため強調を抑制中</p>
-          )}
-          {isMovingTooFast && (
-            <p className="mt-2 text-xs text-amber-100">移動速度が速いため接近通知を抑制中</p>
-          )}
+          <ARSafetySuppressionNotice
+            isLocationAccuracyLow={isLocationAccuracyLow}
+            isMovingTooFast={isMovingTooFast}
+            className="mt-2"
+          />
           {manualLocationMode && (
             <p className="mt-2 text-xs text-amber-100">位置情報なし: 手動確認中</p>
           )}
@@ -742,14 +742,11 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           className="absolute right-4 top-16 z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm"
           role="status"
         >
-          {isLocationAccuracyLow && (
-            <p className="text-xs text-amber-100">位置精度が低いため強調を抑制中</p>
-          )}
-          {isMovingTooFast && (
-            <p className={`text-xs text-amber-100${isLocationAccuracyLow ? " mt-2" : ""}`}>
-              移動速度が速いため接近通知を抑制中。とまって かくにんしてね
-            </p>
-          )}
+          <ARSafetySuppressionNotice
+            isLocationAccuracyLow={isLocationAccuracyLow}
+            isMovingTooFast={isMovingTooFast}
+            showWalkPrompt
+          />
         </div>
       )}
 
