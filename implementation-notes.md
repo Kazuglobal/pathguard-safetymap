@@ -11,8 +11,37 @@
 - [D1] 実装順は小→大(AR→通知→相互参照→クラスタリング)。項目ごとに検証→コミット、最後に全体をadversarial-review
 - [D2] サブエージェント並列化はしない(4項目は別ファイルだが、検証の交錯とworktreeマージのオーバーヘッドが利益を上回ると判断)
 
+## Deviations(元プロンプト・計画からの逸脱)
+- [X1] AR: 抑制フラグのゲート解除だけでは通常モードに抑制対象が存在しなかった /
+       接近強調(isApproaching)自体を通常モードでも有効化した / 理由: 抑制チェックに意味を持たせるため。
+       ar_hazard_approached の計測イベントは従来どおり親子モード限定を維持
+- [X2] クラスタリング導入に伴い、座標不正(isValidCoordinatesがfalse)の報告をライブ地図の描画対象から除外 /
+       理由: 重心計算にNaNが混入するため。従来はtry/catchで暗黙に描画中断していた
+
+## 検証結果(2026-07-08)
+- 4項目それぞれ: 実装→対象テスト緑→コミット済み(d53e656a0 / fad75801a / 7d0918a76 / 4ce411f40)
+- 全体一括実行: 1288 passed / 5 failed。失敗5件は全て tests/unit/app/api/gemini-generate-image-route.test.ts で、
+  c5c28af37..HEAD のdiffにgemini関連ファイルはゼロ(今回の変更と無関係の既存失敗)。スコープ外として未修正
+
+## Adversarial Review(wf_f475ca96-369)の結果と対応
+- **注意: 27エージェント中19がディスク満杯で失敗し、レビューは部分カバレッジ(8エージェント完了分)**。
+  原因=前回レビュー(wf_994f13bc)のworktree残骸24個+今回分で計13GBがディスクを圧迫。
+  残骸34個を git worktree remove で削除し12.6GB回復済み
+- CONFIRMED 3件(全て品質・衛生面、ランタイムバグなし):
+  - [修正] C1: accident-heatmap-layer の手書きprops同期ref → useEventCallback へ(規約準拠)
+  - [修正] C3: AR抑制メッセージの2箇所重複 → ARSafetySuppressionNotice に共通化
+  - [記録] C2: 改行コード正規化(CRLF/LF)が機能コミットに混入しdiffが最大18倍膨張。
+    今後は改行正規化を独立コミットで行う。.gitattributes 追加は大規模正規化diffを
+    伴うため別タスク化(勝手にやらない)
+- 修正後: vitest 77 passed / tsc エラー0 (aeb8ff0fb)
+
+## Deviations(追記3)
+- [X3] レビューが部分カバレッジのまま完了扱いになった / 完了8エージェント分のCONFIRMEDを修正して先へ進む判断 /
+       理由: ディスク要因は解消済みだが、全27の再実行はコスト大。指摘傾向(衛生面のみ・バグゼロ)から追加リスクは低いと評価
+
 ## Open Questions(未解決)
 - [Q1] クラスタバッジの見た目(たんけんノートデザインへの馴染ませ方)は実装中に既存トークンから判断する
+- [Q2] gemini-generate-image-route.test.ts の既存失敗5件(500 vs 200)は別タスクで根因調査が必要
 
 ---
 
