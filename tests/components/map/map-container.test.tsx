@@ -113,6 +113,8 @@ const h = vi.hoisted(() => {
     }))
     flyTo = vi.fn()
     fitBounds = vi.fn()
+    easeTo = vi.fn()
+    getZoom = vi.fn(() => this.options?.zoom ?? 15)
     setStyle = vi.fn((style: string) => {
       this.styleUrl = style
     })
