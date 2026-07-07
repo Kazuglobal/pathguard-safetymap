@@ -49,6 +49,8 @@ const BASE_CONTENT: Record<string, Omit<ARLearningContent, "attentionTags">> = {
 
 function normalizeType(type: string | null | undefined): keyof typeof BASE_CONTENT {
   if (!type) return "other"
+  // 不審者アラート(danger_type='suspicious')は防犯テンプレートを使う。
+  if (type === "suspicious") return "crime"
   return type in BASE_CONTENT ? (type as keyof typeof BASE_CONTENT) : "other"
 }
 

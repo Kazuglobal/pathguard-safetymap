@@ -229,6 +229,16 @@ export function spreadOverlappingMarkers(
  * 結果を使うことで、地図ピンと必ず同じ番号になる。
  * 地図に載らない箇所(不正座標)には、載る箇所の後に続きの番号を振る。
  */
+/**
+ * 採番用ラベル。地図ピンは先頭36件(MAP_MARKER_LIMIT)のみ '1'..'z' の1文字で
+ * 描画されるため、それを超える箇所は 'z' に潰さず重複しない連番("37"..)を割り当てる。
+ * (旧実装は getMapMarkerLabel が36以上で常に 'z' を返し、37件目以降のカード/
+ * チェックリスト/学校サマリーの番号が重複していた。)
+ */
+function labelForIndex(index: number): string {
+  return index < MAP_MARKER_LIMIT ? getMapMarkerLabel(index) : String(index + 1)
+}
+
 export function assignDangerMarkerLabels(dangers: DangerReport[]): Map<string, string> {
   const labels = new Map<string, string>()
   const unmappable: DangerReport[] = []
@@ -236,7 +246,7 @@ export function assignDangerMarkerLabels(dangers: DangerReport[]): Map<string, s
 
   for (const danger of dangers) {
     if (toNormalizedDangerPoint(danger) !== null) {
-      labels.set(danger.id, getMapMarkerLabel(nextIndex))
+      labels.set(danger.id, labelForIndex(nextIndex))
       nextIndex += 1
     } else {
       unmappable.push(danger)
@@ -244,7 +254,7 @@ export function assignDangerMarkerLabels(dangers: DangerReport[]): Map<string, s
   }
 
   for (const danger of unmappable) {
-    labels.set(danger.id, getMapMarkerLabel(nextIndex))
+    labels.set(danger.id, labelForIndex(nextIndex))
     nextIndex += 1
   }
 

@@ -65,6 +65,10 @@ const DEFAULT_CUE: KidsHazardCue = {
 /** 報告者が選んだ具体的な危険タイプ → 子ども向けキュー。 */
 const TYPE_CUE: Record<string, KidsHazardCue> = {
   crime: CRIME_CUE,
+  // 不審者アラート(danger_type='suspicious')は防犯として扱う。
+  // これが無いと本文に「不審」等のキーワードが無いとき汎用文言に落ち、
+  // 危険度の高い不審者情報に防犯助言が出なくなる。
+  suspicious: CRIME_CUE,
   construction: CONSTRUCTION_CUE,
   disaster: DISASTER_CUE,
   traffic: TRAFFIC_CUE,

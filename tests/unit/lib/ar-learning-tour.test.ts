@@ -118,6 +118,23 @@ describe("createARLearningContent", () => {
     expect(wall.checkpoints.length).toBeLessThanOrEqual(3)
   })
 
+  it("maps danger_type='suspicious' to the crime (防犯) template", () => {
+    const content = createARLearningContent(
+      createMockReport({
+        danger_type: "suspicious",
+        danger_level: 4,
+        title: "知らない人が声をかけてきた",
+        description: "知らない人が声をかけてきた",
+      })
+    )
+
+    // crime テンプレート(死角・逃げ込める場所)になる
+    expect(content.summary).toContain("死角")
+    expect(content.checkpoints).toEqual(
+      expect.arrayContaining(["逃げ込める場所が近くにあるか確認する"])
+    )
+  })
+
   it("leaves guidance as the plain type template when no keyword matches", () => {
     const content = createARLearningContent(
       createMockReport({
