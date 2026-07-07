@@ -82,15 +82,15 @@ log(`対象範囲: ${scope}`)
 const results = await pipeline(
   LENSES,
   (lens) => agent(
-    `${lens.prompt}\n\n見つけた欠陥を findings として構造化して返せ。欠陥ゼロなら空配列でよい。確信のない指摘も含めてよい(後段で検証される)。最大8件、深刻な順。`,
-    { label: `review:${lens.key}`, phase: 'Review', schema: FINDINGS_SCHEMA },
+    `${lens.prompt}\n\n見つけた欠陥を findings として構造化して返せ。欠陥ゼロなら空配列でよい。確信のない指摘も含めてよい(後段で検証される)。最大8件、深刻な順。\n\n重要: あなたの役目は指摘を報告することだけで、ファイルの削除・変更は一切行わないこと。読み取り専用の調査(Read/Grep/Bash中の読み取りコマンド)に限定せよ。`,
+    { label: `review:${lens.key}`, phase: 'Review', schema: FINDINGS_SCHEMA, isolation: 'worktree' },
   ),
   (review, lens) => {
     if (!review || review.findings.length === 0) return []
     return parallel(review.findings.map((f) => () =>
       agent(
-        `次のコードレビュー指摘を反証(refute)せよ。対象: ${scope}\n\n指摘 [${lens.key}] ${f.file}${f.line ? ':' + f.line : ''}\n${f.summary}\n${f.detail}\n\n実際にファイルを読み、必要ならコマンドで確認し、この指摘が間違っている・実害がない可能性を全力で探せ。\n- 指摘が誤り/実害なしと示せたら REFUTED\n- 誤りとは示せないが再現手順まで確定できないなら PLAUSIBLE\n- 具体的な入力と手順で問題を再現できたら CONFIRMED(再現手順を reasoning に必ず書く)\n迷ったら PLAUSIBLE に倒せ。`,
-        { label: `verify:${lens.key}:${f.file}`, phase: 'Verify', schema: VERDICT_SCHEMA },
+        `次のコードレビュー指摘を反証(refute)せよ。対象: ${scope}\n\n指摘 [${lens.key}] ${f.file}${f.line ? ':' + f.line : ''}\n${f.summary}\n${f.detail}\n\n実際にファイルを読み、必要ならコマンドで確認し、この指摘が間違っている・実害がない可能性を全力で探せ。\n- 指摘が誤り/実害なしと示せたら REFUTED\n- 誤りとは示せないが再現手順まで確定できないなら PLAUSIBLE\n- 具体的な入力と手順で問題を再現できたら CONFIRMED(再現手順を reasoning に必ず書く)\n迷ったら PLAUSIBLE に倒せ。\n\n重要: あなたの役目は判定を返すことだけで、ファイルの削除・変更は一切行わないこと。読み取り専用の調査に限定せよ。`,
+        { label: `verify:${lens.key}:${f.file}`, phase: 'Verify', schema: VERDICT_SCHEMA, isolation: 'worktree' },
       ).then((v) => ({ ...f, lens: lens.key, verdict: v ? v.verdict : 'PLAUSIBLE', reasoning: v ? v.reasoning : 'verifier unavailable' }))
     ))
   },
