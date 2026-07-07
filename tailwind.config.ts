@@ -7,6 +7,9 @@ const config = {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    // danger-level-presentation.ts 等、lib/ 内で定義する Tailwind クラス文字列
+    // (badgeClass/borderAccentClass/surface)をパージ対象から守るために必須
+    "./lib/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",

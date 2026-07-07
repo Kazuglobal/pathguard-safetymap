@@ -16,6 +16,7 @@
 import type { DangerReport, RouteDangerReport, RouteDangerSummary } from '@/lib/types'
 import { buildReportSections } from './report-sections'
 import { reportTheme } from './report-theme'
+import { getDangerLevelPresentation } from './danger-level-presentation'
 
 export { generateOverviewMapUrl } from './report-map'
 export type { MapDimensions } from './report-map'
@@ -69,7 +70,10 @@ export function createReportSummary(dangers: DangerReport[]): RouteDangerSummary
     byType[danger.danger_type] = (byType[danger.danger_type] || 0) + 1
 
     // Count by level
-    byLevel[danger.danger_level] = (byLevel[danger.danger_level] || 0) + 1
+    // 表示レベル(1〜4クランプ)で集計する。生レベルのまま集計すると
+    // 4と5が同じ「いちばんちゅうい」バッジ2個に分裂して表示される
+    const displayLevel = getDangerLevelPresentation(danger.danger_level).level
+    byLevel[displayLevel] = (byLevel[displayLevel] || 0) + 1
   }
 
   return {

@@ -7,26 +7,10 @@ import { AlertTriangle, Car, Shield, HelpCircle, UserX } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { addPoints } from "@/lib/gamification"
 import { SUSPICIOUS_DANGER_TYPE } from "@/lib/suspicious-alert"
+import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
 
 const getDangerTypeMarkerClass = (dangerType: string) => {
   return `danger-marker-${dangerType}` || 'danger-marker-other'; // Simplified
-}
-
-const getDangerLevelColor = (level: number) => {
-  switch (level) {
-    case 1:
-      return '#22c55e' // green-500
-    case 2:
-      return '#22c55e' // green-500
-    case 3:
-      return '#eab308' // yellow-500
-    case 4:
-      return '#f97316' // orange-500
-    case 5:
-      return '#ef4444' // red-500
-    default:
-      return '#6b7280' // gray-500
-  }
 }
 
 interface UseDangerMarkersParams {
@@ -67,7 +51,7 @@ export function useDangerMarkers({
       markerElement.style.cursor = 'pointer';
 
       // --- ▼▼▼ 危険度に基づく色分け ▼▼▼ ---
-      const backgroundColor = getDangerLevelColor(report.danger_level);
+      const backgroundColor = getDangerLevelPresentation(report.danger_level).colorHex;
       markerElement.style.backgroundColor = backgroundColor;
       markerElement.style.border = '2px solid white';
       markerElement.style.borderRadius = '50%';

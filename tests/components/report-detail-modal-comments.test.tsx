@@ -338,7 +338,8 @@ describe('ReportDetailModal with Comments Integration', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText(/レベル 3/)).toBeInTheDocument()
+        // 危険度バッジは一元定義(danger-level-presentation)の★+子ども向けラベル表示
+        expect(screen.getByText(/★★★☆ とてもちゅうい/)).toBeInTheDocument()
       })
     })
   })

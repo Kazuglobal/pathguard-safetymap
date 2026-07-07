@@ -37,6 +37,10 @@ describe("AR表示改善ユーティリティ", () => {
       expect(translateDangerType("other")).toBe("その他")
     })
 
+    it("suspicious を 不審者情報 に変換する(AR画面に英語の生文字列を出さない)", () => {
+      expect(translateDangerType("suspicious")).toBe("不審者情報")
+    })
+
     it("未知のカテゴリはそのまま返す", () => {
       expect(translateDangerType("unknown_category")).toBe("unknown_category")
     })
@@ -54,67 +58,69 @@ describe("AR表示改善ユーティリティ", () => {
   /**
    * フェーズ3: 危険度表示の改善
    */
-  describe("getDangerLevelLabel - 危険度ラベル", () => {
-    it("レベル5は 非常に危険 を返す", () => {
-      expect(getDangerLevelLabel(5)).toBe("非常に危険")
+  // 危険度の色・ラベルは danger-level-presentation.ts の一元定義に委譲。
+  // 表示は1〜4にクランプされ、レベル5は4(いちばんちゅうい)と同表示になる。
+  describe("getDangerLevelLabel - 危険度ラベル(一元定義委譲)", () => {
+    it("レベル5は4にクランプされ いちばんちゅうい を返す", () => {
+      expect(getDangerLevelLabel(5)).toBe("いちばんちゅうい")
     })
 
-    it("レベル4は 危険 を返す", () => {
-      expect(getDangerLevelLabel(4)).toBe("危険")
+    it("レベル4は いちばんちゅうい を返す", () => {
+      expect(getDangerLevelLabel(4)).toBe("いちばんちゅうい")
     })
 
-    it("レベル3は 注意 を返す", () => {
-      expect(getDangerLevelLabel(3)).toBe("注意")
+    it("レベル3は とてもちゅうい を返す", () => {
+      expect(getDangerLevelLabel(3)).toBe("とてもちゅうい")
     })
 
-    it("レベル2は やや注意 を返す", () => {
-      expect(getDangerLevelLabel(2)).toBe("やや注意")
+    it("レベル2は ちゅうい を返す", () => {
+      expect(getDangerLevelLabel(2)).toBe("ちゅうい")
     })
 
-    it("レベル1は 低リスク を返す", () => {
-      expect(getDangerLevelLabel(1)).toBe("低リスク")
+    it("レベル1は きをつけて を返す", () => {
+      expect(getDangerLevelLabel(1)).toBe("きをつけて")
     })
 
-    it("範囲外のレベル（0以下）は 低リスク を返す", () => {
-      expect(getDangerLevelLabel(0)).toBe("低リスク")
-      expect(getDangerLevelLabel(-1)).toBe("低リスク")
+    it("範囲外のレベル（0以下）は きをつけて を返す", () => {
+      expect(getDangerLevelLabel(0)).toBe("きをつけて")
+      expect(getDangerLevelLabel(-1)).toBe("きをつけて")
     })
 
-    it("範囲外のレベル（6以上）は 非常に危険 を返す", () => {
-      expect(getDangerLevelLabel(6)).toBe("非常に危険")
-      expect(getDangerLevelLabel(10)).toBe("非常に危険")
+    it("範囲外のレベル（6以上）は いちばんちゅうい を返す", () => {
+      expect(getDangerLevelLabel(6)).toBe("いちばんちゅうい")
+      expect(getDangerLevelLabel(10)).toBe("いちばんちゅうい")
     })
   })
 
-  describe("getDangerLevelColor - 危険度色", () => {
-    it("レベル5は非常に濃い赤を返す", () => {
-      expect(getDangerLevelColor(5)).toBe("#991b1b")
+  describe("getDangerLevelColor - 危険度色(一元定義委譲)", () => {
+    it("レベル5は4にクランプされ赤を返す", () => {
+      expect(getDangerLevelColor(5)).toBe("#ef4444")
     })
 
-    it("レベル4は濃い赤を返す", () => {
-      expect(getDangerLevelColor(4)).toBe("#dc2626")
+    it("レベル4は赤を返す", () => {
+      expect(getDangerLevelColor(4)).toBe("#ef4444")
     })
 
-    it("レベル3は赤を返す", () => {
-      expect(getDangerLevelColor(3)).toBe("#ef4444")
+    it("レベル3はオレンジを返す", () => {
+      expect(getDangerLevelColor(3)).toBe("#f97316")
     })
 
-    it("レベル2は黄色を返す", () => {
+    it("レベル2はアンバーを返す", () => {
       expect(getDangerLevelColor(2)).toBe("#f59e0b")
     })
 
-    it("レベル1は緑を返す", () => {
-      expect(getDangerLevelColor(1)).toBe("#22c55e")
+    it("レベル1は黄を返す(緑は使わない: 危険報告に安全色を出さない)", () => {
+      expect(getDangerLevelColor(1)).toBe("#eab308")
     })
 
-    it("範囲外のレベル（0以下）は緑を返す", () => {
-      expect(getDangerLevelColor(0)).toBe("#22c55e")
-      expect(getDangerLevelColor(-1)).toBe("#22c55e")
+    it("範囲外のレベル（0以下）は黄を返す", () => {
+      expect(getDangerLevelColor(0)).toBe("#eab308")
+      expect(getDangerLevelColor(-1)).toBe("#eab308")
     })
 
-    it("範囲外のレベル（6以上）は非常に濃い赤を返す", () => {
-      expect(getDangerLevelColor(6)).toBe("#991b1b")
-      expect(getDangerLevelColor(10)).toBe("#991b1b")
+    it("範囲外のレベル（6以上）は赤を返す", () => {
+      expect(getDangerLevelColor(6)).toBe("#ef4444")
+      expect(getDangerLevelColor(10)).toBe("#ef4444")
     })
   })
 

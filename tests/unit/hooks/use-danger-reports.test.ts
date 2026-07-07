@@ -148,6 +148,61 @@ describe("useDangerReports", () => {
     ])
   })
 
+  it("dangerLevel 1〜3 は .eq('danger_level', N) で絞り込む", async () => {
+    const { approvedBuilder } = renderUseDangerReports({
+      ...baseFilterOptions,
+      dangerLevel: "3",
+    })
+
+    await waitFor(() => expect(approvedBuilder.calls.order).toBeTruthy())
+
+    expect(approvedBuilder.calls.eq).toEqual([["danger_level", 3]])
+    expect(approvedBuilder.calls.gte).toBeUndefined()
+  })
+
+  it("dangerLevel 4(表示上の最上位)は gte で生データの4と5の両方にマッチさせる", async () => {
+    // 表示は1〜4にクランプするが、投稿フォームは5を生成しうる。
+    // レベル4フィルタで5が漏れると最危険の報告が絞り込みから消える。
+    const { approvedBuilder } = renderUseDangerReports({
+      ...baseFilterOptions,
+      dangerLevel: "4",
+    })
+
+    await waitFor(() => expect(approvedBuilder.calls.order).toBeTruthy())
+
+    expect(approvedBuilder.calls.gte).toEqual([["danger_level", 4]])
+    expect(approvedBuilder.calls.eq).toBeUndefined()
+  })
+
+  it("dangerType に suspicious を指定すると .eq('danger_type', 'suspicious') で絞り込む", async () => {
+    const { approvedBuilder } = renderUseDangerReports({
+      ...baseFilterOptions,
+      dangerType: "suspicious",
+    })
+
+    await waitFor(() => expect(approvedBuilder.calls.order).toBeTruthy())
+
+    expect(approvedBuilder.calls.eq).toEqual([["danger_type", "suspicious"]])
+  })
+
+  it("自分の pending 報告クエリにもタイプ・危険度フィルタを適用する", async () => {
+    // pending 側に適用し忘れると、絞り込み中も審査中リストに全件出続ける
+    const { pendingBuilder } = renderUseDangerReports(
+      { ...baseFilterOptions, dangerType: "traffic", dangerLevel: "4" },
+      [],
+      "user-1",
+    )
+
+    await waitFor(() => expect(pendingBuilder.calls.order).toBeTruthy())
+
+    expect(pendingBuilder.calls.eq).toEqual([
+      ["status", "pending"],
+      ["user_id", "user-1"],
+      ["danger_type", "traffic"],
+    ])
+    expect(pendingBuilder.calls.gte).toEqual([["danger_level", 4]])
+  })
+
   it("enabled=false の間は取得を開始しない", async () => {
     const { approvedBuilder } = renderUseDangerReports(baseFilterOptions, [], null, false)
 
