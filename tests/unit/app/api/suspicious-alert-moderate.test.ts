@@ -19,6 +19,11 @@ vi.mock("@/lib/upstash-rate-limiter", async () => {
   }
 })
 
+// Push送信はモック(routeテストはpush_subscriptionsテーブルに依存させない)
+vi.mock("@/lib/web-push", () => ({
+  sendPushToUser: vi.fn().mockResolvedValue(1),
+}))
+
 // AI審査はヒューリスティック相当の決定論的な実装に差し替える
 // （routeテストはAPIキーやネットワークに依存させない）。
 vi.mock("@/lib/suspicious-alert-moderation-ai", async () => {
@@ -38,6 +43,7 @@ import { createServerClient } from "@/lib/supabase-server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { moderateSuspiciousAlertWithAi } from "@/lib/suspicious-alert-moderation-ai"
 import { checkApiRateLimit } from "@/lib/upstash-rate-limiter"
+import { sendPushToUser } from "@/lib/web-push"
 
 const mockUser = { id: "user-1" }
 
@@ -224,6 +230,53 @@ describe("/api/suspicious-alert/moderate", () => {
     expect(vi.mocked(moderateSuspiciousAlertWithAi)).toHaveBeenCalledWith(
       expect.objectContaining({ hasImage: false, imageDataUrls: [] }),
     )
+  })
+
+  it("審査確定時に投稿者本人へ結果のPush通知を送る", async () => {
+    const updatedReport = {
+      ...baseReport,
+      status: "approved",
+      ai_moderation_status: "approved",
+    }
+    mockAdmin(baseReport, updatedReport)
+
+    const res = await POST(makeRequest({ reportId: "report-1" }))
+
+    expect(res.status).toBe(200)
+    expect(vi.mocked(sendPushToUser)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        tag: "moderation-result-report-1",
+        data: expect.objectContaining({ type: "danger_reports" }),
+      }),
+      "danger_reports",
+    )
+  })
+
+  it("Push送信が失敗しても審査結果の保存は成功として返す", async () => {
+    const updatedReport = {
+      ...baseReport,
+      status: "approved",
+      ai_moderation_status: "approved",
+    }
+    mockAdmin(baseReport, updatedReport)
+    vi.mocked(sendPushToUser).mockRejectedValueOnce(new Error("push down"))
+
+    const res = await POST(makeRequest({ reportId: "report-1" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.verdict.status).toBe("approved")
+  })
+
+  it("すでに審査済み(update不成立)のときは通知を送らない", async () => {
+    mockAdmin(baseReport, null)
+
+    const res = await POST(makeRequest({ reportId: "report-1" }))
+
+    expect(res.status).toBe(409)
+    expect(vi.mocked(sendPushToUser)).not.toHaveBeenCalled()
   })
 
   it("returns a configuration error when the admin client is unavailable", async () => {

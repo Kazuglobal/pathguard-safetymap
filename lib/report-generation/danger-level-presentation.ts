@@ -1,8 +1,12 @@
 /**
  * Danger Level Presentation
  *
- * 危険レベル(danger_level: 1〜4)の表示定義を一元化するモジュール。
- * レポート(地図ピン・カード帯)とダイアログ(バッジ)の両方がここを参照する。
+ * 危険レベル(danger_level)の表示定義を一元化するモジュール。
+ * レポート(地図ピン・カード帯)・ダイアログ(バッジ)・ライブ地図マーカー・
+ * AR表示・サイドバー・詳細モーダルのすべてがここを参照する。
+ *
+ * 入力データは1〜5がありうる(投稿フォームは5段階)が、表示は1〜4に
+ * クランプする。5は4(いちばんちゅうい)と同じ最危険表示になる。
  *
  * 背景: データは1〜4段階だが、かつて表示側が1〜3しか扱っておらず、
  * レベル4(最危険)が「低」ラベル・黄色ピンで描画されるバグがあった。
@@ -33,6 +37,17 @@ export interface DangerLevelPresentation {
   kidPhrase: string
   /** shadcn Badge の variant */
   badgeVariant: 'outline' | 'secondary' | 'destructive'
+  /** バッジ用 Tailwind クラス(bg-*-100 text-*-800 border-*-200) */
+  badgeClass: string
+  /** 一覧カード左端のアクセント(border-l-*-500) */
+  borderAccentClass: string
+  /** 詳細ヘッダー等の面配色。band は colorHex と同色相 */
+  surface: {
+    bg: string
+    text: string
+    border: string
+    band: string
+  }
 }
 
 const PRESENTATIONS: Record<DangerLevel, DangerLevelPresentation> = {
@@ -44,6 +59,14 @@ const PRESENTATIONS: Record<DangerLevel, DangerLevelPresentation> = {
     pinColor: 'eab308',
     kidPhrase: 'すこし きをつけよう',
     badgeVariant: 'outline',
+    badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    borderAccentClass: 'border-l-yellow-500',
+    surface: {
+      bg: 'bg-yellow-50',
+      text: 'text-yellow-800',
+      border: 'border-yellow-200',
+      band: 'bg-yellow-500',
+    },
   },
   2: {
     level: 2,
@@ -53,6 +76,14 @@ const PRESENTATIONS: Record<DangerLevel, DangerLevelPresentation> = {
     pinColor: 'f59e0b',
     kidPhrase: 'ちゃんと みて とおろう',
     badgeVariant: 'secondary',
+    badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+    borderAccentClass: 'border-l-amber-500',
+    surface: {
+      bg: 'bg-amber-50',
+      text: 'text-amber-800',
+      border: 'border-amber-200',
+      band: 'bg-amber-500',
+    },
   },
   3: {
     level: 3,
@@ -62,6 +93,14 @@ const PRESENTATIONS: Record<DangerLevel, DangerLevelPresentation> = {
     pinColor: 'f97316',
     kidPhrase: 'かならず とまって かくにん',
     badgeVariant: 'destructive',
+    badgeClass: 'bg-orange-100 text-orange-800 border-orange-200',
+    borderAccentClass: 'border-l-orange-500',
+    surface: {
+      bg: 'bg-orange-50',
+      text: 'text-orange-800',
+      border: 'border-orange-200',
+      band: 'bg-orange-500',
+    },
   },
   4: {
     level: 4,
@@ -71,6 +110,14 @@ const PRESENTATIONS: Record<DangerLevel, DangerLevelPresentation> = {
     pinColor: 'ef4444',
     kidPhrase: 'おうちのひとと いっしょに かくにんしてね',
     badgeVariant: 'destructive',
+    badgeClass: 'bg-red-100 text-red-800 border-red-200',
+    borderAccentClass: 'border-l-red-500',
+    surface: {
+      bg: 'bg-red-50',
+      text: 'text-red-800',
+      border: 'border-red-200',
+      band: 'bg-red-500',
+    },
   },
 }
 
@@ -86,4 +133,13 @@ function clampDangerLevel(level: number): DangerLevel {
 
 export function getDangerLevelPresentation(level: number): DangerLevelPresentation {
   return PRESENTATIONS[clampDangerLevel(level)]
+}
+
+/**
+ * バッジ等で使う「★段階+子ども向けラベル」の合成表示(例: ★★★☆ とてもちゅうい)。
+ * 各画面で `${stars} ${kidLabel}` を再実装しないこと(表記ズレの温床になる)。
+ */
+export function formatDangerLevelBadgeText(level: number): string {
+  const presentation = getDangerLevelPresentation(level)
+  return `${presentation.stars} ${presentation.kidLabel}`
 }

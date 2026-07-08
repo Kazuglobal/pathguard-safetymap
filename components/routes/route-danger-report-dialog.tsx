@@ -24,7 +24,8 @@ import {
   getDangerImageOptions,
   resolveDangerDisplayImageUrl,
 } from "@/lib/report-generation/route-danger-report"
-import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
+import { getDangerLevelPresentation, formatDangerLevelBadgeText } from "@/lib/report-generation/danger-level-presentation"
+import { assignDangerMarkerLabels } from "@/lib/report-generation/report-map"
 import {
   createDangerReportSignedUrl,
   useDangerReportSignedImageUrls,
@@ -40,14 +41,12 @@ interface RouteDangerReportDialogProps {
   route: UserRoute
 }
 
-function formatDangerLevelBadge(level: number): string {
-  const presentation = getDangerLevelPresentation(level)
-  return `${presentation.stars} ${presentation.kidLabel}`
-}
+const formatDangerLevelBadge = formatDangerLevelBadgeText
 
 interface DangerListItemProps {
   danger: DangerReport
-  index: number
+  /** 地図ピンと同一の採番(assignDangerMarkerLabels由来)。index+1に戻さないこと */
+  markerLabel: string
   selectedImageUrl?: string
   onImageSelectionChange: (dangerId: string, imageUrl: string) => void
   supabase: SupabaseClient | null
@@ -55,7 +54,7 @@ interface DangerListItemProps {
 
 function DangerListItem({
   danger,
-  index,
+  markerLabel,
   selectedImageUrl,
   onImageSelectionChange,
   supabase,
@@ -73,7 +72,7 @@ function DangerListItem({
   return (
     <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
       <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-primary/10 text-primary text-xs font-medium rounded-full">
-        {index + 1}
+        {markerLabel}
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -147,6 +146,8 @@ export function RouteDangerReportDialog({
   const [includeSchoolSummary, setIncludeSchoolSummary] = useState(false)
 
   const summary = useMemo(() => createReportSummary(dangers), [dangers])
+  // PDF/画像の地図ピンと同じ採番を画面リストにも使う(番号ズレ防止)
+  const markerLabels = useMemo(() => assignDangerMarkerLabels(dangers), [dangers])
 
   useEffect(() => {
     setSelectedImageUrls((prev) => {
@@ -319,11 +320,11 @@ export function RouteDangerReportDialog({
               {dangers.length > 0 ? (
                 <ScrollArea className="h-48">
                   <div className="space-y-2 pr-4">
-                    {dangers.map((danger, index) => (
+                    {dangers.map((danger) => (
                       <DangerListItem
                         key={danger.id}
                         danger={danger}
-                        index={index}
+                        markerLabel={markerLabels.get(danger.id) ?? "?"}
                         selectedImageUrl={selectedImageUrls[danger.id]}
                         onImageSelectionChange={handleImageSelectionChange}
                         supabase={supabase}

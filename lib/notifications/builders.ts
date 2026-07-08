@@ -73,6 +73,43 @@ export function buildDangerReportPushPayload(params: {
   }
 }
 
+/**
+ * 不審者情報のAI一次審査の結果を投稿者本人へ知らせる通知。
+ *
+ * ロック画面に出るため、審査理由(個人情報検出等)は本文に含めない。
+ * 詳細な理由はアプリ内の報告詳細(getReportStatusPresentation)で見せる。
+ */
+export function buildModerationResultPushPayload(params: {
+  reportId: string
+  verdictStatus: "approved" | "needs_review" | "rejected"
+}): PushPayload {
+  const content = {
+    approved: {
+      title: "報告が公開されました",
+      body: "ご報告ありがとうございます。不審者情報が地図に公開されました。",
+    },
+    needs_review: {
+      title: "報告を確認しています",
+      body: "いただいた報告は追加の確認が必要と判定されました。結果までお待ちください。",
+    },
+    rejected: {
+      title: "報告は公開されませんでした",
+      body: "審査の結果、公開を見送りました。理由はアプリの報告詳細で確認できます。",
+    },
+  }[params.verdictStatus]
+
+  return {
+    ...content,
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
+    tag: `moderation-result-${params.reportId}`,
+    data: {
+      url: `/map?reportId=${params.reportId}`,
+      type: 'danger_reports',
+    },
+  }
+}
+
 export function buildNewsPushPayload(params: {
   slug: string
   title: string

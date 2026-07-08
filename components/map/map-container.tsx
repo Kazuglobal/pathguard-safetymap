@@ -10,16 +10,19 @@ import type { DangerReport } from "@/lib/types"
 import MapSearch from "./map-search"
 import ImagePreviewDialog from "../danger-report/image-preview-dialog"
 import DangerReportDetailModal from "../danger-report/danger-report-detail-modal" // 以前の履歴から推測
+import { findNearbyReports } from "@/lib/nearby-reports"
 import { useToast } from "@/components/ui/use-toast"
 import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
+import { useInitialMapView } from "@/hooks/use-initial-map-view"
+import { CURRENT_LOCATION_ZOOM } from "@/lib/map-center"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { useAdminStatus } from "@/hooks/use-admin-status"
-import { useDangerReports } from "@/hooks/use-danger-reports"
+import { useDangerReports, type DangerReportBounds } from "@/hooks/use-danger-reports"
 import { useDangerReportSubmit, type SubmittedReportState } from "@/hooks/use-danger-report-submit"
 import { useMapImageOverlays, type MapImageOverlayEntry } from "@/hooks/use-map-image-overlays"
 import { useDangerMarkers } from "@/hooks/use-danger-markers"
@@ -58,6 +61,7 @@ import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
 import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
+import { getStoredRegion, setStoredRegion } from "@/lib/user-region"
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -80,11 +84,14 @@ type ActiveARKind = "nearby" | "parent_child_route"
 interface MapContainerProps {
   autoOpenReport?: boolean
   preferredRouteId?: string | null
+  /** Push通知などのディープリンクから最初に開く報告ID */
+  initialReportId?: string | null
 }
 
 export default function MapContainer({
   autoOpenReport = false,
   preferredRouteId = null,
+  initialReportId = null,
 }: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -101,14 +108,28 @@ export default function MapContainer({
     dangerLevel: "all",
     dateRange: "all",
     showPending: true,
+    prefecture: getStoredRegion(),
   })
+  // 地図の現在の表示範囲（bbox）。大量報告時に全件取得しないための絞り込みに使う。
+  const [mapBounds, setMapBounds] = useState<DangerReportBounds | null>(null)
+  const boundsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dangerReportsFilterOptions = useMemo(
+    () => ({ ...filterOptions, bounds: mapBounds }),
+    [filterOptions, mapBounds],
+  )
   // 危険レポート取得（公開済み＋自分の pending）。挙動はそのままフックへ抽出。
   const {
     dangerReports,
     pendingReports,
     setDangerReports,
     setPendingReports,
-  } = useDangerReports({ supabase, filterOptions, toast, setIsLoading })
+  } = useDangerReports({
+    supabase,
+    filterOptions: dangerReportsFilterOptions,
+    toast,
+    setIsLoading,
+    enabled: Boolean(mapBounds),
+  })
   const [mapError, setMapError] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState("streets-v12")
   const [isARMode, setIsARMode] = useState(false)
@@ -119,6 +140,7 @@ export default function MapContainer({
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
   const selectionMarker = useRef<mapboxgl.Marker | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false) // ReportDetailModal 用
+  const openedDeepLinkReportIdRef = useRef<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // モバイルでのサイドバー表示状態
   const clickListenerAdded = useRef(false)
   const styleChangeInProgress = useRef(false)
@@ -136,7 +158,18 @@ export default function MapContainer({
   const {
     routes: userRoutes,
     primaryRoute,
+    isLoading: isUserRoutesLoading,
   } = useUserRoutes()
+  // 初期表示センター（登録ルート → 現在地 → 東京フォールバックの優先順で決定）
+  const {
+    initialView: initialMapView,
+    lateCurrentLocation,
+  } = useInitialMapView({
+    primaryRoute,
+    routes: userRoutes,
+    isRoutesLoading: Boolean(isUserRoutesLoading),
+  })
+  const lateLocationConsumedRef = useRef(false)
   const [selectedUserRouteId, setSelectedUserRouteId] = useState<string | null>(null)
   const [hazardLayerVisibility, setHazardLayerVisibility] = useState<Record<HazardType, boolean>>({
     flood: false,
@@ -149,6 +182,41 @@ export default function MapContainer({
   const [hazardImageError, setHazardImageError] = useState<string | null>(null)
   const [isHazardImageLoading, setIsHazardImageLoading] = useState(false)
   const [mapStyleSyncToken, setMapStyleSyncToken] = useState(0)
+
+  // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
+  // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
+  useEffect(() => {
+    if (!supabase || !initialReportId) return
+    if (openedDeepLinkReportIdRef.current === initialReportId) return
+    openedDeepLinkReportIdRef.current = initialReportId
+
+    let cancelled = false
+    const openDeepLinkedReport = async () => {
+      const { data, error } = await supabase
+        .from("danger_reports")
+        .select("*")
+        .eq("id", initialReportId)
+        .maybeSingle()
+
+      if (cancelled) return
+      if (error || !data) {
+        toast({
+          title: "報告を表示できません",
+          description: "報告が削除されたか、表示する権限がありません。",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedReport(data as DangerReport)
+      setIsDetailModalOpen(true)
+    }
+
+    void openDeepLinkedReport()
+    return () => {
+      cancelled = true
+    }
+  }, [initialReportId, supabase, toast])
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
@@ -510,8 +578,9 @@ export default function MapContainer({
   };
 
   // --- Map Initialization ---
+  // initialMapView が確定するまで初期化を待つ（ルート取得中のみ。東京が一瞬見えるのを防ぐ）
   useEffect(() => {
-    if (!mapContainer.current || mapInitialized.current || !supabase) return;
+    if (!mapContainer.current || mapInitialized.current || !supabase || !initialMapView) return;
 
     if (!mapboxgl.supported()) {
       setMapError("このブラウザはMapboxをサポートしていません。WebGLが有効か確認してください。"); setIsLoading(false); return;
@@ -533,8 +602,8 @@ export default function MapContainer({
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: `mapbox://styles/mapbox/${mapStyle}`, // Initial style from state
-        center: [139.6917, 35.6895], // Tokyo center
-        zoom: 12,
+        center: initialMapView.center,
+        zoom: initialMapView.zoom,
         attributionControl: true,
       });
 
@@ -574,6 +643,24 @@ export default function MapContainer({
           })
         }
         map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
+
+        // 危険レポートのbbox絞り込み用に、表示範囲を初期化＆パン/ズームのたびに更新する
+        const updateMapBounds = () => {
+          if (!map.current) return
+          const bounds = map.current.getBounds()
+          if (!bounds) return
+          setMapBounds({
+            minLng: bounds.getWest(),
+            minLat: bounds.getSouth(),
+            maxLng: bounds.getEast(),
+            maxLat: bounds.getNorth(),
+          })
+        }
+        updateMapBounds()
+        map.current.on("moveend", () => {
+          if (boundsDebounceRef.current) clearTimeout(boundsDebounceRef.current)
+          boundsDebounceRef.current = setTimeout(updateMapBounds, 300)
+        })
       });
     } catch (error: any) {
       console.error("Error initializing map:", error);
@@ -582,6 +669,8 @@ export default function MapContainer({
     }
 
     return () => {
+      if (boundsDebounceRef.current) clearTimeout(boundsDebounceRef.current)
+      boundsDebounceRef.current = null
       accidentMarkerRef.current?.remove()
       accidentMarkerRef.current = null
       if (accidentMarkerTimerRef.current) clearTimeout(accidentMarkerTimerRef.current)
@@ -596,7 +685,16 @@ export default function MapContainer({
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase]); // Add supabase dependency
+  }, [supabase, initialMapView]);
+
+  // 東京フォールバックで初期化した後に現在地が取れた場合、一度だけそこへ移動する
+  useEffect(() => {
+    if (!lateCurrentLocation || lateLocationConsumedRef.current) return
+    if (!map.current || !mapInitialized.current) return
+    lateLocationConsumedRef.current = true
+    flyToLocation(lateCurrentLocation[0], lateCurrentLocation[1], CURRENT_LOCATION_ZOOM)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lateCurrentLocation, isLoading])
 
   useEffect(() => {
     if (!map.current || !mapInitialized.current || !navigationControlRef.current) return
@@ -847,9 +945,13 @@ export default function MapContainer({
         next.dangerType === prev.dangerType &&
         next.dangerLevel === prev.dangerLevel &&
         next.dateRange === prev.dateRange &&
-        next.showPending === prev.showPending
+        next.showPending === prev.showPending &&
+        next.prefecture === prev.prefecture
       ) {
         return prev
+      }
+      if (next.prefecture !== prev.prefecture) {
+        setStoredRegion(next.prefecture)
       }
       return next
     });
@@ -923,6 +1025,8 @@ export default function MapContainer({
   // GPS位置取得成功時: 地図を移動してフォームを開く
   useEffect(() => {
     if (!gpsLocation || gpsConsumedRef.current) return
+    // 地図初期化前に消費すると flyTo が空振りするため、load 完了(isLoading=false)まで待つ
+    if (!map.current || !mapInitialized.current) return
     if (!isValidCoordinates(gpsLocation[1], gpsLocation[0])) {
       resetGPSLocation()
       toast({
@@ -947,7 +1051,7 @@ export default function MapContainer({
       description: "現在地は端末の推定値です。地図で確認・調整してから報告してください。",
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gpsLocation])
+  }, [gpsLocation, isLoading])
   // --- ▲▲▲ 現在地で報告ハンドラー ▲▲▲ ---
 
   const mapDisplayOverlayOptions = useMemo(
@@ -1142,6 +1246,20 @@ export default function MapContainer({
           map={map.current}
           geoJSON={accidentHeatmap.geoJSON}
           isVisible={accidentHeatmap.isVisible}
+          onShowNearbyReports={([lng, lat]) => {
+            // 事故地点の300m以内で最寄りの危険報告を開く(相互参照導線)
+            const nearby = findNearbyReports({
+              latitude: lat,
+              longitude: lng,
+              reports: combinedReports,
+            })
+            if (nearby.length === 0) {
+              toast({ title: "この近くに報告はありません" })
+              return
+            }
+            setSelectedReport(nearby[0].report)
+            setIsDetailModalOpen(true)
+          }}
         />
 
         {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
@@ -1245,6 +1363,8 @@ export default function MapContainer({
           onClose={() => setIsDetailModalOpen(false)}
           report={selectedReport}
           isAdmin={isAdmin}
+          allReports={combinedReports}
+          onNearbyReportSelect={(nearby) => setSelectedReport(nearby)}
           onAccidentNavigate={(coords) => {
             if (!isValidCoordinates(coords[1], coords[0])) {
               toast({

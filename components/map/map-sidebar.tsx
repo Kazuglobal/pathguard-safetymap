@@ -5,13 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChevronLeft, ChevronRight, AlertTriangle, MapPin, Trash2, Car, Shield, HelpCircle, X, RotateCcw } from "lucide-react"
+import { ChevronLeft, ChevronRight, AlertTriangle, MapPin, Trash2, Car, Shield, HelpCircle, UserX, X, RotateCcw } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { getRegionChipOptions } from "@/lib/user-region"
+import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
+import { getDangerTypeLabel } from "@/components/danger-report/detail/report-detail-utils"
 
 interface MapSidebarProps {
   dangerReports: DangerReport[]
@@ -24,6 +27,7 @@ interface MapSidebarProps {
     dangerLevel: string
     dateRange: string
     showPending: boolean // 審査中の報告を表示するかどうかのフラグを追加
+    prefecture: string // 地域(都道府県)での絞り込み。NATIONWIDE("全国")で無絞り込み
   }
   onReportSelect: (report: DangerReport) => void
   isAdmin?: boolean // 管理者フラグ（オプショナル）
@@ -52,6 +56,8 @@ export default function MapSidebar({
   const isMobileView = isMobile || isMobileDevice
 
   // フィルターの状態を計算
+  // 地域は「ホーム地域」として持続させたい設定なので、一時的なフィルターの
+  // 件数・リセット対象には含めない（resetFilters も参照）。
   const getActiveFiltersCount = () => {
     let count = 0
     if (filterOptions.dangerType !== "all") count++
@@ -71,25 +77,10 @@ export default function MapSidebar({
   const resetFilters = () => {
     onFilterChange({
       dangerType: "all",
-      dangerLevel: "all", 
+      dangerLevel: "all",
       dateRange: "all",
-      showPending: true
+      showPending: true,
     })
-  }
-
-  const getDangerTypeLabel = (type: string) => {
-    switch (type) {
-      case "traffic":
-        return "交通危険"
-      case "crime":
-        return "犯罪危険"
-      case "disaster":
-        return "災害危険"
-      case "other":
-        return "その他"
-      default:
-        return type
-    }
   }
 
   const getDangerTypeIcon = (type: string) => {
@@ -100,6 +91,8 @@ export default function MapSidebar({
         return <Shield className="h-4 w-4 text-red-600" />
       case "disaster":
         return <AlertTriangle className="h-4 w-4 text-orange-500" />
+      case "suspicious":
+        return <UserX className="h-4 w-4 text-orange-600" />
       case "other":
         return <HelpCircle className="h-4 w-4 text-gray-600" />
       default:
@@ -107,58 +100,14 @@ export default function MapSidebar({
     }
   }
 
-  const getDangerLevelClass = (level: number) => {
-    switch (level) {
-      case 1:
-        return "bg-green-100 text-green-800 border-green-200"
-      case 2:
-        return "bg-green-100 text-green-800 border-green-200"
-      case 3:
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      case 4:
-        return "bg-orange-100 text-orange-800 border-orange-200"
-      case 5:
-        return "bg-red-100 text-red-800 border-red-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
-  // 危険度の色分け（マップマーカー用）
-  const getDangerLevelColor = (level: number) => {
-    switch (level) {
-      case 1:
-        return "#22c55e" // green-500
-      case 2:
-        return "#22c55e" // green-500
-      case 3:
-        return "#eab308" // yellow-500
-      case 4:
-        return "#f97316" // orange-500
-      case 5:
-        return "#ef4444" // red-500
-      default:
-        return "#6b7280" // gray-500
-    }
-  }
+  // 危険度の配色・段階表示は danger-level-presentation.ts の一元定義に委譲
+  // (表示は1〜4にクランプ。独自の色分岐を復活させないこと)
+  const getDangerLevelClass = (level: number) =>
+    getDangerLevelPresentation(level).badgeClass
 
   // 危険度のボーダー色（カード用）
-  const getDangerLevelBorderColor = (level: number) => {
-    switch (level) {
-      case 1:
-        return "border-l-green-500"
-      case 2:
-        return "border-l-green-500"
-      case 3:
-        return "border-l-yellow-500"
-      case 4:
-        return "border-l-orange-500"
-      case 5:
-        return "border-l-red-500"
-      default:
-        return "border-l-gray-500"
-    }
-  }
+  const getDangerLevelBorderColor = (level: number) =>
+    getDangerLevelPresentation(level).borderAccentClass
 
   return (
     <div
@@ -232,6 +181,24 @@ export default function MapSidebar({
                   </div>
                 )}
                 <div className="space-y-1">
+                  <label className="text-sm font-medium">地域</label>
+                  <Select
+                    value={filterOptions.prefecture}
+                    onValueChange={(value) => onFilterChange({ prefecture: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="全国" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getRegionChipOptions(filterOptions.prefecture).map((pref) => (
+                        <SelectItem key={pref} value={pref}>
+                          {pref}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
                   <label className="text-sm font-medium">危険タイプ</label>
                   <Select
                     value={filterOptions.dangerType}
@@ -245,6 +212,7 @@ export default function MapSidebar({
                       <SelectItem value="traffic">交通危険</SelectItem>
                       <SelectItem value="crime">犯罪危険</SelectItem>
                       <SelectItem value="disaster">災害危険</SelectItem>
+                      <SelectItem value="suspicious">不審者情報</SelectItem>
                       <SelectItem value="other">その他</SelectItem>
                     </SelectContent>
                   </Select>
@@ -272,11 +240,16 @@ export default function MapSidebar({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">すべて</SelectItem>
-                      <SelectItem value="1">レベル1（軽度）</SelectItem>
-                      <SelectItem value="2">レベル2</SelectItem>
-                      <SelectItem value="3">レベル3（中度）</SelectItem>
-                      <SelectItem value="4">レベル4</SelectItem>
-                      <SelectItem value="5">レベル5（重度）</SelectItem>
+                      {/* 表示定義(1〜4)と同じ段階・ラベルで選ばせる。
+                          「4」は生データのレベル4と5の両方にマッチする */}
+                      {([1, 2, 3, 4] as const).map((level) => {
+                        const presentation = getDangerLevelPresentation(level)
+                        return (
+                          <SelectItem key={level} value={String(level)}>
+                            {presentation.stars} {presentation.kidLabel}
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -329,7 +302,7 @@ export default function MapSidebar({
                         onClick={() => onReportSelect(report)}
                         role="button"
                         tabIndex={0}
-                        aria-label={`${report.title} - ${getDangerTypeLabel(report.danger_type)} - 危険度レベル${report.danger_level}`}
+                        aria-label={`${report.title} - ${getDangerTypeLabel(report.danger_type)} - あぶなさ ${getDangerLevelPresentation(report.danger_level).kidLabel}`}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
@@ -354,7 +327,7 @@ export default function MapSidebar({
                               </div>
                             </div>
                             <Badge variant="outline" className={getDangerLevelClass(report.danger_level)}>
-                              {report.danger_level}
+                              {getDangerLevelPresentation(report.danger_level).stars}
                             </Badge>
                           </div>
                           <div className="mt-2 flex items-center justify-between">
@@ -399,7 +372,7 @@ export default function MapSidebar({
                         onClick={() => onReportSelect(report)}
                         role="button"
                         tabIndex={0}
-                        aria-label={`${report.title} - ${getDangerTypeLabel(report.danger_type)} - 危険度レベル${report.danger_level}`}
+                        aria-label={`${report.title} - ${getDangerTypeLabel(report.danger_type)} - あぶなさ ${getDangerLevelPresentation(report.danger_level).kidLabel}`}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
@@ -419,7 +392,7 @@ export default function MapSidebar({
                               </div>
                             </div>
                             <Badge variant="outline" className={getDangerLevelClass(report.danger_level)}>
-                              {report.danger_level}
+                              {getDangerLevelPresentation(report.danger_level).stars}
                             </Badge>
                           </div>
                           <div className="mt-2 flex items-center justify-between">

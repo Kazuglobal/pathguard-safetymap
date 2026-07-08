@@ -80,5 +80,44 @@ describe('danger-level-presentation', () => {
         expect(`#${p.pinColor}`).toBe(p.colorHex)
       }
     })
+
+    it('provides Tailwind classes for every level (badge/border-accent/surface)', () => {
+      for (let level = 1; level <= DANGER_LEVEL_MAX; level += 1) {
+        const p = getDangerLevelPresentation(level)
+        expect(p.badgeClass).toMatch(/^bg-\w+-100 text-\w+-800 border-\w+-200$/)
+        expect(p.borderAccentClass).toMatch(/^border-l-\w+-500$/)
+        expect(p.surface.bg).toMatch(/^bg-\w+-50$/)
+        expect(p.surface.text).toMatch(/^text-\w+-800$/)
+        expect(p.surface.border).toMatch(/^border-\w+-200$/)
+        expect(p.surface.band).toMatch(/^bg-\w+-500$/)
+      }
+    })
+
+    it('never uses green for any level (a danger report must not look safe)', () => {
+      for (let level = 1; level <= DANGER_LEVEL_MAX; level += 1) {
+        const p = getDangerLevelPresentation(level)
+        const allClasses = [
+          p.badgeClass,
+          p.borderAccentClass,
+          p.surface.bg,
+          p.surface.text,
+          p.surface.border,
+          p.surface.band,
+        ].join(' ')
+        expect(allClasses).not.toMatch(/green|lime|emerald/)
+        expect(p.colorHex).not.toBe('#22c55e')
+      }
+    })
+
+    it('uses the same hue family within a level (badge/accent/surface do not mix hues)', () => {
+      for (let level = 1; level <= DANGER_LEVEL_MAX; level += 1) {
+        const p = getDangerLevelPresentation(level)
+        const hue = p.badgeClass.match(/^bg-(\w+)-100/)?.[1]
+        expect(hue).toBeTruthy()
+        expect(p.borderAccentClass).toBe(`border-l-${hue}-500`)
+        expect(p.surface.bg).toBe(`bg-${hue}-50`)
+        expect(p.surface.band).toBe(`bg-${hue}-500`)
+      }
+    })
   })
 })

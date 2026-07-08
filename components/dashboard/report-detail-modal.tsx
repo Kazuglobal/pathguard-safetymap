@@ -30,6 +30,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
 import { useOptionalSupabase } from "@/components/providers/supabase-provider"
 import { useDangerReportSignedImageUrl, useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
+import { getDangerLevelPresentation, formatDangerLevelBadgeText } from "@/lib/report-generation/danger-level-presentation"
+import { getDangerTypeLabel, getReportStatusPresentation } from "@/components/danger-report/detail/report-detail-utils"
 
 interface ReportDetailModalProps {
   isOpen: boolean
@@ -129,61 +131,19 @@ export default function ReportDetailModal({
     }
   }
 
-  const getDangerTypeLabel = (type: string) => {
-    switch (type) {
-      case "traffic":
-        return "交通危険"
-      case "crime":
-        return "犯罪危険"
-      case "disaster":
-        return "災害危険"
-      case "other":
-        return "その他"
-      default:
-        return type
-    }
-  }
+  // 危険度の配色・段階表示は danger-level-presentation.ts の一元定義に委譲
+  // (表示は1〜4にクランプ。独自の色分岐を復活させないこと)
+  const getDangerLevelClass = (level: number) =>
+    getDangerLevelPresentation(level).badgeClass
 
-  const getDangerLevelClass = (level: number) => {
-    switch (level) {
-      case 1:
-        return "bg-green-100 text-green-800 border-green-200"
-      case 2:
-        return "bg-lime-100 text-lime-800 border-lime-200"
-      case 3:
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      case 4:
-        return "bg-orange-100 text-orange-800 border-orange-200"
-      case 5:
-        return "bg-red-100 text-red-800 border-red-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
+  // 状態表示は getReportStatusPresentation に委譲(ラベル・配色を全画面で一致させる)
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            審査中
-          </Badge>
-        )
-      case "approved":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-            承認済み
-          </Badge>
-        )
-      case "resolved":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            解決済み
-          </Badge>
-        )
-      default:
-        return <Badge>{status}</Badge>
-    }
+    const presentation = getReportStatusPresentation({
+      status,
+      ai_moderation_status: report?.ai_moderation_status ?? null,
+      ai_moderation_reason: report?.ai_moderation_reason ?? null,
+    })
+    return <Badge className={presentation.badgeClass}>{presentation.label}</Badge>
   }
 
   const handleApprove = async () => {
@@ -221,17 +181,7 @@ export default function ReportDetailModal({
         <DialogHeader className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div
-              className={`w-4 h-4 rounded-full ${
-                report.danger_level === 1
-                  ? "bg-green-400"
-                  : report.danger_level === 2
-                  ? "bg-lime-400"
-                  : report.danger_level === 3
-                  ? "bg-yellow-400"
-                  : report.danger_level === 4
-                  ? "bg-orange-400"
-                  : "bg-red-400"
-              }`}
+              className={`w-4 h-4 rounded-full ${getDangerLevelPresentation(report.danger_level).surface.band}`}
             />
             <DialogTitle className="text-xl">{report.title}</DialogTitle>
             <DialogDescription className="sr-only">
@@ -456,7 +406,7 @@ export default function ReportDetailModal({
                     variant="outline"
                     className={getDangerLevelClass(report.danger_level)}
                   >
-                    レベル {report.danger_level}
+                    {formatDangerLevelBadgeText(report.danger_level)}
                   </Badge>
                 </div>
                 <div>

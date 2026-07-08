@@ -3,7 +3,13 @@
  * - カテゴリの日本語化
  * - 危険度表示の改善
  * - 不要情報の整理
+ *
+ * 危険度の色・ラベルは danger-level-presentation.ts の一元定義に委譲する。
+ * (かつてAR独自の5段階色・ラベルを持っていたが、画面ごとに表現が
+ *  食い違う原因になったため廃止。独自定義を復活させないこと)
  */
+
+import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
 
 /**
  * 危険タイプを日本語に変換
@@ -20,6 +26,7 @@ export function translateDangerType(type: string | null | undefined): string {
     traffic: "交通危険",
     construction: "工事中",
     crime: "防犯注意",
+    suspicious: "不審者情報",
     other: "その他",
   }
 
@@ -28,46 +35,20 @@ export function translateDangerType(type: string | null | undefined): string {
 
 /**
  * 危険度レベルを日本語ラベルに変換
- * @param level 危険度レベル（1-5）
- * @returns 日本語の危険度ラベル
+ * @param level 危険度レベル（データは1-5がありうる。表示は1-4にクランプ）
+ * @returns 子ども向けの危険度ラベル(一元定義の kidLabel)
  */
 export function getDangerLevelLabel(level: number): string {
-  if (level <= 1) {
-    return "低リスク"
-  }
-  if (level === 2) {
-    return "やや注意"
-  }
-  if (level === 3) {
-    return "注意"
-  }
-  if (level === 4) {
-    return "危険"
-  }
-  // level >= 5
-  return "非常に危険"
+  return getDangerLevelPresentation(level).kidLabel
 }
 
 /**
  * 危険度レベルに応じた色を返す
- * @param level 危険度レベル（1-5）
- * @returns カラーコード
+ * @param level 危険度レベル（データは1-5がありうる。表示は1-4にクランプ）
+ * @returns カラーコード(一元定義の colorHex)
  */
 export function getDangerLevelColor(level: number): string {
-  if (level <= 1) {
-    return "#22c55e" // 緑
-  }
-  if (level === 2) {
-    return "#f59e0b" // 黄色
-  }
-  if (level === 3) {
-    return "#ef4444" // 赤
-  }
-  if (level === 4) {
-    return "#dc2626" // 濃い赤
-  }
-  // level >= 5
-  return "#991b1b" // 非常に濃い赤
+  return getDangerLevelPresentation(level).colorHex
 }
 
 /**

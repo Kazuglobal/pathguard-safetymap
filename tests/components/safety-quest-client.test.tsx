@@ -45,6 +45,14 @@ const postedChallenge = {
   ],
 }
 
+const secondPostedChallenge = {
+  ...postedChallenge,
+  id: "report-2",
+  reportId: "2",
+  title: "公園前の横断歩道",
+  areaLabel: "福岡市 東区",
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -169,6 +177,22 @@ describe("SafetyQuestClient", () => {
     expect(within(hazardMission!).getByText("クリア!")).toBeInTheDocument()
   })
 
+  it("shows live point and coin totals on the daily screen instead of hardcoded values", async () => {
+    const user = userEvent.setup()
+    await openChallenge(user)
+    await findAllHazards(user)
+    await user.click(screen.getByRole("button", { name: "クイズへすすむ" }))
+    await user.click(screen.getByRole("button", { name: "とてもあぶない!" }))
+    await user.click(screen.getAllByRole("button", { name: "報酬へ" })[0])
+    await user.click(screen.getByRole("button", { name: "つぎのステージへ!" }))
+
+    // 2,840pt 初期値 + 危険発見50×3 + クイズ正解80 + クリア250 = 3,320pt
+    // コイン 1,250 初期値 + 10×3 + 20 + 90 = 1,390
+    expect(screen.queryByText("2,840 pt")).not.toBeInTheDocument()
+    expect(screen.getAllByText("3,320 pt").length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText("1,390").length).toBeGreaterThanOrEqual(2)
+  })
+
   it("offers a private practice photo upload with child privacy guidance", async () => {
     const user = userEvent.setup()
     render(<SafetyQuestClient />)
@@ -223,6 +247,77 @@ describe("SafetyQuestClient", () => {
     expect(body.userMarkers).toEqual([])
   })
 
+  it("unlocks collection items returned by the attempts API as rewardKeys", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ challenges: [postedChallenge] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: { rewardKeys: ["secret"] } }),
+      })
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<SafetyQuestClient />)
+    await screen.findByText("投稿写真の交差点")
+    await user.click(screen.getByRole("button", { name: "出発する" }))
+    await findAllHazards(user)
+    await user.click(screen.getByRole("button", { name: "クイズへすすむ" }))
+    await user.click(screen.getByRole("button", { name: "とてもあぶない!" }))
+    await user.click(screen.getAllByRole("button", { name: "報酬へ" })[0])
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/safety-quest/attempts",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+
+    await user.click(screen.getByRole("button", { name: /ガチャ・コレクション/ }))
+
+    const secretCard = screen.getByText("ひみつ").closest("div")
+    expect(secretCard).not.toBeNull()
+    await waitFor(() => {
+      expect(within(secretCard!).getByText("NEW!")).toBeInTheDocument()
+    })
+  })
+
+  it("starts the cycled challenge when a map stage node is tapped", async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ challenges: [postedChallenge, secondPostedChallenge] }),
+    }))
+
+    render(<SafetyQuestClient />)
+    await screen.findByText("投稿写真の交差点")
+
+    await user.click(screen.getByRole("button", { name: "みまもり坂" }))
+
+    expect(screen.getByText("危険なところをタップしよう!")).toBeInTheDocument()
+    expect(screen.getByText("公園前の横断歩道")).toBeInTheDocument()
+    expect(screen.getByText("福岡市 東区")).toBeInTheDocument()
+  })
+
+  it("keeps the sample challenge playable when the challenge feed request fails", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockRejectedValue(new Error("network down"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<SafetyQuestClient />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/safety-quest/challenges", expect.anything())
+    })
+
+    expect(screen.getByText("見通しの悪い交差点")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "出発する" }))
+    expect(screen.getByText("危険なところをタップしよう!")).toBeInTheDocument()
+    expect(screen.getByText("サンプル通学路")).toBeInTheDocument()
+  })
+
   it("makes the shared back button return secondary screens to the adventure map", async () => {
     const user = userEvent.setup()
     render(<SafetyQuestClient />)
@@ -268,7 +363,7 @@ describe("SafetyQuestClient", () => {
     expect(screen.getByText("撮影しました。あぶないサイン +1")).toBeInTheDocument()
   })
 
-  it("makes utility buttons and secondary tabs visibly respond", async () => {
+  it("makes notification and help utility buttons visibly respond", async () => {
     const user = userEvent.setup()
     render(<SafetyQuestClient />)
 
@@ -277,6 +372,11 @@ describe("SafetyQuestClient", () => {
 
     await user.click(screen.getByRole("button", { name: "ヘルプ" }))
     expect(screen.getByText("画面の青いボタンを押すと、次の安全アクションに進めます。")).toBeInTheDocument()
+  })
+
+  it("makes team tabs and ranking event controls visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
 
     await user.click(screen.getByRole("button", { name: /協力ミッション/ }))
     await user.click(screen.getByRole("button", { name: "かぞくチーム" }))
@@ -285,6 +385,11 @@ describe("SafetyQuestClient", () => {
     await user.click(screen.getByRole("button", { name: /ランキング/ }))
     await user.click(screen.getByRole("button", { name: "イベントに参加する!" }))
     expect(screen.getByText("イベント参加中! 今日の安全チャレンジを続けよう")).toBeInTheDocument()
+  })
+
+  it("makes avatar customization controls visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
 
     await user.click(screen.getByRole("button", { name: /アバター/ }))
     await user.click(screen.getByRole("button", { name: "カラー" }))
@@ -293,6 +398,11 @@ describe("SafetyQuestClient", () => {
     expect(screen.getByText("アバターを初期状態に戻しました")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "このアバターで けってい!" }))
     expect(screen.getByText("アバターを保存しました: ぼうし")).toBeInTheDocument()
+  })
+
+  it("makes encyclopedia and room controls visibly respond", async () => {
+    const user = userEvent.setup()
+    render(<SafetyQuestClient />)
 
     await user.click(screen.getByRole("button", { name: /ヒーロー図鑑/ }))
     await user.click(screen.getByRole("button", { name: "バッジ" }))

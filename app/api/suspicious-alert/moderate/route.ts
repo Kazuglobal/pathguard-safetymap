@@ -6,6 +6,8 @@ import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
 import { SUSPICIOUS_DANGER_TYPE } from "@/lib/suspicious-alert"
 import { buildModerationUpdate } from "@/lib/suspicious-alert-moderation"
 import { moderateSuspiciousAlertWithAi } from "@/lib/suspicious-alert-moderation-ai"
+import { buildModerationResultPushPayload } from "@/lib/notifications/builders"
+import { sendPushToUser } from "@/lib/web-push"
 import {
   checkApiRateLimit,
   rateLimitedResponse,
@@ -182,6 +184,23 @@ export async function POST(request: NextRequest) {
       },
       { status: 409 },
     )
+  }
+
+  // 審査結果を投稿者本人へPush通知する。
+  // 二重送信は上の .or(ai_moderation_status is null / pending) ガードで防がれる
+  // (審査確定の更新は1回しか成功しないため、この分岐も1回しか通らない)。
+  // 通知の失敗で審査結果の保存(本体)を失敗扱いにしない。
+  try {
+    await sendPushToUser(
+      report.user_id,
+      buildModerationResultPushPayload({
+        reportId: reportId,
+        verdictStatus: verdict.status,
+      }),
+      "danger_reports",
+    )
+  } catch (error) {
+    console.error("[suspicious-alert/moderate] push notify failed:", error)
   }
 
   return NextResponse.json({

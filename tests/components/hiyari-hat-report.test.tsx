@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   createBrowserClient: vi.fn(),
   limit: vi.fn(),
   order: vi.fn(),
+  eq: vi.fn(),
+  abortSignal: vi.fn(),
   inFilter: vi.fn(),
   select: vi.fn(),
   from: vi.fn(),
@@ -107,13 +109,16 @@ const clickableReport = {
 describe("HiyariHatReport", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
 
     mocks.limit.mockResolvedValue({
       data: [zeroCoordReport],
       error: null,
     })
     mocks.order.mockReturnValue({ limit: mocks.limit })
-    mocks.inFilter.mockReturnValue({ order: mocks.order })
+    mocks.eq.mockReturnValue({ order: mocks.order })
+    mocks.abortSignal.mockReturnValue({ order: mocks.order, eq: mocks.eq })
+    mocks.inFilter.mockReturnValue({ abortSignal: mocks.abortSignal })
     mocks.select.mockReturnValue({ in: mocks.inFilter })
     mocks.from.mockReturnValue({ select: mocks.select })
     mocks.createBrowserClient.mockReturnValue({ from: mocks.from })
@@ -236,6 +241,70 @@ describe("HiyariHatReport", () => {
       })
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("地域フィルタ", () => {
+    it("地域未選択(全国)では prefecture で絞り込まない", async () => {
+      render(<HiyariHatReport />)
+
+      await waitFor(() => {
+        expect(mocks.inFilter).toHaveBeenCalled()
+      })
+
+      expect(mocks.eq).not.toHaveBeenCalled()
+    })
+
+    it("都道府県チップを選ぶと prefecture で絞り込み、localStorage に保存する", async () => {
+      render(<HiyariHatReport />)
+
+      const chip = await screen.findByRole("button", { name: "東京都" })
+      fireEvent.click(chip)
+
+      await waitFor(() => {
+        expect(mocks.eq).toHaveBeenCalledWith("prefecture", "東京都")
+      })
+      expect(window.localStorage.getItem("pathguardian:selected_prefecture")).toBe("東京都")
+    })
+
+    it("保存済みの地域を復元してクエリに反映する", async () => {
+      window.localStorage.setItem("pathguardian:selected_prefecture", "大阪府")
+
+      render(<HiyariHatReport />)
+
+      await waitFor(() => {
+        expect(mocks.eq).toHaveBeenCalledWith("prefecture", "大阪府")
+      })
+    })
+
+    it("該当地域に報告が0件のとき、地域名入りの空メッセージを表示する", async () => {
+      mocks.limit.mockResolvedValue({ data: [], error: null })
+
+      render(<HiyariHatReport />)
+
+      const chip = await screen.findByRole("button", { name: "東京都" })
+      fireEvent.click(chip)
+
+      await waitFor(() => {
+        expect(screen.getByText("東京都ではまだ報告がありません。最初の「気をつけて」を地図に残してみましょう。")).toBeInTheDocument()
+      })
+    })
+
+    it("「全国」に戻すと絞り込みが解除される", async () => {
+      render(<HiyariHatReport />)
+
+      fireEvent.click(await screen.findByRole("button", { name: "東京都" }))
+      await waitFor(() => {
+        expect(mocks.eq).toHaveBeenCalledWith("prefecture", "東京都")
+      })
+
+      mocks.eq.mockClear()
+      fireEvent.click(await screen.findByRole("button", { name: "全国" }))
+
+      await waitFor(() => {
+        expect(mocks.order).toHaveBeenCalled()
+      })
+      expect(mocks.eq).not.toHaveBeenCalled()
     })
   })
 })

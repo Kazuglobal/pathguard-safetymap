@@ -1,6 +1,6 @@
 "use client"
 
-import { MapPin } from "lucide-react"
+import { MapPin, Info } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { DangerReport } from "@/lib/types"
 import {
@@ -8,8 +8,7 @@ import {
   getDangerTypeIcon,
   getDangerLevelColor,
   getDangerLevelLabel,
-  getStatusLabel,
-  getStatusBadgeClass,
+  getReportStatusPresentation,
   formatAddress,
   formatPostalCode,
   formatCoordinates,
@@ -28,6 +27,7 @@ export function ReportHeroHeader({ report }: ReportHeroHeaderProps) {
   const TypeIcon = getDangerTypeIcon(report.danger_type)
   const address = formatAddress(report)
   const postalCode = formatPostalCode(report.postal_code)
+  const statusPresentation = getReportStatusPresentation(report)
 
   return (
     <div>
@@ -45,10 +45,19 @@ export function ReportHeroHeader({ report }: ReportHeroHeaderProps) {
             <TypeIcon className="h-3 w-3" />
             {getDangerTypeLabel(report.danger_type)}
           </Badge>
-          <Badge variant="outline" className={getStatusBadgeClass(report.status)}>
-            {getStatusLabel(report.status)}
+          <Badge variant="outline" className={statusPresentation.badgeClass}>
+            {statusPresentation.label}
           </Badge>
         </div>
+
+        {/* AI審査の理由(rejected/needs_review時のみ)。pendingの報告は
+            RLSで投稿者本人にしか見えないため、この表示は本人向け */}
+        {statusPresentation.moderationNote && (
+          <div className="flex items-start gap-1.5 rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-600">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-400" />
+            <span>{statusPresentation.moderationNote}</span>
+          </div>
+        )}
 
         {/* Title */}
         <h2 className="text-xl md:text-2xl font-bold leading-tight">

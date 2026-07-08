@@ -42,6 +42,8 @@ import { useARLearningSession } from "@/hooks/use-ar-learning-session"
 import { createKidsHazardCue, isApproachingHazard } from "@/lib/ar-learning-tour-kids"
 import { trackEvent } from "@/lib/analytics"
 import { buildRouteLearningSessionPayload } from "@/lib/route-learning-session-payload"
+import { getARSafetySuppression } from "@/lib/ar-safety"
+import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
 import { ARLearningReviewCard } from "./ar-learning-review"
@@ -123,13 +125,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   }, [isParentChildMode, parentRouteId])
 
   const tourProgress = isParentChildMode ? learningSession.state.progress : localTourProgress
-  const isLocationAccuracyLow =
-    isParentChildMode && typeof userLocation?.accuracy === "number" && userLocation.accuracy > 50
-  const isMovingTooFast =
-    isParentChildMode &&
-    typeof userLocation?.speed === "number" &&
-    Number.isFinite(userLocation.speed) &&
-    userLocation.speed * 3.6 > 15
+  // 安全抑制はモードを問わず適用する(個人利用の歩きスマホ対策。lib/ar-safety.ts に一元化)
+  const { isLocationAccuracyLow, isMovingTooFast } = getARSafetySuppression(userLocation)
   const canUpdateTourStatus = !isParentChildMode || learningSession.hasHydrated
   const isLocationFallbackAvailable =
     isParentChildMode &&
@@ -246,9 +243,10 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     if (!isParentChildMode || !activeStop) return undefined
     return createKidsHazardCue(activeStop.report)
   }, [activeStop, isParentChildMode])
+  // 接近強調は通常モードでも表示する(安全抑制の対象もモード共通)。
+  // ar_hazard_approached の計測は従来どおり親子モード限定(下のeffect)
   const isActiveStopApproaching =
     Boolean(activeStop) &&
-    isParentChildMode &&
     !manualLocationMode &&
     !isLocationAccuracyLow &&
     !isMovingTooFast &&
@@ -727,15 +725,28 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           <p className="text-xs font-semibold tracking-wide text-amber-200">選択中の通学路</p>
           <p className="mt-1 text-sm font-bold">{mode.routeName}</p>
           {mode.childName && <p className="mt-1 text-xs text-slate-200">{mode.childName}</p>}
-          {isLocationAccuracyLow && (
-            <p className="mt-2 text-xs text-amber-100">位置精度が低いため強調を抑制中</p>
-          )}
-          {isMovingTooFast && (
-            <p className="mt-2 text-xs text-amber-100">移動速度が速いため接近通知を抑制中</p>
-          )}
+          <ARSafetySuppressionNotice
+            isLocationAccuracyLow={isLocationAccuracyLow}
+            isMovingTooFast={isMovingTooFast}
+            className="mt-2"
+          />
           {manualLocationMode && (
             <p className="mt-2 text-xs text-amber-100">位置情報なし: 手動確認中</p>
           )}
+        </div>
+      )}
+
+      {/* 通常モードの安全抑制インジケータ(親子モードは上のパネル内に表示) */}
+      {!isParentChildMode && !arError && (isLocationAccuracyLow || isMovingTooFast) && (
+        <div
+          className="absolute right-4 top-16 z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm"
+          role="status"
+        >
+          <ARSafetySuppressionNotice
+            isLocationAccuracyLow={isLocationAccuracyLow}
+            isMovingTooFast={isMovingTooFast}
+            showWalkPrompt
+          />
         </div>
       )}
 

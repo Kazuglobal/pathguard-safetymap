@@ -113,6 +113,8 @@ const h = vi.hoisted(() => {
     }))
     flyTo = vi.fn()
     fitBounds = vi.fn()
+    easeTo = vi.fn()
+    getZoom = vi.fn(() => this.options?.zoom ?? 15)
     setStyle = vi.fn((style: string) => {
       this.styleUrl = style
     })
@@ -143,8 +145,11 @@ const h = vi.hoisted(() => {
       this.controls = this.controls.filter((c) => c !== control)
     })
 
-    constructor(options: { style: string }) {
+    options: { style: string; center?: [number, number]; zoom?: number }
+
+    constructor(options: { style: string; center?: [number, number]; zoom?: number }) {
       this.styleUrl = options.style
+      this.options = options
       holder.maps.push(this)
     }
   }
@@ -446,7 +451,11 @@ function lastMap() {
   return map
 }
 
-function renderMapContainer(props?: { autoOpenReport?: boolean; preferredRouteId?: string | null }) {
+function renderMapContainer(props?: {
+  autoOpenReport?: boolean
+  preferredRouteId?: string | null
+  initialReportId?: string | null
+}) {
   const utils = render(<MapContainer {...props} />)
   return utils
 }
@@ -504,6 +513,27 @@ afterEach(() => {
 })
 
 describe('MapContainer characterization', () => {
+  describe('報告ディープリンク', () => {
+    it('一覧に含まれない本人の報告もID指定で取得して詳細を開く', async () => {
+      const rejectedReport = sampleReport({ id: 'rejected-1', status: 'rejected' })
+      const maybeSingle = vi.fn(async () => ({ data: rejectedReport, error: null }))
+      const eq = vi.fn(() => ({ maybeSingle }))
+      const select = vi.fn(() => ({ eq }))
+      const from = vi.fn(() => ({ select }))
+      h.supabase = { from }
+
+      renderMapContainer({ initialReportId: 'rejected-1' })
+
+      await waitFor(() => {
+        expect(h.captured.detailModal).toEqual(
+          expect.objectContaining({ isOpen: true, report: rejectedReport }),
+        )
+      })
+      expect(from).toHaveBeenCalledWith('danger_reports')
+      expect(eq).toHaveBeenCalledWith('id', 'rejected-1')
+    })
+  })
+
   describe('初期化とローディング', () => {
     it('マウント時はローディング中で、map の load イベントで解除される', () => {
       renderMapContainer()
@@ -522,6 +552,47 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
       // NavigationControl + GeolocateControl の2つ
       expect(lastMap().controls.length).toBe(2)
+    })
+  })
+
+  describe('初期表示センター', () => {
+    it('登録ルート（primaryRoute）があれば初期 center がルート中心になる', () => {
+      const route = {
+        id: 'route-a',
+        name: 'ルートA',
+        start_lat: 35.0,
+        start_lng: 139.0,
+        end_lat: 35.2,
+        end_lng: 139.2,
+        is_favorite: true,
+        created_at: '2026-01-01T00:00:00Z',
+      }
+      h.userRoutes.routes = [route]
+      h.userRoutes.primaryRoute = route
+
+      renderMapContainer()
+
+      expect(lastMap().options.center?.[0]).toBeCloseTo(139.1, 6)
+      expect(lastMap().options.center?.[1]).toBeCloseTo(35.1, 6)
+      // 東京固定ではない
+      expect(lastMap().options.center).not.toEqual([139.6917, 35.6895])
+    })
+
+    it('ルートなし・現在地取得済みなら現在地中心で初期化される', () => {
+      h.gps.location = [140.5, 36.5]
+
+      renderMapContainer()
+
+      expect(lastMap().options.center).toEqual([140.5, 36.5])
+      expect(lastMap().options.zoom).toBe(15)
+    })
+
+    it('ルートなし・現在地なしなら東京フォールバックで初期化し、現在地を要求する', () => {
+      renderMapContainer()
+
+      expect(lastMap().options.center).toEqual([139.6917, 35.6895])
+      expect(lastMap().options.zoom).toBe(12)
+      expect(h.gps.requestLocation).toHaveBeenCalled()
     })
   })
 

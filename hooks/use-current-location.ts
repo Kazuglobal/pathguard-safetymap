@@ -16,6 +16,15 @@ export interface CurrentLocationError {
   message: string
 }
 
+export interface UseCurrentLocationOptions {
+  /**
+   * false にすると取得失敗時のエラートーストを出さない（error state は通常どおり返る）。
+   * 地図の自動センタリングなど、失敗しても静かにフォールバックしたい用途向け。
+   * @default true
+   */
+  showErrorToast?: boolean
+}
+
 export interface UseCurrentLocationReturn {
   /** [longitude, latitude] matching selectedLocation format, or null */
   location: [number, number] | null
@@ -38,13 +47,17 @@ const ERROR_MESSAGES: Record<CurrentLocationErrorType, string> = {
     "このブラウザは位置情報をサポートしていません。",
 }
 
-export function useCurrentLocation(): UseCurrentLocationReturn {
+export function useCurrentLocation(
+  options?: UseCurrentLocationOptions
+): UseCurrentLocationReturn {
   const [location, setLocation] = useState<[number, number] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<CurrentLocationError | null>(null)
   const { toast } = useToast()
   const toastRef = useRef(toast)
   toastRef.current = toast
+  const showErrorToastRef = useRef(options?.showErrorToast ?? true)
+  showErrorToastRef.current = options?.showErrorToast ?? true
   const isLoadingRef = useRef(false)
 
   const requestLocation = useCallback(() => {
@@ -56,11 +69,13 @@ export function useCurrentLocation(): UseCurrentLocationReturn {
         message: ERROR_MESSAGES.not_supported,
       }
       setError(err)
-      toastRef.current({
-        title: "位置情報エラー",
-        description: err.message,
-        variant: "destructive",
-      })
+      if (showErrorToastRef.current) {
+        toastRef.current({
+          title: "位置情報エラー",
+          description: err.message,
+          variant: "destructive",
+        })
+      }
       return
     }
 
@@ -82,11 +97,13 @@ export function useCurrentLocation(): UseCurrentLocationReturn {
           setError(locError)
           setIsLoading(false)
           isLoadingRef.current = false
-          toastRef.current({
-            title: "位置情報エラー",
-            description: locError.message,
-            variant: "destructive",
-          })
+          if (showErrorToastRef.current) {
+            toastRef.current({
+              title: "位置情報エラー",
+              description: locError.message,
+              variant: "destructive",
+            })
+          }
           return
         }
 
@@ -117,11 +134,13 @@ export function useCurrentLocation(): UseCurrentLocationReturn {
         setError(locError)
         setIsLoading(false)
         isLoadingRef.current = false
-        toastRef.current({
-          title: "位置情報エラー",
-          description: locError.message,
-          variant: "destructive",
-        })
+        if (showErrorToastRef.current) {
+          toastRef.current({
+            title: "位置情報エラー",
+            description: locError.message,
+            variant: "destructive",
+          })
+        }
       },
       {
         enableHighAccuracy: true,

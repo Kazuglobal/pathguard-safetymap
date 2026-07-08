@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Share2, Loader2, Flag } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
@@ -25,6 +25,8 @@ import { ReportImageCarousel } from "./detail/report-image-carousel"
 import { ReportAdminImageUpload } from "./detail/report-admin-image-upload"
 import { ReportMetadataBar } from "./detail/report-metadata-bar"
 import { ReportAccidentSection } from "./detail/report-accident-section"
+import { ReportNearbySection } from "./detail/report-nearby-section"
+import { findNearbyReports } from "@/lib/nearby-reports"
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
 
 interface ShowImageOptions {
@@ -41,6 +43,10 @@ interface DangerReportDetailModalProps {
   isAdmin?: boolean
   onShowImage?: (url: string, coords?: [number, number], options?: ShowImageOptions) => void
   onAccidentNavigate?: (coords: [number, number]) => void
+  /** 「この近くの他の報告」の検索対象。未指定ならセクション非表示 */
+  allReports?: DangerReport[]
+  /** 近隣報告タップ時にその報告へ表示を切り替える */
+  onNearbyReportSelect?: (report: DangerReport) => void
 }
 
 export default function DangerReportDetailModal({
@@ -50,6 +56,8 @@ export default function DangerReportDetailModal({
   isAdmin = false,
   onShowImage,
   onAccidentNavigate,
+  allReports,
+  onNearbyReportSelect,
 }: DangerReportDetailModalProps) {
   // Zoom overlay state
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null)
@@ -70,6 +78,20 @@ export default function DangerReportDetailModal({
     reset: resetAccidentStats,
   } = useAccidentStats()
   const processedUrlsKey = report?.processed_image_urls?.join("|") ?? ""
+
+  // 「この近くの他の報告」(事故統計と同じ300m円)。allReports 未指定なら空
+  const nearbyReports = useMemo(() => {
+    if (!report || !allReports || report.latitude == null || report.longitude == null) {
+      return []
+    }
+    return findNearbyReports({
+      latitude: report.latitude,
+      longitude: report.longitude,
+      reports: allReports,
+      excludeId: report.id,
+    })
+  }, [report, allReports])
+
   const isPrimaryPointerCoarse = useMediaQuery("(pointer: coarse)")
   const isAnyPointerCoarse = useMediaQuery("(any-pointer: coarse)")
   const isTouchDevice = isPrimaryPointerCoarse || isAnyPointerCoarse
@@ -224,6 +246,12 @@ export default function DangerReportDetailModal({
           error={statsError}
           report={report}
           onAccidentNavigate={onAccidentNavigate}
+        />
+
+        {/* 6.5 Nearby Reports(事故統計と同じ300m円の相互参照) */}
+        <ReportNearbySection
+          nearbyReports={nearbyReports}
+          onReportSelect={onNearbyReportSelect}
         />
 
         {/* 6.5 家族・SNSに共有 */}

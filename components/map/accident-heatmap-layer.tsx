@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useCallback } from 'react'
+import { useEventCallback } from '@/hooks/use-event-callback'
 import mapboxgl from 'mapbox-gl'
 import type { AccidentGeoJSON } from '@/lib/traffic-accident-heatmap'
 import { HEATMAP_MAX_ZOOM, CIRCLE_MIN_ZOOM, getSeverityLabel } from '@/lib/traffic-accident-heatmap'
@@ -42,6 +43,8 @@ interface AccidentHeatmapLayerProps {
   geoJSON: AccidentGeoJSON | null
   /** Whether the layer should be shown */
   isVisible: boolean
+  /** ポップアップの「近くの報告を見る」導線。事故地点座標([lng, lat])を渡す。未指定ならボタン非表示 */
+  onShowNearbyReports?: (coords: [number, number]) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +202,13 @@ export function toPopupDisplayData(properties: Record<string, unknown>): PopupDi
   }
 }
 
-export function buildAccidentPopupContent(properties: Record<string, unknown>): HTMLDivElement {
+export function buildAccidentPopupContent(
+  properties: Record<string, unknown>,
+  options?: {
+    /** 「近くの報告を見る」ボタンを表示し、クリック時に呼ぶ */
+    onShowNearbyReports?: () => void
+  },
+): HTMLDivElement {
   const data = toPopupDisplayData(properties)
   const severityColor = data.severity === 1 ? '#DC2626' : '#F59E0B'
 
@@ -267,6 +276,25 @@ export function buildAccidentPopupContent(properties: Record<string, unknown>): 
     root.appendChild(pedestrian)
   }
 
+  // 相互参照導線: この事故地点の近く(300m)の危険報告を開く
+  if (options?.onShowNearbyReports) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = '近くの報告を見る'
+    button.style.marginTop = '8px'
+    button.style.width = '100%'
+    button.style.padding = '6px 8px'
+    button.style.fontSize = '12px'
+    button.style.fontWeight = '600'
+    button.style.color = '#1D4ED8'
+    button.style.background = '#EFF6FF'
+    button.style.border = '1px solid #BFDBFE'
+    button.style.borderRadius = '6px'
+    button.style.cursor = 'pointer'
+    button.addEventListener('click', options.onShowNearbyReports)
+    root.appendChild(button)
+  }
+
   return root
 }
 
@@ -284,7 +312,7 @@ export function buildAccidentPopupContent(properties: Record<string, unknown>): 
  * - Cursor change on hover
  * - Handles style changes (re-add layers after style.load)
  */
-export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatmapLayerProps) {
+export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyReports }: AccidentHeatmapLayerProps) {
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const layersAddedRef = useRef(false)
   const latestGeoJSONRef = useRef<AccidentGeoJSON | null>(geoJSON)
@@ -297,14 +325,26 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatma
   // Popup on circle click
   // -------------------------------------------------------------------------
 
-  const handleCircleClick = useCallback((e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+  // Mapboxへ一度だけ登録されるハンドラで最新のpropsを読むため useEventCallback を使う。
+  // 最新値参照のための同期refを新設しないこと(map-container の handleMapClick と同じ規約)
+  const handleCircleClick = useEventCallback((e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
     if (!e.features || e.features.length === 0) return
     const mapInstance = e.target as mapboxgl.Map
 
     const feature = e.features[0]
     const coords = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number]
     const props = (feature.properties ?? {}) as Record<string, unknown>
-    const content = buildAccidentPopupContent(props)
+    const content = buildAccidentPopupContent(
+      props,
+      onShowNearbyReports
+        ? {
+            onShowNearbyReports: () => {
+              popupRef.current?.remove()
+              onShowNearbyReports(coords)
+            },
+          }
+        : undefined,
+    )
 
     // Remove previous popup
     if (popupRef.current) {
@@ -315,7 +355,7 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible }: AccidentHeatma
       .setLngLat(coords)
       .setDOMContent(content)
       .addTo(mapInstance)
-  }, [])
+  })
 
   const handleMouseEnter = useCallback((e: mapboxgl.MapMouseEvent) => {
     (e.target as mapboxgl.Map).getCanvas().style.cursor = 'pointer'

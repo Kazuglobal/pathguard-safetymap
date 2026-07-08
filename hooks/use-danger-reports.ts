@@ -5,12 +5,26 @@ import type { DangerReport } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import { isAbortLikeError, isTransientFetchError, sleep } from "@/lib/map/map-fetch-utils"
+import { NATIONWIDE } from "@/lib/user-region"
+import { DANGER_LEVEL_MAX } from "@/lib/report-generation/danger-level-presentation"
+
+/** 地図の現在の表示範囲。bbox絞り込みに使う（lng/lat の緯度経度） */
+export interface DangerReportBounds {
+  minLng: number
+  minLat: number
+  maxLng: number
+  maxLat: number
+}
 
 interface DangerReportFilterOptions {
   dangerType: string
   dangerLevel: string
   dateRange: string
   showPending: boolean
+  /** 都道府県での絞り込み。未指定または NATIONWIDE("全国") なら絞り込まない */
+  prefecture?: string
+  /** 地図の表示範囲での絞り込み。未指定なら絞り込まない（全件取得） */
+  bounds?: DangerReportBounds | null
 }
 
 interface UseDangerReportsParams {
@@ -18,6 +32,55 @@ interface UseDangerReportsParams {
   filterOptions: DangerReportFilterOptions
   toast: ReturnType<typeof useToast>["toast"]
   setIsLoading: Dispatch<SetStateAction<boolean>>
+  enabled?: boolean
+}
+
+/**
+ * 地域・表示範囲・タイプ・危険度・期間のフィルタをクエリに適用する。
+ * 公開レポートと自分の審査中レポートの両方に同じ条件を使う
+ * (pending側にだけ適用し忘れると、絞り込み中も審査中リストに全件出続ける)。
+ */
+function applyReportContentFilters(query: any, filterOptions: DangerReportFilterOptions) {
+  // Filter by prefecture (region)
+  if (filterOptions.prefecture && filterOptions.prefecture !== NATIONWIDE) {
+    query = query.eq('prefecture', filterOptions.prefecture)
+  }
+  // Filter by map viewport (bbox) — 大量報告時に全件取得しないための絞り込み
+  if (filterOptions.bounds) {
+    const { minLng, minLat, maxLng, maxLat } = filterOptions.bounds
+    query = query
+      .gte('latitude', minLat)
+      .lte('latitude', maxLat)
+      .gte('longitude', minLng)
+      .lte('longitude', maxLng)
+  }
+  // Filter by danger type
+  if (filterOptions.dangerType !== "all") {
+    query = query.eq('danger_type', filterOptions.dangerType)
+  }
+  // Filter by danger level
+  // 表示は1〜4にクランプ(danger-level-presentation)だが、生データには
+  // 5がありうる。最上位(4)のフィルタは gte で4と5の両方にマッチさせる
+  if (filterOptions.dangerLevel !== "all") {
+    const level = parseInt(filterOptions.dangerLevel, 10)
+    if (level >= DANGER_LEVEL_MAX) {
+      query = query.gte('danger_level', DANGER_LEVEL_MAX)
+    } else {
+      query = query.eq('danger_level', level)
+    }
+  }
+  // Filter by date range
+  // 注意: 旧実装は new Date(0)(1970年)に setDate していたため実質no-opだった。
+  // 現在時刻を起点に週/月/年を遡る
+  if (filterOptions.dateRange !== "all") {
+    const now = new Date()
+    const startDate = new Date(now)
+    if (filterOptions.dateRange === "week") startDate.setDate(now.getDate() - 7)
+    else if (filterOptions.dateRange === "month") startDate.setMonth(now.getMonth() - 1)
+    else if (filterOptions.dateRange === "year") startDate.setFullYear(now.getFullYear() - 1)
+    query = query.gte('created_at', startDate.toISOString())
+  }
+  return query
 }
 
 /**
@@ -30,6 +93,7 @@ export function useDangerReports({
   filterOptions,
   toast,
   setIsLoading,
+  enabled = true,
 }: UseDangerReportsParams) {
   const [dangerReports, setDangerReports] = useState<DangerReport[]>([])
   // 審査中の報告を保持する状態
@@ -38,7 +102,7 @@ export function useDangerReports({
   const reportsFetchRequestIdRef = useRef(0)
 
   useEffect(() => {
-    if (!supabase) return // Ensure supabase is initialized
+    if (!supabase || !enabled) return // Ensure supabase is initialized and caller is ready
 
     const requestId = reportsFetchRequestIdRef.current + 1
     reportsFetchRequestIdRef.current = requestId
@@ -69,24 +133,7 @@ export function useDangerReports({
               .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
               .abortSignal(abortController.signal)
 
-            // Filter by danger type
-            if (filterOptions.dangerType !== "all") {
-              // 型エラーを回避するために as any を一時的に使う
-              approvedQuery = (approvedQuery as any).eq('danger_type', filterOptions.dangerType)
-            }
-            // Filter by danger level
-            if (filterOptions.dangerLevel !== "all") {
-              approvedQuery = (approvedQuery as any).eq('danger_level', parseInt(filterOptions.dangerLevel, 10))
-            }
-            // Filter by date range
-            if (filterOptions.dateRange !== "all") {
-              const now = new Date()
-              let startDate = new Date(0) // Default to beginning of time
-              if (filterOptions.dateRange === "week") startDate.setDate(now.getDate() - 7)
-              else if (filterOptions.dateRange === "month") startDate.setMonth(now.getMonth() - 1)
-              else if (filterOptions.dateRange === "year") startDate.setFullYear(now.getFullYear() - 1)
-              approvedQuery = (approvedQuery as any).gte('created_at', startDate.toISOString())
-            }
+            approvedQuery = applyReportContentFilters(approvedQuery, filterOptions)
 
             const { data: approvedData, error: approvedError } = await approvedQuery.order("created_at", { ascending: false })
 
@@ -97,12 +144,16 @@ export function useDangerReports({
             // Fetch user's pending reports if logged in and filter is enabled
             let userPendingReports: DangerReport[] = []
             if (userId && filterOptions.showPending) {
-              const { data: pendingData, error: pendingError } = await supabase
+              let pendingQuery = supabase
                 .from("danger_reports")
                 .select(`*`) // Select を最初に戻す
                 .eq("status", "pending")
                 .eq("user_id", userId)
                 .abortSignal(abortController.signal)
+
+              pendingQuery = applyReportContentFilters(pendingQuery, filterOptions)
+
+              const { data: pendingData, error: pendingError } = await pendingQuery
                 .order("created_at", { ascending: false })
 
               if (pendingError) console.error("Error fetching pending reports:", pendingError)
@@ -146,7 +197,7 @@ export function useDangerReports({
     return () => {
       abortController.abort()
     }
-  }, [supabase, filterOptions, toast, setIsLoading])
+  }, [supabase, filterOptions, toast, setIsLoading, enabled])
 
   return { dangerReports, pendingReports, setDangerReports, setPendingReports }
 }

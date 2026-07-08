@@ -7,6 +7,8 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
+import { getDangerLevelPresentation, formatDangerLevelBadgeText } from "@/lib/report-generation/danger-level-presentation"
+import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 
 /** Danger type label mapping */
 export function getDangerTypeLabel(type: string): string {
@@ -44,7 +46,11 @@ export function getDangerTypeIcon(type: string): LucideIcon {
   }
 }
 
-/** Danger level color configuration */
+/**
+ * Danger level color configuration
+ * danger-level-presentation.ts の一元定義に委譲(表示は1〜4にクランプ)。
+ * 独自の色分岐を復活させないこと。
+ */
 export function getDangerLevelColor(level: number): {
   bg: string
   text: string
@@ -52,61 +58,16 @@ export function getDangerLevelColor(level: number): {
   band: string
   badgeClass: string
 } {
-  switch (level) {
-    case 1:
-      return {
-        bg: "bg-green-50",
-        text: "text-green-800",
-        border: "border-green-200",
-        band: "bg-green-400",
-        badgeClass: "bg-green-100 text-green-800 border-green-200",
-      }
-    case 2:
-      return {
-        bg: "bg-lime-50",
-        text: "text-lime-800",
-        border: "border-lime-200",
-        band: "bg-lime-400",
-        badgeClass: "bg-lime-100 text-lime-800 border-lime-200",
-      }
-    case 3:
-      return {
-        bg: "bg-yellow-50",
-        text: "text-yellow-800",
-        border: "border-yellow-200",
-        band: "bg-yellow-400",
-        badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      }
-    case 4:
-      return {
-        bg: "bg-orange-50",
-        text: "text-orange-800",
-        border: "border-orange-200",
-        band: "bg-orange-400",
-        badgeClass: "bg-orange-100 text-orange-800 border-orange-200",
-      }
-    case 5:
-      return {
-        bg: "bg-red-50",
-        text: "text-red-800",
-        border: "border-red-200",
-        band: "bg-red-500",
-        badgeClass: "bg-red-100 text-red-800 border-red-200",
-      }
-    default:
-      return {
-        bg: "bg-gray-50",
-        text: "text-gray-800",
-        border: "border-gray-200",
-        band: "bg-gray-400",
-        badgeClass: "bg-gray-100 text-gray-800 border-gray-200",
-      }
+  const presentation = getDangerLevelPresentation(level)
+  return {
+    ...presentation.surface,
+    badgeClass: presentation.badgeClass,
   }
 }
 
-/** Danger level label */
+/** Danger level label(★段階+子ども向けラベル。一元定義に委譲) */
 export function getDangerLevelLabel(level: number): string {
-  return `レベル ${level}`
+  return formatDangerLevelBadgeText(level)
 }
 
 /** Parse unknown value to coordinate number */
@@ -150,14 +111,79 @@ export function formatCoordinates(lat: number, lng: number): string {
   return `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lng).toFixed(4)}°${lng >= 0 ? "E" : "W"}`
 }
 
-/** Status label mapping */
-export function getStatusLabel(status: string): string {
-  return status === "approved" ? "承認済み" : "審査中"
+/**
+ * 報告の公開状態の表示定義。
+ *
+ * status(公開状態: pending/approved/resolved)と
+ * ai_moderation_status(AI一次審査: approved/needs_review/rejected)を
+ * 組み合わせて投稿者に実際の状態を伝える。
+ *
+ * 背景: かつて approved 以外を一律「審査中」と表示していたため、
+ * AI審査で rejected(非公開確定)になっても投稿者には永遠に
+ * 「審査中」に見えていた。結果が伝わらない2値表示に戻さないこと。
+ *
+ * 注意: pending の報告はRLSにより投稿者本人(と管理者)にしか届かないため、
+ * moderationNote(審査理由)がここで公開側に漏れることはない。
+ */
+export interface ReportStatusPresentation {
+  label: string
+  badgeClass: string
+  /** 投稿者向けの補足(AI審査の理由)。表示すべきものが無ければ null */
+  moderationNote: string | null
 }
 
-/** Status badge class */
-export function getStatusBadgeClass(status: string): string {
-  return status === "approved"
-    ? "bg-green-100 text-green-800 border-green-200"
-    : "bg-yellow-100 text-yellow-800 border-yellow-200"
+/** 公開ステータスごとの表示ラベル。公開判定そのものは PUBLIC_DANGER_REPORT_STATUSES を正とする */
+const PUBLIC_STATUS_LABELS: Record<string, string> = {
+  approved: "承認済み",
+  published: "公開中",
+  resolved: "解決済み",
+}
+
+export function getReportStatusPresentation(
+  report: Pick<DangerReport, "status" | "ai_moderation_status" | "ai_moderation_reason">,
+): ReportStatusPresentation {
+  // 公開状態の判定は必ず PUBLIC_DANGER_REPORT_STATUSES を経由する。
+  // "approved" のハードコード比較だけにすると、標準投稿経路の "published" が
+  // 「審査中」誤表示になり、AI審査理由が公開画面に漏れる分岐へ落ちる。
+  if ((PUBLIC_DANGER_REPORT_STATUSES as readonly string[]).includes(report.status)) {
+    if (report.status === "resolved") {
+      return {
+        label: "解決済み",
+        badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
+        moderationNote: null,
+      }
+    }
+    return {
+      label: PUBLIC_STATUS_LABELS[report.status] ?? "公開中",
+      badgeClass: "bg-green-100 text-green-800 border-green-200",
+      moderationNote: null,
+    }
+  }
+  // 管理者による却下(status="rejected")。理由の記録がないため moderationNote は出さない
+  if (report.status === "rejected") {
+    return {
+      label: "非公開(承認されませんでした)",
+      badgeClass: "bg-red-100 text-red-800 border-red-200",
+      moderationNote: null,
+    }
+  }
+  if (report.ai_moderation_status === "rejected") {
+    return {
+      label: "非公開(承認されませんでした)",
+      badgeClass: "bg-red-100 text-red-800 border-red-200",
+      moderationNote: report.ai_moderation_reason ?? null,
+    }
+  }
+  if (report.ai_moderation_status === "needs_review") {
+    return {
+      label: "審査中(確認が必要です)",
+      badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      moderationNote: report.ai_moderation_reason ?? null,
+    }
+  }
+  return {
+    label: "審査中",
+    badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    moderationNote: null,
+  }
 }
