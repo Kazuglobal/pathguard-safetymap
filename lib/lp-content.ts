@@ -4,8 +4,8 @@
 export const LP_META = {
   title: "PathGuardian | 通学路の危険を見える化する、家族の見守りアプリ",
   description:
-    "PathGuardianは、通学路の危険を地図で見える化し、地域のヒヤリハット報告・不審者アラート・毎日の安全ニュースで家族の安全習慣をつくる無料の見守りアプリです。",
-  ogImage: "/images/lp/og-image.png",
+    "PathGuardianは、写真と地図で通学路の危険をAIが見える化し、地域のヒヤリハット報告・不審者アラート・毎日の安全ニュースで家族の安全習慣をつくる無料の見守りアプリです。",
+  ogImage: "/images/lp/og-share.png",
 } as const
 
 export const LP_HERO = {
@@ -59,14 +59,28 @@ export const LP_FEATURES: LpFeature[] = [
     kicker: "地域の目が集めた危険を、地図の上に",
     description:
       "地域から寄せられたヒヤリハット報告が地図上のピンになり、通学路の危険を一目で確認。近い報告はまとまって表示されるので、危険が集中する場所もすぐ分かります。",
-    image: "/images/lp/feature-map-watch.png",
+    image: "/images/lp/feature-crossing-natural.png",
+  },
+  {
+    key: "heatmap",
+    title: "事故ヒートマップ",
+    kicker: "警察庁オープンデータで事故を見える化",
+    description:
+      "過去の交通事故データを地図に重ねて、事故が多い道をひと目で把握。子ども関与・歩行者関与だけに絞ったり、地点ごとの事故リスクスコアも確認できます。",
+  },
+  {
+    key: "hazard",
+    title: "ハザードマップ",
+    kicker: "自分の地域の災害リスクを手軽にデジタルで",
+    description:
+      "国土交通省のハザードマップを重ねて、洪水・津波の浸水想定を通学路とあわせて確認。紙のハザードマップを探さなくても、いつもの地図ですぐ分かります。",
   },
   {
     key: "report",
-    title: "ヒヤリハット報告",
-    kicker: "3ステップで、地域の安全に参加",
+    title: "みんなのヒヤリハット報告",
+    kicker: "3ステップで報告、一覧でみんなと共有",
     description:
-      "気づいた危険は、場所を選んで3ステップで報告。投稿内容は AI と運営の審査を経て公開されるから、子どもが見ても安心な情報だけが地図に載ります。",
+      "気づいた危険は場所を選んで3ステップで報告。地域の報告は一覧でも見られて、AI と運営の審査を経た安心な情報だけが共有されます。",
   },
   {
     key: "alerts",
@@ -76,25 +90,11 @@ export const LP_FEATURES: LpFeature[] = [
       "地域で共有された声かけ・不審者情報を、見守る家族へそっとお知らせ。通知から地図を開けば、どこで何があったかをすぐ確認できます。",
   },
   {
-    key: "hunter",
-    title: "きけんハンター",
-    kicker: "子どもが自分で危険に気づく AI 探検",
-    description:
-      "子どもが撮った通学路の写真を AI が読み解き、どこが危ないか・どう気をつけるかを一緒に学ぶ探検モード。「教わる」から「自分で気づく」へ。",
-  },
-  {
     key: "news",
     title: "通学路の安全ニュース",
     kicker: "毎日3分の安全チェック習慣",
     description:
       "全国の通学路に関する事故・防犯・制度のニュースを編集部が毎日選定。「今日、家族で何を話すか」まで添えて届けます。",
-  },
-  {
-    key: "pdf-report",
-    title: "危険箇所レポート",
-    kicker: "学校・PTA と共有できる PDF",
-    description:
-      "地図に集まった危険箇所を、学校や PTA にそのまま渡せるレポートに。家庭の気づきを、地域の改善につなげます。",
   },
 ]
 
@@ -162,17 +162,29 @@ export const LP_FAQ = [
   },
 ] as const
 
+export const LP_PHOTO_AI = {
+  eyebrow: "いちばんの目玉",
+  headline: ["写真をとるだけ。", "AIがキケンを見える化。"],
+  body: "通学路の写真をアップロードすると、AI が危険箇所と安全設備を検出して、写真の上に色分けして描画。安全スコアも算出されるから、子どもと一緒に「どこがあぶない?」をゲーム感覚で学べます。",
+  points: [
+    "カーブミラーや横断歩道などの安全設備は緑、危険要素は赤で色分け",
+    "劣化したブロック塀のような見落としがちな危険も AI が検出",
+    "安全スコアで「どれくらい安全な道か」がひと目で分かる",
+  ],
+  image: "/images/lp/mocks/phone-hunter-result.png",
+} as const
+
 export const LP_FEATURE_TOUR = {
-  src: "/videos/lp/pathguardian-features.mp4",
+  src: "/videos/lp/pathguardian-features-v2.mp4",
   headline: "60秒でわかる 機能ツアー",
-  caption: "実際の画面といっしょに、6つの機能をぎゅっとまとめました。",
+  caption: "実際の画面といっしょに、9つの機能をぎゅっとまとめました。",
 } as const
 
 export const LP_MARQUEE_WORDS = ["いってらっしゃい", "いってきます", "きをつけてね", "ただいま", "おかえり"] as const
 
 export const LP_VIDEO = {
   src: "/videos/lp/pathguardian-intro.mp4",
-  poster: "/images/lp/video-poster.jpg",
+  poster: "/images/lp/video-poster-v2.jpg",
   headline: "30秒でわかる PathGuardian",
   caption: "毎朝の「いってらっしゃい」から、家族の作戦会議まで。",
 } as const

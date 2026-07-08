@@ -32,5 +32,5 @@ export const WIDTH = 1280
 export const HEIGHT = 720
 
 export const TITLE_FRAMES = 90
-export const FEATURE_FRAMES = 200
+export const FEATURE_FRAMES = 170
 export const END_FRAMES = 150

@@ -23,14 +23,14 @@ export function LpShowcase() {
         <div className="relative mt-16">
           <div data-reveal>
             <BrowserFrame
-              src="/images/lp/mocks/desktop-map.png"
+              src="/images/lp/mocks/desktop-map-tokyo.png"
               alt="PathGuardian のデスクトップ版危険マップ画面(実際のアプリのスクリーンショット)"
               className="md:mr-24"
             />
           </div>
           <div data-reveal className="mx-auto -mt-10 w-40 sm:w-48 md:absolute md:-bottom-12 md:right-0 md:mt-0 md:w-56">
             <PhoneFrame
-              src="/images/lp/mocks/mobile-news.png"
+              src="/images/lp/mocks/phone-news.png"
               alt="PathGuardian の通学路安全ニュース画面(実際のアプリのスクリーンショット)"
             />
           </div>

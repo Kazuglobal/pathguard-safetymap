@@ -2,16 +2,16 @@
 
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { MapPinned, MessageSquareWarning, BellRing, Camera, Newspaper, FileText } from "lucide-react"
+import { MapPinned, MessageSquareWarning, BellRing, Flame, Waves, Newspaper } from "lucide-react"
 import { LP_FEATURES } from "@/lib/lp-content"
 
 const FEATURE_ICONS = {
   "danger-map": MapPinned,
+  heatmap: Flame,
+  hazard: Waves,
   report: MessageSquareWarning,
   alerts: BellRing,
-  hunter: Camera,
   news: Newspaper,
-  "pdf-report": FileText,
 } as const
 
 export function LpFeatures() {
@@ -40,7 +40,7 @@ export function LpFeatures() {
           >
             <div className="relative aspect-[4/3]">
               <Image
-                src={showcase.image ?? "/images/lp/feature-map-watch.png"}
+                src={showcase.image ?? "/images/lp/feature-crossing-natural.png"}
                 alt="通学路の危険をデータで見える化するイメージ"
                 fill
                 sizes="(max-width: 768px) 90vw, 560px"

@@ -7,6 +7,7 @@ import { LpHero } from "@/components/lp/lp-hero"
 import { LpVideo } from "@/components/lp/lp-video"
 import { LpFeatureTour } from "@/components/lp/lp-feature-tour"
 import { LpProblem } from "@/components/lp/lp-problem"
+import { LpPhotoAi } from "@/components/lp/lp-photo-ai"
 import { LpFaq } from "@/components/lp/lp-faq"
 import { LpHow } from "@/components/lp/lp-how"
 import { LpTrust } from "@/components/lp/lp-trust"
@@ -123,10 +124,18 @@ describe("LPセクションのレンダリング", () => {
     try {
       const { container } = render(<LpFeatureTour />)
       const video = container.querySelector("video")
-      expect(video).toHaveAttribute("src", "/videos/lp/pathguardian-features.mp4")
+      expect(video).toHaveAttribute("src", "/videos/lp/pathguardian-features-v2.mp4")
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it("LpPhotoAi(目玉機能)が見出し・実画面モック・3ポイントを表示する", () => {
+    render(<LpPhotoAi />)
+    expect(screen.getByText("写真をとるだけ。")).toBeInTheDocument()
+    expect(screen.getByText("AIがキケンを見える化。")).toBeInTheDocument()
+    const img = screen.getByAltText(/AIが危険箇所と安全設備を色分け描画/)
+    expect(img).toHaveAttribute("src", "/images/lp/mocks/phone-hunter-result.png")
   })
 
   it("LpCtaFooter に登録導線と規約リンクがある", () => {

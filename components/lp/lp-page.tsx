@@ -5,6 +5,7 @@ import { LpHeader } from "@/components/lp/lp-header"
 import { LpHero } from "@/components/lp/lp-hero"
 import { LpMarquee } from "@/components/lp/lp-marquee"
 import { LpProblem } from "@/components/lp/lp-problem"
+import { LpPhotoAi } from "@/components/lp/lp-photo-ai"
 import { LpFeatures } from "@/components/lp/lp-features"
 import { LpFeatureTour } from "@/components/lp/lp-feature-tour"
 import { LpVideo } from "@/components/lp/lp-video"
@@ -25,6 +26,7 @@ export function LpPage() {
       <LpHero />
       <LpMarquee />
       <LpProblem />
+      <LpPhotoAi />
       <LpFeatures />
       <LpFeatureTour />
       <LpVideo />

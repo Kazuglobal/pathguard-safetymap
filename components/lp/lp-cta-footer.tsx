@@ -11,7 +11,7 @@ export function LpCtaFooter() {
       <div className="relative">
         <div className="absolute inset-0 opacity-25">
           <Image
-            src="/images/lp/og-image.png"
+            src="/images/lp/og-share.png"
             alt=""
             fill
             sizes="100vw"
