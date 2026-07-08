@@ -5,6 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
 
 export default async function RootPage() {
-  // ルートページにアクセスした場合、ランディングページにリダイレクト
-  redirect("/landing")
+  // ルートページにアクセスした場合、製品紹介LPにリダイレクト
+  redirect("/lp")
 }
