@@ -87,6 +87,20 @@ describe("ar-learning-tour-kids", () => {
     expect(cue.dangerKind).toBe("交通")
   })
 
+  it("不審者アラート(suspicious)は本文に防犯キーワードが無くても防犯の注意を返す", () => {
+    // danger_type='suspicious' は防犯として扱う。無いと汎用文言に落ちていた。
+    const cue = createKidsHazardCue(
+      createMockDangerReport({
+        danger_type: "suspicious",
+        title: "知らない人が声をかけてきた",
+        description: "知らない人が声をかけてきた",
+      }),
+    )
+
+    expect(cue.dangerKind).toBe("防犯")
+    expect(cue.shortMessage).toBe("こまったら、大人がいる明るい場所へ行こう")
+  })
+
   it("50m以内だけ接近中として扱う", () => {
     expect(isApproachingHazard(49.9)).toBe(true)
     expect(isApproachingHazard(50)).toBe(true)

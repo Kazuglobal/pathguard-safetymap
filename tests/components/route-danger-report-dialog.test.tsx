@@ -229,6 +229,15 @@ describe('RouteDangerReportDialog', () => {
       expect(screen.getAllByText('表示写真の選択').length).toBeGreaterThan(0)
       expect(screen.getByRole('radio', { name: /加工画像 1/ })).toBeInTheDocument()
       expect(screen.getAllByRole('radio', { name: /報告画像/ }).length).toBeGreaterThan(0)
+
+      // 非公開バケット対応: サムネイルは署名URL経由で表示し、DB保存済みの生の
+      // 公開URLを <img src> に直接使わない(署名前は表示しない)。回帰防止。
+      expect(
+        document.querySelector('img[src="https://example.com/danger1_processed.jpg"]')
+      ).toBeNull()
+      expect(
+        document.querySelector('img[src="https://example.com/danger1.jpg"]')
+      ).toBeNull()
     })
 
     it('defaults to the original report image when no image has been selected', async () => {
