@@ -219,6 +219,41 @@ export default function MapContainer({
     }
   }, [initialReportId, supabase, toast])
 
+  // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
+  // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
+  useEffect(() => {
+    if (!supabase || !initialReportId) return
+    if (openedDeepLinkReportIdRef.current === initialReportId) return
+    openedDeepLinkReportIdRef.current = initialReportId
+
+    let cancelled = false
+    const openDeepLinkedReport = async () => {
+      const { data, error } = await supabase
+        .from("danger_reports")
+        .select("*")
+        .eq("id", initialReportId)
+        .maybeSingle()
+
+      if (cancelled) return
+      if (error || !data) {
+        toast({
+          title: "報告を表示できません",
+          description: "報告が削除されたか、表示する権限がありません。",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedReport(data as DangerReport)
+      setIsDetailModalOpen(true)
+    }
+
+    void openDeepLinkedReport()
+    return () => {
+      cancelled = true
+    }
+  }, [initialReportId, supabase, toast])
+
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
 
