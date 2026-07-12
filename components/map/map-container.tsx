@@ -98,6 +98,7 @@ export default function MapContainer({
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isBaseMapReady, setIsBaseMapReady] = useState(false)
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null)
   const [locationSelectionSource, setLocationSelectionSource] =
@@ -630,6 +631,7 @@ export default function MapContainer({
 
       map.current.on("load", () => {
         mapInitialized.current = true;
+        setIsBaseMapReady(true)
         addClickListener();
         setIsLoading(false);
         setMapStyleSyncToken((prev) => prev + 1)
@@ -680,6 +682,7 @@ export default function MapContainer({
       if (map.current) {
         if (mapClickHandler.current) map.current.off("click", mapClickHandler.current);
         map.current.remove(); map.current = null;
+        setIsBaseMapReady(false)
         navigationControlRef.current = null
         mapInitialized.current = false; clickListenerAdded.current = false; mapClickHandler.current = null;
       }
@@ -1099,6 +1102,7 @@ export default function MapContainer({
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
           displayOverlayOptions={mapDisplayOverlayOptions}
+          isMapReady={isBaseMapReady}
         />
 
         {!awaitingLocationSelection && (
@@ -1304,6 +1308,9 @@ export default function MapContainer({
           selectedLocation={selectedLocation}
           mapError={mapError}
           isLoading={isLoading}
+          loadingStage={isBaseMapReady ? 2 : 1}
+          onShowList={() => setIsSidebarOpen(true)}
+          onRetry={() => window.location.reload()}
         />
           {/* 危険レポート入力フォーム（デスクトップ=右下 / モバイル=Portalフルスクリーン） */}
           <MapReportForms

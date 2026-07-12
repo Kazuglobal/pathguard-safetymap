@@ -31,7 +31,7 @@ const resolveErrorMessage = (error: unknown, fallback: string) => {
   return message || fallback
 }
 
-export default function LoginForm() {
+export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) {
   const router = useRouter()
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -90,7 +90,7 @@ export default function LoginForm() {
       })
 
       router.refresh()
-      router.push("/map")
+      router.replace(nextPath)
     } catch (error) {
       toast({
         title: "エラー",
@@ -124,7 +124,7 @@ export default function LoginForm() {
         description: "デモアカウントにログインしました。",
       })
 
-      router.push("/landing")
+      router.replace(nextPath === "/map" ? "/landing" : nextPath)
     } catch (error) {
       toast({
         title: "エラー",
@@ -182,7 +182,7 @@ export default function LoginForm() {
           <Button type="button" variant="outline" className="w-full" onClick={handleDemoLogin} disabled={isLoading}>
             デモユーザーで試す
           </Button>
-          <SocialLoginButtons />
+          <SocialLoginButtons nextPath={nextPath} />
           <div className="text-center text-sm mt-2">
             アカウントをお持ちでない方は{" "}
             <Link href="/register" className="text-primary hover:underline">

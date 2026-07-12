@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { RotateCcw, Sparkles, X } from "lucide-react"
+import { ImageIcon, RotateCcw, Sparkles, X } from "lucide-react"
 import {
   buildBlurRegions,
   type DetectedFace,
@@ -48,6 +48,7 @@ const PIXELATE_TARGET_PX = 12
 const MAX_DISPLAY_WIDTH = 480
 /** ドラッグ確定とみなす最小サイズ (相対座標 0..1) */
 const MIN_DRAG_SIZE = 0.02
+const PROCESSING_TIMEOUT_MS = 12_000
 
 type DragState = {
   startX: number
@@ -73,6 +74,7 @@ type MediaPipeFaceDetector = {
       categories?: ReadonlyArray<{ score: number }>
     }>
   }
+  close?: () => void
 }
 
 /**
@@ -99,6 +101,13 @@ async function loadMediaPipeFaceDetector(): Promise<MediaPipeFaceDetector> {
     if (faceDetectorPromise === promise) faceDetectorPromise = null
   })
   return promise
+}
+
+function releaseMediaPipeFaceDetector(): void {
+  const active = faceDetectorPromise
+  faceDetectorPromise = null
+  if (!active) return
+  void active.then((detector) => detector.close?.()).catch(() => undefined)
 }
 
 /**
@@ -263,6 +272,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
   // 画像自体が壊れている等で読み込めなかった(先へ進ませない)
   const [loadFailed, setLoadFailed] = useState<boolean>(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [processingTimedOut, setProcessingTimedOut] = useState(false)
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
   const [, setDisplaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
 
   // --- 画像ロード + 自動検出 ---
@@ -270,6 +282,18 @@ export function MaskConfirm(props: MaskConfirmProps) {
     let revoked = false
     const objectUrl = URL.createObjectURL(file)
     const img = new Image()
+    setPreviewObjectUrl(objectUrl)
+    setIsLoading(true)
+    setLoadFailed(false)
+    setProcessingTimedOut(false)
+    setErrorMessage(null)
+
+    const timeoutId = window.setTimeout(() => {
+      if (revoked) return
+      setProcessingTimedOut(true)
+      setIsLoading(false)
+      setErrorMessage("しゃしんの じゅんびに じかんが かかっています。やりなおすか、べつの写真をえらんでね。")
+    }, PROCESSING_TIMEOUT_MS)
 
     img.onload = () => {
       if (revoked) return
@@ -284,15 +308,20 @@ export function MaskConfirm(props: MaskConfirmProps) {
       void detectFaces(img, naturalW, naturalH)
         .then((faces) => {
           if (revoked) return
+          window.clearTimeout(timeoutId)
           setAutoRegions(buildBlurRegions(faces))
         })
         .finally(() => {
-          if (!revoked) setIsLoading(false)
+          if (!revoked) {
+            window.clearTimeout(timeoutId)
+            setIsLoading(false)
+          }
         })
     }
 
     img.onerror = () => {
       if (revoked) return
+      window.clearTimeout(timeoutId)
       setLoadFailed(true)
       setIsLoading(false)
     }
@@ -301,9 +330,12 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
     return () => {
       revoked = true
+      window.clearTimeout(timeoutId)
       URL.revokeObjectURL(objectUrl)
+      setPreviewObjectUrl((current) => (current === objectUrl ? null : current))
+      releaseMediaPipeFaceDetector()
     }
-  }, [file])
+  }, [file, retryKey])
 
   // --- canvas 再描画 (原画像 → 全ぼかし領域) ---
   const redraw = useCallback(() => {
@@ -402,6 +434,14 @@ export function MaskConfirm(props: MaskConfirmProps) {
     setManualRegions((prev) => prev.slice(0, -1))
   }, [])
 
+  const handleRetry = useCallback(() => {
+    setAutoRegions([])
+    setManualRegions([])
+    setDrag(null)
+    imageRef.current = null
+    setRetryKey((value) => value + 1)
+  }, [])
+
   const handleConfirm = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !imageRef.current) {
@@ -441,9 +481,12 @@ export function MaskConfirm(props: MaskConfirmProps) {
   return (
     <div className="mx-auto flex w-full max-w-md min-h-full flex-1 flex-col px-5 pt-2">
       <div className="flex flex-1 flex-col gap-3.5">
-        <SpeechBubble mood={isLoading ? "think" : "cheer"}>
-          かお・なまえ・おうち・くるまの ナンバーを もやもやに かくすよ。
-          かくしたい ところは <b>ゆびで なぞって</b> ついかしてね。
+        <SpeechBubble mood={isLoading || processingTimedOut ? "think" : "cheer"}>
+          {isLoading || processingTimedOut ? (
+            <>かおや なまえを かくしています。しゃしんは この端末の中で じゅんびするよ。</>
+          ) : (
+            <>かお・なまえ・おうち・くるまの ナンバーを もやもやに かくしたよ。かくしたい ところは <b>ゆびで なぞって</b> ついかしてね。</>
+          )}
         </SpeechBubble>
 
         {/* 写真(白フレーム)。ロード中もスケルトンを出して空白を作らない */}
@@ -453,7 +496,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
         >
           <div
             className="relative overflow-hidden rounded-[12px]"
-            style={{ background: C.night, minHeight: isLoading ? undefined : 120 }}
+            style={{ background: C.paperDeep, minHeight: isLoading ? undefined : 120 }}
           >
             {/* 読み込み失敗(壊れた画像など): 先へ進ませず、えらび直しへ誘導 */}
             {loadFailed && (
@@ -468,25 +511,34 @@ export function MaskConfirm(props: MaskConfirmProps) {
             )}
 
             {/* ロード中スケルトン(4:3) */}
-            {isLoading && !loadFailed && (
-              <div className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-3">
+            {(isLoading || processingTimedOut) && !loadFailed && (
+              <div className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 overflow-hidden">
+                {previewObjectUrl && (
+                  <div
+                    className="absolute -inset-6 scale-110 bg-cover bg-center opacity-55"
+                    style={{ backgroundImage: `url(${previewObjectUrl})`, filter: "blur(22px) saturate(.7)" }}
+                    aria-hidden="true"
+                  />
+                )}
                 {!reduce && (
                   <motion.div
                     aria-hidden="true"
                     className="absolute inset-y-0 w-1/3"
                     style={{
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent)",
+                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)",
                     }}
                     initial={{ left: "-35%" }}
                     animate={{ left: ["-35%", "105%"] }}
                     transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
                   />
                 )}
-                <Mascot size="md" mood="think" />
-                <span className="text-[13.5px] font-black" style={{ color: "#D9E5DE" }}>
-                  かおを じどうで さがしているよ…
-                </span>
+                <div className="relative z-10 rounded-[18px] border bg-[#FFFDF7]/95 px-5 py-4 text-center shadow-lg" style={{ borderColor: "rgba(67,57,43,.14)" }}>
+                  <p className="text-[15px] font-black" style={{ color: C.ink }}>しゃしんを じゅんび中 2/3</p>
+                  <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkSoft }}>かおや なまえを かくしています</p>
+                  <div className="mt-3 flex justify-center gap-3" aria-hidden="true">
+                    {[1, 2, 3].map((step) => <span key={step} className="h-3 w-3 rounded-full" style={{ background: step <= 2 ? C.primary : C.inkFaint }} />)}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -498,7 +550,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
               onPointerCancel={handlePointerUp}
               role="img"
               aria-label="ぼかしを かける しゃしん。ドラッグで かくす しかくを ついか"
-              className={isLoading || loadFailed ? "hidden" : "block"}
+              className={isLoading || loadFailed || processingTimedOut ? "hidden" : "block"}
               style={{
                 maxWidth: "100%",
                 width: "100%",
@@ -510,7 +562,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
           </div>
 
           {/* かくしている数(シール) */}
-          {!isLoading && !loadFailed && (
+          {!isLoading && !loadFailed && !processingTimedOut && (
             <div className="absolute -top-3 left-3 z-10">
               <Sticker tone={totalRegions > 0 ? "green" : "paper"} tilt={-3}>
                 かくした ばしょ {totalRegions}こ
@@ -531,43 +583,51 @@ export function MaskConfirm(props: MaskConfirmProps) {
         )}
 
         {/* やりなおし系(副ボタン・タップ領域 48px 以上) */}
-        <div className="flex gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           <button
             type="button"
-            onClick={handleUndo}
-            disabled={undoDisabled}
-            aria-label="さいごに ついかした しかくを けす"
-            className={`inline-flex min-h-[48px] flex-1 items-center justify-center gap-1.5 rounded-full border-2 bg-white px-4 text-[14px] font-black transition-transform ${
-              undoDisabled ? "cursor-not-allowed opacity-45" : "active:translate-y-[2px]"
-            } ${tokens.cls.focus}`}
-            style={{
-              borderColor: "rgba(67,57,43,.14)",
-              color: C.ink,
-              boxShadow: undoDisabled ? "none" : tokens.shadow.pressPaper,
-            }}
-          >
-            <RotateCcw className="h-4 w-4" strokeWidth={2.6} aria-hidden="true" />
-            ひとつ もどす
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="ぼかしを やめて とじる"
-            className={`inline-flex min-h-[48px] flex-1 items-center justify-center gap-1.5 rounded-full border-2 bg-white px-4 text-[14px] font-black transition-transform active:translate-y-[2px] ${tokens.cls.focus}`}
+            onClick={handleRetry}
+            aria-label="しゃしんの じゅんびを やりなおす"
+            className={`inline-flex min-h-[48px] items-center justify-center gap-1.5 rounded-full border-2 bg-white px-4 text-[14px] font-black transition-transform active:translate-y-[2px] ${tokens.cls.focus}`}
             style={{
               borderColor: "rgba(67,57,43,.14)",
               color: C.ink,
               boxShadow: tokens.shadow.pressPaper,
             }}
           >
-            <X className="h-4 w-4" strokeWidth={2.6} aria-hidden="true" />
-            やめる
+            <RotateCcw className="h-4 w-4" strokeWidth={2.6} aria-hidden="true" />
+            やりなおす
           </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="べつの写真をえらぶ"
+            className={`inline-flex min-h-[48px] items-center justify-center gap-1.5 rounded-full border-2 bg-white px-3 text-[13px] font-black transition-transform active:translate-y-[2px] ${tokens.cls.focus}`}
+            style={{
+              borderColor: "rgba(67,57,43,.14)",
+              color: C.ink,
+              boxShadow: tokens.shadow.pressPaper,
+            }}
+          >
+            <ImageIcon className="h-4 w-4" strokeWidth={2.6} aria-hidden="true" />
+            べつの写真をえらぶ
+          </button>
+          {!isLoading && !loadFailed && !processingTimedOut && (
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={undoDisabled}
+              className={`col-span-2 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border-2 bg-white px-4 text-[13px] font-black ${undoDisabled ? "opacity-45" : "active:translate-y-[2px]"} ${tokens.cls.focus}`}
+              style={{ borderColor: "rgba(67,57,43,.14)", color: C.inkSoft }}
+            >
+              <X className="h-4 w-4" aria-hidden="true" /> さいごの しかくを けす
+            </button>
+          )}
         </div>
 
         {/* 自動検出の結果をやさしく知らせる */}
         <AnimatePresence>
-          {!isLoading && !loadFailed && autoRegions.length === 0 && (
+          {!isLoading && !loadFailed && !processingTimedOut && autoRegions.length === 0 && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -583,9 +643,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
       {/* 主ボタン(みどり: この先へ進む安心アクション)。読み込み失敗時は進ませない */}
       <BottomBar className="-mx-5 px-5">
-        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed} variant="green">
+        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed || processingTimedOut} variant="green">
           <Sparkles className="h-5 w-5" strokeWidth={2.4} aria-hidden="true" />
-          {isLoading ? "じゅんびちゅう…" : loadFailed ? "この しゃしんは つかえないよ" : "この しゃしんを つかう"}
+          {isLoading ? "もうすこし まってね" : loadFailed || processingTimedOut ? "やりなおしてね" : "この しゃしんを つかう"}
         </PrimaryCTA>
       </BottomBar>
     </div>

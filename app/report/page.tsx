@@ -25,6 +25,7 @@ import {
   shareFamilyShareCard,
 } from "@/lib/report-generation/family-share-card"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
+import ReportComposer from "@/components/danger-report/report-composer"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -480,34 +481,17 @@ export default function ReportHubPage() {
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-10">
-        <Card
-          variant="gradient"
-          className="border-2 text-white shadow-tanken-card"
-          style={{ background: "linear-gradient(150deg, #159E72 0%, #0C7A55 100%)", borderColor: "rgba(67,57,43,.18)" }}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl sm:text-3xl font-black leading-tight">みんなの危険報告</CardTitle>
-            <CardDescription className="text-emerald-50">
-              最新の危険箇所を確認して、通学路の安全をみんなで守りましょう。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:gap-4">
-            <div className="text-sm text-emerald-50 sm:flex-1 min-w-0">
-              {reports.length > 0 ? `${reports.length} 件の危険報告が共有されています。` : "まだ危険報告はありません。"}
-            </div>
-            <div className="flex w-full gap-3 flex-col sm:flex-row sm:w-auto sm:flex-wrap sm:justify-start">
-              <Button asChild variant="secondary" className="w-full sm:w-auto whitespace-normal break-keep">
-                <Link href="/map">危険箇所をマップで見る</Link>
-              </Button>
-              <Button
-                asChild
-                className="w-full bg-white text-[#0C7A55] hover:bg-white/90 sm:w-auto whitespace-normal break-keep font-black"
-              >
-                <Link href="/hazard-game">投稿方法を学ぶ</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ReportComposer />
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900">みんなの危険報告</h2>
+            <p className="text-sm text-slate-600">最新の危険をチェックして、通学路の安全をみんなで守りましょう。</p>
+          </div>
+          <Button asChild variant="outline" className="min-h-11 w-full sm:w-auto">
+            <Link href="/map">危険箇所をマップで見る</Link>
+          </Button>
+        </div>
 
         <Card className="border-sky-100 bg-white/90 shadow-sm">
           <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">

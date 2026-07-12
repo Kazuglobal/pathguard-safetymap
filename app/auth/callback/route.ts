@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
+import { getSafeNextPath } from "@/lib/auth/safe-next"
 
 /**
  * Supabase OAuth (Google等) のコールバック。
@@ -8,13 +9,7 @@ import { createServerClient } from "@/lib/supabase-server"
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get("code")
-  const next = url.searchParams.get("next") ?? "/map"
-
-  // open redirect 防止: 解決後のURLが同一オリジンのときだけ許可する
-  // (先頭の "//" や "/\" はURL解決で外部オリジンになり得るため、文字列判定に頼らない)
-  const resolved = new URL(next, url.origin)
-  const safeNext =
-    resolved.origin === url.origin ? `${resolved.pathname}${resolved.search}` : "/map"
+  const safeNext = getSafeNextPath(url.searchParams.get("next"))
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=oauth_missing_code", url.origin))

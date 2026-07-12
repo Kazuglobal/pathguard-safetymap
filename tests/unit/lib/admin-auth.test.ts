@@ -81,6 +81,17 @@ describe('admin-auth', () => {
     expect(mockFrom).not.toHaveBeenCalled()
   })
 
+  it('既知のローカル管理者は非本番環境で管理者扱いになる', async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: 'u-local-admin', email: 'admin@test.com' } },
+      error: null,
+    })
+
+    const status = await getCurrentUserAdminStatus()
+
+    expect(status).toEqual({ isAuthenticated: true, isAdmin: true })
+  })
+
   it('非管理者メールは profile.role を照会せず管理者として扱わない', async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'u-3', email: 'member@example.com' } },

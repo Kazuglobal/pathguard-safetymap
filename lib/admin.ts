@@ -4,8 +4,17 @@
 
 function getAdminEmails(): ReadonlyArray<string> {
   const envAdmins = process.env.ADMIN_EMAILS
-  if (!envAdmins) return []
-  return envAdmins.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+  const configured = envAdmins
+    ? envAdmins.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+    : []
+
+  // scripts/create-test-users.ts で作成する既知のローカル管理者。
+  // 本番では環境変数の明示的な許可リストだけを使用する。
+  if (process.env.NODE_ENV !== 'production') {
+    return [...configured, 'admin@test.com']
+  }
+
+  return configured
 }
 
 /**

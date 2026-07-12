@@ -11,7 +11,8 @@ import { usePathname } from "next/navigation"
 import AppOnboarding from "@/components/onboarding/app-onboarding"
 import { shouldShowTutorial } from "@/lib/tutorial-storage"
 
-const SHOW_ON_PATHS = ["/", "/landing", "/map", "/routes", "/mypage"]
+// 深い機能ページを初回モーダルで塞がない。紹介画面でだけ短い要約を出す。
+const SHOW_ON_PATHS = ["/landing"]
 
 export function AppOnboardingGate() {
   const pathname = usePathname()
@@ -29,5 +30,5 @@ export function AppOnboardingGate() {
 
   if (!eligible) return null
 
-  return <AppOnboarding open={open} onClose={() => setOpen(false)} />
+  return <AppOnboarding open={open} onClose={() => setOpen(false)} summaryOnly />
 }

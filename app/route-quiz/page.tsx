@@ -1,16 +1,18 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import mapboxgl, { LngLatLike } from "mapbox-gl"
+import { useState, useEffect, useRef, useCallback } from "react"
+import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import * as turf from "@turf/turf"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { AlertTriangle, Car, HelpCircle, Shield } from "lucide-react"
+import { AlertTriangle, Car, Check, HelpCircle, MapPin, RotateCcw, Shield } from "lucide-react"
 import shuffle from "lodash.shuffle"
 import { addPoints } from "@/lib/gamification"
 import type { DangerReport } from "@/lib/types"
+import { canStartRouteQuiz, selectNextQuizPoint } from "@/lib/route-quiz-selection"
+import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 mapboxgl.accessToken = MAPBOX_TOKEN
@@ -22,6 +24,10 @@ export default function RouteQuizPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   /** Mapbox GL インスタンス */
   const map = useRef<mapboxgl.Map | null>(null)
+  const startPtRef = useRef<[number, number] | null>(null)
+  const endPtRef = useRef<[number, number] | null>(null)
+  const startMarkerRef = useRef<mapboxgl.Marker | null>(null)
+  const endMarkerRef = useRef<mapboxgl.Marker | null>(null)
 
   const [hazards, setHazards] = useState<DangerReport[]>([])
   const [startPt, setStartPt] = useState<[number, number] | null>(null)
@@ -31,6 +37,9 @@ export default function RouteQuizPage() {
   const [step, setStep] = useState<"select" | "quiz" | "result">("select")
   const [idx, setIdx] = useState(0)
   const [score, setScore] = useState(0)
+  const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "error">("loading")
+  const [mapMessage, setMapMessage] = useState("")
+  const [mapRetryKey, setMapRetryKey] = useState(0)
 
   /* ---------------------------------------------------------- */
   /*  1. 危険レポート取得                                       */
@@ -51,91 +60,96 @@ export default function RouteQuizPage() {
   useEffect(() => {
     if (map.current || !mapContainer.current) return
 
-    map.current = new mapboxgl.Map({
+    if (!MAPBOX_TOKEN) {
+      setMapStatus("error")
+      setMapMessage("地図の設定を確認できませんでした。時間をおいてもう一度ためしてください。")
+      return
+    }
+
+    setMapStatus("loading")
+    setMapMessage("")
+
+    const instance = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [139.767, 35.681], // 東京駅
+      center: [139.767, 35.681],
       zoom: 12,
     })
+    map.current = instance
 
-    // クリックでスタートとゴール設定
-    map.current.on("click", (e) => {
-      const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat]
-      if (!startPt) {
-        setStartPt(lngLat)
-      } else if (!endPt) {
-        setEndPt(lngLat)
+    const handleLoad = () => setMapStatus("ready")
+    const handleError = () => {
+      setMapStatus("error")
+      setMapMessage("地図を読み込めませんでした。通信状態を確認して、もう一度ためしてください。")
+    }
+    const handleClick = (e: mapboxgl.MapMouseEvent) => {
+      const point: [number, number] = [e.lngLat.lng, e.lngLat.lat]
+      const next = selectNextQuizPoint({ start: startPtRef.current, end: endPtRef.current }, point)
+
+      if (next.start !== startPtRef.current) {
+        startPtRef.current = next.start
+        setStartPt(next.start)
+        return
       }
-    })
-  }, [startPt, endPt])
+
+      if (next.end !== endPtRef.current) {
+        endPtRef.current = next.end
+        setEndPt(next.end)
+        if (next.start && next.end) {
+          setRouteLine({ type: "LineString", coordinates: [next.start, next.end] })
+        }
+      }
+    }
+
+    instance.on("load", handleLoad)
+    instance.on("error", handleError)
+    instance.on("click", handleClick)
+
+    return () => {
+      startMarkerRef.current?.remove()
+      endMarkerRef.current?.remove()
+      startMarkerRef.current = null
+      endMarkerRef.current = null
+      instance.off("load", handleLoad)
+      instance.off("error", handleError)
+      instance.off("click", handleClick)
+      instance.remove()
+      if (map.current === instance) map.current = null
+    }
+  }, [mapRetryKey])
 
   /* ---------------------------------------------------------- */
   /*  3. スタート / ゴールマーカー描画                          */
   /* ---------------------------------------------------------- */
   useEffect(() => {
-    if (!map.current) return
+    if (!map.current || mapStatus !== "ready") return
 
-    let style: mapboxgl.Style | undefined
-    try {
-      style = map.current.getStyle()
-    } catch {
-      return // style 未設定のタイミング
+    const makeMarker = (number: string, color: string, label: string) => {
+      const element = document.createElement("button")
+      element.type = "button"
+      element.textContent = number
+      element.setAttribute("aria-label", label)
+      element.className = "grid h-12 w-12 place-items-center rounded-full border-4 border-white text-lg font-black text-white shadow-lg"
+      element.style.background = color
+      return element
     }
 
-    /* ---------- 既存マーカー削除 ---------- */
-    ;(style.layers ?? []).forEach((layer: mapboxgl.AnyLayer) => {
-      if (layer.id.startsWith("marker-")) {
-        try {
-          map.current?.removeLayer(layer.id)
-        } catch {
-          /* レイヤーが存在しない場合は無視 */
-        }
-      }
-    })
+    startMarkerRef.current?.remove()
+    endMarkerRef.current?.remove()
+    startMarkerRef.current = startPt
+      ? new mapboxgl.Marker({ element: makeMarker("1", tankenTokens.color.primary, "スタート地点") }).setLngLat(startPt).addTo(map.current)
+      : null
+    endMarkerRef.current = endPt
+      ? new mapboxgl.Marker({ element: makeMarker("2", tankenTokens.color.accent, "ゴール地点") }).setLngLat(endPt).addTo(map.current)
+      : null
 
-    ;(style.sources ?? {}) &&
-      Object.keys(style.sources).forEach((srcKey) => {
-        if (srcKey.startsWith("marker-")) {
-          try {
-            map.current?.removeSource(srcKey)
-          } catch {
-            /* ソースが存在しない場合は無視 */
-          }
-        }
-      })
-
-    /* ---------- マーカー追加関数 ---------- */
-    const addMarker = (pt: [number, number], id: string, color: string) => {
-      map.current!.addSource(id, {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: pt,
-              },
-              properties: {},
-            },
-          ],
-        } as GeoJSON.FeatureCollection,
-      })
-      map.current!.addLayer({
-        id,
-        type: "circle",
-        source: id,
-        paint: {
-          "circle-radius": 6,
-          "circle-color": color,
-        },
-      })
+    return () => {
+      startMarkerRef.current?.remove()
+      endMarkerRef.current?.remove()
+      startMarkerRef.current = null
+      endMarkerRef.current = null
     }
-
-    if (startPt) addMarker(startPt, "marker-start", "#38bdf8") // 水色
-    if (endPt) addMarker(endPt, "marker-end", "#f87171") // 赤
-  }, [startPt, endPt])
+  }, [startPt, endPt, mapStatus])
 
   /* ---------------------------------------------------------- */
   /*  4. ルート取得                                             */
@@ -144,21 +158,32 @@ export default function RouteQuizPage() {
     const getRoute = async () => {
       if (!startPt || !endPt) return
 
+      const controller = new AbortController()
+
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${startPt[0]},${startPt[1]};${endPt[0]},${endPt[1]}?geometries=geojson&access_token=${MAPBOX_TOKEN}`
-      const res = await fetch(url)
-      const data = await res.json()
-      const line = data.routes?.[0]?.geometry as GeoJSON.LineString
-      if (!line) return
-      setRouteLine(line)
+      try {
+        const res = await fetch(url, { signal: controller.signal })
+        if (!res.ok) throw new Error("directions_failed")
+        const data = await res.json()
+        const line = data.routes?.[0]?.geometry as GeoJSON.LineString
+        if (line) setRouteLine(line)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setMapMessage("道順を取得できなかったため、2地点を直線で確認しています。クイズは続けられます。")
+      }
+
+      return controller
     }
-    getRoute()
+    let activeController: AbortController | undefined
+    getRoute().then((controller) => { activeController = controller })
+    return () => activeController?.abort()
   }, [startPt, endPt])
 
   /* ---------------------------------------------------------- */
   /*  5. ルート描画 & クイズリスト作成                          */
   /* ---------------------------------------------------------- */
   useEffect(() => {
-    if (!map.current || !routeLine) return
+    if (!map.current || !routeLine || mapStatus !== "ready" || !map.current.isStyleLoaded()) return
 
     // 既存ルート削除
     if (map.current.getLayer("route-line")) map.current.removeLayer("route-line")
@@ -200,7 +225,28 @@ export default function RouteQuizPage() {
       turfAny.booleanPointInPolygon(turfAny.point([h.longitude, h.latitude]), buffered!),
     )
     setQuizList(shuffle(near))
-  }, [routeLine, hazards])
+  }, [routeLine, hazards, mapStatus])
+
+  const resetPoints = useCallback(() => {
+    startPtRef.current = null
+    endPtRef.current = null
+    setStartPt(null)
+    setEndPt(null)
+    setRouteLine(null)
+    setQuizList([])
+    setMapMessage("")
+    if (map.current?.getLayer("route-line")) map.current.removeLayer("route-line")
+    if (map.current?.getSource("route")) map.current.removeSource("route")
+  }, [])
+
+  const resetEndPoint = useCallback(() => {
+    endPtRef.current = null
+    setEndPt(null)
+    setRouteLine(null)
+    setQuizList([])
+    if (map.current?.getLayer("route-line")) map.current.removeLayer("route-line")
+    if (map.current?.getSource("route")) map.current.removeSource("route")
+  }, [])
 
   /* ---------------------------------------------------------- */
   /*  6. クイズロジック                                         */
@@ -256,47 +302,76 @@ export default function RouteQuizPage() {
   /* ---------------------------------------------------------- */
   /*  7. UI                                                     */
   /* ---------------------------------------------------------- */
+  const selectionReady = canStartRouteQuiz({ start: startPt, end: endPt })
+  const t = tankenTokens
+
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-[100dvh] min-h-[640px] flex-col" style={{ backgroundColor: t.color.paper, backgroundImage: PAPER_NOISE, color: t.color.ink }}>
       {/* ヘッダー */}
-      <header className="flex-none border-b bg-white p-2 text-center font-bold">
-        ルートクイズ
+      <header className="flex-none border-b px-4 py-3 text-center text-lg font-black" style={{ background: t.color.card, borderColor: t.border.faint }}>
+        つうがくろ クイズ
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* Map */}
-        <div ref={mapContainer} className="flex-1" />
+        <section className="relative h-[52dvh] min-h-[320px] w-full shrink-0 md:h-auto md:min-h-0 md:flex-1" aria-label="スタートとゴールを選ぶ地図">
+          <div ref={mapContainer} className="h-full w-full" data-testid="route-quiz-map" />
+          {mapStatus !== "ready" && (
+            <div className="absolute inset-0 grid place-items-center bg-[#FBF5E9]/90 p-6 text-center" aria-live="polite">
+              <div>
+                <MapPin className="mx-auto h-9 w-9" style={{ color: mapStatus === "error" ? t.color.danger : t.color.primary }} aria-hidden="true" />
+                <p className="mt-3 font-black">{mapStatus === "loading" ? "ちずを じゅんびしています…" : "ちずを ひらけませんでした"}</p>
+                {mapStatus === "error" && (
+                  <button
+                    type="button"
+                    onClick={() => setMapRetryKey((value) => value + 1)}
+                    className={`mt-4 inline-flex min-h-12 items-center gap-2 rounded-full px-5 font-black text-white ${t.cls.focus}`}
+                    style={{ background: t.color.primary, boxShadow: t.shadow.pressGreen }}
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" /> もう一度ためす
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* サイドパネル */}
-        <aside className="w-80 max-w-full overflow-y-auto border-l bg-white p-4">
+        <aside className="min-h-0 flex-1 overflow-y-auto border-t p-4 pb-28 md:w-[380px] md:flex-none md:border-l md:border-t-0 md:pb-6" style={{ background: t.color.card, borderColor: t.border.faint }}>
           {step === "select" && (
-            <>
-              <h2 className="mb-2 font-medium">スタート / ゴールを選択</h2>
-              <p className="mb-2 text-sm">
-                地図をクリックして 2&nbsp;点を指定してください。
-              </p>
-              <ul className="mb-4 text-sm">
-                <li>
-                  スタート:&nbsp;
-                  {startPt
-                    ? `${startPt[1].toFixed(4)},${startPt[0].toFixed(4)}`
-                    : "未設定"}
+            <div className="space-y-3">
+              <p className="text-center text-sm font-black" style={{ color: t.color.accentStrong }}>ちずを 2かい タップしてね</p>
+              <ol className="space-y-2">
+                <li className="flex min-h-14 items-center gap-3 rounded-[18px] border p-3" style={{ background: t.color.primarySoft, borderColor: "rgba(21,158,114,.25)" }}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-lg font-black text-white" style={{ background: t.color.primary }}>1</span>
+                  <span className="min-w-0 flex-1 font-black">① スタートをえらぶ</span>
+                  {startPt && <Check className="h-5 w-5" style={{ color: t.color.primaryStrong }} aria-label="えらびました" />}
                 </li>
-                <li>
-                  ゴール:&nbsp;
-                  {endPt
-                    ? `${endPt[1].toFixed(4)},${endPt[0].toFixed(4)}`
-                    : "未設定"}
+                <li className="flex min-h-14 items-center gap-3 rounded-[18px] border p-3" style={{ background: t.color.accentSoft, borderColor: "rgba(244,128,31,.25)" }}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-lg font-black text-white" style={{ background: t.color.accent }}>2</span>
+                  <span className="min-w-0 flex-1 font-black">② ゴールをえらぶ</span>
+                  {endPt && <Check className="h-5 w-5" style={{ color: t.color.accentStrong }} aria-label="えらびました" />}
                 </li>
-              </ul>
+              </ol>
+              {mapMessage && <p role="status" className="rounded-[14px] border px-3 py-2 text-xs font-bold" style={{ background: t.color.sunSoft, borderColor: t.color.sunDeep }}>{mapMessage}</p>}
+              <div className="flex gap-2">
+                {endPt && (
+                  <button type="button" onClick={resetEndPoint} className={`min-h-11 flex-1 rounded-full border px-3 text-sm font-bold ${t.cls.focus}`} style={{ borderColor: t.border.soft }}>ゴールを選び直す</button>
+                )}
+                {startPt && (
+                  <button type="button" onClick={resetPoints} className={`min-h-11 flex-1 rounded-full border px-3 text-sm font-bold ${t.cls.focus}`} style={{ borderColor: t.border.soft }}>はじめから</button>
+                )}
+              </div>
               <Button
                 onClick={startQuiz}
-                disabled={!routeLine}
-                className="w-full"
+                disabled={!selectionReady}
+                className={`min-h-14 w-full rounded-full text-lg font-black ${t.cls.focus}`}
+                style={{ background: selectionReady ? t.color.primary : t.color.inkFaint, boxShadow: selectionReady ? t.shadow.pressGreen : "none" }}
               >
-                クイズ開始
+                クイズをはじめる
               </Button>
-            </>
+              {!selectionReady && <p className="text-center text-xs font-bold" style={{ color: t.color.inkSoft }}>スタートとゴールをえらぶと押せるよ</p>}
+            </div>
           )}
 
           {step === "quiz" && (
