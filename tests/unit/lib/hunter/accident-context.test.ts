@@ -167,6 +167,25 @@ describe("buildAccidentSummary", () => {
     expect(summary.topAccidentType).toBeNull();
   });
 
+  it("returns topAccidentTypes in count-descending order, capped at 3", () => {
+    const summary = buildAccidentSummary(
+      makeStats({
+        total_accidents: 20,
+        risk_score: 40,
+        by_accident_type: { 出会い頭: 3, 追突: 7, 右折時: 2, 横断中: 5 },
+      }),
+    );
+    expect(summary.topAccidentTypes).toEqual(["追突", "横断中", "出会い頭"]);
+  });
+
+  it("returns empty topAccidentTypes for no-data summaries", () => {
+    expect(buildAccidentSummary(null).topAccidentTypes).toEqual([]);
+    expect(
+      buildAccidentSummary(makeStats({ total_accidents: 4, risk_score: 40, by_accident_type: {} }))
+        .topAccidentTypes,
+    ).toEqual([]);
+  });
+
   it("maps peak_hour 8 to the morning commute slot", () => {
     const summary = buildAccidentSummary(
       makeStats({

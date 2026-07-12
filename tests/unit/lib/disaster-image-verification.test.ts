@@ -11,8 +11,10 @@ vi.mock("@/lib/gemini-hazard", async (importOriginal) => {
 })
 
 import {
+  buildCorrectiveSuffix,
   verifyOrRegenerateImages,
   IMAGE_VERIFICATION_FAILED_WARNING,
+  type GeneratedImageVerification,
 } from "@/lib/disaster-image-verification"
 import type { GeneratedImage } from "@/lib/gemini-image"
 
@@ -150,5 +152,108 @@ describe("verifyOrRegenerateImages", () => {
     expect(outcome.verificationRequestCount).toBe(1)
     // 再生成が空なので再検証は行わない
     expect(mocks.callGeminiVision).toHaveBeenCalledTimes(1)
+  })
+
+  it("旧形式応答(新フィールドなし)は両ソフトフラグが false に既定化され従来どおり採用される", async () => {
+    // CLEAN_RESULT は garbledJapaneseText / excessiveDamage を含まない旧形式
+    mocks.callGeminiVision.mockResolvedValueOnce(CLEAN_RESULT)
+    const regenerate = vi.fn(async () => REGEN_IMAGES)
+
+    const outcome = await verifyOrRegenerateImages({ images: FIRST_IMAGES, regenerate })
+
+    expect(outcome.images).toEqual(FIRST_IMAGES)
+    expect(regenerate).not.toHaveBeenCalled()
+  })
+
+  it("excessiveDamage=true 単独(プライバシー系すべて陰性)ではログのみで画像を採用する(段階導入)", async () => {
+    const softOnly = JSON.stringify({
+      readableText: false,
+      textSamples: [],
+      faces: false,
+      licensePlates: false,
+      otherPrivacyRisk: [],
+      garbledJapaneseText: false,
+      excessiveDamage: true,
+    })
+    mocks.callGeminiVision.mockResolvedValueOnce(softOnly)
+    const regenerate = vi.fn(async () => REGEN_IMAGES)
+
+    const outcome = await verifyOrRegenerateImages({ images: FIRST_IMAGES, regenerate })
+
+    expect(outcome.images).toEqual(FIRST_IMAGES)
+    expect(outcome.warning).toBeUndefined()
+    expect(regenerate).not.toHaveBeenCalled()
+  })
+
+  it("garbledJapaneseText=true 単独でも同様に採用される(破棄経路を増やしていない)", async () => {
+    const softOnly = JSON.stringify({
+      readableText: false,
+      textSamples: [],
+      faces: false,
+      licensePlates: false,
+      otherPrivacyRisk: [],
+      garbledJapaneseText: true,
+      excessiveDamage: false,
+    })
+    mocks.callGeminiVision.mockResolvedValueOnce(softOnly)
+    const regenerate = vi.fn(async () => REGEN_IMAGES)
+
+    const outcome = await verifyOrRegenerateImages({ images: FIRST_IMAGES, regenerate })
+
+    expect(outcome.images).toEqual(FIRST_IMAGES)
+    expect(regenerate).not.toHaveBeenCalled()
+  })
+
+  it("プライバシーNG + excessiveDamage=true の是正サフィックスには過剰被害の是正行が含まれる", async () => {
+    const dirtyWithDamage = JSON.stringify({
+      readableText: true,
+      textSamples: ["Watermark AI"],
+      faces: false,
+      licensePlates: false,
+      otherPrivacyRisk: [],
+      garbledJapaneseText: false,
+      excessiveDamage: true,
+    })
+    mocks.callGeminiVision
+      .mockResolvedValueOnce(dirtyWithDamage)
+      .mockResolvedValueOnce(CLEAN_RESULT)
+    const regenerate = vi.fn(async () => REGEN_IMAGES)
+
+    await verifyOrRegenerateImages({ images: FIRST_IMAGES, regenerate })
+
+    const suffix = regenerate.mock.calls[0][0]
+    expect(suffix).toContain("excessive damage")
+    expect(suffix).toContain("shaken but standing")
+  })
+})
+
+describe("buildCorrectiveSuffix", () => {
+  const base: GeneratedImageVerification = {
+    readableText: false,
+    textSamples: [],
+    faces: false,
+    licensePlates: false,
+    otherPrivacyRisk: [],
+    garbledJapaneseText: false,
+    excessiveDamage: false,
+  }
+
+  it("英語ヘッダと常設2行(許可文字列限定・特定情報禁止)を含む", () => {
+    const suffix = buildCorrectiveSuffix(base)
+    expect(suffix).toContain("POST-GENERATION AUDIT FEEDBACK")
+    expect(suffix).toContain("Allowed text is ONLY")
+    expect(suffix).toContain("Never render names")
+  })
+
+  it("textSamples は引用符付きで列挙される", () => {
+    const suffix = buildCorrectiveSuffix({ ...base, textSamples: ["Gemini", "SampleCo"] })
+    expect(suffix).toContain('"Gemini"')
+    expect(suffix).toContain('"SampleCo"')
+  })
+
+  it("garbledJapaneseText の是正行は glyph-for-glyph 再描画か省略を指示する", () => {
+    const suffix = buildCorrectiveSuffix({ ...base, garbledJapaneseText: true })
+    expect(suffix).toContain("glyph-for-glyph")
+    expect(suffix).toContain("omit that label entirely")
   })
 })

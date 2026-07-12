@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
 import { verifyOrRegenerateImages } from "@/lib/disaster-image-verification"
+import { SCENE_PRESERVATION_GUARD_SUFFIX } from "@/lib/disaster-image-prompt-fallbacks"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { calculateCost, estimateImageGenerationCost } from "@/lib/api-cost-calculator"
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
 
     const form = await req.formData()
     const prompt = (form.get("prompt") as string) || undefined
+    const generationMode = (form.get("generationMode") as string) || undefined
     const file = form.get("image") as File | null
 
     let imageBase64: string | undefined
@@ -59,11 +61,17 @@ export async function POST(req: NextRequest) {
     }
 
 
+    // standard(本線の可視化/シミュレーション)モードのときだけ、恒久ルール
+    // (アスペクト比維持・匿名化・余計な文字禁止)をサーバ側で決定的に付与する。
+    // generationMode 未指定(例: /tools/image-gen の自由入力プロンプト)や 'disaster'(カスタム/バッチ)には付けない。
+    const applyGuard = generationMode === "standard" && !!imageBase64 && !!prompt?.trim()
+    const basePrompt = applyGuard ? `${prompt}\n\n${SCENE_PRESERVATION_GUARD_SUFFIX}` : prompt
+
     // 生成プロンプトに是正サフィックスを足して呼び直せるようにする（再生成用）。
     const runGeneration = async (correctiveSuffix?: string) => {
       apiRequestCount += 1
       const result = await generateImageWithGeminiWithModel({
-        prompt: correctiveSuffix ? [prompt, correctiveSuffix].filter(Boolean).join("\n\n") : prompt,
+        prompt: correctiveSuffix ? [basePrompt, correctiveSuffix].filter(Boolean).join("\n\n") : basePrompt,
         imageBase64,
         imageMimeType,
         model: FORCED_IMAGE_MODEL,

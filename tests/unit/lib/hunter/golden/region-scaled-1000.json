@@ -1,0 +1,47 @@
+{
+  "version": "hunter-1",
+  "imageUsable": true,
+  "dangerPoints": [
+    {
+      "evidence": "角の へいが 右から来る 車を かくしている",
+      "kind": "blind_corner",
+      "kidType": "見通しの悪い角",
+      "region": { "x": 400, "y": 520, "w": 180, "h": 200 },
+      "severity": "high",
+      "confidence": 0.82,
+      "whyDangerous": "ここは 車が 見えにくいよ。",
+      "safeAction": "とまって 左右を 見よう。",
+      "accidentLink": "出会い頭",
+      "quiz": {
+        "question": "見通しの わるい 角では どうする？",
+        "choices": ["とまって 左右を 見る", "はしって ぬける", "おとが しなければ すすむ", "車は とまると きめる"],
+        "explanation": "とまれば 車に きづけるよ。"
+      }
+    },
+    {
+      "evidence": "白い 車の かげに 出口が かくれている",
+      "kind": "parked_car_shadow",
+      "kidType": "車のかげ",
+      "region": { "x": 50, "y": 60, "w": 220, "h": 240 },
+      "severity": "medium",
+      "confidence": 0.7,
+      "whyDangerous": "車の かげは 見えにくいよ。",
+      "safeAction": "車の そばは ゆっくり。",
+      "accidentLink": null,
+      "quiz": {
+        "question": "とまっている 車の そばでは？",
+        "choices": ["ゆっくり あるく", "はしって ぬける", "車に さわる", "目を つぶる"],
+        "explanation": "かげから 出てくるかも。"
+      }
+    }
+  ],
+  "safePoints": [
+    {
+      "kind": "other",
+      "kidType": "ガードレール",
+      "region": { "x": 700, "y": 800, "w": 250, "h": 120 },
+      "whyGood": "車から まもってくれるよ。"
+    }
+  ],
+  "noHazardFollow": null
+}

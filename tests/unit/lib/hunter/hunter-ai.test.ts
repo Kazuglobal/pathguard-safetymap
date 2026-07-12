@@ -6,8 +6,8 @@ vi.mock("@/lib/gemini-hazard", () => ({
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { analyzeHunterImage, buildHunterPrompt, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
-import { HUNTER_GENERATION_CONFIG } from "@/lib/hunter/ai-request-schema"
-import { DISPLAY_CONF_MIN } from "@/lib/hunter/sanitize"
+import { HUNTER_GENERATION_CONFIG, HUNTER_RESPONSE_SCHEMA } from "@/lib/hunter/ai-request-schema"
+import { DISPLAY_CONF_MIN, MAX_AREA } from "@/lib/hunter/sanitize"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
 
 const accident: HunterAccidentSummary = {
@@ -85,6 +85,60 @@ describe("analyzeHunterImage", () => {
     expect(prompt).toContain("死角を作っていない、ふつうに停まっている車")
     expect(prompt).toContain("region(bbox)の正確さ")
     expect(prompt).toContain(`${DISPLAY_CONF_MIN} 未満の確信度なら`)
+  })
+
+  it("v2プロンプト: 3ゲート二段判定・evidence先行・2周目チェック・誤答類型・面積閾値開示を含む", () => {
+    const prompt = buildHunterPrompt(undefined, accident)
+    expect(prompt).toContain("G1[原因]")
+    expect(prompt).toContain("【evidence(さいしょに根拠を書く)】")
+    expect(prompt).toContain("2周目チェック")
+    expect(prompt).toContain("たがいに違う類型を3つ")
+    expect(prompt).toContain(`${MAX_AREA} をこえる枠`)
+  })
+
+  it("事故ブロック統合: ヒント化・空振り許可・priorityKind誘導・上位タイプ引き継ぎ・二重注入根絶", () => {
+    const withData: HunterAccidentSummary = {
+      ...accident,
+      hasData: true,
+      totalAccidents: 12,
+      childInvolved: 3,
+      topAccidentType: "出会い頭",
+      topAccidentTypes: ["出会い頭", "横断中"],
+    }
+    // buildAccidentPromptContext 相当の重複コンテキスト(検出強要文入り)を渡す
+    const duplicateCtx = "この地点では出会い頭事故が多い。優先的に、正確なbboxで検出してください"
+    const prompt = buildHunterPrompt(duplicateCtx, withData)
+
+    expect(prompt).toContain("さがす順番のヒント")
+    expect(prompt).toContain("ヒントに合う状況が写真に無ければ")
+    expect(prompt).toContain("「見通しの悪い角(blind_corner)」")
+    expect(prompt).toContain("横断中") // topTypes 2番手の引き継ぎ
+    // hasData のとき ctx は注入されない(事故情報の二重注入と検出強要文の根絶)
+    expect(prompt).not.toContain("検出してください")
+  })
+
+  it("hasData=false のときは従来どおり accidentContext(ctx) が注入される", () => {
+    const prompt = buildHunterPrompt("独自の注入コンテキスト文", accident)
+    expect(prompt).toContain("独自の注入コンテキスト文")
+  })
+
+  it("responseSchema: evidence は propertyOrdering 先頭・required 非包含(故障半径の最小化)", () => {
+    const items = (HUNTER_RESPONSE_SCHEMA.properties as any).dangerPoints.items
+    expect(items.properties.evidence).toEqual({ type: "STRING" })
+    expect(items.required).not.toContain("evidence")
+    expect(items.propertyOrdering[0]).toBe("evidence")
+    expect(items.propertyOrdering).toEqual([
+      "evidence",
+      "kind",
+      "kidType",
+      "region",
+      "severity",
+      "confidence",
+      "whyDangerous",
+      "safeAction",
+      "accidentLink",
+      "quiz",
+    ])
   })
 
   it("promotes a confident mid-size point to a place quiz (golden)", async () => {

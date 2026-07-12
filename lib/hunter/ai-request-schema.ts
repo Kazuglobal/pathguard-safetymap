@@ -31,6 +31,8 @@ const quizSchema = {
 const dangerPointSchema = {
   type: "OBJECT",
   properties: {
+    // 分析用の根拠フィールド(子ども表示なし)。答えより先に書かせる write-before-answer 用。
+    evidence: { type: "STRING" },
     kind: { type: "STRING", enum: [...KID_DANGER_KINDS] },
     kidType: { type: "STRING" },
     region: regionSchema,
@@ -42,6 +44,20 @@ const dangerPointSchema = {
     quiz: quizSchema,
   },
   required: ["kind", "region", "severity", "confidence", "whyDangerous", "safeAction", "quiz"],
+  // Gemini Schema拡張: 生成順を「根拠→分類→位置→確信度→文言」に固定(write-before-answer)。
+  // evidence は required に入れない(API拒否=400→guide(ai_error)全滅の故障半径を最小化)。
+  propertyOrdering: [
+    "evidence",
+    "kind",
+    "kidType",
+    "region",
+    "severity",
+    "confidence",
+    "whyDangerous",
+    "safeAction",
+    "accidentLink",
+    "quiz",
+  ],
 }
 
 const safePointSchema = {

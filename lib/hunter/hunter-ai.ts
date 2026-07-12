@@ -9,10 +9,10 @@
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { extractHunterJson } from "@/lib/hunter/ai-json"
 import { validateHunterResponse } from "@/lib/hunter/ai-schema"
-import { DISPLAY_CONF_MIN, sanitizeDangerPoints, sanitizeSafePoints } from "@/lib/hunter/sanitize"
+import { DISPLAY_CONF_MIN, MAX_AREA, sanitizeDangerPoints, sanitizeSafePoints } from "@/lib/hunter/sanitize"
 import { buildQuizItemsFromAi } from "@/lib/hunter/quiz"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
-import { KID_DANGER_KINDS } from "@/lib/hunter/kid-copy"
+import { accidentTypeToKind, KID_DANGER_KINDS, KID_LABEL_BY_KIND } from "@/lib/hunter/kid-copy"
 import { HUNTER_GENERATION_CONFIG } from "@/lib/hunter/ai-request-schema"
 import type { HunterAccidentSummary, HunterAnalyzeResult } from "@/lib/hunter/types"
 
@@ -35,12 +35,29 @@ export function buildHunterPrompt(
   accidentContext: string | undefined,
   accidentSummary: HunterAccidentSummary,
 ): string {
+  const topTypes = (
+    accidentSummary.topAccidentTypes && accidentSummary.topAccidentTypes.length > 0
+      ? accidentSummary.topAccidentTypes
+      : accidentSummary.topAccidentType
+        ? [accidentSummary.topAccidentType]
+        : []
+  ).slice(0, 3)
+  const priorityKind = accidentTypeToKind(accidentSummary.topAccidentType)
+  const priorityLine = priorityKind
+    ? `- 2周目チェックでは、まず「${KID_LABEL_BY_KIND[priorityKind]}(${priorityKind})」に当たる状況が写真に無いかを最初に確かめてください。`
+    : `- 出会い頭→見通しの悪い角(blind_corner) / 横断中→信号のない横断(crossing_no_signal) / 飛び出し→物かげ(popout_spot) / 右左折→曲がる車(turning_car) に当たる状況が写真に無いかを確かめてください。`
   const accidentBlock = accidentSummary.hasData
-    ? `【この地点の事故傾向】多い事故: ${accidentSummary.topAccidentType ?? "不明"} / 子ども関与: ${accidentSummary.childInvolved}件 / 合計: ${accidentSummary.totalAccidents}件${
+    ? `【この地点の事故傾向(さがす順番のヒント)】多い事故: ${topTypes.length > 0 ? topTypes.join("、") : "不明"} / 子ども関与: ${accidentSummary.childInvolved}件 / 合計: ${accidentSummary.totalAccidents}件${
         accidentSummary.peakTimeSlot ? ` / 多い時間帯: ${accidentSummary.peakTimeSlot}` : ""
-      }\n出会い頭→見通しの悪い角(blind_corner) / 横断中→信号のない横断(crossing_no_signal) / 飛び出し→物かげ(popout_spot) / 右左折→曲がる車(turning_car) を写真内で優先的に同定し accidentLink を付けてください。\n`
+      }\n${priorityLine}\n- これは「探すときのヒント」です。ヒントに合う状況が写真に無ければ、無理に見つけない・accidentLink を付けない(3つのゲートはヒントより優先)。写真に写っていない危険を、この情報から作らないでください。\n- accidentLink は、写真の状況がこの事故傾向と本当に対応しているときだけ付けます(対応しなければ null)。\n`
     : ""
-  const ctx = accidentContext && accidentContext.trim().length > 0 ? `\n${accidentContext.trim()}` : ""
+  // 事故統計の二重注入を防ぐ: hasData のとき ctx(buildAccidentPromptContext)は同一 stats の
+  // 重複情報+検出強要文(「…優先的に、正確なbboxで検出してください」)を含むため注入しない。
+  // summary 無しで独自 ctx を渡す呼び出しは従来どおり注入される。
+  const ctx =
+    !accidentSummary.hasData && accidentContext && accidentContext.trim().length > 0
+      ? `\n${accidentContext.trim()}`
+      : ""
 
   return `あなたは「通学する低学年の子の視点で、写真の中の“事故が起こりうる状況の場所”だけを見つける専門家」です。
 通学路の写真を見て、子どもが立ち止まって確かめるべき「危険ポイント」だけを返してください。
@@ -49,14 +66,21 @@ export function buildHunterPrompt(
 - ただ写っているだけの普通のもの(停車中の車・走行中の車そのもの・通常の看板・自転車・雑草・建物)は danger point にしない。
 - 「物の名前」ではなく「歩く子が立ち止まって確かめるべき“状況のある場所”」だけを返す。
 - 出さない具体例: 「死角を作っていない、ふつうに停まっている車」「ふつうの看板・電柱・標識そのもの」「まっすぐで見通しの良い歩道」。これら単体は danger point にしない。
-- 出す前に自分へ問う:「ここで子どもが立ち止まり、左右を確かめる具体的な理由があるか？」無ければ出さない。
+- 判定は2段階で行う。まず頭の中で「危険かもしれない場所」の候補を全部挙げる(この段階は多めでよい)。次に各候補へ下の3つのゲートを当て、3つ全部「はい」のものだけを出力する。
+- G1[原因]: 危険の原因になる物・地形が、この写真に実際に写っているか？(推測・画面の外は「いいえ」)
+- G2[状況]: その原因が「見通しを遮る」「横断を強いる」「車の進路と交わる」「路面・頭上そのものの危険(水たまり・落下物・せまい歩道)」のどれかに当たると、この写真の位置関係から指させるか？(物が写っているだけなら「いいえ」)
+- G3[行動]: 「だから ここで 立ち止まって 〇〇を 確かめる」と具体的な行動を1文で言えるか？
+- 1つでも「いいえ」なら出さない。ゲートを通った根拠は evidence に書く。
 - 該当が無ければ dangerPoints は空配列[]でよい(無理に作らない)。量より質。自信のないものは入れない。
 
 【見分け方の例(同じ物でも周りの状況で判定が変わる)】
 - 停まっている車: 見通しの良い直線で周りがよく見える→出さない。交差点の角にあり、その先の道が死角になる→ parked_car_shadow で出す。
 - 看板・電柱: まっすぐな歩道にあり通行の邪魔にならない→出さない。角にあって、その先の車道が見えなくなっている→ blind_corner で出す。
 - 横断歩道: 信号があり車が確実に止まる→出さない。信号がなく車の通行がある→ crossing_no_signal で出す。
+- 走行中の車・自転車・歩く人: ただ道を通っているだけ→出さない。曲がってきて子どもの進路と交わる、または死角から現れる位置にいる→ turning_car / popout_spot で出す。
+- 雑草・植えこみ・へい: 道ばたにあるだけ→出さない。角や横断する場所の見通しを実際に遮っている→ blind_corner / popout_spot で出す。
 - 判断に迷ったら「この状況“だけ”が理由で子どもが立ち止まるか」で決める。物の名前だけで即決めない。
+- 上の例は例にすぎない。例に出てきた物だけを探さず、どの候補にも同じ3つのゲート(G1〜G3)を当てる。
 
 【kind(必ずこの中から選ぶ)】
 ${KIND_LIST}
@@ -64,34 +88,51 @@ ${KIND_LIST}
 
 【region(bbox)の正確さ】
 - x,y はその危険「状況」が実際に写っている場所の左上、w,h はその範囲(画像左上が0,0、右下が1,1の正規化座標)。
-- 危険の原因そのもの(角・物かげ・横断帯・曲がってくる車など)を囲む。画面全体や無関係に広い範囲を指定しない。
+- 枠は「状況」の目印になる“実際に写っている物”を囲む: blind_corner→角を作っている建物・へいの はし / parked_car_shadow→死角を作っている その車 / crossing_no_signal→実際にわたる場所の路面 / popout_spot→出てきそうな すき間・物かげ / turning_car→曲がってくる車(写っていなければ曲がり込んでくる車道の口) / narrow_sidewalk→せまくなっている歩道の区間 / falling_object→落ちてきそうな物 / flood_dip→くぼみ・水たまりの路面。
+- 画面全体や無関係に広い範囲を囲まない。枠の面積(w×h)が ${MAX_AREA} をこえる枠は、後処理で無効として捨てられる。危険の原因が写っている範囲だけを囲めば自然に収まる。
 - 確認手順: box を決めたら、そこだけを頭の中で切り出して見る。危険の原因が枠の中で小さくしか写らないなら、原因のまわりまで枠を狭める。逆に原因がはみ出すなら広げる。
 - 同じ場所・同じ状況の危険は1つにまとめる(重複して出さない)。写真の別の一部・別の角度から見えていても、同じ実世界の場所を指すものは1つに統合する。
 
-【見落としを防ぐ】
-- 手前→奥、左→右の順に写真全体を一度見渡し、危険ポイントの見落としがないか確認してから出力する。ただし数を無理に合わせない(該当がなければ出さない)。
+【見落としを防ぐ(2周目チェック)】
+- 1周目: 写真をふつうに見て、危険ポイントの候補を挙げる。
+- 2周目: kind の一覧を思い出し、「この写真に、この種類の“状況”は写っていないか」を確かめて見落としを拾う。見落としやすい場所: 画面の端、奥(遠く)の小さい状況、足もとの路面、手前で切れている物のかげ。
+- 2周目は「見落としがないかの確認」であって、各 kind を出す義務ではない。多くの写真で該当する kind は0〜2種類しかない。ゲートに合わないものは出さない。
+
+【evidence(さいしょに根拠を書く)】
+- 各 dangerPoint では最初に evidence を書く: 「何が・何を・どう遮る/交わるか」をこの写真から読み取れる事実で30字以内(例:「角のへいが 右から来る車を かくす」)。写真に写っていない推測を書かない。evidence は分析用で、子どもには表示されない。
+- evidence が「物の名前だけ」にしかならない候補は G2 を満たしていない。出さない。
+- region と confidence は evidence の後で決める: 枠は evidence に書いた場所を囲み、confidence は evidence の確かさに合わせる。
 
 【ことば(低学年むけ)】
 - 1〜2年生の ことば。ひらがな多め。みじかい文。むずかしい漢字や 英語は つかわない。こわがらせない。「ぜったい安全」と 断定しない。
 - whyDangerous は「何があるか」ではなく「なぜ立ち止まるべきか(この写真の状況)」を 1文で。
 
+【写真固有の文にする】
+- whyDangerous と safeAction には、この写真に実際に写っている具体物をひとつ入れ、場所を「ひだり/みぎ/おく/てまえ」のことばで示す(例:「みぎの かどの しろい 車」)。どの写真にも当てはまる文だけ(「ここは あぶないよ」等)にしない。具体物の名前がうまく言えないときも、点は出してよい(そのときは場所のことばだけでよい)。
+- 英語の文字(A〜Z・a〜z)は1文字も入れない。英字が1文字でも入った文は破棄され、写真と関係のない定型文に差し替えられてしまう。外来語はカタカナで書く(例: ガードレール、カーブミラー)。この英字禁止は quiz の question / choices / explanation と safePoints の kidType / whyGood にも同じように適用する。
+
 【クイズ同梱(コールを増やさない)】
 - 各 dangerPoint は必ず quiz(4択)を持つ。choices は index0 が正解、のこり3つは「もっともらしいが危険な誤り」。
-- 誤答は「目をつぶって進む」のような荒唐無稽は禁止。「車の音がしなければ渡る」「手をあげれば車は必ず止まる」のような“ありがちな思い込み”にする。
+- 誤答(のこり3つ)は、子どもが実際にしがちな「思い込み」から、たがいに違う類型を3つ選んで作る: ①音・気配だけで判断(「車の 音が しなければ わたる」) ②相手への過信(「手を あげれば 車は かならず 止まる」) ③急げば安全(「走って わたれば だいじょうぶ」) ④いつもの道への安心(「まいにち とおる 道だから だいじょうぶ」) ⑤ながら歩き(「スマホを 見ながらでも だいじょうぶ」)。
+- 「目をつぶって進む」のような荒唐無稽な誤答は禁止。誤答もこの写真の状況に合うことばにする。
+- 4つの choices は長さを だいたい そろえる(正解だけが目立って長い・短いにしない)。
+- explanation は「正しい行動をすると なぜ 助かるのか」を1文で書く(正解の言い換えだけにしない)。
 
 【件数・長さ】
 - dangerPoints は最大4。explanation は40字以内、各 choice は18字以内。
 - imageUsable: 写真が暗すぎる/通学路でない等で判断できないときは false。
 
-【安全の工夫(safePoints・任意)】
-- ガードレール・歩道・カーブミラー・信号 などの「安全の工夫」があれば safePoints に最大3つ。各 { kind, kidType(やさしい日本語), region, whyGood(なぜ安全か・1文) }。無ければ空配列。
+【安全の工夫(safePoints)】
+- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { kind, kidType(やさしい日本語), region, whyGood(この写真でなぜ安全か・1文) }。無ければ空配列。
+- dangerPoints が空(=あぶない所が見つからない写真)のときこそ、safePoints をていねいに探す。
 
 【confidence と severity の意味】
 - confidence は「ここが本当に危険ポイントである」確からしさ(0〜1)。物体検出の確信度ではない。目安: 0.8以上=危険の原因と見えにくさの両方が写真からはっきり読み取れる / 0.6〜0.8=どちらか一方は推測を含む / それより低いなら候補から外す。${DISPLAY_CONF_MIN} 未満の確信度なら、無理に出さず候補から外す。
 - severity は「歩く子への事故リスク」で high/medium/low を自分で判断する(カテゴリ固定ではない)。
 
 【出力前の最終チェック】
-- 出力する前に、各 dangerPoint を【とても重要】の基準へもう一度照らし合わせ、当てはまらないものは取り除いてから出力する。
+- 出力する前に、各 dangerPoint を G1〜G3 と【とても重要】の基準へもう一度照らし合わせ、当てはまらないものは取り除いてから出力する。
+- evidence が写真の事実か・region が evidence の場所を囲んでいるか・枠が広すぎないかを確かめる。
 
 ${accidentBlock}${ctx}
 
@@ -101,13 +142,14 @@ ${accidentBlock}${ctx}
   "imageUsable": true,
   "dangerPoints": [
     {
+      "evidence": "角の へいが 右から来る 車を かくしている",
       "kind": "blind_corner",
       "kidType": "見通しの悪い角",
       "region": { "x": 0.40, "y": 0.52, "w": 0.18, "h": 0.20 },
       "severity": "high",
       "confidence": 0.78,
-      "whyDangerous": "曲がってくる 車から きみが 見えにくいよ。",
-      "safeAction": "いちど 止まって 左右を よく 見よう。",
+      "whyDangerous": "みぎの かどは 曲がってくる 車から きみが 見えにくいよ。",
+      "safeAction": "かどの 手前で いちど 止まって 左右を よく 見よう。",
       "accidentLink": "出会い頭",
       "quiz": {
         "question": "見通しの わるい 角では どうする？",

@@ -21,6 +21,10 @@ export interface GeneratedImageVerification {
   readonly licensePlates: boolean
   /** その他のプライバシーリスク（人名・住所・学校名・連絡先など）の説明。 */
   readonly otherPrivacyRisk: string[]
+  /** 日本語ラベルの字形が明らかに崩れて判読不能か。段階導入: 現状はログのみで isImageClean には含めない。 */
+  readonly garbledJapaneseText: boolean
+  /** 過度に恐ろしい災害描写か(完全倒壊・画面内の炎・黒煙等)。段階導入: 現状はログのみで isImageClean には含めない。 */
+  readonly excessiveDamage: boolean
 }
 
 export interface VerifiedGenerationOutcome {
@@ -44,19 +48,25 @@ const VERIFICATION_RESPONSE_SCHEMA: Record<string, unknown> = {
     faces: { type: "BOOLEAN" },
     licensePlates: { type: "BOOLEAN" },
     otherPrivacyRisk: { type: "ARRAY", items: { type: "STRING" } },
+    garbledJapaneseText: { type: "BOOLEAN" },
+    excessiveDamage: { type: "BOOLEAN" },
   },
+  // 新フィールドは required に入れない(旧形式応答との互換維持。欠落時は parseVerification が false に既定化)。
   required: ["readableText", "textSamples", "faces", "licensePlates", "otherPrivacyRisk"],
 }
 
 const VERIFICATION_PROMPT = `この画像は日本の通学路写真をもとにした防災・防犯・交通安全のインフォグラフィックです。
 短い日本語の注意ラベル（例:「冠水注意」「かべが たおれるかも」）、色分けの凡例、番号マーカー、矢印は意図的なデザインなので、問題として報告しないでください。
+意図的なラベルは通常、次のいずれかの短い定型文です:「フェンス倒壊注意」「電柱倒壊注意」「冠水注意」「延焼注意」、凡例「凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意」、番号マーカー「1」〜「4」。ただしユーザー指定のカスタムハザードでは別の短い日本語ラベルになることもあり、正しく読める短い日本語の注意ラベルは問題にしないでください。炎・水滴・警告三角などの平面的なインフォグラフィック用アイコンも意図的なデザインであり、問題として報告しないでください。
 
-あなたの仕事は、意図しない「文字の混入」と「匿名化漏れ」だけを検出することです。次のものだけを問題として扱います:
+あなたの仕事は、意図しない「文字の混入」「匿名化漏れ」「不適切な表現」だけを検出することです。次のものだけを問題として扱います:
 - アルファベット/ラテン文字の透かし・ロゴ・ブランド名・AIモデル名・英単語のキャプション
 - 人物や場所を特定できる文字情報（人名・表札・住所・学校名・電話番号・メールアドレス・連絡先）
 - ぼかされておらず個人が判別できる人物の顔
 - 文字や数字が判読できるナンバープレート
 - その他のプライバシー・個人情報リスク
+- 明らかに崩れた・実在しない字形の日本語風文字（ラベルとして判読できない歪んだ文字。様式化されているだけで正しく読める文字は報告しない）
+- 過度に恐ろしい災害描写: 完全に倒壊・崩壊した建物、実写として燃えている炎や物、爆発のような瓦礫の飛散、空全体を覆う黒煙、暗く不吉に加工された空（ひび割れ・浅い冠水・薄い煙もや・落ち葉の散乱など穏当な被害表現、および平面的な警告アイコンは問題にしない）
 
 次のJSON形式のみで回答してください（説明文なし）:
 {
@@ -64,7 +74,9 @@ const VERIFICATION_PROMPT = `この画像は日本の通学路写真をもとに
   "textSamples": [<検出した問題文字を原文のまま最大5個。意図的な日本語ラベルは含めない>],
   "faces": <ぼかされていない判別可能な顔があれば true>,
   "licensePlates": <判読可能なナンバープレートがあれば true>,
-  "otherPrivacyRisk": [<人名・住所・学校名・連絡先などその他のリスクを日本語で簡潔に。なければ空配列>]
+  "otherPrivacyRisk": [<人名・住所・学校名・連絡先などその他のリスクを日本語で簡潔に。なければ空配列>],
+  "garbledJapaneseText": <日本語ラベルの字形が明らかに崩れて判読不能なら true。すべて正しく読めるなら false>,
+  "excessiveDamage": <上記の「過度に恐ろしい災害描写」があれば true。穏当な被害表現のみなら false>
 }`
 
 /** すべての検出フラグが陰性なら「クリーン」（採用してよい）。 */
@@ -78,29 +90,38 @@ export function isImageClean(verification: GeneratedImageVerification): boolean 
   )
 }
 
-/** 検出内容を是正指示（再生成プロンプトの末尾に付けるサフィックス）へ変換する。 */
+/** 検出内容を是正指示（再生成プロンプトの末尾に付けるサフィックス）へ変換する。
+ *  英語ベースプロンプトへの混合言語連結の追従低下と、日本語指示文自体が画像に描画される
+ *  instruction leakage を避けるため英語で出力する。 */
 export function buildCorrectiveSuffix(verification: GeneratedImageVerification): string {
   const lines: string[] = [
     "",
-    "[生成後検証フィードバック - 前回の画像に問題が見つかりました。次を厳守して作り直してください]",
+    "[POST-GENERATION AUDIT FEEDBACK — the previous image failed a safety check. Regenerate and strictly obey every rule below]",
   ]
   if (verification.textSamples.length > 0) {
-    const samples = verification.textSamples.map((s) => `「${s}」`).join("、")
-    lines.push(`- 前回混入した次の文字は絶対に描画しない: ${samples}`)
+    const samples = verification.textSamples.map((s) => `"${s}"`).join(", ")
+    lines.push(`- The previous image contained the following forbidden text. It must NOT appear anywhere: ${samples}.`)
   }
   if (verification.readableText) {
-    lines.push("- アルファベットの透かし・ロゴ・ブランド名・AIモデル名・英単語のキャプションを一切描かない。")
+    lines.push("- Remove every alphabet watermark, logo, brand name, AI model name, and English caption.")
   }
   if (verification.faces) {
-    lines.push("- 写り込んだ人物の顔は必ずぼかすか判別できないように簡略化する。")
+    lines.push("- Repaint every visible human face as an unrecognizable soft blur covering the whole face area.")
   }
   if (verification.licensePlates) {
-    lines.push("- 車のナンバープレートの文字・数字を描かない（ぼかす／塗りつぶす）。")
+    lines.push("- Repaint every license plate as a plain blank surface with no readable characters or digits.")
+  }
+  if (verification.garbledJapaneseText) {
+    lines.push("- The Japanese label text in the previous image was deformed or unreadable. Re-render each allowed Japanese label glyph-for-glyph in a clean bold gothic typeface on a high-contrast badge; if a label cannot be rendered accurately, omit that label entirely instead of drawing deformed glyphs.")
+  }
+  if (verification.excessiveDamage) {
+    lines.push("- The previous image showed excessive damage. Scale all damage strictly in proportion to each structure's actual visible condition in the base photo, down to a 'shaken but standing' level. Do not darken the sky; do not depict flames, burning objects, explosion-like debris, or thick black smoke.")
   }
   if (verification.otherPrivacyRisk.length > 0) {
-    lines.push(`- 次のプライバシー情報を描かない: ${verification.otherPrivacyRisk.join("、")}`)
+    lines.push(`- Do not render the following privacy-sensitive information: ${verification.otherPrivacyRisk.join(", ")}.`)
   }
-  lines.push("- 人名・表札・住所・学校名・電話番号・連絡先など個人や場所を特定できる文字を描かない。")
+  lines.push("- Allowed text is ONLY the exact Japanese label strings explicitly listed earlier in this prompt (if none are listed, render no text at all). Reproduce them glyph-for-glyph; render no other characters of any script.")
+  lines.push("- Never render names, nameplates, street addresses, school names, phone numbers, or any other text identifying a person or place.")
   return lines.join("\n")
 }
 
@@ -113,6 +134,8 @@ function mergeVerifications(
     faces: verifications.some((v) => v.faces),
     licensePlates: verifications.some((v) => v.licensePlates),
     otherPrivacyRisk: [...new Set(verifications.flatMap((v) => v.otherPrivacyRisk))].slice(0, 5),
+    garbledJapaneseText: verifications.some((v) => v.garbledJapaneseText),
+    excessiveDamage: verifications.some((v) => v.excessiveDamage),
   }
 }
 
@@ -152,6 +175,8 @@ function parseVerification(raw: string): GeneratedImageVerification {
     faces: Boolean(obj?.faces),
     licensePlates: Boolean(obj?.licensePlates),
     otherPrivacyRisk: toStrings(obj?.otherPrivacyRisk),
+    garbledJapaneseText: Boolean(obj?.garbledJapaneseText),
+    excessiveDamage: Boolean(obj?.excessiveDamage),
   }
 }
 
@@ -199,6 +224,15 @@ export async function verifyOrRegenerateImages({
     // 未検証の生成画像は返さない。表示側は warning を受けてフォールバックする。
     console.error("[ImageVerification] 検証呼び出しに失敗したため生成画像を破棄します", error)
     return { images: [], warning: IMAGE_VERIFICATION_FAILED_WARNING, verificationRequestCount }
+  }
+
+  if (verification.garbledJapaneseText || verification.excessiveDamage) {
+    // 段階導入: まずフラグ率を実測する(enforcement=是正再生成への組込みはフラグ率確認後に判断)。
+    // isImageClean には含めないため、このフラグ単独では画像を破棄も再生成もしない。
+    console.warn("[ImageVerification] ソフト検出フラグ(ログのみ・画像は破棄しない)", {
+      garbledJapaneseText: verification.garbledJapaneseText,
+      excessiveDamage: verification.excessiveDamage,
+    })
   }
 
   if (isImageClean(verification)) {

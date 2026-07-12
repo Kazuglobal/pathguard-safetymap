@@ -37,6 +37,8 @@ export interface RawAiQuiz {
 }
 
 export interface RawDangerPoint {
+  /** 生成時に最初に書かせる根拠(分析・eval採取用。表示系は読まない)。 */
+  evidence?: string
   kind: HunterDangerKind
   kidType?: string
   region: RawAiRegion
@@ -100,9 +102,44 @@ const imageUsableSchema = z
   }, z.boolean().optional())
   .catch(undefined)
 
+/** 座標値を数値へ寄せる(文字列 "400" も拾う)。数値化できなければ null。 */
+function toFiniteNumber(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * 0〜1000スケール座標の混入をサルベージする(Gemini 2.5系はネイティブ検出訓練の癖で
+ * 0〜1指示でも 0〜1000 座標を返すことがある)。そのまま通すと clampRegion(sanitize)が
+ * x→1・w→0 に潰し、全ポイントが MIN_AREA 未満で脱落 → guide(empty) へ全滅する。
+ * region の x/y/w/h のいずれかが 1.5 を超えるときだけ、4値すべてを 1000 で割った
+ * 新しい region に差し替える(正当な 0〜1 値は最大 1.0 なので誤爆しない)。
+ * region 欠落・数値化不能は素通しし、既存スキーマの判定(要素ドロップ)に委ねる。
+ * イミュータブル: 入力オブジェクトは変更せず新オブジェクトを返す。
+ */
+// export: 単体テスト(ai-schema.test.ts)用。
+export function salvageRegionScale(point: unknown): unknown {
+  if (typeof point !== "object" || point === null) return point
+  const region = (point as { region?: unknown }).region
+  if (typeof region !== "object" || region === null) return point
+  const r = region as { x?: unknown; y?: unknown; w?: unknown; h?: unknown }
+  const x = toFiniteNumber(r.x)
+  const y = toFiniteNumber(r.y)
+  const w = toFiniteNumber(r.w)
+  const h = toFiniteNumber(r.h)
+  if (x === null || y === null || w === null || h === null) return point
+  if (Math.max(x, y, w, h) <= 1.5) return point
+  return {
+    ...(point as Record<string, unknown>),
+    region: { x: x / 1000, y: y / 1000, w: w / 1000, h: h / 1000 },
+  }
+}
+
 // danger point の必須は region のみ。付随フィールドは .catch で型崩れを
 // undefined 化し、点そのものは保持する(sanitize が既定値・子ども文で補完)。
-const dangerPointSchema = z.object({
+const dangerPointSchema = z.preprocess(salvageRegionScale, z.object({
+  // 分析・eval採取専用(子ども表示経路なし。sanitize は読まず HunterHazard へ伝播しない)。
+  evidence: z.string().optional().catch(undefined),
   kind: zKind,
   kidType: z.string().optional().catch(undefined),
   region: regionSchema,
@@ -113,14 +150,14 @@ const dangerPointSchema = z.object({
   accidentLink: z.string().nullable().optional().catch(undefined),
   // 壊れた/欠落クイズでも点は落とさない。素材の検証・差し替えは sanitize が担う。
   quiz: quizSchema.optional().catch(undefined),
-})
+}))
 
-const safePointSchema = z.object({
+const safePointSchema = z.preprocess(salvageRegionScale, z.object({
   kind: zKind.optional().catch(undefined),
   kidType: z.string().optional().catch(undefined),
   region: regionSchema.optional().catch(undefined),
   whyGood: z.string().optional().catch(undefined),
-})
+}))
 
 // 付随フィールド1つの型崩れで dangerPoints を巻き添えにしないよう、
 // 各フィールドを独立に .catch する(version など未使用キーは自然に無視)。

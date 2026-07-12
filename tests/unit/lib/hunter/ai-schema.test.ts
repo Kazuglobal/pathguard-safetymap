@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { validateHunterResponse } from "@/lib/hunter/ai-schema"
+import { salvageRegionScale, validateHunterResponse } from "@/lib/hunter/ai-schema"
 
 function rawPoint(overrides: Record<string, unknown> = {}) {
   return {
@@ -22,7 +22,64 @@ function rawPoint(overrides: Record<string, unknown> = {}) {
   }
 }
 
+describe("salvageRegionScale", () => {
+  it("0〜1 の正当な region は変換しない(境界値 1.0 も素通し)", () => {
+    const point = rawPoint({ region: { x: 1.0, y: 0.5, w: 1.0, h: 0.2 } })
+    expect(salvageRegionScale(point)).toBe(point)
+  })
+
+  it("0〜1000 スケールの region は 4値すべて 1000 で割って差し替える", () => {
+    const point = rawPoint({ region: { x: 400, y: 520, w: 180, h: 200 } })
+    const out = salvageRegionScale(point) as { region: { x: number; y: number; w: number; h: number } }
+    expect(out.region).toEqual({ x: 0.4, y: 0.52, w: 0.18, h: 0.2 })
+  })
+
+  it("文字列座標も数値化して変換する", () => {
+    const point = rawPoint({ region: { x: "400", y: "520", w: "180", h: "200" } })
+    const out = salvageRegionScale(point) as { region: { x: number } }
+    expect(out.region.x).toBeCloseTo(0.4, 5)
+  })
+
+  it("region 欠落・非オブジェクト・数値化不能は素通しする", () => {
+    const noRegion = rawPoint({ region: undefined })
+    expect(salvageRegionScale(noRegion)).toBe(noRegion)
+    expect(salvageRegionScale(null)).toBe(null)
+    expect(salvageRegionScale("x")).toBe("x")
+    const nanRegion = rawPoint({ region: { x: "abc", y: 500, w: 100, h: 100 } })
+    expect(salvageRegionScale(nanRegion)).toBe(nanRegion)
+  })
+
+  it("入力オブジェクトを破壊しない(新オブジェクトを返す)", () => {
+    const region = { x: 400, y: 520, w: 180, h: 200 }
+    const point = rawPoint({ region })
+    const out = salvageRegionScale(point)
+    expect(out).not.toBe(point)
+    expect(region.x).toBe(400) // 元は不変
+  })
+})
+
 describe("validateHunterResponse", () => {
+  it("salvages 0〜1000 scale regions instead of dropping every point", () => {
+    const r = validateHunterResponse({
+      dangerPoints: [rawPoint({ region: { x: 400, y: 520, w: 180, h: 200 } })],
+    })
+    expect(r.dangerPoints).toHaveLength(1)
+    expect(r.dangerPoints[0].region).toEqual({ x: 0.4, y: 0.52, w: 0.18, h: 0.2 })
+  })
+
+  it("keeps string evidence, absorbs non-string evidence, and keeps the point either way", () => {
+    const r = validateHunterResponse({
+      dangerPoints: [
+        rawPoint({ evidence: "角の へいが 車を かくす" }),
+        rawPoint({ evidence: 12345, kind: "popout_spot" }),
+        rawPoint({ kind: "flood_dip" }), // evidence 欠落
+      ],
+    })
+    expect(r.dangerPoints).toHaveLength(3)
+    expect(r.dangerPoints[0].evidence).toBe("角の へいが 車を かくす")
+    expect(r.dangerPoints[1].evidence).toBeUndefined()
+    expect(r.dangerPoints[2].evidence).toBeUndefined()
+  })
   it("accepts a well-formed response", () => {
     const r = validateHunterResponse({
       version: "hunter-1",
