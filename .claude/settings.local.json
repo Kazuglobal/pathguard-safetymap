@@ -176,7 +176,21 @@
       "Bash(\"/mnt/c/Users/s1598/tools/node-v25.9.0-win-x64/node.exe\" --version)",
       "Bash(cmd.exe /c \"echo %PATH%\")",
       "Bash(cmd.exe /c \"set PATH\")",
-      "Bash(command -v node)"
+      "Bash(command -v node)",
+      "Bash(find . -path ./node_modules -prune -o -iname \"*danger*\" -print)",
+      "Bash(find . -path ./node_modules -prune -o -iname \"*user-region*\" -print -o -iname \"*map-container*\" -print)",
+      "Skill(artifact-design)",
+      "Artifact",
+      "Bash(npx vitest *)",
+      "Read(//tmp/**)",
+      "Bash(command -v brew)",
+      "Bash(find app/lp -maxdepth 2)",
+      "Bash(find src/app/lp -maxdepth 2)",
+      "Bash(break)",
+      "Bash(find app/landing -maxdepth 1)",
+      "Bash(find app/lp -maxdepth 1)",
+      "Bash(claude --version)",
+      "Bash(cd *)"
     ],
     "deny": []
   },
