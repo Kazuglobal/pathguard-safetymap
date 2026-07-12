@@ -109,11 +109,12 @@ function toFiniteNumber(v: unknown): number | null {
 }
 
 /**
- * 0〜1000スケール座標の混入をサルベージする(Gemini 2.5系はネイティブ検出訓練の癖で
- * 0〜1指示でも 0〜1000 座標を返すことがある)。そのまま通すと clampRegion(sanitize)が
+ * 0〜100 / 0〜1000スケール座標の混入をサルベージする(Gemini 2.5系はネイティブ検出訓練の癖で
+ * 0〜1指示でも別スケールを返すことがある)。そのまま通すと clampRegion(sanitize)が
  * x→1・w→0 に潰し、全ポイントが MIN_AREA 未満で脱落 → guide(empty) へ全滅する。
- * region の x/y/w/h のいずれかが 1.5 を超えるときだけ、4値すべてを 1000 で割った
- * 新しい region に差し替える(正当な 0〜1 値は最大 1.0 なので誤爆しない)。
+ * 2値以上が1.5を超える場合だけ同一スケールの出力とみなし、最大値が100以下なら100、
+ * 1000以下なら1000でスケール値だけを割る。正規化値との混在は0〜1値を保持する。
+ * 単独の外れ値・負数・1000超は推測変換せず、既存の安全側フィルタに委ねる。
  * region 欠落・数値化不能は素通しし、既存スキーマの判定(要素ドロップ)に委ねる。
  * イミュータブル: 入力オブジェクトは変更せず新オブジェクトを返す。
  */
@@ -128,10 +129,17 @@ export function salvageRegionScale(point: unknown): unknown {
   const w = toFiniteNumber(r.w)
   const h = toFiniteNumber(r.h)
   if (x === null || y === null || w === null || h === null) return point
-  if (Math.max(x, y, w, h) <= 1.5) return point
+  const values = [x, y, w, h]
+  if (values.some((value) => value < 0)) return point
+  const scaledValues = values.filter((value) => value > 1.5)
+  if (scaledValues.length < 2) return point
+  const maxValue = Math.max(...scaledValues)
+  const divisor = maxValue <= 100 ? 100 : maxValue <= 1000 ? 1000 : null
+  if (divisor === null) return point
+  const normalize = (value: number): number => (value > 1.5 ? value / divisor : value)
   return {
     ...(point as Record<string, unknown>),
-    region: { x: x / 1000, y: y / 1000, w: w / 1000, h: h / 1000 },
+    region: { x: normalize(x), y: normalize(y), w: normalize(w), h: normalize(h) },
   }
 }
 

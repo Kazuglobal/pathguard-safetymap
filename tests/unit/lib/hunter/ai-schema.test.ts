@@ -34,6 +34,25 @@ describe("salvageRegionScale", () => {
     expect(out.region).toEqual({ x: 0.4, y: 0.52, w: 0.18, h: 0.2 })
   })
 
+  it("0〜100 の百分率 region は 100 で割って差し替える", () => {
+    const point = rawPoint({ region: { x: 40, y: 52, w: 18, h: 20 } })
+    const out = salvageRegionScale(point) as { region: { x: number; y: number; w: number; h: number } }
+    expect(out.region).toEqual({ x: 0.4, y: 0.52, w: 0.18, h: 0.2 })
+  })
+
+  it("正規化値と0〜1000値が混在するときはスケール値だけを変換する", () => {
+    const point = rawPoint({ region: { x: 0.4, y: 0.52, w: 180, h: 200 } })
+    const out = salvageRegionScale(point) as { region: { x: number; y: number; w: number; h: number } }
+    expect(out.region).toEqual({ x: 0.4, y: 0.52, w: 0.18, h: 0.2 })
+  })
+
+  it("単独の外れ値や1000超の値はスケールを推測せず素通しする", () => {
+    const singleOutlier = rawPoint({ region: { x: 1.6, y: 0.5, w: 0.2, h: 0.2 } })
+    const beyondKnownScale = rawPoint({ region: { x: 1200, y: 520, w: 180, h: 200 } })
+    expect(salvageRegionScale(singleOutlier)).toBe(singleOutlier)
+    expect(salvageRegionScale(beyondKnownScale)).toBe(beyondKnownScale)
+  })
+
   it("文字列座標も数値化して変換する", () => {
     const point = rawPoint({ region: { x: "400", y: "520", w: "180", h: "200" } })
     const out = salvageRegionScale(point) as { region: { x: number } }

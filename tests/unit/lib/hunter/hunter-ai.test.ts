@@ -96,6 +96,13 @@ describe("analyzeHunterImage", () => {
     expect(prompt).toContain(`${MAX_AREA} をこえる枠`)
   })
 
+  it("信号付き横断歩道でも右左折車との交錯を安全確認の対象から除外しない", () => {
+    const prompt = buildHunterPrompt(undefined, accident)
+    expect(prompt).not.toContain("信号があり車が確実に止まる")
+    expect(prompt).toContain("青信号でも車が確実に止まるとは限らない")
+    expect(prompt).toContain("turning_car として判定する")
+  })
+
   it("事故ブロック統合: ヒント化・空振り許可・priorityKind誘導・上位タイプ引き継ぎ・二重注入根絶", () => {
     const withData: HunterAccidentSummary = {
       ...accident,

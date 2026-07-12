@@ -9,16 +9,30 @@ v3: エンタメ性(フック)を強化した版。
 """
 import math
 import os
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import cv2
 
-SRC = r"C:\Users\s1598\AppData\Local\Temp\claude\C--Users-s1598-mapsefe-20250615\70109878-f95a-49fe-a8a5-88896fa0b08f\scratchpad\kodomo-shiten\source_photo_blurred.jpg"
-OUT = r"C:\Users\s1598\AppData\Local\Temp\claude\C--Users-s1598-mapsefe-20250615\70109878-f95a-49fe-a8a5-88896fa0b08f\scratchpad\kodomo-shiten\cut03_overlay_punchy.mp4"
-FRAMES_DIR = r"C:\Users\s1598\AppData\Local\Temp\claude\C--Users-s1598-mapsefe-20250615\70109878-f95a-49fe-a8a5-88896fa0b08f\scratchpad\kodomo-shiten\frames_v3"
+BASE_DIR = Path(__file__).resolve().parent
+SRC = Path(os.environ.get("KODOMO_SOURCE_PHOTO", BASE_DIR / "source_photo_blurred.jpg"))
+OUT = Path(os.environ.get("KODOMO_OUTPUT_VIDEO", BASE_DIR / "cut03_overlay_punchy.mp4"))
+FRAMES_DIR = Path(os.environ.get("KODOMO_FRAMES_DIR", BASE_DIR / "frames_v3"))
+if not SRC.is_file():
+    raise FileNotFoundError(f"Source photo not found: {SRC}")
+OUT.parent.mkdir(parents=True, exist_ok=True)
 os.makedirs(FRAMES_DIR, exist_ok=True)
 
-FONT_PATH = r"C:\Windows\Fonts\YuGothB.ttc"
+font_override = os.environ.get("KODOMO_FONT_PATH")
+font_candidates = [
+    Path(font_override) if font_override else None,
+    Path(r"C:\Windows\Fonts\YuGothB.ttc"),
+    Path("/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"),
+    Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
+]
+FONT_PATH = next((candidate for candidate in font_candidates if candidate and candidate.is_file()), None)
+if FONT_PATH is None:
+    raise FileNotFoundError("Japanese bold font not found. Set KODOMO_FONT_PATH to a usable font file.")
 
 INK = (0x43, 0x39, 0x2B)
 PAPER = (0xFB, 0xF5, 0xE9)
@@ -149,7 +163,7 @@ def get_camera_box(t):
 font_hook = ImageFont.truetype(FONT_PATH, 46)
 font_caption = ImageFont.truetype(FONT_PATH, 40)
 
-video = cv2.VideoWriter(OUT, cv2.VideoWriter_fourcc(*"mp4v"), FPS, (OUT_W, OUT_H))
+video = cv2.VideoWriter(str(OUT), cv2.VideoWriter_fourcc(*"mp4v"), FPS, (OUT_W, OUT_H))
 
 HOOK_TEXT = "しゃがんで 見てみると..."
 CAPTION = "この先、カーブで 見えにくいよ"
