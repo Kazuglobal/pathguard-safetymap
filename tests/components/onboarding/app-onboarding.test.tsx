@@ -45,11 +45,11 @@ describe("AppOnboarding", () => {
     opener.remove()
   })
 
-  it("provides at least a 32px target for every page selector", () => {
+  it("provides a 44px target for every page selector", () => {
     render(<AppOnboarding open onClose={vi.fn()} />)
 
     for (const button of screen.getAllByRole("button", { name: /ページ目/ })) {
-      expect(button).toHaveClass("h-8", "w-8")
+      expect(button).toHaveClass("h-11", "w-11")
     }
   })
 
@@ -61,5 +61,15 @@ describe("AppOnboarding", () => {
 
     expect(mocks.markTutorialCompleted).toHaveBeenCalledOnce()
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it("shows a one-page summary that opens the map", () => {
+    render(<AppOnboarding open onClose={vi.fn()} summaryOnly />)
+
+    expect(screen.getAllByRole("button", { name: /ページ目/ })).toHaveLength(1)
+    fireEvent.click(screen.getByRole("button", { name: "ちずを みてみる" }))
+
+    expect(mocks.markTutorialCompleted).toHaveBeenCalledOnce()
+    expect(mocks.push).toHaveBeenCalledWith("/map")
   })
 })

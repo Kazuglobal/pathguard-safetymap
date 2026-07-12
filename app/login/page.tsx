@@ -1,8 +1,15 @@
 import { redirect } from "next/navigation"
 import { createServerClient } from "@/lib/supabase-server"
 import LoginForm from "@/components/auth/login-form"
+import { getSafeNextPath } from "@/lib/auth/safe-next"
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>
+}) {
+  const params = await searchParams
+  const nextPath = getSafeNextPath(params.next)
   const supabase = await createServerClient()
 
   if (!supabase) {
@@ -20,7 +27,7 @@ export default async function LoginPage() {
   }
 
   if (session) {
-    redirect("/map")
+    redirect(nextPath)
   }
 
   return (
@@ -30,7 +37,7 @@ export default async function LoginPage() {
           <h1 className="text-3xl font-bold">通学路安全マップ</h1>
           <p className="mt-2 text-gray-600">子供たちの安全な通学をサポートします</p>
         </div>
-        <LoginForm />
+        <LoginForm nextPath={nextPath} />
       </div>
     </div>
   )

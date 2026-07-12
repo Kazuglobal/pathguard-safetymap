@@ -54,15 +54,15 @@ function LineIcon() {
  * ログイン・新規登録の両フォームで共用する(どちらも初回はアカウント作成になる)。
  * useSearchParams を使うため、静的レンダリングでも安全なよう Suspense で包んで公開する。
  */
-export function SocialLoginButtons() {
+export function SocialLoginButtons({ nextPath }: { nextPath?: string }) {
   return (
     <Suspense fallback={null}>
-      <SocialLoginButtonsInner />
+      <SocialLoginButtonsInner nextPath={nextPath} />
     </Suspense>
   )
 }
 
-function SocialLoginButtonsInner() {
+function SocialLoginButtonsInner({ nextPath }: { nextPath?: string }) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -70,6 +70,7 @@ function SocialLoginButtonsInner() {
 
   const errorCode = searchParams.get("error")
   const errorMessage = errorCode ? ERROR_MESSAGES[errorCode] : undefined
+  const requestedNext = nextPath ?? searchParams.get("next") ?? "/map"
 
   const handleGoogleLogin = async () => {
     setPendingProvider("google")
@@ -77,7 +78,7 @@ function SocialLoginButtonsInner() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/map`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(requestedNext)}`,
         },
       })
       if (error) throw error

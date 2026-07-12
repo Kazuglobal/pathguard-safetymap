@@ -6,6 +6,7 @@ import LoginForm from "@/components/auth/login-form"
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
   refresh: vi.fn(),
   toast: vi.fn(),
   signInWithPassword: vi.fn(),
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mocks.push,
+    replace: mocks.replace,
     refresh: mocks.refresh,
   }),
   useSearchParams: () => new URLSearchParams(),
@@ -76,6 +78,7 @@ describe("LoginForm", () => {
     })
 
     expect(mocks.refresh).not.toHaveBeenCalled()
-    expect(mocks.push).toHaveBeenCalledWith("/landing")
+    // デモログインは戻るボタンでログイン画面に戻らないよう replace で遷移する
+    expect(mocks.replace).toHaveBeenCalledWith("/landing")
   })
 })

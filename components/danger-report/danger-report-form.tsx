@@ -4,6 +4,8 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import NextImage from "next/image"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -206,6 +208,7 @@ export default function DangerReportForm({
   isMobileFullscreen = false,
 }: DangerReportFormProps) {
   const { toast } = useToast()
+  const pathname = usePathname()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -1980,6 +1983,17 @@ export default function DangerReportForm({
                   >
                     ありがとう！ おとなの かくにんが おわると、ちずに のるよ。
                   </motion.p>
+                  {submittedReportId && (
+                    <div
+                      className="mt-4 w-full rounded-[16px] border p-3 text-left"
+                      style={{ background: C.primarySoft, borderColor: "rgba(21,158,114,.3)" }}
+                      aria-live="polite"
+                    >
+                      <p className="text-[12px] font-black" style={{ color: C.primaryStrong }}>受付番号</p>
+                      <p className="mt-0.5 break-all text-[13px] font-bold" style={{ color: C.ink }}>{submittedReportId}</p>
+                      <p className="mt-2 text-[12px] font-bold" style={{ color: C.inkSoft }}>状態: おとなが確認しています</p>
+                    </div>
+                  )}
                 </div>
 
                 {simulationQuickSummary && (
@@ -1999,8 +2013,37 @@ export default function DangerReportForm({
                   />
                 )}
 
-                <TankenButton variant="green" className="w-full" onClick={onCancel} testId="wizard-done-close">
-                  ちずに もどる
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {/* /map 上のウィザードでは同一ルートへの Link は何も起こさないため、
+                      フォームを閉じて地図へ戻る。それ以外(/report 等)では /map へ遷移する */}
+                  {pathname === "/map" ? (
+                    <button
+                      type="button"
+                      onClick={onCancel}
+                      className={`inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-black text-white ${tankenTokens.cls.focus}`}
+                      style={{ background: C.primary, boxShadow: tankenTokens.shadow.pressGreen }}
+                    >
+                      ちずで見る
+                    </button>
+                  ) : (
+                    <Link
+                      href="/map"
+                      className={`inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-black text-white ${tankenTokens.cls.focus}`}
+                      style={{ background: C.primary, boxShadow: tankenTokens.shadow.pressGreen }}
+                    >
+                      ちずで見る
+                    </Link>
+                  )}
+                  <Link
+                    href="/mypage"
+                    className={`inline-flex min-h-12 items-center justify-center rounded-full border-2 px-5 text-sm font-black ${tankenTokens.cls.focus}`}
+                    style={{ background: C.card, borderColor: tankenTokens.border.soft, color: C.ink, boxShadow: tankenTokens.shadow.pressPaper }}
+                  >
+                    履歴を見る
+                  </Link>
+                </div>
+                <TankenButton variant="paper" className="w-full" onClick={onCancel} testId="wizard-done-close">
+                  とじる
                 </TankenButton>
               </div>
             )}

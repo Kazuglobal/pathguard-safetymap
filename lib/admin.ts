@@ -4,8 +4,19 @@
 
 function getAdminEmails(): ReadonlyArray<string> {
   const envAdmins = process.env.ADMIN_EMAILS
-  if (!envAdmins) return []
-  return envAdmins.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+  const configured = envAdmins
+    ? envAdmins.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+    : []
+
+  // scripts/create-test-users.ts で作成するローカル管理者は、
+  // ALLOW_TEST_ADMIN=true の明示的なオプトインがある非本番環境でのみ有効。
+  // (NODE_ENV だけを条件にすると、LAN公開の dev サーバや NODE_ENV 未設定の
+  //  環境で誰でも既知アドレスの登録だけで管理者になれてしまう)
+  if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_TEST_ADMIN === 'true') {
+    return [...configured, 'admin@test.com']
+  }
+
+  return configured
 }
 
 /**

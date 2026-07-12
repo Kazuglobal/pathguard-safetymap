@@ -1,19 +1,39 @@
 "use client"
 
 import { useState } from "react"
-import { useMissions } from "@/hooks/use-missions"
+import Link from "next/link"
+import { useMissions, type MissionRow } from "@/hooks/use-missions"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { BadgeCheck, Gift } from "lucide-react"
+import { ArrowRight, BadgeCheck, Gift } from "lucide-react"
+import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
+
+/**
+ * ミッション種別(missions.target_type) → 開始導線。
+ * タイトル/説明文へのテキストマッチは文言変更が機能変更になるため使わない。
+ */
+const MISSION_TARGET_HREF: Record<string, string> = {
+  hazard_game_play: "/safety-quest/hunter",
+  hazard_game_high_score: "/safety-quest/hunter",
+  route_quiz: "/route-quiz",
+  report: "/report",
+  visit: "/map",
+}
+
+function missionHref(mission: MissionRow): string {
+  return MISSION_TARGET_HREF[mission.target_type ?? ""] ?? "/map"
+}
 
 export default function MissionsPage() {
   const { missions, progress, isLoading } = useMissions()
   const [tab, setTab] = useState("daily")
 
-  const filtered = missions.filter((m: any) => (m.period ?? "daily") === tab)
+  const filtered = missions.filter((m) => (m.period ?? "daily") === tab)
+  const t = tankenTokens
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 max-w-3xl mx-auto">
+    <div className="min-h-screen px-4 py-8" style={{ backgroundColor: t.color.paper, backgroundImage: PAPER_NOISE, color: t.color.ink }}>
+      <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold mb-6 text-center">ミッション</h1>
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -28,14 +48,15 @@ export default function MissionsPage() {
             <p className="text-center text-gray-500">ミッションがありません</p>
           )}
           <div className="space-y-4">
-            {filtered.map((m: any) => {
+            {filtered.map((m) => {
               const prog = progress[m.id]
               const pct = prog && prog.progress !== null ? (prog.progress / m.target_value) * 100 : 0
               const completed = prog?.completed
               return (
                 <div
                   key={m.id}
-                  className={`bg-white border rounded-md p-4 shadow-sm flex flex-col gap-2 ${completed ? "ring-2 ring-emerald-300" : ""}`}
+                  className={`flex flex-col gap-2 rounded-[22px] border p-4 ${completed ? "ring-2 ring-emerald-300" : ""}`}
+                  style={{ background: t.color.card, borderColor: t.border.soft, boxShadow: t.shadow.soft }}
                 >
                   <div className="flex justify-between items-center">
                     <div>
@@ -56,12 +77,19 @@ export default function MissionsPage() {
                       {m.reward_points ?? 0}pt
                     </div>
                   </div>
+                  {!completed && (
+                    <Link href={missionHref(m)} className={`mt-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-black text-white ${t.cls.focus}`} style={{ background: t.color.primary, boxShadow: t.shadow.pressGreen }}>
+                      あと {Math.max((m.target_value ?? 0) - (prog?.progress ?? 0), 0)}回 · ここから始める
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
                 </div>
               )
             })}
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
-} 
+}

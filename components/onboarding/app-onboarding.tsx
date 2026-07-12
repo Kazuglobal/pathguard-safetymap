@@ -68,9 +68,11 @@ const SLIDES: readonly Slide[] = [
 export function AppOnboarding({
   open,
   onClose,
+  summaryOnly = false,
 }: {
   open: boolean
   onClose: () => void
+  summaryOnly?: boolean
 }) {
   const reduce = useReducedMotion()
   const router = useRouter()
@@ -79,8 +81,9 @@ export function AppOnboarding({
   const [dir, setDir] = useState<1 | -1>(1)
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
-  const isLast = index === SLIDES.length - 1
-  const slide = SLIDES[index]
+  const slides = useMemo(() => (summaryOnly ? [SLIDES[0]] : SLIDES), [summaryOnly])
+  const isLast = index === slides.length - 1
+  const slide = slides[index]
 
   useEffect(() => {
     if (open) setIndex(0)
@@ -88,11 +91,11 @@ export function AppOnboarding({
 
   const go = useCallback(
     (next: number) => {
-      if (next < 0 || next >= SLIDES.length) return
+      if (next < 0 || next >= slides.length) return
       setDir(next > index ? 1 : -1)
       setIndex(next)
     },
-    [index],
+    [index, slides.length],
   )
 
   const finish = useCallback(
@@ -198,12 +201,12 @@ export function AppOnboarding({
   // 次ページの画像を先読みして、めくったときの白フラッシュを防ぐ
   const preloadRef = useRef<Set<string>>(new Set())
   useEffect(() => {
-    const next = SLIDES[index + 1]
+    const next = slides[index + 1]
     if (!next || preloadRef.current.has(next.image)) return
     preloadRef.current.add(next.image)
     const img = new window.Image()
     img.src = next.image
-  }, [index])
+  }, [index, slides])
 
   return (
     <AnimatePresence>
@@ -259,7 +262,7 @@ export function AppOnboarding({
                   style={{ color: C.inkSoft }}
                   data-testid="onboarding-skip"
                 >
-                  スキップ
+                  {summaryOnly ? "あとで見る" : "スキップ"}
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
@@ -349,7 +352,7 @@ export function AppOnboarding({
                 style={{ paddingBottom: "max(env(safe-area-inset-bottom), 18px)" }}
               >
                 <div className="mb-4 flex items-center justify-center gap-2" role="group" aria-label="ガイドのページ">
-                  {SLIDES.map((s, i) => {
+                  {slides.map((s, i) => {
                     const active = i === index
                     return (
                       <button
@@ -358,7 +361,7 @@ export function AppOnboarding({
                         aria-current={active ? "step" : undefined}
                         aria-label={`${i + 1}ページ目`}
                         onClick={() => go(i)}
-                        className={`grid h-8 w-8 place-items-center rounded-full ${tankenTokens.cls.focus}`}
+                        className={`grid h-11 w-11 place-items-center rounded-full ${tankenTokens.cls.focus}`}
                         style={{
                           touchAction: "manipulation",
                         }}
@@ -380,7 +383,7 @@ export function AppOnboarding({
                 <div className="mx-auto w-full max-w-[420px]">
                   <motion.button
                     type="button"
-                    onClick={() => (isLast ? finish("/routes") : go(index + 1))}
+                    onClick={() => (isLast ? finish(summaryOnly ? "/map" : "/routes") : go(index + 1))}
                     whileTap={reduce ? undefined : { scale: 0.97, y: 3 }}
                     transition={tankenTokens.spring}
                     data-testid="onboarding-next"
@@ -407,7 +410,7 @@ export function AppOnboarding({
                     {isLast ? (
                       <>
                         <MapIcon className="h-5 w-5" aria-hidden="true" strokeWidth={2.8} />
-                        つうがくろを とうろくする
+                        {summaryOnly ? "ちずを みてみる" : "つうがくろを とうろくする"}
                       </>
                     ) : (
                       <>
@@ -419,7 +422,7 @@ export function AppOnboarding({
 
                   {/* 最終ページの代替導線。高さを常に確保してボタン位置が跳ねないようにする */}
                   <div className="mt-2 flex min-h-[36px] items-center justify-center">
-                    {isLast ? (
+                    {isLast && !summaryOnly ? (
                       <button
                         type="button"
                         onClick={() => finish("/map")}

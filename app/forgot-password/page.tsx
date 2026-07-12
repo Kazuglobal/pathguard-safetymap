@@ -1,19 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Mail, CheckCircle } from "lucide-react"
+import { AlertCircle, ArrowLeft, Mail, CheckCircle } from "lucide-react"
+import { isRateLimitAuthError, RATE_LIMIT_MESSAGE } from "@/lib/auth/error-messages"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,11 +33,13 @@ export default function ForgotPasswordPage() {
 
     if (!email.trim()) {
       setError("メールアドレスを入力してください")
+      emailRef.current?.focus()
       return
     }
 
     if (!validateEmail(email)) {
-      setError("有効なメールアドレスを入力してください")
+      setError("例: name@example.com の形で入力してください")
+      emailRef.current?.focus()
       return
     }
 
@@ -50,13 +54,19 @@ export default function ForgotPasswordPage() {
       )
 
       if (resetError) {
-        setError(resetError.message)
+        if (isRateLimitAuthError(resetError)) {
+          setError(RATE_LIMIT_MESSAGE)
+        } else {
+          setError("再設定メールを送れませんでした。時間をおいてもう一度お試しください。")
+        }
+        emailRef.current?.focus()
         return
       }
 
       setIsSuccess(true)
     } catch {
-      setError("エラーが発生しました。もう一度お試しください。")
+      setError("ネットワークに接続できません。通信状態を確認して、もう一度お試しください。")
+      emailRef.current?.focus()
     } finally {
       setIsLoading(false)
     }
@@ -114,30 +124,35 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate aria-busy={isLoading}>
           <div className="space-y-2">
-            <Label htmlFor="email">メールアドレス</Label>
+            <Label htmlFor="email">メールアドレス <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700">必須</span></Label>
             <Input
+              ref={emailRef}
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setError(null) }}
               placeholder="example@example.com"
               disabled={isLoading}
               data-testid="forgot-password-email"
+              autoComplete="email"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "email-error" : "email-help"}
             />
+            <p id="email-help" className="text-xs text-gray-500">登録に使ったメールアドレスを入力してください。</p>
+            {error && (
+              <p id="email-error" role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> {error}
+              </p>
+            )}
           </div>
 
           <Button
             type="submit"
             className="w-full"
             disabled={isLoading}
+            aria-busy={isLoading}
             data-testid="forgot-password-submit"
           >
             {isLoading ? "送信中..." : "リセットリンクを送信"}

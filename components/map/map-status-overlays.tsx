@@ -1,7 +1,8 @@
 "use client"
 
-import { AlertTriangle, MapPin } from "lucide-react"
+import { AlertTriangle, List, LockKeyhole, MapPin, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { tankenTokens } from "@/lib/design/tanken"
 
 interface MapStatusOverlaysProps {
   showMobileMapHint: boolean
@@ -10,6 +11,10 @@ interface MapStatusOverlaysProps {
   selectedLocation: [number, number] | null
   mapError: string | null
   isLoading: boolean
+  /** 1=ベース地図の準備中, 2=危険マーカーの準備中(完了時はオーバーレイ自体が消える) */
+  loadingStage?: 1 | 2
+  onShowList?: () => void
+  onRetry?: () => void
 }
 
 /**
@@ -23,7 +28,13 @@ export function MapStatusOverlays({
   selectedLocation,
   mapError,
   isLoading,
+  loadingStage = 1,
+  onShowList,
+  onRetry,
 }: MapStatusOverlaysProps) {
+  const t = tankenTokens
+  const progressLabel = loadingStage === 1 ? "ベース地図を準備しています" : "危険マーカーを準備しています"
+
   return (
     <>
       {/* モバイルマップヒント */}
@@ -64,20 +75,50 @@ export function MapStatusOverlays({
         </div>
       )}
       {mapError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-30">
-          <div className="max-w-md p-4 bg-white rounded-lg shadow-lg text-center">
-            <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold mb-2">マップエラー</h3>
-            <p>{mapError}</p>
-            <Button className="mt-4" variant="outline" onClick={() => window.location.reload()}>再読み込み</Button>
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[#FBF5E9]/70 p-4">
+          <div className="pointer-events-auto w-full max-w-md rounded-[22px] border p-5 text-center" style={{ background: t.color.card, borderColor: t.border.soft, boxShadow: t.shadow.card }} role="alert">
+            <AlertTriangle className="mx-auto mb-3 h-10 w-10" style={{ color: t.color.accent }} aria-hidden="true" />
+            <h3 className="text-lg font-black">地図を読み込めませんでした</h3>
+            <p className="mt-2 text-sm font-bold leading-6" style={{ color: t.color.inkSoft }}>{mapError}</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Button className="min-h-12 rounded-full font-black" onClick={onShowList} disabled={!onShowList}>
+                <List className="mr-2 h-4 w-4" aria-hidden="true" /> 一覧で見る
+              </Button>
+              <Button className="min-h-12 rounded-full font-black" variant="outline" onClick={onRetry ?? (() => window.location.reload())}>
+                <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" /> もう一度ためす
+              </Button>
+            </div>
           </div>
         </div>
       )}
       {isLoading && !mapError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-30">
-          <div className="p-4 bg-white rounded-lg shadow-lg text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-            <p>読み込み中...</p>
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[#FBF5E9]/55 p-4" aria-live="polite" aria-atomic="true">
+          <div className="pointer-events-auto w-full max-w-sm rounded-[22px] border p-5" style={{ background: t.color.card, borderColor: t.border.soft, boxShadow: t.shadow.card }}>
+            <div className="flex items-center gap-3">
+              <MapPin className="h-7 w-7 shrink-0" style={{ color: t.color.primary }} aria-hidden="true" />
+              <div>
+                <p className="font-black">地図を読み込み中 {loadingStage}/2</p>
+                <p className="mt-1 text-sm font-bold" style={{ color: t.color.inkSoft }}>{progressLabel}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={loadingStage} aria-label={`地図の読み込み ${loadingStage}/2`}>
+              {[1, 2].map((segment) => (
+                <span key={segment} className="h-2 rounded-full" style={{ background: segment <= loadingStage ? t.color.primary : t.color.paperDeep }} />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Button className="min-h-12 rounded-full font-black" onClick={onShowList} disabled={!onShowList}>
+                <List className="mr-2 h-4 w-4" aria-hidden="true" /> 一覧で見る
+              </Button>
+              <Button className="min-h-12 rounded-full font-black" variant="outline" onClick={onRetry ?? (() => window.location.reload())}>
+                <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" /> もう一度ためす
+              </Button>
+            </div>
+            {loadingStage < 2 && (
+              <p className="mt-4 flex items-center justify-center gap-2 border-t pt-3 text-xs font-bold" style={{ borderColor: t.border.faint, color: t.color.inkSoft }}>
+                <LockKeyhole className="h-4 w-4" aria-hidden="true" /> 地図の準備ができたら使えます
+              </p>
+            )}
           </div>
         </div>
       )}

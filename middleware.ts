@@ -28,7 +28,7 @@ function isProtectedPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, search } = request.nextUrl
 
   // 静的ファイル・Next.js内部パスはスキップ
   if (
@@ -69,7 +69,7 @@ export async function middleware(request: NextRequest) {
   // 保護ルートかつ未認証 → ログインページにリダイレクト
   if (isProtectedPath(pathname) && !user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', pathname)
+    loginUrl.searchParams.set('next', `${pathname}${search}`)
     return NextResponse.redirect(loginUrl)
   }
 

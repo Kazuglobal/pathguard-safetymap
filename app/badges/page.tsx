@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase-server";
 import { Database } from "@/lib/database.types";
 import { BadgeCard, BadgeData } from "@/components/badges/badge-card";
 import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 type BadgeRow = Database["public"]["Tables"]["badges"]["Row"];
 
@@ -150,6 +152,12 @@ export default async function BadgePage() {
                 aria-valuemin={0}
                 aria-valuemax={100}
               />
+              <p className="mt-3 text-sm text-muted-foreground">
+                あと {Math.max(nextBadge.threshold - currentPoints, 0)}pt で「{nextBadge.name}」
+              </p>
+              <Link href="/missions" className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
+                ポイントを取りにいく <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
             </div>
           ) : (
             <div data-testid="badges-complete" className="text-center py-2">

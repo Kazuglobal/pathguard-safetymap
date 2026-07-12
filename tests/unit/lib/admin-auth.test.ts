@@ -81,6 +81,33 @@ describe('admin-auth', () => {
     expect(mockFrom).not.toHaveBeenCalled()
   })
 
+  it('ローカル管理者は ALLOW_TEST_ADMIN=true のオプトイン時のみ管理者扱いになる', async () => {
+    process.env.ALLOW_TEST_ADMIN = 'true'
+    try {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { id: 'u-local-admin', email: 'admin@test.com' } },
+        error: null,
+      })
+
+      const status = await getCurrentUserAdminStatus()
+
+      expect(status).toEqual({ isAuthenticated: true, isAdmin: true })
+    } finally {
+      delete process.env.ALLOW_TEST_ADMIN
+    }
+  })
+
+  it('ローカル管理者はオプトインなしでは管理者扱いにならない', async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: 'u-local-admin', email: 'admin@test.com' } },
+      error: null,
+    })
+
+    const status = await getCurrentUserAdminStatus()
+
+    expect(status).toEqual({ isAuthenticated: true, isAdmin: false })
+  })
+
   it('非管理者メールは profile.role を照会せず管理者として扱わない', async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'u-3', email: 'member@example.com' } },

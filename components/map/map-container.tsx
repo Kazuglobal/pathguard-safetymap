@@ -98,6 +98,7 @@ export default function MapContainer({
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isBaseMapReady, setIsBaseMapReady] = useState(false)
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null)
   const [locationSelectionSource, setLocationSelectionSource] =
@@ -182,6 +183,41 @@ export default function MapContainer({
   const [hazardImageError, setHazardImageError] = useState<string | null>(null)
   const [isHazardImageLoading, setIsHazardImageLoading] = useState(false)
   const [mapStyleSyncToken, setMapStyleSyncToken] = useState(0)
+
+  // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
+  // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
+  useEffect(() => {
+    if (!supabase || !initialReportId) return
+    if (openedDeepLinkReportIdRef.current === initialReportId) return
+    openedDeepLinkReportIdRef.current = initialReportId
+
+    let cancelled = false
+    const openDeepLinkedReport = async () => {
+      const { data, error } = await supabase
+        .from("danger_reports")
+        .select("*")
+        .eq("id", initialReportId)
+        .maybeSingle()
+
+      if (cancelled) return
+      if (error || !data) {
+        toast({
+          title: "報告を表示できません",
+          description: "報告が削除されたか、表示する権限がありません。",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedReport(data as DangerReport)
+      setIsDetailModalOpen(true)
+    }
+
+    void openDeepLinkedReport()
+    return () => {
+      cancelled = true
+    }
+  }, [initialReportId, supabase, toast])
 
   // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
   // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
@@ -630,6 +666,7 @@ export default function MapContainer({
 
       map.current.on("load", () => {
         mapInitialized.current = true;
+        setIsBaseMapReady(true)
         addClickListener();
         setIsLoading(false);
         setMapStyleSyncToken((prev) => prev + 1)
@@ -680,6 +717,7 @@ export default function MapContainer({
       if (map.current) {
         if (mapClickHandler.current) map.current.off("click", mapClickHandler.current);
         map.current.remove(); map.current = null;
+        setIsBaseMapReady(false)
         navigationControlRef.current = null
         mapInitialized.current = false; clickListenerAdded.current = false; mapClickHandler.current = null;
       }
@@ -1099,6 +1137,9 @@ export default function MapContainer({
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
           displayOverlayOptions={mapDisplayOverlayOptions}
+          // 読み込み中のみ無効化する。mapError 時まで無効にすると、地図が開けない
+          // 環境(WebGL不可等)で /map からの報告手段が恒久的に失われる
+          isMapReady={isBaseMapReady || mapError !== null}
         />
 
         {!awaitingLocationSelection && (
@@ -1304,6 +1345,9 @@ export default function MapContainer({
           selectedLocation={selectedLocation}
           mapError={mapError}
           isLoading={isLoading}
+          loadingStage={isBaseMapReady ? 2 : 1}
+          onShowList={() => setIsSidebarOpen(true)}
+          onRetry={() => window.location.reload()}
         />
           {/* 危険レポート入力フォーム（デスクトップ=右下 / モバイル=Portalフルスクリーン） */}
           <MapReportForms

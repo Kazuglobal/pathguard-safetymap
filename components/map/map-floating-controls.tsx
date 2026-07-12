@@ -36,6 +36,7 @@ interface MapFloatingControlsProps {
   onToggleHeatmap?: () => void
   isHeatmapVisible?: boolean
   displayOverlayOptions?: MapDisplayOption[]
+  isMapReady?: boolean
 }
 
 export default function MapFloatingControls({
@@ -55,6 +56,7 @@ export default function MapFloatingControls({
   onToggleHeatmap,
   isHeatmapVisible = false,
   displayOverlayOptions,
+  isMapReady = true,
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
@@ -166,7 +168,7 @@ export default function MapFloatingControls({
               <button
                 type="button"
                 onClick={onReportAtCurrentLocation}
-                disabled={isAcquiringGPS}
+                disabled={isAcquiringGPS || !isMapReady}
                 className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
                 style={{ borderColor: "rgba(21,158,114,.35)", color: C.primaryStrong, boxShadow: tankenTokens.shadow.pressPaper }}
                 aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
@@ -190,8 +192,9 @@ export default function MapFloatingControls({
             <button
               type="button"
               onClick={onAddReport}
+              disabled={!isMapReady}
               data-testid="mobile-report-button"
-              className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 text-[13px] font-black text-white ${tankenTokens.cls.focus}`}
+              className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 text-[13px] font-black text-white disabled:cursor-not-allowed disabled:opacity-55 ${tankenTokens.cls.focus}`}
               style={{
                 background: C.accent,
                 borderColor: "rgba(67,57,43,.18)",
@@ -235,7 +238,7 @@ export default function MapFloatingControls({
             <button
               type="button"
               onClick={onReportAtCurrentLocation}
-              disabled={isReportFormOpen || !!isSelectingLocation || isAcquiringGPS}
+              disabled={isReportFormOpen || !!isSelectingLocation || isAcquiringGPS || !isMapReady}
               className={`chunky-press flex h-12 items-center justify-center gap-2 rounded-full border-2 px-4 text-sm font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
               style={{
                 ...floatPill,
@@ -261,7 +264,8 @@ export default function MapFloatingControls({
           <button
             type="button"
             onClick={onAddReport}
-            className={`chunky-press flex h-14 items-center justify-center gap-2 rounded-full border-2 px-7 text-[15px] font-black ${tankenTokens.cls.focus}`}
+            disabled={!isMapReady}
+            className={`chunky-press flex h-14 items-center justify-center gap-2 rounded-full border-2 px-7 text-[15px] font-black disabled:cursor-not-allowed disabled:opacity-55 ${tankenTokens.cls.focus}`}
             style={
               !isReportFormOpen && !isSelectingLocation
                 ? {
