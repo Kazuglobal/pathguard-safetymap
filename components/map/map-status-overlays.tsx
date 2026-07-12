@@ -11,7 +11,8 @@ interface MapStatusOverlaysProps {
   selectedLocation: [number, number] | null
   mapError: string | null
   isLoading: boolean
-  loadingStage?: 1 | 2 | 3
+  /** 1=ベース地図の準備中, 2=危険マーカーの準備中(完了時はオーバーレイ自体が消える) */
+  loadingStage?: 1 | 2
   onShowList?: () => void
   onRetry?: () => void
 }
@@ -96,12 +97,12 @@ export function MapStatusOverlays({
             <div className="flex items-center gap-3">
               <MapPin className="h-7 w-7 shrink-0" style={{ color: t.color.primary }} aria-hidden="true" />
               <div>
-                <p className="font-black">地図を読み込み中 {loadingStage}/3</p>
+                <p className="font-black">地図を読み込み中 {loadingStage}/2</p>
                 <p className="mt-1 text-sm font-bold" style={{ color: t.color.inkSoft }}>{progressLabel}</p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={loadingStage} aria-label={`地図の読み込み ${loadingStage}/3`}>
-              {[1, 2, 3].map((segment) => (
+            <div className="mt-4 grid grid-cols-2 gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={loadingStage} aria-label={`地図の読み込み ${loadingStage}/2`}>
+              {[1, 2].map((segment) => (
                 <span key={segment} className="h-2 rounded-full" style={{ background: segment <= loadingStage ? t.color.primary : t.color.paperDeep }} />
               ))}
             </div>

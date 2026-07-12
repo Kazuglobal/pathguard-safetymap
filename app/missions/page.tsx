@@ -2,25 +2,33 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useMissions } from "@/hooks/use-missions"
+import { useMissions, type MissionRow } from "@/hooks/use-missions"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { ArrowRight, BadgeCheck, Gift } from "lucide-react"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
-function missionHref(mission: any): string {
-  const text = `${mission.title ?? ""} ${mission.description ?? ""}`
-  if (/写真|ハンター/.test(text)) return "/safety-quest/hunter"
-  if (/クイズ/.test(text)) return "/route-quiz"
-  if (/報告|投稿/.test(text)) return "/report"
-  return "/map"
+/**
+ * ミッション種別(missions.target_type) → 開始導線。
+ * タイトル/説明文へのテキストマッチは文言変更が機能変更になるため使わない。
+ */
+const MISSION_TARGET_HREF: Record<string, string> = {
+  hazard_game_play: "/safety-quest/hunter",
+  hazard_game_high_score: "/safety-quest/hunter",
+  route_quiz: "/route-quiz",
+  report: "/report",
+  visit: "/map",
+}
+
+function missionHref(mission: MissionRow): string {
+  return MISSION_TARGET_HREF[mission.target_type ?? ""] ?? "/map"
 }
 
 export default function MissionsPage() {
   const { missions, progress, isLoading } = useMissions()
   const [tab, setTab] = useState("daily")
 
-  const filtered = missions.filter((m: any) => (m.period ?? "daily") === tab)
+  const filtered = missions.filter((m) => (m.period ?? "daily") === tab)
   const t = tankenTokens
 
   return (
@@ -40,7 +48,7 @@ export default function MissionsPage() {
             <p className="text-center text-gray-500">ミッションがありません</p>
           )}
           <div className="space-y-4">
-            {filtered.map((m: any) => {
+            {filtered.map((m) => {
               const prog = progress[m.id]
               const pct = prog && prog.progress !== null ? (prog.progress / m.target_value) * 100 : 0
               const completed = prog?.completed

@@ -17,6 +17,9 @@ export default defineConfig({
       "**/.claude/**",
       "**/playwright-report/**",
       "**/test-results/**",
+      // *.spec.ts は Playwright 専用(全ファイルが @playwright/test を import)。
+      // vitest のデフォルト include に拾われるとファイルレベルで失敗する
+      "**/*.spec.ts",
     ],
   },
   resolve: {

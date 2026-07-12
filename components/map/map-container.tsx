@@ -1102,7 +1102,9 @@ export default function MapContainer({
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
           displayOverlayOptions={mapDisplayOverlayOptions}
-          isMapReady={isBaseMapReady}
+          // 読み込み中のみ無効化する。mapError 時まで無効にすると、地図が開けない
+          // 環境(WebGL不可等)で /map からの報告手段が恒久的に失われる
+          isMapReady={isBaseMapReady || mapError !== null}
         />
 
         {!awaitingLocationSelection && (

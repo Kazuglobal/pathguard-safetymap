@@ -35,9 +35,10 @@ interface UseDangerReportSubmitParams {
   selectedLocation: [number, number] | null
   selectedUserRoute: UserRoute | null
   toast: ReturnType<typeof useToast>["toast"]
-  setSubmittedReport: Dispatch<SetStateAction<SubmittedReportState | null>>
-  setIsSubmittedPreviewOpen: Dispatch<SetStateAction<boolean>>
-  setPendingReports: Dispatch<SetStateAction<DangerReport[]>>
+  /** 送信済みプレビューを表示しない導線(/report 等)では省略可 */
+  setSubmittedReport?: Dispatch<SetStateAction<SubmittedReportState | null>>
+  setIsSubmittedPreviewOpen?: Dispatch<SetStateAction<boolean>>
+  setPendingReports?: Dispatch<SetStateAction<DangerReport[]>>
 }
 
 /**
@@ -245,7 +246,7 @@ export function useDangerReportSubmit({
 
       // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)
       if (selectedLocation && !options?.suppressPreview) {
-        setSubmittedReport({
+        setSubmittedReport?.({
           reportId: newReportId,
           title: finalReportData.title || "無題の報告",
           summary: buildFamilyShareSummary(finalReportData.description, finalReportData.title),
@@ -276,12 +277,12 @@ export function useDangerReportSubmit({
         // selectedLocation が null の場合でもプレビューは表示できるかもしれない
         // ただし、SubmittedReportPreview が location を期待している場合は問題
         if (selectedLocation) {
-            setIsSubmittedPreviewOpen(true);
+            setIsSubmittedPreviewOpen?.(true);
         }
       }
 
       // ローカル状態を更新 (API の結果を反映したデータを使う)
-      setPendingReports(prev => [finalReportData, ...prev]);
+      setPendingReports?.(prev => [finalReportData, ...prev]);
 
       // Return report ID and image URL for VLM analysis
       return {

@@ -18,7 +18,7 @@ describe("MapStatusOverlays", () => {
     const user = userEvent.setup()
     render(<MapStatusOverlays {...baseProps} loadingStage={2} onShowList={onShowList} />)
 
-    expect(screen.getByText("地図を読み込み中 2/3")).toBeInTheDocument()
+    expect(screen.getByText("地図を読み込み中 2/2")).toBeInTheDocument()
     expect(screen.getByText("危険マーカーを準備しています")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "一覧で見る" }))
     expect(onShowList).toHaveBeenCalledTimes(1)

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, ArrowLeft, Mail, CheckCircle } from "lucide-react"
+import { isRateLimitAuthError, RATE_LIMIT_MESSAGE } from "@/lib/auth/error-messages"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -53,9 +54,8 @@ export default function ForgotPasswordPage() {
       )
 
       if (resetError) {
-        const message = resetError.message || ""
-        if (message.toLowerCase().includes("rate") || message.includes("429")) {
-          setError("短い時間に送信が続きました。少し待ってから、もう一度お試しください。")
+        if (isRateLimitAuthError(resetError)) {
+          setError(RATE_LIMIT_MESSAGE)
         } else {
           setError("再設定メールを送れませんでした。時間をおいてもう一度お試しください。")
         }

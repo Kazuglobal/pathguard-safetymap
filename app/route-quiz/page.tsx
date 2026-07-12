@@ -12,6 +12,7 @@ import shuffle from "lodash.shuffle"
 import { addPoints } from "@/lib/gamification"
 import type { DangerReport } from "@/lib/types"
 import { canStartRouteQuiz, selectNextQuizPoint } from "@/lib/route-quiz-selection"
+import { useEventCallback } from "@/hooks/use-event-callback"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
@@ -24,8 +25,6 @@ export default function RouteQuizPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   /** Mapbox GL インスタンス */
   const map = useRef<mapboxgl.Map | null>(null)
-  const startPtRef = useRef<[number, number] | null>(null)
-  const endPtRef = useRef<[number, number] | null>(null)
   const startMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const endMarkerRef = useRef<mapboxgl.Marker | null>(null)
 
@@ -57,6 +56,25 @@ export default function RouteQuizPage() {
   /* ---------------------------------------------------------- */
   /*  2. マップ初期化                                           */
   /* ---------------------------------------------------------- */
+  // 初期化時に一度だけ登録するハンドラでも最新 state を読めるよう useEventCallback を使う
+  // (state同期refの新設は禁止: hooks/use-event-callback.ts 参照)
+  const handleMapClick = useEventCallback((e: mapboxgl.MapMouseEvent) => {
+    const point: [number, number] = [e.lngLat.lng, e.lngLat.lat]
+    const next = selectNextQuizPoint({ start: startPt, end: endPt }, point)
+
+    if (next.start !== startPt) {
+      setStartPt(next.start)
+      return
+    }
+
+    if (next.end !== endPt) {
+      setEndPt(next.end)
+      if (next.start && next.end) {
+        setRouteLine({ type: "LineString", coordinates: [next.start, next.end] })
+      }
+    }
+  })
+
   useEffect(() => {
     if (map.current || !mapContainer.current) return
 
@@ -82,28 +100,9 @@ export default function RouteQuizPage() {
       setMapStatus("error")
       setMapMessage("地図を読み込めませんでした。通信状態を確認して、もう一度ためしてください。")
     }
-    const handleClick = (e: mapboxgl.MapMouseEvent) => {
-      const point: [number, number] = [e.lngLat.lng, e.lngLat.lat]
-      const next = selectNextQuizPoint({ start: startPtRef.current, end: endPtRef.current }, point)
-
-      if (next.start !== startPtRef.current) {
-        startPtRef.current = next.start
-        setStartPt(next.start)
-        return
-      }
-
-      if (next.end !== endPtRef.current) {
-        endPtRef.current = next.end
-        setEndPt(next.end)
-        if (next.start && next.end) {
-          setRouteLine({ type: "LineString", coordinates: [next.start, next.end] })
-        }
-      }
-    }
-
     instance.on("load", handleLoad)
     instance.on("error", handleError)
-    instance.on("click", handleClick)
+    instance.on("click", handleMapClick)
 
     return () => {
       startMarkerRef.current?.remove()
@@ -112,11 +111,11 @@ export default function RouteQuizPage() {
       endMarkerRef.current = null
       instance.off("load", handleLoad)
       instance.off("error", handleError)
-      instance.off("click", handleClick)
+      instance.off("click", handleMapClick)
       instance.remove()
       if (map.current === instance) map.current = null
     }
-  }, [mapRetryKey])
+  }, [mapRetryKey, handleMapClick])
 
   /* ---------------------------------------------------------- */
   /*  3. スタート / ゴールマーカー描画                          */
@@ -155,81 +154,97 @@ export default function RouteQuizPage() {
   /*  4. ルート取得                                             */
   /* ---------------------------------------------------------- */
   useEffect(() => {
+    if (!startPt || !endPt) return
+
+    // controller は effect の同期スコープで生成する。async 関数内で生成して
+    // 完了後に返す形だと、リクエスト飛行中の cleanup が abort できず、
+    // 遅延レスポンスが新しい選択のルートを上書きするレースが起きる。
+    const controller = new AbortController()
+
     const getRoute = async () => {
-      if (!startPt || !endPt) return
-
-      const controller = new AbortController()
-
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${startPt[0]},${startPt[1]};${endPt[0]},${endPt[1]}?geometries=geojson&access_token=${MAPBOX_TOKEN}`
       try {
         const res = await fetch(url, { signal: controller.signal })
         if (!res.ok) throw new Error("directions_failed")
         const data = await res.json()
+        if (controller.signal.aborted) return
         const line = data.routes?.[0]?.geometry as GeoJSON.LineString
         if (line) setRouteLine(line)
       } catch (error) {
+        if (controller.signal.aborted) return
         if (error instanceof DOMException && error.name === "AbortError") return
         setMapMessage("道順を取得できなかったため、2地点を直線で確認しています。クイズは続けられます。")
       }
-
-      return controller
     }
-    let activeController: AbortController | undefined
-    getRoute().then((controller) => { activeController = controller })
-    return () => activeController?.abort()
+
+    void getRoute()
+    return () => controller.abort()
   }, [startPt, endPt])
 
   /* ---------------------------------------------------------- */
   /*  5. ルート描画 & クイズリスト作成                          */
   /* ---------------------------------------------------------- */
   useEffect(() => {
-    if (!map.current || !routeLine || mapStatus !== "ready" || !map.current.isStyleLoaded()) return
+    const instance = map.current
+    if (!instance || !routeLine || mapStatus !== "ready") return
 
-    // 既存ルート削除
-    if (map.current.getLayer("route-line")) map.current.removeLayer("route-line")
-    if (map.current.getSource("route")) map.current.removeSource("route")
+    const draw = () => {
+      // 既存ルート削除
+      if (instance.getLayer("route-line")) instance.removeLayer("route-line")
+      if (instance.getSource("route")) instance.removeSource("route")
 
-    // ルート描画
-    map.current.addSource("route", {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        geometry: routeLine,
-        properties: {},
-      } as GeoJSON.Feature,
-    })
-    map.current.addLayer({
-      id: "route-line",
-      type: "line",
-      source: "route",
-      paint: {
-        "line-color": "#4f46e5",
-        "line-width": 4,
-      },
-    })
+      // ルート描画
+      instance.addSource("route", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          geometry: routeLine,
+          properties: {},
+        } as GeoJSON.Feature,
+      })
+      instance.addLayer({
+        id: "route-line",
+        type: "line",
+        source: "route",
+        paint: {
+          "line-color": "#4f46e5",
+          "line-width": 4,
+        },
+      })
 
-    // ルートに合わせてズーム
-    const turfAny = turf as any
-    const [minX, minY, maxX, maxY] = turfAny.bbox(routeLine)
-    map.current.fitBounds(
-      [
-        [minX, minY],
-        [maxX, maxY],
-      ],
-      { padding: 40 },
-    )
+      // ルートに合わせてズーム
+      const turfAny = turf as any
+      const [minX, minY, maxX, maxY] = turfAny.bbox(routeLine)
+      instance.fitBounds(
+        [
+          [minX, minY],
+          [maxX, maxY],
+        ],
+        { padding: 40 },
+      )
 
-    // 50 m バッファで近くの危険箇所抽出
-    const buffered = turfAny.buffer(routeLine, 0.05, { units: "kilometers" })
-    const near = hazards.filter((h) =>
-      turfAny.booleanPointInPolygon(turfAny.point([h.longitude, h.latitude]), buffered!),
-    )
-    setQuizList(shuffle(near))
+      // 50 m バッファで近くの危険箇所抽出
+      const buffered = turfAny.buffer(routeLine, 0.05, { units: "kilometers" })
+      const near = hazards.filter((h) =>
+        turfAny.booleanPointInPolygon(turfAny.point([h.longitude, h.latitude]), buffered!),
+      )
+      setQuizList(shuffle(near))
+    }
+
+    // タイル読込中などで isStyleLoaded() が false の瞬間は idle を待って再試行する。
+    // ここで単に return すると依存値が変わらない限り再実行されず、
+    // ルート未描画・quizList 空のままボタンだけ押せる状態になる。
+    if (!instance.isStyleLoaded()) {
+      instance.once("idle", draw)
+      return () => {
+        instance.off("idle", draw)
+      }
+    }
+
+    draw()
   }, [routeLine, hazards, mapStatus])
 
   const resetPoints = useCallback(() => {
-    startPtRef.current = null
-    endPtRef.current = null
     setStartPt(null)
     setEndPt(null)
     setRouteLine(null)
@@ -240,7 +255,6 @@ export default function RouteQuizPage() {
   }, [])
 
   const resetEndPoint = useCallback(() => {
-    endPtRef.current = null
     setEndPt(null)
     setRouteLine(null)
     setQuizList([])

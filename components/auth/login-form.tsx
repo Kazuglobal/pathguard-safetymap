@@ -12,24 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-
-const OFFLINE_MESSAGE = "Supabaseに接続できません。ネットワーク接続を確認してから再試行してください。"
-const API_CONFIG_MESSAGE = "API設定エラーが発生しました。環境変数が正しく設定されているか確認してください。"
-
-const resolveErrorMessage = (error: unknown, fallback: string) => {
-  const message =
-    typeof error === "object" && error !== null && "message" in error ? String((error as any).message) : ""
-  if (message.includes("network_error") || message.includes("Failed to fetch") || message.includes("fetch failed")) {
-    return OFFLINE_MESSAGE
-  }
-  if (message.includes("Invalid login credentials")) {
-    return "メールアドレスまたはパスワードが正しくありません。"
-  }
-  if (message.includes("Invalid API") || message.includes("invalid api") || message.includes("Invalid URL") || message.includes("example.supabase.co")) {
-    return API_CONFIG_MESSAGE
-  }
-  return message || fallback
-}
+import { resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 
 export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) {
   const router = useRouter()
@@ -94,7 +77,7 @@ export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) 
     } catch (error) {
       toast({
         title: "エラー",
-        description: resolveErrorMessage(error, "ログインに失敗しました。"),
+        description: resolveAuthErrorMessage(error, "ログインに失敗しました。"),
         variant: "destructive",
       })
     } finally {
@@ -128,7 +111,7 @@ export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) 
     } catch (error) {
       toast({
         title: "エラー",
-        description: resolveErrorMessage(error, "デモログインに失敗しました。"),
+        description: resolveAuthErrorMessage(error, "デモログインに失敗しました。"),
         variant: "destructive",
       })
     } finally {

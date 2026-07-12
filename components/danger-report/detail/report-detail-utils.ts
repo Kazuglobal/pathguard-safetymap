@@ -187,3 +187,14 @@ export function getReportStatusPresentation(
     moderationNote: null,
   }
 }
+
+/**
+ * 投稿者から見て「結果待ち(審査中)」の報告か。ダッシュボード等の件数集計用。
+ * 判定は getReportStatusPresentation に委譲し、ステータス文字列の
+ * ローカル比較(["pending","reviewing"].includes 等)を各画面に増やさない。
+ */
+export function isReportUnderReview(
+  report: Pick<DangerReport, "status" | "ai_moderation_status" | "ai_moderation_reason">,
+): boolean {
+  return getReportStatusPresentation(report).label.startsWith("審査中")
+}

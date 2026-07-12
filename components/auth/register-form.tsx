@@ -14,24 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, CheckCircle2, Circle } from "lucide-react"
-
-const OFFLINE_MESSAGE = "Supabaseに接続できません。ネットワーク接続を確認してから再試行してください。"
-const DUPLICATE_EMAIL_MESSAGE = "このメールは登録ずみです"
-
-const resolveErrorMessage = (error: unknown, fallback: string) => {
-  const message =
-    typeof error === "object" && error !== null && "message" in error ? String((error as any).message) : ""
-  if (message.includes("network_error") || message.includes("Failed to fetch") || message.includes("fetch failed")) {
-    return OFFLINE_MESSAGE
-  }
-  if (message.toLowerCase().includes("rate") || message.includes("429")) {
-    return "短い時間に送信が続きました。少し待ってから、もう一度お試しください。"
-  }
-  if (message.toLowerCase().includes("already") || message.toLowerCase().includes("registered")) {
-    return DUPLICATE_EMAIL_MESSAGE
-  }
-  return message || fallback
-}
+import { DUPLICATE_EMAIL_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 
 type FieldErrors = Partial<Record<"fullName" | "email" | "password" | "terms" | "form", string>>
 
@@ -103,7 +86,7 @@ export default function RegisterForm() {
 
       router.push("/login")
     } catch (error) {
-      const message = resolveErrorMessage(error, "登録に失敗しました。時間をおいてもう一度お試しください。")
+      const message = resolveAuthErrorMessage(error, "登録に失敗しました。時間をおいてもう一度お試しください。")
       if (message === DUPLICATE_EMAIL_MESSAGE) {
         setErrors({ email: message })
         emailRef.current?.focus()

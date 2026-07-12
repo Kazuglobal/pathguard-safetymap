@@ -310,6 +310,10 @@ export function MaskConfirm(props: MaskConfirmProps) {
           if (revoked) return
           window.clearTimeout(timeoutId)
           setAutoRegions(buildBlurRegions(faces))
+          // タイムアウト表示後に検出が完了した場合はUIを回復させる
+          // (回復させないと、実際は準備完了なのに「やりなおしてね」で固定される)
+          setProcessingTimedOut(false)
+          setErrorMessage(null)
         })
         .finally(() => {
           if (!revoked) {
@@ -333,9 +337,13 @@ export function MaskConfirm(props: MaskConfirmProps) {
       window.clearTimeout(timeoutId)
       URL.revokeObjectURL(objectUrl)
       setPreviewObjectUrl((current) => (current === objectUrl ? null : current))
-      releaseMediaPipeFaceDetector()
     }
   }, [file, retryKey])
+
+  // 検出器の解放はアンマウント時のみ。file/retryKey 変更ごとに解放すると、
+  // モジュール内キャッシュの意図(WASM+モデルのロードはセッション中1度)が壊れ、
+  // 写真の選び直し・やりなおしのたびにフル再ダウンロードが走る。
+  useEffect(() => releaseMediaPipeFaceDetector, [])
 
   // --- canvas 再描画 (原画像 → 全ぼかし領域) ---
   const redraw = useCallback(() => {

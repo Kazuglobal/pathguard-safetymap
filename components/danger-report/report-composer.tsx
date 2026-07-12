@@ -5,10 +5,9 @@ import Link from "next/link"
 import { createPortal } from "react-dom"
 import { AlertTriangle, Flag, LocateFixed, MapPin, X } from "lucide-react"
 import DangerReportForm from "@/components/danger-report/danger-report-form"
-import { useDangerReportSubmit, type SubmittedReportState } from "@/hooks/use-danger-report-submit"
+import { useDangerReportSubmit } from "@/hooks/use-danger-report-submit"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
-import type { DangerReport } from "@/lib/types"
 import { tankenTokens } from "@/lib/design/tanken"
 
 export default function ReportComposer() {
@@ -20,31 +19,33 @@ export default function ReportComposer() {
   const [locationSource, setLocationSource] = useState<"manual" | "gps" | null>(null)
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "error">("idle")
   const [gpsMessage, setGpsMessage] = useState("")
-  const [, setSubmittedReport] = useState<SubmittedReportState | null>(null)
-  const [, setIsSubmittedPreviewOpen] = useState(false)
-  const [, setPendingReports] = useState<DangerReport[]>([])
 
   useEffect(() => setMounted(true), [])
 
+  // 送信済みプレビューや pending 一覧はこの導線では表示しないため setter は渡さない
   const submitReport = useDangerReportSubmit({
     supabase,
     selectedLocation,
     selectedUserRoute: null,
     toast,
-    setSubmittedReport,
-    setIsSubmittedPreviewOpen,
-    setPendingReports,
   })
 
   const close = () => {
     setOpen(false)
     setGpsStatus("idle")
     setGpsMessage("")
+    // 前回の位置を持ち越さない(次回GPS失敗時に古い地点で送信されるのを防ぐ)
+    setSelectedLocation(null)
+    setLocationSource(null)
   }
 
   const chooseCurrentLocation = () => {
     setOpen(true)
     setGpsMessage("")
+    // 取得開始時に前回の位置をクリアする。GPS が失敗したときに
+    // 古い地点が「ピンを たてたよ」として残り、そのまま送信できてしまうため。
+    setSelectedLocation(null)
+    setLocationSource(null)
 
     if (!navigator.geolocation) {
       setGpsStatus("error")

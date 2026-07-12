@@ -13,6 +13,8 @@ describe("admin helpers", () => {
     expect(isAdminEmail("globalbunny77@gmail.com")).toBe(true)
     expect(isAdminEmail("SECOND@example.com")).toBe(true)
     expect(isAdminEmail("member@example.com")).toBe(false)
+    // ALLOW_TEST_ADMIN のオプトインなしではローカル管理者もリスト外
+    expect(isAdminEmail("admin@test.com")).toBe(false)
   })
 
   it("does not treat caller-controlled role values as admin authority", () => {
