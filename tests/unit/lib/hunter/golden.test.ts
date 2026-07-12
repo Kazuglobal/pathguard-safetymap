@@ -25,6 +25,8 @@ import stringyImageUsable from "./golden/stringy-imageusable.json"
 import uppercaseSeverity from "./golden/uppercase-severity.json"
 import missingQuiz from "./golden/missing-quiz.json"
 import messyRecoverable from "./golden/messy-recoverable.json"
+import regionScaled1000 from "./golden/region-scaled-1000.json"
+import evidencePassthrough from "./golden/evidence-passthrough.json"
 
 /** route 相当の後処理(imageUsable ガートは route の責務なので別途確認)。 */
 function runPipeline(raw: unknown, sessionId = "g") {
@@ -119,6 +121,7 @@ describe("golden: image-unusable", () => {
     for (const raw of [
       ideal, duplicates, englishMixed, giantBbox, lowConfidenceMixed, empty, imageUnusable,
       stringyImageUsable, uppercaseSeverity, missingQuiz, messyRecoverable,
+      regionScaled1000, evidencePassthrough,
     ]) {
       const { hazards } = runPipeline(raw)
       expect(hazards.length).toBeLessThanOrEqual(MAX_HAZARDS)
@@ -160,6 +163,47 @@ describe("salvage: a point survives a missing / one-choice quiz", () => {
     // どちらも生クイズが使えない → kind 既定のフォールバック素材で補完される。
     expect(materials[0]).toEqual(KID_QUIZ_FALLBACK_BY_KIND.crossing_no_signal)
     expect(materials[1]).toEqual(KID_QUIZ_FALLBACK_BY_KIND.blind_corner)
+  })
+})
+
+describe("salvage: 0〜1000スケール座標の混入で全滅しない", () => {
+  it("全ポイントが生存し region は 0..1 に変換される(旧実装は hazards:0 → guide(empty) 全滅)", () => {
+    const { hazards } = runPipeline(regionScaled1000)
+    expect(hazards.map((h) => h.kind)).toEqual(["blind_corner", "parked_car_shadow"])
+    for (const h of hazards) {
+      expect(h.region.x).toBeGreaterThanOrEqual(0)
+      expect(h.region.x + h.region.w).toBeLessThanOrEqual(1)
+      expect(h.region.y + h.region.h).toBeLessThanOrEqual(1)
+    }
+    // 先頭点: {x:400,y:520,w:180,h:200} → 中心膨張前の変換値は {0.4,0.52,0.18,0.2}
+    const first = hazards[0]
+    expect(first.region.x).toBeCloseTo(0.4, 5)
+    expect(first.region.y).toBeCloseTo(0.52, 5)
+  })
+
+  it("safePoints の 0〜1000 region も同様にサルベージされる", () => {
+    const validated = validateHunterResponse(regionScaled1000)
+    const region = validated.safePoints[0]?.region
+    expect(region).toBeDefined()
+    expect(region!.x).toBeCloseTo(0.7, 5)
+    expect(region!.w).toBeCloseTo(0.25, 5)
+  })
+})
+
+describe("evidence: 先行根拠フィールドは点を壊さず、子ども表示へ漏れない", () => {
+  it("evidence 付き・非文字列 evidence の両方の点が生存する", () => {
+    const { validated, hazards } = runPipeline(evidencePassthrough)
+    expect(hazards).toHaveLength(2)
+    // 文字列 evidence は保持、非文字列(12345)は undefined へ吸収(点は落とさない)
+    expect(validated.dangerPoints[0].evidence).toBe("角の へいが 右から来る 車を かくしている")
+    expect(validated.dangerPoints[1].evidence).toBeUndefined()
+  })
+
+  it("HunterHazard(表示系ドメイン型)に evidence プロパティが存在しない", () => {
+    const { hazards } = runPipeline(evidencePassthrough)
+    for (const h of hazards) {
+      expect("evidence" in h).toBe(false)
+    }
   })
 })
 

@@ -24,6 +24,50 @@ function extractFirstJson(text: string): any {
   throw new Error("Failed to parse JSON from Gemini response")
 }
 
+// Gemini Schema形式(type は大文字)。responseMimeType: application/json と併用する。
+// structureConditions を vizPrompt/simulationPrompts より前に置く(condition-first: 台帳→プロンプトの生成順を propertyOrdering で強制)。
+// この台帳は TypeScript の返却処理では読まない = GeneratedPrompts 型は不変。
+const PROMPTS_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    riskObservation: {
+      type: "OBJECT",
+      properties: {
+        elements: { type: "ARRAY", items: { type: "STRING" } },
+        tableMarkdown: { type: "STRING" },
+      },
+      required: ["elements", "tableMarkdown"],
+    },
+    structureConditions: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          object: { type: "STRING" },
+          material: { type: "STRING" },
+          conditionTier: { type: "STRING" },
+          evidence: { type: "STRING" },
+          maxDamage: { type: "STRING" },
+        },
+        required: ["object", "conditionTier", "maxDamage"],
+      },
+    },
+    vizPrompt: { type: "STRING" },
+    simulationPrompts: {
+      type: "OBJECT",
+      properties: {
+        earthquake: { type: "STRING" },
+        typhoon: { type: "STRING" },
+        flood: { type: "STRING" },
+        fire: { type: "STRING" },
+      },
+      required: ["earthquake", "typhoon", "flood", "fire"],
+    },
+  },
+  required: ["riskObservation", "structureConditions", "vizPrompt", "simulationPrompts"],
+  propertyOrdering: ["riskObservation", "structureConditions", "vizPrompt", "simulationPrompts"],
+}
+
 export type GeneratedPrompts = {
   riskObservation: {
     elements: string[]
@@ -82,12 +126,16 @@ export async function generateDisasterPrompts(
 
   const instruction = `You are a bilingual (Japanese and English) disaster-risk visualization assistant named "DocuImage Assistant GPT". ${languageInstruction} Never output addresses, personal data, or other sensitive identifiers.
 
-If the input image is missing or blank, respond only with "${uploadMessage}".
+If the input image is missing or blank, return the JSON object described below with riskObservation.elements = [], riskObservation.tableMarkdown = "${uploadMessage}", structureConditions = [], and every prompt field set to "" (empty string).
+
+LANGUAGE RULE: riskObservation.elements, every structureConditions entry, the vizPrompt, and all simulationPrompts MUST be written in English regardless of the response language above — they feed an English-language image-editing API, and no Japanese may appear in them except the fixed label strings quoted in Step 2. Only tableMarkdown and its countermeasures follow the response language.
+
+EXECUTION FACT: the Gemini Image Generation API that later executes your vizPrompt and simulationPrompts receives THE SAME PHOTO you are analyzing now as an input image. Every prompt you write must therefore be an image-EDITING instruction that modifies the provided photo — never a request to create, imagine, or re-render a new scene.
 
 Follow this protocol exactly and return JSON only (no extra narration):
 
 Step 1 – Risk Observation
-- Inspect the uploaded photo and list visually identifiable elements (fences, utility poles, buildings, trees, vegetation, drainage, tactile paving, signage, parked vehicles, etc.).
+- Inspect the uploaded photo and list visually identifiable elements in English, each written as "<object> (<horizontal position: left/center/right>, <depth: foreground/midground/background>)", e.g. "concrete block wall (right, foreground)". These exact strings are the anchors quoted verbatim in Step 2 and Step 3.
 - For each hazard in: ${hazardList} (use custom hazard wording exactly as supplied):
   - Describe 2–3 plausible, visually grounded risks revealed or implied by the scene.
   - Suggest simple, specific on-the-spot countermeasures ${countermeasureLanguage}.
@@ -96,40 +144,56 @@ Step 1 – Risk Observation
   |---|---|---|
 - Keep entries concise and actionable while avoiding private information.
 
-Step 2 – Hazard Visualization Prompt
-- Provide a single polished English prompt for standard hazard-visualization (not post-disaster destruction) for the Gemini Image Generation API.
-- The prompt must enforce strict scene preservation: same camera position, lens, perspective, horizon, daylight, object layout, and the ORIGINAL ASPECT RATIO of the uploaded photo. No scene replacement, no cropping to a different format, and no new people/vehicles/buildings.
-- Select ONLY hazards whose anchor object is actually visible in this photo — never force all four and never invent an object to justify a label. Use this fixed Japanese label vocabulary for the hazards you include: "フェンス倒壊注意" (fence/block wall), "電柱倒壊注意" (utility pole), "冠水注意" (low spot/drainage/gutter), "延焼注意" (adjacent dense or wooden buildings). If only two hazards are grounded in the photo, mark exactly two.
-- Require location-anchored callouts (semi-transparent polygons, arrows, warning icons, numbered markers with short leader lines) and a compact Japanese legend listing only the colors actually used, drawn from: "凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意".
-- Require that any visible faces or license plates be rendered unrecognizable.
-- Require realistic civic-infographic quality (HDR, sharp focus, balanced contrast, mobile-readable labels; Japanese text rendered accurately with no garbled characters) and explicitly forbid gore, graphic destruction, extra text, watermarks, or model names.
+Step 2 – Hazard Visualization Prompt (image-EDITING instruction)
+- Provide one polished English prompt that adds a flat 2D hazard-annotation overlay layer on top of the provided photo.
+- The prompt MUST begin with: "Using the provided photo as the immutable base image, add a flat 2D hazard-annotation overlay layer on top. Do not redraw, repaint, move, remove, or re-synthesize anything in the underlying photograph; every area not covered by an overlay must remain identical to the input photo. Keep the photo's exact framing and original aspect ratio."
+- Select ONLY hazards whose anchor object appears in your Step 1 elements list — never force all four and never invent an object to justify a label. Default Japanese label vocabulary: "フェンス倒壊注意" (fence/block wall), "電柱倒壊注意" (utility pole), "冠水注意" (low spot/drainage/gutter), "延焼注意" (adjacent dense or wooden buildings). If custom hazards were supplied, use their exact supplied wording as labels instead. If only two hazards are grounded in the photo, mark exactly two.
+- For each selected hazard write one compact marker line quoting its Step 1 element verbatim as the anchor: a semi-transparent polygon (about 40% fill opacity, solid outline) hugging the anchor object's silhouette, a numbered circular badge (white numeral on the same color), a short leader line, and the Japanese label on a high-contrast rounded pill beside the badge. Colors: red = collapse/falling, blue = flooding, amber = fire.
+- Self-check before finalizing: delete any marker whose anchor object is not in the Step 1 elements list.
+- CLOSED TEXT SET: the generated image may contain ONLY (1) the labels selected above, copied character-for-character; (2) one compact legend on a small opaque rounded panel at bottom-left drawn from "凡例 赤=倒壊・落下注意 / 青=冠水注意 / 橙=火災注意", listing only the colors actually used; (3) marker numerals "1"–"4". The prompt must enumerate these exact strings, require each to be reproduced glyph-for-glyph in a clean bold Japanese gothic (sans-serif) typeface on its badge/pill, and forbid every other character of any script — no deformed kanji-like glyphs, no alphabet, no watermarks, no model names, no captions.
+- Require affirmative anonymization: if any human face is visible, repaint it as an unrecognizable soft blur covering the whole face; if any license plate is visible, repaint the entire plate as a blank surface with no characters.
+- Require clean flat-vector digital-infographic quality (sharp, balanced contrast, mobile-readable) — the overlays must NOT look like physical signs or objects inside the scene — and explicitly forbid gore and graphic destruction.
 
-Step 3 – Post-Disaster Simulation Prompts
-- CRITICAL REALISM RULE: First analyze the actual condition of every structure visible in the photo (walls, fences, utility poles, buildings, signs, roads). Calibrate the simulated damage PROPORTIONALLY to the observed condition:
-  • New/well-maintained structures (clean surfaces, no cracks, straight alignment): show only MINOR effects (hairline cracks, slight dust, small displacement)
-  • Aging but intact structures (some discoloration, minor wear): show MODERATE effects (visible cracks, slight tilting, partial damage)
-  • Visibly deteriorated structures (existing cracks, rust, tilting, crumbling mortar): show SIGNIFICANT effects (partial collapse, major tilting, fallen sections)
-- Provide four English prompts (earthquake aftermath, typhoon-class wind aftermath, flash flood, post-fire) for the Gemini Image Generation API.
-- Each prompt must maintain the original camera framing, lens, daylight conditions, and the uploaded photo's aspect ratio unless the hazard inherently affects the scene (e.g., reflective floodwater, thin haze from distant smoke).
-- Each prompt must request a photorealistic high-resolution image with high dynamic range, Japanese suburban street context, no people, no added vehicles, no recognizable faces or license plates, and no model names.
-- Each prompt MUST describe the specific structures visible in the photo and their realistic damage based on the condition analysis above. Do NOT use generic catastrophic descriptions.
-- FORBIDDEN: explosion-like imagery, dramatic dust clouds, completely flattened structures (unless already severely deteriorated), burning vehicles, large fires in frame, any imagery that would cause excessive fear or anxiety.
-- Specify hazard-specific visuals realistically based on what is in the photo:
-  • Earthquake (震度5強 equivalent — strong but not catastrophic): For new block walls show only hairline cracks and minor mortar dust; for old block walls with existing cracks show partial tilting or a few fallen blocks; utility poles may lean slightly; minor debris from loose items only. Road surface may have small cracks. Overall scene should look shaken but NOT devastated.
-  • Typhoon (wind speed ~30m/s — strong but survivable): Lightweight objects displaced; tree branches broken (not uprooted unless tree is obviously weak); fences slightly bent or rattling; wet pavement with scattered leaves; signs may be tilted. Avoid showing destruction of solid structures.
-  • Flash flood (~15-20 cm water depth — ankle to shin level): Muddy water covering lower portions of road; realistic water reflections and ripples; small floating debris (leaves, trash); water line visible on walls and curbs. Water should look like actual floodwater (brownish, not crystal clear).
-  • Fire (nearby fire, NOT in frame — signs of proximity): Thin smoke haze reducing visibility slightly; light soot on surfaces nearest to assumed fire direction; no active flames visible in the scene; slight orange tint in haze. Scene should suggest a fire occurred nearby, not that everything is burning.
+Step 3 – Post-Disaster Simulation Prompts (condition-first protocol)
+
+Step 3a – Structure condition ledger (fill BEFORE writing any simulation prompt):
+For up to 6 major structures visible in the photo (prioritize the most safety-relevant: walls, fences, utility poles, building facades, signs, road surface), add one English entry to "structureConditions":
+- "object": the Step 1 element string copied verbatim
+- "material": e.g. "concrete block", "galvanized steel", "asphalt"
+- "conditionTier": exactly one of "new" | "aging" | "deteriorated" (new = clean surfaces, no cracks, straight alignment / aging = some discoloration or minor wear, intact / deteriorated = existing cracks, rust, tilting, crumbling mortar)
+- "evidence": the visible cues that justify the tier
+- "maxDamage": the strongest damage this structure may EVER receive in any simulation, derived from the tier: new → hairline cracks, thin dust film, barely perceptible lean; aging → a few visible cracks, slight rigid lean, small fallen fragments; deteriorated → partial failure of the already-weak section only, with the rest still standing
+
+Step 3b – CRITICAL REALISM RULE (proportionality, mandatory):
+- Damage in every simulation prompt MUST be copied from the ledger; no structure may receive damage stronger than its "maxDamage". If every structure is "new", the whole scene must look nearly intact with only subtle traces — do NOT dramatize to make the image more striking.
+- Each simulation prompt MUST name the ledger structures it changes (quote each element string verbatim) and state their exact damage. Generic phrases like "damaged walls" or "debris everywhere" are forbidden.
+
+Step 3c – Write four English prompts (earthquake aftermath, typhoon-class wind aftermath, flash flood, nearby fire), each phrased as an EDIT of the provided photo and beginning with: "Edit the provided photo. Keep the exact camera position, framing, lens, daylight, and the photo's original aspect ratio; keep every structure in its original position" — then describe ONLY the hazard-specific changes. Each prompt must also request a photorealistic result with no people, no added vehicles, faces and license plates repainted unrecognizable (soft blur for faces, blank surface for plates), no added text of any kind, no watermarks, and no model names. Hazard physics to instantiate with the ledger structures:
+  • Earthquake (JMA seismic intensity 5-upper — strong but not catastrophic): cracks follow structural logic — stair-step along mortar joints or radiating from corners and openings; pavement cracks only along existing seams; tilting objects rotate rigidly at the base and never bend mid-span; fallen fragments lie directly below their origin; a thin dust film only near fresh cracks. Overall: shaken but standing.
+  • Typhoon (sustained wind about 30 m/s — strong but survivable): choose ONE wind direction and make every cue agree with it — leaves and small branches accumulate downwind, lightweight objects (bins, cones, potted plants) topple or shift downwind, flexible signs and mesh fences bow downwind but stay standing. Mass rule: only objects a person could lift move visibly; anchored structures at most tilt slightly. Pavement rain-wet with a dull sheen; sky overcast but normal daylight.
+  • Flash flood (15–20 cm standing water — ankle to shin): render ONE horizontally consistent waterline across the whole scene, calibrated to real anchors in the photo (a standard curb is about 15 cm, so water just reaches the curb top). Water is silty brown and opaque enough to hide road markings, with small ripples and matte, broken reflections; floating leaves and light debris; a damp high-water stain a few centimeters above the waterline on walls and curbs. Everything above the waterline stays exactly as in the photo.
+  • Fire (source strictly OUTSIDE the frame): first decide the off-frame fire direction, then keep every cue consistent with it — translucent smoke haze densest toward that edge and thinning across the scene; faint soot only on surfaces facing that direction; a slight warm tint confined to the haze itself while all surfaces keep their normal daylight color — no orange glow and no rim light, because no flames are visible. Distant objects slightly softened by haze; foreground clear.
+
+Step 3d – Emotional register (mandatory in every simulation prompt, encoded as concrete constraints; never mention children, education, or audiences inside the prompts themselves):
+- Keep the original daylight and weather mood except for the minimal change the hazard itself requires; never darken the sky for drama; no horror-like color grading.
+- No cinematic effects: no motion blur, dutch angle, vignette, lens flare, or desaturated "disaster movie" tone.
+- The street must remain instantly recognizable as the same place in the photo: keep the layout, colors, and every undamaged structure identical.
+- Damage must read as discrete, pointable clues (a crack HERE, water up to HERE), not an atmosphere of devastation.
+- FORBIDDEN in all four prompts: explosion-like imagery, dramatic dust clouds, completely flattened structures (unless the ledger marks them "deteriorated"), burning vehicles, flames in frame, injured people, and scattered personal belongings that suggest a victim (shoes, school bags).
 
 Language & customisation
 - If language = "en", write the risk table and countermeasures in English; otherwise write them in Japanese.
-- If custom hazards are provided, replace the default four hazards with the exact supplied list.
+- If custom hazards are provided, replace the default four hazards with the exact supplied list (including as the Step 2 label vocabulary).
 
-Return JSON with this exact structure:
+Return JSON with this exact structure and this exact key order:
 {
   "riskObservation": {
     "elements": ["..."],
     "tableMarkdown": "..."
   },
+  "structureConditions": [
+    { "object": "...", "material": "...", "conditionTier": "new|aging|deteriorated", "evidence": "...", "maxDamage": "..." }
+  ],
   "vizPrompt": "<English prompt>",
   "simulationPrompts": {
     "earthquake": "<English>",
@@ -151,7 +215,14 @@ Do not output anything except the JSON object.`
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ role: "user", parts }] }),
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: PROMPTS_RESPONSE_SCHEMA,
+        },
+      }),
     }
   )
   if (!res.ok) {
@@ -165,7 +236,14 @@ Do not output anything except the JSON object.`
     throw new Error("Gemini returned no text for prompts")
   }
 
-  const parsed = extractFirstJson(textPart)
+  // responseSchema 強制時は素のJSONが返るため直接パースし、
+  // 万一コードフェンス等が混ざった場合のみ extractFirstJson で救済する(既存の安全網は温存)。
+  let parsed: any
+  try {
+    parsed = JSON.parse(textPart)
+  } catch {
+    parsed = extractFirstJson(textPart)
+  }
 
   return {
     riskObservation: {

@@ -50,6 +50,7 @@ import {
   type DefaultSituation,
 } from "@/lib/disaster-scenario-prompts"
 import { FALLBACK_VIZ_PROMPT } from "@/lib/disaster-image-prompt-fallbacks"
+import { buildRegionConstraints } from "@/lib/danger-report/region-constraints"
 import { useVlmAnalysis } from "@/hooks/use-vlm-analysis"
 import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 import { SimulationQuickSummary } from "./simulation-quick-summary"
@@ -465,25 +466,6 @@ export default function DangerReportForm({
     const blobUrl = URL.createObjectURL(file)
     registerBlobUrl(blobUrl)
     return blobUrl
-  }
-
-  const buildRegionConstraints = (hazards: HazardItem[]): string => {
-    if (!Array.isArray(hazards) || hazards.length === 0) return ''
-    const lines: string[] = []
-    lines.push('Region constraints (normalized coordinates 0-1):')
-    hazards.forEach((h, i) => {
-      const b = h?.bbox
-      if (b && typeof b === 'object') {
-        const x = Number(b.x ?? 0).toFixed(3)
-        const y = Number(b.y ?? 0).toFixed(3)
-        const w = Number(b.width ?? 0.25).toFixed(3)
-        const hgt = Number(b.height ?? 0.2).toFixed(3)
-        lines.push(`${i + 1}) bbox=[${x}, ${y}, ${w}, ${hgt}] label='${h?.type ?? 'hazard'}'`)
-      }
-    })
-    if (lines.length <= 1) return ''
-    lines.push('Place overlays/icons near these boxes while keeping the scene photorealistic and consistent.')
-    return lines.join(' ')
   }
 
   const drawOverlayFromHazards = async (imageFile: File, hazards: HazardItem[]): Promise<string> => {

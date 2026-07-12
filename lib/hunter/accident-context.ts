@@ -112,6 +112,7 @@ const EMPTY_SUMMARY: HunterAccidentSummary = {
   totalAccidents: 0,
   childInvolved: 0,
   topAccidentType: null,
+  topAccidentTypes: [],
   peakTimeSlot: null,
   kidMessage: "このあたりの きろくは 少ないよ。でも ゆだんは きんもつ！",
 };
@@ -158,6 +159,7 @@ export function buildAccidentSummary(
     totalAccidents: stats.total_accidents,
     childInvolved,
     topAccidentType,
+    topAccidentTypes: sortedTypes.slice(0, 3),
     peakTimeSlot,
     kidMessage: buildKidMessage(childInvolved, riskMeta.label),
   };

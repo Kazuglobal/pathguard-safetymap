@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
   const mockSetContext = vi.fn()
   const mockAddBreadcrumb = vi.fn()
   const mockReadFileWithSentryContext = vi.fn(async () => new ArrayBuffer(4))
+  const mockVerifyOrRegenerate = vi.fn()
 
   return {
     mockGetUser,
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => {
     mockSetContext,
     mockAddBreadcrumb,
     mockReadFileWithSentryContext,
+    mockVerifyOrRegenerate,
   }
 })
 
@@ -46,6 +48,12 @@ vi.mock("@/lib/api-cost-calculator", () => ({
 
 vi.mock("@/lib/sentry-upload-context", () => ({
   readFileWithSentryContext: mocks.mockReadFileWithSentryContext,
+}))
+
+// 検証レイヤーは既定で素通し(実物の「画像なし」パスと同じ形状を返す)。
+// ガード/是正サフィックスの合成順テストではケース内で実装を差し替える。
+vi.mock("@/lib/disaster-image-verification", () => ({
+  verifyOrRegenerateImages: mocks.mockVerifyOrRegenerate,
 }))
 
 vi.mock("@sentry/nextjs", () => ({
@@ -80,6 +88,10 @@ describe("app/api/gemini/generate-image route", () => {
       images: [],
       model: "gemini-3.1-flash-lite-image",
     })
+    mocks.mockVerifyOrRegenerate.mockImplementation(async ({ images }: { images: unknown[] }) => ({
+      images,
+      verificationRequestCount: 0,
+    }))
   })
 
   it("always uses gemini-3.1-flash-lite-image when generationMode is standard", async () => {
@@ -159,6 +171,75 @@ describe("app/api/gemini/generate-image route", () => {
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
       expect.objectContaining({ model: "gemini-3.1-flash-lite-image" }),
     )
+  })
+
+  const buildImageRequest = (generationMode?: string) => {
+    const file = { name: "input.png", type: "image/png", size: 4 }
+    return {
+      headers: new Headers({ "content-type": "multipart/form-data; boundary=test" }),
+      formData: vi.fn(async () => ({
+        get: (key: string) =>
+          key === "prompt" ? "test prompt"
+          : key === "image" ? file
+          : key === "generationMode" ? generationMode ?? null
+          : null,
+      })),
+    }
+  }
+
+  it("standard+画像+プロンプトのとき SCENE_PRESERVATION_GUARD_SUFFIX が末尾に付与される", async () => {
+    const { SCENE_PRESERVATION_GUARD_SUFFIX } = await import("@/lib/disaster-image-prompt-fallbacks")
+    const { POST } = await loadRoute()
+
+    const res = await POST(buildImageRequest("standard") as any)
+
+    expect(res.status).toBe(200)
+    const prompt: string = mocks.mockGenerateImage.mock.calls[0][0].prompt
+    expect(prompt.startsWith("test prompt")).toBe(true)
+    expect(prompt.endsWith(SCENE_PRESERVATION_GUARD_SUFFIX)).toBe(true)
+  })
+
+  it("generationMode='disaster' にはガードを付与しない", async () => {
+    const { POST } = await loadRoute()
+
+    await POST(buildImageRequest("disaster") as any)
+
+    expect(mocks.mockGenerateImage.mock.calls[0][0].prompt).toBe("test prompt")
+  })
+
+  it("generationMode 未指定(/tools/image-gen 互換)にはガードを付与しない", async () => {
+    const { POST } = await loadRoute()
+
+    await POST(buildImageRequest(undefined) as any)
+
+    expect(mocks.mockGenerateImage.mock.calls[0][0].prompt).toBe("test prompt")
+  })
+
+  it("是正再生成時のプロンプトは『基底→ガード→是正サフィックス』の順序になる", async () => {
+    const { SCENE_PRESERVATION_GUARD_SUFFIX } = await import("@/lib/disaster-image-prompt-fallbacks")
+    mocks.mockGenerateImage.mockResolvedValue({
+      images: [{ mimeType: "image/png", dataUrl: "data:image/png;base64,xxxx" }],
+      model: "gemini-3.1-flash-lite-image",
+    })
+    mocks.mockVerifyOrRegenerate.mockImplementationOnce(
+      async ({ regenerate }: { regenerate: (s: string) => Promise<unknown[]> }) => {
+        const regenerated = await regenerate("[CORRECTIVE-SUFFIX]")
+        return { images: regenerated, verificationRequestCount: 2 }
+      },
+    )
+    const { POST } = await loadRoute()
+
+    const res = await POST(buildImageRequest("standard") as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockGenerateImage).toHaveBeenCalledTimes(2)
+    const regenPrompt: string = mocks.mockGenerateImage.mock.calls[1][0].prompt
+    const baseIdx = regenPrompt.indexOf("test prompt")
+    const guardIdx = regenPrompt.indexOf(SCENE_PRESERVATION_GUARD_SUFFIX)
+    const correctiveIdx = regenPrompt.indexOf("[CORRECTIVE-SUFFIX]")
+    expect(baseIdx).toBe(0)
+    expect(guardIdx).toBeGreaterThan(baseIdx)
+    expect(correctiveIdx).toBeGreaterThan(guardIdx)
   })
 
   it("reads multipart image data through the Sentry context helper", async () => {

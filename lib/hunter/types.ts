@@ -98,6 +98,8 @@ export interface HunterAccidentSummary {
   readonly totalAccidents: number
   readonly childInvolved: number
   readonly topAccidentType: string | null
+  /** 件数降順の事故タイプ(最大3件)。プロンプトの統合事故ブロックが使用。省略時は topAccidentType のみ使う。 */
+  readonly topAccidentTypes?: readonly string[]
   readonly peakTimeSlot: string | null
   /** 子ども向けのやさしい一文 (断定しない) */
   readonly kidMessage: string
