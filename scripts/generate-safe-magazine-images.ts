@@ -676,6 +676,113 @@ ${QUALITY_SUFFIX}`,
         description: "「こどもの事故防止週間」（2026年7月13日〜19日）の1週間カレンダービジュアル。転落防止の点検項目を1日1つ配置し、保存・印刷して使える構成。"
       }
     ]
+  },
+  {
+    articleId: "2026-07-14-gifu-mizuho-crosswalk-accident",
+    articleSlug: "gifu-mizuho-crosswalk-accident",
+    category: "accident-news",
+    title: "信号のない横断歩道で登校中事故——自転車通学の見えない危険",
+    thumbnailPrompt: `Create a calm, instructional Japanese editorial illustration showing correct, safe behavior at an unsignaled crosswalk — NOT a collision or accident scene.
+
+Scene elements (Japanese specific):
+- A Japanese middle-school student (中学生, roughly 12-13 years old) on a bicycle, wearing a properly fastened bicycle helmet (自転車用ヘルメット) and a school uniform
+- The student has come to a complete stop with one foot down at a marked crosswalk that has NO traffic signal (信号機のない横断歩道), turning their head to look both left and right before proceeding
+- A white stop-line road marking (停止線) is visible on the pavement at the crosswalk
+- A small "横断歩道" (crosswalk) diamond-shaped road sign is visible nearby, but no traffic signal light is present anywhere in the scene
+- Quiet Japanese residential street lined with low tile-roofed houses, soft early morning light suggesting a school-commute hour
+- No other vehicles are dangerously close; if a car is shown, it is stopped calmly and courteously well before the crosswalk
+- This is a single full-bleed illustrated scene only — NOT a magazine page, book spread, or app screen layout
+
+Mood: calm, careful, instructional — modeling correct safety behavior, not fear-based messaging
+Style: Same soft Japanese editorial illustration style used across the SAFE MAGAZINE series (gentle cel-shading, clean line work), slightly serious but reassuring tone
+Color palette: Warm morning light, red accent for the accident-news category used sparingly (e.g. a small warning-triangle icon), soft neutral street tones
+
+CRITICAL TEXT REQUIREMENTS: Do NOT render any Japanese or English text anywhere in the image — no speech bubbles, no callout labels, no sidebar text, no page numbers, no category chips, no UI chrome, no signage text except the plain visual shape of a small blue "crosswalk ahead" pictogram sign (no legible words on it) and a plain white stop-line road marking with no text. The image must be a single clean illustrated scene with zero legible text of any kind.
+
+Strictly avoid (negative prompt): any text, labels, captions, speech bubbles, sidebar panels, page numbers, or UI chrome of any kind; any collision, near-miss, or impact imagery, a bicycle falling or a rider on the ground, scattered belongings, ambulance or emergency lights, blood or injury imagery, realistic/identifiable human faces, real brand logos, any recreation of a real accident scene, watermarks or signatures.
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "no-signal-crossing-steps",
+        prompt: `Create a clean Japanese-style educational infographic showing 3 numbered steps for safely crossing an unsignaled crosswalk on a bicycle. NO extra title text beyond what is specified below.
+
+Layout: 3 horizontal panels in sequence, left to right, each with a large numbered circle (1, 2, 3) and a short caption beneath the illustration.
+
+Panel 1: Number "1" in a circle. Illustration of a student stopping the bicycle completely at a white stop-line, one foot on the ground. Caption: "止まる"
+
+Panel 2: Number "2" in a circle. Illustration of the same student turning their head to look left and right, small motion-arc lines indicating the head turn. Caption: "左右を確認する"
+
+Panel 3: Number "3" in a circle. Illustration of the student walking the bicycle across the crosswalk on foot (pushing it by the handlebars) rather than riding. Caption: "押して渡る"
+
+Header text (render exactly once, above the 3 panels): "信号のない横断歩道の渡り方"
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the header text and the 3 numbered captions listed above, exactly as written, with no additional Japanese or English text.
+- Keep the illustrations simple, flat, and calm.
+
+Style: Clean, friendly Japanese infographic, soft rounded icons, gentle color blocking, instructional and reassuring tone
+Color palette: Soft cream background, warm orange accents for the numbered circles, calm blue-green for the bicycle and figures
+
+Avoid (negative prompt): realistic/photographic human faces, identifiable children, any depiction of collision or falling, blood or injury imagery, real brand logos, extra or garbled text.
+${QUALITY_SUFFIX}`,
+        description: "信号のない横断歩道の渡り方3ステップ（止まる・左右確認・押して渡る）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-07-14-otta-iot-mimamori-kawachinagano",
+    articleSlug: "otta-iot-mimamori-kawachinagano",
+    category: "safety-tips",
+    title: "IoT見守り端末を全13校に無償配布——通過記録の仕組み",
+    thumbnailPrompt: `Create a warm, reassuring Japanese community illustration showing an IoT watch-over tag system for elementary school children — a passage-log style system, NOT a real-time GPS tracking map.
+
+Scene elements (Japanese specific):
+- A small IoT tag/device clipped to the strap of a Japanese elementary school child's randoseru backpack, shown as a small friendly rounded device with a soft glowing indicator (no visible text or logo on the device itself)
+- A neighborhood utility pole or small standalone post fitted with a beacon unit (a simple rounded box with a soft blue glow), installed along a quiet Japanese residential school-route street (no visible text or logo on the beacon itself)
+- A parent figure (silhouette or non-identifiable) holding a smartphone that shows a simple list-style history screen with a few plain checkmark icons and short blank-looking line placeholders — explicitly a log/list shape, not a live moving dot on a map, and without needing to render legible Japanese words on the screen
+- Japanese elementary school children (yellow safety caps, randoseru) walking past the watch-over spot on their way to school
+- Warm morning light, low tile-roofed houses, a friendly community atmosphere
+- This is a single full-bleed illustrated scene only — NOT a magazine page, book spread, or app screen mockup with UI chrome
+
+Key visual themes:
+- Small wearable tag + fixed beacon post = passage-detection technology (not continuous GPS tracking)
+- Smartphone showing a checklist/history shape, not a live tracking dot = accurately represents "passage record" not "real-time location"
+- Warm, community-oriented mood, technology quietly supporting existing "ながら見守り" style community watching
+
+Style: Soft Japanese editorial illustration, same warm family-friendly aesthetic as the rest of the SAFE MAGAZINE series, clean tech elements blended into a cozy neighborhood scene
+Color palette: Soft blue/cyan for the tech elements (tag, beacon, app), warm neighborhood tones, yellow safety-cap accent, blue accent for the safety-tips category
+
+CRITICAL TEXT REQUIREMENTS: Do NOT render any legible Japanese or English text, labels, or logos anywhere in the image — no callout labels pointing at the tag or beacon, no captions, no sidebar text, no page numbers, no brand names. Represent the tag, beacon, and phone screen purely through shape, color, and icon symbols with zero legible words.
+
+Strictly avoid (negative prompt): any text, labels, captions, callouts, or logos of any kind; realistic/identifiable human faces, a live real-time GPS dot moving on a map, real brand logos, frightening or alarming imagery, watermarks or signatures.
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "mimamori-tag-how-it-works",
+        prompt: `Create a clean Japanese-style educational infographic showing 3 numbered steps explaining how an IoT watch-over tag passage-record system works. NO extra title text beyond what is specified below.
+
+Layout: 3 horizontal panels in sequence, left to right, each with a large numbered circle (1, 2, 3) and a short caption beneath the illustration.
+
+Panel 1: Number "1" in a circle. Illustration of a small IoT tag device clipped to a randoseru backpack strap. Caption: "端末を携帯する"
+
+Panel 2: Number "2" in a circle. Illustration of the child walking past a neighborhood "見守りスポット" beacon post, with a small radio-wave icon showing proximity detection (short-range, not a wide GPS beam). Caption: "見守りスポットの近くを通過"
+
+Panel 3: Number "3" in a circle. Illustration of a parent's smartphone showing a simple list-style passage history screen with checkmarks. Caption: "保護者のスマホに通過記録が届く"
+
+Header text (render exactly once, above the 3 panels): "IoT見守り端末の仕組み"
+
+CRITICAL TEXT REQUIREMENTS:
+- Render ONLY the header text and the 3 numbered captions listed above, exactly as written, with no additional Japanese or English text.
+- The smartphone in panel 3 must show a list/checkmark style history, not a live map with a moving dot, to accurately represent a passage-record system rather than real-time GPS tracking.
+
+Style: Clean, friendly Japanese infographic, soft rounded icons, gentle blue/cyan color blocking, instructional and reassuring tone
+Color palette: Soft cream background, blue/cyan accents for the technology elements, warm neutral tones for the family and neighborhood elements
+
+Avoid (negative prompt): realistic/photographic human faces, identifiable children, a live real-time GPS dot on a moving map, real brand logos, extra or garbled text.
+${QUALITY_SUFFIX}`,
+        description: "IoT見守り端末が通過記録を残す仕組み（携帯→通過→保護者へ通知）の3ステップ図解"
+      }
+    ]
   }
 ]
 
