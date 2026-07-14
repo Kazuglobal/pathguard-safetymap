@@ -12,6 +12,28 @@ export interface LandingSafeMagazinePreviewItem {
 
 const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
   {
+    id: "2026-07-14-gifu-mizuho-crosswalk-accident",
+    slug: "gifu-mizuho-crosswalk-accident",
+    title: "【7月・岐阜】信号のない横断歩道で登校中事故、自転車通学の見えない危険",
+    excerpt: "岐阜県瑞穂市で、信号機のない横断歩道を自転車で渡っていた登校中の女子中学生が軽乗用車にはねられ、意識不明の重体となりました。信号のない交差点はどの通学路にもあり得る「見えない危険」です。今日から親子で確認したい渡り方をまとめました。",
+    categoryLabel: "事故ニュース",
+    categoryColor: "#EF4444",
+    categoryIcon: "AlertTriangle",
+    publishedDate: "2026-07-14",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/gifu-mizuho-crosswalk-accident.png",
+  },
+  {
+    id: "2026-07-14-otta-iot-mimamori-kawachinagano",
+    slug: "otta-iot-mimamori-kawachinagano",
+    title: "【大阪・河内長野市】IoT見守り端末を全13校に無償配布、通過記録の仕組みとは",
+    excerpt: "大阪府河内長野市が株式会社ottaと協定を結び、市立小学校全13校の児童にIoT見守り端末を無償配布することになりました。「人の目」だけに頼らない新しい見守りの形が全国に広がりつつあります。",
+    categoryLabel: "安全対策",
+    categoryColor: "#3B82F6",
+    categoryIcon: "Shield",
+    publishedDate: "2026-07-14",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/otta-iot-mimamori-kawachinagano.png",
+  },
+  {
     id: "2026-07-05-summer-break-safety-2026",
     slug: "summer-break-safety-2026",
     title: "【夏休み前に】熱中症2,813件・事故防止週間・浮く水泳授業に学ぶ守り方",
@@ -21,28 +43,6 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryIcon: "Shield",
     publishedDate: "2026-07-05",
     thumbnailUrl: "/images/safe-magazine/thumbnails/summer-break-safety-2026.png",
-  },
-  {
-    id: "2026-07-05-sendai-suspicious-person-incident",
-    slug: "sendai-suspicious-person-incident",
-    title: "【7月・仙台】下校中の女児に声かけ被害——他人事ではない3つの備え",
-    excerpt: "仙台市青葉区で、下校中の女子小学生が見知らぬ女に腕をつかまれ、道をしつこく尋ねられる事案が発生しました。道を尋ねるふりで近づく手口は全国どこでも起こりうるため、今日から親子で確認できる3つの備えをまとめました。",
-    categoryLabel: "事故ニュース",
-    categoryColor: "#EF4444",
-    categoryIcon: "AlertTriangle",
-    publishedDate: "2026-07-05",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/suspicious-person-statistics.png",
-  },
-  {
-    id: "2026-07-05-bicycle-blue-ticket-one-month-report",
-    slug: "bicycle-blue-ticket-one-month-report",
-    title: "【施行1か月・暫定値】自転車青切符2,147件——一時停止とながらスマホが7割",
-    excerpt: "2026年4月施行の自転車青切符、施行1か月間の暫定値を警察庁が公表し、告知2,147件のうち一時停止とながらスマホで7割を占めることが分かりました。中高生の自転車通学がある家庭はもちろん、数年後に備えたい家庭も今日から確認すべき2つの行動が分かります。",
-    categoryLabel: "施策・制度",
-    categoryColor: "#8B5CF6",
-    categoryIcon: "FileText",
-    publishedDate: "2026-07-05",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.png",
   },
 ]
 
