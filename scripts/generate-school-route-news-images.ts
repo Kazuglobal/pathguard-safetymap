@@ -342,6 +342,61 @@ Color palette: Blue/gray for the guardrail and infrastructure, green for the saf
 Mood: Reassuring, community safety improvement, everyday life
 ${QUALITY_SUFFIX}`,
     description: "岡山市古都学区 通学路ガードレール設置（2026年7月6日号）"
+  },
+  {
+    slug: "hamamatsu-chuo-crosswalk-accident-20260703",
+    filename: "hamamatsu-chuo-crosswalk-accident-20260703.png",
+    prompt: `Create a Japanese safety awareness illustration about a traffic accident at a crosswalk involving a child on the way to school.
+
+Scene elements (abstract, NOT depicting actual injury):
+- A quiet Japanese urban intersection with a pedestrian crosswalk and a traffic signal showing green for pedestrians
+- A yellow school safety cap dropped on the crosswalk
+- A car stopped at an angle just past the crosswalk, suggesting it failed to stop in time
+- Warning/caution atmosphere without depicting any person or injury
+- Japanese road markings, signal poles, and street signs in the background
+
+Style: Somber but not graphic, Japanese editorial illustration
+Focus on safety awareness, NOT on depicting injury or people
+Color palette: Muted tones with red warning accents
+No text of any kind anywhere in the image
+${QUALITY_SUFFIX}`,
+    description: "浜松市中央区 横断歩道事故（2026年7月14日号）"
+  },
+  {
+    slug: "sendai-miyagino-tsurugaya-suspicious-20260710",
+    filename: "sendai-miyagino-tsurugaya-suspicious-20260710.png",
+    prompt: `Create a Japanese safety awareness illustration about a stranger-danger voice-call incident on a school route.
+
+Scene elements (abstract, NOT depicting the perpetrator's face):
+- A quiet Japanese residential street in early morning light
+- A yellow school safety cap and randoseru backpack seen from behind, walking alone toward the viewer's left
+- A shadowy, faceless silhouette of an adult figure in the distance, deliberately vague and non-identifying
+- A speech-bubble icon with a simple question mark, suggesting an unwanted question, no legible text
+- Calm but alert atmosphere
+
+Style: Clean Japanese editorial illustration, cautionary but not frightening
+Color palette: Orange caution accents, soft morning light tones
+No text of any kind anywhere in the image, no depiction of a recognizable face
+${QUALITY_SUFFIX}`,
+    description: "仙台市宮城野区鶴ケ谷 声かけ事案（2026年7月14日号）"
+  },
+  {
+    slug: "kashima-minatogaoka-candy-suspicious-20260710",
+    filename: "kashima-minatogaoka-candy-suspicious-20260710.png",
+    prompt: `Create a Japanese safety awareness illustration about a stranger offering candy to children on a school route.
+
+Scene elements (abstract, NOT depicting the perpetrator's face):
+- A quiet Japanese residential street near an elementary school, late afternoon light
+- Two children with yellow safety caps and randoseru backpacks seen from behind, walking away
+- A faceless silhouette of an adult figure holding out an ice cream/popsicle shape, deliberately vague and non-identifying
+- A red "X" or caution icon near the offered item, suggesting the item should be declined
+- Warm daylight but a subtle sense of caution
+
+Style: Clean Japanese editorial illustration, cautionary but not frightening
+Color palette: Orange caution accents, warm afternoon tones
+No text of any kind anywhere in the image, no depiction of a recognizable face
+${QUALITY_SUFFIX}`,
+    description: "鹿嶋市港ケ丘 菓子譲渡型声かけ事案（2026年7月14日号）"
   }
 ]
 
