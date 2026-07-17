@@ -114,16 +114,32 @@ function createStats(overrides: Partial<AccidentStats> = {}): AccidentStats {
 }
 
 describe('AccidentStatsPanel', () => {
-  it('renders the current full-mode overview contract', () => {
+  it('renders the headline-first summary contract (A案: ひとことスタンプ・折りたたみ型)', () => {
     render(<AccidentStatsPanel stats={createStats()} />)
 
     expect(screen.getByText('交通事故データ')).toBeInTheDocument()
-    expect(screen.getByText(/非常に危険/)).toBeInTheDocument()
-    expect(screen.getByText('事故リスクスコア')).toBeInTheDocument()
+    expect(screen.getByText('非常に危険')).toBeInTheDocument()
+    expect(screen.getByText('警戒レベル・非常に危険')).toBeInTheDocument()
+    // 死亡事故が1件でもあれば、最優先で「死亡事故が発生している地点です」の一言診断を出す
+    expect(screen.getByText('死亡事故が発生している地点です')).toBeInTheDocument()
     expect(screen.getByText('85')).toBeInTheDocument()
+    expect(screen.getByText('そなえ')).toBeInTheDocument()
     expect(screen.getByText('事故件数')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('死亡事故')).toBeInTheDocument()
+
+    // 詳細データは折りたたみの中にあり、初期状態では見えない
+    expect(screen.queryByText('事故リスクスコア')).not.toBeInTheDocument()
+    expect(screen.queryByText(/この地点の事故状況/)).not.toBeInTheDocument()
+  })
+
+  it('reveals the risk score bar and tabs once the details accordion is expanded', async () => {
+    const user = userEvent.setup()
+    render(<AccidentStatsPanel stats={createStats()} />)
+
+    await user.click(screen.getByRole('button', { name: /くわしく見る/ }))
+
+    expect(screen.getByText('事故リスクスコア')).toBeInTheDocument()
     expect(screen.getByText(/この地点の事故状況/)).toBeInTheDocument()
   })
 
@@ -131,7 +147,8 @@ describe('AccidentStatsPanel', () => {
     const user = userEvent.setup()
     render(<AccidentStatsPanel stats={createStats()} />)
 
-    await user.click(screen.getByRole('button', { name: /時間帯/ }))
+    await user.click(screen.getByRole('button', { name: /くわしく見る/ }))
+    await user.click(screen.getByRole('button', { name: /^時間帯$/ }))
 
     expect(screen.getByText('最多発生時間')).toBeInTheDocument()
     expect(screen.getByText('14時台')).toBeInTheDocument()
@@ -139,7 +156,8 @@ describe('AccidentStatsPanel', () => {
     expect(screen.getByText(/雨 4件/)).toBeInTheDocument()
   })
 
-  it('shows commute alert when school-route hours exceed 25% even if a different single hour is the peak', () => {
+  it('shows commute alert when school-route hours exceed 25% even if a different single hour is the peak', async () => {
+    const user = userEvent.setup()
     render(
       <AccidentStatsPanel
         stats={createStats({
@@ -154,6 +172,8 @@ describe('AccidentStatsPanel', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: /くわしく見る/ }))
+
     expect(screen.getByText(/登校時間帯（7〜8時）に集中: 6件（全体の30%）/)).toBeInTheDocument()
   })
 
@@ -161,7 +181,8 @@ describe('AccidentStatsPanel', () => {
     const user = userEvent.setup()
     render(<AccidentStatsPanel stats={createStats()} />)
 
-    await user.click(screen.getByRole('button', { name: /危険要因/ }))
+    await user.click(screen.getByRole('button', { name: /くわしく見る/ }))
+    await user.click(screen.getByRole('button', { name: /^危険要因$/ }))
 
     expect(screen.getByText(/損傷程度/)).toBeInTheDocument()
     expect(screen.getByText(/重傷以上: 17%/)).toBeInTheDocument()
@@ -175,7 +196,8 @@ describe('AccidentStatsPanel', () => {
     const user = userEvent.setup()
     render(<AccidentStatsPanel stats={createStats()} />)
 
-    await user.click(screen.getByRole('button', { name: /事故詳細/ }))
+    await user.click(screen.getByRole('button', { name: /くわしく見る/ }))
+    await user.click(screen.getByRole('button', { name: /^事故詳細$/ }))
 
     expect(screen.getByText(/近隣事故 2件/)).toBeInTheDocument()
 

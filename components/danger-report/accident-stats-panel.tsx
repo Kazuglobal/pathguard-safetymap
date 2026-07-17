@@ -41,6 +41,7 @@ import type {
   RiskLevelInfo,
 } from "@/lib/traffic-accident-data";
 import { getAccidentRiskLevel } from "@/lib/traffic-accident-data";
+import { tankenTokens } from "@/lib/design/tanken";
 
 const MONTH_NAMES = [
   "",
@@ -115,6 +116,133 @@ export function deriveSeveritySummaryText(
     return `死亡事故${fatalAccidentCount}件が確認されています`;
   }
   return "この地点の死亡事故なし";
+}
+
+// ============================================================
+// ひとこと診断・そなえの一言（A案: ひとことスタンプ・折りたたみ型）
+// ============================================================
+
+/** この地点で最も注意すべき一言診断。深刻度順に判定する */
+export function deriveHeadlineInsight(
+  stats: Pick<
+    AccidentStats,
+    | "fatal_accidents"
+    | "total_fatalities"
+    | "nearest_accidents"
+    | "total_accidents"
+    | "pedestrian_involved"
+    | "time_analysis"
+    | "road_environment"
+    | "party_analysis"
+    | "risk_score"
+  >
+): string {
+  if (deriveFatalAccidentCount(stats) > 0) {
+    return "死亡事故が発生している地点です";
+  }
+
+  const commutePeak = computeCommutePeak(stats.time_analysis, stats.total_accidents);
+  if (commutePeak) {
+    return commutePeak.type === "morning"
+      ? "登校時間帯の事故が集中している地点です"
+      : "下校時間帯の事故が集中している地点です";
+  }
+
+  if (stats.road_environment && stats.road_environment.intersection_ratio >= 60) {
+    return "交差点での事故が多い地点です";
+  }
+
+  if (stats.party_analysis && stats.party_analysis.elderly_ratio >= 30) {
+    return "高齢ドライバーが関わる事故が多い地点です";
+  }
+
+  if (
+    stats.total_accidents > 0 &&
+    stats.pedestrian_involved / stats.total_accidents >= 0.4
+  ) {
+    return "歩行者が関わる事故が多い地点です";
+  }
+
+  return getAccidentRiskLevel(stats.risk_score).description;
+}
+
+/** そなえの一言。headline と同じ優先順位ロジックで対応する具体行動を返す */
+export function deriveAccidentActionAdvice(
+  stats: Pick<
+    AccidentStats,
+    | "fatal_accidents"
+    | "total_fatalities"
+    | "nearest_accidents"
+    | "total_accidents"
+    | "pedestrian_involved"
+    | "time_analysis"
+    | "road_environment"
+    | "party_analysis"
+  >
+): string {
+  if (deriveFatalAccidentCount(stats) > 0) {
+    return "横断歩道では渡る前に必ず立ち止まり、車が完全に止まったのを目で確認する";
+  }
+
+  const commutePeak = computeCommutePeak(stats.time_analysis, stats.total_accidents);
+  if (commutePeak) {
+    return commutePeak.type === "morning"
+      ? "登校時間帯(7〜8時)は特に、渡る前に車の停止を目で確認する"
+      : "下校時間帯(14〜16時)は特に、道路の左右をしっかり確認してから渡る";
+  }
+
+  if (stats.road_environment && stats.road_environment.intersection_ratio >= 60) {
+    return "交差点では信号だけに頼らず、車が止まったかを目で確認してから渡る";
+  }
+
+  if (stats.party_analysis && stats.party_analysis.elderly_ratio >= 30) {
+    return "高齢ドライバーの車は急な進路変更に注意し、動きをよく見てから渡る";
+  }
+
+  if (
+    stats.total_accidents > 0 &&
+    stats.pedestrian_involved / stats.total_accidents >= 0.4
+  ) {
+    return "歩行者用信号が青でも、渡る前に周囲の車の動きを確認する";
+  }
+
+  return "基本の交通ルール(飛び出し禁止・信号確認)を日頃から確認する";
+}
+
+/** リスク段階を「たんけんノート」トークンの色へ写像する（表示専用・判定ロジックは持たない） */
+function getTankenRiskAccent(level: string): { text: string; bg: string; border: string } {
+  switch (level) {
+    case "critical":
+      return {
+        text: tankenTokens.color.danger,
+        bg: tankenTokens.color.dangerSoft,
+        border: tankenTokens.color.danger,
+      };
+    case "high":
+      return {
+        text: tankenTokens.color.accentStrong,
+        bg: tankenTokens.color.accentSoft,
+        border: tankenTokens.color.accent,
+      };
+    case "moderate":
+      return {
+        text: tankenTokens.color.sunDeep,
+        bg: tankenTokens.color.sunSoft,
+        border: tankenTokens.color.sunDeep,
+      };
+    case "low":
+      return {
+        text: tankenTokens.color.sky,
+        bg: tankenTokens.color.skySoft,
+        border: tankenTokens.color.sky,
+      };
+    default:
+      return {
+        text: tankenTokens.color.primaryStrong,
+        bg: tankenTokens.color.primarySoft,
+        border: tankenTokens.color.primary,
+      };
+  }
 }
 
 // ============================================================
@@ -1129,6 +1257,102 @@ function CompactPanel({ stats }: { stats: AccidentStats }) {
 }
 
 // ============================================================
+// ひとことスタンプ・そなえ・折りたたみ用パーツ（A案）
+// ============================================================
+function RiskStamp({
+  score,
+  accent,
+}: {
+  score: number;
+  accent: { text: string; bg: string; border: string };
+}) {
+  return (
+    <div
+      className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full border-2 border-dashed"
+      style={{ backgroundColor: accent.bg, borderColor: accent.border }}
+    >
+      <span className="text-lg font-bold leading-none" style={{ color: accent.text }}>
+        {score}
+      </span>
+      <span className="text-[8px] text-gray-400">/100</span>
+    </div>
+  );
+}
+
+function SummaryChip({
+  label,
+  value,
+  hot,
+}: {
+  label: string;
+  value: number;
+  hot?: boolean;
+}) {
+  return (
+    <div
+      className="rounded-lg px-1 py-2 text-center"
+      style={{ backgroundColor: tankenTokens.color.paper }}
+    >
+      <div
+        className="text-base font-bold leading-none"
+        style={{ color: hot ? tankenTokens.color.danger : tankenTokens.color.ink }}
+      >
+        {value}
+      </div>
+      <div className="mt-0.5 text-[9px]" style={{ color: tankenTokens.color.inkSoft }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function AdviceCard({ text }: { text: string }) {
+  return (
+    <div
+      className="mt-3 flex items-start gap-2 rounded-2xl px-3 py-2.5"
+      style={{ backgroundColor: tankenTokens.color.accentSoft }}
+    >
+      <span
+        className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+        style={{ backgroundColor: tankenTokens.color.accentStrong }}
+      >
+        そなえ
+      </span>
+      <p className="text-xs leading-relaxed" style={{ color: tankenTokens.color.ink }}>
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/** 危険要因・時間帯・事故一覧をまとめて格納する折りたたみ。結論を先出しし、詳細はここへ */
+function DetailsAccordion({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="mt-3 overflow-hidden rounded-2xl border"
+      style={{ borderColor: tankenTokens.color.paperDeep }}
+    >
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-xs font-bold"
+        style={{ backgroundColor: tankenTokens.color.paper, color: tankenTokens.color.ink }}
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span>くわしく見る（危険要因・時間帯・事故一覧）</span>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          style={{ color: tankenTokens.color.inkFaint }}
+        />
+      </button>
+      {open && <div className="px-3 pb-3 pt-2">{children}</div>}
+    </div>
+  );
+}
+
+// ============================================================
 // ローディング / データなし
 // ============================================================
 export function AccidentStatsLoading() {
@@ -1187,6 +1411,10 @@ export default function AccidentStatsPanel({
     () => getAccidentRiskLevel(stats.risk_score),
     [stats.risk_score]
   );
+  const tankenAccent = useMemo(() => getTankenRiskAccent(risk.level), [risk.level]);
+  const fatalAccidentCount = deriveFatalAccidentCount(stats);
+  const headline = useMemo(() => deriveHeadlineInsight(stats), [stats]);
+  const actionAdvice = useMemo(() => deriveAccidentActionAdvice(stats), [stats]);
 
   if (stats.total_accidents === 0) {
     return <AccidentStatsEmpty radius={stats.search_params.radius_meters} />;
@@ -1197,27 +1425,27 @@ export default function AccidentStatsPanel({
       {/* ── ヘッダー ── */}
       <div
         className="px-4 py-2.5 flex items-center justify-between"
-        style={{ backgroundColor: risk.bgColor }}
+        style={{ backgroundColor: tankenAccent.bg }}
       >
         <div className="flex items-center gap-2">
           <svg
             className="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={risk.color}
+            stroke={tankenAccent.text}
             strokeWidth={2}
           >
             <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             <line x1="12" y1="9" x2="12" y2="13" />
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
-          <span className="text-sm font-semibold" style={{ color: risk.color }}>
+          <span className="text-sm font-semibold" style={{ color: tankenAccent.text }}>
             交通事故データ
           </span>
         </div>
         <span
-          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-          style={{ backgroundColor: risk.color + "20", color: risk.color }}
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
+          style={{ backgroundColor: tankenAccent.text }}
         >
           {risk.label}
         </span>
@@ -1228,37 +1456,72 @@ export default function AccidentStatsPanel({
         <CompactPanel stats={stats} />
       ) : (
         <>
-          {/* リスクスコアバー */}
-          <div className="px-4 pt-3">
-            <RiskScoreBar score={stats.risk_score} />
-          </div>
+          {/* ひとことサマリー・そなえ・折りたたみ詳細 */}
+          <div className="px-4 pt-3 pb-4">
+            <div className="flex items-center gap-3">
+              <RiskStamp score={stats.risk_score} accent={tankenAccent} />
+              <div className="min-w-0">
+                <p
+                  className="text-sm font-bold leading-snug"
+                  style={{ color: tankenTokens.color.ink }}
+                >
+                  {headline}
+                </p>
+                <p
+                  className="mt-0.5 text-[11px] font-bold"
+                  style={{ color: tankenAccent.text }}
+                >
+                  警戒レベル・{risk.label}
+                </p>
+              </div>
+            </div>
 
-          {/* タブ */}
-          <div className="mt-3">
-            <Tabs
-              tabs={TAB_LIST}
-              active={activeTab}
-              onChange={setActiveTab}
-            />
-          </div>
+            <AdviceCard text={actionAdvice} />
 
-          {/* タブコンテンツ */}
-          <div className="px-4 pb-4">
-            {activeTab === "overview" && (
-              <OverviewPanel stats={stats} risk={risk} />
-            )}
-            {activeTab === "factors" && (
-              <DangerFactorsPanel stats={stats} />
-            )}
-            {activeTab === "time" && stats.time_analysis && (
-              <TimeAnalysisPanel
-                time={stats.time_analysis}
-                byWeather={stats.by_weather}
+            <div className="mt-3 grid grid-cols-4 gap-1.5">
+              <SummaryChip label="事故件数" value={stats.total_accidents} />
+              <SummaryChip label="歩行者" value={stats.pedestrian_involved} />
+              <SummaryChip
+                label="子ども"
+                value={stats.child_involved}
+                hot={stats.child_involved > 0}
               />
-            )}
-            {activeTab === "detail" && (
-              <AccidentDetailList accidents={stats.nearest_accidents} />
-            )}
+              <SummaryChip
+                label="死亡事故"
+                value={fatalAccidentCount}
+                hot={fatalAccidentCount > 0}
+              />
+            </div>
+
+            <DetailsAccordion>
+              <RiskScoreBar score={stats.risk_score} />
+
+              <div className="mt-3">
+                <Tabs
+                  tabs={TAB_LIST}
+                  active={activeTab}
+                  onChange={setActiveTab}
+                />
+              </div>
+
+              <div className="pt-3">
+                {activeTab === "overview" && (
+                  <OverviewPanel stats={stats} risk={risk} />
+                )}
+                {activeTab === "factors" && (
+                  <DangerFactorsPanel stats={stats} />
+                )}
+                {activeTab === "time" && stats.time_analysis && (
+                  <TimeAnalysisPanel
+                    time={stats.time_analysis}
+                    byWeather={stats.by_weather}
+                  />
+                )}
+                {activeTab === "detail" && (
+                  <AccidentDetailList accidents={stats.nearest_accidents} />
+                )}
+              </div>
+            </DetailsAccordion>
           </div>
 
           {/* フッター */}
