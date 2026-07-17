@@ -3,7 +3,14 @@
 import { useEffect, type ElementType, type MutableRefObject } from "react"
 import mapboxgl from "mapbox-gl"
 import { createRoot } from "react-dom/client"
-import { AlertTriangle, Car, Shield, HelpCircle, UserX } from "lucide-react"
+import {
+  AlertTriangle,
+  Car,
+  HelpCircle,
+  MapPin,
+  Shield,
+  UserX,
+} from "lucide-react"
 import type { DangerReport } from "@/lib/types"
 import { addPoints } from "@/lib/gamification"
 import { SUSPICIOUS_DANGER_TYPE } from "@/lib/suspicious-alert"
@@ -15,9 +22,21 @@ import {
   CLUSTER_MAX_ZOOM,
 } from "@/lib/map/marker-clustering"
 
-const getDangerTypeMarkerClass = (dangerType: string) => {
-  return `danger-marker-${dangerType}` || 'danger-marker-other'; // Simplified
+const DANGER_TYPE_LABELS: Record<string, string> = {
+  traffic: "交通",
+  crime: "犯罪",
+  disaster: "災害",
+  suspicious: "不審者",
+  other: "その他",
 }
+
+const getDangerTypeMarkerClass = (dangerType: string) =>
+  DANGER_TYPE_LABELS[dangerType]
+    ? `danger-marker-${dangerType}`
+    : "danger-marker-other"
+
+const getDangerTypeLabel = (dangerType: string) =>
+  DANGER_TYPE_LABELS[dangerType] ?? DANGER_TYPE_LABELS.other
 
 interface UseDangerMarkersParams {
   mapRef: MutableRefObject<mapboxgl.Map | null>
@@ -79,41 +98,56 @@ export function useDangerMarkers({
     ) => {
       const markerElement = document.createElement("div");
       const typeClass = getDangerTypeMarkerClass(report.danger_type);
-      markerElement.className = `${isPending ? 'pending-marker' : 'danger-marker'} danger-level-${report.danger_level} ${typeClass}`; // クラス名は残す
-      markerElement.style.cursor = 'pointer';
-
-      // --- ▼▼▼ 危険度に基づく色分け ▼▼▼ ---
-      const backgroundColor = getDangerLevelPresentation(report.danger_level).colorHex;
-      markerElement.style.backgroundColor = backgroundColor;
-      markerElement.style.border = '2px solid white';
-      markerElement.style.borderRadius = '50%';
-      markerElement.style.width = '24px';
-      markerElement.style.height = '24px';
-      markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-      // --- ▲▲▲ 危険度に基づく色分け ▲▲▲ ---
+      markerElement.className = `danger-marker${isPending ? " pending-marker" : ""} danger-level-${report.danger_level} ${typeClass}`;
+      markerElement.setAttribute("role", "button");
+      markerElement.setAttribute("tabindex", "0");
+      markerElement.setAttribute(
+        "aria-label",
+        `${getDangerTypeLabel(report.danger_type)}の危険報告${isPending ? "（確認中）" : ""}。詳細を開きます`,
+      );
 
       // Render icon inside marker
       const root = createRoot(markerElement);
-      let IconComponent: ElementType = HelpCircle; // Default icon
+      let IconComponent: ElementType = HelpCircle;
       if (report.danger_type === "traffic") IconComponent = Car;
       else if (report.danger_type === "crime") IconComponent = Shield;
       else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
       else if (report.danger_type === SUSPICIOUS_DANGER_TYPE) IconComponent = UserX;
-      root.render(<IconComponent className="h-5 w-5 text-white" />); // Adjusted size
+      const backgroundColor = getDangerLevelPresentation(report.danger_level).colorHex;
+      root.render(
+        <span className="danger-pin-visual" aria-hidden="true">
+          <MapPin
+            className="danger-pin-shape"
+            fill={backgroundColor}
+            stroke="white"
+            strokeWidth={1.8}
+          />
+          <IconComponent className="danger-pin-icon" strokeWidth={2.4} />
+        </span>,
+      );
 
-      const marker = new mapboxgl.Marker(markerElement)
+      const marker = new mapboxgl.Marker({ element: markerElement, anchor: "bottom" })
         .setLngLat(displayLngLat)
-        .addTo(map); // Add to map
+        .addTo(map);
       markerResources.push({ marker, unmount: () => root.unmount() })
 
-      markerElement.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        onSelectReport(report); // Set selected report for modal
-
-        // Add gamification points (consider moving this logic)
-        if (supabase && report.user_id) { // Check if supabase and user_id exist
+      const openReport = async () => {
+        onSelectReport(report);
+        if (supabase && report.user_id) {
           try { await addPoints(supabase, report.user_id, 5); }
           catch (err) { console.error("Error adding points on marker click:", err); }
+        }
+      };
+
+      markerElement.addEventListener("click", (e) => {
+        e.stopPropagation();
+        void openReport();
+      });
+      markerElement.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          void openReport();
         }
       });
     };
@@ -131,36 +165,53 @@ export function useDangerMarkers({
 
       const markerElement = document.createElement("div");
       markerElement.className = "danger-cluster-marker";
-      markerElement.style.cursor = "pointer";
-      markerElement.style.backgroundColor = presentation.colorHex;
-      markerElement.style.border = "3px solid white";
-      markerElement.style.borderRadius = "50%";
-      markerElement.style.width = `${size}px`;
-      markerElement.style.height = `${size}px`;
-      markerElement.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-      markerElement.style.display = "flex";
-      markerElement.style.alignItems = "center";
-      markerElement.style.justifyContent = "center";
-      markerElement.style.color = "#ffffff";
-      markerElement.style.fontWeight = "700";
-      markerElement.style.fontSize = "13px";
-      markerElement.textContent = `${count}`;
+      markerElement.style.setProperty("--cluster-size", `${size}px`);
       markerElement.setAttribute("role", "button");
+      markerElement.setAttribute("tabindex", "0");
       markerElement.setAttribute(
         "aria-label",
         `このあたりに${count}件の報告があります。タップで拡大します`,
       );
 
-      const marker = new mapboxgl.Marker(markerElement).setLngLat(lngLat).addTo(map);
-      markerResources.push({ marker })
+      const root = createRoot(markerElement);
+      root.render(
+        <span className="danger-cluster-visual" aria-hidden="true">
+          <MapPin
+            className="danger-cluster-pin danger-cluster-pin-back"
+            fill={presentation.colorHex}
+            stroke="white"
+            strokeWidth={1.5}
+          />
+          <MapPin
+            className="danger-cluster-pin danger-cluster-pin-front"
+            fill={presentation.colorHex}
+            stroke="white"
+            strokeWidth={1.8}
+          />
+          <span className="danger-cluster-count">{count}</span>
+        </span>,
+      );
 
-      markerElement.addEventListener("click", (e) => {
-        e.stopPropagation();
-        // ズームインして自然に分解させる(zoomendで再グループ化される)
+      const marker = new mapboxgl.Marker(markerElement).setLngLat(lngLat).addTo(map);
+      markerResources.push({ marker, unmount: () => root.unmount() })
+
+      const expandCluster = () => {
         map.easeTo({
           center: lngLat,
           zoom: Math.min(currentZoom + 2, CLUSTER_MAX_ZOOM + 0.5),
         });
+      };
+
+      markerElement.addEventListener("click", (e) => {
+        e.stopPropagation();
+        expandCluster();
+      });
+      markerElement.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          expandCluster();
+        }
       });
     };
 

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useDangerMarkers } from "@/hooks/use-danger-markers"
 
 const mocks = vi.hoisted(() => ({
-  markers: [] as Array<{ remove: ReturnType<typeof vi.fn> }>,
+  markers: [] as Array<{ remove: ReturnType<typeof vi.fn>; options?: unknown }>,
   roots: [] as Array<{ render: ReturnType<typeof vi.fn>; unmount: ReturnType<typeof vi.fn> }>,
 }))
 
@@ -19,8 +19,10 @@ vi.mock("mapbox-gl", () => ({
   default: {
     Marker: class {
       remove = vi.fn()
+      options?: unknown
 
-      constructor() {
+      constructor(options?: unknown) {
+        this.options = options
         mocks.markers.push(this)
       }
 
@@ -93,6 +95,24 @@ describe("useDangerMarkers", () => {
     )
 
     expect(mocks.markers).toHaveLength(1)
+    const markerOptions = mocks.markers[0].options as {
+      anchor: string
+      element: HTMLElement
+    }
+    expect(markerOptions.anchor).toBe("bottom")
+    expect(markerOptions.element).toHaveClass(
+      "danger-marker",
+      "danger-level-2",
+      "danger-marker-traffic",
+    )
+    expect(markerOptions.element).toHaveAttribute(
+      "aria-label",
+      "交通の危険報告。詳細を開きます",
+    )
+    expect(markerOptions.element.style.width).toBe("")
+    expect(markerOptions.element.style.height).toBe("")
+    expect(mocks.roots[0].render).toHaveBeenCalledTimes(1)
+
     handlers.get("zoomend")?.()
     expect(mocks.markers[0].remove).toHaveBeenCalledTimes(1)
     expect(mocks.roots[0].unmount).toHaveBeenCalledTimes(1)
