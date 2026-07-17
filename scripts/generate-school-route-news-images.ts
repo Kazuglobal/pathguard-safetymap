@@ -397,6 +397,63 @@ Color palette: Orange caution accents, warm afternoon tones
 No text of any kind anywhere in the image, no depiction of a recognizable face
 ${QUALITY_SUFFIX}`,
     description: "鹿嶋市港ケ丘 菓子譲渡型声かけ事案（2026年7月14日号）"
+  },
+  {
+    slug: "komaki-muranaka-crosswalk-fatal-20260715",
+    filename: "komaki-muranaka-crosswalk-fatal-20260715.png",
+    prompt: `Create a Japanese safety awareness illustration about a fatal traffic accident at an unsignalized crosswalk during a group school walk.
+
+Scene elements (abstract, NOT depicting actual injury or any person):
+- A quiet Japanese suburban intersection with a pedestrian crosswalk but no traffic signal
+- A line of small yellow safety caps and randoseru backpacks, seen only as a receding row of shapes from behind, walking away toward the viewer's left, with the last cap dropped on the crosswalk
+- A car stopped at an angle just past the crosswalk, suggesting it failed to stop in time
+- Solemn, respectful, warning atmosphere without depicting any person, face, or injury
+- Japanese road markings, utility poles, and residential street in the background
+
+Style: Somber but not graphic, respectful Japanese editorial illustration
+Focus on safety awareness, NOT on depicting injury or people
+Color palette: Muted tones with red warning accents
+No text of any kind anywhere in the image
+${QUALITY_SUFFIX}`,
+    description: "小牧市村中 集団登校中の横断歩道死亡事故（2026年7月17日号）"
+  },
+  {
+    slug: "nishitokyo-izumicho-crosswalk-fatal-20260716",
+    filename: "nishitokyo-izumicho-crosswalk-fatal-20260716.png",
+    prompt: `Create a Japanese safety awareness illustration about a fatal traffic accident where a right-turning vehicle struck a child crossing on a green pedestrian signal.
+
+Scene elements (abstract, NOT depicting actual injury or any person):
+- A Japanese urban signalized intersection with a pedestrian crosswalk, both the pedestrian signal and vehicle signal showing green
+- A single small yellow safety cap and randoseru backpack dropped on the crosswalk, seen from behind with no face
+- A car mid-turn at the corner of the intersection, curved tire-mark arc suggesting the turning path crossing into the crosswalk
+- Solemn, respectful, warning atmosphere without depicting any person, face, or injury
+- Japanese signal poles, crosswalk stripes, and street signs in the background
+
+Style: Somber but not graphic, respectful Japanese editorial illustration
+Focus on the blind spot of turning vehicles at green signals, NOT on depicting injury or people
+Color palette: Muted tones with red warning accents, a hint of green from the signal light
+No text of any kind anywhere in the image
+${QUALITY_SUFFIX}`,
+    description: "西東京市泉町6丁目 右折車による横断歩道死亡事故（2026年7月17日号）"
+  },
+  {
+    slug: "naha-matsukawa-schoolzone-motorcycle-20260716",
+    filename: "naha-matsukawa-schoolzone-motorcycle-20260716.png",
+    prompt: `Create a Japanese safety awareness illustration about a motorcycle fleeing a police stop and striking pedestrians waiting at a crosswalk near a school.
+
+Scene elements (abstract, NOT depicting actual injury or any person's face):
+- A Japanese residential street with a crosswalk, with plain red-colored pavement zone markings (solid color blocks only, absolutely no lettering, no kanji, no characters, no numbers of any kind painted on the road)
+- Exactly two small silhouetted figures seen from behind with no visible faces: one shorter figure wearing a yellow safety cap and randoseru backpack, and one taller figure without a cap, both standing well back from the road edge, waiting at the crosswalk
+- A faceless motorcycle silhouette in the distance making a sharp U-turn, motion-blur lines suggesting sudden fleeing movement
+- Warning/caution atmosphere without depicting any person's face or injury
+- Japanese road markings (plain white stripes only) and residential street in the background
+
+Style: Cautionary but not graphic, Japanese editorial illustration
+Focus on safety awareness (standing back from the road edge), NOT on depicting injury or people
+Color palette: Muted tones with red warning accents
+ABSOLUTE RULE: no text, no letters, no kanji, no numbers, no signage lettering of any kind anywhere in the image, including on the road surface, signs, or background — use only plain shapes, colors, and icons
+${QUALITY_SUFFIX}`,
+    description: "那覇市松川 スクールゾーン逃走バイク衝突事案（2026年7月17日号）"
   }
 ]
 
