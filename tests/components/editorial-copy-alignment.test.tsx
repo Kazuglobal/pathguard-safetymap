@@ -22,7 +22,7 @@ describe("editorial copy alignment", () => {
     render(<SchoolRouteNewsSection />)
 
     expect(
-      screen.getByText("【福岡県北九州市】小倉北区泉台で女児ら「SNSにのせる」とスマホで撮影される事案—40〜50代男が原付で接近")
+      screen.getByText("【静岡県浜松市】通学中の9歳女児が横断歩道ではねられ一時重体—信号無視の疑いで21歳男を現行犯逮捕")
     ).toBeInTheDocument()
   })
 

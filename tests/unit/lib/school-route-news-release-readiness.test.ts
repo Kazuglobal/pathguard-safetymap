@@ -12,22 +12,22 @@ describe("school route news release readiness regressions", () => {
     const allNewsItems = getAllNewsItems()
     const latestNews = getLatestNews(5)
 
-    expect(allNewsItems[0]?.slug).toBe("sendai-aoba-kawadaira-repeated-suspicious-20260706")
-    expect(allNewsItems[1]?.slug).toBe("okayama-koto-guardrail-installed-20260627")
-    expect(allNewsItems[2]?.slug).toBe("national-weekly-trend-20260706")
-    expect(allNewsItems[3]?.slug).toBe("kitakyushu-kokurakita-izumidai-suspicious-sns-20260420")
-    expect(allNewsItems[4]?.slug).toBe("hakodate-aoyagi-candy-handover-20260417")
+    expect(allNewsItems[0]?.slug).toBe("naha-matsukawa-schoolzone-motorcycle-20260716")
+    expect(allNewsItems[1]?.slug).toBe("nishitokyo-izumicho-crosswalk-fatal-20260716")
+    expect(allNewsItems[2]?.slug).toBe("komaki-muranaka-crosswalk-fatal-20260715")
+    expect(allNewsItems[3]?.slug).toBe("hamamatsu-chuo-crosswalk-accident-20260703")
+    expect(allNewsItems[4]?.slug).toBe("sendai-miyagino-tsurugaya-suspicious-20260710")
     expect(latestNews.map((item) => item.slug)).toEqual([
-      "sendai-aoba-kawadaira-repeated-suspicious-20260706",
-      "okayama-koto-guardrail-installed-20260627",
-      "national-weekly-trend-20260706",
-      "kitakyushu-kokurakita-izumidai-suspicious-sns-20260420",
-      "hakodate-aoyagi-candy-handover-20260417",
+      "naha-matsukawa-schoolzone-motorcycle-20260716",
+      "nishitokyo-izumicho-crosswalk-fatal-20260716",
+      "komaki-muranaka-crosswalk-fatal-20260715",
+      "hamamatsu-chuo-crosswalk-accident-20260703",
+      "sendai-miyagino-tsurugaya-suspicious-20260710",
     ])
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
-    const now = new Date("2026-07-06T00:00:00+09:00")
+    const now = new Date("2026-07-17T00:00:00+09:00")
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
     for (const item of NEWS_ITEMS) {
       expect(new Date(item.publishedDate).getTime(), `${item.slug} is older than the 90-day retention window`)
