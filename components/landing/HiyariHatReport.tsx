@@ -10,12 +10,9 @@ import type { DangerReport } from "@/lib/types"
 import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
 import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
 import { tankenTokens } from "@/lib/design/tanken"
-import {
-  NATIONWIDE,
-  getRegionChipOptions,
-  getStoredRegion,
-  setStoredRegion,
-} from "@/lib/user-region"
+import { NATIONWIDE } from "@/lib/user-region"
+import { useReportRegionFilter } from "@/hooks/use-report-region-filter"
+import { ReportRegionFilter } from "@/components/region/report-region-filter"
 
 const C = tankenTokens.color
 
@@ -62,6 +59,14 @@ const LANDING_REPORT_SELECT_COLUMNS = [
   "updated_at",
 ].join(", ")
 
+const LANDING_PUBLIC_STATUSES = ["approved", "published", "resolved"] as const
+
+const LANDING_REPORT_DISPLAY_LIMIT = 5
+
+// 学校周辺モードは矩形取得後に距離で絞るため、多めに取得してから絞り込む。
+// 矩形は円よりも広く、高密度地域では円外の新着が上位を占めうるため余裕を持たせる
+const SCHOOL_MODE_FETCH_LIMIT = 100
+
 /** 親が読める場所表示。住所があれば住所、なければ座標にフォールバック。 */
 function formatPlace(report: DangerReport): string | null {
   const address = [report.prefecture, report.city, report.town]
@@ -79,8 +84,6 @@ export function HiyariHatReport() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedReport, setSelectedReport] = React.useState<DangerReport | null>(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
-  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string | null>(null)
-  const [mounted, setMounted] = React.useState(false)
   const reportIds = React.useMemo(() => reports.map((report) => report.id), [reports])
   const { reactions, toggleReaction } = useLandingReportReactions(reportIds)
   const openReportModal = React.useCallback((report: DangerReport) => {
@@ -88,24 +91,33 @@ export function HiyariHatReport() {
     setIsModalOpen(true)
   }, [])
 
-  // localStorage から都道府県を復元（SSR 対策で useEffect 内で実施）
+  // Supabase クライアントはブラウザ専用のためマウント後に一度だけ生成する
+  const [supabase, setSupabase] = React.useState<ReturnType<typeof createBrowserClient> | null>(null)
   React.useEffect(() => {
-    setMounted(true)
-    setSelectedPrefecture(getStoredRegion())
-  }, [])
-
-  const handlePrefectureChange = React.useCallback((pref: string) => {
-    setSelectedPrefecture(pref)
-    setStoredRegion(pref)
-  }, [])
-
-  React.useEffect(() => {
-    if (!mounted || !selectedPrefecture) return
-
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    setSupabase(
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
     )
+  }, [])
+
+  const region = useReportRegionFilter({
+    client: supabase,
+    table: "danger_reports_public_preview",
+    statuses: LANDING_PUBLIC_STATUSES,
+  })
+  const {
+    mounted,
+    school,
+    scopeLabel,
+    applyRegionFilter,
+    refineBySchool,
+  } = region
+
+  React.useEffect(() => {
+    if (!mounted || !supabase) return
+
     const abortController = new AbortController()
     let ignore = false
 
@@ -116,23 +128,22 @@ export function HiyariHatReport() {
         // VIEW (danger_reports_public_preview) のみを参照する。
         // ベーステーブル danger_reports への anon SELECT は閉じている
         // (supabase/migrations/20260704090300_restrict_public_read_and_storage.sql)。
-        let query = supabase
-          .from("danger_reports_public_preview")
-          .select(LANDING_REPORT_SELECT_COLUMNS)
-          .in("status", ["approved", "published", "resolved"])
-          .abortSignal(abortController.signal)
-
-        if (selectedPrefecture !== NATIONWIDE) {
-          query = query.eq("prefecture", selectedPrefecture)
-        }
+        const query = applyRegionFilter(
+          supabase!
+            .from("danger_reports_public_preview")
+            .select(LANDING_REPORT_SELECT_COLUMNS)
+            .in("status", [...LANDING_PUBLIC_STATUSES])
+            .abortSignal(abortController.signal)
+        )
 
         const { data, error } = await query
           .order("created_at", { ascending: false })
-          .limit(5)
+          .limit(school ? SCHOOL_MODE_FETCH_LIMIT : LANDING_REPORT_DISPLAY_LIMIT)
 
         if (error) throw error
         if (ignore || abortController.signal.aborted) return
-        setReports((data ?? []) as unknown as DangerReport[])
+        const rows = refineBySchool((data ?? []) as unknown as DangerReport[])
+        setReports(rows.slice(0, LANDING_REPORT_DISPLAY_LIMIT))
       } catch (error) {
         if (ignore || abortController.signal.aborted) return
         // Silently fail — landing page continues to work
@@ -147,7 +158,7 @@ export function HiyariHatReport() {
       ignore = true
       abortController.abort()
     }
-  }, [mounted, selectedPrefecture])
+  }, [mounted, supabase, school, applyRegionFilter, refineBySchool])
 
   const thumbnailUrl = (report: DangerReport): string | undefined => {
     if (report.processed_image_urls && report.processed_image_urls.length > 0) {
@@ -177,33 +188,19 @@ export function HiyariHatReport() {
           </Link>
         </div>
 
-        {/* 都道府県フィルター */}
-        {mounted && selectedPrefecture && (
+        {/* 地域フィルター(県 → 市町村 → 学校周辺) */}
+        {mounted && (
           <div className="mb-4 px-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
-              <span className="flex-shrink-0 text-xs font-bold" style={{ color: C.inkSoft }}>
-                地域:
-              </span>
-              {getRegionChipOptions(selectedPrefecture).map((pref) => {
-                const active = selectedPrefecture === pref
-                return (
-                  <button
-                    key={pref}
-                    type="button"
-                    onClick={() => handlePrefectureChange(pref)}
-                    aria-pressed={active}
-                    className={`flex-shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${tankenTokens.cls.focus}`}
-                    style={
-                      active
-                        ? { background: C.accent, color: "#fff", borderColor: C.accent }
-                        : { background: C.card, color: C.inkSoft, borderColor: tankenTokens.border.soft }
-                    }
-                  >
-                    {pref}
-                  </button>
-                )
-              })}
-            </div>
+            <ReportRegionFilter
+              prefecture={region.prefecture}
+              city={region.city}
+              school={region.school}
+              cityOptions={region.cityOptions}
+              onPrefectureChange={region.handlePrefectureChange}
+              onCityChange={region.handleCityChange}
+              onSchoolChange={region.handleSchoolChange}
+              variant="tanken"
+            />
           </div>
         )}
 
@@ -215,9 +212,9 @@ export function HiyariHatReport() {
           </div>
         ) : reports.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm" style={{ color: C.inkSoft }}>
-            {selectedPrefecture === NATIONWIDE
+            {scopeLabel === NATIONWIDE
               ? "まだ報告がありません。最初の「気をつけて」を地図に残してみましょう。"
-              : `${selectedPrefecture}ではまだ報告がありません。最初の「気をつけて」を地図に残してみましょう。`}
+              : `${scopeLabel}ではまだ報告がありません。最初の「気をつけて」を地図に残してみましょう。`}
           </div>
         ) : (
           <div className="grid gap-4 px-4 md:grid-cols-3 md:gap-6">

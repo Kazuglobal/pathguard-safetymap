@@ -26,6 +26,8 @@ import {
 } from "@/lib/report-generation/family-share-card"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 import ReportComposer from "@/components/danger-report/report-composer"
+import { useReportRegionFilter } from "@/hooks/use-report-region-filter"
+import { ReportRegionFilter } from "@/components/region/report-region-filter"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -119,20 +121,33 @@ export default function ReportHubPage() {
   const [isSharingDetailCard, setIsSharingDetailCard] = useState(false)
   const detailShareCardRef = useRef<HTMLDivElement | null>(null)
 
+  const region = useReportRegionFilter({
+    client: supabase,
+    table: "danger_reports",
+    statuses: PUBLIC_DANGER_REPORT_STATUSES,
+    // danger_reports は精密座標のため、丸め誤差の許容幅は不要
+    // (「周辺2km」表示と判定を一致させる)
+    coordSlackKm: 0,
+  })
+  const { mounted: regionMounted, applyRegionFilter, refineBySchool } = region
+
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase || !regionMounted) return
 
     let isMounted = true
 
     const fetchReports = async () => {
       setIsLoading(true)
       try {
-        const { data, error } = await supabase
-          .from("danger_reports")
-          .select(
-            "id, title, description, danger_type, danger_level, latitude, longitude, status, image_url, processed_image_urls, created_at, prefecture, city, town",
-          )
-          .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
+        const query = applyRegionFilter(
+          supabase
+            .from("danger_reports")
+            .select(
+              "id, title, description, danger_type, danger_level, latitude, longitude, status, image_url, processed_image_urls, created_at, prefecture, city, town",
+            )
+            .in("status", [...PUBLIC_DANGER_REPORT_STATUSES]),
+        )
+        const { data, error } = await query
           .order("created_at", { ascending: false })
           .limit(60)
 
@@ -142,7 +157,7 @@ export default function ReportHubPage() {
           console.error("危険報告の取得に失敗しました", error.message)
           setReports([])
         } else {
-          setReports(data ?? [])
+          setReports(refineBySchool(data ?? []))
         }
       } catch (error) {
         console.error("危険報告の読み込みでエラーが発生しました", error)
@@ -157,6 +172,16 @@ export default function ReportHubPage() {
     }
 
     fetchReports()
+
+    return () => {
+      isMounted = false
+    }
+  }, [supabase, regionMounted, applyRegionFilter, refineBySchool])
+
+  useEffect(() => {
+    if (!supabase) return
+
+    let isMounted = true
 
     // Check login status
     const checkAuth = async () => {
@@ -509,6 +534,23 @@ export default function ReportHubPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {regionMounted && (
+          <Card className="border-slate-100 bg-white/90 shadow-sm">
+            <CardContent className="p-5">
+              <ReportRegionFilter
+                prefecture={region.prefecture}
+                city={region.city}
+                school={region.school}
+                cityOptions={region.cityOptions}
+                onPrefectureChange={region.handlePrefectureChange}
+                onCityChange={region.handleCityChange}
+                onSchoolChange={region.handleSchoolChange}
+                variant="plain"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="gallery" className="w-full">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

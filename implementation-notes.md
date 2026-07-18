@@ -230,3 +230,44 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 - [D9] 死に変数foundCountを削除。useMemo依存のpointsはDailyScreen配線により正当化され、coinsを追加(温存していた要確認事項2件はこれで解消)
 - 検証: safety-quest 18/18緑 / tsc 0 / フル実行は初回1failed→即時再実行で全緑(並行セッション負荷による既知flakeパターン)
 - 残るOpen Questions: DailyScreen/ヘッダの「レベル 12」等の固定値はゲーミフィケーション設計(レベル制)自体が未実装のため対象外とした
+
+## Implementation Notes — ヒヤリハット報告の地域フィルタ拡張(47県/市町村/学校) (2026-07-18)
+
+盲点パス実施済み。AskUserQuestion で3問確定、1問(学校方式)は未回答→推奨デフォルトで進行。
+
+### Assumptions(置いた前提)
+- [A1] 学校単位の閲覧 = 学校POI検索(Mapbox)→周辺半径の報告絞込方式(未回答のため推奨デフォルト採用)。スキーマ変更なし
+- [A2] 学校圏の半径は2km(匿名閲覧は座標が約1.1km四方に丸められるため、小半径は近似精度が出ない)
+- [A3] 市町村・学校の選択は共有localStorageキー(pathguardian:selected_prefecture)に混ぜない。県別の保存形式は不変(Push購読・地図・ニュースを壊さない)
+
+### Decisions(ユーザー回答で確定 2026-07-18)
+- [D1] 47県UI = 既存クイックチップ維持+全県プルダウン(全国+47)追加
+- [D2] 市町村フィルタの選択肢 = 選択中の県の報告データからdistinct生成(全国市町村マスターは導入しない)
+- [D3] 適用範囲 = ランディング「みんなのヒヤリハット報告」+ /report 一覧のみ。地図サイドバー・ニュース・LocalSafetyAlertsは現状維持
+
+### Open Questions(未解決)
+- [Q1] 学校方式は radius方式(A1)で仮確定 — 投稿時紐付け/学区マスター方式が本命なら作り直しになるため、リリース前に製品判断が欲しい
+
+### Deviations(2026-07-18 実行結果)
+- [X1] 復元した市町村が選択肢に無いケース(該当報告の消滅等)で表示とフィルタ状態がズレる盲点を実装中に発見 → 選択中の値を選択肢へ補完する方式で解消(テスト追加済み)
+- [X2] map-search.tsx の学校カテゴリ定義(17件)を lib/school-search.ts へ移動して共有化(重複定義の排除。挙動同一、既存テスト19件緑)
+
+### 実装ファイル
+- 新規: lib/region-filter.ts(純ロジック)/ lib/school-search.ts(Mapbox学校POI検索)/ hooks/use-report-region-filter.ts / components/region/report-region-filter.tsx
+- 変更: lib/user-region.ts(市町村保存を県ペアJSONで追加。既存キー形式は不変)/ components/landing/HiyariHatReport.tsx / app/report/page.tsx / components/map/map-search.tsx
+
+### 検証結果(2026-07-18)
+- tsc --noEmit: 今回変更分エラー0(既存2件は .next-dev/ の削除済み一時ページ qa-accident-panel-temp を参照する生成物の残骸で無関係)
+- vitest: region-filter 10 / school-search 8 / user-region-city 6 / report-region-filter 10 / hiyari-hat-report 17 / report-page 5 / map-search 19 / school-route-news-release-readiness 9 — 全緑
+
+### 敵対的レビュー結果と対応(2026-07-18)
+- CONFIRMED-1(県切替時に前県の市町村選択肢が残り成立しない絞り込みを選べる)→ 修正: キャッシュミス時も fetch 前に選択肢を空へ。回帰テスト追加
+- CONFIRMED-2(/reportのフィルタが共有地域キーを書き換えPush配信地域に波及)→ 意図的として維持。user-region.ts の設計契約(地域絞込UIは共有キー経由)とニュース/アラート/ランディングの既存挙動に一致させた。[Q2]として記録
+- CONFIRMED-3(精密座標の/reportでも2.8km判定になりラベル「周辺2km」と乖離)→ 修正: coordSlackKm オプション化、/report は 0。回帰テスト追加
+- PLAUSIBLE-1(学校モードのbbox内41件超で円内取りこぼし)→ 取得上限 40→100 に増加
+- PLAUSIBLE-4(exhaustive-deps無効化が脆い)→ 修正: eslint-disable を外し honest deps へ
+- PLAUSIBLE-2(学校検索にproximity未指定で同名校の誤選択)・PLAUSIBLE-3(検索結果keyの理論上衝突)→ 影響軽微のため見送り(将来改善)
+- 修正後の最終検証: tsc 今回分0エラー / vitest 対象7ファイル 77/77 全緑
+
+### Open Questions(追記)
+- [Q2] /report の県フィルタも共有キー(pathguardian:selected_prefecture)へ保存する=Push通知の配信地域と連動する。既存セクションと同一挙動だが「一覧のブラウズ用フィルタ」と「自分の地域設定」を分けたい場合は保存の分離が必要

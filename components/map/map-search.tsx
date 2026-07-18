@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import mapboxgl from "mapbox-gl"
+import { matchesSchoolCategory } from "@/lib/school-search"
 
 interface MapSearchProps {
   map: mapboxgl.Map | null
@@ -61,37 +62,8 @@ interface GeocodingResponse {
   features?: GeocodingFeature[]
 }
 
-const SCHOOL_CATEGORIES = [
-  // 既存
-  "school",
-  "university",
-  "college",
-  "kindergarten",
-  // 初等教育
-  "elementary_school",
-  "preschool",
-  "nursery",
-  "nursery_school",
-  // 中等教育
-  "middle_school",
-  "junior_high_school",
-  "secondary_school",
-  "high_school",
-  // 高等・専門教育
-  "vocational_school",
-  "technical_school",
-  "trade_school",
-  // 特殊教育
-  "special_education_school",
-] as const
-
 function isSchool(result: SearchResult): boolean {
-  return (
-    result.feature_type === "poi" &&
-    result.poi_category.some((category) =>
-      SCHOOL_CATEGORIES.includes(category as (typeof SCHOOL_CATEGORIES)[number]),
-    )
-  )
+  return result.feature_type === "poi" && matchesSchoolCategory(result.poi_category)
 }
 
 function toStringArray(value: unknown): string[] {

@@ -57,3 +57,38 @@ export function getRegionChipOptions(selected: string): string[] {
   }
   return options
 }
+
+// 市町村の選択保存
+//
+// 既存の REGION_STORAGE_KEY(都道府県)は Push通知購読・地図フィルタ等と
+// 共有しているため形式を変えない。市町村は別キーに「都道府県とペア」で
+// 保存し、県をまたいだ復元(例: 東京都で保存した千代田区を大阪府で適用)を防ぐ。
+
+export const CITY_STORAGE_KEY = "pathguardian:selected_city"
+
+/** 保存済みの市町村を返す。県が一致しない・未保存・SSR時は null */
+export function getStoredCity(prefecture: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.localStorage.getItem(CITY_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { prefecture?: unknown; city?: unknown }
+    if (parsed.prefecture !== prefecture) return null
+    return typeof parsed.city === "string" && parsed.city.trim() ? parsed.city : null
+  } catch {
+    return null
+  }
+}
+
+export function setStoredCity(prefecture: string, city: string | null): void {
+  if (typeof window === "undefined") return
+  try {
+    if (!city || prefecture === NATIONWIDE || !isKnownRegion(prefecture)) {
+      window.localStorage.removeItem(CITY_STORAGE_KEY)
+      return
+    }
+    window.localStorage.setItem(CITY_STORAGE_KEY, JSON.stringify({ prefecture, city }))
+  } catch {
+    // localStorage不可の環境（プライベートモード等）では選択をセッション内のみ保持する
+  }
+}
