@@ -34,6 +34,7 @@
     "test:api": "playwright test --config=playwright.api.config.ts",
     "test:db-migration": "tsx scripts/test-report-gallery-migration.ts",
     "test:gallery-api": "tsx scripts/test-gallery-api.ts",
+    "moderation:backtest": "node --import tsx scripts/moderation-backtest.mjs",
     "apply-migration": "tsx scripts/apply-migration.ts",
     "insert-dummy-data": "tsx scripts/insert-dummy-data.ts",
     "create-test-users": "tsx scripts/create-test-users.ts",

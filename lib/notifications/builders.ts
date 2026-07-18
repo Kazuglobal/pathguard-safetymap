@@ -81,7 +81,7 @@ export function buildDangerReportPushPayload(params: {
  */
 export function buildModerationResultPushPayload(params: {
   reportId: string
-  verdictStatus: "approved" | "needs_review" | "rejected"
+  verdictStatus: "approved" | "needs_review" | "escalated" | "rejected"
 }): PushPayload {
   const content = {
     approved: {
@@ -89,6 +89,10 @@ export function buildModerationResultPushPayload(params: {
       body: "ご報告ありがとうございます。不審者情報が地図に公開されました。",
     },
     needs_review: {
+      title: "報告を確認しています",
+      body: "いただいた報告は追加の確認が必要と判定されました。結果までお待ちください。",
+    },
+    escalated: {
       title: "報告を確認しています",
       body: "いただいた報告は追加の確認が必要と判定されました。結果までお待ちください。",
     },
@@ -106,6 +110,50 @@ export function buildModerationResultPushPayload(params: {
     data: {
       url: `/map?reportId=${params.reportId}`,
       type: 'danger_reports',
+    },
+  }
+}
+
+export function buildEscalationPushPayload(params: {
+  reportId: string
+}): PushPayload {
+  return {
+    title: "優先確認が必要な危険報告",
+    body: "AI一次審査で、管理者による早急な確認が必要な報告を検出しました。",
+    icon: "/apple-touch-icon.png",
+    badge: "/apple-touch-icon.png",
+    tag: `moderation-escalation-${params.reportId}`,
+    data: {
+      url: `/admin/reports?reportId=${params.reportId}&queue=escalated`,
+      type: "danger_reports",
+    },
+  }
+}
+
+export function buildModerationOperationalAlertPushPayload(params: {
+  reasons: Array<"fallback_rate" | "pending_backlog">
+  fallbackRate: number
+  pendingUnmoderated: number
+}): PushPayload {
+  const details: string[] = []
+  if (params.reasons.includes("fallback_rate")) {
+    details.push(
+      `24時間のAI失敗率 ${Math.round(params.fallbackRate * 100)}%`,
+    )
+  }
+  if (params.reasons.includes("pending_backlog")) {
+    details.push(`未審査の滞留 ${params.pendingUnmoderated}件`)
+  }
+
+  return {
+    title: "AI一次審査の運用確認が必要です",
+    body: `${details.join("、")}。モードと監査ログを確認してください。`,
+    icon: "/apple-touch-icon.png",
+    badge: "/apple-touch-icon.png",
+    tag: "danger-moderation-operational-alert",
+    data: {
+      url: "/admin/reports",
+      type: "danger_reports",
     },
   }
 }

@@ -1,68 +1,34 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { AlertTriangle, RefreshCw } from "lucide-react"
+
+import { ReportModerationQueue } from "@/components/admin/report-moderation-queue"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
-import { AlertTriangle, MapPin, User } from "lucide-react"
-
-type ReportStatus = "pending" | "approved" | "published" | "resolved" | "rejected"
-
-interface AdminReport {
-  id: string
-  title: string | null
-  description: string | null
-  danger_type: string | null
-  danger_level: number | null
-  status: string
-  latitude: number | null
-  longitude: number | null
-  created_at: string
-  profiles: { display_name: string | null } | null
-}
-
-const STATUS_LABELS: Record<ReportStatus, string> = {
-  pending: "審査中",
-  approved: "承認済",
-  published: "公開中",
-  resolved: "解決済",
-  rejected: "却下",
-}
-
-const STATUS_COLORS: Record<ReportStatus, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  approved: "bg-blue-100 text-blue-800",
-  published: "bg-green-100 text-green-800",
-  resolved: "bg-gray-100 text-gray-800",
-  rejected: "bg-red-100 text-red-800",
-}
+import type { AdminModerationReport } from "@/lib/admin-report-moderation-queue"
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState<AdminReport[]>([])
+  const [reports, setReports] = useState<AdminModerationReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set())
   const { toast } = useToast()
 
   const fetchReports = useCallback(async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
-      const res = await fetch("/api/admin/reports")
-      if (!res.ok) throw new Error("レポートの取得に失敗しました")
-      const data = await res.json()
+      const response = await fetch("/api/admin/reports")
+      if (!response.ok) throw new Error("レポートの取得に失敗しました")
+      const data = await response.json()
       setReports(data.reports ?? [])
-    } catch (err) {
-      toast({
-        title: "エラー",
-        description: err instanceof Error ? err.message : "取得に失敗しました",
-        variant: "destructive",
-      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "取得に失敗しました"
+      setLoadError(message)
+      toast({ title: "エラー", description: message, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -74,140 +40,99 @@ export default function AdminReportsPage() {
 
   const handleStatusChange = useCallback(
     async (reportId: string, newStatus: string) => {
-      setUpdatingIds((prev) => {
-        const next = new Set(prev)
-        next.add(reportId)
-        return next
-      })
+      setUpdatingIds((current) => new Set(current).add(reportId))
       try {
-        const res = await fetch("/api/admin/reports", {
+        const response = await fetch("/api/admin/reports", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reportId, newStatus }),
         })
-        if (!res.ok) {
-          const data = await res.json()
+        if (!response.ok) {
+          const data = await response.json()
           throw new Error(data.error ?? "更新に失敗しました")
         }
-        setReports((prev) =>
-          prev.map((r) => (r.id === reportId ? { ...r, status: newStatus } : r))
+        setReports((current) =>
+          current.map((report) =>
+            report.id === reportId
+              ? { ...report, status: newStatus }
+              : report,
+          ),
         )
         toast({ title: "ステータスを更新しました", duration: 2000 })
-      } catch (err) {
+      } catch (error) {
         toast({
           title: "エラー",
-          description: err instanceof Error ? err.message : "更新に失敗しました",
+          description:
+            error instanceof Error ? error.message : "更新に失敗しました",
           variant: "destructive",
         })
       } finally {
-        setUpdatingIds((prev) => {
-          const next = new Set(prev)
+        setUpdatingIds((current) => {
+          const next = new Set(current)
           next.delete(reportId)
           return next
         })
       }
     },
-    [toast]
+    [toast],
   )
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-6 h-6 text-orange-500" />
-          <h1 className="text-2xl font-bold">ヒヤリハット報告管理</h1>
+    <main className="container mx-auto max-w-6xl p-4 sm:p-6">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle
+              className="h-6 w-6 text-orange-500"
+              aria-hidden="true"
+            />
+            <h1 className="text-2xl font-bold">ヒヤリハット報告管理</h1>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            AI一次審査の例外を優先順に確認し、必要に応じて公開状態を変更します。
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchReports}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchReports}
+          disabled={isLoading}
+        >
+          <RefreshCw
+            className={`mr-1.5 h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            aria-hidden="true"
+          />
           更新
         </Button>
-      </div>
+      </header>
 
       {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        <div
+          className="space-y-3"
+          aria-busy="true"
+          aria-label="レポートを読み込んでいます"
+        >
+          {Array.from({ length: 5 }, (_, index) => (
+            <Skeleton key={index} className="h-36 w-full" />
           ))}
         </div>
-      ) : reports.length === 0 ? (
-        <p className="text-center text-gray-500 py-12">レポートがありません</p>
-      ) : (
-        <div className="space-y-4">
-          {reports.map((report) => {
-            const status = report.status as ReportStatus
-            const statusLabel = STATUS_LABELS[status] ?? report.status
-            const statusColor = STATUS_COLORS[status] ?? "bg-gray-100 text-gray-800"
-
-            return (
-              <div
-                key={report.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
-                      >
-                        {statusLabel}
-                      </span>
-                      {report.danger_level && (
-                        <span className="text-xs text-gray-500">
-                          危険度 {report.danger_level}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="font-medium text-gray-900 truncate">
-                      {report.title ?? "（タイトルなし）"}
-                    </p>
-
-                    {report.description && (
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                        {report.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {report.profiles?.display_name ?? "匿名"}
-                      </span>
-                      {report.latitude != null && report.longitude != null && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
-                        </span>
-                      )}
-                      <span>
-                        {new Date(report.created_at).toLocaleDateString("ja-JP")}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex-shrink-0">
-                    <Select
-                      value={report.status}
-                      onValueChange={(val) => handleStatusChange(report.id, val)}
-                      disabled={updatingIds.has(report.id)}
-                    >
-                      <SelectTrigger className="w-32 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">審査中</SelectItem>
-                        <SelectItem value="approved">承認済</SelectItem>
-                        <SelectItem value="published">公開中</SelectItem>
-                        <SelectItem value="resolved">解決済</SelectItem>
-                        <SelectItem value="rejected">却下</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+      ) : loadError ? (
+        <div
+          role="alert"
+          className="border border-red-200 bg-red-50 p-6 text-center"
+        >
+          <p className="text-sm text-red-800">{loadError}</p>
+          <Button className="mt-3" variant="outline" onClick={fetchReports}>
+            再読み込み
+          </Button>
         </div>
+      ) : (
+        <ReportModerationQueue
+          reports={reports}
+          updatingIds={updatingIds}
+          onStatusChange={handleStatusChange}
+        />
       )}
-    </div>
+    </main>
   )
 }

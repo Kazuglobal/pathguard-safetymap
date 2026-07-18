@@ -17,7 +17,7 @@ Critical」の要約のみを元にした再構築であり、原本ではない
 
 ## 裏取り済みCritical
 
-- **N1**: `danger_reports` の INSERT ポリシー(`20260203131004`:47-52)が status 無制約 → 認証ユーザーが `status='approved'` を直INSERTしサーバAI審査(`/api/suspicious-alert/moderate`)を迂回できる。UPDATE(:65-71)は pending 強制なのにINSERTだけ穴。
+- **N1（解消済み）**: `danger_reports` の INSERT ポリシーにあった status 無制約は `20260704090000_restrict_danger_reports_insert_status.sql` で解消済み。さらに `20260718090000_add_danger_report_ai_moderation.sql` で、非adminが確定済みの `ai_moderation_status` を事前セットして審査・監査を迂回する経路も封鎖した。
 - **N2**: `role` の `REVOKE UPDATE (role,email,id)` が versioned migration に無く legacy `database-migration-profiles-security-hardening.sql` のみに存在。versioned `20260505000000` はINSERTのみ強化。→本番で列権限次第で自己admin昇格の恐れ。
 - **R2**: `image/process` に sharp なし、原本を公開バケットへ保存。EXIF未除去(危険レポート経路)。ハンター経路(`lib/hunter/storage.ts`)はwebp限定+非公開で対応済み。
 - **R3/R6**: `/terms` `/privacy` `/contact` が不在(href="#")。`lib/openai.ts:114-115,271` にAPIキー断片のログ出力が残存(到達経路はtest-openaiのみ=本番403想定)。
