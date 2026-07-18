@@ -50,6 +50,26 @@ describe("disaster-image-prompt-fallbacks", () => {
     }
   })
 
+  it("元写真にない子ども110番の家の標識追加を全プロンプトで明示的に禁止する", () => {
+    const all = [
+      FALLBACK_VIZ_PROMPT,
+      ...Object.values(FALLBACK_SIMULATION_PROMPTS),
+      SCENE_PRESERVATION_GUARD_SUFFIX,
+    ]
+
+    for (const prompt of all) {
+      expect(prompt).toContain(
+        "Do not add any new kodomo-110-ban-no-ie marker, plaque, or yellow triangular safe-house sign",
+      )
+      expect(prompt).toContain(
+        "Preserve any such item already visible in the source photo unchanged.",
+      )
+      expect(prompt).not.toContain("子ども110番")
+      expect(prompt).not.toContain("110番の家")
+      expect(prompt).not.toMatch(/\bchild(?:ren)?\b/i)
+    }
+  })
+
   it("SCENE_PRESERVATION_GUARD_SUFFIX はアスペクト比維持と匿名化を含む", () => {
     expect(SCENE_PRESERVATION_GUARD_SUFFIX).toContain("aspect ratio")
     expect(SCENE_PRESERVATION_GUARD_SUFFIX.toLowerCase()).toContain("face")
