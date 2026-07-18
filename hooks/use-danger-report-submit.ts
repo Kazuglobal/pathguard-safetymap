@@ -226,6 +226,18 @@ export function useDangerReportSubmit({
         console.log("No image file provided or report ID missing, skipping image processing.");
       }
 
+      // 画像処理完了後にAI一次審査を発火する。suspiciousは専用フローが
+      // レスポンスを画面状態へ反映するため、従来の専用エンドポイントに任せる。
+      if (reportDataToInsert.danger_type !== "suspicious") {
+        fetch("/api/danger-report/moderate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reportId: newReportId }),
+        }).catch(() => {
+          // AI審査失敗は投稿成功のUXへ影響させない。cronが後で救済する。
+        })
+      }
+
 
       // 3. 後続処理 (トースト、ポイント、プレビュー、ローカル状態更新)
       if (!options?.suppressSuccessToast) {

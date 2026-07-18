@@ -13,6 +13,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/moderation-sweep",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/local-alert-fetcher",
       "schedule": "0 */3 * * *"
     },

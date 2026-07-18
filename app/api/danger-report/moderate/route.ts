@@ -1,14 +1,10 @@
 import { NextRequest } from "next/server"
 
 import { handleDangerReportModeration } from "@/lib/danger-report-moderation-handler"
-import { SUSPICIOUS_DANGER_TYPE } from "@/lib/suspicious-alert"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
-  return handleDangerReportModeration(request, {
-    requiredDangerType: SUSPICIOUS_DANGER_TYPE,
-    rateLimitPrefix: "suspicious-moderate",
-  })
+  return handleDangerReportModeration(request)
 }

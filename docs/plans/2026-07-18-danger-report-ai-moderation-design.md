@@ -1,6 +1,6 @@
 # 危険箇所レポート AI自動承認 設計書
 
-作成日: 2026-07-18 / ステータス: 設計（実装未着手）
+作成日: 2026-07-18 / ステータス: 実装済み（Phase 0実行・本番反映待ち）
 先行実装: 不審者アラートAI一次審査（`docs/plans/2026-06-28-suspicious-alert-map-visualization-plan.md` §1.5、実装 = `lib/suspicious-alert-moderation.ts` / `lib/suspicious-alert-moderation-ai.ts` / `app/api/suspicious-alert/moderate/route.ts`）
 
 ## 0. 目的と要約

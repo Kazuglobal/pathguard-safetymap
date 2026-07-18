@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     // 1. 対象レポートを取得し、所有者/管理者を検証
     const { data: existingReport, error: fetchError } = await supabaseAdmin
       .from("danger_reports")
-      .select("user_id, image_url, processed_image_urls")
+      .select("user_id, image_url, processed_image_urls, status, ai_moderation_status, ai_moderation_reason")
       .eq("id", reportId)
       .maybeSingle();
 
@@ -213,13 +213,13 @@ export async function POST(req: Request) {
     const processedUrl = urlData.publicUrl;
 
     if (imageType === "original") {
-      const { error: originalUpdateError } = await supabaseAdmin
-        .from("danger_reports")
-        .update({
-          image_url: processedUrl,
-          updated_at: new Date().toISOString(),
+      const { error: originalUpdateError } = await (supabaseAdmin as any)
+        .rpc("set_danger_report_image", {
+          p_report_id: reportId,
+          p_image_url: processedUrl,
+          p_processed_image_urls: null,
         })
-        .eq("id", reportId);
+        .maybeSingle();
 
       if (originalUpdateError) {
         await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
@@ -262,13 +262,13 @@ export async function POST(req: Request) {
       updatedUrls[replaceIndex] = processedUrl;
     }
 
-    const { error: processedUpdateError } = await supabaseAdmin
-      .from("danger_reports")
-      .update({
-        processed_image_urls: updatedUrls,
-        updated_at: new Date().toISOString(),
+    const { error: processedUpdateError } = await (supabaseAdmin as any)
+      .rpc("set_danger_report_image", {
+        p_report_id: reportId,
+        p_image_url: null,
+        p_processed_image_urls: updatedUrls,
       })
-      .eq("id", reportId);
+      .maybeSingle();
 
     if (processedUpdateError) {
       await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);

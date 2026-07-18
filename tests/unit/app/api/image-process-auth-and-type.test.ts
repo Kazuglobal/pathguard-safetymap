@@ -17,6 +17,10 @@ const mocks = vi.hoisted(() => {
   const mockDbMaybeSingle = vi.fn()
   const mockDbUpdate = vi.fn()
   const mockDbUpdateEq = vi.fn()
+  const mockRpcMaybeSingle = vi.fn()
+  const mockRpc = vi.fn(() => ({
+    maybeSingle: mockRpcMaybeSingle,
+  }))
 
   const mockStorageFrom = vi.fn(() => ({
     upload: mockStorageUpload,
@@ -42,6 +46,7 @@ const mocks = vi.hoisted(() => {
       from: mockStorageFrom,
     },
     from: mockDbFrom,
+    rpc: mockRpc,
   }
 
   return {
@@ -55,6 +60,8 @@ const mocks = vi.hoisted(() => {
     mockDbMaybeSingle,
     mockDbUpdate,
     mockDbUpdateEq,
+    mockRpc,
+    mockRpcMaybeSingle,
     mockStorageFrom,
     mockDbFrom,
     mockAdminClient,
@@ -136,6 +143,7 @@ describe("app/api/image/process ownership + imageType", () => {
     }))
     mocks.mockStorageRemove.mockResolvedValue({ error: null })
     mocks.mockDbUpdateEq.mockResolvedValue({ error: null })
+    mocks.mockRpcMaybeSingle.mockResolvedValue({ data: {}, error: null })
     mocks.mockReadFileWithSentryContext.mockResolvedValue(new ArrayBuffer(5))
   })
 
@@ -219,14 +227,48 @@ describe("app/api/image/process ownership + imageType", () => {
       expect.any(Buffer),
       expect.any(Object),
     )
-    expect(mocks.mockDbUpdate).toHaveBeenCalledWith(
+    expect(mocks.mockRpc).toHaveBeenCalledWith(
+      "set_danger_report_image",
       expect.objectContaining({
-        image_url: expect.stringContaining("https://example.supabase.co/storage/v1/object/public/danger-reports/"),
+        p_image_url: expect.stringContaining("https://example.supabase.co/storage/v1/object/public/danger-reports/"),
       }),
     )
     expect(body).toEqual(
       expect.objectContaining({
         imageUrl: expect.stringContaining("https://example.supabase.co/storage/v1/object/public/danger-reports/"),
+      }),
+    )
+  })
+
+  it("uses the atomic image guard so an approved report is reopened for review", async () => {
+    mocks.mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "owner-1", email: "owner@example.com" } },
+      error: null,
+    })
+    mocks.mockDbMaybeSingle.mockResolvedValueOnce({
+      data: {
+        user_id: "owner-1",
+        processed_image_urls: [],
+        image_url: null,
+        status: "approved",
+        ai_moderation_status: "approved",
+        ai_moderation_reason: "AI承認",
+      },
+      error: null,
+    })
+
+    const response = await POST(createMultipartRequest({
+      file: createTestFile("late.png"),
+      reportId: "report-approved",
+      imageType: "original",
+    }))
+
+    await expectResponseStatus(response, 200)
+    expect(mocks.mockRpc).toHaveBeenCalledWith(
+      "set_danger_report_image",
+      expect.objectContaining({
+        p_report_id: "report-approved",
+        p_image_url: expect.stringContaining("/danger-reports/"),
       }),
     )
   })
