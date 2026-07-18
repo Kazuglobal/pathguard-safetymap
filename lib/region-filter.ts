@@ -75,7 +75,7 @@ export function distanceKm(
   const h =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2
-  return 2 * 6371 * Math.asin(Math.sqrt(h))
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
 /** 報告が学校の周辺圏内(半径+座標丸め許容幅)にあるか */

@@ -50,6 +50,13 @@ export function ReportRegionFilter({
   const [schoolResults, setSchoolResults] = React.useState<SchoolSearchResult[]>([])
   const [isSearching, setIsSearching] = React.useState(false)
   const [searchMessage, setSearchMessage] = React.useState<string | null>(null)
+  const schoolSearchControllerRef = React.useRef<AbortController | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      schoolSearchControllerRef.current?.abort()
+    }
+  }, [])
 
   const focusCls = isTanken
     ? tankenTokens.cls.focus
@@ -66,21 +73,33 @@ export function ReportRegionFilter({
   const handleSchoolSearch = async (event: React.FormEvent) => {
     event.preventDefault()
     const query = schoolQuery.trim()
-    if (!query || isSearching) return
+    if (!query) return
+
+    schoolSearchControllerRef.current?.abort()
+    const controller = new AbortController()
+    schoolSearchControllerRef.current = controller
+
     setIsSearching(true)
     setSearchMessage(null)
     try {
-      const results = await searchSchools(query)
+      const results = await searchSchools(query, { signal: controller.signal })
+      if (controller.signal.aborted || schoolSearchControllerRef.current !== controller) return
       setSchoolResults(results)
       if (results.length === 0) {
         setSearchMessage("学校が見つかりませんでした。名称を変えてお試しください。")
       }
     } catch (error) {
+      if (controller.signal.aborted) return
       console.error("学校検索に失敗しました", error)
       setSchoolResults([])
       setSearchMessage("学校検索を利用できませんでした。時間をおいてお試しください。")
     } finally {
-      setIsSearching(false)
+      if (schoolSearchControllerRef.current === controller) {
+        schoolSearchControllerRef.current = null
+        if (!controller.signal.aborted) {
+          setIsSearching(false)
+        }
+      }
     }
   }
 

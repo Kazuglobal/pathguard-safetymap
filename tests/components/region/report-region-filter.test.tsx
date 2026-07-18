@@ -126,6 +126,71 @@ describe("ReportRegionFilter", () => {
       latitude: 35.68,
       longitude: 139.76,
     })
+    expect(mocks.searchSchools).toHaveBeenCalledWith(
+      "テスト小学校",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+  })
+
+  it("新しい学校検索を始めると前回を中止し、古い結果で上書きしない", async () => {
+    let resolveFirst: (value: unknown[]) => void = () => {}
+    const firstResult = new Promise<unknown[]>((resolve) => {
+      resolveFirst = resolve
+    })
+    mocks.searchSchools
+      .mockReturnValueOnce(firstResult)
+      .mockResolvedValueOnce([
+        {
+          id: "poi-new",
+          name: "新しい小学校",
+          address: "東京都",
+          latitude: 35.68,
+          longitude: 139.76,
+        },
+      ])
+    renderFilter()
+
+    const input = screen.getByRole("textbox", { name: "学校名で探す" })
+    const form = input.closest("form")
+    expect(form).not.toBeNull()
+
+    fireEvent.change(input, { target: { value: "古い小学校" } })
+    fireEvent.submit(form!)
+    const firstSignal = mocks.searchSchools.mock.calls[0][1].signal as AbortSignal
+
+    fireEvent.change(input, { target: { value: "新しい小学校" } })
+    fireEvent.submit(form!)
+
+    expect(firstSignal.aborted).toBe(true)
+    expect(await screen.findByRole("button", { name: /新しい小学校/ })).toBeInTheDocument()
+
+    resolveFirst([
+      {
+        id: "poi-old",
+        name: "古い小学校",
+        address: "東京都",
+        latitude: 35.67,
+        longitude: 139.75,
+      },
+    ])
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /古い小学校/ })).not.toBeInTheDocument()
+    })
+  })
+
+  it("学校検索中にアンマウントするとリクエストを中止する", () => {
+    mocks.searchSchools.mockReturnValue(new Promise(() => {}))
+    const { view } = renderFilter()
+
+    fireEvent.change(screen.getByRole("textbox", { name: "学校名で探す" }), {
+      target: { value: "テスト小学校" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "学校を検索" }))
+    const signal = mocks.searchSchools.mock.calls[0][1].signal as AbortSignal
+
+    view.unmount()
+
+    expect(signal.aborted).toBe(true)
   })
 
   it("検索が失敗したらエラーメッセージを表示する", async () => {

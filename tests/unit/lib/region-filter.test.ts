@@ -63,6 +63,12 @@ describe("distanceKm", () => {
     expect(d).toBeGreaterThan(5.5)
     expect(d).toBeLessThan(7)
   })
+
+  it("浮動小数点誤差が最大になる逆蹠点でも有限の距離を返す", () => {
+    const d = distanceKm(0, 0, 0, 180)
+    expect(Number.isFinite(d)).toBe(true)
+    expect(d).toBeCloseTo(Math.PI * 6371, 6)
+  })
 })
 
 describe("isWithinSchoolRadius", () => {
