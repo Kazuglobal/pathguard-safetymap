@@ -84,7 +84,7 @@ npm run dev
 
 ```
 GEMINI_API_KEY=your-api-key
-GEMINI_IMAGE_MODEL=gemini-3-pro-image-preview
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-lite-image
 ```
 
 ## エージェントチーム
@@ -108,4 +108,4 @@ GEMINI_IMAGE_MODEL=gemini-3-pro-image-preview
 ### API エラーの場合
 1. `GEMINI_API_KEY` が正しく設定されているか確認
 2. API クォータを確認
-3. モデル名が正しいか確認（`gemini-3-pro-image-preview`）
+3. モデル名が正しいか確認（`gemini-3.1-flash-lite-image`）

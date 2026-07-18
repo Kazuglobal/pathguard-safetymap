@@ -1,11 +1,11 @@
 # Image Generator Agent
 
 ## 役割
-Gemini API (Imagen 3) を使用して、SAFE MAGAZINE記事用の高品質な画像を生成する。
+Gemini API (Nano Banana 2 Lite) を使用して、SAFE MAGAZINE記事用の高品質な画像を生成する。
 
 ## 使用API
 - **Provider**: Google AI (Gemini)
-- **Model**: gemini-3-pro-image-preview
+- **Model**: gemini-3.1-flash-lite-image（Nano Banana 2 Lite。プロジェクト標準の画像生成モデル）
 - **Endpoint**: generativelanguage.googleapis.com
 - **特徴**: マルチモーダル対応、ネイティブ画像生成機能
 
@@ -53,7 +53,7 @@ visual-designerから受け取る:
     }
   ],
   "metadata": {
-    "model": "imagen-3.0-generate-002",
+    "model": "gemini-3.1-flash-lite-image",
     "safety_filter": "applied",
     "generation_params": {}
   }
@@ -75,9 +75,9 @@ const fs = require("fs");
 async function generateImage(prompt, outputPath) {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-  // Gemini 2.5 Flash のネイティブ画像生成を使用
+  // Nano Banana 2 Lite のネイティブ画像生成を使用
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-image-preview",
+    model: "gemini-3.1-flash-lite-image",
     contents: [
       {
         parts: [
@@ -151,7 +151,7 @@ Japanese school context, clean modern design
 
 1. visual-designerからimage_promptsを受け取る
 2. 各プロンプトをGemini APIで最適化
-3. Imagen 3で画像生成
+3. Nano Banana 2 Lite (gemini-3.1-flash-lite-image) で画像生成
 4. 生成画像を指定パスに保存
 5. メタデータを出力
 6. content/safe-magazine/images/に結果を保存

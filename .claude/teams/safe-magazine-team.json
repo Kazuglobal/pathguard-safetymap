@@ -103,7 +103,7 @@
       "input_from": ["visual-designer"],
       "api": {
         "provider": "google",
-        "model": "gemini-3-pro-image-preview",
+        "model": "gemini-3.1-flash-lite-image",
         "endpoint": "generativelanguage.googleapis.com",
         "features": ["text-to-image", "multimodal", "image-generation"]
       },

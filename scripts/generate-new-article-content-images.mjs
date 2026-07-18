@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, "..")
 dotenv.config({ path: path.join(ROOT, ".env.local") })
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const GEMINI_MODEL = "gemini-3.1-flash-image-preview"
+const GEMINI_MODEL = "gemini-3.1-flash-lite-image"
 
 if (!GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not set. Add it to .env.local before running this script.")

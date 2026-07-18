@@ -28,7 +28,7 @@ dotenv.config({ path: ".env.local" })
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 const GEMINI_MODEL =
-  process.env.GEMINI_IMAGE_MODEL || "gemini-2.0-flash-preview-image-generation"
+  process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-lite-image"
 
 // ファイル名として安全な文字列に変換
 function sanitizeFilename(name: string): string {
