@@ -23,6 +23,7 @@ import {
   resolveAlertRadius,
   getAlertFitBounds,
 } from "@/lib/suspicious-alert"
+import { resolveSuspiciousModerationOutcome } from "@/lib/suspicious-moderation-response"
 
 type LocationSelectionSource = "manual" | "gps" | null
 
@@ -170,19 +171,25 @@ export function useSuspiciousAlert({
       })
 
       type ModerationResponseBody = {
+        mode?: "off" | "shadow" | "live"
+        skipped?: boolean
         verdict?: { status?: string; reason?: string; score?: number }
         report?: DangerReport
         error?: string
       }
       const moderationBody = (await moderationResponse.json().catch(() => ({}))) as ModerationResponseBody
+      const moderationOutcome = resolveSuspiciousModerationOutcome(
+        moderationResponse.ok,
+        moderationBody,
+      )
 
-      if (!moderationResponse.ok || !moderationBody.verdict || !moderationBody.report) {
+      if (moderationOutcome === "failed") {
         console.error("AI一次審査に失敗しました:", moderationBody.error ?? moderationResponse.statusText)
         toast({
           title: "アラートを受け付けました",
           description: "自動審査に失敗したため、内容確認のうえ公開されます（あなたの地図には表示中）。",
         })
-      } else if (moderationBody.verdict.status === "approved") {
+      } else if (moderationOutcome === "published" && moderationBody.report) {
         setPendingReports((prev) => prev.filter((r) => r.id !== reportId))
         setDangerReports((prev) => [
           moderationBody.report as DangerReport,
@@ -193,12 +200,14 @@ export function useSuspiciousAlert({
           description: "危険エリアを全員の地図に表示しています。",
         })
       } else {
-        setPendingReports((prev) =>
-          prev.map((r) => (r.id === reportId ? { ...r, ...(moderationBody.report as DangerReport) } : r)),
-        )
+        if (moderationBody.mode === "live" && moderationBody.report) {
+          setPendingReports((prev) =>
+            prev.map((r) => (r.id === reportId ? { ...r, ...(moderationBody.report as DangerReport) } : r)),
+          )
+        }
         toast({
           title: "アラートを受け付けました",
-          description: "内容確認のうえ公開されます（あなたの地図には表示中）。",
+          description: "現在確認中です。公開後に全員の地図へ反映されます（あなたの地図には表示中）。",
         })
       }
 

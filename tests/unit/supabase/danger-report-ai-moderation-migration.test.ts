@@ -34,6 +34,29 @@ describe("20260718090000_add_danger_report_ai_moderation migration", () => {
     expect(sql).toContain("WHERE id = (SELECT auth.uid()) AND role = 'admin'")
   })
 
+  it("rejects owner updates to server-managed moderation columns", () => {
+    const sql = readMigration()
+
+    expect(sql).toContain("protect_danger_report_moderation_fields")
+    expect(sql).toMatch(
+      /OLD\.ai_moderation_status\s+IS\s+DISTINCT\s+FROM\s+NEW\.ai_moderation_status/i,
+    )
+    expect(sql).toMatch(
+      /OLD\.ai_moderation_reason\s+IS\s+DISTINCT\s+FROM\s+NEW\.ai_moderation_reason/i,
+    )
+    expect(sql).toMatch(
+      /OLD\.ai_moderation_score\s+IS\s+DISTINCT\s+FROM\s+NEW\.ai_moderation_score/i,
+    )
+    expect(sql).toMatch(
+      /OLD\.ai_moderation_checked_at\s+IS\s+DISTINCT\s+FROM\s+NEW\.ai_moderation_checked_at/i,
+    )
+    expect(sql).toContain("auth.role() = 'service_role'")
+    expect(sql).toContain("role = 'admin'")
+    expect(sql).toMatch(
+      /CREATE TRIGGER protect_danger_report_moderation_fields[\s\S]*BEFORE UPDATE OF[\s\S]*ai_moderation_status/i,
+    )
+  })
+
   it("creates an RLS-protected append-only moderation log with an indexed foreign key", () => {
     const sql = readMigration()
 
@@ -55,6 +78,16 @@ describe("20260718090000_add_danger_report_ai_moderation migration", () => {
     expect(sql).toMatch(
       /CREATE INDEX idx_danger_reports_escalated[\s\S]*WHERE ai_moderation_status = 'escalated'/i,
     )
+  })
+
+  it("provides a shadow sweep query that skips reports already logged for the prompt version", () => {
+    const sql = readMigration()
+
+    expect(sql).toContain("get_danger_reports_for_moderation_sweep")
+    expect(sql).toMatch(
+      /p_mode\s*<>\s*'shadow'[\s\S]*NOT EXISTS[\s\S]*danger_report_moderation_log[\s\S]*prompt_version\s*=\s*p_prompt_version/i,
+    )
+    expect(sql).toContain("TO service_role")
   })
 
   it("updates the moderation status column comment to the constrained value set", () => {

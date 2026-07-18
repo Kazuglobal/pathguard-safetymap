@@ -409,6 +409,56 @@ export type Database = {
           },
         ]
       }
+      danger_report_moderation_log: {
+        Row: {
+          ai_verdict: Json | null
+          created_at: string
+          fallback: boolean
+          final_status: string
+          heuristic_status: string
+          id: string
+          latency_ms: number | null
+          mode: string
+          model: string | null
+          prompt_version: string
+          report_id: string
+        }
+        Insert: {
+          ai_verdict?: Json | null
+          created_at?: string
+          fallback?: boolean
+          final_status: string
+          heuristic_status: string
+          id?: string
+          latency_ms?: number | null
+          mode: string
+          model?: string | null
+          prompt_version: string
+          report_id: string
+        }
+        Update: {
+          ai_verdict?: Json | null
+          created_at?: string
+          fallback?: boolean
+          final_status?: string
+          heuristic_status?: string
+          id?: string
+          latency_ms?: number | null
+          mode?: string
+          model?: string | null
+          prompt_version?: string
+          report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "danger_report_moderation_log_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "danger_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       danger_spots: {
         Row: {
           address: string | null
@@ -1917,6 +1967,15 @@ export type Database = {
       }
     }
     Functions: {
+      get_danger_reports_for_moderation_sweep: {
+        Args: {
+          p_cutoff: string
+          p_limit?: number
+          p_mode: string
+          p_prompt_version: string
+        }
+        Returns: Database["public"]["Tables"]["danger_reports"]["Row"][]
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/danger-report-moderation-ai", () => ({
+  DANGER_MODERATION_PROMPT_VERSION: "v2",
   moderateDangerReportWithAi: vi.fn(),
 }))
 
@@ -13,7 +14,10 @@ vi.mock("@/lib/web-push", () => ({
 }))
 
 import { moderateDangerReportWithAi } from "@/lib/danger-report-moderation-ai"
+import { sendPushToUser } from "@/lib/web-push"
 import {
+  getDangerModerationFallbackCount,
+  markDangerReportModerationFailed,
   moderateDangerReportRecord,
   type DangerReportModerationMode,
 } from "@/lib/danger-report-moderation-service"
@@ -161,6 +165,12 @@ describe("moderateDangerReportRecord", () => {
 
     expect(result.outcome).toBe("updated")
     expect(admin.update.calls).toContainEqual(["eq", "status", "pending"])
+    expect(admin.update.calls).toContainEqual(["eq", "title", report.title])
+    expect(admin.update.calls).toContainEqual([
+      "eq",
+      "description",
+      report.description,
+    ])
     expect(admin.update.calls).toContainEqual([
       "or",
       "ai_moderation_status.is.null,ai_moderation_status.eq.pending",
@@ -170,6 +180,50 @@ describe("moderateDangerReportRecord", () => {
       "or",
       "processed_image_urls.is.null,processed_image_urls.eq.{}",
     ])
+    const selectCall = admin.update.calls.find(([name]) => name === "select")
+    expect(selectCall?.[1]).not.toBe("*")
+    expect(String(selectCall?.[1])).not.toContain("ai_moderation_reason")
+    expect(String(selectCall?.[1])).not.toContain("ai_moderation_score")
+  })
+
+  it("uses IS NULL when guarding a nullable description", async () => {
+    const admin = adminFor("live")
+
+    await moderateDangerReportRecord({
+      supabaseAdmin: admin.client,
+      report: { ...report, description: null },
+      mode: "live",
+      now: new Date("2026-07-18T00:00:00.000Z"),
+    })
+
+    expect(admin.update.calls).toContainEqual(["is", "description", null])
+  })
+
+  it("keeps a live fallback pending so the sweeper can retry it", async () => {
+    const admin = adminFor("live")
+    vi.mocked(moderateDangerReportWithAi).mockResolvedValueOnce({
+      status: "needs_review",
+      reason: "AI審査に失敗しました",
+      score: 0.5,
+      aiExecuted: false,
+      heuristicStatus: "approved",
+      aiVerdict: null,
+      fallback: true,
+      model: "gemini-test",
+      promptVersion: "v2",
+      latencyMs: 15_000,
+    })
+
+    const result = await moderateDangerReportRecord({
+      supabaseAdmin: admin.client,
+      report,
+      mode: "live",
+      now: new Date("2026-07-18T00:00:00.000Z"),
+    })
+
+    expect(result.outcome).toBe("retry")
+    expect(admin.from).toHaveBeenCalledTimes(4)
+    expect(admin.update.calls).toEqual([])
   })
 
   it("returns a conflict when the conditional update affects no row", async () => {
@@ -187,5 +241,66 @@ describe("moderateDangerReportRecord", () => {
     })
 
     expect(result.outcome).toBe("conflict")
+  })
+})
+
+describe("getDangerModerationFallbackCount", () => {
+  it("counts only live fallbacks from the current prompt version", async () => {
+    const query = builder({ count: 2, error: null })
+    const supabaseAdmin = {
+      from: vi.fn(() => query),
+    }
+
+    const count = await getDangerModerationFallbackCount(
+      supabaseAdmin as any,
+      "report-1",
+    )
+
+    expect(count).toBe(2)
+    expect(query.calls).toContainEqual(["eq", "mode", "live"])
+    expect(query.calls).toContainEqual(["eq", "prompt_version", "v2"])
+  })
+})
+
+describe("markDangerReportModerationFailed", () => {
+  it("returns the transitioned report and notifies its submitter", async () => {
+    const failedReport = {
+      ...report,
+      ai_moderation_status: "needs_review",
+    }
+    const query = builder({ data: failedReport, error: null })
+    const supabaseAdmin = {
+      from: vi.fn(() => query),
+    }
+
+    const result = await markDangerReportModerationFailed(
+      supabaseAdmin as any,
+      "report-1",
+      new Date("2026-07-18T00:00:00.000Z"),
+    )
+
+    expect(result).toEqual(failedReport)
+    expect(sendPushToUser).toHaveBeenCalledWith(
+      "user-1",
+      expect.anything(),
+      "danger_reports",
+    )
+  })
+
+  it("returns null when the conditional needs-review transition loses a race", async () => {
+    const query = builder({ data: null, error: null })
+    const supabaseAdmin = {
+      from: vi.fn(() => query),
+    }
+
+    const result = await markDangerReportModerationFailed(
+      supabaseAdmin as any,
+      "report-1",
+      new Date("2026-07-18T00:00:00.000Z"),
+    )
+
+    expect(result).toBeNull()
+    expect(query.calls).toContainEqual(["select", expect.any(String)])
+    expect(query.calls).toContainEqual(["maybeSingle"])
   })
 })

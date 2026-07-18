@@ -64,6 +64,53 @@ CREATE POLICY "danger_reports_insert" ON public.danger_reports
     )
   );
 
+-- RLSは列単位の変更を比較できないため、本人がpendingレポートを編集できる
+-- 既存仕様を保ったまま、サーバ管理のAI審査列だけをトリガーで保護する。
+CREATE OR REPLACE FUNCTION public.protect_danger_report_moderation_fields()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF (
+    OLD.ai_moderation_status IS DISTINCT FROM NEW.ai_moderation_status
+    OR OLD.ai_moderation_reason IS DISTINCT FROM NEW.ai_moderation_reason
+    OR OLD.ai_moderation_score IS DISTINCT FROM NEW.ai_moderation_score
+    OR OLD.ai_moderation_checked_at IS DISTINCT FROM NEW.ai_moderation_checked_at
+  )
+  AND NOT (
+    current_user IN ('postgres', 'service_role', 'supabase_admin')
+    OR auth.role() = 'service_role'
+    OR EXISTS (
+      SELECT 1
+      FROM public.profiles
+      WHERE id = (SELECT auth.uid()) AND role = 'admin'
+    )
+  ) THEN
+    RAISE EXCEPTION
+      'AI moderation fields are server-managed'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.protect_danger_report_moderation_fields()
+  FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS protect_danger_report_moderation_fields
+  ON public.danger_reports;
+CREATE TRIGGER protect_danger_report_moderation_fields
+  BEFORE UPDATE OF
+    ai_moderation_status,
+    ai_moderation_reason,
+    ai_moderation_score,
+    ai_moderation_checked_at
+  ON public.danger_reports
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_danger_report_moderation_fields();
+
 -- シャドー運用・本稼働・バックテストを同じ形式で監査するappend-onlyログ。
 -- RLSポリシーを作らないため、authenticated/anonは読み書きできずservice_roleのみが扱う。
 CREATE TABLE public.danger_report_moderation_log (
@@ -100,6 +147,54 @@ CREATE INDEX idx_danger_reports_moderation_sweep
 CREATE INDEX idx_danger_reports_escalated
   ON public.danger_reports (created_at DESC)
   WHERE ai_moderation_status = 'escalated';
+
+-- shadowは同じprompt_versionで一度だけ評価する。NOT EXISTSをDB側で行うことで、
+-- 既評価の先頭10件が未評価レポートを飢餓状態にすることも防ぐ。
+CREATE OR REPLACE FUNCTION public.get_danger_reports_for_moderation_sweep(
+  p_mode text,
+  p_prompt_version text,
+  p_cutoff timestamptz,
+  p_limit integer DEFAULT 10
+)
+RETURNS SETOF public.danger_reports
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  SELECT report.*
+  FROM public.danger_reports AS report
+  WHERE report.status = 'pending'
+    AND (
+      report.ai_moderation_status IS NULL
+      OR report.ai_moderation_status = 'pending'
+    )
+    AND report.created_at < p_cutoff
+    AND (
+      p_mode <> 'shadow'
+      OR NOT EXISTS (
+        SELECT 1
+        FROM public.danger_report_moderation_log AS log
+        WHERE log.report_id = report.id
+          AND log.mode = 'shadow'
+          AND log.prompt_version = p_prompt_version
+      )
+    )
+  ORDER BY report.created_at ASC
+  LIMIT LEAST(GREATEST(p_limit, 1), 100);
+$$;
+
+REVOKE ALL ON FUNCTION public.get_danger_reports_for_moderation_sweep(
+  text,
+  text,
+  timestamptz,
+  integer
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_danger_reports_for_moderation_sweep(
+  text,
+  text,
+  timestamptz,
+  integer
+) TO service_role;
 
 -- 画像URLの書き込みとAI承認済みレポートの差し戻しを必ず同じUPDATEで行う。
 -- service_roleからのみ呼び出し、読み取りと書き込みの間のTOCTOUを作らない。

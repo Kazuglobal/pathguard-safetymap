@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import {
+  DANGER_REPORT_MODERATION_SELECT,
+  MAX_DANGER_MODERATION_FALLBACKS,
+  getDangerModerationFallbackCount,
   getDangerModerationMode,
+  markDangerReportModerationFailed,
   moderateDangerReportRecord,
+  type DangerReportModerationRecord,
 } from "@/lib/danger-report-moderation-service"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { createServerClient } from "@/lib/supabase-server"
@@ -14,6 +19,20 @@ import {
 interface HandlerOptions {
   requiredDangerType?: string
   rateLimitPrefix?: string
+}
+
+function reportForClient(report: DangerReportModerationRecord) {
+  const {
+    ai_moderation_reason: _reason,
+    ai_moderation_score: _score,
+    ai_moderation_checked_at: _checkedAt,
+    ...safeReport
+  } = report
+  return safeReport
+}
+
+function verdictForClient(verdict: { status: string }) {
+  return { status: verdict.status }
 }
 
 export async function handleDangerReportModeration(
@@ -69,7 +88,7 @@ export async function handleDangerReportModeration(
 
   const { data: report, error: fetchError } = await supabaseAdmin
     .from("danger_reports")
-    .select("*")
+    .select(DANGER_REPORT_MODERATION_SELECT)
     .eq("id", reportId)
     .maybeSingle()
   if (fetchError) {
@@ -114,12 +133,43 @@ export async function handleDangerReportModeration(
     report.ai_moderation_status !== "pending"
   ) {
     return NextResponse.json(
-      { error: "この報告はすでに審査済みです", report },
+      {
+        error: "この報告はすでに審査済みです",
+        report: reportForClient(report),
+      },
       { status: 409 },
     )
   }
 
   try {
+    if (mode === "live") {
+      const fallbackCount = await getDangerModerationFallbackCount(
+        supabaseAdmin,
+        report.id,
+      )
+      if (fallbackCount >= MAX_DANGER_MODERATION_FALLBACKS) {
+        const failedReport = await markDangerReportModerationFailed(
+          supabaseAdmin,
+          report.id,
+          new Date(),
+        )
+        if (!failedReport) {
+          return NextResponse.json(
+            { error: "この報告はすでに処理済みです" },
+            { status: 409 },
+          )
+        }
+        return NextResponse.json(
+          {
+            mode,
+            pending: true,
+            report: reportForClient(failedReport),
+          },
+          { status: 202 },
+        )
+      }
+    }
+
     const result = await moderateDangerReportRecord({
       supabaseAdmin,
       report,
@@ -131,10 +181,21 @@ export async function handleDangerReportModeration(
         { status: 409 },
       )
     }
+    if (result.outcome === "retry") {
+      return NextResponse.json(
+        {
+          mode,
+          pending: true,
+          verdict: verdictForClient(result.verdict),
+          report: reportForClient(result.report),
+        },
+        { status: 202 },
+      )
+    }
     return NextResponse.json({
       mode,
-      verdict: result.verdict,
-      report: result.report,
+      verdict: verdictForClient(result.verdict),
+      report: reportForClient(result.report),
     })
   } catch (error) {
     console.error(
