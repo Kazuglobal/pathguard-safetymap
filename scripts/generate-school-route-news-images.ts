@@ -454,6 +454,80 @@ Color palette: Muted tones with red warning accents
 ABSOLUTE RULE: no text, no letters, no kanji, no numbers, no signage lettering of any kind anywhere in the image, including on the road surface, signs, or background — use only plain shapes, colors, and icons
 ${QUALITY_SUFFIX}`,
     description: "那覇市松川 スクールゾーン逃走バイク衝突事案（2026年7月17日号）"
+  },
+  {
+    slug: "oamishirasato-miyakono-thigh-touch-suspicious-20260711",
+    filename: "oamishirasato-miyakono-thigh-touch-suspicious-20260711.png",
+    prompt: `Create a Japanese safety awareness illustration about a stranger touching a child on a school route.
+
+Scene elements (abstract, NOT depicting the perpetrator's face):
+- A quiet Japanese residential street near a school, late afternoon light
+- A single child with a yellow safety cap and randoseru backpack seen from behind, walking alone
+- A faceless silhouette of an adult figure reaching toward the child, deliberately vague and non-identifying, positioned at a respectful distance to avoid depicting actual contact
+- A red warning outline or caution icon near the silhouette's hand, suggesting the behavior should be stopped
+- Calm but alert atmosphere
+
+Style: Clean Japanese editorial illustration, cautionary but not frightening, NOT graphic
+Color palette: Orange caution accents, warm afternoon tones
+No text of any kind anywhere in the image, no depiction of a recognizable face, no depiction of actual physical contact
+${QUALITY_SUFFIX}`,
+    description: "大網白里市みやこ野 身体接触を伴う声かけ事案（2026年7月18日号）"
+  },
+  {
+    slug: "nara-statewide-child-approach-cluster-20260718",
+    filename: "nara-statewide-child-approach-cluster-20260718.png",
+    prompt: `Create a Japanese safety awareness illustration about a cluster of stranger-danger incidents targeting elementary school children across multiple towns in a prefecture.
+
+Scene elements (abstract, NOT depicting any actual person):
+- A soft stylized map silhouette suggesting a prefecture with three faint highlighted points, no labels or text
+- Three small groups of a child with yellow safety cap and randoseru backpack, seen from behind at a distance, walking on separate quiet residential streets
+- Faint, shadowy, faceless silhouettes of adult figures at the edge of each scene, deliberately vague and non-identifying
+- A subtle icon suggesting a hand reaching toward a wrist, abstract and non-graphic, to hint at the physical-contact incident without depicting it directly
+- Warning/alert atmosphere without being frightening
+
+STRICT RULE: No text, no letters, no numbers of any kind anywhere in the image.
+
+Style: Somber but reassuring Japanese editorial illustration, NOT graphic or violent
+Color palette: Muted orange/amber warning accents on calm residential backgrounds
+${QUALITY_SUFFIX}`,
+    description: "奈良県内 登下校中の児童への声かけ・つきまといクラスタ（2026年7月18日号）"
+  },
+  {
+    slug: "yamato-ichoudanchi-bollard-signal-safety-20260605",
+    filename: "yamato-ichoudanchi-bollard-signal-safety-20260605.png",
+    prompt: `Create a bright, reassuring Japanese illustration about new bollards and extended pedestrian signal timing installed near a school route.
+
+Visual elements:
+- A Japanese residential intersection with newly installed bollards (short posts) protecting a crosswalk corner
+- A pedestrian traffic signal showing a walking-person icon in green
+- Elementary school children with yellow caps and randoseru walking safely across the protected crosswalk
+- A calm residential street typical of a Japanese suburban housing complex (danchi) in the background
+- Bright daylight, clear sky, a sense of relief and improved safety
+- No text of any kind anywhere in the image
+
+Style: Clean, bright Japanese editorial infographic illustration
+Color palette: Blue/gray for the infrastructure, green for the safe surroundings
+Mood: Reassuring, community safety improvement, everyday life
+${QUALITY_SUFFIX}`,
+    description: "大和市 いちょう団地周辺 ボラード・信号延長（2026年7月18日号）"
+  },
+  {
+    slug: "bunkyo-nezu-schoolguard-meeting-20260625",
+    filename: "bunkyo-nezu-schoolguard-meeting-20260625.png",
+    prompt: `Create a warm Japanese illustration showing a PTA-organized school safety guard meeting and lecture.
+
+Visual elements:
+- A warm community meeting room scene with parent volunteers listening to a speaker
+- A speaker gesturing warmly at the front, suggesting a crime-prevention advisor giving a friendly talk
+- Small inset motif of adult volunteers smiling and waving at elementary school children with yellow caps and randoseru on a sunny street outside
+- Bright, welcoming colors suggesting community warmth and cooperation
+- No text of any kind anywhere in the image
+
+Style: Heartfelt, warm Japanese community illustration
+Color palette: Greens and warm yellows for community warmth and safety
+Mood: Cooperative, welcoming, grassroots community spirit
+${QUALITY_SUFFIX}`,
+    description: "文京区 根津小PTA スクールガード連絡会（2026年7月18日号）"
   }
 ]
 
