@@ -70,6 +70,25 @@ describe("generateDisasterPrompts", () => {
     expect(instruction).toContain("EXECUTION FACT")
   })
 
+  it("instruction は可視化・4シミュレーションへ未確認の安全標識追加禁止を要求する", async () => {
+    const fetchMock = mockFetchWith(JSON.stringify(VALID_RESULT))
+
+    await generateDisasterPrompts(IMAGE)
+
+    const body = JSON.parse((fetchMock.mock.calls[0] as any)[1].body)
+    const instruction: string = body.contents[0].parts.find((p: any) => p.text).text
+    const guard =
+      "Do not add any new kodomo-110-ban-no-ie marker, plaque, or yellow triangular safe-house sign"
+
+    expect(instruction.match(new RegExp(guard, "g"))).toHaveLength(2)
+    expect(instruction).toContain(
+      "Preserve any such item already visible in the source photo unchanged.",
+    )
+    expect(instruction).not.toContain("子ども110番")
+    expect(instruction).not.toContain("110番の家")
+    expect(instruction).not.toContain("child-refuge")
+  })
+
   it("素のJSON応答をパースできる", async () => {
     mockFetchWith(JSON.stringify(VALID_RESULT))
 
