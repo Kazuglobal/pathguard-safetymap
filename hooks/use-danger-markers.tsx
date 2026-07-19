@@ -1,11 +1,17 @@
 "use client"
 
-import { useEffect, type ElementType, type MutableRefObject } from "react"
+import {
+  useEffect,
+  type CSSProperties,
+  type ElementType,
+  type MutableRefObject,
+} from "react"
 import mapboxgl from "mapbox-gl"
 import { createRoot } from "react-dom/client"
 import {
   AlertTriangle,
   Car,
+  Circle,
   HelpCircle,
   MapPin,
   Shield,
@@ -30,6 +36,14 @@ const DANGER_TYPE_LABELS: Record<string, string> = {
   other: "その他",
 }
 
+const DANGER_TYPE_COLORS: Record<string, string> = {
+  traffic: "#2563EB",
+  crime: "#DC2626",
+  disaster: "#F97316",
+  suspicious: "#C0267E",
+  other: "#475569",
+}
+
 const getDangerTypeMarkerClass = (dangerType: string) =>
   DANGER_TYPE_LABELS[dangerType]
     ? `danger-marker-${dangerType}`
@@ -37,6 +51,17 @@ const getDangerTypeMarkerClass = (dangerType: string) =>
 
 const getDangerTypeLabel = (dangerType: string) =>
   DANGER_TYPE_LABELS[dangerType] ?? DANGER_TYPE_LABELS.other
+
+const getDangerTypeColor = (dangerType: string) =>
+  DANGER_TYPE_COLORS[dangerType] ?? DANGER_TYPE_COLORS.other
+
+const getDangerTypeIcon = (dangerType: string): ElementType => {
+  if (dangerType === "traffic") return Car
+  if (dangerType === "crime") return Shield
+  if (dangerType === "disaster") return AlertTriangle
+  if (dangerType === SUSPICIOUS_DANGER_TYPE) return UserX
+  return HelpCircle
+}
 
 interface UseDangerMarkersParams {
   mapRef: MutableRefObject<mapboxgl.Map | null>
@@ -87,7 +112,9 @@ export function useDangerMarkers({
     const removeRenderedMarkers = () => {
       for (const { marker, unmount } of markerResources.splice(0)) {
         marker.remove()
-        unmount?.()
+        // zoomend は React の描画と同じフレームで発火することがあるため、
+        // root の破棄を microtask に送り同期 unmount 警告を避ける。
+        if (unmount) queueMicrotask(unmount)
       }
     }
 
@@ -103,26 +130,35 @@ export function useDangerMarkers({
       markerElement.setAttribute("tabindex", "0");
       markerElement.setAttribute(
         "aria-label",
-        `${getDangerTypeLabel(report.danger_type)}の危険報告${isPending ? "（確認中）" : ""}。詳細を開きます`,
+        `${getDangerTypeLabel(report.danger_type)}の危険報告${isPending ? "（確認中）" : ""}。あぶなさ${getDangerLevelPresentation(report.danger_level).kidLabel}。詳細を開きます`,
       );
 
-      // Render icon inside marker
+      // カテゴリは大きなピクトグラムと色、危険度は外周リングの本数で分離して示す。
       const root = createRoot(markerElement);
-      let IconComponent: ElementType = HelpCircle;
-      if (report.danger_type === "traffic") IconComponent = Car;
-      else if (report.danger_type === "crime") IconComponent = Shield;
-      else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
-      else if (report.danger_type === SUSPICIOUS_DANGER_TYPE) IconComponent = UserX;
-      const backgroundColor = getDangerLevelPresentation(report.danger_level).colorHex;
+      const IconComponent = getDangerTypeIcon(report.danger_type);
+      const categoryColor = getDangerTypeColor(report.danger_type);
+      const dangerLevel = getDangerLevelPresentation(report.danger_level).level;
       root.render(
-        <span className="danger-pin-visual" aria-hidden="true">
+        <span
+          className="danger-pin-visual"
+          style={{ "--danger-category-color": categoryColor } as CSSProperties}
+          aria-hidden="true"
+        >
+          <span className="danger-severity-halo">
+            {Array.from({ length: dangerLevel }, (_, index) => (
+              <Circle
+                className={`danger-severity-ring danger-severity-ring-${index + 1}`}
+                key={index}
+              />
+            ))}
+          </span>
           <MapPin
             className="danger-pin-shape"
-            fill={backgroundColor}
+            fill={categoryColor}
             stroke="white"
-            strokeWidth={1.8}
+            strokeWidth={2.6}
           />
-          <IconComponent className="danger-pin-icon" strokeWidth={2.4} />
+          <IconComponent className="danger-pin-icon" strokeWidth={2.8} />
         </span>,
       );
 
@@ -159,9 +195,24 @@ export function useDangerMarkers({
     ) => {
       // クラスタ色はメンバー中の最大危険度(安全側: 最悪ケースを見せる)
       const maxLevel = Math.max(...entries.map((entry) => entry.report.danger_level));
-      const presentation = getDangerLevelPresentation(maxLevel);
       const count = entries.length;
-      const size = Math.min(48, 32 + count * 2);
+      const size = Math.min(58, 44 + count * 2);
+      const categoryPresentations = Array.from(
+        new Map(
+          entries.map(({ report }) => {
+            const dangerType = DANGER_TYPE_LABELS[report.danger_type]
+              ? report.danger_type
+              : "other"
+            return [
+              dangerType,
+              {
+                Icon: getDangerTypeIcon(dangerType),
+                color: getDangerTypeColor(dangerType),
+              },
+            ] as const
+          }),
+        ).values(),
+      ).slice(0, 3)
 
       const markerElement = document.createElement("div");
       markerElement.className = "danger-cluster-marker";
@@ -177,22 +228,29 @@ export function useDangerMarkers({
       root.render(
         <span className="danger-cluster-visual" aria-hidden="true">
           <MapPin
-            className="danger-cluster-pin danger-cluster-pin-back"
-            fill={presentation.colorHex}
-            stroke="white"
-            strokeWidth={1.5}
+            className="danger-cluster-pin"
+            fill="#FFFDF7"
+            stroke={getDangerLevelPresentation(maxLevel).colorHex}
+            strokeWidth={2.2}
           />
-          <MapPin
-            className="danger-cluster-pin danger-cluster-pin-front"
-            fill={presentation.colorHex}
-            stroke="white"
-            strokeWidth={1.8}
-          />
+          <span className="danger-cluster-categories">
+            {categoryPresentations.map(({ Icon, color }, index) => (
+              <span
+                className={`danger-cluster-category danger-cluster-category-${index + 1}`}
+                style={{ backgroundColor: color }}
+                key={`${color}-${index}`}
+              >
+                <Icon strokeWidth={3} />
+              </span>
+            ))}
+          </span>
           <span className="danger-cluster-count">{count}</span>
         </span>,
       );
 
-      const marker = new mapboxgl.Marker(markerElement).setLngLat(lngLat).addTo(map);
+      const marker = new mapboxgl.Marker({ element: markerElement, anchor: "bottom" })
+        .setLngLat(lngLat)
+        .addTo(map);
       markerResources.push({ marker, unmount: () => root.unmount() })
 
       const expandCluster = () => {

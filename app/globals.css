@@ -326,10 +326,10 @@
   }
 }
 
-/* 危険報告マーカー: 種類アイコンを内包したピン型 */
+/* 危険報告マーカー: カテゴリは大きなピクトグラム、危険度は外周リング */
 .danger-marker {
-  width: 36px;
-  height: 42px;
+  width: 76px;
+  height: 68px;
   box-sizing: border-box;
   cursor: pointer;
   position: relative;
@@ -339,27 +339,58 @@
 .danger-pin-visual {
   position: relative;
   display: block;
-  width: 36px;
-  height: 42px;
+  width: 76px;
+  height: 68px;
 }
 
 .danger-pin-shape {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 0;
   display: block;
-  width: 36px;
-  height: 42px;
-  filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.32));
+  width: 48px;
+  height: 56px;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 5px rgba(15, 23, 42, 0.36));
 }
 
 .danger-pin-icon {
   position: absolute;
-  top: 8px;
+  z-index: 3;
+  top: 17px;
   left: 50%;
-  width: 15px;
-  height: 15px;
+  width: 27px;
+  height: 27px;
   color: #fff;
   transform: translateX(-50%);
   pointer-events: none;
 }
+
+.danger-severity-halo {
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.danger-severity-ring {
+  position: absolute;
+  left: 50%;
+  top: 25px;
+  color: var(--danger-category-color, #475569);
+  opacity: 0.9;
+  stroke-width: 2.5;
+  transform: translate(-50%, -50%);
+}
+
+.danger-severity-ring-1 { width: 54px; height: 54px; }
+.danger-severity-ring-2 { width: 60px; height: 60px; opacity: 0.78; }
+.danger-severity-ring-3 { width: 66px; height: 66px; opacity: 0.66; }
+.danger-severity-ring-4 { width: 72px; height: 72px; opacity: 0.54; }
 
 .danger-marker:hover,
 .danger-marker:focus-visible {
@@ -384,7 +415,7 @@
   animation: pending-pin-pulse 2s ease-in-out infinite;
 }
 
-.pending-marker .danger-pin-shape {
+.pending-marker .danger-severity-ring {
   stroke-dasharray: 3 2;
 }
 
@@ -393,7 +424,7 @@
   50% { opacity: 1; }
 }
 
-/* クラスタは件数と「複数ピン」を同時に示す */
+/* クラスタは紙色の大ピン＋含まれるカテゴリのミニアイコンで示す */
 .danger-cluster-marker {
   width: var(--cluster-size, 40px);
   height: var(--cluster-size, 40px);
@@ -412,31 +443,47 @@
 
 .danger-cluster-pin {
   position: absolute;
-  width: 82%;
-  height: 96%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.28));
 }
 
-.danger-cluster-pin-back {
-  top: 0;
-  left: 0;
-  opacity: 0.68;
+.danger-cluster-categories {
+  position: absolute;
+  z-index: 2;
+  top: -8px;
+  left: 50%;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
 }
 
-.danger-cluster-pin-front {
-  right: 0;
-  bottom: 0;
+.danger-cluster-category {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.28);
+}
+
+.danger-cluster-category svg {
+  width: 10px;
+  height: 10px;
 }
 
 .danger-cluster-count {
   position: absolute;
-  top: 38%;
-  left: 56%;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
+  z-index: 3;
+  top: 40%;
+  left: 50%;
+  color: #43392b;
+  font-size: 16px;
+  font-weight: 900;
   line-height: 1;
-  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.4);
   transform: translate(-50%, -50%);
 }
 
