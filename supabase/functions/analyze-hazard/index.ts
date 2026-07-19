@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4"
+import { buildAnthropicModelCandidates } from "./model-config.ts"
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")
@@ -31,21 +32,26 @@ const ALLOWED_ORIGINS = (() => {
 const ALLOWED_IMAGE_HOSTS = parseCsvEnv(Deno.env.get("VLM_ALLOWED_IMAGE_HOSTS")).map((host) =>
   host.toLowerCase()
 )
-const DEFAULT_ANTHROPIC_MODELS = [
-  "claude-3-5-haiku-latest",
-  "claude-3-5-haiku-20241022",
-  "claude-3-haiku-20240307",
-]
-const ANTHROPIC_MODEL_CANDIDATES = (() => {
-  const fromSingle = (Deno.env.get("ANTHROPIC_MODEL") ?? "").trim()
-  const fromList = parseCsvEnv(Deno.env.get("ANTHROPIC_MODEL_CANDIDATES"))
-  const merged = [
-    ...(fromSingle ? [fromSingle] : []),
-    ...fromList,
-    ...DEFAULT_ANTHROPIC_MODELS,
-  ]
-  return [...new Set(merged.filter((value) => value.length > 0))]
+const ANTHROPIC_MODEL_CANDIDATES = buildAnthropicModelCandidates(
+  Deno.env.get("ANTHROPIC_MODEL"),
+  parseCsvEnv(Deno.env.get("ANTHROPIC_MODEL_CANDIDATES")),
+)
+const DEFAULT_MAX_ANALYSIS_IMAGE_BYTES = 5 * 1024 * 1024
+const MAX_ANALYSIS_IMAGE_BYTES = (() => {
+  const configured = Number(
+    Deno.env.get("VLM_MAX_ANALYSIS_IMAGE_BYTES") ?? String(DEFAULT_MAX_ANALYSIS_IMAGE_BYTES)
+  )
+  if (!Number.isFinite(configured) || configured <= 0) {
+    return DEFAULT_MAX_ANALYSIS_IMAGE_BYTES
+  }
+  return Math.floor(configured)
 })()
+const SUPPORTED_ANTHROPIC_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+])
 
 const HAZARD_CATEGORIES = new Set([
   "traffic",
@@ -258,6 +264,106 @@ function validateImageUrl(imageUrl: string): string | null {
   }
 
   return null
+}
+
+interface PreparedImageForAnthropic {
+  mediaType: string
+  data: string
+}
+
+function normalizeImageContentType(contentType: string | null): string | null {
+  if (!contentType) {
+    return null
+  }
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase()
+  if (!normalized) {
+    return null
+  }
+  const mediaType = normalized === "image/jpg" ? "image/jpeg" : normalized
+  return SUPPORTED_ANTHROPIC_IMAGE_TYPES.has(mediaType) ? mediaType : null
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000
+  let binary = ""
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize)
+    binary += String.fromCharCode(...chunk)
+  }
+  return btoa(binary)
+}
+
+async function prepareImageForAnthropic(
+  imageUrl: string,
+  signal: AbortSignal
+): Promise<
+  | { ok: true; image: PreparedImageForAnthropic }
+  | { ok: false; statusCode: number; error: string }
+> {
+  let imageResponse: Response
+  try {
+    imageResponse = await fetch(imageUrl, { method: "GET", signal })
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error
+    }
+    console.error("Failed to fetch image for analysis:", error)
+    return {
+      ok: false,
+      statusCode: 502,
+      error: "Failed to fetch image for AI analysis",
+    }
+  }
+
+  if (!imageResponse.ok) {
+    return {
+      ok: false,
+      statusCode: imageResponse.status >= 500 ? 502 : 400,
+      error: `image_url could not be fetched (${imageResponse.status})`,
+    }
+  }
+
+  const mediaType = normalizeImageContentType(imageResponse.headers.get("content-type"))
+  if (!mediaType) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: "Unsupported image format. Use JPEG, PNG, GIF, or WebP",
+    }
+  }
+
+  const contentLength = Number(imageResponse.headers.get("content-length") || "0")
+  if (contentLength > MAX_ANALYSIS_IMAGE_BYTES) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: `Image is too large for AI analysis (max ${MAX_ANALYSIS_IMAGE_BYTES} bytes)`,
+    }
+  }
+
+  const bytes = new Uint8Array(await imageResponse.arrayBuffer())
+  if (bytes.length === 0) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: "Image data is empty",
+    }
+  }
+  if (bytes.length > MAX_ANALYSIS_IMAGE_BYTES) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: `Image is too large for AI analysis (max ${MAX_ANALYSIS_IMAGE_BYTES} bytes)`,
+    }
+  }
+
+  return {
+    ok: true,
+    image: {
+      mediaType,
+      data: bytesToBase64(bytes),
+    },
+  }
 }
 
 function isString(value: unknown, maxLength: number): value is string {
@@ -514,6 +620,12 @@ serve(async (req) => {
     let selectedModel = ""
 
     try {
+      const preparedImage = await prepareImageForAnthropic(imageUrl, abortController.signal)
+      if (!preparedImage.ok) {
+        return jsonResponse({ error: preparedImage.error }, preparedImage.statusCode, corsHeaders)
+      }
+      const anthropicImage = preparedImage.image
+
       for (const model of ANTHROPIC_MODEL_CANDIDATES) {
         selectedModel = model
         claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -534,8 +646,9 @@ serve(async (req) => {
                 {
                   type: "image",
                   source: {
-                    type: "url",
-                    url: imageUrl,
+                    type: "base64",
+                    media_type: anthropicImage.mediaType,
+                    data: anthropicImage.data,
                   },
                 },
                 {

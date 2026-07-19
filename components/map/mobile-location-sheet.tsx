@@ -9,7 +9,7 @@ interface MobileLocationSheetProps {
   selectedLocation: [number, number] | null
   /** 地点が選択済みのときの「やめる」（地点選択解除＋ピン/選択のクリア） */
   onCancelWithLocation: () => void
-  /** 「ここで おしらせを かく」（フォームを開く） */
+  /** 「この場所を報告する」（フォームを開く） */
   onConfirm: () => void
   /** 地点未選択のときの「やめる」（地点選択モードの解除のみ） */
   onCancelWaiting: () => void
@@ -70,7 +70,7 @@ export function MobileLocationSheet({
                   className="chunky-press h-[52px] flex-[2] rounded-full border-2 text-[15px] font-black text-white"
                   style={{ background: "#159E72", borderColor: "rgba(67,57,43,.18)", boxShadow: "0 4px 0 #0C7A55" }}
                 >
-                  ここで おしらせを かく
+                  この場所を報告する
                 </button>
               </div>
             </div>
