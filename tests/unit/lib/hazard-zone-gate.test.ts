@@ -5,9 +5,12 @@ import {
   getHazardGateMode,
   getHazardGateReason,
   logHazardGateVerdict,
+  parseHazardPoint,
+  queryAndLogHazardGate,
   queryHazardGate,
   resolveHazardGate,
   shouldRejectHazardGate,
+  type HazardGateClient,
   type HazardGateLogClient,
   type HazardGateRpcClient,
   type HazardZoneRpcRow,
@@ -160,6 +163,85 @@ describe("queryHazardGate", () => {
   })
 })
 
+describe("parseHazardPoint", () => {
+  it("parses finite form values without turning missing fields into zero", () => {
+    expect(parseHazardPoint("140.74", "40.82")).toEqual(point)
+    expect(parseHazardPoint(null, null)).toBeNull()
+    expect(parseHazardPoint("", "")).toBeNull()
+    expect(parseHazardPoint("Infinity", "40.82")).toBeNull()
+  })
+})
+
+describe("queryAndLogHazardGate", () => {
+  it("does not touch RPC or logging clients in off mode", async () => {
+    const rpc = vi.fn()
+    const from = vi.fn()
+    const client = { rpc, from } as unknown as HazardGateClient
+
+    await expect(queryAndLogHazardGate(client, {
+      route: "generate-image",
+      mode: "off",
+      situation: "flood",
+      point,
+      userId: "user-1",
+      hazardType: "flood",
+    })).resolves.toEqual({ kind: "unavailable" })
+    expect(rpc).not.toHaveBeenCalled()
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it("logs missing coordinates as unavailable without calling RPC", async () => {
+    const rpc = vi.fn()
+    const insert = vi.fn(async () => ({ error: null }))
+    const client: HazardGateClient = {
+      rpc,
+      from: vi.fn(() => ({ insert })),
+    }
+
+    await expect(queryAndLogHazardGate(client, {
+      route: "generate-prompts",
+      mode: "enforce",
+      situation: "flood",
+      point: null,
+      userId: "user-1",
+      hazardType: "flood",
+    })).resolves.toEqual({ kind: "unavailable" })
+    expect(rpc).not.toHaveBeenCalled()
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      verdict: "unavailable",
+      lat_rounded: null,
+      lng_rounded: null,
+    }))
+  })
+
+  it("queries and writes one audit verdict through the shared helper", async () => {
+    const insert = vi.fn(async () => ({ error: null }))
+    const client: HazardGateClient = {
+      rpc: vi.fn(async (name: string) => name === "get_hazard_zones_at_point"
+        ? { data: [zone()], error: null }
+        : { data: true, error: null }),
+      from: vi.fn(() => ({ insert })),
+    }
+
+    const verdict = await queryAndLogHazardGate(client, {
+      route: "generate-prompts",
+      mode: "log",
+      situation: "flood",
+      point,
+      userId: "user-1",
+      hazardType: "flood",
+      toleranceMeters: 0,
+    })
+
+    expect(verdict.kind).toBe("inside")
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      route: "generate-prompts",
+      mode: "log",
+      verdict: "inside",
+    }))
+  })
+})
+
 describe("getHazardGateMessage", () => {
   it("keeps outside distinct from a safety guarantee", () => {
     expect(getHazardGateMessage({ kind: "outside" }, "flood")).toContain(
@@ -269,6 +351,28 @@ describe("logHazardGateVerdict", () => {
       latencyMs: 1,
     })
     expect(insert).toHaveBeenCalledOnce()
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it("does not block the request when audit logging stalls", async () => {
+    const insert = vi.fn(() => new Promise<{ error: unknown }>(() => undefined))
+    const client: HazardGateLogClient = {
+      from: vi.fn(() => ({ insert })),
+    }
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    await expect(logHazardGateVerdict(client, {
+      route: "generate-image",
+      mode: "log",
+      situation: "flood",
+      verdict: { kind: "unavailable" },
+      point,
+      userId: "user-1",
+      latencyMs: 1,
+      timeoutMs: 5,
+    })).resolves.toBeUndefined()
+
     expect(consoleError).toHaveBeenCalled()
     consoleError.mockRestore()
   })

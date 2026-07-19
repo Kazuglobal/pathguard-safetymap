@@ -144,22 +144,22 @@ create policy "hazard_zone_coverage_select_authenticated" on public.hazard_zone_
 リクエストを「クライアントがハザード属性を申告する」形から「**座標だけ渡してサーバが導出する**」形へ変更する。
 
 ```
-旧: { hazardType, riskLevel, depthMinMeters, depthMaxMeters, areaContext, scenarioKey, locationLabel }
-新: { hazardType, longitude, latitude, scenarioKey }
+移行中: { hazardType, riskLevel, depthMinMeters, depthMaxMeters, areaContext, scenarioKey, locationLabel, longitude, latitude }
+enforce 安定後: { hazardType, longitude, latitude, scenarioKey }
 ```
 
 サーバ処理（`app/api/hazard/image/route.ts` 改修）:
 
-1. 認証（既存） → **レート制限追加**（§6.3）
-2. `HAZARD_ZONE_GATE_MODE` が `off` の場合のみ旧動作（後方互換の移行期間用）
+1. 認証（既存）
+2. `HAZARD_ZONE_GATE_MODE` が `off` の場合は旧属性だけで処理し、ゾーンRPC・ゲートログを一切呼ばない（後方互換の移行期間用）
 3. `supabaseAdmin.rpc("get_hazard_zones_at_point", { lon, lat, hazardType, toleranceM: 30 })` → `resolveHazardGate`
 4. `inside` 以外は **422** `{ error, reason: "outside" | "no_coverage" | "unavailable" }`（reason別メッセージは§2.8）
-5. `riskLevel / depth / areaContext` は**ゾーン行から導出**（クライアント値は受け取らない。送られてきても無視）
+5. `enforce` では `riskLevel / depth / areaContext` を**ゾーン行から導出**（クライアント値は送られてきても無視）
 6. `scenarioKey` は導出した `areaContext` に対する `getHazardScenarioOptions` 検証（既存ロジック流用）
 7. `locationLabel` はリクエストから廃止し、サーバが導出 `areaContext` から現行クライアントと**同一書式**の `` `${area_label} in Japan` ``（`map-container.tsx:957` と同じ）を決定的に組み立てる（P3のプロンプトインジェクション面を閉じつつ、プロンプト文字列＝`prompt_signature` を変えない）
-8. 以降のキャッシュ・生成・保存は既存のまま。**レビュー指摘の反映**: `prompt_signature` は md5(プロンプト全文)（`route.ts:20-22`）であり書式を変えると既存キャッシュが全ミスして再生成スパイクになる。手順7の「書式維持」を仕様とすることで既存 `hazard_image_cache` エントリを引き続きヒットさせる
+8. キャッシュヒットはそのまま返し、キャッシュミス時だけレート制限を消費して生成・保存へ進む。**レビュー指摘の反映**: `prompt_signature` は md5(プロンプト全文)（`route.ts:20-22`）であり書式を変えると既存キャッシュが全ミスして再生成スパイクになる。手順7の「書式維持」を仕様とすることで既存 `hazard_image_cache` エントリを引き続きヒットさせる
 
-クライアント（`map-container.tsx:937-977` `handleGenerateHazardImage`）は `activeHazardMarker.coordinates` を送るだけに簡素化。マーカー自体がゾーン交差由来のため、正常系のUX変化はゼロ。
+クライアント（`map-container.tsx` `handleGenerateHazardImage`）は移行中、旧属性と `activeHazardMarker.coordinates` を併送する。`off` はRPC・ログを呼ばず旧属性だけを使用し、`log` は判定結果を記録しても旧属性で現行動作を維持し、`enforce` だけが座標からサーバ導出する。enforce の安定運用後に旧属性を削除する。
 
 **境界許容誤差（レビュー指摘の反映）**: マーカー座標はゾーン**境界上**の点（`st_closestpoint` = `20260307193000` SQL:134）であり、§2.9 のジオメトリ簡略化（~5m）や座標の浮動小数往復により厳密な点包含判定から外れうる。System B の再判定は `p_tolerance_m = 30` で呼び、正当なマーカーが 422 になる誤拒否を防ぐ。System A（ユーザーが任意選択した地点）は `0`＝厳密判定。
 
@@ -167,10 +167,10 @@ create policy "hazard_zone_coverage_select_authenticated" on public.hazard_zone_
 
 **前提の明確化（レビュー指摘①の反映）**: System A の「冠水」は実装上、**水深15〜20cm・足首〜すね丈の浅い道路冠水（内水）表現に固定**されている（フォールバック = `lib/disaster-image-prompt-fallbacks.ts:26-27`「Do NOT show deep water, submerged cars」、LLM生成指示 = `lib/gemini-prompts.ts:179`）。これは A31（河川氾濫＝外水）/ A40（津波）の浸水想定とは物理現象が異なり、浅い内水冠水自体は想定区域外の低地でも起こりうる。それでも本設計は**製品判断として「冠水シミュは洪水ハザードゾーン内に限定」する**: 冠水画像が特定地点に紐づいて公開される以上、「公的な浸水想定のある場所」に限定することが本機能の信頼性要件（ユーザー要望そのもの）だからである。この判断で失われる正当なユースケース（区域外の内水冠水）は、**内水浸水想定データ（GSI「重ねるハザードマップ」内水レイヤー / 自治体公表データ）を `hazard_zones` に `hazard_type='flood', source_layer='naisui'` として追加取り込みする**ことで回復する（Phase 0 の対象データに含めてよい。ゲートはゾーン和集合で判定するため設計変更不要）。
 
-ゲート対象の境界（自己矛盾を残さないための定義）: ゲートの単位は **situation**（「冠水シミュ画像を生成するか」）であり、プロンプト文中の水表現ではない。
+ゲート対象の境界（自己矛盾を残さないための定義）: 通常経路では **situation** を単位とし、偽装・誤分類対策として浸水系キーワードを含むリクエストも flood 判定へ昇格する。
 
-- **ゲートする**: `situation === 'flood'` の全生成経路 — ①解析バッチ内の Gemini flood シミュ（`danger-report-form.tsx:754-808`、flood プロンプト適用 `:782`） ②Canvas簡易 flood オーバーレイ（`simulateVariant('flood')` `:561-568`、バッチ `:688-696`） ③`regenerateSituation` の flood（`:836-941`） ④一括生成の flood
-- **ゲートしない**: 他 situation・11種対象者別プロンプトに**付随する**雨天・水たまり・側溝の表現（例: `lib/disaster-scenario-prompts.ts:283` は水たまりレベルの上限を自ら課している）。これらは冠水シミュ画像の生成ではなく写真解説の一部。earthquake / typhoon / fire も対象外
+- **ゲートする**: `situation === 'flood'` の全生成経路 — ①解析バッチ内の Gemini flood シミュ（`danger-report-form.tsx:754-808`、flood プロンプト適用 `:782`） ②Canvas簡易 flood オーバーレイ（`simulateVariant('flood')` `:561-568`、バッチ `:688-696`） ③`regenerateSituation` の flood（`:836-941`） ④一括生成の flood。対象者別のサーバ管理プロンプトは本文検索ではなく `requiresFloodGate` メタデータで判定し、実際に15〜20cm冠水を描く `parent-1` だけを対象にする
+- **ゲートしない**: 他 situation・対象者別プロンプトに**付随する**雨天・水たまり・側溝の表現、禁止事項としての「津波・洪水を描かない」、ハザード注記の「冠水注意」ラベル。これらは冠水シミュ画像の生成ではなく写真解説・否定・注記である
 - 津波は System A に存在しない（situation に tsunami はない）ため、System A のゲートは flood のみ
 
 実装:
@@ -179,15 +179,13 @@ create policy "hazard_zone_coverage_select_authenticated" on public.hazard_zone_
 
 - `/api/gemini/generate-image` は enforce モードで **`situation` を必須化**する（`viz | earthquake | typhoon | flood | fire | accident | custom` のいずれか。欠落は400）。全呼び出し箇所（上記3経路 + `app/tools/image-gen/page.tsx`）を**同一フェーズで改修**して situation を送る
 - `situation === 'flood'` → 座標必須（無ければ400）→ ゲート判定 → `inside` 以外は 422。他の situation は座標不要
-- **浸水系キーワード検査（Phase 3 に含める。レビュー指摘②による前倒し）**: `situation !== 'flood'` のリクエストで prompt に浸水系キーワード（`浸水 / 洪水 / 津波 / flood / tsunami / inundation` の狭いリスト。「水たまり」等の日常語は含めない）が含まれる場合は 422。situation 偽装による洪水プロンプト送信の主経路を塞ぐ。誤検知はゲートログ（§8）で監視し、リストはコード定数で管理する
+- **浸水系キーワード検査（Phase 3 に含める。レビュー指摘②による前倒し）**: 自由入力 prompt の肯定的な浸水描写要求（`浸水 / 冠水 / 洪水 / 津波 / flood / flooded / flooding / tsunami / inundation` の狭いリスト。「水たまり」等の日常語は含めない）は `situation` にかかわらず座標必須の flood 判定へ昇格する。禁止・否定節（`do not ... flood` / `津波は描かない` 等）と注記文脈（overlay / label / legend / `注意ラベル` 等）は誤検知対象から除く。区域内なら正当な要求を許可し、区域外・未整備・判定不能だけを422にする
+- `custom` は enforce 時にサーバ管理 `promptId` を必須とし、クライアントが送った prompt 本文を使用しない。管理プロンプトは本文キーワードではなくレビュー済み `requiresFloodGate` メタデータで判定する
 - 残存リスク（明記）: キーワードに該当しない婉曲表現での洪水的画像は完全には防げない。本ゲートの目的は「通常UIから信頼性を損なう画像が作られない」ことであり、敵対的利用はレート制限＋認証＋ゲートログで監視する
 
-**generate-prompts 側（レビュー指摘③の反映）**: 座標が渡され flood ゾーン外なら、レスポンスの `simulationPrompts.flood` を `null` にする（クライアントに flood 生成の材料を渡さない）。この変更は**クライアント型の変更を伴う**: 現行の型は非null string（`lib/gemini-prompts.ts:81-87`、受け側 `danger-report-form.tsx:650, 879`）であり、null をそのままバッチへ流すと `FormData.append('prompt', null)` が文字列 `"null"` へ強制変換され、サーバ検証（`generate-image/route.ts:44,68`）を通過して**ゴミプロンプトで生成が走る**。よって同時に: ①型を `string | null` へ変更 ②バッチ・再生成は flood プロンプトが null なら flood 変種を組み立てずスキップ ③`generate-image` サーバ側に空文字・リテラル `"null"` プロンプトの拒否を追加（防御の重層化）
+**generate-prompts 側（レビュー指摘③の反映）**: enforce 時は座標なし、区域外、未整備、判定不能のすべてでレスポンスの `simulationPrompts.flood` を `null` にする（クライアントに flood 生成の材料を渡さない）。外側の例外フォールバックでも同じ null 化を維持する。この変更は**クライアント型の変更を伴う**: 現行の型は非null string（`lib/gemini-prompts.ts:81-87`、受け側 `danger-report-form.tsx:650, 879`）であり、null をそのままバッチへ流すと `FormData.append('prompt', null)` が文字列 `"null"` へ強制変換され、サーバ検証（`generate-image/route.ts:44,68`）を通過して**ゴミプロンプトで生成が走る**。よって同時に: ①型を `string | null` へ変更 ②バッチ・再生成は flood プロンプトが null なら flood 変種を組み立てずスキップ ③`generate-image` サーバ側に空文字・リテラル `"null"` プロンプトの拒否を追加（防御の重層化）
 
-**UI側（体験層）**: 位置選択時（`selectedLocation` 確定時）にクライアントから `get_hazard_zones_at_point` を1回呼び、結果を state に保持。
-
-- `inside`: シチュエーションボタン「冠水」を通常表示。位置バッジ「🌊 洪水浸水想定区域内（想定最大浸水深 {depthLabel}）」を表示（信頼性の裏付けを見せる）
-- `outside` / `no_coverage` / `unavailable`: 「冠水」ボタンを disabled + 理由ツールチップ。バッチから flood 変種（Gemini・Canvas とも）を除外（4変種→3変種）
+**UI側（体験層）**: Phase 3 のデータ投入前にブラウザから直接RPCを呼ばない。`generate-prompts` のサーバ判定結果（`simulationPrompts.flood`）だけを信頼し、明示的な `null` の時だけ「冠水」を disabled にしてバッチから flood 変種を除外する。`off` では従来どおり有効。区域内バッジ・浸水深表示は全国データ投入後のUIフェーズへ延期する。
 - クライアント判定はUX用。最終強制はAPI側の situation 必須化＋ゲート＋キーワード検査
 
 ### 2.7 プロンプトの真実性強化（区域内で生成する場合）
@@ -243,6 +241,7 @@ create policy "hazard_zone_coverage_select_authenticated" on public.hazard_zone_
 
 - 実体は**交通事故のみ**（水難・防犯等の「事故」データは存在しない）。したがって事故データ活用の対象は交通系の画像生成に限定し、洪水・津波画像（System B）には使わない
 - スキーマの正は `lib/database.types.ts:1411-1524`（`traffic_accidents` の CREATE TABLE マイグレーションはリポジトリ未収録）。集計は `get_nearby_accident_stats` RPC（半径検索 <100ms）だが、**このRPC定義もマイグレーション未収録（DB直デプロイ）**
+- 収録する SECURITY DEFINER RPC は暗黙の `PUBLIC` 実行権を剥奪し、既存公開画面に必要な `anon` を明示的に残す代わりに、緯度経度を検証し半径を1〜1000m・年数を1〜10年へ制限する（通常利用は300m・5年）
 - 年窓は 2018〜2024 にアンカー補正が必要（`lib/accident-stats-year-window.ts:1-3` + `adjustYearsForAccidentDataset`）
 - `danger_reports.accident_stats / accident_risk_score` に投稿地点周辺の統計をキャッシュする経路が既にある（`enrichReportWithAccidents` = `lib/traffic-accident-data.ts:254`）
 
@@ -307,19 +306,19 @@ export function buildAccidentPromptContext(stats: AccidentStats | null): string 
 | ルート | 変更 |
 |---|---|
 | `POST /api/hazard/image` | リクエスト形状変更（§2.5）: 座標ベース化・サーバ導出・422応答・`locationLabel` 廃止・レート制限追加 |
-| `POST /api/gemini/generate-prompts` | `longitude? / latitude?` 追加。flood 区域外で `simulationPrompts.flood = null`（型を `string \| null` 化しクライアントのスキップ処理とセットで変更。§2.6）。事故コンテキスト注入（§3.4）。レート制限追加 |
-| `POST /api/gemini/generate-image` | **`situation` 必須化（enforce時）** + `longitude? / latitude?` 追加。`flood` / `accident` はゲート強制（422）。浸水系キーワード検査・空/`"null"` プロンプト拒否。全呼び出し箇所の改修を同一フェーズで実施。レート制限追加 |
+| `POST /api/gemini/generate-prompts` | `longitude? / latitude?` 追加。enforce では座標なしを含む inside 以外で `simulationPrompts.flood = null`（型を `string \| null` 化しクライアントのスキップ処理とセットで変更。§2.6）。事故コンテキスト注入（§3.4）。レート制限追加 |
+| `POST /api/gemini/generate-image` | **`situation` 必須化（enforce時）** + `longitude? / latitude?` 追加。`flood` / 浸水キーワード / `accident` はゲート強制（422）。`custom` はサーバ管理 `promptId` 必須。空/`"null"` プロンプト拒否。全呼び出し箇所の改修を同一フェーズで実施。レート制限追加 |
 | （新規モジュール） | `lib/hazard-zone-gate.ts`（4値判定・文言一元化）/ `lib/accident-prompt-context.ts`（純関数） |
-| （クライアント） | `danger-report-form.tsx`: 位置選択時ゾーン判定・冠水/じこデータ活性制御・バッチから flood 除外分岐。`map-container.tsx`: 座標送信化 |
+| （クライアント） | `danger-report-form.tsx`: サーバが null 化した時の冠水/じこデータ活性制御・失敗を個別隔離したバッチ生成。`map-container.tsx`: 移行中は旧属性+座標を併送 |
 | （スクリプト） | `scripts/import-hazard-zones.ts`: coverage upsert 対応（`--region` `--source` 追加） |
 
-後方互換: System B の旧リクエスト形式は `HAZARD_ZONE_GATE_MODE=off` の間のみ受理。クライアントとAPIは同一デプロイで切り替わるため、移行期間後に旧形式パースを削除する。`app/tools/image-gen/page.tsx`（自由入力ツール）は位置概念がなくレポートに紐づかないため本ゲートのスコープ外とするが、flood/fire等プリセット出力に「教育用の想像図であり実在地点の浸水想定ではありません」の注記を追加する。
+後方互換: System B の旧属性は `HAZARD_ZONE_GATE_MODE=off` で使用し、`log` の判定不能時にもフェイルオープン用として使用する。移行期間後に旧形式パースを削除する。`app/tools/image-gen/page.tsx` の flood プリセットは位置を必須化し、`situation='flood'` と座標を送る。水を描かず注意ラベルだけを重ねるハザード可視化は `situation='viz'` として区別する。
 
 ## 5. DB / RLS 設計まとめ
 
 新規マイグレーション1本（＋スナップショット1本）:
 
-1. `get_hazard_zones_at_point` RPC（§2.2。security invoker / authenticated grant）
+1. `get_hazard_zones_at_point` RPC（§2.2。security invoker / authenticated + service_role grant）
 2. `hazard_zone_coverage` テーブル + GiST + SELECT RLS（§2.4。書き込みは service_role のみ＝ポリシー無し）
 3. `image_generation_gate_log`（§8。運用上 append-only＝サービスコードは INSERT のみ。DB制約での強制はしない。service_role のみアクセス＝ポリシー無し）
 4. （別ファイル）`get_nearby_accident_stats` の現行定義スナップショット（§3.1）
@@ -351,7 +350,7 @@ export function buildAccidentPromptContext(stats: AccidentStats | null): string 
 
 既存の Upstash リミッタ（`lib/upstash-rate-limiter.ts`）を3ルートへ適用する。**既存エクスポートは `checkApiRateLimit`（60回/60秒 `:62`）と `checkGeminiRateLimit`（10回/60秒）のみで、画像生成向けの窓は存在しない**（内部 `checkLimit` `:36` は未エクスポート）。よって内部 `checkLimit` を流用した新エクスポート `checkImageGenerationRateLimit` を追加する。目安（環境変数で調整可能に）:
 
-- `/api/gemini/generate-image`・`/api/hazard/image`: `checkImageGenerationRateLimit` = **10回 / 5分 / ユーザー**（画像生成は高コスト。正常UIのバッチ生成=最大4枚+リトライが1操作で収まる値）
+- `/api/gemini/generate-image`・`/api/hazard/image`: `checkImageGenerationRateLimit` = **20回 / 5分 / ユーザー**（通常の自動生成5件 + 全プロンプト一括生成最大14件を同じ窓で完走可能）。`/api/hazard/image` はキャッシュミス時だけ消費する
 - `/api/gemini/generate-prompts`: `checkApiRateLimit`（既存 60回/60秒）で足りる
 
 Upstash 未設定環境では既存実装の挙動（スキップ）に従い、ゲート本体には影響させない。
@@ -407,7 +406,7 @@ create table public.image_generation_gate_log (
 
 ## 10. コスト・レイテンシ見積もり方針
 
-- ゾーン判定RPC: GiST点包含で数ms。生成1回あたりRPC1回、位置選択1回あたりクライアント判定1回の追加。体感影響なし
+- ゾーン判定RPC: GiST点包含で数ms。生成1回あたりRPC1回。ブラウザからの位置選択時RPCはデータ投入後まで行わない
 - 事故統計RPC: 実測 <100ms（既存ガイド値）。生成前の1回のみ、失敗時スキップ
 - モデルコスト: 増加なし（モデル・生成回数は不変。むしろ区域外拒否とレート制限で**生成回数は減る方向**）
 - DBサイズ: **全国スコープ**のA31/A40は簡略化・ディゾルブ・Subdivide 後でも数百MB〜数GBオーダーになりうる（§2.9）。パイロット1県の実測×47の外挿で確定し、Supabase プランのディスク上限（Pro: 8GB〜）と照合してから全国投入する。超過見込み時の調整レバー: 簡略化許容誤差 5→10m / 浸水深ランク統合 / 低ランク（<0.5m）の間引きは**行わない**（判定の欠落＝信頼性毀損のため、圧縮は形状精度側でのみ行う）。Phase 0a 実測後に確定値を本書へ追記
@@ -419,6 +418,6 @@ create table public.image_generation_gate_log (
 3. A31/A40 データ変換・投入（import script のストリーミング/冪等化拡張 → パイロット県で実測 = Phase 0a → 全都道府県バッチ投入 + 内陸県の津波対象外登録 = Phase 0b）
 4. レート制限の3ルート適用（独立コミット。ゲートと分離）
 5. `log` モード実装（3ルートへの判定+ログ差し込み）→ Phase 1 シャドー運用
-6. System B サーバ導出化 + クライアント座標送信化 → Phase 2
-7. System A 冠水ゲート（`situation` 必須化と全呼び出し箇所改修 / generate-prompts の flood null 化とクライアントスキップ / キーワード検査 / フォームUI）+ 区域内バッジ・キャプション → Phase 3
+6. System B サーバ導出化 + クライアント旧属性/座標併送（off/log の復旧経路を維持）→ Phase 2
+7. System A 冠水ゲート（`situation` 必須化と全呼び出し箇所改修 / generate-prompts の flood null 化とクライアントスキップ / キーワード検査）。フォームの直接RPC・区域内バッジ・キャプションはデータ投入後へ延期 → Phase 3
 8. `get_nearby_accident_stats` スナップショット収録 + `lib/accident-prompt-context.ts` + 注入 → 新situation「じこデータ」 → Phase 4

@@ -3,7 +3,11 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { createInterface } from "node:readline"
 
-import type { HazardAreaContext, HazardType } from "@/lib/types"
+import {
+  isHazardAreaContext,
+  type HazardAreaContext,
+  type HazardType,
+} from "@/lib/types"
 
 type FeatureProperties = Record<string, unknown>
 
@@ -87,11 +91,7 @@ export function parseHazardImportArgs(argv: string[]): HazardImportArgs {
   if (hazardType !== "flood" && hazardType !== "tsunami") {
     throw new Error("hazardType must be flood or tsunami")
   }
-  if (
-    defaultAreaContext !== "residential-school-route" &&
-    defaultAreaContext !== "riverside" &&
-    defaultAreaContext !== "coastal"
-  ) {
+  if (!isHazardAreaContext(defaultAreaContext)) {
     throw new Error("defaultAreaContext is invalid")
   }
 
@@ -213,11 +213,7 @@ function pickAreaContext(
   fallback: HazardAreaContext,
 ): HazardAreaContext {
   const value = properties.area_context
-  if (
-    value === "residential-school-route" ||
-    value === "riverside" ||
-    value === "coastal"
-  ) {
+  if (isHazardAreaContext(value)) {
     return value
   }
   return fallback

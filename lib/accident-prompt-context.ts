@@ -58,16 +58,19 @@ export function buildAccidentPromptContext(
     countParts.length > 0 ? `（${countParts.join(" / ")}）` : ""
   }`
 
+  const topTime = topKnownLabel(
+    stats.by_time_of_day,
+    (key) => TIME_SLOT_LABELS[key] ?? null,
+  )
+  const topAccidentType = topKnownLabel(stats.by_accident_type, knownFreeLabel)
+  const topWeather = topKnownLabel(
+    stats.by_weather,
+    (key) => KNOWN_WEATHER_LABELS.has(key) ? key : null,
+  )
   const topFacts = [
-    topKnownLabel(stats.by_time_of_day, (key) => TIME_SLOT_LABELS[key] ?? null)
-      ? `多い時間帯: ${topKnownLabel(stats.by_time_of_day, (key) => TIME_SLOT_LABELS[key] ?? null)}`
-      : null,
-    topKnownLabel(stats.by_accident_type, knownFreeLabel)
-      ? `多い事故類型: ${topKnownLabel(stats.by_accident_type, knownFreeLabel)}`
-      : null,
-    topKnownLabel(stats.by_weather, (key) => KNOWN_WEATHER_LABELS.has(key) ? key : null)
-      ? `多い天候: ${topKnownLabel(stats.by_weather, (key) => KNOWN_WEATHER_LABELS.has(key) ? key : null)}`
-      : null,
+    topTime ? `多い時間帯: ${topTime}` : null,
+    topAccidentType ? `多い事故類型: ${topAccidentType}` : null,
+    topWeather ? `多い天候: ${topWeather}` : null,
   ].filter((value): value is string => value !== null)
 
   return `[この地点の客観データ（半径${ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters}m・直近${ACCIDENT_IMAGE_CONTEXT_PARAMS.years}年・警察庁交通事故統計オープンデータ）]

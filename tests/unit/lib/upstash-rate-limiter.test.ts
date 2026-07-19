@@ -43,14 +43,14 @@ describe("checkImageGenerationRateLimit", () => {
     expect(mocks.slidingWindow).toHaveBeenCalledWith(7, "120 s")
   })
 
-  it("uses a 10 request sliding window over five minutes", async () => {
+  it("uses a 20 request sliding window so the 14-image batch can complete", async () => {
     const { checkImageGenerationRateLimit } = await import(
       "@/lib/upstash-rate-limiter"
     )
 
     await checkImageGenerationRateLimit("hazard-image:user-1")
 
-    expect(mocks.slidingWindow).toHaveBeenCalledWith(10, "300 s")
+    expect(mocks.slidingWindow).toHaveBeenCalledWith(20, "300 s")
     expect(mocks.limit).toHaveBeenCalledWith("hazard-image:user-1")
   })
 

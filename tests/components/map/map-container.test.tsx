@@ -991,9 +991,14 @@ describe('MapContainer characterization', () => {
       const init = imageCall?.[1] as RequestInit
       expect(JSON.parse(String(init.body))).toEqual({
         hazardType: 'flood',
+        riskLevel: 5,
+        depthMinMeters: 10,
+        depthMaxMeters: 20,
+        areaContext: 'coastal',
         longitude: 140.74,
         latitude: 40.82,
         scenarioKey: 'flooded-road',
+        locationLabel: '海岸近く in Japan',
       })
     })
   })

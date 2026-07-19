@@ -1,4 +1,8 @@
-import type { HazardAreaContext, HazardType } from "@/lib/types"
+import {
+  isHazardAreaContext,
+  type HazardAreaContext,
+  type HazardType,
+} from "@/lib/types"
 
 export type HazardGateVerdict =
   | { kind: "inside"; zone: HazardZoneHit }
@@ -55,6 +59,8 @@ export interface HazardGateLogClient {
   }
 }
 
+export type HazardGateClient = HazardGateRpcClient & HazardGateLogClient
+
 type QueryHazardGateOptions = {
   toleranceMeters?: number
   timeoutMs?: number
@@ -85,14 +91,6 @@ function parseNullableNumber(value: number | string | null): number | null | und
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-function isAreaContext(value: string): value is HazardAreaContext {
-  return (
-    value === "residential-school-route" ||
-    value === "riverside" ||
-    value === "coastal"
-  )
-}
-
 function parseZoneRow(
   row: HazardZoneRpcRow,
   hazardType: HazardType,
@@ -111,7 +109,7 @@ function parseZoneRow(
     row.risk_level > 5 ||
     depthMinMeters === undefined ||
     depthMaxMeters === undefined ||
-    !isAreaContext(row.area_context)
+    !isHazardAreaContext(row.area_context)
   ) {
     return null
   }
@@ -167,7 +165,7 @@ function clampTolerance(value: number | undefined): number {
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timeoutId = setTimeout(
-      () => reject(new Error("hazard gate RPC timed out")),
+      () => reject(new Error("hazard gate operation timed out")),
       timeoutMs,
     )
     promise.then(
@@ -226,6 +224,23 @@ export async function queryHazardGate(
   } catch {
     return { kind: "unavailable" }
   }
+}
+
+function parseCoordinate(value: unknown): number {
+  if (typeof value === "number") return value
+  if (typeof value !== "string" || value.trim().length === 0) return Number.NaN
+  return Number(value)
+}
+
+export function parseHazardPoint(
+  longitudeValue: unknown,
+  latitudeValue: unknown,
+): HazardPoint | null {
+  const longitude = parseCoordinate(longitudeValue)
+  const latitude = parseCoordinate(latitudeValue)
+  return Number.isFinite(longitude) && Number.isFinite(latitude)
+    ? { longitude, latitude }
+    : null
 }
 
 function formatDepth(value: number): string {
@@ -295,6 +310,15 @@ type LogHazardGateInput = {
   point: HazardPoint | null
   userId: string | null
   latencyMs: number
+  timeoutMs?: number
+}
+
+type QueryAndLogHazardGateInput = Omit<
+  LogHazardGateInput,
+  "verdict" | "latencyMs"
+> & {
+  hazardType: HazardType
+  toleranceMeters?: number
 }
 
 export async function logHazardGateVerdict(
@@ -304,19 +328,53 @@ export async function logHazardGateVerdict(
   if (input.mode === "off") return
 
   try {
-    const { error } = await client.from("image_generation_gate_log").insert({
-      route: input.route,
-      mode: input.mode,
-      situation: input.situation,
-      verdict: input.verdict.kind,
-      zone_id: input.verdict.kind === "inside" ? input.verdict.zone.zoneId : null,
-      lat_rounded: input.point ? roundCoordinate(input.point.latitude) : null,
-      lng_rounded: input.point ? roundCoordinate(input.point.longitude) : null,
-      user_id: input.userId,
-      latency_ms: Math.max(0, Math.round(input.latencyMs)),
-    })
+    const { error } = await withTimeout(
+      Promise.resolve(client.from("image_generation_gate_log").insert({
+        route: input.route,
+        mode: input.mode,
+        situation: input.situation,
+        verdict: input.verdict.kind,
+        zone_id: input.verdict.kind === "inside" ? input.verdict.zone.zoneId : null,
+        lat_rounded: input.point ? roundCoordinate(input.point.latitude) : null,
+        lng_rounded: input.point ? roundCoordinate(input.point.longitude) : null,
+        user_id: input.userId,
+        latency_ms: Math.max(0, Math.round(input.latencyMs)),
+      })),
+      input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    )
     if (error) throw error
   } catch (error) {
     console.error("[hazard-zone-gate] Failed to write gate audit log", error)
   }
+}
+
+export async function queryAndLogHazardGate(
+  client: HazardGateClient,
+  input: QueryAndLogHazardGateInput,
+): Promise<HazardGateVerdict> {
+  if (input.mode === "off") return { kind: "unavailable" }
+
+  const startedAt = Date.now()
+  const verdict = input.point
+    ? await queryHazardGate(
+        client,
+        input.point,
+        input.hazardType,
+        {
+          toleranceMeters: input.toleranceMeters,
+          timeoutMs: input.timeoutMs,
+        },
+      )
+    : { kind: "unavailable" } as const
+  await logHazardGateVerdict(client, {
+    route: input.route,
+    mode: input.mode,
+    situation: input.situation,
+    verdict,
+    point: input.point,
+    userId: input.userId,
+    latencyMs: Date.now() - startedAt,
+    timeoutMs: input.timeoutMs,
+  })
+  return verdict
 }

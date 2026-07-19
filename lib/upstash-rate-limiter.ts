@@ -78,13 +78,13 @@ function boundedPositiveInteger(
   return Math.min(parsed, maximum)
 }
 
-/** 高コスト画像生成: 既定10リクエスト/5分 */
+/** 高コスト画像生成: 一括生成（最大14件）を完走できる既定20リクエスト/5分 */
 export async function checkImageGenerationRateLimit(
   identifier: string,
 ): Promise<RateLimitResult> {
   const requests = boundedPositiveInteger(
     process.env.IMAGE_GENERATION_RATE_LIMIT_REQUESTS,
-    10,
+    20,
     100,
   )
   const windowSeconds = boundedPositiveInteger(

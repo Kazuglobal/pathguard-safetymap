@@ -142,6 +142,14 @@ export type HazardAreaContext =
   | "riverside"
   | "coastal"
 
+export function isHazardAreaContext(value: unknown): value is HazardAreaContext {
+  return (
+    value === "residential-school-route" ||
+    value === "riverside" ||
+    value === "coastal"
+  )
+}
+
 export interface HazardScenarioOption {
   key: string
   label: string

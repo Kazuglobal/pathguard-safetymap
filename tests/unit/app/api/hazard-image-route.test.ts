@@ -164,7 +164,22 @@ describe("app/api/hazard/image route", () => {
 
     expect(response.status).toBe(200)
     expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.checkImageRateLimit).not.toHaveBeenCalled()
     expect(mocks.eq).toHaveBeenCalledWith("provider", "gemini")
+  })
+
+  it("keeps off mode independent from unavailable gate RPCs for the map payload", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: "PGRST202", message: "function not found" },
+    })
+    const { POST } = await import("@/app/api/hazard/image/route")
+    const response = await POST(
+      buildLegacyRequest({ longitude: 140.74, latitude: 40.82 }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.rpc).not.toHaveBeenCalled()
   })
 
   it("derives prompt attributes from the server zone and ignores spoofed values", async () => {
@@ -242,6 +257,9 @@ describe("app/api/hazard/image route", () => {
     expect(mocks.insert).toHaveBeenCalledWith(
       expect.objectContaining({ mode: "log", verdict: "outside" }),
     )
+    expect(mocks.buildPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ riskLevel: 3, areaContext: "riverside" }),
+    )
   })
 
   it("writes the gemini provider on a cache miss", async () => {
@@ -256,14 +274,18 @@ describe("app/api/hazard/image route", () => {
 
     expect(response.status).toBe(200)
     expect(mocks.generateImage).toHaveBeenCalled()
+    expect(mocks.checkImageRateLimit).toHaveBeenCalledWith(
+      "hazard-image:user-1",
+    )
     expect(mocks.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "gemini" }),
       expect.anything(),
     )
   })
 
-  it("rejects an authenticated user before parsing when image generation is rate limited", async () => {
+  it("rate limits a cache miss without charging cached image views", async () => {
     mocks.checkImageRateLimit.mockResolvedValue({ success: false })
+    mocks.maybeSingle.mockResolvedValue({ data: null, error: null })
 
     const { POST } = await import("@/app/api/hazard/image/route")
     const response = await POST(buildLegacyRequest())
@@ -272,6 +294,7 @@ describe("app/api/hazard/image route", () => {
     expect(mocks.checkImageRateLimit).toHaveBeenCalledWith(
       "hazard-image:user-1",
     )
-    expect(mocks.from).not.toHaveBeenCalled()
+    expect(mocks.maybeSingle).toHaveBeenCalled()
+    expect(mocks.generateImage).not.toHaveBeenCalled()
   })
 })

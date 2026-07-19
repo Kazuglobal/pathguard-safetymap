@@ -26,3 +26,27 @@ export function buildSystemASimulationJobs(
     },
   )
 }
+
+export async function settleSystemASimulationBatch<T>(
+  jobs: readonly Promise<T>[],
+): Promise<{ values: T[]; errors: unknown[] }> {
+  const settled = await Promise.allSettled(jobs)
+  const values: T[] = []
+  const errors: unknown[] = []
+  for (const result of settled) {
+    if (result.status === "fulfilled") values.push(result.value)
+    else errors.push(result.reason)
+  }
+  return { values, errors }
+}
+
+export function appendImageGenerationContext(
+  formData: FormData,
+  situation: string,
+  point: readonly [longitude: number, latitude: number] | null,
+): void {
+  formData.append("situation", situation)
+  if (!point) return
+  formData.append("longitude", String(point[0]))
+  formData.append("latitude", String(point[1]))
+}

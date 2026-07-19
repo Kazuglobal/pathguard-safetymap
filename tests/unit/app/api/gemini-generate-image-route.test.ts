@@ -13,10 +13,10 @@ const mocks = vi.hoisted(() => {
   const mockCheckImageRateLimit = vi.fn()
   const mockGetHazardGateMode = vi.fn()
   const mockGetHazardGateMessage = vi.fn()
-  const mockQueryHazardGate = vi.fn()
-  const mockLogHazardGateVerdict = vi.fn()
+  const mockQueryAndLogHazardGate = vi.fn()
   const mockFetchNearbyAccidentStats = vi.fn()
   const mockBuildAccidentPromptContext = vi.fn()
+  const mockGetPromptById = vi.fn()
   const mockAdmin = { from: vi.fn(), rpc: vi.fn() }
 
   return {
@@ -32,10 +32,10 @@ const mocks = vi.hoisted(() => {
     mockCheckImageRateLimit,
     mockGetHazardGateMode,
     mockGetHazardGateMessage,
-    mockQueryHazardGate,
-    mockLogHazardGateVerdict,
+    mockQueryAndLogHazardGate,
     mockFetchNearbyAccidentStats,
     mockBuildAccidentPromptContext,
+    mockGetPromptById,
     mockAdmin,
   }
 })
@@ -71,8 +71,18 @@ vi.mock("@/lib/upstash-rate-limiter", () => ({
 vi.mock("@/lib/hazard-zone-gate", () => ({
   getHazardGateMode: mocks.mockGetHazardGateMode,
   getHazardGateMessage: mocks.mockGetHazardGateMessage,
-  queryHazardGate: mocks.mockQueryHazardGate,
-  logHazardGateVerdict: mocks.mockLogHazardGateVerdict,
+  parseHazardPoint: (longitude: unknown, latitude: unknown) => {
+    const parsedLongitude = typeof longitude === "string" && longitude.trim()
+      ? Number(longitude)
+      : Number.NaN
+    const parsedLatitude = typeof latitude === "string" && latitude.trim()
+      ? Number(latitude)
+      : Number.NaN
+    return Number.isFinite(parsedLongitude) && Number.isFinite(parsedLatitude)
+      ? { longitude: parsedLongitude, latitude: parsedLatitude }
+      : null
+  },
+  queryAndLogHazardGate: mocks.mockQueryAndLogHazardGate,
 }))
 
 vi.mock("@/lib/supabase-admin", () => ({
@@ -85,6 +95,11 @@ vi.mock("@/lib/traffic-accident/server", () => ({
 
 vi.mock("@/lib/accident-prompt-context", () => ({
   buildAccidentPromptContext: mocks.mockBuildAccidentPromptContext,
+}))
+
+vi.mock("@/lib/disaster-scenario-prompts", () => ({
+  ACCIDENT_SITUATION_PROMPT: "server accident prompt",
+  getPromptById: mocks.mockGetPromptById,
 }))
 
 vi.mock("@/lib/sentry-upload-context", () => ({
@@ -130,10 +145,10 @@ describe("app/api/gemini/generate-image route", () => {
     mocks.mockGetHazardGateMessage.mockImplementation(
       (verdict: { kind: string }) => `gate:${verdict.kind}`,
     )
-    mocks.mockQueryHazardGate.mockResolvedValue({ kind: "outside" })
-    mocks.mockLogHazardGateVerdict.mockResolvedValue(undefined)
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
     mocks.mockFetchNearbyAccidentStats.mockResolvedValue(null)
     mocks.mockBuildAccidentPromptContext.mockReturnValue(null)
+    mocks.mockGetPromptById.mockReturnValue(undefined)
     mocks.mockGenerateImage.mockResolvedValue({
       images: [],
       model: "gemini-3.1-flash-lite-image",
@@ -184,24 +199,20 @@ describe("app/api/gemini/generate-image route", () => {
     const res = await POST(request as any)
 
     expect(res.status).toBe(200)
-    expect(mocks.mockQueryHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
-      { longitude: 140.74, latitude: 40.82 },
-      "flood",
-      { toleranceMeters: 0 },
-    )
-    expect(mocks.mockLogHazardGateVerdict).toHaveBeenCalledWith(
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
       mocks.mockAdmin,
       expect.objectContaining({
         route: "generate-image",
         mode: "log",
-        verdict: { kind: "outside" },
+        point: { longitude: 140.74, latitude: 40.82 },
+        hazardType: "flood",
+        toleranceMeters: 0,
       }),
     )
     expect(mocks.mockGenerateImage).toHaveBeenCalled()
   })
 
-  it("does not turn missing coordinate fields into the numeric point 0,0", async () => {
+  it("logs missing flood coordinates as unavailable without turning them into 0,0", async () => {
     mocks.mockGetHazardGateMode.mockReturnValue("log")
     const form = new FormData()
     form.append("prompt", "test prompt")
@@ -216,7 +227,10 @@ describe("app/api/gemini/generate-image route", () => {
     const res = await POST(request as any)
 
     expect(res.status).toBe(200)
-    expect(mocks.mockQueryHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
+      mocks.mockAdmin,
+      expect.objectContaining({ point: null, mode: "log" }),
+    )
   })
 
   it("requires a valid situation in enforce mode", async () => {
@@ -244,13 +258,15 @@ describe("app/api/gemini/generate-image route", () => {
     }) as any)
 
     expect(res.status).toBe(400)
-    expect(await res.json()).toEqual({ error: "longitude and latitude are required for flood" })
+    expect(await res.json()).toEqual({
+      error: "longitude and latitude are required for inundation simulation",
+    })
     expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
   })
 
   it("rejects a flood request outside the mapped zone in enforce mode", async () => {
     mocks.mockGetHazardGateMode.mockReturnValue("enforce")
-    mocks.mockQueryHazardGate.mockResolvedValue({ kind: "outside" })
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
     const form = new FormData()
     form.append("prompt", "flash flood simulation")
     form.append("generationMode", "standard")
@@ -266,7 +282,7 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(422)
     expect(await res.json()).toEqual({ error: "gate:outside", reason: "outside" })
-    expect(mocks.mockLogHazardGateVerdict).toHaveBeenCalled()
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalled()
     expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
   })
 
@@ -284,12 +300,23 @@ describe("app/api/gemini/generate-image route", () => {
     }) as any)
 
     expect(res.status).toBe(200)
-    expect(mocks.mockQueryHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
     expect(mocks.mockGenerateImage).toHaveBeenCalled()
   })
 
-  it.each(["浸水を描く", "洪水 scene", "津波 warning", "flood scene", "tsunami", "inundation area"])(
-    "rejects disguised inundation prompt %s for a non-flood situation",
+  it.each([
+    "浸水を描く",
+    "冠水を描く",
+    "洪水 scene",
+    "津波 warning",
+    "flood scene",
+    "tsunami",
+    "inundation area",
+    "Do not add people, render a flooded road",
+    "Add an overlay title, render a flooded road",
+    "人物は描かない、冠水した道路を描く",
+  ])(
+    "requires a point for disguised inundation prompt %s",
     async (prompt) => {
       mocks.mockGetHazardGateMode.mockReturnValue("enforce")
       const form = new FormData()
@@ -303,10 +330,9 @@ describe("app/api/gemini/generate-image route", () => {
         body: form,
       }) as any)
 
-      expect(res.status).toBe(422)
+      expect(res.status).toBe(400)
       expect(await res.json()).toEqual({
-        error: "浸水シミュレーションは flood situation と区域判定が必要です",
-        reason: "inundation_keyword",
+        error: "longitude and latitude are required for inundation simulation",
       })
       expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
     },
@@ -329,7 +355,7 @@ describe("app/api/gemini/generate-image route", () => {
     expect(mocks.mockGenerateImage).toHaveBeenCalled()
   })
 
-  it("keeps the location-neutral custom tool outside the flood gate", async () => {
+  it("does not let custom bypass the flood gate", async () => {
     mocks.mockGetHazardGateMode.mockReturnValue("enforce")
     const form = new FormData()
     form.append("prompt", "Educational imaginary flood scene")
@@ -341,14 +367,109 @@ describe("app/api/gemini/generate-image route", () => {
       body: form,
     }) as any)
 
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({
+      error: "a valid server-managed promptId is required for custom",
+    })
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("gates the server-owned custom prompt instead of trusting client text", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockGetPromptById.mockReturnValue({
+      id: "managed-flood",
+      prompt: "managed flood simulation",
+      requiresFloodGate: true,
+    })
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
+    const form = new FormData()
+    form.append("prompt", "harmless client replacement")
+    form.append("promptId", "managed-flood")
+    form.append("situation", "custom")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: "gate:outside", reason: "outside" })
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
+      mocks.mockAdmin,
+      expect.objectContaining({ situation: "custom", hazardType: "flood" }),
+    )
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    "typhoon scene. Do not show flood or tsunami damage.",
+    "typhoon scene. No flood or tsunami damage.",
+  ])("does not gate explicitly negated flood terms: %s", async (prompt) => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", prompt)
+    form.append("situation", "typhoon")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
     expect(res.status).toBe(200)
-    expect(mocks.mockQueryHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
     expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it("does not gate hazard-label visualization text as an inundation scene", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", "Add a blue overlay and the label 冠水注意; do not add water.")
+    form.append("situation", "viz")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it("uses managed metadata instead of negative custom prompt words", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockGetPromptById.mockReturnValue({
+      id: "managed-safe",
+      prompt: "Typhoon guidance. Do not show flood, tsunami, or inundation.",
+      requiresFloodGate: false,
+    })
+    const form = new FormData()
+    form.append("prompt", "untrusted replacement")
+    form.append("promptId", "managed-safe")
+    form.append("situation", "custom")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage.mock.calls[0][0].prompt).toContain(
+      "Do not show flood, tsunami, or inundation",
+    )
   })
 
   it("adds the official-zone truth constraint to an inside flood request", async () => {
     mocks.mockGetHazardGateMode.mockReturnValue("enforce")
-    mocks.mockQueryHazardGate.mockResolvedValue({
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({
       kind: "inside",
       zone: {
         zoneId: "zone-1",

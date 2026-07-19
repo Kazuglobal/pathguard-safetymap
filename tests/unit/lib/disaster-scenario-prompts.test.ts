@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ACCIDENT_SITUATION_PROMPT,
   defaultSituations,
+  getPromptById,
   promptCategories,
 } from '@/lib/disaster-scenario-prompts'
 
@@ -36,5 +37,12 @@ describe('accident-data situation', () => {
     expect(ACCIDENT_SITUATION_PROMPT).toContain('負傷者')
     expect(ACCIDENT_SITUATION_PROMPT).toContain('損壊車両')
     expect(ACCIDENT_SITUATION_PROMPT).toContain('顔・車のナンバープレート')
+  })
+})
+
+describe('managed prompt hazard metadata', () => {
+  it('gates only the managed prompt that positively depicts road inundation', () => {
+    expect(getPromptById('parent-1')?.requiresFloodGate).toBe(true)
+    expect(getPromptById('parent-2')?.requiresFloodGate).not.toBe(true)
   })
 })

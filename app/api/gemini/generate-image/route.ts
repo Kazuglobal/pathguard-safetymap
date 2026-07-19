@@ -10,10 +10,9 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import {
   getHazardGateMode,
   getHazardGateMessage,
-  logHazardGateVerdict,
-  queryHazardGate,
-  type HazardGateLogClient,
-  type HazardGateRpcClient,
+  parseHazardPoint,
+  queryAndLogHazardGate,
+  type HazardGateClient,
   type HazardPoint,
 } from "@/lib/hazard-zone-gate"
 import {
@@ -24,7 +23,10 @@ import { appendSystemAFloodTruth } from "@/lib/system-a-simulation"
 import { fetchNearbyAccidentStats } from "@/lib/traffic-accident/server"
 import { ACCIDENT_IMAGE_CONTEXT_PARAMS } from "@/lib/accident-stats-year-window"
 import { buildAccidentPromptContext } from "@/lib/accident-prompt-context"
-import { ACCIDENT_SITUATION_PROMPT } from "@/lib/disaster-scenario-prompts"
+import {
+  ACCIDENT_SITUATION_PROMPT,
+  getPromptById,
+} from "@/lib/disaster-scenario-prompts"
 
 export const runtime = "nodejs"
 export const maxDuration = 180
@@ -44,7 +46,56 @@ const IMAGE_SITUATIONS = new Set([
   "accident",
   "custom",
 ])
-const INUNDATION_KEYWORDS = /浸水|洪水|津波|\bflood\b|\btsunami\b|\binundation\b/iu
+const INUNDATION_KEYWORDS = /浸水|冠水|洪水|津波|\bflood(?:ed|ing)?\b|\btsunami\b|\binundat(?:e|ed|ing|ion)\b/giu
+const INUNDATION_NEGATION_BEFORE = /(?:\bno\b|do\s+not|don't|never|without|must\s+not|avoid(?:ing)?|exclude|forbid(?:den)?|prohibit(?:ed)?)[^,，、.;。；]*$/iu
+const INUNDATION_NEGATION_AFTER = /^[^,，、.;。；]{0,40}(?:禁止|描かない|描いてはいけない|描かず|表現しない|含めない|避ける|させない|不要|なし)/iu
+const INUNDATION_ANNOTATION_BEFORE = /(?:annotation|overlay|label|legend|warning icons?|risk markers?|risk|注記|注意ラベル|警告アイコン|凡例|オーバーレイ)[^,，、.;。；]*$/iu
+const INUNDATION_ANNOTATION_AFTER = /^[^,，、.;。；]{0,120}(?:annotation|overlay|label|legend|warning icons?|risk markers?|risk|注記|注意ラベル|警告アイコン|凡例|オーバーレイ)/iu
+
+function isNegatedInundationMatch(
+  clause: string,
+  index: number,
+  length: number,
+): boolean {
+  const before = clause.slice(Math.max(0, index - 80), index)
+  const after = clause.slice(index + length, index + length + 40)
+  return (
+    INUNDATION_NEGATION_BEFORE.test(before) ||
+    INUNDATION_NEGATION_AFTER.test(after)
+  )
+}
+
+function isAnnotationOnlyInundationMatch(
+  clause: string,
+  index: number,
+  length: number,
+): boolean {
+  const before = clause.slice(Math.max(0, index - 120), index)
+  const after = clause.slice(index + length, index + length + 120)
+  return (
+    INUNDATION_ANNOTATION_BEFORE.test(before) ||
+    INUNDATION_ANNOTATION_AFTER.test(after)
+  )
+}
+
+function requestsInundationDepiction(prompt: string): boolean {
+  return prompt
+    .split(/[\n。.!?！？；;]/u)
+    .some((clause) => {
+      return [...clause.matchAll(INUNDATION_KEYWORDS)].some((match) => {
+        const index = match.index ?? 0
+        return !isNegatedInundationMatch(
+          clause,
+          index,
+          match[0].length,
+        ) && !isAnnotationOnlyInundationMatch(
+          clause,
+          index,
+          match[0].length,
+        )
+      })
+    })
+}
 
 export async function POST(req: NextRequest) {
   let modelName = FORCED_IMAGE_MODEL
@@ -77,26 +128,34 @@ export async function POST(req: NextRequest) {
 
     const form = await req.formData()
     const promptRaw = form.get("prompt")
-    const prompt = typeof promptRaw === "string" ? promptRaw.trim() : ""
+    let prompt = typeof promptRaw === "string" ? promptRaw.trim() : ""
     const generationMode = (form.get("generationMode") as string) || undefined
     const situation = (form.get("situation") as string) || undefined
-    const longitudeRaw = form.get("longitude")
-    const latitudeRaw = form.get("latitude")
-    const longitude =
-      typeof longitudeRaw === "string" && longitudeRaw.trim().length > 0
-        ? Number(longitudeRaw)
-        : Number.NaN
-    const latitude =
-      typeof latitudeRaw === "string" && latitudeRaw.trim().length > 0
-        ? Number(latitudeRaw)
-        : Number.NaN
-    const point: HazardPoint | null =
-      Number.isFinite(longitude) && Number.isFinite(latitude)
-        ? { longitude, latitude }
-        : null
+    const point: HazardPoint | null = parseHazardPoint(
+      form.get("longitude"),
+      form.get("latitude"),
+    )
     const file = form.get("image") as File | null
 
     const gateMode = getHazardGateMode()
+    let managedCustomRequiresFloodGate = false
+    if (gateMode === "enforce" && (!situation || !IMAGE_SITUATIONS.has(situation))) {
+      return NextResponse.json({ error: "situation is required" }, { status: 400 })
+    }
+
+    if (gateMode === "enforce" && situation === "custom") {
+      const promptId = form.get("promptId")
+      const managedPrompt = typeof promptId === "string" ? getPromptById(promptId) : undefined
+      if (!managedPrompt) {
+        return NextResponse.json(
+          { error: "a valid server-managed promptId is required for custom" },
+          { status: 400 },
+        )
+      }
+      prompt = managedPrompt.prompt.trim()
+      managedCustomRequiresFloodGate = managedPrompt.requiresFloodGate === true
+    }
+
     if (!prompt || prompt.toLowerCase() === "null") {
       return NextResponse.json(
         { error: "prompt must not be empty or null" },
@@ -104,28 +163,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (gateMode === "enforce" && (!situation || !IMAGE_SITUATIONS.has(situation))) {
-      return NextResponse.json({ error: "situation is required" }, { status: 400 })
+    const inspectPromptText = !(gateMode === "enforce" && situation === "custom")
+    const requiresFloodGate =
+      situation === "flood" ||
+      managedCustomRequiresFloodGate ||
+      (inspectPromptText && requestsInundationDepiction(prompt))
+    let floodVerdict: Awaited<ReturnType<typeof queryAndLogHazardGate>> | null = null
+    if (gateMode !== "off" && requiresFloodGate) {
+      const admin = getSupabaseAdmin()
+      floodVerdict = await queryAndLogHazardGate(admin as unknown as HazardGateClient, {
+        route: "generate-image",
+        mode: gateMode,
+        situation: situation ?? null,
+        point,
+        userId: user.id,
+        hazardType: "flood",
+        toleranceMeters: 0,
+      })
     }
-
-    if (
-      gateMode === "enforce" &&
-      situation !== "flood" &&
-      situation !== "custom" &&
-      INUNDATION_KEYWORDS.test(prompt)
-    ) {
+    if (gateMode === "enforce" && requiresFloodGate && !point) {
       return NextResponse.json(
-        {
-          error: "浸水シミュレーションは flood situation と区域判定が必要です",
-          reason: "inundation_keyword",
-        },
-        { status: 422 },
-      )
-    }
-
-    if (gateMode === "enforce" && situation === "flood" && !point) {
-      return NextResponse.json(
-        { error: "longitude and latitude are required for flood" },
+        { error: "longitude and latitude are required for inundation simulation" },
         { status: 400 },
       )
     }
@@ -138,36 +196,17 @@ export async function POST(req: NextRequest) {
     }
 
     let gateVerifiedPrompt = prompt
-    if (gateMode !== "off" && situation === "flood" && point) {
-      const admin = getSupabaseAdmin()
-      const gateStartedAt = Date.now()
-      const verdict = await queryHazardGate(
-        admin as unknown as HazardGateRpcClient,
-        point,
-        "flood",
-        { toleranceMeters: 0 },
-      )
-      await logHazardGateVerdict(
-        admin as unknown as HazardGateLogClient,
-        {
-          route: "generate-image",
-          mode: gateMode,
-          situation,
-          verdict,
-          point,
-          userId: user.id,
-          latencyMs: Date.now() - gateStartedAt,
-        },
-      )
-      if (gateMode === "enforce" && verdict.kind !== "inside") {
+    if (gateMode === "enforce" && floodVerdict) {
+      if (floodVerdict.kind !== "inside") {
         return NextResponse.json(
-          { error: getHazardGateMessage(verdict, "flood"), reason: verdict.kind },
+          {
+            error: getHazardGateMessage(floodVerdict, "flood"),
+            reason: floodVerdict.kind,
+          },
           { status: 422 },
         )
       }
-      if (gateMode === "enforce" && verdict.kind === "inside") {
-        gateVerifiedPrompt = appendSystemAFloodTruth(prompt)
-      }
+      gateVerifiedPrompt = appendSystemAFloodTruth(prompt)
     }
 
     if (situation === "accident" && point) {

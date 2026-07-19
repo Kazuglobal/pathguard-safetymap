@@ -365,6 +365,12 @@ describe("DangerReportForm", () => {
 
     const batchThumbnail = await screen.findByAltText("避難ルート重ね地図")
     expect(batchThumbnail).toHaveAttribute("src", "blob:batch-result")
+    const batchRequest = fetchMock.mock.calls.find(
+      ([input]) => String(input) === "/api/gemini/generate-image",
+    )
+    const batchForm = batchRequest?.[1]?.body as FormData
+    expect(batchForm.get("situation")).toBe("custom")
+    expect(batchForm.get("promptId")).toBe("child-1")
 
     await user.click(batchThumbnail)
 
@@ -382,12 +388,7 @@ describe("DangerReportForm", () => {
     expect(screen.getByAltText("避難ルート重ね地図")).toHaveAttribute("src", "blob:batch-result")
   })
 
-  it("disables flood simulation outside the mapped zone with the non-safety warning", async () => {
-    mocks.supabase.rpc.mockImplementation(async (name: string) =>
-      name === "get_hazard_zones_at_point"
-        ? { data: [], error: null }
-        : { data: true, error: null },
-    )
+  it("keeps flood available before a server gate result and does not query zones in the browser", async () => {
     const user = userEvent.setup()
     const { container } = render(
       <DangerReportForm
@@ -400,40 +401,9 @@ describe("DangerReportForm", () => {
     await uploadOriginalPhoto(user, container)
 
     const floodButton = await screen.findByRole("button", { name: "冠水" })
-    await waitFor(() => expect(floodButton).toBeDisabled())
-    expect(floodButton).toHaveAttribute(
-      "title",
-      "この地点は洪水・津波の浸水想定区域外のため、浸水シミュレーション画像は生成できません。※区域外であることは安全を保証するものではありません",
-    )
-    expect(mocks.supabase.rpc).toHaveBeenCalledWith(
-      "get_hazard_zones_at_point",
-      expect.objectContaining({
-        p_longitude: 140.74,
-        p_latitude: 40.82,
-        p_hazard_type: "flood",
-        p_tolerance_m: 0,
-      }),
-    )
-  })
-
-  it("shows official flood depth and source when the selected point is inside", async () => {
-    const user = userEvent.setup()
-    const { container } = render(
-      <DangerReportForm
-        onSubmit={vi.fn(async () => ({ reportId: "report-inside", imageUrl: null }))}
-        onCancel={vi.fn()}
-        selectedLocation={[140.74, 40.82]}
-      />,
-    )
-
-    await uploadOriginalPhoto(user, container)
-
-    const floodButton = await screen.findByRole("button", { name: "冠水" })
-    await waitFor(() => expect(floodButton).toBeEnabled())
-    expect(screen.getByText("洪水浸水想定区域内（想定浸水深 0.5〜3.0m）")).toBeInTheDocument()
-    expect(screen.getByText(
-      "この地点の想定最大浸水深: 3.0m（出典: 国土数値情報 A31）※画像は表現を抑えたイメージです",
-    )).toBeInTheDocument()
+    expect(floodButton).toBeEnabled()
+    expect(floodButton).not.toHaveAttribute("title")
+    expect(mocks.supabase.rpc).not.toHaveBeenCalled()
   })
 
   it("enables the accident-data situation when nearby accident statistics exist", async () => {

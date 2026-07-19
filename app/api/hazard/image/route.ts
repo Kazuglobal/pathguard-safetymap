@@ -12,15 +12,17 @@ import {
   getHazardGateMessage,
   getHazardGateMode,
   getHazardGateReason,
-  logHazardGateVerdict,
-  queryHazardGate,
-  type HazardGateLogClient,
-  type HazardGateRpcClient,
+  queryAndLogHazardGate,
+  type HazardGateClient,
   type HazardPoint,
 } from "@/lib/hazard-zone-gate"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { createServerClient } from "@/lib/supabase-server"
-import type { HazardAreaContext, HazardType } from "@/lib/types"
+import {
+  isHazardAreaContext,
+  type HazardAreaContext,
+  type HazardType,
+} from "@/lib/types"
 import {
   checkImageGenerationRateLimit,
   rateLimitedResponse,
@@ -55,14 +57,6 @@ type HazardImageRequestCore = {
 
 function isHazardType(value: unknown): value is HazardType {
   return value === "flood" || value === "tsunami"
-}
-
-function isAreaContext(value: unknown): value is HazardAreaContext {
-  return (
-    value === "residential-school-route" ||
-    value === "riverside" ||
-    value === "coastal"
-  )
 }
 
 function parseRequestBody(body: unknown): HazardImageRequestCore {
@@ -106,7 +100,7 @@ function parseLegacyAttributes(
 ): ResolvedHazardImageRequest | null {
   const payload = request.raw
   if (
-    !isAreaContext(payload.areaContext) ||
+    !isHazardAreaContext(payload.areaContext) ||
     typeof payload.riskLevel !== "number" ||
     !Number.isInteger(payload.riskLevel) ||
     payload.riskLevel < 1 ||
@@ -170,38 +164,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
     }
 
-    const rateLimit = await checkImageGenerationRateLimit(
-      `hazard-image:${user.id}`,
-    )
-    if (!rateLimit.success) return rateLimitedResponse(rateLimit.reset)
-
     const request = parseRequestBody(await req.json())
     const gateMode = getHazardGateMode()
     const legacyRequest = parseLegacyAttributes(request)
     const admin = getSupabaseAdmin() as any
     let payload: ResolvedHazardImageRequest
 
-    if (gateMode === "off" && legacyRequest) {
+    if (gateMode === "off") {
+      if (!legacyRequest) {
+        throw new Error("riskLevel and areaContext are required while the hazard gate is off")
+      }
       payload = legacyRequest
     } else if (request.point) {
-      const gateStartedAt = Date.now()
-      const verdict = await queryHazardGate(
-        admin as HazardGateRpcClient,
-        request.point,
-        request.hazardType,
-        { toleranceMeters: 30 },
-      )
-      await logHazardGateVerdict(admin as HazardGateLogClient, {
+      const verdict = await queryAndLogHazardGate(admin as HazardGateClient, {
         route: "hazard-image",
         mode: gateMode,
         situation: request.hazardType,
-        verdict,
         point: request.point,
         userId: user.id,
-        latencyMs: Date.now() - gateStartedAt,
+        hazardType: request.hazardType,
+        toleranceMeters: 30,
       })
 
-      if (verdict.kind === "inside") {
+      if (gateMode === "log" && legacyRequest) {
+        payload = legacyRequest
+      } else if (verdict.kind === "inside") {
         payload = {
           hazardType: verdict.zone.hazardType,
           riskLevel: verdict.zone.riskLevel,
@@ -211,8 +198,6 @@ export async function POST(req: NextRequest) {
           scenarioKey: request.scenarioKey,
           locationLabel: `${getHazardAreaLabel(verdict.zone.areaContext)} in Japan`,
         }
-      } else if (gateMode === "log" && legacyRequest) {
-        payload = legacyRequest
       } else {
         return NextResponse.json(
           {
@@ -223,15 +208,13 @@ export async function POST(req: NextRequest) {
         )
       }
     } else if (gateMode === "log" && legacyRequest) {
-      const verdict = { kind: "unavailable" } as const
-      await logHazardGateVerdict(admin as HazardGateLogClient, {
+      await queryAndLogHazardGate(admin as HazardGateClient, {
         route: "hazard-image",
         mode: gateMode,
         situation: request.hazardType,
-        verdict,
         point: null,
         userId: user.id,
-        latencyMs: 0,
+        hazardType: request.hazardType,
       })
       payload = legacyRequest
     } else {
@@ -273,6 +256,11 @@ export async function POST(req: NextRequest) {
         scenarioKey: cachedEntry.scenario_key,
       })
     }
+
+    const rateLimit = await checkImageGenerationRateLimit(
+      `hazard-image:${user.id}`,
+    )
+    if (!rateLimit.success) return rateLimitedResponse(rateLimit.reset)
 
     const generated = await generateImageWithGeminiWithModel({
       prompt,

@@ -1,5 +1,6 @@
--- Snapshot exported from the deployed pathguardian database with pg_get_functiondef on 2026-07-19.
--- The function body, security mode, search path, defaults, and deployed execute privileges are preserved.
+-- Based on the deployed pathguardian definition exported with pg_get_functiondef on 2026-07-19.
+-- Parameter bounds are added here so the SECURITY DEFINER function cannot be
+-- used to amplify an unbounded spatial scan.
 
 CREATE OR REPLACE FUNCTION public.get_nearby_accident_stats(p_latitude double precision, p_longitude double precision, p_radius_meters integer DEFAULT 200, p_years integer DEFAULT 5)
  RETURNS jsonb
@@ -12,6 +13,20 @@ DECLARE
   v_result  jsonb;
   v_min_year int;
 BEGIN
+  IF p_latitude IS NULL OR p_latitude NOT BETWEEN -90 AND 90
+    OR p_longitude IS NULL OR p_longitude NOT BETWEEN -180 AND 180 THEN
+    RAISE EXCEPTION 'latitude or longitude is out of range'
+      USING ERRCODE = '22023';
+  END IF;
+  IF p_radius_meters IS NULL OR p_radius_meters NOT BETWEEN 1 AND 1000 THEN
+    RAISE EXCEPTION 'radius must be between 1 and 1000 metres'
+      USING ERRCODE = '22023';
+  END IF;
+  IF p_years IS NULL OR p_years NOT BETWEEN 1 AND 10 THEN
+    RAISE EXCEPTION 'years must be between 1 and 10'
+      USING ERRCODE = '22023';
+  END IF;
+
   v_point    := ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography;
   v_min_year := EXTRACT(YEAR FROM now())::int - p_years;
 
@@ -359,4 +374,5 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.get_nearby_accident_stats(double precision, double precision, integer, integer) TO PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_nearby_accident_stats(double precision, double precision, integer, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_nearby_accident_stats(double precision, double precision, integer, integer) TO anon, authenticated, service_role;

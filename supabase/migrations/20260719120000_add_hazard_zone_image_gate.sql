@@ -120,7 +120,7 @@ GRANT EXECUTE ON FUNCTION public.get_hazard_zones_at_point(
   double precision,
   text,
   double precision
-) TO authenticated;
+) TO authenticated, service_role;
 
 -- A zone lookup returning no rows cannot distinguish a covered point from an
 -- unimported region. This companion RPC supplies that missing gate signal.
@@ -158,4 +158,4 @@ GRANT EXECUTE ON FUNCTION public.has_hazard_zone_coverage_at_point(
   double precision,
   double precision,
   text
-) TO authenticated;
+) TO authenticated, service_role;

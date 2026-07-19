@@ -12,10 +12,9 @@ import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import {
   getHazardGateMode,
-  logHazardGateVerdict,
-  queryHazardGate,
-  type HazardGateLogClient,
-  type HazardGateRpcClient,
+  parseHazardPoint,
+  queryAndLogHazardGate,
+  type HazardGateClient,
   type HazardGateVerdict,
   type HazardPoint,
 } from "@/lib/hazard-zone-gate"
@@ -68,10 +67,10 @@ function applyFloodGateToPrompts<T extends {
   mode: ReturnType<typeof getHazardGateMode>,
   verdict: HazardGateVerdict | null,
 ): T {
-  if (mode !== "enforce" || !verdict) return prompts
+  if (mode !== "enforce") return prompts
 
   const simulationPrompts = prompts.simulationPrompts ?? {}
-  if (verdict.kind !== "inside") {
+  if (!verdict || verdict.kind !== "inside") {
     return {
       ...prompts,
       simulationPrompts: { ...simulationPrompts, flood: null },
@@ -92,6 +91,8 @@ function applyFloodGateToPrompts<T extends {
 }
 
 export async function POST(req: NextRequest) {
+  const gateMode = getHazardGateMode()
+  let floodVerdict: HazardGateVerdict | null = null
   try {
     const isDev = process.env.NODE_ENV !== "production"
     const supabase = await createServerClient()
@@ -117,14 +118,7 @@ export async function POST(req: NextRequest) {
       const body = await req.json()
       imageBase64 = body?.imageBase64 || body?.imageDataUrl
       language = body?.language
-      if (
-        typeof body?.longitude === "number" &&
-        Number.isFinite(body.longitude) &&
-        typeof body?.latitude === "number" &&
-        Number.isFinite(body.latitude)
-      ) {
-        point = { longitude: body.longitude, latitude: body.latitude }
-      }
+      point = parseHazardPoint(body?.longitude, body?.latitude)
       if (Array.isArray(body?.customHazards)) {
         const validation = validateCustomHazards(body.customHazards)
         if ("error" in validation) {
@@ -160,19 +154,7 @@ export async function POST(req: NextRequest) {
         }
         customHazards = validation.valid
       }
-      const longitudeRaw = form.get("longitude")
-      const latitudeRaw = form.get("latitude")
-      const longitude =
-        typeof longitudeRaw === "string" && longitudeRaw.trim().length > 0
-          ? Number(longitudeRaw)
-          : Number.NaN
-      const latitude =
-        typeof latitudeRaw === "string" && latitudeRaw.trim().length > 0
-          ? Number(latitudeRaw)
-          : Number.NaN
-      if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
-        point = { longitude, latitude }
-      }
+      point = parseHazardPoint(form.get("longitude"), form.get("latitude"))
     } else {
       return NextResponse.json({ error: "Use JSON or multipart/form-data" }, { status: 400 })
     }
@@ -181,30 +163,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "imageBase64 is required" }, { status: 400 })
     }
 
-    const gateMode = getHazardGateMode()
-    let floodVerdict: HazardGateVerdict | null = null
-    if (gateMode !== "off" && point) {
+    if (gateMode !== "off") {
       const admin = getSupabaseAdmin()
-      const gateStartedAt = Date.now()
-      const verdict = await queryHazardGate(
-        admin as unknown as HazardGateRpcClient,
+      floodVerdict = await queryAndLogHazardGate(admin as unknown as HazardGateClient, {
+        route: "generate-prompts",
+        mode: gateMode,
+        situation: "flood",
         point,
-        "flood",
-        { toleranceMeters: 0 },
-      )
-      floodVerdict = verdict
-      await logHazardGateVerdict(
-        admin as unknown as HazardGateLogClient,
-        {
-          route: "generate-prompts",
-          mode: gateMode,
-          situation: "flood",
-          verdict,
-          point,
-          userId: user.id,
-          latencyMs: Date.now() - gateStartedAt,
-        },
-      )
+        userId: user.id,
+        hazardType: "flood",
+        toleranceMeters: 0,
+      })
     }
 
     let accidentContext: string | undefined
@@ -243,6 +212,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const warning = error instanceof Error ? error.message : "Unknown error"
     const safeWarning = process.env.NODE_ENV !== "production" ? warning : "内部エラーが発生しました。"
-    return NextResponse.json({ success: false, prompts: fallbackPrompts(), warning: safeWarning })
+    return NextResponse.json({
+      success: false,
+      prompts: applyFloodGateToPrompts(fallbackPrompts(), gateMode, floodVerdict),
+      warning: safeWarning,
+    })
   }
 }

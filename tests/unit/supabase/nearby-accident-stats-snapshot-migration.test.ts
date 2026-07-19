@@ -1,4 +1,3 @@
-import crypto from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 
@@ -22,15 +21,14 @@ describe("get_nearby_accident_stats snapshot migration", () => {
     expect(sql).toContain("SET search_path TO 'public'")
   })
 
-  it("matches the pg_get_functiondef snapshot exported on 2026-07-19", () => {
-    const captured = sql.match(/(CREATE OR REPLACE FUNCTION[\s\S]*?\$function\$);/)?.[1]
-    expect(captured).toBeDefined()
-
-    const normalizedDefinition = `${captured!.replace(/\r\n/g, "\n")}\n`
-    expect(normalizedDefinition).toHaveLength(15_547)
-    expect(crypto.createHash("md5").update(normalizedDefinition).digest("hex")).toBe(
-      "2678dd4eef67d6ca671f753a6a789d5d",
-    )
+  it("bounds caller-controlled parameters before any spatial query", () => {
+    const validationEnd = sql.indexOf("v_point    :=")
+    expect(validationEnd).toBeGreaterThan(0)
+    const validation = sql.slice(0, validationEnd)
+    expect(validation).toContain("p_radius_meters NOT BETWEEN 1 AND 1000")
+    expect(validation).toContain("p_years NOT BETWEEN 1 AND 10")
+    expect(validation).toContain("p_latitude NOT BETWEEN -90 AND 90")
+    expect(validation).toContain("p_longitude IS NULL")
   })
 
   it("captures the deployed spatial, aggregate, and result contracts", () => {
@@ -43,9 +41,8 @@ describe("get_nearby_accident_stats snapshot migration", () => {
     expect(sql).toContain("'search_params'")
   })
 
-  it("preserves the deployed execute privileges", () => {
-    expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.get_nearby_accident_stats\([^)]+\) TO PUBLIC, anon, authenticated, service_role;/,
-    )
+  it("removes the implicit PUBLIC grant and lists the intended roles", () => {
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC;/)
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION[\s\S]+TO anon, authenticated, service_role;/)
   })
 })

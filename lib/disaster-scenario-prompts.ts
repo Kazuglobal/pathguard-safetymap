@@ -37,6 +37,7 @@ export interface DisasterPrompt {
   description: string
   prompt: string
   targetAudience: TargetAudience
+  requiresFloodGate?: boolean
 }
 
 export interface PromptCategory {
@@ -243,6 +244,7 @@ const parentsPrompts: DisasterPrompt[] = [
     shortName: "保護者①",
     description: "BEFORE / AFTER比較と災害別カードで見せるA4縦長インフォグラフィック",
     targetAudience: "parents",
+    requiresFloodGate: true,
     prompt: `あなたは「防災・交通安全の専門家」かつ「トップレベルのインフォグラフィックデザイナー」です。
 アップロードされた通学路写真をもとに、7歳児が歩くことを想定した「災害シミュレーション安全マップ」を、A4縦長の日本語インフォグラフィック1枚として作成してください。
 

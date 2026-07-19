@@ -12,8 +12,7 @@ const mocks = vi.hoisted(() => {
   const mockAddBreadcrumb = vi.fn()
   const mockCheckApiRateLimit = vi.fn()
   const mockGetHazardGateMode = vi.fn()
-  const mockQueryHazardGate = vi.fn()
-  const mockLogHazardGateVerdict = vi.fn()
+  const mockQueryAndLogHazardGate = vi.fn()
   const mockFetchNearbyAccidentStats = vi.fn()
   const mockBuildAccidentPromptContext = vi.fn()
   const mockIsAccidentImageContextEnabled = vi.fn()
@@ -27,8 +26,7 @@ const mocks = vi.hoisted(() => {
     mockAddBreadcrumb,
     mockCheckApiRateLimit,
     mockGetHazardGateMode,
-    mockQueryHazardGate,
-    mockLogHazardGateVerdict,
+    mockQueryAndLogHazardGate,
     mockFetchNearbyAccidentStats,
     mockBuildAccidentPromptContext,
     mockIsAccidentImageContextEnabled,
@@ -60,8 +58,18 @@ vi.mock("@/lib/upstash-rate-limiter", () => ({
 
 vi.mock("@/lib/hazard-zone-gate", () => ({
   getHazardGateMode: mocks.mockGetHazardGateMode,
-  queryHazardGate: mocks.mockQueryHazardGate,
-  logHazardGateVerdict: mocks.mockLogHazardGateVerdict,
+  parseHazardPoint: (longitude: unknown, latitude: unknown) => {
+    const parsedLongitude = typeof longitude === "number" || typeof longitude === "string"
+      ? Number(longitude)
+      : Number.NaN
+    const parsedLatitude = typeof latitude === "number" || typeof latitude === "string"
+      ? Number(latitude)
+      : Number.NaN
+    return Number.isFinite(parsedLongitude) && Number.isFinite(parsedLatitude)
+      ? { longitude: parsedLongitude, latitude: parsedLatitude }
+      : null
+  },
+  queryAndLogHazardGate: mocks.mockQueryAndLogHazardGate,
 }))
 
 vi.mock("@/lib/supabase-admin", () => ({
@@ -97,8 +105,7 @@ describe("app/api/gemini/generate-prompts route", () => {
     })
     mocks.mockCheckApiRateLimit.mockResolvedValue({ success: true })
     mocks.mockGetHazardGateMode.mockReturnValue("off")
-    mocks.mockQueryHazardGate.mockResolvedValue({ kind: "outside" })
-    mocks.mockLogHazardGateVerdict.mockResolvedValue(undefined)
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
     mocks.mockFetchNearbyAccidentStats.mockResolvedValue(null)
     mocks.mockBuildAccidentPromptContext.mockReturnValue(null)
     mocks.mockIsAccidentImageContextEnabled.mockReturnValue(false)
@@ -174,26 +181,21 @@ describe("app/api/gemini/generate-prompts route", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(mocks.mockQueryHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
-      { longitude: 140.74, latitude: 40.82 },
-      "flood",
-      { toleranceMeters: 0 },
-    )
-    expect(mocks.mockLogHazardGateVerdict).toHaveBeenCalledWith(
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
       mocks.mockAdmin,
       expect.objectContaining({
         route: "generate-prompts",
         mode: "log",
         situation: "flood",
-        verdict: { kind: "outside" },
+        point: { longitude: 140.74, latitude: 40.82 },
+        hazardType: "flood",
       }),
     )
   })
 
   it("returns a null flood prompt outside the mapped zone in enforce mode", async () => {
     mocks.mockGetHazardGateMode.mockReturnValue("enforce")
-    mocks.mockQueryHazardGate.mockResolvedValue({ kind: "outside" })
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
     mocks.mockGenerateDisasterPrompts.mockResolvedValue({
       riskObservation: { elements: [], tableMarkdown: "" },
       vizPrompt: "viz prompt",
@@ -227,9 +229,61 @@ describe("app/api/gemini/generate-prompts route", () => {
     })
   })
 
+  it("returns a null flood prompt without coordinates in enforce mode", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockGenerateDisasterPrompts.mockResolvedValue({
+      riskObservation: { elements: [], tableMarkdown: "" },
+      vizPrompt: "viz prompt",
+      simulationPrompts: {
+        earthquake: "earthquake prompt",
+        typhoon: "typhoon prompt",
+        flood: "flood prompt",
+        fire: "fire prompt",
+      },
+    })
+    const { POST } = await loadRoute()
+
+    const response = await POST(
+      new Request("http://localhost/api/gemini/generate-prompts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageBase64: "AAAA" }),
+      }) as any,
+    )
+
+    expect(response.status).toBe(200)
+    expect((await response.json()).prompts.simulationPrompts).toEqual({
+      earthquake: "earthquake prompt",
+      typhoon: "typhoon prompt",
+      flood: null,
+      fire: "fire prompt",
+    })
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
+      mocks.mockAdmin,
+      expect.objectContaining({ point: null, mode: "enforce" }),
+    )
+  })
+
+  it("keeps the fallback flood prompt null when an outer failure occurs in enforce mode", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockGetUser.mockRejectedValue(new Error("auth backend unavailable"))
+    const { POST } = await loadRoute()
+
+    const response = await POST(
+      new Request("http://localhost/api/gemini/generate-prompts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageBase64: "AAAA" }),
+      }) as any,
+    )
+
+    expect(response.status).toBe(200)
+    expect((await response.json()).prompts.simulationPrompts.flood).toBeNull()
+  })
+
   it("adds the official-zone fact while preserving the shallow flood depiction cap", async () => {
     mocks.mockGetHazardGateMode.mockReturnValue("enforce")
-    mocks.mockQueryHazardGate.mockResolvedValue({
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({
       kind: "inside",
       zone: {
         zoneId: "zone-1",

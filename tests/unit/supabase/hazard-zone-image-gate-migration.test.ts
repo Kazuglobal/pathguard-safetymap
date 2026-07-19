@@ -69,14 +69,14 @@ describe("20260719120000_add_hazard_zone_image_gate migration", () => {
     )
   })
 
-  it("exposes only the two read RPCs to authenticated users", () => {
+  it("exposes the two read RPCs to authenticated clients and server routes", () => {
     const sql = readMigration()
 
     expect(sql).toMatch(
       /REVOKE ALL ON FUNCTION public\.get_hazard_zones_at_point\(\s*double precision,\s*double precision,\s*text,\s*double precision\s*\) FROM PUBLIC;/,
     )
     expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.get_hazard_zones_at_point\(\s*double precision,\s*double precision,\s*text,\s*double precision\s*\) TO authenticated;/,
+      /GRANT EXECUTE ON FUNCTION public\.get_hazard_zones_at_point\(\s*double precision,\s*double precision,\s*text,\s*double precision\s*\) TO authenticated, service_role;/,
     )
     expect(sql).toContain(
       "CREATE OR REPLACE FUNCTION public.has_hazard_zone_coverage_at_point(",
@@ -85,7 +85,7 @@ describe("20260719120000_add_hazard_zone_image_gate migration", () => {
       /REVOKE ALL ON FUNCTION public\.has_hazard_zone_coverage_at_point\(\s*double precision,\s*double precision,\s*text\s*\) FROM PUBLIC;/,
     )
     expect(sql).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.has_hazard_zone_coverage_at_point\(\s*double precision,\s*double precision,\s*text\s*\) TO authenticated;/,
+      /GRANT EXECUTE ON FUNCTION public\.has_hazard_zone_coverage_at_point\(\s*double precision,\s*double precision,\s*text\s*\) TO authenticated, service_role;/,
     )
   })
 })
