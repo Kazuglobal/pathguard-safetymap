@@ -1,6 +1,9 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { MaskConfirm } from "@/components/safety-quest/hunter/mask-confirm"
+import {
+  calculateMaskedOutputSize,
+  MaskConfirm,
+} from "@/components/safety-quest/hunter/mask-confirm"
 
 class PendingImage {
   onload: (() => void) | null = null
@@ -43,5 +46,11 @@ describe("MaskConfirm processing state", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("じかんが かかっています")
     expect(screen.getByRole("button", { name: "しゃしんの じゅんびを やりなおす" })).toBeEnabled()
+  })
+})
+
+describe("MaskConfirm upload image size", () => {
+  it("shrinks a large phone photo to a 1600px long edge before upload", () => {
+    expect(calculateMaskedOutputSize(4032, 3024)).toEqual({ width: 1600, height: 1200 })
   })
 })
