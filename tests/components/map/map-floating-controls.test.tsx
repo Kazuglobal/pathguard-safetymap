@@ -75,8 +75,7 @@ describe('MapFloatingControls mobile layout', () => {
     expect(screen.getByRole('button', { name: '危険地点一覧を開く' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
-    // たんけんノート刷新でCTAラベルが子ども向けの「おしらせ」に変更された。
-    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toHaveTextContent('おしらせ')
+    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toHaveTextContent('報告')
   })
 
   it('shows a focused dock while the report form is open', () => {
@@ -85,8 +84,8 @@ describe('MapFloatingControls mobile layout', () => {
     renderControls({ isReportFormOpen: true })
 
     expect(screen.getByTestId('mobile-focused-dock')).toBeInTheDocument()
-    expect(screen.getByText('おしらせを かいているよ')).toBeInTheDocument()
-    expect(screen.getByText('ないようを かくにんして おくってね')).toBeInTheDocument()
+    expect(screen.getByText('報告内容を入力中')).toBeInTheDocument()
+    expect(screen.getByText('内容を確認して送信してね')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '危険箇所を報告する' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '危険地点一覧を開く' })).not.toBeInTheDocument()
   })

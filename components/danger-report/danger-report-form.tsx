@@ -615,8 +615,6 @@ export default function DangerReportForm({
       return
     }
     lastAutoGenKey.current = key
-    // トリガーをリセット
-    setManualAnalysisTriggered(false)
 
     const abortController = new AbortController()
     const runId = ++autoGenRunIdRef.current
@@ -814,7 +812,11 @@ export default function DangerReportForm({
           setAutoGenError(handleError(error, '自動生成に失敗しました。時間をおいて再度お試しください。'))
         }
       } finally {
-        if (isActive()) setAutoGenLoading(false)
+        if (isActive()) {
+          setAutoGenLoading(false)
+          // 実行完了後に戻す。開始直後に戻すと effect cleanup が予約処理を中断する。
+          setManualAnalysisTriggered(false)
+        }
       }
     }
 
@@ -1283,7 +1285,7 @@ export default function DangerReportForm({
       {!isMobileFullscreen && (
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[17px] font-black" style={{ color: C.ink }}>
-            きけんを おしらせ
+            危険箇所を報告
           </h2>
           <button
             type="button"
@@ -1319,7 +1321,7 @@ export default function DangerReportForm({
                     style={{ background: C.skySoft, borderColor: "rgba(62,143,184,.25)" }}
                   >
                     <p className="text-[12.5px] font-black" style={{ color: "#2A6B8C" }}>
-                      つうがくろ「{selectedRouteName}」の おしらせに なるよ
+                      通学路「{selectedRouteName}」の報告として共有されるよ
                     </p>
                   </div>
                 )}
@@ -1954,7 +1956,7 @@ export default function DangerReportForm({
                     className="mt-4 text-[20px] font-black"
                     style={{ color: C.ink }}
                   >
-                    おしらせ できたよ！
+                    報告できたよ！
                   </motion.h3>
                   <motion.p
                     initial={reduceMotion ? false : { y: 10, opacity: 0 }}

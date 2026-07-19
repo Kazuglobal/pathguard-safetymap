@@ -203,7 +203,7 @@ export default function MapFloatingControls({
               aria-label="危険箇所を報告する"
             >
               <PlusCircle className="h-4 w-4" strokeWidth={2.6} />
-              おしらせ
+              報告
             </button>
           </div>
         </div>
@@ -217,12 +217,12 @@ export default function MapFloatingControls({
         >
           <div className="rounded-[22px] border px-4 py-3" style={floatPill}>
             <p className="text-sm font-black" style={{ color: C.ink }}>
-              {isSelecting ? "ばしょを えらんでいるよ" : "おしらせを かいているよ"}
+              {isSelecting ? "報告する場所を選択中" : "報告内容を入力中"}
             </p>
             <p className="mt-0.5 text-xs font-bold" style={{ color: C.inkSoft }}>
               {isSelecting
-                ? "ちずを タップして ばしょを きめてね"
-                : "ないようを かくにんして おくってね"}
+                ? "地図をタップして場所を決めてね"
+                : "内容を確認して送信してね"}
             </p>
           </div>
         </div>
@@ -291,7 +291,7 @@ export default function MapFloatingControls({
             ) : (
               <>
                 <PlusCircle className="h-5 w-5" strokeWidth={2.6} />
-                きけんを おしらせ
+                危険箇所を報告
               </>
             )}
           </button>
