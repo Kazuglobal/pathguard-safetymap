@@ -46,6 +46,12 @@ export interface MaskConfirmProps {
 const PIXELATE_TARGET_PX = 12
 /** 表示キャンバスの最大幅 (見やすさ用。出力解像度には影響しない方針で原寸描画) */
 const MAX_DISPLAY_WIDTH = 480
+/**
+ * AI送信用画像の長辺上限。
+ * Vercel Functions の 4.5MB リクエスト上限に対し、base64/JSON の膨張分を含めても
+ * 十分な余白を持たせつつ、危険箇所を判別できる解像度を維持する。
+ */
+const MAX_MASKED_OUTPUT_LONG_EDGE = 1600
 /** ドラッグ確定とみなす最小サイズ (相対座標 0..1) */
 const MIN_DRAG_SIZE = 0.02
 const PROCESSING_TIMEOUT_MS = 12_000
@@ -257,6 +263,17 @@ function dragToRegion(drag: DragState): HunterRegion {
   return { x, y, w, h }
 }
 
+export function calculateMaskedOutputSize(
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  const scale = Math.min(1, MAX_MASKED_OUTPUT_LONG_EDGE / Math.max(width, height))
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  }
+}
+
 export function MaskConfirm(props: MaskConfirmProps) {
   const { file, onConfirm, onCancel } = props
   const reduce = useReducedMotion()
@@ -464,10 +481,11 @@ export function MaskConfirm(props: MaskConfirmProps) {
     if (!ctx) return
     const naturalW = img.naturalWidth || img.width
     const naturalH = img.naturalHeight || img.height
-    canvas.width = naturalW
-    canvas.height = naturalH
-    ctx.clearRect(0, 0, naturalW, naturalH)
-    ctx.drawImage(img, 0, 0, naturalW, naturalH)
+    const outputSize = calculateMaskedOutputSize(naturalW, naturalH)
+    canvas.width = outputSize.width
+    canvas.height = outputSize.height
+    ctx.clearRect(0, 0, outputSize.width, outputSize.height)
+    ctx.drawImage(img, 0, 0, outputSize.width, outputSize.height)
     for (const region of [...autoRegions, ...manualRegions]) {
       applyBlurRegion(ctx, canvas, region)
     }
