@@ -36,6 +36,7 @@ vi.mock("@/lib/supabase-client", () => ({
 }));
 
 vi.mock("@/lib/accident-stats-year-window", () => ({
+  ACCIDENT_IMAGE_CONTEXT_PARAMS: { radiusMeters: 300, years: 5 },
   DEFAULT_ACCIDENT_YEARS: 5,
   adjustYearsForAccidentDataset: mocked.mockAdjustYears,
   normalizeSummaryYearText: mocked.mockNormalizeSummaryYearText,

@@ -15,6 +15,7 @@
 
 import { supabase } from "@/lib/supabase-client";
 import {
+  ACCIDENT_IMAGE_CONTEXT_PARAMS,
   adjustYearsForAccidentDataset,
   DEFAULT_ACCIDENT_YEARS,
   normalizeSummaryYearText,
@@ -198,7 +199,7 @@ export async function getAccidentStatsRPC(params: {
 }): Promise<AccidentStats> {
   const requestedYears = params.years ?? DEFAULT_ACCIDENT_YEARS;
   const adjustedYears = adjustYearsForAccidentDataset(requestedYears);
-  const radiusMeters = params.radiusMeters ?? 300;
+  const radiusMeters = params.radiusMeters ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters;
 
   let data: unknown = null;
   let error: { message?: string } | null = null;

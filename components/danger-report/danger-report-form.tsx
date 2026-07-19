@@ -46,6 +46,7 @@ import {
   getPromptById,
   type TargetAudience,
   type DisasterPrompt,
+  ACCIDENT_SITUATION_PROMPT,
   defaultSituations,
   type DefaultSituation,
 } from "@/lib/disaster-scenario-prompts"
@@ -58,6 +59,15 @@ import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 import { handleError } from "@/lib/error-handler"
+import { useSupabase } from "@/components/providers/supabase-provider"
+import {
+  formatHazardDepthLabel,
+  getHazardGateMessage,
+  queryHazardGate,
+  type HazardGateRpcClient,
+  type HazardGateVerdict,
+} from "@/lib/hazard-zone-gate"
+import { buildSystemASimulationJobs } from "@/lib/system-a-simulation"
 import {
   extractPreSubmitSimulationQuickSummary,
   extractSimulationQuickSummary,
@@ -102,7 +112,7 @@ type RiskAnalysisItem = {
 
 type GeneratedPromptsState = {
   vizPrompt?: string
-  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+  simulationPrompts?: { earthquake: string; typhoon: string; flood: string | null; fire: string }
   riskObservationTable?: string
 }
 
@@ -209,6 +219,7 @@ export default function DangerReportForm({
   isMobileFullscreen = false,
 }: DangerReportFormProps) {
   const { toast } = useToast()
+  const { supabase } = useSupabase()
   const pathname = usePathname()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState("")
@@ -247,8 +258,10 @@ export default function DangerReportForm({
   const lastAutoGenKey = useRef<string | null>(null)
   const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPromptsState | null>(null)
   const [lastHazards, setLastHazards] = useState<HazardItem[]>([])
-  type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
+  type Situation = DefaultSituation
   const [situation, setSituation] = useState<Situation>('viz')
+  const [floodGateVerdict, setFloodGateVerdict] = useState<HazardGateVerdict | null>(null)
+  const [floodGateLoading, setFloodGateLoading] = useState(false)
   const [regenLoading, setRegenLoading] = useState(false)
   const autoGenRunIdRef = useRef(0)
   const lastRegenAtRef = useRef(0)
@@ -292,6 +305,33 @@ export default function DangerReportForm({
     reset: resetAccidentStats,
   } = useAccidentStats()
 
+  useEffect(() => {
+    let active = true
+    setFloodGateVerdict(null)
+    if (!selectedLocation) {
+      setFloodGateLoading(false)
+      return () => { active = false }
+    }
+
+    setFloodGateLoading(true)
+    void queryHazardGate(
+      supabase as unknown as HazardGateRpcClient,
+      { longitude: selectedLocation[0], latitude: selectedLocation[1] },
+      "flood",
+      { toleranceMeters: 0 },
+    ).then((verdict) => {
+      if (!active) return
+      setFloodGateVerdict(verdict)
+      if (verdict.kind !== "inside") {
+        setSituation((current) => current === "flood" ? "viz" : current)
+      }
+    }).finally(() => {
+      if (active) setFloodGateLoading(false)
+    })
+
+    return () => { active = false }
+  }, [selectedLocation?.[0], selectedLocation?.[1], supabase])
+
   // Fetch accident stats when location changes
   useEffect(() => {
     resetAccidentStats()
@@ -311,6 +351,35 @@ export default function DangerReportForm({
       blobUrlRegistryRef.current.add(url)
     }
   }
+
+  const appendImageGenerationContext = (
+    formData: FormData,
+    imageSituation: Situation | "custom",
+  ) => {
+    formData.append("situation", imageSituation)
+    if (selectedLocation) {
+      formData.append("longitude", String(selectedLocation[0]))
+      formData.append("latitude", String(selectedLocation[1]))
+    }
+  }
+
+  const floodSimulationEnabled = floodGateVerdict?.kind === "inside"
+  const accidentSimulationEnabled =
+    accidentStatsStatus === "loaded" &&
+    Boolean(accidentStats && accidentStats.total_accidents > 0)
+  const accidentSimulationDisabledReason = "この地点周辺の事故統計データはありません"
+  const floodGateDisabledReason =
+    floodGateVerdict && floodGateVerdict.kind !== "inside"
+      ? getHazardGateMessage(floodGateVerdict, "flood")
+      : floodGateLoading
+        ? "浸水想定を確認しています"
+        : undefined
+  const floodMaximumDepthLabel =
+    floodGateVerdict?.kind === "inside"
+      ? floodGateVerdict.zone.depthMaxMeters !== null
+        ? `${floodGateVerdict.zone.depthMaxMeters.toFixed(1)}m`
+        : formatHazardDepthLabel(floodGateVerdict.zone)
+      : null
 
   const revokeBlobUrl = (url: string | null | undefined) => {
     if (!url || !url.startsWith("blob:")) return
@@ -647,14 +716,19 @@ export default function DangerReportForm({
         // 2) generate prompts (risk observation + viz + simulations)
         let prLocal: {
           vizPrompt?: string
-          simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+          simulationPrompts?: { earthquake: string; typhoon: string; flood: string | null; fire: string }
           riskObservation?: { tableMarkdown?: string }
         } | null = null
         try {
           const pRes = await fetch('/api/gemini/generate-prompts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64 }),
+            body: JSON.stringify({
+              imageBase64: base64,
+              ...(selectedLocation
+                ? { longitude: selectedLocation[0], latitude: selectedLocation[1] }
+                : {}),
+            }),
             signal: abortController.signal,
           })
           if (pRes.ok) {
@@ -684,18 +758,19 @@ export default function DangerReportForm({
         const overlay = await dataUrlToFileAndBlobUrl(overlayDataUrl, 'overlay.png', abortController.signal)
         if (!isActive()) return
 
-        // 4) simple local simulations (flood/fire/typhoon/earthquake)
-        const [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl] = await Promise.all([
-          simulateVariant(originalImageFile, 'flood'),
-          simulateVariant(originalImageFile, 'fire'),
-          simulateVariant(originalImageFile, 'typhoon'),
-          simulateVariant(originalImageFile, 'earthquake'),
-        ])
+        // 4) simple local simulations. Flood is built only after a positive zone verdict.
+        const localSimulationKinds: Array<'flood' | 'fire' | 'typhoon' | 'earthquake'> = [
+          'fire',
+          'typhoon',
+          'earthquake',
+        ]
+        if (floodSimulationEnabled) localSimulationKinds.unshift('flood')
+        const simDataUrls = await Promise.all(
+          localSimulationKinds.map((kind) => simulateVariant(originalImageFile, kind)),
+        )
         if (!isActive()) return
-        const simNames = ['flood', 'fire', 'typhoon', 'earthquake'] as const
-        const simDataUrls = [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl]
         const simResults = await Promise.all(
-          simDataUrls.map((url, i) => dataUrlToFileAndBlobUrl(url, `${simNames[i]}.png`, abortController.signal))
+          simDataUrls.map((url, i) => dataUrlToFileAndBlobUrl(url, `${localSimulationKinds[i]}.png`, abortController.signal))
         )
         // Batch a single state update for all local results (overlay + 4 sims)
         if (isActive()) {
@@ -720,6 +795,7 @@ export default function DangerReportForm({
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
           fd.append('generationMode', 'standard')
+          appendImageGenerationContext(fd, 'viz')
           const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
           if (genRes.ok) {
             const gen = await genRes.json()
@@ -756,11 +832,12 @@ export default function DangerReportForm({
         if (simsLocal) {
           try {
             const compressedForSim = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
-            const make = async (prompt: string, suffix: string) => {
+            const make = async (prompt: string, suffix: Situation) => {
               const fd = new FormData()
               fd.append('image', compressedForSim)
               fd.append('prompt', prompt)
               fd.append('generationMode', 'standard')
+              appendImageGenerationContext(fd, suffix)
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
                 const txt = await r.text()
@@ -778,11 +855,12 @@ export default function DangerReportForm({
             const sims = simsLocal
             // Run disaster simulations with limited concurrency (2 at a time)
             // to avoid overwhelming the browser with large concurrent payloads
-            const simKeys = ['earthquake', 'typhoon', 'flood', 'fire'] as const
-            const simPrompts = [sims.earthquake, sims.typhoon, sims.flood, sims.fire]
+            const simulationJobs = buildSystemASimulationJobs(sims)
             const simResultsBatch: { file: File; blobUrl: string }[] = []
-            for (let i = 0; i < simKeys.length; i += 2) {
-              const batch = simPrompts.slice(i, i + 2).map((p, j) => make(p, simKeys[i + j]))
+            for (let i = 0; i < simulationJobs.length; i += 2) {
+              const batch = simulationJobs.slice(i, i + 2).map((job) =>
+                make(job.prompt, job.situation),
+              )
               const batchResults = await Promise.all(batch)
               for (const r of batchResults) {
                 if (!r) continue
@@ -860,6 +938,8 @@ export default function DangerReportForm({
           setAutoGenError('選択されたプロンプトが見つかりません。')
           return
         }
+      } else if (situation === 'accident') {
+        prompt = ACCIDENT_SITUATION_PROMPT
       } else {
         // 従来のシチュエーション選択
         let pr = generatedPrompts
@@ -869,14 +949,19 @@ export default function DangerReportForm({
           const pRes = await fetch('/api/gemini/generate-prompts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ imageBase64: base64 }),
+            body: JSON.stringify({
+              imageBase64: base64,
+              ...(selectedLocation
+                ? { longitude: selectedLocation[0], latitude: selectedLocation[1] }
+                : {}),
+            }),
           })
           if (pRes.ok) {
             const pjson = await pRes.json()
             const prompts = pjson?.prompts as
               | {
                   vizPrompt?: string
-                  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+                  simulationPrompts?: { earthquake: string; typhoon: string; flood: string | null; fire: string }
                   riskObservation?: { tableMarkdown?: string }
                 }
               | undefined
@@ -909,6 +994,7 @@ export default function DangerReportForm({
       const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
       fd.append('generationMode', useCustomPrompt ? 'disaster' : 'standard')
+      appendImageGenerationContext(fd, useCustomPrompt ? 'custom' : situation)
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
         const errorBody = await res.text()
@@ -966,6 +1052,7 @@ export default function DangerReportForm({
           fd.append('image', compressed)
           fd.append('prompt', p.prompt)
           fd.append('generationMode', 'disaster')
+          appendImageGenerationContext(fd, 'custom')
           const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
           if (res.ok) {
             const json = await res.json()
@@ -1592,19 +1679,48 @@ export default function DangerReportForm({
                     <p className="text-[13px] font-black" style={{ color: C.ink }}>
                       「もしも」を えらんで つくりなおす
                     </p>
+                    {floodGateVerdict?.kind === "inside" && (
+                      <div
+                        className="space-y-1 rounded-xl border-2 px-3 py-2 text-[12px] font-black"
+                        style={{
+                          background: "rgba(59,130,246,.08)",
+                          borderColor: "rgba(37,99,235,.24)",
+                          color: C.ink,
+                        }}
+                      >
+                        <p className="flex items-center gap-1.5">
+                          <span aria-hidden="true">🌊</span>
+                          <span>{getHazardGateMessage(floodGateVerdict, "flood")}</span>
+                        </p>
+                        <p className="text-[11px] font-bold" style={{ color: C.inkSoft }}>
+                          {`この地点の想定最大浸水深: ${floodMaximumDepthLabel}（出典: ${floodGateVerdict.zone.sourceLayer}）※画像は表現を抑えたイメージです`}
+                        </p>
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-1.5">
                       {defaultSituations.map((s) => {
                         const active = !useCustomPrompt && situation === s.id
+                        const floodDisabled = s.id === "flood" && !floodSimulationEnabled
+                        const accidentDisabled = s.id === "accident" && !accidentSimulationEnabled
+                        const disabled = floodDisabled || accidentDisabled
                         return (
                           <button
                             key={s.id}
                             type="button"
                             aria-pressed={active}
+                            disabled={disabled}
+                            title={
+                              floodDisabled
+                                ? floodGateDisabledReason
+                                : accidentDisabled
+                                  ? accidentSimulationDisabledReason
+                                  : undefined
+                            }
                             onClick={() => {
                               setUseCustomPrompt(false)
                               setSituation(s.id as Situation)
                             }}
-                            className={`rounded-full border-2 px-3 py-1.5 text-[12px] font-black transition-colors ${tankenTokens.cls.focus}`}
+                            className={`rounded-full border-2 px-3 py-1.5 text-[12px] font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${tankenTokens.cls.focus}`}
                             style={{
                               background: active ? C.primary : "#fff",
                               color: active ? "#fff" : C.inkSoft,
@@ -1621,7 +1737,13 @@ export default function DangerReportForm({
                       variant="paper"
                       className="w-full min-h-[46px]"
                       onClick={regenerateSituation}
-                      disabled={regenLoading || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
+                      disabled={
+                        regenLoading ||
+                        !originalImageFile ||
+                        (useCustomPrompt && !selectedPromptId) ||
+                        (!useCustomPrompt && situation === "flood" && !floodSimulationEnabled) ||
+                        (!useCustomPrompt && situation === "accident" && !accidentSimulationEnabled)
+                      }
                     >
                       {regenLoading ? (
                         <>

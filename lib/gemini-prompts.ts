@@ -81,14 +81,18 @@ export type GeneratedPrompts = {
   simulationPrompts: {
     earthquake: string
     typhoon: string
-    flood: string
+    flood: string | null
     fire: string
   }
 }
 
 export async function generateDisasterPrompts(
   imageBase64OrDataUrl: string,
-  opts?: { language?: "ja" | "en"; customHazards?: string[] }
+  opts?: {
+    language?: "ja" | "en"
+    customHazards?: string[]
+    accidentContext?: string
+  }
 ): Promise<GeneratedPrompts> {
   if (!imageBase64OrDataUrl || imageBase64OrDataUrl.length < 50) {
     throw new Error("\u753b\u50cf\u30c7\u30fc\u30bf\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059")
@@ -122,13 +126,16 @@ export async function generateDisasterPrompts(
       : "Respond in natural, professional Japanese."
 
   const countermeasureLanguage = opts?.language === "en" ? "in English" : "in Japanese"
+  const accidentContextInstruction = opts?.accidentContext?.trim()
+    ? `\n\nOBJECTIVE TRAFFIC-ACCIDENT CONTEXT (apply only to prioritization in vizPrompt; do not add objects absent from the photo and do not alter the four disaster simulation prompts):\n${opts.accidentContext.trim()}`
+    : ""
 
   const uploadMessage =
     opts?.language === "en"
       ? "Please upload an image."
       : "\u753b\u50cf\u3092\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9\u3057\u3066\u304f\u3060\u3055\u3044\u3002"
 
-  const instruction = `You are a bilingual (Japanese and English) disaster-risk visualization assistant named "DocuImage Assistant GPT". ${languageInstruction} Never output addresses, personal data, or other sensitive identifiers.
+  const instruction = `You are a bilingual (Japanese and English) disaster-risk visualization assistant named "DocuImage Assistant GPT". ${languageInstruction} Never output addresses, personal data, or other sensitive identifiers.${accidentContextInstruction}
 
 If the input image is missing or blank, return the JSON object described below with riskObservation.elements = [], riskObservation.tableMarkdown = "${uploadMessage}", structureConditions = [], and every prompt field set to "" (empty string).
 

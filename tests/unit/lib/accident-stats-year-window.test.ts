@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCIDENT_IMAGE_CONTEXT_PARAMS,
   adjustYearsForAccidentDataset,
   normalizeSummaryYearText,
 } from "@/lib/accident-stats-year-window";
+
+describe("ACCIDENT_IMAGE_CONTEXT_PARAMS", () => {
+  it("shares the 300m and five-year product window", () => {
+    expect(ACCIDENT_IMAGE_CONTEXT_PARAMS).toEqual({
+      radiusMeters: 300,
+      years: 5,
+    });
+  });
+});
 
 describe("adjustYearsForAccidentDataset", () => {
   it("shifts 5 years to 8 years when current year is 2026 and dataset max is 2023", () => {

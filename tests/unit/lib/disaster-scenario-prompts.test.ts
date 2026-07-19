@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { promptCategories } from '@/lib/disaster-scenario-prompts'
+import {
+  ACCIDENT_SITUATION_PROMPT,
+  defaultSituations,
+  promptCategories,
+} from '@/lib/disaster-scenario-prompts'
 
 describe('disaster-scenario child prompts', () => {
   it('do not mention kodomo 110 houses in child image prompts', () => {
@@ -14,5 +18,23 @@ describe('disaster-scenario child prompts', () => {
       expect(prompt.prompt).not.toContain('こども110番')
       expect(prompt.prompt).not.toContain('110番の家')
     }
+  })
+})
+
+describe('accident-data situation', () => {
+  it('is available as an explicit situation', () => {
+    expect(defaultSituations).toContainEqual({
+      id: 'accident',
+      name: 'じこデータ',
+      description: '実際の事故データにもとづく注意マップ',
+    })
+  })
+
+  it('keeps the generated image factual, non-graphic, and privacy preserving', () => {
+    expect(ACCIDENT_SITUATION_PROMPT).toContain('事故件数・時間帯・事故類型・天候だけ')
+    expect(ACCIDENT_SITUATION_PROMPT).toContain('数値や事実を追加・変更しない')
+    expect(ACCIDENT_SITUATION_PROMPT).toContain('負傷者')
+    expect(ACCIDENT_SITUATION_PROMPT).toContain('損壊車両')
+    expect(ACCIDENT_SITUATION_PROMPT).toContain('顔・車のナンバープレート')
   })
 })

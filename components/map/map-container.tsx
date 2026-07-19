@@ -949,12 +949,9 @@ export default function MapContainer({
         },
         body: JSON.stringify({
           hazardType: activeHazardMarker.hazard_type,
-          riskLevel: activeHazardMarker.risk_level,
-          depthMinMeters: activeHazardMarker.depth_min_m,
-          depthMaxMeters: activeHazardMarker.depth_max_m,
-          areaContext: activeHazardMarker.area_context,
+          longitude: activeHazardMarker.coordinates[0],
+          latitude: activeHazardMarker.coordinates[1],
           scenarioKey,
-          locationLabel: `${activeHazardMarker.area_label} in Japan`,
         }),
       })
 

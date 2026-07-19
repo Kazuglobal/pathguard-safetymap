@@ -944,5 +944,57 @@ describe('MapContainer characterization', () => {
       expect(lastMap().sources.has('selected-user-route-source')).toBe(true)
       expect(lastMap().layers.has('selected-user-route-layer')).toBe(true)
     })
+
+    it('ハザード画像生成はサーバ導出用の座標とシナリオだけを送る', async () => {
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          imageUrl: 'https://example.com/hazard.png',
+          prompt: 'prompt',
+          cached: true,
+          generatedAt: '2026-07-19T00:00:00.000Z',
+          scenarioKey: 'flooded-road',
+        }),
+      }))
+      vi.stubGlobal('fetch', fetchMock)
+      renderMapContainer()
+      fireMapLoad()
+
+      act(() => {
+        h.captured.routeHazardPanel.onHazardSelect({
+          id: 'hz-1',
+          hazard_type: 'flood',
+          risk_level: 5,
+          depth_min_m: 10,
+          depth_max_m: 20,
+          depth_label: '10m以上',
+          area_context: 'coastal',
+          area_label: '海岸近く',
+          title: '洪水',
+          summary: 'summary',
+          explanation: 'explanation',
+          evacuation_points: [],
+          coordinates: [140.74, 40.82],
+          scenario_options: [{ key: 'flooded-road' }],
+          scenario_key: 'flooded-road',
+        })
+      })
+
+      await act(async () => {
+        await h.captured.hazardImageModal.onGenerate()
+      })
+
+      const imageCall = fetchMock.mock.calls.find(
+        ([url]) => url === '/api/hazard/image',
+      )
+      expect(imageCall).toBeDefined()
+      const init = imageCall?.[1] as RequestInit
+      expect(JSON.parse(String(init.body))).toEqual({
+        hazardType: 'flood',
+        longitude: 140.74,
+        latitude: 40.82,
+        scenarioKey: 'flooded-road',
+      })
+    })
   })
 })

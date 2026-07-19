@@ -91,6 +91,7 @@ export default function ImageGenPage() {
       const fd = new FormData()
       fd.append("prompt", prompt.trim())
       fd.append("image", file)
+      fd.append("situation", "custom")
       const res = await fetch("/api/gemini/generate-image", {
         method: "POST",
         body: fd,
@@ -130,6 +131,9 @@ export default function ImageGenPage() {
             <option value="fire">火災後シミュレーション</option>
           </select>
           <p className="text-xs text-gray-600">※ アップロード画像の視点・明るさを維持し、2Kフォトリアル、人物なし、モデル名は記載しません。</p>
+          <p className="text-xs font-medium text-amber-700">
+            教育用の想像図であり、実在地点の浸水想定を示すものではありません。
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -143,8 +147,10 @@ export default function ImageGenPage() {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">参照画像（必須）</label>
-          <input type="file" accept="image/*" onChange={onFileChange} />
+          <label htmlFor="image-gen-reference" className="block text-sm font-medium">
+            参照画像（必須）
+          </label>
+          <input id="image-gen-reference" type="file" accept="image/*" onChange={onFileChange} />
           {file && (
             <p className="text-xs text-gray-600">選択中: {file.name} ({Math.round(file.size / 1024)} KB)</p>
           )}

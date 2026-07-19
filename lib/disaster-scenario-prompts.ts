@@ -18,6 +18,15 @@ const COMMON_IMAGE_RULES = `
 - 元写真のアスペクト比を保持し、正方形化・引き伸ばし・過度な切り抜きをしない。
 - 画像内の日本語テキストは「大きく・短く・正確に」。長文を書き込まず、文字化けさせない。`
 
+export const ACCIDENT_SITUATION_PROMPT = `入力された通学路写真を不変のベースとして使い、この地点の客観的な交通事故統計にもとづく教育用注意マップを重ねてください。
+
+[表現ルール]
+- サーバーから与えられた事故件数・時間帯・事故類型・天候だけを使い、数値や事実を追加・変更しない。
+- 写真に存在する道路・交差点・歩道などにだけ注意表示を置き、統計にない場所へ矢印を追加しない。
+- 数値ラベルは「5年間で12件」「あさ7-8時に多い」のように短く、読みやすく、正確にする。
+- 事故の瞬間、負傷者、血、損壊車両、特定車両を描かない。恐怖をあおらない。
+- 事故件数から「安全」「危険」と断定しない。具体的な確認行動を穏やかに示す。${COMMON_IMAGE_RULES}`
+
 const withCommonRules = (prompts: DisasterPrompt[]): DisasterPrompt[] =>
   prompts.map((prompt) => ({ ...prompt, prompt: `${prompt.prompt}${COMMON_IMAGE_RULES}` }))
 
@@ -492,6 +501,7 @@ export const defaultSituations = [
   { id: "typhoon", name: "台風後（強風）", description: "台風・強風後のシミュレーション" },
   { id: "flood", name: "冠水", description: "冠水時のシミュレーション" },
   { id: "fire", name: "火災後", description: "火災発生後のシミュレーション" },
+  { id: "accident", name: "じこデータ", description: "実際の事故データにもとづく注意マップ" },
 ] as const
 
 export type DefaultSituation = (typeof defaultSituations)[number]["id"]

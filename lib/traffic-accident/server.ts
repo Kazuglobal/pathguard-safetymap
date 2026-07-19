@@ -9,9 +9,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
-
-const DEFAULT_RADIUS_METERS = 300
-const DEFAULT_YEARS = 5
+import {
+  ACCIDENT_IMAGE_CONTEXT_PARAMS,
+  adjustYearsForAccidentDataset,
+} from "@/lib/accident-stats-year-window"
 
 export interface FetchNearbyAccidentOptions {
   readonly radiusMeters?: number
@@ -42,8 +43,9 @@ export async function fetchNearbyAccidentStats(
     return null
   }
 
-  const radiusMeters = options.radiusMeters ?? DEFAULT_RADIUS_METERS
-  const years = options.years ?? DEFAULT_YEARS
+  const radiusMeters = options.radiusMeters ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters
+  const requestedYears = options.years ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.years
+  const years = adjustYearsForAccidentDataset(requestedYears)
 
   try {
     // 既存 RPC（get_nearby_accident_stats）は生成型に無いため any キャストで呼ぶ。

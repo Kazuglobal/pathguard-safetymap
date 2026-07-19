@@ -5,11 +5,26 @@ import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/l
 import {
   buildHazardImagePrompt,
   formatDepthLabel,
+  getHazardAreaLabel,
   getHazardScenarioOptions,
 } from "@/lib/hazard-scenarios"
+import {
+  getHazardGateMessage,
+  getHazardGateMode,
+  getHazardGateReason,
+  logHazardGateVerdict,
+  queryHazardGate,
+  type HazardGateLogClient,
+  type HazardGateRpcClient,
+  type HazardPoint,
+} from "@/lib/hazard-zone-gate"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { createServerClient } from "@/lib/supabase-server"
 import type { HazardAreaContext, HazardType } from "@/lib/types"
+import {
+  checkImageGenerationRateLimit,
+  rateLimitedResponse,
+} from "@/lib/upstash-rate-limiter"
 
 export const runtime = "nodejs"
 export const maxDuration = 180
@@ -21,14 +36,21 @@ function createPromptSignature(prompt: string): string {
   return createHash("md5").update(prompt).digest("hex")
 }
 
-type HazardImageRequest = {
+type ResolvedHazardImageRequest = {
   hazardType: HazardType
   riskLevel: number
-  depthMinMeters?: number | null
-  depthMaxMeters?: number | null
+  depthMinMeters: number | null
+  depthMaxMeters: number | null
   areaContext: HazardAreaContext
   scenarioKey: string
   locationLabel?: string
+}
+
+type HazardImageRequestCore = {
+  hazardType: HazardType
+  scenarioKey: string
+  point: HazardPoint | null
+  raw: Record<string, unknown>
 }
 
 function isHazardType(value: unknown): value is HazardType {
@@ -43,7 +65,7 @@ function isAreaContext(value: unknown): value is HazardAreaContext {
   )
 }
 
-function parseRequestBody(body: unknown): HazardImageRequest {
+function parseRequestBody(body: unknown): HazardImageRequestCore {
   if (!body || typeof body !== "object") {
     throw new Error("Invalid request body")
   }
@@ -52,36 +74,75 @@ function parseRequestBody(body: unknown): HazardImageRequest {
   if (!isHazardType(payload.hazardType)) {
     throw new Error("hazardType must be flood or tsunami")
   }
-  if (!isAreaContext(payload.areaContext)) {
-    throw new Error("areaContext is invalid")
-  }
-  if (typeof payload.riskLevel !== "number" || payload.riskLevel < 1 || payload.riskLevel > 5) {
-    throw new Error("riskLevel must be between 1 and 5")
-  }
   if (typeof payload.scenarioKey !== "string" || payload.scenarioKey.length === 0) {
     throw new Error("scenarioKey is required")
   }
 
-  const allowedScenarioKeys = getHazardScenarioOptions({
-    hazardType: payload.hazardType,
-    areaContext: payload.areaContext,
-  }).map((scenario) => scenario.key)
-
-  if (!allowedScenarioKeys.includes(payload.scenarioKey)) {
-    throw new Error("scenarioKey is not allowed for this location")
+  const hasLongitude = payload.longitude !== undefined
+  const hasLatitude = payload.latitude !== undefined
+  let point: HazardPoint | null = null
+  if (hasLongitude || hasLatitude) {
+    if (
+      typeof payload.longitude !== "number" ||
+      !Number.isFinite(payload.longitude) ||
+      typeof payload.latitude !== "number" ||
+      !Number.isFinite(payload.latitude)
+    ) {
+      throw new Error("longitude and latitude must be finite numbers")
+    }
+    point = { longitude: payload.longitude, latitude: payload.latitude }
   }
 
   return {
     hazardType: payload.hazardType,
+    scenarioKey: payload.scenarioKey,
+    point,
+    raw: payload,
+  }
+}
+
+function parseLegacyAttributes(
+  request: HazardImageRequestCore,
+): ResolvedHazardImageRequest | null {
+  const payload = request.raw
+  if (
+    !isAreaContext(payload.areaContext) ||
+    typeof payload.riskLevel !== "number" ||
+    !Number.isInteger(payload.riskLevel) ||
+    payload.riskLevel < 1 ||
+    payload.riskLevel > 5
+  ) {
+    return null
+  }
+
+  return {
+    hazardType: request.hazardType,
     riskLevel: payload.riskLevel,
     depthMinMeters:
-      typeof payload.depthMinMeters === "number" ? payload.depthMinMeters : null,
+      typeof payload.depthMinMeters === "number" &&
+      Number.isFinite(payload.depthMinMeters)
+        ? payload.depthMinMeters
+        : null,
     depthMaxMeters:
-      typeof payload.depthMaxMeters === "number" ? payload.depthMaxMeters : null,
+      typeof payload.depthMaxMeters === "number" &&
+      Number.isFinite(payload.depthMaxMeters)
+        ? payload.depthMaxMeters
+        : null,
     areaContext: payload.areaContext,
-    scenarioKey: payload.scenarioKey,
+    scenarioKey: request.scenarioKey,
     locationLabel:
       typeof payload.locationLabel === "string" ? payload.locationLabel : undefined,
+  }
+}
+
+function validateScenario(request: ResolvedHazardImageRequest): void {
+  const allowedScenarioKeys = getHazardScenarioOptions({
+    hazardType: request.hazardType,
+    areaContext: request.areaContext,
+  }).map((scenario) => scenario.key)
+
+  if (!allowedScenarioKeys.includes(request.scenarioKey)) {
+    throw new Error("scenarioKey is not allowed for this location")
   }
 }
 
@@ -109,7 +170,75 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
     }
 
-    const payload = parseRequestBody(await req.json())
+    const rateLimit = await checkImageGenerationRateLimit(
+      `hazard-image:${user.id}`,
+    )
+    if (!rateLimit.success) return rateLimitedResponse(rateLimit.reset)
+
+    const request = parseRequestBody(await req.json())
+    const gateMode = getHazardGateMode()
+    const legacyRequest = parseLegacyAttributes(request)
+    const admin = getSupabaseAdmin() as any
+    let payload: ResolvedHazardImageRequest
+
+    if (gateMode === "off" && legacyRequest) {
+      payload = legacyRequest
+    } else if (request.point) {
+      const gateStartedAt = Date.now()
+      const verdict = await queryHazardGate(
+        admin as HazardGateRpcClient,
+        request.point,
+        request.hazardType,
+        { toleranceMeters: 30 },
+      )
+      await logHazardGateVerdict(admin as HazardGateLogClient, {
+        route: "hazard-image",
+        mode: gateMode,
+        situation: request.hazardType,
+        verdict,
+        point: request.point,
+        userId: user.id,
+        latencyMs: Date.now() - gateStartedAt,
+      })
+
+      if (verdict.kind === "inside") {
+        payload = {
+          hazardType: verdict.zone.hazardType,
+          riskLevel: verdict.zone.riskLevel,
+          depthMinMeters: verdict.zone.depthMinMeters,
+          depthMaxMeters: verdict.zone.depthMaxMeters,
+          areaContext: verdict.zone.areaContext,
+          scenarioKey: request.scenarioKey,
+          locationLabel: `${getHazardAreaLabel(verdict.zone.areaContext)} in Japan`,
+        }
+      } else if (gateMode === "log" && legacyRequest) {
+        payload = legacyRequest
+      } else {
+        return NextResponse.json(
+          {
+            error: getHazardGateMessage(verdict, request.hazardType),
+            reason: getHazardGateReason(verdict),
+          },
+          { status: 422 },
+        )
+      }
+    } else if (gateMode === "log" && legacyRequest) {
+      const verdict = { kind: "unavailable" } as const
+      await logHazardGateVerdict(admin as HazardGateLogClient, {
+        route: "hazard-image",
+        mode: gateMode,
+        situation: request.hazardType,
+        verdict,
+        point: null,
+        userId: user.id,
+        latencyMs: 0,
+      })
+      payload = legacyRequest
+    } else {
+      throw new Error("longitude and latitude are required")
+    }
+
+    validateScenario(payload)
     const prompt = buildHazardImagePrompt({
       hazardType: payload.hazardType,
       riskLevel: payload.riskLevel,
@@ -120,8 +249,6 @@ export async function POST(req: NextRequest) {
       locationLabel: payload.locationLabel,
     })
     const promptSignature = createPromptSignature(prompt)
-    const admin = getSupabaseAdmin() as any
-
     const { data: cachedEntry, error: cacheError } = await admin
       .from("hazard_image_cache")
       .select("public_url, prompt_en, scenario_key, generated_at")
