@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   fetchStats: vi.fn(),
   resetAccidentStats: vi.fn(),
   hookState: { enrichCallCount: 0 },
+  accidentStats: { total_accidents: 3 } as any,
   startVlmAnalysis: vi.fn(async () => undefined),
   retryVlmAnalysis: vi.fn(async () => undefined),
   resetVlmAnalysis: vi.fn(),
@@ -100,7 +101,7 @@ vi.mock("@/hooks/use-accident-stats", async () => {
       }, [])
 
       return {
-        stats: { total_accidents: 3 } as any,
+        stats: mocks.accidentStats,
         status,
         error: null,
         isLoading: status === "loading",
@@ -137,7 +138,25 @@ describe("DangerReportForm", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.supabase.rpc.mockImplementation(async (name: string) => {
+      if (name === "get_hazard_zones_at_point") {
+        return {
+          data: [{
+            id: "zone-1",
+            hazard_type: "flood",
+            source_layer: "国土数値情報 A31",
+            risk_level: 2,
+            depth_min_m: 0.5,
+            depth_max_m: 3,
+            area_context: "residential-school-route",
+          }],
+          error: null,
+        }
+      }
+      return { data: true, error: null }
+    })
     mocks.hookState.enrichCallCount = 0
+    mocks.accidentStats = { total_accidents: 3 }
     mocks.fetchStats.mockResolvedValue({ total_accidents: 3 })
     mocks.enrichReportWithAccidents.mockResolvedValue({ id: "report-123" })
     mocks.vlmHookState.status = "idle"
@@ -155,6 +174,21 @@ describe("DangerReportForm", () => {
   const goToSendStep = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByTestId("wizard-next")) // きけん → しゃしん
     await user.click(screen.getByTestId("wizard-next")) // しゃしん → おくる
+  }
+
+  const uploadOriginalPhoto = async (
+    user: ReturnType<typeof userEvent.setup>,
+    container: HTMLElement,
+  ) => {
+    URL.createObjectURL = vi.fn(() => "blob:original") as typeof URL.createObjectURL
+    await user.click(screen.getByTestId("wizard-next"))
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    const pngFile = new File(
+      [Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+      "school-route.png",
+      { type: "image/png" },
+    )
+    await user.upload(originalInput, pngFile)
   }
 
   it("keeps accident stats panel stable after submit and bypasses hook enrich state", async () => {
@@ -331,6 +365,12 @@ describe("DangerReportForm", () => {
 
     const batchThumbnail = await screen.findByAltText("避難ルート重ね地図")
     expect(batchThumbnail).toHaveAttribute("src", "blob:batch-result")
+    const batchRequest = fetchMock.mock.calls.find(
+      ([input]) => String(input) === "/api/gemini/generate-image",
+    )
+    const batchForm = batchRequest?.[1]?.body as FormData
+    expect(batchForm.get("situation")).toBe("custom")
+    expect(batchForm.get("promptId")).toBe("child-1")
 
     await user.click(batchThumbnail)
 
@@ -346,5 +386,102 @@ describe("DangerReportForm", () => {
     })
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:report-added")
     expect(screen.getByAltText("避難ルート重ね地図")).toHaveAttribute("src", "blob:batch-result")
+  })
+
+  it("keeps flood available before a server gate result and does not query zones in the browser", async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-outside", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[140.74, 40.82]}
+      />,
+    )
+
+    await uploadOriginalPhoto(user, container)
+
+    const floodButton = await screen.findByRole("button", { name: "冠水" })
+    expect(floodButton).toBeEnabled()
+    expect(floodButton).not.toHaveAttribute("title")
+    expect(mocks.supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it("enables the accident-data situation when nearby accident statistics exist", async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <DangerReportForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await uploadOriginalPhoto(user, container)
+
+    const accidentButton = await screen.findByRole("button", { name: "じこデータ" })
+    expect(accidentButton).toBeEnabled()
+    expect(accidentButton).not.toHaveAttribute("title")
+  })
+
+  it("sends only the accident situation and point context when regenerating", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/gemini/generate-image") {
+        return {
+          ok: true,
+          json: async () => ({ images: [] }),
+        }
+      }
+      throw new Error(`unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { container } = render(
+      <DangerReportForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await uploadOriginalPhoto(user, container)
+    await user.click(await screen.findByRole("button", { name: "じこデータ" }))
+    await user.click(screen.getByRole("button", { name: "この「もしも」で つくる" }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/gemini/generate-image",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+    const imageCall = fetchMock.mock.calls.find(([input]) => String(input) === "/api/gemini/generate-image")
+    const formData = imageCall?.[1]?.body as FormData
+    expect(formData.get("situation")).toBe("accident")
+    expect(formData.get("longitude")).toBe("139.7004")
+    expect(formData.get("latitude")).toBe("35.6595")
+    expect(formData.get("prompt")).toContain("客観的な交通事故統計")
+    expect([...formData.keys()]).not.toContain("accidentStats")
+    expect(fetchMock.mock.calls.some(([input]) => String(input) === "/api/gemini/generate-prompts")).toBe(false)
+  })
+
+  it("disables the accident-data situation when nearby accident statistics are empty", async () => {
+    mocks.accidentStats = { total_accidents: 0 }
+    const user = userEvent.setup()
+    const { container } = render(
+      <DangerReportForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await uploadOriginalPhoto(user, container)
+
+    const accidentButton = await screen.findByRole("button", { name: "じこデータ" })
+    expect(accidentButton).toBeDisabled()
+    expect(accidentButton).toHaveAttribute(
+      "title",
+      "この地点周辺の事故統計データはありません",
+    )
   })
 })

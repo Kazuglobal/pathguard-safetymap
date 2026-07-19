@@ -10,6 +10,14 @@ const mocks = vi.hoisted(() => {
   const mockAddBreadcrumb = vi.fn()
   const mockReadFileWithSentryContext = vi.fn(async () => new ArrayBuffer(4))
   const mockVerifyOrRegenerate = vi.fn()
+  const mockCheckImageRateLimit = vi.fn()
+  const mockGetHazardGateMode = vi.fn()
+  const mockGetHazardGateMessage = vi.fn()
+  const mockQueryAndLogHazardGate = vi.fn()
+  const mockFetchNearbyAccidentStats = vi.fn()
+  const mockBuildAccidentPromptContext = vi.fn()
+  const mockGetPromptById = vi.fn()
+  const mockAdmin = { from: vi.fn(), rpc: vi.fn() }
 
   return {
     mockGetUser,
@@ -21,6 +29,14 @@ const mocks = vi.hoisted(() => {
     mockAddBreadcrumb,
     mockReadFileWithSentryContext,
     mockVerifyOrRegenerate,
+    mockCheckImageRateLimit,
+    mockGetHazardGateMode,
+    mockGetHazardGateMessage,
+    mockQueryAndLogHazardGate,
+    mockFetchNearbyAccidentStats,
+    mockBuildAccidentPromptContext,
+    mockGetPromptById,
+    mockAdmin,
   }
 })
 
@@ -44,6 +60,46 @@ vi.mock("@/lib/api-usage-logger", () => ({
 vi.mock("@/lib/api-cost-calculator", () => ({
   estimateImageGenerationCost: mocks.mockCalculateImageGenerationCost,
   calculateCost: mocks.mockCalculateCost,
+}))
+
+vi.mock("@/lib/upstash-rate-limiter", () => ({
+  checkImageGenerationRateLimit: mocks.mockCheckImageRateLimit,
+  rateLimitedResponse: () =>
+    Response.json({ error: "rate limited" }, { status: 429 }),
+}))
+
+vi.mock("@/lib/hazard-zone-gate", () => ({
+  getHazardGateMode: mocks.mockGetHazardGateMode,
+  getHazardGateMessage: mocks.mockGetHazardGateMessage,
+  parseHazardPoint: (longitude: unknown, latitude: unknown) => {
+    const parsedLongitude = typeof longitude === "string" && longitude.trim()
+      ? Number(longitude)
+      : Number.NaN
+    const parsedLatitude = typeof latitude === "string" && latitude.trim()
+      ? Number(latitude)
+      : Number.NaN
+    return Number.isFinite(parsedLongitude) && Number.isFinite(parsedLatitude)
+      ? { longitude: parsedLongitude, latitude: parsedLatitude }
+      : null
+  },
+  queryAndLogHazardGate: mocks.mockQueryAndLogHazardGate,
+}))
+
+vi.mock("@/lib/supabase-admin", () => ({
+  getSupabaseAdmin: () => mocks.mockAdmin,
+}))
+
+vi.mock("@/lib/traffic-accident/server", () => ({
+  fetchNearbyAccidentStats: mocks.mockFetchNearbyAccidentStats,
+}))
+
+vi.mock("@/lib/accident-prompt-context", () => ({
+  buildAccidentPromptContext: mocks.mockBuildAccidentPromptContext,
+}))
+
+vi.mock("@/lib/disaster-scenario-prompts", () => ({
+  ACCIDENT_SITUATION_PROMPT: "server accident prompt",
+  getPromptById: mocks.mockGetPromptById,
 }))
 
 vi.mock("@/lib/sentry-upload-context", () => ({
@@ -84,6 +140,15 @@ describe("app/api/gemini/generate-image route", () => {
       data: { user: { id: "user-1" } },
       error: null,
     })
+    mocks.mockCheckImageRateLimit.mockResolvedValue({ success: true })
+    mocks.mockGetHazardGateMode.mockReturnValue("off")
+    mocks.mockGetHazardGateMessage.mockImplementation(
+      (verdict: { kind: string }) => `gate:${verdict.kind}`,
+    )
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
+    mocks.mockFetchNearbyAccidentStats.mockResolvedValue(null)
+    mocks.mockBuildAccidentPromptContext.mockReturnValue(null)
+    mocks.mockGetPromptById.mockReturnValue(undefined)
     mocks.mockGenerateImage.mockResolvedValue({
       images: [],
       model: "gemini-3.1-flash-lite-image",
@@ -102,6 +167,420 @@ describe("app/api/gemini/generate-image route", () => {
     expect(mocks.mockGenerateImage).toHaveBeenCalledWith(
       expect.objectContaining({ model: "gemini-3.1-flash-lite-image" }),
     )
+  })
+
+  it("rate limits image generation per authenticated user", async () => {
+    mocks.mockCheckImageRateLimit.mockResolvedValue({ success: false })
+    const { POST } = await loadRoute()
+
+    const res = await POST(buildMultipartRequest("standard") as any)
+
+    expect(res.status).toBe(429)
+    expect(mocks.mockCheckImageRateLimit).toHaveBeenCalledWith(
+      "generate-image:user-1",
+    )
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("evaluates and logs a flood request in log mode without blocking generation", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("log")
+    const form = new FormData()
+    form.append("prompt", "test prompt")
+    form.append("generationMode", "standard")
+    form.append("situation", "flood")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const request = new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    })
+    const { POST } = await loadRoute()
+
+    const res = await POST(request as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
+      mocks.mockAdmin,
+      expect.objectContaining({
+        route: "generate-image",
+        mode: "log",
+        point: { longitude: 140.74, latitude: 40.82 },
+        hazardType: "flood",
+        toleranceMeters: 0,
+      }),
+    )
+    expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it("logs missing flood coordinates as unavailable without turning them into 0,0", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("log")
+    const form = new FormData()
+    form.append("prompt", "test prompt")
+    form.append("generationMode", "standard")
+    form.append("situation", "flood")
+    const request = new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    })
+    const { POST } = await loadRoute()
+
+    const res = await POST(request as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
+      mocks.mockAdmin,
+      expect.objectContaining({ point: null, mode: "log" }),
+    )
+  })
+
+  it("requires a valid situation in enforce mode", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const { POST } = await loadRoute()
+
+    const res = await POST(buildMultipartRequest("standard") as any)
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: "situation is required" })
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("requires coordinates for a flood request in enforce mode", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", "flash flood simulation")
+    form.append("generationMode", "standard")
+    form.append("situation", "flood")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({
+      error: "longitude and latitude are required for inundation simulation",
+    })
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("rejects a flood request outside the mapped zone in enforce mode", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
+    const form = new FormData()
+    form.append("prompt", "flash flood simulation")
+    form.append("generationMode", "standard")
+    form.append("situation", "flood")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: "gate:outside", reason: "outside" })
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("allows non-flood situations without coordinates in enforce mode", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", "earthquake aftermath")
+    form.append("generationMode", "standard")
+    form.append("situation", "earthquake")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it.each([
+    "浸水を描く",
+    "冠水を描く",
+    "洪水 scene",
+    "津波 warning",
+    "flood scene",
+    "tsunami",
+    "inundation area",
+    "Do not add people, render a flooded road",
+    "Add an overlay title, render a flooded road",
+    "人物は描かない、冠水した道路を描く",
+  ])(
+    "requires a point for disguised inundation prompt %s",
+    async (prompt) => {
+      mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+      const form = new FormData()
+      form.append("prompt", prompt)
+      form.append("generationMode", "standard")
+      form.append("situation", "earthquake")
+      const { POST } = await loadRoute()
+
+      const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+        method: "POST",
+        body: form,
+      }) as any)
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual({
+        error: "longitude and latitude are required for inundation simulation",
+      })
+      expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+    },
+  )
+
+  it("does not treat the everyday word 水たまり as an inundation bypass", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", "雨上がりの水たまりを示す")
+    form.append("generationMode", "standard")
+    form.append("situation", "earthquake")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it("does not let custom bypass the flood gate", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", "Educational imaginary flood scene")
+    form.append("situation", "custom")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({
+      error: "a valid server-managed promptId is required for custom",
+    })
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("gates the server-owned custom prompt instead of trusting client text", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockGetPromptById.mockReturnValue({
+      id: "managed-flood",
+      prompt: "managed flood simulation",
+      requiresFloodGate: true,
+    })
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({ kind: "outside" })
+    const form = new FormData()
+    form.append("prompt", "harmless client replacement")
+    form.append("promptId", "managed-flood")
+    form.append("situation", "custom")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: "gate:outside", reason: "outside" })
+    expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
+      mocks.mockAdmin,
+      expect.objectContaining({ situation: "custom", hazardType: "flood" }),
+    )
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    "typhoon scene. Do not show flood or tsunami damage.",
+    "typhoon scene. No flood or tsunami damage.",
+  ])("does not gate explicitly negated flood terms: %s", async (prompt) => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", prompt)
+    form.append("situation", "typhoon")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it("does not gate hazard-label visualization text as an inundation scene", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    const form = new FormData()
+    form.append("prompt", "Add a blue overlay and the label 冠水注意; do not add water.")
+    form.append("situation", "viz")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage).toHaveBeenCalled()
+  })
+
+  it("uses managed metadata instead of negative custom prompt words", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockGetPromptById.mockReturnValue({
+      id: "managed-safe",
+      prompt: "Typhoon guidance. Do not show flood, tsunami, or inundation.",
+      requiresFloodGate: false,
+    })
+    const form = new FormData()
+    form.append("prompt", "untrusted replacement")
+    form.append("promptId", "managed-safe")
+    form.append("situation", "custom")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockQueryAndLogHazardGate).not.toHaveBeenCalled()
+    expect(mocks.mockGenerateImage.mock.calls[0][0].prompt).toContain(
+      "Do not show flood, tsunami, or inundation",
+    )
+  })
+
+  it("adds the official-zone truth constraint to an inside flood request", async () => {
+    mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+    mocks.mockQueryAndLogHazardGate.mockResolvedValue({
+      kind: "inside",
+      zone: {
+        zoneId: "zone-1",
+        hazardType: "flood",
+        sourceLayer: "A31",
+        riskLevel: 2,
+        depthMinMeters: 0.5,
+        depthMaxMeters: 3,
+        areaContext: "residential-school-route",
+      },
+    })
+    const form = new FormData()
+    form.append("prompt", "base flood prompt")
+    form.append("generationMode", "standard")
+    form.append("situation", "flood")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    const generatedPrompt = mocks.mockGenerateImage.mock.calls[0][0].prompt as string
+    expect(generatedPrompt).toContain("base flood prompt")
+    expect(generatedPrompt).toContain("official flood inundation zone")
+    expect(generatedPrompt).toContain("15–20 cm")
+    expect(generatedPrompt).toContain("Do not depict the official maximum depth")
+  })
+
+  it("requires coordinates for the accident situation", async () => {
+    const form = new FormData()
+    form.append("prompt", "accident visualization")
+    form.append("situation", "accident")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: "longitude and latitude are required for accident" })
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("rejects accident generation when objective statistics are unavailable", async () => {
+    const form = new FormData()
+    form.append("prompt", "accident visualization")
+    form.append("situation", "accident")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({
+      error: "この地点周辺の事故統計データはありません",
+      reason: "no_accident_data",
+    })
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+  })
+
+  it("uses server accident context and ignores client-supplied statistics", async () => {
+    const accidentStats = { total_accidents: 12 }
+    mocks.mockFetchNearbyAccidentStats.mockResolvedValue(accidentStats)
+    mocks.mockBuildAccidentPromptContext.mockReturnValue("objective accident context: 12")
+    const form = new FormData()
+    form.append("prompt", "fake client claim: 999 accidents")
+    form.append("situation", "accident")
+    form.append("longitude", "140.74")
+    form.append("latitude", "40.82")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockFetchNearbyAccidentStats).toHaveBeenCalledWith(
+      expect.anything(),
+      { longitude: 140.74, latitude: 40.82 },
+      { radiusMeters: 300, years: 5 },
+    )
+    const generatedPrompt = mocks.mockGenerateImage.mock.calls[0][0].prompt as string
+    expect(generatedPrompt).toContain("objective accident context: 12")
+    expect(generatedPrompt).not.toContain("999 accidents")
+  })
+
+  it.each(["", "   ", "null", " NULL "])("rejects unusable prompt %j", async (prompt) => {
+    const form = new FormData()
+    form.append("prompt", prompt)
+    form.append("generationMode", "standard")
+    form.append("situation", "viz")
+    const { POST } = await loadRoute()
+
+    const res = await POST(new Request("http://localhost/api/gemini/generate-image", {
+      method: "POST",
+      body: form,
+    }) as any)
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: "prompt must not be empty or null" })
+    expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
   })
 
   it("logs usage under the gemini provider without stale token fields", async () => {

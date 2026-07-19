@@ -52,6 +52,8 @@ export default function ImageGenPage() {
   const [file, setFile] = useState<File | null>(null)
   const [prompt, setPrompt] = useState("")
   const [preset, setPreset] = useState<PresetKey>("hazard-visual")
+  const [longitude, setLongitude] = useState("")
+  const [latitude, setLatitude] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<{ mimeType: string; dataUrl: string }[]>([])
@@ -66,7 +68,21 @@ export default function ImageGenPage() {
     setFile(f)
   }, [])
 
-  const canSubmit = useMemo(() => !!file && prompt.trim().length > 0, [file, prompt])
+  const hazardPoint = useMemo(() => {
+    const parsedLongitude = Number(longitude)
+    const parsedLatitude = Number(latitude)
+    return longitude.trim() &&
+      latitude.trim() &&
+      Number.isFinite(parsedLongitude) &&
+      Number.isFinite(parsedLatitude)
+      ? { longitude: parsedLongitude, latitude: parsedLatitude }
+      : null
+  }, [latitude, longitude])
+  const presetRequiresPoint = preset === "flood"
+  const canSubmit = useMemo(
+    () => !!file && prompt.trim().length > 0 && (!presetRequiresPoint || !!hazardPoint),
+    [file, hazardPoint, presetRequiresPoint, prompt],
+  )
 
   const onChangePreset = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const key = e.target.value as PresetKey
@@ -84,6 +100,10 @@ export default function ImageGenPage() {
       setError("プロンプトを入力またはプリセットを選択してください。")
       return
     }
+    if (presetRequiresPoint && !hazardPoint) {
+      setError("浸水表現を含むプリセットには緯度・経度が必要です。")
+      return
+    }
     setError(null)
     setLoading(true)
     setResults([])
@@ -91,6 +111,11 @@ export default function ImageGenPage() {
       const fd = new FormData()
       fd.append("prompt", prompt.trim())
       fd.append("image", file)
+      fd.append("situation", preset === "hazard-visual" ? "viz" : preset)
+      if (hazardPoint) {
+        fd.append("longitude", String(hazardPoint.longitude))
+        fd.append("latitude", String(hazardPoint.latitude))
+      }
       const res = await fetch("/api/gemini/generate-image", {
         method: "POST",
         body: fd,
@@ -106,7 +131,7 @@ export default function ImageGenPage() {
     } finally {
       setLoading(false)
     }
-  }, [file, prompt])
+  }, [file, hazardPoint, preset, presetRequiresPoint, prompt])
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
@@ -130,6 +155,33 @@ export default function ImageGenPage() {
             <option value="fire">火災後シミュレーション</option>
           </select>
           <p className="text-xs text-gray-600">※ アップロード画像の視点・明るさを維持し、2Kフォトリアル、人物なし、モデル名は記載しません。</p>
+          <p className="text-xs font-medium text-amber-700">
+            教育用の想像図であり、実在地点の浸水想定を示すものではありません。
+          </p>
+          {presetRequiresPoint && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm font-medium">
+                <span>経度（必須）</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={longitude}
+                  onChange={(event) => setLongitude(event.target.value)}
+                  className="w-full rounded border p-2"
+                />
+              </label>
+              <label className="space-y-1 text-sm font-medium">
+                <span>緯度（必須）</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={latitude}
+                  onChange={(event) => setLatitude(event.target.value)}
+                  className="w-full rounded border p-2"
+                />
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -143,8 +195,10 @@ export default function ImageGenPage() {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">参照画像（必須）</label>
-          <input type="file" accept="image/*" onChange={onFileChange} />
+          <label htmlFor="image-gen-reference" className="block text-sm font-medium">
+            参照画像（必須）
+          </label>
+          <input id="image-gen-reference" type="file" accept="image/*" onChange={onFileChange} />
           {file && (
             <p className="text-xs text-gray-600">選択中: {file.name} ({Math.round(file.size / 1024)} KB)</p>
           )}

@@ -68,6 +68,33 @@ export async function checkGeminiRateLimit(identifier: string): Promise<RateLimi
   return checkLimit('gemini', identifier, 10, 60)
 }
 
+function boundedPositiveInteger(
+  raw: string | undefined,
+  fallback: number,
+  maximum: number,
+): number {
+  const parsed = Number(raw)
+  if (!Number.isInteger(parsed) || parsed < 1) return fallback
+  return Math.min(parsed, maximum)
+}
+
+/** 高コスト画像生成: 一括生成（最大14件）を完走できる既定20リクエスト/5分 */
+export async function checkImageGenerationRateLimit(
+  identifier: string,
+): Promise<RateLimitResult> {
+  const requests = boundedPositiveInteger(
+    process.env.IMAGE_GENERATION_RATE_LIMIT_REQUESTS,
+    20,
+    100,
+  )
+  const windowSeconds = boundedPositiveInteger(
+    process.env.IMAGE_GENERATION_RATE_LIMIT_WINDOW_SECONDS,
+    300,
+    3_600,
+  )
+  return checkLimit('image-generation', identifier, requests, windowSeconds)
+}
+
 /** レート制限超過時の標準レスポンス */
 export function rateLimitedResponse(reset?: number): NextResponse {
   const retryAfter = reset ? Math.ceil((reset - Date.now()) / 1000) : 60

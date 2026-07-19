@@ -70,6 +70,20 @@ describe("generateDisasterPrompts", () => {
     expect(instruction).toContain("EXECUTION FACT")
   })
 
+  it("injects objective accident context only as vizPrompt prioritization", async () => {
+    const fetchMock = mockFetchWith(JSON.stringify(VALID_RESULT))
+    const context = "[objective accident context] 12 accidents, morning peak"
+
+    await generateDisasterPrompts(IMAGE, { accidentContext: context } as any)
+
+    const body = JSON.parse((fetchMock.mock.calls[0] as any)[1].body)
+    const instruction: string = body.contents[0].parts.find((p: any) => p.text).text
+    expect(instruction).toContain(context)
+    expect(instruction).toContain("apply only to prioritization in vizPrompt")
+    expect(instruction).toContain("do not add objects absent from the photo")
+    expect(instruction).toContain("do not alter the four disaster simulation prompts")
+  })
+
   it("instruction は可視化・4シミュレーションへ未確認の安全標識追加禁止を要求する", async () => {
     const fetchMock = mockFetchWith(JSON.stringify(VALID_RESULT))
 

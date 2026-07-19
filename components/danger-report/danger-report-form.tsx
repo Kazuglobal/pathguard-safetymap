@@ -14,8 +14,6 @@ import {
   Loader2,
   Camera,
   ImageIcon,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
   MapPin,
   ArrowLeft,
@@ -42,11 +40,9 @@ import {
 import { motion, useReducedMotion } from "framer-motion"
 import {
   allPrompts,
-  promptCategories,
   getPromptById,
   type TargetAudience,
-  type DisasterPrompt,
-  defaultSituations,
+  ACCIDENT_SITUATION_PROMPT,
   type DefaultSituation,
 } from "@/lib/disaster-scenario-prompts"
 import { FALLBACK_VIZ_PROMPT } from "@/lib/disaster-image-prompt-fallbacks"
@@ -56,8 +52,17 @@ import { VlmAnalysisPanel } from "./vlm-analysis-panel"
 import { SimulationQuickSummary } from "./simulation-quick-summary"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import AccidentStatsPanel, { AccidentStatsLoading } from "./accident-stats-panel"
+import {
+  SimulationGenerationPanel,
+  type BatchSimulationImage,
+} from "./simulation-generation-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
 import { handleError } from "@/lib/error-handler"
+import {
+  appendImageGenerationContext,
+  buildSystemASimulationJobs,
+  settleSystemASimulationBatch,
+} from "@/lib/system-a-simulation"
 import {
   extractPreSubmitSimulationQuickSummary,
   extractSimulationQuickSummary,
@@ -102,7 +107,7 @@ type RiskAnalysisItem = {
 
 type GeneratedPromptsState = {
   vizPrompt?: string
-  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+  simulationPrompts?: { earthquake: string; typhoon: string; flood: string | null; fire: string }
   riskObservationTable?: string
 }
 
@@ -247,7 +252,7 @@ export default function DangerReportForm({
   const lastAutoGenKey = useRef<string | null>(null)
   const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPromptsState | null>(null)
   const [lastHazards, setLastHazards] = useState<HazardItem[]>([])
-  type Situation = 'viz' | 'earthquake' | 'typhoon' | 'flood' | 'fire'
+  type Situation = DefaultSituation
   const [situation, setSituation] = useState<Situation>('viz')
   const [regenLoading, setRegenLoading] = useState(false)
   const autoGenRunIdRef = useRef(0)
@@ -270,7 +275,7 @@ export default function DangerReportForm({
   // 一括生成用の状態
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentName: string } | null>(null)
-  const [batchImages, setBatchImages] = useState<Array<{ promptId: string; name: string; shortName: string; targetAudience: TargetAudience; blobUrl: string; file: File }>>([])
+  const [batchImages, setBatchImages] = useState<BatchSimulationImage[]>([])
   const [showBatchResults, setShowBatchResults] = useState(false)
   const [photoPickerConfig, setPhotoPickerConfig] = useState<{ open: boolean; target: "original" | "processed" }>({ open: false, target: "original" })
 
@@ -311,6 +316,15 @@ export default function DangerReportForm({
       blobUrlRegistryRef.current.add(url)
     }
   }
+
+  const floodSimulationEnabled = generatedPrompts?.simulationPrompts?.flood !== null
+  const accidentSimulationEnabled =
+    accidentStatsStatus === "loaded" &&
+    Boolean(accidentStats && accidentStats.total_accidents > 0)
+  const accidentSimulationDisabledReason = "この地点周辺の事故統計データはありません"
+  const floodGateDisabledReason = floodSimulationEnabled
+    ? undefined
+    : "この地点では浸水シミュレーションを利用できません"
 
   const revokeBlobUrl = (url: string | null | undefined) => {
     if (!url || !url.startsWith("blob:")) return
@@ -647,14 +661,19 @@ export default function DangerReportForm({
         // 2) generate prompts (risk observation + viz + simulations)
         let prLocal: {
           vizPrompt?: string
-          simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+          simulationPrompts?: { earthquake: string; typhoon: string; flood: string | null; fire: string }
           riskObservation?: { tableMarkdown?: string }
         } | null = null
         try {
           const pRes = await fetch('/api/gemini/generate-prompts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64 }),
+            body: JSON.stringify({
+              imageBase64: base64,
+              ...(selectedLocation
+                ? { longitude: selectedLocation[0], latitude: selectedLocation[1] }
+                : {}),
+            }),
             signal: abortController.signal,
           })
           if (pRes.ok) {
@@ -684,18 +703,21 @@ export default function DangerReportForm({
         const overlay = await dataUrlToFileAndBlobUrl(overlayDataUrl, 'overlay.png', abortController.signal)
         if (!isActive()) return
 
-        // 4) simple local simulations (flood/fire/typhoon/earthquake)
-        const [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl] = await Promise.all([
-          simulateVariant(originalImageFile, 'flood'),
-          simulateVariant(originalImageFile, 'fire'),
-          simulateVariant(originalImageFile, 'typhoon'),
-          simulateVariant(originalImageFile, 'earthquake'),
-        ])
+        // 4) simple local simulations. Flood is built only after a positive zone verdict.
+        const localSimulationKinds: Array<'flood' | 'fire' | 'typhoon' | 'earthquake'> = [
+          'fire',
+          'typhoon',
+          'earthquake',
+        ]
+        if (prLocal?.simulationPrompts?.flood !== null) {
+          localSimulationKinds.unshift('flood')
+        }
+        const simDataUrls = await Promise.all(
+          localSimulationKinds.map((kind) => simulateVariant(originalImageFile, kind)),
+        )
         if (!isActive()) return
-        const simNames = ['flood', 'fire', 'typhoon', 'earthquake'] as const
-        const simDataUrls = [floodDataUrl, fireDataUrl, typhoonDataUrl, quakeDataUrl]
         const simResults = await Promise.all(
-          simDataUrls.map((url, i) => dataUrlToFileAndBlobUrl(url, `${simNames[i]}.png`, abortController.signal))
+          simDataUrls.map((url, i) => dataUrlToFileAndBlobUrl(url, `${localSimulationKinds[i]}.png`, abortController.signal))
         )
         // Batch a single state update for all local results (overlay + 4 sims)
         if (isActive()) {
@@ -720,6 +742,7 @@ export default function DangerReportForm({
           const englishPrompt = `${baseViz}\n${buildRegionConstraints(hazards)}`
           fd.append('prompt', englishPrompt)
           fd.append('generationMode', 'standard')
+          appendImageGenerationContext(fd, 'viz', selectedLocation)
           const genRes = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
           if (genRes.ok) {
             const gen = await genRes.json()
@@ -756,11 +779,12 @@ export default function DangerReportForm({
         if (simsLocal) {
           try {
             const compressedForSim = await compressImage(originalImageFile, { targetMaxSize: 1.5 * 1024 * 1024 })
-            const make = async (prompt: string, suffix: string) => {
+            const make = async (prompt: string, suffix: Situation) => {
               const fd = new FormData()
               fd.append('image', compressedForSim)
               fd.append('prompt', prompt)
               fd.append('generationMode', 'standard')
+              appendImageGenerationContext(fd, suffix, selectedLocation)
               const r = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd, signal: abortController.signal })
               if (!r.ok) {
                 const txt = await r.text()
@@ -778,25 +802,43 @@ export default function DangerReportForm({
             const sims = simsLocal
             // Run disaster simulations with limited concurrency (2 at a time)
             // to avoid overwhelming the browser with large concurrent payloads
-            const simKeys = ['earthquake', 'typhoon', 'flood', 'fire'] as const
-            const simPrompts = [sims.earthquake, sims.typhoon, sims.flood, sims.fire]
-            const simResultsBatch: { file: File; blobUrl: string }[] = []
-            for (let i = 0; i < simKeys.length; i += 2) {
-              const batch = simPrompts.slice(i, i + 2).map((p, j) => make(p, simKeys[i + j]))
-              const batchResults = await Promise.all(batch)
-              for (const r of batchResults) {
-                if (!r) continue
-                // Convert data URL to blob URL
-                const blobUrl = await dataUrlToBlobUrl(r.url, abortController.signal)
-                simResultsBatch.push({ file: r.file, blobUrl })
+            const simulationJobs = buildSystemASimulationJobs(sims)
+            let failedSimulationCount = 0
+            for (let i = 0; i < simulationJobs.length; i += 2) {
+              const batch = simulationJobs.slice(i, i + 2).map((job) =>
+                make(job.prompt, job.situation),
+              )
+              const { values, errors } = await settleSystemASimulationBatch(batch)
+              failedSimulationCount += errors.length
+              for (const error of errors) {
+                console.warn('simulation image generation failed', error)
+              }
+              const convertedBatch: { file: File; blobUrl: string }[] = []
+              for (const value of values) {
+                if (!value) continue
+                try {
+                  const blobUrl = await dataUrlToBlobUrl(
+                    value.url,
+                    abortController.signal,
+                  )
+                  convertedBatch.push({ file: value.file, blobUrl })
+                } catch (error) {
+                  failedSimulationCount += 1
+                  console.warn('simulation image conversion failed', error)
+                }
+              }
+              if (convertedBatch.length > 0 && isActive()) {
+                setProcessedImageFiles(prev => [...prev, ...convertedBatch.map(item => item.file)])
+                setProcessedImagePreviews(prev => [...prev, ...convertedBatch.map(item => item.blobUrl)])
               }
               if (!isActive()) break
               // Yield between batches
               await new Promise(resolve => setTimeout(resolve, 0))
             }
-            if (simResultsBatch.length && isActive()) {
-              setProcessedImageFiles(prev => [...prev, ...simResultsBatch.map(item => item.file)])
-              setProcessedImagePreviews(prev => [...prev, ...simResultsBatch.map(item => item.blobUrl)])
+            if (failedSimulationCount > 0 && isActive()) {
+              setAutoGenError(
+                `${failedSimulationCount}件のシミュレーション生成に失敗しました。成功した画像は保持されています。`,
+              )
             }
             if (isActive()) setActiveImageTab('processed')
           } catch (e) {
@@ -860,6 +902,8 @@ export default function DangerReportForm({
           setAutoGenError('選択されたプロンプトが見つかりません。')
           return
         }
+      } else if (situation === 'accident') {
+        prompt = ACCIDENT_SITUATION_PROMPT
       } else {
         // 従来のシチュエーション選択
         let pr = generatedPrompts
@@ -869,14 +913,19 @@ export default function DangerReportForm({
           const pRes = await fetch('/api/gemini/generate-prompts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ imageBase64: base64 }),
+            body: JSON.stringify({
+              imageBase64: base64,
+              ...(selectedLocation
+                ? { longitude: selectedLocation[0], latitude: selectedLocation[1] }
+                : {}),
+            }),
           })
           if (pRes.ok) {
             const pjson = await pRes.json()
             const prompts = pjson?.prompts as
               | {
                   vizPrompt?: string
-                  simulationPrompts?: { earthquake: string; typhoon: string; flood: string; fire: string }
+                  simulationPrompts?: { earthquake: string; typhoon: string; flood: string | null; fire: string }
                   riskObservation?: { tableMarkdown?: string }
                 }
               | undefined
@@ -909,6 +958,12 @@ export default function DangerReportForm({
       const withRegions = (!useCustomPrompt && situation === 'viz') ? `${prompt}\n${buildRegionConstraints(lastHazards)}` : prompt
       fd.append('prompt', withRegions)
       fd.append('generationMode', useCustomPrompt ? 'disaster' : 'standard')
+      if (useCustomPrompt && selectedPromptId) fd.append('promptId', selectedPromptId)
+      appendImageGenerationContext(
+        fd,
+        useCustomPrompt ? 'custom' : situation,
+        selectedLocation,
+      )
       const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
       if (!res.ok) {
         const errorBody = await res.text()
@@ -966,6 +1021,8 @@ export default function DangerReportForm({
           fd.append('image', compressed)
           fd.append('prompt', p.prompt)
           fd.append('generationMode', 'disaster')
+          fd.append('promptId', p.id)
+          appendImageGenerationContext(fd, 'custom', selectedLocation)
           const res = await fetch('/api/gemini/generate-image', { method: 'POST', body: fd })
           if (res.ok) {
             const json = await res.json()
@@ -996,7 +1053,7 @@ export default function DangerReportForm({
   }
 
   // バッチ生成結果をレポートの加工画像に追加
-  const addBatchImageToReport = (img: { file: File; blobUrl: string }) => {
+  const addBatchImageToReport = (img: BatchSimulationImage) => {
     setProcessedImageFiles(prev => [...prev, img.file])
     setProcessedImagePreviews(prev => [...prev, fileToBlobUrl(img.file)])
     setActiveImageTab('processed')
@@ -1009,11 +1066,6 @@ export default function DangerReportForm({
     setSelectedPromptId("")
   }
 
-  // 選択されたプロンプトの情報を取得
-  const getSelectedPromptInfo = (): DisasterPrompt | undefined => {
-    if (!selectedPromptId) return undefined
-    return getPromptById(selectedPromptId)
-  }
   const handleProcessedImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
@@ -1588,203 +1640,32 @@ export default function DangerReportForm({
 
                 {/* シチュエーション(「もしも」の条件) */}
                 {originalImagePreview && (
-                  <PaperCard className="space-y-3 p-3">
-                    <p className="text-[13px] font-black" style={{ color: C.ink }}>
-                      「もしも」を えらんで つくりなおす
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {defaultSituations.map((s) => {
-                        const active = !useCustomPrompt && situation === s.id
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => {
-                              setUseCustomPrompt(false)
-                              setSituation(s.id as Situation)
-                            }}
-                            className={`rounded-full border-2 px-3 py-1.5 text-[12px] font-black transition-colors ${tankenTokens.cls.focus}`}
-                            style={{
-                              background: active ? C.primary : "#fff",
-                              color: active ? "#fff" : C.inkSoft,
-                              borderColor: active ? C.primaryStrong : "rgba(67,57,43,.14)",
-                            }}
-                          >
-                            {s.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    <TankenButton
-                      variant="paper"
-                      className="w-full min-h-[46px]"
-                      onClick={regenerateSituation}
-                      disabled={regenLoading || !originalImageFile || (useCustomPrompt && !selectedPromptId)}
-                    >
-                      {regenLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          つくっているよ…
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4" />
-                          {useCustomPrompt ? "えらんだ おだいで つくる" : "この「もしも」で つくる"}
-                        </>
-                      )}
-                    </TankenButton>
-
-                    {/* くわしい設定(おうちの人・行政向け) */}
-                    <div className="border-t pt-2" style={{ borderColor: tankenTokens.border.faint }}>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-1 text-[12px] font-black ${tankenTokens.cls.focus}`}
-                        style={{ color: C.inkSoft }}
-                        onClick={() => setUseCustomPrompt(!useCustomPrompt)}
-                        aria-expanded={useCustomPrompt}
-                      >
-                        {useCustomPrompt ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        くわしい設定（おうちの人向け: 防災プロンプト・一括生成）
-                      </button>
-
-                      {useCustomPrompt && (
-                        <div className="mt-2 space-y-2">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {promptCategories.map((category) => (
-                              <button
-                                key={category.id}
-                                type="button"
-                                className={`rounded-full border-2 px-2.5 py-1 text-[11.5px] font-black ${tankenTokens.cls.focus}`}
-                                style={{
-                                  background: selectedCategory === category.id ? C.primarySoft : "#fff",
-                                  color: selectedCategory === category.id ? C.primaryStrong : C.inkSoft,
-                                  borderColor:
-                                    selectedCategory === category.id ? "rgba(21,158,114,.45)" : "rgba(67,57,43,.14)",
-                                }}
-                                onClick={() => handleCategoryChange(category.id)}
-                              >
-                                {category.icon} {category.name}
-                              </button>
-                            ))}
-                          </div>
-
-                          <select
-                            className="w-full rounded-[12px] border-2 bg-white px-2 py-2 text-[13px] font-bold"
-                            style={{ borderColor: tankenTokens.border.soft, color: C.ink }}
-                            value={selectedPromptId}
-                            onChange={(e) => setSelectedPromptId(e.target.value)}
-                            aria-label="防災プロンプトを選択"
-                          >
-                            <option value="">-- おだいを えらぶ --</option>
-                            {promptCategories
-                              .find((c) => c.id === selectedCategory)
-                              ?.prompts.map((prompt) => (
-                                <option key={prompt.id} value={prompt.id}>
-                                  {prompt.shortName}: {prompt.name}
-                                </option>
-                              ))}
-                          </select>
-
-                          {selectedPromptId && (
-                            <div
-                              className="rounded-[12px] border bg-white p-2 text-[11.5px] font-bold"
-                              style={{ borderColor: tankenTokens.border.faint, color: C.inkSoft }}
-                            >
-                              <button
-                                type="button"
-                                className="flex items-center gap-1"
-                                onClick={() => setShowPromptDetails(!showPromptDetails)}
-                              >
-                                {showPromptDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                {getSelectedPromptInfo()?.description}
-                              </button>
-                              {showPromptDetails && (
-                                <div
-                                  className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap rounded p-2"
-                                  style={{ background: C.paperDeep }}
-                                >
-                                  {getSelectedPromptInfo()?.prompt.slice(0, 500)}
-                                  {(getSelectedPromptInfo()?.prompt.length || 0) > 500 && "..."}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          <TankenButton
-                            variant="paper"
-                            className="w-full min-h-[44px] text-[13px]"
-                            onClick={batchGenerateAll}
-                            disabled={batchLoading}
-                          >
-                            {batchLoading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                {batchProgress
-                                  ? `つくっているよ ${batchProgress.current}/${batchProgress.total} — ${batchProgress.currentName}`
-                                  : "じゅんびちゅう..."}
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-4 w-4" />
-                                全プロンプト一括生成（{allPrompts.length}件）
-                              </>
-                            )}
-                          </TankenButton>
-
-                          {batchImages.length > 0 && (
-                            <div className="border-t pt-2" style={{ borderColor: tankenTokens.border.faint }}>
-                              <button
-                                type="button"
-                                className="mb-2 flex items-center gap-1 text-[11.5px] font-black"
-                                style={{ color: C.inkSoft }}
-                                onClick={() => setShowBatchResults((v) => !v)}
-                              >
-                                {showBatchResults ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                一括生成結果（{batchImages.length}/{allPrompts.length}件）
-                              </button>
-                              {showBatchResults && (
-                                <div className="space-y-3">
-                                  {promptCategories.map((cat) => {
-                                    const catImgs = batchImages.filter((img) => img.targetAudience === cat.id)
-                                    if (catImgs.length === 0) return null
-                                    return (
-                                      <div key={cat.id}>
-                                        <p className="mb-1 text-[11px] font-bold" style={{ color: C.inkFaint }}>
-                                          {cat.name}
-                                        </p>
-                                        <div className="flex gap-2 overflow-x-auto pb-1">
-                                          {catImgs.map((img) => (
-                                            <div key={img.promptId} className="w-24 flex-none">
-                                              <div
-                                                className="group relative h-20 cursor-pointer overflow-hidden rounded-[10px] border"
-                                                style={{ borderColor: tankenTokens.border.faint }}
-                                                onClick={() => addBatchImageToReport(img)}
-                                                title={`${img.name} — タップしてレポートに追加`}
-                                              >
-                                                <img src={img.blobUrl} alt={img.name} className="h-full w-full object-cover" />
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                                                  <span className="text-xs font-black text-white">ついか</span>
-                                                </div>
-                                              </div>
-                                              <p className="mt-0.5 truncate text-[10.5px] font-bold" style={{ color: C.inkFaint }}>
-                                                {img.shortName}
-                                              </p>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </PaperCard>
+                  <SimulationGenerationPanel
+                    situation={situation}
+                    onSituationChange={setSituation}
+                    floodEnabled={floodSimulationEnabled}
+                    floodDisabledReason={floodGateDisabledReason}
+                    accidentEnabled={accidentSimulationEnabled}
+                    accidentDisabledReason={accidentSimulationDisabledReason}
+                    regenerationLoading={regenLoading}
+                    hasOriginalImage={Boolean(originalImageFile)}
+                    onRegenerate={regenerateSituation}
+                    advancedOpen={useCustomPrompt}
+                    onAdvancedOpenChange={setUseCustomPrompt}
+                    selectedCategory={selectedCategory}
+                    onCategoryChange={handleCategoryChange}
+                    selectedPromptId={selectedPromptId}
+                    onSelectedPromptChange={setSelectedPromptId}
+                    showPromptDetails={showPromptDetails}
+                    onShowPromptDetailsChange={setShowPromptDetails}
+                    batchLoading={batchLoading}
+                    batchProgress={batchProgress}
+                    onBatchGenerate={batchGenerateAll}
+                    batchImages={batchImages}
+                    showBatchResults={showBatchResults}
+                    onShowBatchResultsChange={setShowBatchResults}
+                    onAddBatchImage={addBatchImageToReport}
+                  />
                 )}
 
                 {/* 解析結果(想定リスク) */}

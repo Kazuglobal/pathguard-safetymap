@@ -1,6 +1,10 @@
 export const ACCIDENT_DATA_MIN_YEAR = 2018;
 export const ACCIDENT_DATA_MAX_YEAR = 2024;
 export const DEFAULT_ACCIDENT_YEARS = 5;
+export const ACCIDENT_IMAGE_CONTEXT_PARAMS = {
+  radiusMeters: 300,
+  years: DEFAULT_ACCIDENT_YEARS,
+} as const;
 
 function toPositiveInt(value: unknown, fallback: number): number {
   const parsed =

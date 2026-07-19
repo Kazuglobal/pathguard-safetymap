@@ -6,6 +6,27 @@ import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { calculateCost, estimateImageGenerationCost } from "@/lib/api-cost-calculator"
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import {
+  getHazardGateMode,
+  getHazardGateMessage,
+  parseHazardPoint,
+  queryAndLogHazardGate,
+  type HazardGateClient,
+  type HazardPoint,
+} from "@/lib/hazard-zone-gate"
+import {
+  checkImageGenerationRateLimit,
+  rateLimitedResponse,
+} from "@/lib/upstash-rate-limiter"
+import { appendSystemAFloodTruth } from "@/lib/system-a-simulation"
+import { fetchNearbyAccidentStats } from "@/lib/traffic-accident/server"
+import { ACCIDENT_IMAGE_CONTEXT_PARAMS } from "@/lib/accident-stats-year-window"
+import { buildAccidentPromptContext } from "@/lib/accident-prompt-context"
+import {
+  ACCIDENT_SITUATION_PROMPT,
+  getPromptById,
+} from "@/lib/disaster-scenario-prompts"
 
 export const runtime = "nodejs"
 export const maxDuration = 180
@@ -15,6 +36,66 @@ const FORCED_IMAGE_MODEL = FORCED_GEMINI_IMAGE_MODEL
 const VERIFICATION_MODEL_FOR_COST = "gemini-2.5-flash"
 const ESTIMATED_VERIFICATION_INPUT_TOKENS = 1400
 const ESTIMATED_VERIFICATION_OUTPUT_TOKENS = 120
+
+const IMAGE_SITUATIONS = new Set([
+  "viz",
+  "earthquake",
+  "typhoon",
+  "flood",
+  "fire",
+  "accident",
+  "custom",
+])
+const INUNDATION_KEYWORDS = /浸水|冠水|洪水|津波|\bflood(?:ed|ing)?\b|\btsunami\b|\binundat(?:e|ed|ing|ion)\b/giu
+const INUNDATION_NEGATION_BEFORE = /(?:\bno\b|do\s+not|don't|never|without|must\s+not|avoid(?:ing)?|exclude|forbid(?:den)?|prohibit(?:ed)?)[^,，、.;。；]*$/iu
+const INUNDATION_NEGATION_AFTER = /^[^,，、.;。；]{0,40}(?:禁止|描かない|描いてはいけない|描かず|表現しない|含めない|避ける|させない|不要|なし)/iu
+const INUNDATION_ANNOTATION_BEFORE = /(?:annotation|overlay|label|legend|warning icons?|risk markers?|risk|注記|注意ラベル|警告アイコン|凡例|オーバーレイ)[^,，、.;。；]*$/iu
+const INUNDATION_ANNOTATION_AFTER = /^[^,，、.;。；]{0,120}(?:annotation|overlay|label|legend|warning icons?|risk markers?|risk|注記|注意ラベル|警告アイコン|凡例|オーバーレイ)/iu
+
+function isNegatedInundationMatch(
+  clause: string,
+  index: number,
+  length: number,
+): boolean {
+  const before = clause.slice(Math.max(0, index - 80), index)
+  const after = clause.slice(index + length, index + length + 40)
+  return (
+    INUNDATION_NEGATION_BEFORE.test(before) ||
+    INUNDATION_NEGATION_AFTER.test(after)
+  )
+}
+
+function isAnnotationOnlyInundationMatch(
+  clause: string,
+  index: number,
+  length: number,
+): boolean {
+  const before = clause.slice(Math.max(0, index - 120), index)
+  const after = clause.slice(index + length, index + length + 120)
+  return (
+    INUNDATION_ANNOTATION_BEFORE.test(before) ||
+    INUNDATION_ANNOTATION_AFTER.test(after)
+  )
+}
+
+function requestsInundationDepiction(prompt: string): boolean {
+  return prompt
+    .split(/[\n。.!?！？；;]/u)
+    .some((clause) => {
+      return [...clause.matchAll(INUNDATION_KEYWORDS)].some((match) => {
+        const index = match.index ?? 0
+        return !isNegatedInundationMatch(
+          clause,
+          index,
+          match[0].length,
+        ) && !isAnnotationOnlyInundationMatch(
+          clause,
+          index,
+          match[0].length,
+        )
+      })
+    })
+}
 
 export async function POST(req: NextRequest) {
   let modelName = FORCED_IMAGE_MODEL
@@ -32,6 +113,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const rateLimit = await checkImageGenerationRateLimit(
+      `generate-image:${user.id}`,
+    )
+    if (!rateLimit.success) return rateLimitedResponse(rateLimit.reset)
+
     const contentType = req.headers.get("content-type") || ""
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json(
@@ -41,9 +127,106 @@ export async function POST(req: NextRequest) {
     }
 
     const form = await req.formData()
-    const prompt = (form.get("prompt") as string) || undefined
+    const promptRaw = form.get("prompt")
+    let prompt = typeof promptRaw === "string" ? promptRaw.trim() : ""
     const generationMode = (form.get("generationMode") as string) || undefined
+    const situation = (form.get("situation") as string) || undefined
+    const point: HazardPoint | null = parseHazardPoint(
+      form.get("longitude"),
+      form.get("latitude"),
+    )
     const file = form.get("image") as File | null
+
+    const gateMode = getHazardGateMode()
+    let managedCustomRequiresFloodGate = false
+    if (gateMode === "enforce" && (!situation || !IMAGE_SITUATIONS.has(situation))) {
+      return NextResponse.json({ error: "situation is required" }, { status: 400 })
+    }
+
+    if (gateMode === "enforce" && situation === "custom") {
+      const promptId = form.get("promptId")
+      const managedPrompt = typeof promptId === "string" ? getPromptById(promptId) : undefined
+      if (!managedPrompt) {
+        return NextResponse.json(
+          { error: "a valid server-managed promptId is required for custom" },
+          { status: 400 },
+        )
+      }
+      prompt = managedPrompt.prompt.trim()
+      managedCustomRequiresFloodGate = managedPrompt.requiresFloodGate === true
+    }
+
+    if (!prompt || prompt.toLowerCase() === "null") {
+      return NextResponse.json(
+        { error: "prompt must not be empty or null" },
+        { status: 400 },
+      )
+    }
+
+    const inspectPromptText = !(gateMode === "enforce" && situation === "custom")
+    const requiresFloodGate =
+      situation === "flood" ||
+      managedCustomRequiresFloodGate ||
+      (inspectPromptText && requestsInundationDepiction(prompt))
+    let floodVerdict: Awaited<ReturnType<typeof queryAndLogHazardGate>> | null = null
+    if (gateMode !== "off" && requiresFloodGate) {
+      const admin = getSupabaseAdmin()
+      floodVerdict = await queryAndLogHazardGate(admin as unknown as HazardGateClient, {
+        route: "generate-image",
+        mode: gateMode,
+        situation: situation ?? null,
+        point,
+        userId: user.id,
+        hazardType: "flood",
+        toleranceMeters: 0,
+      })
+    }
+    if (gateMode === "enforce" && requiresFloodGate && !point) {
+      return NextResponse.json(
+        { error: "longitude and latitude are required for inundation simulation" },
+        { status: 400 },
+      )
+    }
+
+    if (situation === "accident" && !point) {
+      return NextResponse.json(
+        { error: "longitude and latitude are required for accident" },
+        { status: 400 },
+      )
+    }
+
+    let gateVerifiedPrompt = prompt
+    if (gateMode === "enforce" && floodVerdict) {
+      if (floodVerdict.kind !== "inside") {
+        return NextResponse.json(
+          {
+            error: getHazardGateMessage(floodVerdict, "flood"),
+            reason: floodVerdict.kind,
+          },
+          { status: 422 },
+        )
+      }
+      gateVerifiedPrompt = appendSystemAFloodTruth(prompt)
+    }
+
+    if (situation === "accident" && point) {
+      const stats = await fetchNearbyAccidentStats(
+        supabase,
+        point,
+        ACCIDENT_IMAGE_CONTEXT_PARAMS,
+      )
+      const accidentContext = buildAccidentPromptContext(stats)
+      if (!accidentContext) {
+        return NextResponse.json(
+          {
+            error: "この地点周辺の事故統計データはありません",
+            reason: "no_accident_data",
+          },
+          { status: 422 },
+        )
+      }
+      gateVerifiedPrompt = `${ACCIDENT_SITUATION_PROMPT}\n\n${accidentContext}`
+    }
 
     let imageBase64: string | undefined
     let imageMimeType: string | undefined
@@ -64,8 +247,10 @@ export async function POST(req: NextRequest) {
     // standard(本線の可視化/シミュレーション)モードのときだけ、恒久ルール
     // (アスペクト比維持・匿名化・余計な文字禁止)をサーバ側で決定的に付与する。
     // generationMode 未指定(例: /tools/image-gen の自由入力プロンプト)や 'disaster'(カスタム/バッチ)には付けない。
-    const applyGuard = generationMode === "standard" && !!imageBase64 && !!prompt?.trim()
-    const basePrompt = applyGuard ? `${prompt}\n\n${SCENE_PRESERVATION_GUARD_SUFFIX}` : prompt
+    const applyGuard = generationMode === "standard" && !!imageBase64 && !!gateVerifiedPrompt
+    const basePrompt = applyGuard
+      ? `${gateVerifiedPrompt}\n\n${SCENE_PRESERVATION_GUARD_SUFFIX}`
+      : gateVerifiedPrompt
 
     // 生成プロンプトに是正サフィックスを足して呼び直せるようにする（再生成用）。
     const runGeneration = async (correctiveSuffix?: string) => {
