@@ -45,6 +45,14 @@ describe("sanitizeDangerPoints — 的外れ正解の構造排除", () => {
     expect(hazards).toHaveLength(0)
   })
 
+  it("excludes a broad region that would make unrelated taps count", () => {
+    const { hazards } = sanitizeDangerPoints(
+      [point({ region: { x: 0.1, y: 0.2, w: 0.6, h: 0.5 } })], // area 0.30
+      opt,
+    )
+    expect(hazards).toHaveLength(0)
+  })
+
   it("excludes a tiny region (area too small)", () => {
     const { hazards } = sanitizeDangerPoints(
       [point({ region: { x: 0.4, y: 0.4, w: 0.05, h: 0.05 } })],
@@ -290,5 +298,21 @@ describe("sanitizeSafePoints (逆モード)", () => {
 
   it("excludes full-screen safe regions", () => {
     expect(sanitizeSafePoints([safePoint({ region: { x: 0, y: 0, w: 1, h: 1 } })], opt)).toHaveLength(0)
+  })
+
+  // ガードレール・歩道・横断歩道は本質的に横長で、危険ポイント用の MAX_AREA(誤正解防止)を
+  // 超えやすい。安全ポイントは採点対象ではないため、同じ上限で落とすと
+  // 「あんぜん さがし」モード自体が消える(safeCount=0 → カード非表示)。
+  it("keeps wide safe points (guardrail/sidewalk) whose area exceeds the danger MAX_AREA", () => {
+    const guardrail = safePoint({ region: { x: 0.02, y: 0.6, w: 0.94, h: 0.28 } }) // area 0.263
+    const sidewalk = safePoint({ region: { x: 0, y: 0.65, w: 1.0, h: 0.33 } }) // area 0.33
+    const points = sanitizeSafePoints([guardrail, sidewalk], opt)
+    expect(points).toHaveLength(2)
+  })
+
+  it("still excludes safe regions above MAX_SAFE_AREA (near full-screen)", () => {
+    expect(
+      sanitizeSafePoints([safePoint({ region: { x: 0, y: 0.2, w: 1, h: 0.7 } })], opt), // area 0.7
+    ).toHaveLength(0)
   })
 })

@@ -7,6 +7,7 @@
 
 import { kidAccidentLabel } from "./accident-context"
 import { buildRotatedChoices } from "./quiz-choices"
+import { SPATIAL_TAP_MARGIN, tapWithinRegion } from "./spatial-hit"
 import type { RawAiQuiz } from "@/lib/hunter/ai-schema"
 import type {
   HunterAccidentSummary,
@@ -16,19 +17,18 @@ import type {
   HunterQuizOutcome,
   HunterQuizResult,
   HunterRegion,
-  HunterTap,
 } from "./types"
 
 const QUIZ_POINTS = 100
-/** place 問題の当たり判定マージン(探索の HIT_MARGIN と同じ寛容さ)。 */
-export const PLACE_NEAR_MARGIN = 0.1
+/** place 問題の当たり判定マージン(全写真タップモード共通の指先補正)。 */
+export const PLACE_NEAR_MARGIN = SPATIAL_TAP_MARGIN
 /** 1セッションの最大出題数(低学年の集中時間に配慮)。 */
 export const MAX_QUIZ = 3
 /** place(写真タップ)へ昇格する最低 confidence。 */
-const PLACE_CONF_MIN = 0.7
+const PLACE_CONF_MIN = 0.82
 /** place へ昇格する region 面積の範囲(小さすぎ/大きすぎは choice 据置)。 */
 const PLACE_AREA_MIN = 0.02
-const PLACE_AREA_MAX = 0.35
+const PLACE_AREA_MAX = 0.12
 
 /** 事故データに基づく「リアリティの一言」(断定しない・件数と種類のみ)。 */
 function realityLine(accident: HunterAccidentSummary): string {
@@ -129,14 +129,6 @@ export function buildQuizItemsFromAi(
 
 // ---- 採点 ----
 
-function regionContains(tap: HunterTap, region: HunterRegion, margin: number): boolean {
-  const left = region.x - margin
-  const top = region.y - margin
-  const right = region.x + region.w + margin
-  const bottom = region.y + region.h + margin
-  return tap.x >= left && tap.x <= right && tap.y >= top && tap.y <= bottom
-}
-
 export function judgeQuizAnswer(
   item: HunterQuizItem,
   answer: HunterQuizAnswer | undefined,
@@ -144,7 +136,7 @@ export function judgeQuizAnswer(
   let correct = false
   if (answer) {
     if (item.kind === "place" && answer.tap && item.answerRegion) {
-      correct = regionContains(answer.tap, item.answerRegion, PLACE_NEAR_MARGIN)
+      correct = tapWithinRegion(answer.tap, item.answerRegion, PLACE_NEAR_MARGIN)
     } else if (item.kind === "choice" && answer.choiceId) {
       correct = answer.choiceId === item.correctChoiceId
     }

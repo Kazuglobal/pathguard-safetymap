@@ -18,6 +18,7 @@ import {
   toImageCoords,
   type Size,
 } from "@/lib/hunter/image-geometry"
+import { tapWithinRegion } from "@/lib/hunter/spatial-hit"
 
 import { RubyText } from "./ruby-text"
 import {
@@ -38,21 +39,6 @@ export interface SafeHuntCanvasProps {
   onDone: () => void
 }
 
-/** タップが safe point の領域(少し広め)に入っているか。 */
-function hitSafePoint(
-  rel: { x: number; y: number },
-  point: HunterSafePoint,
-  margin = 0.12,
-): boolean {
-  const r = point.region
-  return (
-    rel.x >= r.x - margin &&
-    rel.x <= r.x + r.w + margin &&
-    rel.y >= r.y - margin &&
-    rel.y <= r.y + r.h + margin
-  )
-}
-
 export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasProps) {
   const reduce = useReducedMotion()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -60,9 +46,16 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
   const [box, setBox] = useState<Size | null>(null)
   const [foundIds, setFoundIds] = useState<string[]>([])
   const [active, setActive] = useState<HunterSafePoint | null>(null)
+  // ミス応答: 範囲外タップを黙殺しない(正しい実物でも AI 枠の外なら外れるため)。
+  const [missStreak, setMissStreak] = useState(0)
+  const [missFx, setMissFx] = useState<{ key: number; x: number; y: number } | null>(null)
+  const [announce, setAnnounce] = useState("")
+  const missSeqRef = useRef(0)
 
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
   const allFound = foundIds.length >= safePoints.length
+  // ミスが続いたら未発見ポイントの「あたり」をふわっと光らせる(答えの即開示はしない)。
+  const showHints = missStreak >= 3 && !allFound
 
   const contain = useMemo(() => {
     if (!natural || !box) return null
@@ -94,6 +87,8 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
 
   const activateSafePoint = useCallback((point: HunterSafePoint) => {
     setActive(point)
+    setMissStreak(0)
+    setAnnounce(`${point.type}：${point.whyGood}`)
     setFoundIds((prev) => (prev.includes(point.id) ? prev : [...prev, point.id]))
   }, [])
 
@@ -104,11 +99,28 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
       const rect = el.getBoundingClientRect()
       const rel = toImageCoords(clientX, clientY, rect, contain)
       if (!rel) return
-      const hit = safePoints.find((p) => hitSafePoint(rel, p))
-      if (hit) activateSafePoint(hit)
+      const hit = safePoints.find((p) => tapWithinRegion(rel, p.region))
+      if (hit) {
+        activateSafePoint(hit)
+        return
+      }
+      if (allFound) return
+      missSeqRef.current += 1
+      setMissStreak((n) => n + 1)
+      setMissFx({ key: missSeqRef.current, x: rel.x, y: rel.y })
+      setAnnounce("そこには なさそう")
     },
-    [contain, safePoints, activateSafePoint],
+    [contain, safePoints, activateSafePoint, allFound],
   )
+
+  // ミスのリップルは短時間で自動消灯(連打時は最新のみ残す)。
+  useEffect(() => {
+    if (!missFx) return
+    const timer = setTimeout(() => {
+      setMissFx((current) => (current && current.key === missSeqRef.current ? null : current))
+    }, 1400)
+    return () => clearTimeout(timer)
+  }, [missFx])
 
   const handleTap = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => emitTapAt(e.clientX, e.clientY),
@@ -138,17 +150,25 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
 
   return (
     <div className="mx-auto flex w-full max-w-2xl min-h-full flex-1 flex-col px-4 pt-1">
-      {/* スクリーンリーダー向け: 見つけた安全の工夫を読み上げる(視覚カードとは独立に常設) */}
+      {/* スクリーンリーダー向け: 発見/ミスの応答を読み上げる(視覚カードとは独立に常設) */}
       <span className="sr-only" role="status" aria-live="polite">
-        {active ? `${active.type}：${active.whyGood}` : ""}
+        {announce}
       </span>
 
       <Celebrate show={allFound} />
 
       <div className="flex flex-1 flex-col gap-3">
-        <SpeechBubble mood="happy">
-          この みちの「<RubyText text="安全" />の くふう」を さがそう！ ガードレールや{" "}
-          <RubyText text="歩道" />は あんしんの しるしだよ。
+        <SpeechBubble mood={missStreak > 0 ? "think" : "happy"}>
+          {showHints ? (
+            "ふわっと ひかる ところを さがしてみよう！"
+          ) : missStreak > 0 ? (
+            "うーん、そこには なさそう。ちがう ところも さがしてみよう！"
+          ) : (
+            <>
+              この みちの「<RubyText text="安全" />の くふう」を さがそう！ ガードレールや{" "}
+              <RubyText text="歩道" />は あんしんの しるしだよ。
+            </>
+          )}
         </SpeechBubble>
 
         <div className="flex items-center justify-center">
@@ -199,8 +219,73 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
               }}
             />
 
-            {safePoints.map((point) => {
-              const found = foundSet.has(point.id)
+            {/* ミスのリップル: タップは届いているが、そこではない、を視覚で返す */}
+            {missFx && (
+              <motion.div
+                key={`miss-${missFx.key}`}
+                initial={reduce ? { opacity: 0.6 } : { scale: 0.5, opacity: 0.7 }}
+                animate={reduce ? { opacity: 0 } : { scale: 1.6, opacity: 0 }}
+                transition={{ duration: reduce ? 0.4 : 0.9, ease: "easeOut" }}
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  ...place({ x: missFx.x, y: missFx.y }),
+                  transform: "translate(-50%, -50%)",
+                  pointerEvents: "none",
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  border: `3px solid ${C.inkSoft}`,
+                }}
+              />
+            )}
+
+            {/* ミスが続いたときのヒント: 未発見ポイントのあたりをやわらかく光らせる */}
+            {showHints &&
+              safePoints
+                .filter((point) => !foundSet.has(point.id))
+                .map((point) => {
+                  const center = {
+                    x: point.region.x + point.region.w / 2,
+                    y: point.region.y + point.region.h / 2,
+                  }
+                  return (
+                    <motion.div
+                      key={`hint-${point.id}`}
+                      role="img"
+                      aria-label="ヒント: この あたりに あんぜんの くふうが あるよ"
+                      animate={
+                        reduce
+                          ? { opacity: 0.55 }
+                          : { scale: [1, 1.14, 1], opacity: [0.45, 0.75, 0.45] }
+                      }
+                      transition={
+                        reduce
+                          ? { duration: 0.2 }
+                          : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
+                      }
+                      style={{
+                        position: "absolute",
+                        ...place(center),
+                        transform: "translate(-50%, -50%)",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "block",
+                          width: 56,
+                          height: 56,
+                          borderRadius: "50%",
+                          background: C.primarySoft,
+                          boxShadow: "0 0 0 3px #fff",
+                        }}
+                      />
+                    </motion.div>
+                  )
+                })}
+
+            {safePoints.filter((point) => foundSet.has(point.id)).map((point) => {
               const center = {
                 x: point.region.x + point.region.w / 2,
                 y: point.region.y + point.region.h / 2,
@@ -208,16 +293,11 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
               return (
                 <motion.div
                   key={point.id}
-                  initial={reduce ? { opacity: 0.7 } : { scale: 0.9, opacity: 0.7 }}
-                  animate={
-                    reduce
-                      ? { opacity: found ? 1 : 0.7 }
-                      : found
-                        ? { scale: 1, opacity: 1 }
-                        : { scale: [0.9, 1.06, 0.9], opacity: [0.6, 0.95, 0.6] }
-                  }
-                  transition={reduce ? { duration: 0.2 } : { duration: 1.8, repeat: found ? 0 : Infinity }}
-                  aria-hidden="true"
+                  initial={reduce ? { opacity: 0 } : { scale: 1.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 340, damping: 20 }}
+                  role="img"
+                  aria-label={`みつけた あんぜん: ${point.type}`}
                   style={{
                     position: "absolute",
                     ...place(center),
@@ -232,7 +312,7 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
                       width: 44,
                       height: 44,
                       borderRadius: "50%",
-                      background: found ? C.primary : "rgba(21,158,114,.55)",
+                      background: C.primary,
                       boxShadow: `0 0 0 3px #fff, ${tokens.shadow.card}`,
                       color: "#fff",
                     }}

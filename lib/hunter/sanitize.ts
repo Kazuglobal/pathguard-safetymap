@@ -27,8 +27,14 @@ import { kidAccidentLabel } from "@/lib/hunter/accident-context"
 export const DISPLAY_CONF_MIN = 0.45
 /** confidence 欠落時の既定値。 */
 export const DEFAULT_CONFIDENCE = 0.6
-/** これより大きい面積(=ほぼ全画面)は危険ポイントとして不適切。 */
-export const MAX_AREA = 0.55
+/** これより大きい面積は、無関係な場所まで正解にするため採点対象にしない。 */
+export const MAX_AREA = 0.22
+/**
+ * 安全ポイント専用の面積上限。安全ポイントは採点対象でなく誤正解の害がない一方、
+ * ガードレール・歩道・横断歩道は本質的に横長で MAX_AREA を超えやすい。
+ * 危険ポイントと同じ上限で落とすと「あんぜん さがし」モード自体が消えるため、別枠にする。
+ */
+export const MAX_SAFE_AREA = 0.55
 /** これより小さい面積(極小)は誤検出として除外。 */
 export const MIN_AREA = 0.004
 /** IoU がこれを超える重複は統合する。 */
@@ -228,7 +234,7 @@ export function sanitizeDangerPoints(
 
 /**
  * 安全ポイント(逆モード)をサニタイズする。
- * - region 必須・面積フィルタ・最小サイズ膨張は危険ポイントと共通。
+ * - region 必須・最小サイズ膨張は危険ポイントと共通。面積上限のみ MAX_SAFE_AREA(横長対応)。
  * - 英語/空のラベル・説明は検証済みフォールバックへ置換。
  * - 件数は MAX_SAFE_POINTS で打ち切り。
  */
@@ -241,7 +247,7 @@ export function sanitizeSafePoints(
     if (!point.region) continue
     const region = clampRegion(point.region)
     const area = region.w * region.h
-    if (area < MIN_AREA || area > MAX_AREA) continue
+    if (area < MIN_AREA || area > MAX_SAFE_AREA) continue
 
     out.push({
       id: `${options.sessionId}-safe-${out.length}`,

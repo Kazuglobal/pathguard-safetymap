@@ -3,8 +3,8 @@
 // 設計書: docs/plans/2026-06-26-kiken-hunter-design.md
 // React/IO/副作用なし。すべてイミュータブル。
 //
-// 方針B: Geminiのbboxに密着依存しない「やさしい当たり判定」+ ヒント。
-//  - hit はゾーンを広めに取る(HIT_MARGIN)。bbox は目安と割り切る。
+// 方針B: Geminiのbboxを品質ゲートに通した「正確な当たり判定」+ ヒント。
+//  - hit は子どもの指先分だけ補正し、明確に外れた場所は正解にしない。
 //  - 外れ(near/miss)には最近傍の未発見hazardへの温度感・方向を付け、
 //    自己修正できるようにする(自動発見はしない=最後は子のタップ)。
 // =============================================
@@ -18,6 +18,7 @@ import type {
   HunterTapOutcome,
   HunterTemperature,
 } from "@/lib/hunter/types"
+import { SPATIAL_TAP_MARGIN, tapWithinRegion } from "@/lib/hunter/spatial-hit"
 
 /** severity ごとの基礎点 */
 export const SEVERITY_POINTS: Record<RiskSeverity, number> = {
@@ -33,8 +34,8 @@ const WEIGHT_BY_SEVERITY: Record<RiskSeverity, number> = {
   low: 1,
 }
 
-/** hit ゾーンを各辺へ拡張する既定マージン(やさしい当たり判定) */
-export const HIT_MARGIN = 0.1
+/** hit ゾーンを各辺へ拡張する既定マージン(指先補正のみ)。 */
+export const HIT_MARGIN = SPATIAL_TAP_MARGIN
 /** near ゾーンを各辺へ拡張する既定マージン */
 export const NEAR_OUTER = 0.18
 
@@ -138,7 +139,7 @@ export function judgeTap(
   let hitScore = -Infinity
   for (const hazard of hazards) {
     if (foundIds.has(hazard.id)) continue
-    if (regionContains(expandRegion(hazard.region, hitMargin), tap)) {
+    if (tapWithinRegion(tap, hazard.region, hitMargin)) {
       const score = WEIGHT_BY_SEVERITY[hazard.severity] * hazard.confidence
       if (score > hitScore) {
         hitScore = score

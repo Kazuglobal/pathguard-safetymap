@@ -47,8 +47,9 @@ describe("constants", () => {
     expect(SEVERITY_POINTS.low).toBe(50)
   })
 
-  it("やさしい当たり判定: HIT_MARGIN は near より狭い広めゾーン", () => {
-    expect(HIT_MARGIN).toBeGreaterThan(0.06)
+  it("誤正解を防ぐ当たり判定: HIT_MARGIN は指先補正だけの狭いゾーン", () => {
+    expect(HIT_MARGIN).toBeGreaterThan(0.01)
+    expect(HIT_MARGIN).toBeLessThanOrEqual(0.03)
     expect(HIT_MARGIN).toBeLessThan(NEAR_OUTER)
   })
 })
@@ -67,13 +68,19 @@ describe("judgeTap — やさしい当たり判定", () => {
     })
   })
 
-  it("tight の少し外でも HIT_MARGIN 内なら hit(bboxズレ救済)", () => {
-    // x=0.38 は tight [0.1,0.3] 外、hitゾーン [0.0,0.4] 内 → 以前は near、今は hit
-    expect(judgeTap({ x: 0.38, y: 0.2 }, hazards, noneFound)).toMatchObject({
+  it("tight の指先ひとつ分だけ外なら hit(bboxズレ救済)", () => {
+    // x=0.32 は tight [0.1,0.3] 外だが、狭い指先補正内。
+    expect(judgeTap({ x: 0.32, y: 0.2 }, hazards, noneFound)).toMatchObject({
       result: "hit",
       hazardId: "A",
       points: 150,
     })
+  })
+
+  it("tight から明確に外れた場所を正解にしない", () => {
+    const out = judgeTap({ x: 0.38, y: 0.2 }, hazards, noneFound)
+    expect(out.result).toBe("near")
+    expect(out.points).toBe(0)
   })
 
   it("hit 候補が複数なら severity重み×confidence の高い方を選ぶ", () => {

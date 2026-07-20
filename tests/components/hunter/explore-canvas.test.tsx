@@ -89,6 +89,22 @@ describe("ExploreCanvas — feedback and no auto-discovery", () => {
     expect(screen.getByRole("status")).toHaveTextContent("みつけたね！")
   })
 
+  it("shows the photo-specific reason and safe action immediately after a hit", () => {
+    const outcome: HunterTapOutcome = { result: "hit", hazardId: "A", points: 150 }
+    render(
+      <ExploreCanvas
+        imageUrl="x.jpg"
+        hazards={[hazard("A")]}
+        foundIds={["A"]}
+        onTap={vi.fn()}
+        lastTap={{ x: 0.4, y: 0.4 }}
+        lastOutcome={outcome}
+      />,
+    )
+    expect(screen.getByText("あぶないよ")).toBeInTheDocument()
+    expect(screen.getByText(/とまろう/)).toBeInTheDocument()
+  })
+
   it("escalates to a warm + direction announcement after repeated misses", () => {
     const near = (): HunterTapOutcome => ({
       result: "near",

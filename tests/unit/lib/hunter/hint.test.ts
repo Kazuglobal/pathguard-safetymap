@@ -54,11 +54,11 @@ describe("computeHintLevel", () => {
     expect(computeHintLevel(0, 26000, 5)).toBe(3)
   })
 
-  it("escalates to Lv3 earlier when only one hazard remains", () => {
-    expect(computeHintLevel(4, 0, 1)).toBe(3) // remaining<=1 + Lv2 threshold
-    expect(computeHintLevel(4, 0, 2)).toBe(2) // not last → stays Lv2
-    expect(computeHintLevel(0, 16000, 1)).toBe(3)
-    expect(computeHintLevel(2, 0, 1)).toBe(1) // below Lv2 even when last
+  it("does not reveal the exact last zone before the normal Lv3 boundary", () => {
+    expect(computeHintLevel(4, 0, 1)).toBe(2)
+    expect(computeHintLevel(0, 16000, 1)).toBe(2)
+    expect(computeHintLevel(6, 0, 1)).toBe(3)
+    expect(computeHintLevel(0, 26000, 1)).toBe(3)
   })
 })
 
