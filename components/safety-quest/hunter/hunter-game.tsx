@@ -244,20 +244,16 @@ export function HunterGame() {
   )
 
   const handleTap = (tap: HunterTap) => {
-    // 「決め手のタップ」を含めて確定させる: setTaps は非同期なので、
-    // 自動終了時は nextTaps を直接 finishSession へ渡す(stale closure 回避)。
-    const nextTaps = [...taps, tap]
-    setTaps(nextTaps)
+    setTaps([...taps, tap])
     setLastTap(tap)
     const outcome = judgeTap(tap, hazards, foundSet)
     setLastOutcome(outcome)
     if (outcome.result === "hit" && outcome.hazardId) {
-      const nextFound = [...foundIds, outcome.hazardId]
-      setFoundIds(nextFound)
-      if (nextFound.length >= hazards.length) {
-        void finishSession(nextTaps, nextFound)
-      }
+      setFoundIds([...foundIds, outcome.hazardId])
     }
+    // 全発見でも自動で結果画面へ遷移しない: hit 直後の「なんで危ない?+つぎにすること」
+    // カードを読む時間を保証するため、遷移は CTA「けっかを みる」の明示タップに委ねる。
+    // (自動 finish だと最終 hit=hazard 1件の写真では学習カードが一度も読めなかった)
   }
 
   const finishSession = useCallback(
@@ -1392,7 +1388,7 @@ function ModeSelectScreen({
  * explore — たんけんモード(写真が主役)
  * ------------------------------------------------------------------ */
 
-function ExploreScreen({
+export function ExploreScreen({
   accident,
   maskedUrl,
   hazards,
@@ -1433,13 +1429,13 @@ function ExploreScreen({
       </div>
 
       <BottomBar className="-mx-4 px-4">
-        <PrimaryCTA disabled={busy} variant="green" onClick={onFinish}>
+        <PrimaryCTA disabled={busy} variant={remaining > 0 ? "green" : "sun"} onClick={onFinish}>
           {busy ? (
             "まとめているよ…"
           ) : remaining > 0 ? (
             <>けっかを みる（のこり {remaining}）</>
           ) : (
-            "けっかを みる"
+            "ぜんぶ みつけた！けっかを みる"
           )}
         </PrimaryCTA>
       </BottomBar>

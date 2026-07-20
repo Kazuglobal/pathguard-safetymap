@@ -122,3 +122,53 @@ describe("SafeHuntCanvas — tap-to-find", () => {
     expect(screen.getByText("ぜんぶ みつけた！おわる")).toBeInTheDocument()
   })
 })
+
+// 範囲外タップが完全な無反応(無フィードバック)にならないこと。
+// 正しい実物をタップしても AI 枠の外なら沈黙する、が最悪の子ども体験なので、
+// ミスにはやさしい応答を返し、続くようならヒントを出す。
+describe("SafeHuntCanvas — miss feedback", () => {
+  it("acknowledges a missed tap via the speech bubble and aria-live (never silent)", () => {
+    render(
+      <SafeHuntCanvas imageUrl="x.jpg" safePoints={[safePoint("g0")]} onDone={vi.fn()} />,
+    )
+    loadImage()
+    fireEvent.click(screen.getByLabelText(SURFACE_LABEL), { clientX: 390, clientY: 290 })
+    expect(screen.getByText("0/1")).toBeInTheDocument()
+    expect(screen.getByText("うーん、そこには なさそう。ちがう ところも さがしてみよう！")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("そこには なさそう")
+  })
+
+  it("shows soft hint markers on undiscovered points after 3 consecutive misses", () => {
+    render(
+      <SafeHuntCanvas imageUrl="x.jpg" safePoints={[safePoint("g0")]} onDone={vi.fn()} />,
+    )
+    loadImage()
+    const surface = screen.getByLabelText(SURFACE_LABEL)
+    fireEvent.click(surface, { clientX: 390, clientY: 290 })
+    fireEvent.click(surface, { clientX: 390, clientY: 290 })
+    expect(screen.queryAllByLabelText(/ヒント/)).toHaveLength(0)
+    fireEvent.click(surface, { clientX: 390, clientY: 290 })
+    expect(screen.getAllByLabelText(/ヒント/)).toHaveLength(1)
+    expect(screen.getByText("ふわっと ひかる ところを さがしてみよう！")).toBeInTheDocument()
+  })
+
+  it("clears the miss streak and hints once a safe point is found", () => {
+    render(
+      <SafeHuntCanvas
+        imageUrl="x.jpg"
+        safePoints={[safePoint("g0"), safePoint("g1", { x: 0.6, y: 0.1, w: 0.2, h: 0.2 })]}
+        onDone={vi.fn()}
+      />,
+    )
+    loadImage()
+    const surface = screen.getByLabelText(SURFACE_LABEL)
+    fireEvent.click(surface, { clientX: 390, clientY: 290 })
+    fireEvent.click(surface, { clientX: 390, clientY: 290 })
+    fireEvent.click(surface, { clientX: 390, clientY: 290 })
+    expect(screen.getAllByLabelText(/ヒント/)).toHaveLength(2)
+
+    fireEvent.click(surface, { clientX: 160, clientY: 120 }) // g0 center → hit
+    expect(screen.queryAllByLabelText(/ヒント/)).toHaveLength(0)
+    expect(screen.getByRole("status")).toHaveTextContent("くるまから まもってくれるよ")
+  })
+})
