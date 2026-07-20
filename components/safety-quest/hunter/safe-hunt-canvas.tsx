@@ -18,6 +18,7 @@ import {
   toImageCoords,
   type Size,
 } from "@/lib/hunter/image-geometry"
+import { tapWithinRegion } from "@/lib/hunter/spatial-hit"
 
 import { RubyText } from "./ruby-text"
 import {
@@ -36,21 +37,6 @@ export interface SafeHuntCanvasProps {
   imageUrl: string
   safePoints: readonly HunterSafePoint[]
   onDone: () => void
-}
-
-/** タップが safe point の領域(少し広め)に入っているか。 */
-function hitSafePoint(
-  rel: { x: number; y: number },
-  point: HunterSafePoint,
-  margin = 0.12,
-): boolean {
-  const r = point.region
-  return (
-    rel.x >= r.x - margin &&
-    rel.x <= r.x + r.w + margin &&
-    rel.y >= r.y - margin &&
-    rel.y <= r.y + r.h + margin
-  )
 }
 
 export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasProps) {
@@ -104,7 +90,7 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
       const rect = el.getBoundingClientRect()
       const rel = toImageCoords(clientX, clientY, rect, contain)
       if (!rel) return
-      const hit = safePoints.find((p) => hitSafePoint(rel, p))
+      const hit = safePoints.find((p) => tapWithinRegion(rel, p.region))
       if (hit) activateSafePoint(hit)
     },
     [contain, safePoints, activateSafePoint],
@@ -199,8 +185,7 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
               }}
             />
 
-            {safePoints.map((point) => {
-              const found = foundSet.has(point.id)
+            {safePoints.filter((point) => foundSet.has(point.id)).map((point) => {
               const center = {
                 x: point.region.x + point.region.w / 2,
                 y: point.region.y + point.region.h / 2,
@@ -208,16 +193,11 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
               return (
                 <motion.div
                   key={point.id}
-                  initial={reduce ? { opacity: 0.7 } : { scale: 0.9, opacity: 0.7 }}
-                  animate={
-                    reduce
-                      ? { opacity: found ? 1 : 0.7 }
-                      : found
-                        ? { scale: 1, opacity: 1 }
-                        : { scale: [0.9, 1.06, 0.9], opacity: [0.6, 0.95, 0.6] }
-                  }
-                  transition={reduce ? { duration: 0.2 } : { duration: 1.8, repeat: found ? 0 : Infinity }}
-                  aria-hidden="true"
+                  initial={reduce ? { opacity: 0 } : { scale: 1.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 340, damping: 20 }}
+                  role="img"
+                  aria-label={`みつけた あんぜん: ${point.type}`}
                   style={{
                     position: "absolute",
                     ...place(center),
@@ -232,7 +212,7 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
                       width: 44,
                       height: 44,
                       borderRadius: "50%",
-                      background: found ? C.primary : "rgba(21,158,114,.55)",
+                      background: C.primary,
                       boxShadow: `0 0 0 3px #fff, ${tokens.shadow.card}`,
                       color: "#fff",
                     }}

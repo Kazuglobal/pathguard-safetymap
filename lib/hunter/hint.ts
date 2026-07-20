@@ -21,20 +21,15 @@ export const HINT_THRESHOLDS = {
 /**
  * ヒントレベル(0..3)を決める。
  * - 0=非表示 / 1=温度+方向 / 2=ゾーン発光 / 3=薄枠開示
- * - remaining<=1 のときは Lv2 のしきい値で Lv3 を早発火(残り1件を救済)。
+ * - 最後の1件でも答えの枠を早出しせず、通常の Lv3 しきい値を守る。
  */
 export function computeHintLevel(
   missStreak: number,
   idleMs: number,
-  remaining: number,
+  _remaining: number,
 ): 0 | 1 | 2 | 3 {
   const T = HINT_THRESHOLDS
-  const last = remaining <= 1
-  if (
-    missStreak >= T.lv3Miss ||
-    idleMs >= T.lv3Ms ||
-    (last && (missStreak >= T.lv2Miss || idleMs >= T.lv2Ms))
-  ) {
+  if (missStreak >= T.lv3Miss || idleMs >= T.lv3Ms) {
     return 3
   }
   if (missStreak >= T.lv2Miss || idleMs >= T.lv2Ms) return 2

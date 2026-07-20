@@ -93,6 +93,26 @@ describe("buildQuizItemsFromAi", () => {
     expect(items[0].kind).toBe("choice")
   })
 
+  it("keeps a broad region as a choice even when it is not almost full-screen", () => {
+    const items = buildQuizItemsFromAi(
+      [hazard({ region: { x: 0.2, y: 0.2, w: 0.4, h: 0.4 } })], // area 0.16: too broad for a precise tap
+      [material()],
+      accidentWithData,
+      1,
+    )
+    expect(items[0].kind).toBe("choice")
+  })
+
+  it("requires high confidence before asking a photo-tap question", () => {
+    const items = buildQuizItemsFromAi(
+      [hazard({ confidence: 0.78 })],
+      [material()],
+      accidentWithData,
+      1,
+    )
+    expect(items[0].kind).toBe("choice")
+  })
+
   it("includes the accident reality line when data exists", () => {
     const items = buildQuizItemsFromAi([hazard({ confidence: 0.5 })], [material()], accidentWithData, 1)
     expect(items[0].explanation).toContain("件 あったよ")
@@ -156,6 +176,13 @@ describe("judgeQuizAnswer", () => {
 
   it("marks a place answer incorrect when the tap is far away", () => {
     const r = judgeQuizAnswer(place, { itemId: place.id, tap: { x: 0.95, y: 0.95 } })
+    expect(r.correct).toBe(false)
+    expect(r.points).toBe(0)
+  })
+
+  it("does not mark a tap clearly outside the place region as correct", () => {
+    // region right edge is 0.5; 0.58 used to be accepted by the 0.1 expansion.
+    const r = judgeQuizAnswer(place, { itemId: place.id, tap: { x: 0.58, y: 0.4 } })
     expect(r.correct).toBe(false)
     expect(r.points).toBe(0)
   })

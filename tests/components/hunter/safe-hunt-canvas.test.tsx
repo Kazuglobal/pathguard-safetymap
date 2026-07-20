@@ -42,6 +42,17 @@ function loadImage() {
 const SURFACE_LABEL = "しゃしんの上を タップして、安全の くふうを さがそう"
 
 describe("SafeHuntCanvas — tap-to-find", () => {
+  it("does not reveal the exact safe-point marker before it is found", () => {
+    render(
+      <SafeHuntCanvas imageUrl="x.jpg" safePoints={[safePoint("g0")]} onDone={vi.fn()} />,
+    )
+    loadImage()
+    expect(screen.queryByLabelText("みつけた あんぜん: ガードレール")).toBeNull()
+
+    fireEvent.click(screen.getByLabelText(SURFACE_LABEL), { clientX: 160, clientY: 120 })
+    expect(screen.getByLabelText("みつけた あんぜん: ガードレール")).toBeInTheDocument()
+  })
+
   it("finds a safe point when tapped inside its (margin-expanded) region", () => {
     render(
       <SafeHuntCanvas imageUrl="x.jpg" safePoints={[safePoint("g0")]} onDone={vi.fn()} />,
@@ -57,6 +68,16 @@ describe("SafeHuntCanvas — tap-to-find", () => {
     )
     loadImage()
     fireEvent.click(screen.getByLabelText(SURFACE_LABEL), { clientX: 390, clientY: 290 })
+    expect(screen.getByText("0/1")).toBeInTheDocument()
+  })
+
+  it("does not accept a tap clearly outside a safe point", () => {
+    render(
+      <SafeHuntCanvas imageUrl="x.jpg" safePoints={[safePoint("g0")]} onDone={vi.fn()} />,
+    )
+    loadImage()
+    // region right edge is x=0.5 (200px); x=0.58 (232px) was accepted by the old 0.12 margin.
+    fireEvent.click(screen.getByLabelText(SURFACE_LABEL), { clientX: 232, clientY: 120 })
     expect(screen.getByText("0/1")).toBeInTheDocument()
   })
 

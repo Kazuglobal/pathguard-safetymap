@@ -132,6 +132,11 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
     [hazards, foundSet],
   )
 
+  const activeHitHazard = useMemo(() => {
+    if (lastOutcome?.result !== "hit" || !lastOutcome.hazardId) return null
+    return hazards.find((hazard) => hazard.id === lastOutcome.hazardId) ?? null
+  }, [hazards, lastOutcome])
+
   const contain = useMemo(() => {
     if (!natural || !box) return null
     return containRect(natural, box)
@@ -552,6 +557,29 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
           ) : null}
         </div>
       </PhotoFrame>
+
+      <AnimatePresence mode="wait">
+        {activeHitHazard ? (
+          <motion.div
+            key={activeHitHazard.id}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="mt-3 rounded-[18px] px-4 py-3"
+            style={{ background: C.primarySoft, boxShadow: tokens.shadow.soft }}
+          >
+            <p className="text-[14px] font-black leading-relaxed" style={{ color: C.primaryStrong }}>
+              {activeHitHazard.type}
+            </p>
+            <p className="mt-0.5 text-[13.5px] font-bold leading-relaxed" style={{ color: C.ink }}>
+              {activeHitHazard.kidExplanation}
+            </p>
+            <p className="mt-1 text-[13px] font-black leading-relaxed" style={{ color: C.inkSoft }}>
+              つぎに すること：{activeHitHazard.safeAction}
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }

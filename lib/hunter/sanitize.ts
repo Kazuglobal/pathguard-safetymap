@@ -27,8 +27,8 @@ import { kidAccidentLabel } from "@/lib/hunter/accident-context"
 export const DISPLAY_CONF_MIN = 0.45
 /** confidence 欠落時の既定値。 */
 export const DEFAULT_CONFIDENCE = 0.6
-/** これより大きい面積(=ほぼ全画面)は危険ポイントとして不適切。 */
-export const MAX_AREA = 0.55
+/** これより大きい面積は、無関係な場所まで正解にするため採点対象にしない。 */
+export const MAX_AREA = 0.22
 /** これより小さい面積(極小)は誤検出として除外。 */
 export const MIN_AREA = 0.004
 /** IoU がこれを超える重複は統合する。 */

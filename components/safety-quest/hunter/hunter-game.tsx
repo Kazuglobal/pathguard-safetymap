@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   BookOpen,
+  CalendarDays,
   Camera,
   Check,
   Eye,
@@ -20,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react"
 
+import { pickDailyMission, type HunterDailyMode } from "@/lib/hunter/daily-mission"
 import { judgeTap } from "@/lib/hunter/scoring"
 import type {
   HunterAccidentSummary,
@@ -1207,12 +1209,14 @@ function ModeCard({
   icon,
   title,
   desc,
+  eyebrow,
   onClick,
   tone,
 }: {
   icon: ReactNode
   title: string
   desc: string
+  eyebrow?: string
   onClick: () => void
   tone: "green" | "sun" | "accent"
 }) {
@@ -1240,6 +1244,12 @@ function ModeCard({
         {icon}
       </span>
       <span className="flex min-w-0 flex-col gap-0.5">
+        {eyebrow ? (
+          <span className="flex items-center gap-1 text-[10.5px] font-black leading-tight opacity-90">
+            <CalendarDays className="h-3 w-3" aria-hidden="true" />
+            {eyebrow}
+          </span>
+        ) : null}
         <span className="text-[17px] font-black leading-tight">{title}</span>
         <span className="text-[13px] font-bold leading-snug">{desc}</span>
       </span>
@@ -1269,12 +1279,60 @@ function ModeSelectScreen({
   onSafeHunt: () => void
 }) {
   const isGuide = analysisMode === "guide"
+  const modeCards: Array<{
+    mode: HunterDailyMode
+    icon: ReactNode
+    title: string
+    desc: string
+    onClick: () => void
+    tone: "green" | "sun" | "accent"
+  }> = []
+  if (!isGuide) {
+    modeCards.push({
+      mode: "explore",
+      icon: <Search className="h-6 w-6" strokeWidth={2.6} />,
+      title: "たんけんモード",
+      desc: "じぶんの目で あぶないところを さがす",
+      onClick: onExplore,
+      tone: "green",
+    })
+  }
+  if (canQuiz) {
+    modeCards.push({
+      mode: "quiz",
+      icon: <Lightbulb className="h-6 w-6" strokeWidth={2.6} />,
+      title: "クイズモード",
+      desc: "あんぜんな あるきかたを クイズで まなぶ",
+      onClick: onQuiz,
+      tone: "sun",
+    })
+  }
+  if (safeCount > 0) {
+    modeCards.push({
+      mode: "safe",
+      icon: <ShieldCheck className="h-6 w-6" strokeWidth={2.6} />,
+      title: "あんぜん さがし",
+      desc: "この みちの「あんしんの くふう」を さがす",
+      onClick: onSafeHunt,
+      tone: "accent",
+    })
+  }
+  const dailyMission = pickDailyMission(new Date(), modeCards.map((card) => card.mode))
+  const orderedCards = dailyMission
+    ? [...modeCards].sort(
+        (a, b) =>
+          Number(b.mode === dailyMission.mode) - Number(a.mode === dailyMission.mode),
+      )
+    : modeCards
+
   return (
-    <div className="mx-auto flex w-full max-w-md min-h-0 flex-1 flex-col gap-4 px-5 pb-6 pt-2">
+    <div className="mx-auto flex w-full max-w-md min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 pt-2">
       <SpeechBubble mood={isGuide ? "happy" : "cheer"}>
         {isGuide
           ? "この しゃしんでは あぶないところは 見つからなかったよ。クイズや あんぜんさがしで れんしゅうしよう！"
-          : "じゅんび かんりょう！ どの あそびかたに する？"}
+          : dailyMission
+            ? `きょうの 3分ミッションは「${dailyMission.title}」。${dailyMission.detail}`
+            : "じゅんび かんりょう！ どの あそびかたに する？"}
       </SpeechBubble>
 
       {/* 保存の控えめな通知 */}
@@ -1314,33 +1372,17 @@ function ModeSelectScreen({
       {accident && <CareCard accident={accident} />}
 
       <div className="flex flex-col gap-3">
-        {!isGuide && (
+        {orderedCards.map((card) => (
           <ModeCard
-            icon={<Search className="h-6 w-6" strokeWidth={2.6} />}
-            title="たんけんモード"
-            desc="じぶんの目で あぶないところを さがす"
-            onClick={onExplore}
-            tone="green"
+            key={card.mode}
+            icon={card.icon}
+            title={card.title}
+            desc={card.desc}
+            eyebrow={card.mode === dailyMission?.mode ? "きょうの おすすめ・3分" : undefined}
+            onClick={card.onClick}
+            tone={card.tone}
           />
-        )}
-        {canQuiz && (
-          <ModeCard
-            icon={<Lightbulb className="h-6 w-6" strokeWidth={2.6} />}
-            title="クイズモード"
-            desc="あんぜんな あるきかたを クイズで まなぶ"
-            onClick={onQuiz}
-            tone="sun"
-          />
-        )}
-        {safeCount > 0 && (
-          <ModeCard
-            icon={<ShieldCheck className="h-6 w-6" strokeWidth={2.6} />}
-            title="あんぜん さがし"
-            desc="この みちの「あんしんの くふう」を さがす"
-            onClick={onSafeHunt}
-            tone="accent"
-          />
-        )}
+        ))}
       </div>
     </div>
   )

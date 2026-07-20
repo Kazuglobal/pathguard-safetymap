@@ -45,6 +45,14 @@ describe("sanitizeDangerPoints — 的外れ正解の構造排除", () => {
     expect(hazards).toHaveLength(0)
   })
 
+  it("excludes a broad region that would make unrelated taps count", () => {
+    const { hazards } = sanitizeDangerPoints(
+      [point({ region: { x: 0.1, y: 0.2, w: 0.6, h: 0.5 } })], // area 0.30
+      opt,
+    )
+    expect(hazards).toHaveLength(0)
+  })
+
   it("excludes a tiny region (area too small)", () => {
     const { hazards } = sanitizeDangerPoints(
       [point({ region: { x: 0.4, y: 0.4, w: 0.05, h: 0.05 } })],
