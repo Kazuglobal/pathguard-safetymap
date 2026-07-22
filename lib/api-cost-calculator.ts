@@ -79,6 +79,16 @@ export const API_PRICING = {
       inputPer1kTokens: 0.00015,
       outputPer1kTokens: 0.0006,
     },
+    // Gemini 3.5 Flash (GA 2026-05-19): $1.50/M input, $9.00/M output.
+    'gemini-3.5-flash': {
+      inputPer1kTokens: 0.0015,
+      outputPer1kTokens: 0.009,
+    },
+    // Gemini 3.6 Flash (GA 2026-07-21): $1.50/M input, $7.50/M output.
+    'gemini-3.6-flash': {
+      inputPer1kTokens: 0.0015,
+      outputPer1kTokens: 0.0075,
+    },
   },
   openai: {
     'gpt-4o': {

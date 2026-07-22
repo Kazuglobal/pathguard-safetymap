@@ -20,13 +20,20 @@ import {
   checkGeminiRateLimit,
   rateLimitedResponse,
 } from "@/lib/upstash-rate-limiter"
+import {
+  getSanitizedGeminiVisionModel,
+  REALTIME_VISION_DEFAULT_MODEL,
+} from "@/lib/gemini-util"
 import type { HunterHazard } from "@/lib/hunter/types"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-/** 検出に紐づける推論モデル名 (hazard_detections.model 用)。 */
-const HUNTER_VISION_MODEL = "gemini-2.5-flash"
+/**
+ * 検出に紐づける推論モデル名 (hazard_detections.model 用)。
+ * callGeminiVision が実際に解決するモデルと同じ手順で解決し、DB記録と実呼び出しを一致させる。
+ */
+const HUNTER_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAULT_MODEL)
 /** 写真の保持期限 (90日)。サーバ側で now() から算出する。 */
 const PHOTO_RETENTION_DAYS = 90
 

@@ -15,6 +15,10 @@ export default defineConfig({
       // レビュー用ワークツリー(adversarial-review等)は .claude/worktrees/ に
       // 作られる。除外しないと全体実行時に旧仕様のままの姉妹コピーで大量失敗する
       "**/.claude/**",
+      // Codexセッションの残骸ワークツリーと pnpm のプロジェクトスナップショット。
+      // どちらも旧仕様のテストコピーを含み、拾うと偽の失敗になる
+      "**/.codex-worktrees/**",
+      "**/.pnpm-store/**",
       "**/playwright-report/**",
       "**/test-results/**",
       // *.spec.ts は Playwright 専用(全ファイルが @playwright/test を import)。

@@ -19,3 +19,11 @@ export function getSanitizedGeminiVisionModel(defaultModel = "gemini-2.5-flash")
   return raw.trim()
 }
 
+/**
+ * リアルタイム写真解析(きけんハンター / ハザードゲーム)専用の既定Visionモデル。
+ * GA版のGemini 3世代Flash。preview系ID(gemini-3-flash-preview)は廃止リスクがあるため使わない。
+ * モデレーション・生成画像検証は安全側の実績既定(gemini-2.5-flash)を維持する。
+ * GEMINI_VISION_MODEL を設定すると従来どおり全Vision呼び出しが一括で上書きされる。
+ */
+export const REALTIME_VISION_DEFAULT_MODEL = "gemini-3.5-flash"
+
