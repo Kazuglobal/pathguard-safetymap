@@ -7,6 +7,7 @@
 // =============================================
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
+import { REALTIME_VISION_DEFAULT_MODEL } from "@/lib/gemini-util"
 import { extractHunterJson } from "@/lib/hunter/ai-json"
 import { validateHunterResponse } from "@/lib/hunter/ai-schema"
 import { DISPLAY_CONF_MIN, MAX_AREA, sanitizeDangerPoints, sanitizeSafePoints } from "@/lib/hunter/sanitize"
@@ -203,11 +204,11 @@ async function callHunterVision(
   allowRetry: boolean,
 ): Promise<string> {
   try {
-    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG)
+    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
   } catch (err) {
     if (!allowRetry || !isRetryableGeminiError(err)) throw err
     await sleep(RETRY_BACKOFF_MS)
-    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG)
+    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
   }
 }
 
@@ -235,7 +236,7 @@ export async function analyzeHunterImage(
   let extracted = extractHunterJson(text)
   if (!extracted.ok && allowRetry) {
     try {
-      const retryText = await callGeminiVision(imageBase64, prompt + RETRY_SUFFIX, HUNTER_GENERATION_CONFIG)
+      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false)
       extracted = extractHunterJson(retryText)
     } catch {
       return buildGuideMode(accidentSummary, "ai_error", [], sessionId)

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => {
   const mockGetUser = vi.fn()
   const mockGenerateImage = vi.fn()
+  const mockGenerateImageWithOpenAI = vi.fn()
+  const mockCalculateOpenAICost = vi.fn(() => 0.053)
   const mockLogApiUsage = vi.fn()
   const mockCalculateImageGenerationCost = vi.fn(() => 0.01)
   const mockCalculateCost = vi.fn(() => 0)
@@ -22,6 +24,8 @@ const mocks = vi.hoisted(() => {
   return {
     mockGetUser,
     mockGenerateImage,
+    mockGenerateImageWithOpenAI,
+    mockCalculateOpenAICost,
     mockLogApiUsage,
     mockCalculateImageGenerationCost,
     mockCalculateCost,
@@ -53,6 +57,11 @@ vi.mock("@/lib/gemini-image", () => ({
   FORCED_GEMINI_IMAGE_MODEL: "gemini-3.1-flash-lite-image",
 }))
 
+vi.mock("@/lib/openai-image", () => ({
+  generateImageWithOpenAIWithModel: mocks.mockGenerateImageWithOpenAI,
+  FORCED_OPENAI_IMAGE_MODEL: "gpt-image-2",
+}))
+
 vi.mock("@/lib/api-usage-logger", () => ({
   logApiUsage: mocks.mockLogApiUsage,
 }))
@@ -60,6 +69,7 @@ vi.mock("@/lib/api-usage-logger", () => ({
 vi.mock("@/lib/api-cost-calculator", () => ({
   estimateImageGenerationCost: mocks.mockCalculateImageGenerationCost,
   calculateCost: mocks.mockCalculateCost,
+  calculateOpenAIImageGenerationCost: mocks.mockCalculateOpenAICost,
 }))
 
 vi.mock("@/lib/upstash-rate-limiter", () => ({
@@ -153,10 +163,122 @@ describe("app/api/gemini/generate-image route", () => {
       images: [],
       model: "gemini-3.1-flash-lite-image",
     })
+    mocks.mockGenerateImageWithOpenAI.mockResolvedValue({
+      images: [{ mimeType: "image/png", dataUrl: "data:image/png;base64,yyyy" }],
+      model: "gpt-image-2",
+      usage: { inputTokens: 100, inputImageTokens: 0, inputTextTokens: 100, outputTokens: 4000 },
+    })
     mocks.mockVerifyOrRegenerate.mockImplementation(async ({ images }: { images: unknown[] }) => ({
       images,
       verificationRequestCount: 0,
     }))
+  })
+
+  describe("textInImage=true (日本語テキスト入り素材はGPT Image 2へ)", () => {
+    const buildTextInImageRequest = () => {
+      const form = new FormData()
+      form.append("prompt", "「とまれ」と書いたポスター")
+      form.append("textInImage", "true")
+      return new Request("http://localhost/api/gemini/generate-image", {
+        method: "POST",
+        body: form,
+      })
+    }
+
+    it("OpenAI(GPT Image 2)で生成し、Geminiは呼ばない", async () => {
+      const { POST } = await loadRoute()
+      const res = await POST(buildTextInImageRequest() as any)
+
+      expect(res.status).toBe(200)
+      expect(mocks.mockGenerateImageWithOpenAI).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: "「とまれ」と書いたポスター" }),
+      )
+      expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
+      const body = await (res as Response).json()
+      expect(body.images).toHaveLength(1)
+    })
+
+    it("文字入り素材にはガードサフィックスを付与しない(文字を入れる用途のため)", async () => {
+      const { SCENE_PRESERVATION_GUARD_SUFFIX } = await import("@/lib/disaster-image-prompt-fallbacks")
+      const { POST } = await loadRoute()
+
+      await POST(buildTextInImageRequest() as any)
+
+      const prompt: string = mocks.mockGenerateImageWithOpenAI.mock.calls[0][0].prompt
+      expect(prompt.includes(SCENE_PRESERVATION_GUARD_SUFFIX)).toBe(false)
+    })
+
+    it("災害画像向けの機械検証は実行しない", async () => {
+      const { POST } = await loadRoute()
+      await POST(buildTextInImageRequest() as any)
+      expect(mocks.mockVerifyOrRegenerate).not.toHaveBeenCalled()
+    })
+
+    it("使用量ログは openai プロバイダ・トークン実測ベースのコストで記録する", async () => {
+      const { POST } = await loadRoute()
+      await POST(buildTextInImageRequest() as any)
+
+      expect(mocks.mockCalculateOpenAICost).toHaveBeenCalledWith(
+        "gpt-image-2",
+        expect.objectContaining({ outputTokens: 4000 }),
+      )
+      expect(mocks.mockLogApiUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          api_provider: "openai",
+          api_endpoint: "generate-image",
+          model_name: "gpt-image-2",
+          estimated_cost_usd: 0.053,
+          success: true,
+        }),
+      )
+    })
+
+    it("OpenAI失敗時は openai プロバイダで失敗ログを残し、5xxを返す", async () => {
+      mocks.mockGenerateImageWithOpenAI.mockRejectedValueOnce(new Error("openai down"))
+      const { POST } = await loadRoute()
+
+      const res = await POST(buildTextInImageRequest() as any)
+
+      expect(res.status).toBe(500)
+      expect(mocks.mockLogApiUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          api_provider: "openai",
+          model_name: "gpt-image-2",
+          success: false,
+        }),
+      )
+    })
+
+    it("textInImage=true でも浸水区域ゲート(enforce)の situation 必須チェックはバイパスされない", async () => {
+      mocks.mockGetHazardGateMode.mockReturnValue("enforce")
+      const { POST } = await loadRoute()
+
+      const res = await POST(buildTextInImageRequest() as any)
+
+      expect(res.status).toBe(400)
+      expect(mocks.mockGenerateImageWithOpenAI).not.toHaveBeenCalled()
+    })
+
+    it("textInImage が無い従来リクエストは引き続き Gemini で生成する", async () => {
+      const { POST } = await loadRoute()
+      await POST(buildMultipartRequest("standard") as any)
+
+      expect(mocks.mockGenerateImage).toHaveBeenCalled()
+      expect(mocks.mockGenerateImageWithOpenAI).not.toHaveBeenCalled()
+    })
+  })
+
+  it("APIキー未設定(サーバ設定不備)は 401 ではなく 503 を返し、生メッセージを漏らさない", async () => {
+    mocks.mockGenerateImage.mockRejectedValueOnce(
+      new Error("OPENAI_API_KEY environment variable is not set"),
+    )
+    const { POST } = await loadRoute()
+
+    const res = await POST(buildMultipartRequest("standard") as any)
+
+    expect(res.status).toBe(503)
+    const body = await (res as Response).json()
+    expect(body.error).not.toContain("OPENAI_API_KEY")
   })
 
   it("always uses gemini-3.1-flash-lite-image when generationMode is standard", async () => {
