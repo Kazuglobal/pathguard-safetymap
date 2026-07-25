@@ -29,19 +29,20 @@ describe("toJstDateKey", () => {
 
 describe("getTodaysDigest", () => {
   it("counts items published on the same JST day, split by prefecture", () => {
-    // NEWS_ITEMS の最新記事（2026-04-20・福岡県）を「今日」とみなす
-    const now = new Date("2026-04-20T10:00:00+09:00")
+    // NEWS_ITEMS の最新公開日（2026-07-26・4本／神奈川・広島・福岡・愛知）を「今日」とみなす
+    const now = new Date("2026-07-26T10:00:00+09:00")
 
     const national = getTodaysDigest("全国", now)
-    expect(national.date).toBe("2026-04-20")
-    expect(national.nationalCount).toBe(1)
-    expect(national.localNewsCount).toBe(1)
+    expect(national.date).toBe("2026-07-26")
+    expect(national.nationalCount).toBe(4)
+    expect(national.localNewsCount).toBe(4)
 
     const fukuoka = getTodaysDigest("福岡県", now)
+    expect(fukuoka.nationalCount).toBe(4)
     expect(fukuoka.localNewsCount).toBe(1)
 
     const osaka = getTodaysDigest("大阪府", now)
-    expect(osaka.nationalCount).toBe(1)
+    expect(osaka.nationalCount).toBe(4)
     expect(osaka.localNewsCount).toBe(0)
   })
 
