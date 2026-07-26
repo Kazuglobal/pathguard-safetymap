@@ -1,4 +1,5 @@
-import { renderHook } from "@testing-library/react"
+import { renderHook, waitFor } from "@testing-library/react"
+import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useDangerMarkers } from "@/hooks/use-danger-markers"
 
@@ -45,7 +46,7 @@ describe("useDangerMarkers", () => {
     mocks.roots.length = 0
   })
 
-  it("ズーム再描画とアンマウント時にMapbox MarkerとReact rootを破棄する", () => {
+  it("ズーム再描画とアンマウント時にMapbox MarkerとReact rootを破棄する", async () => {
     const handlers = new Map<string, () => void>()
     const map = {
       getZoom: vi.fn(() => 15),
@@ -107,20 +108,26 @@ describe("useDangerMarkers", () => {
     )
     expect(markerOptions.element).toHaveAttribute(
       "aria-label",
-      "交通の危険報告。詳細を開きます",
+      "交通の危険報告。あぶなさちゅうい。詳細を開きます",
     )
     expect(markerOptions.element.style.width).toBe("")
     expect(markerOptions.element.style.height).toBe("")
     expect(mocks.roots[0].render).toHaveBeenCalledTimes(1)
+    const markerMarkup = renderToStaticMarkup(
+      mocks.roots[0].render.mock.calls[0][0],
+    )
+    expect(markerMarkup).toContain("danger-pin-icon")
+    expect(markerMarkup.match(/danger-severity-ring danger-severity-ring-/g)).toHaveLength(2)
+    expect(markerMarkup).not.toContain("交通")
 
     handlers.get("zoomend")?.()
     expect(mocks.markers[0].remove).toHaveBeenCalledTimes(1)
-    expect(mocks.roots[0].unmount).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mocks.roots[0].unmount).toHaveBeenCalledTimes(1))
 
     expect(mocks.markers).toHaveLength(2)
     unmount()
     expect(mocks.markers[1].remove).toHaveBeenCalledTimes(1)
-    expect(mocks.roots[1].unmount).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mocks.roots[1].unmount).toHaveBeenCalledTimes(1))
     expect(map.off).toHaveBeenCalledWith("zoomend", expect.any(Function))
   })
 })
