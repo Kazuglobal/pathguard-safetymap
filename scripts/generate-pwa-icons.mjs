@@ -3,16 +3,20 @@
 // 使い方:
 //   node scripts/generate-pwa-icons.mjs
 //
-// 入力: assets/pwa/icon-source.png (1024x1024 推奨。Codex等で生成した正式アート)
-//   - 存在すればそれを元に全サイズを生成する
-//   - 存在しなければ、下記の暫定SVG(たんけんノート調)から生成する(API不使用)
+// 入力(優先順):
+//   1. assets/pwa/icon-source.svg (+ 任意で icon-source-maskable.svg)
+//      … ベクター入力。拡大縮小で劣化せず、maskable版を別描画できるため継ぎ目が出ない(推奨)
+//   2. assets/pwa/icon-source.png (1024x1024 推奨)
+//      … ラスタ入力。maskable版はブランド色パディングで作るため、
+//        背景が単色でないアートだと継ぎ目が見える
+//   3. いずれも無ければ下記の暫定SVGから生成する(API不使用)
 //
 // 出力(public/):
 //   icon-192.png / icon-512.png            … purpose "any"(全面)
 //   icon-maskable-192.png / icon-maskable-512.png … セーフゾーン80%版
 //   apple-touch-icon.png (180x180)          … iOSホーム画面用(不透明背景)
 //   badge-96.png                            … Android通知バッジ用(白モノクロ・透過)
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { mkdir } from "node:fs/promises"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -20,6 +24,8 @@ import sharp from "sharp"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const SOURCE_PNG = resolve(ROOT, "assets/pwa/icon-source.png")
+const SOURCE_SVG = resolve(ROOT, "assets/pwa/icon-source.svg")
+const SOURCE_SVG_MASKABLE = resolve(ROOT, "assets/pwa/icon-source-maskable.svg")
 const PUBLIC_DIR = resolve(ROOT, "public")
 
 const BRAND_COLOR = "#0ea5e9" // app/layout.tsx viewport.themeColor と一致させる
@@ -76,26 +82,46 @@ async function toPng(input, size) {
 async function generate() {
   await mkdir(PUBLIC_DIR, { recursive: true })
 
-  const hasSource = existsSync(SOURCE_PNG)
+  const hasSvg = existsSync(SOURCE_SVG)
+  const hasPng = !hasSvg && existsSync(SOURCE_PNG)
+
   console.log(
-    hasSource
-      ? `source: ${SOURCE_PNG}`
-      : "source: 暫定SVG(assets/pwa/icon-source.png が未配置のため)"
+    hasSvg
+      ? `source: ${SOURCE_SVG}${existsSync(SOURCE_SVG_MASKABLE) ? " (+ maskable専用SVG)" : ""}`
+      : hasPng
+        ? `source: ${SOURCE_PNG}`
+        : "source: 暫定SVG(assets/pwa/icon-source.svg も .png も未配置のため)"
   )
 
-  const anyBase = hasSource
-    ? await sharp(SOURCE_PNG).resize(1024, 1024, { fit: "cover" }).png().toBuffer()
-    : Buffer.from(fallbackSvg())
+  const anyBase = hasSvg
+    ? readFileSync(SOURCE_SVG)
+    : hasPng
+      ? await sharp(SOURCE_PNG).resize(1024, 1024, { fit: "cover" }).png().toBuffer()
+      : Buffer.from(fallbackSvg())
 
   // purpose "any": 全面アイコン
   for (const size of [192, 512]) {
     await (await toPng(anyBase, size)).toFile(resolve(PUBLIC_DIR, `icon-${size}.png`))
   }
 
-  // purpose "maskable"
-  if (hasSource) {
-    // 正式アートは「主要素をセーフゾーン80%以内・背景単色」で生成する前提
-    // (生成プロンプトに明記)のため、ブランド色パディングで拡張する
+  // purpose "maskable": セーフゾーン80%版。
+  // ベクター入力があれば専用SVGを直接描画する(パディング由来の継ぎ目が出ない)
+  const maskableBase =
+    hasSvg && existsSync(SOURCE_SVG_MASKABLE)
+      ? readFileSync(SOURCE_SVG_MASKABLE)
+      : !hasSvg && !hasPng
+        ? Buffer.from(fallbackSvg({ maskable: true }))
+        : null
+
+  if (maskableBase) {
+    for (const size of [192, 512]) {
+      await (await toPng(maskableBase, size)).toFile(
+        resolve(PUBLIC_DIR, `icon-maskable-${size}.png`)
+      )
+    }
+  } else {
+    // ラスタ入力(または maskable専用SVGが無い場合)はブランド色でパディングして縮小する。
+    // アートの背景が単色でないと外周に継ぎ目が見えるため、可能なら専用SVGを用意すること
     for (const size of [192, 512]) {
       const inner = Math.round(size * 0.8)
       const offset = Math.round((size - inner) / 2)
@@ -106,14 +132,6 @@ async function generate() {
         .composite([{ input: content, left: offset, top: offset }])
         .png()
         .toFile(resolve(PUBLIC_DIR, `icon-maskable-${size}.png`))
-    }
-  } else {
-    // 暫定SVGは maskable 専用版を直接描画(継ぎ目なし)
-    const maskableBase = Buffer.from(fallbackSvg({ maskable: true }))
-    for (const size of [192, 512]) {
-      await (await toPng(maskableBase, size)).toFile(
-        resolve(PUBLIC_DIR, `icon-maskable-${size}.png`)
-      )
     }
   }
 

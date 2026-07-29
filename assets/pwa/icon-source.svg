@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1024"
+     height="1024"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-label="A friendly shield protecting a colorful school route">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+
+  <!-- Broad, storybook-like shield -->
+  <path
+    d="M512 118
+       C625 118 738 146 850 194
+       L850 470
+       C850 668 724 821 512 906
+       C300 821 174 668 174 470
+       L174 194
+       C286 146 399 118 512 118 Z"
+    fill="#ffffff"
+    stroke="#075985"
+    stroke-width="34"
+    stroke-linejoin="round"/>
+
+  <!-- Soft inner field keeps the white shield warm and readable -->
+  <path
+    d="M512 174
+       C607 174 701 196 794 233
+       L794 465
+       C794 624 696 751 512 834
+       C328 751 230 624 230 465
+       L230 233
+       C323 196 417 174 512 174 Z"
+    fill="#f0f9ff"/>
+
+  <!-- Four separated route dots rise smoothly from the departure point to the pin -->
+  <g fill="#b45309">
+    <circle cx="480" cy="615" r="24"/>
+    <circle cx="534" cy="610" r="24"/>
+    <circle cx="588" cy="603" r="24"/>
+    <circle cx="642" cy="595" r="24"/>
+  </g>
+  <g fill="#facc15">
+    <circle cx="480" cy="615" r="16"/>
+    <circle cx="534" cy="610" r="16"/>
+    <circle cx="588" cy="603" r="16"/>
+    <circle cx="642" cy="595" r="16"/>
+  </g>
+
+  <!-- Green departure point -->
+  <circle cx="396" cy="682" r="69" fill="#22c55e" stroke="#075985" stroke-width="28"/>
+  <circle cx="377" cy="660" r="18" fill="#bbf7d0"/>
+
+  <!-- Familiar red destination pin with a white opening -->
+  <path
+    d="M680 300
+       C625 300 590 347 590 408
+       C590 480 655 560 680 590
+       C705 560 770 480 770 408
+       C770 347 735 300 680 300 Z"
+    fill="#ef4444"
+    stroke="#075985"
+    stroke-width="30"
+    stroke-linejoin="round"/>
+  <circle cx="680" cy="405" r="42" fill="#ffffff" stroke="#075985" stroke-width="22"/>
+  <circle cx="663" cy="351" r="15" fill="#fecaca"/>
+</svg>
