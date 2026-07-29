@@ -4,6 +4,7 @@ import SchoolRouteNewsPage from "@/app/school-route-news/page"
 import NewsDetailPage from "@/app/school-route-news/[slug]/page"
 import SafeMagazinePage from "@/app/safe-magazine/page"
 import { SchoolRouteNewsSection } from "@/components/landing/SchoolRouteNewsSection"
+import { getAllNewsItems } from "@/lib/school-route-news"
 
 vi.mock("next/image", () => ({
   default: ({ fill: _fill, priority: _priority, ...props }: any) => <img {...props} />,
@@ -19,11 +20,19 @@ vi.mock("next/link", () => ({
 
 describe("editorial copy alignment", () => {
   it("renders the newest curated school route story in the landing news section", () => {
+    // 日次更新で最新記事が入れ替わるため、期待値はハードコードしない
+    // (ハードコードすると日次更新のたびに腐る。2026-07-18更新で実際に破損)。
+    // かつ、表示側と同じ getLandingNewsPreview から導出すると同語反復になるため、
+    // 1段上のデータ源(getAllNewsItems)から publishedDate 最新を独立に求める。
+    // これで「最新記事が先頭に並んでいない」順序崩れも検出できる
+    const newestByDate = [...getAllNewsItems()].sort(
+      (a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
+    )[0]
+    expect(newestByDate).toBeDefined()
+
     render(<SchoolRouteNewsSection />)
 
-    expect(
-      screen.getByText("【静岡県浜松市】通学中の9歳女児が横断歩道ではねられ一時重体—信号無視の疑いで21歳男を現行犯逮捕")
-    ).toBeInTheDocument()
+    expect(screen.getByText(newestByDate.title)).toBeInTheDocument()
   })
 
   it("renders the landing school route news badge as editorially curated", () => {

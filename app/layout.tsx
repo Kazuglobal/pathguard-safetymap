@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   publisher: "PathGuardian",
   robots: "index, follow",
   generator: 'v0.dev',
+  // iOSホーム画面追加時の表示名・ステータスバー(app/manifest.ts と対で使う)
+  appleWebApp: {
+    capable: true,
+    title: "PathGuardian",
+    statusBarStyle: "default",
+  },
 }
 
 export const viewport = {
