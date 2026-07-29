@@ -330,6 +330,31 @@ describe("app/api/gemini/generate-image route", () => {
       expect(prompt.includes(SCENE_PRESERVATION_GUARD_SUFFIX)).toBe(false)
     })
 
+    it("元写真つきの文字入り素材には匿名化+安全看板ガードを付与する", async () => {
+      const { TEXT_ASSET_PRIVACY_GUARD_SUFFIX } = await import("@/lib/disaster-image-prompt-fallbacks")
+      const { POST } = await loadRoute()
+
+      const file = new File([new Uint8Array([1, 2, 3])], "base.png", { type: "image/png" })
+      const req = {
+        headers: new Headers({ "content-type": "multipart/form-data; boundary=test" }),
+        formData: vi.fn(async () => ({
+          get: (key: string) =>
+            key === "prompt" ? "「とまれ」と書いたポスター"
+            : key === "image" ? file
+            : key === "textInImage" ? "true"
+            : null,
+        })),
+      }
+
+      await POST(req as any)
+
+      const prompt: string = mocks.mockGenerateImageWithOpenAI.mock.calls[0][0].prompt
+      expect(prompt.startsWith("「とまれ」と書いたポスター")).toBe(true)
+      expect(prompt.endsWith(TEXT_ASSET_PRIVACY_GUARD_SUFFIX)).toBe(true)
+      // 「余計な文字禁止」条項は文字を入れる用途と矛盾するため付けない
+      expect(prompt).not.toContain("Add no text beyond")
+    })
+
     it("災害画像向けの機械検証は実行しない", async () => {
       const { POST } = await loadRoute()
       await POST(buildTextInImageRequest() as any)

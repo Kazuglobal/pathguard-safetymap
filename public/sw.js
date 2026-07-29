@@ -38,12 +38,28 @@ self.addEventListener('push', (event) => {
   )
 })
 
+// 既定の遷移先は manifest の start_url と同じ /landing。
+// '/' は製品紹介LPへ強制リダイレクトされるため使わない
+const DEFAULT_NOTIFICATION_URL = '/landing'
+
+// 通知ペイロードの url は自オリジンに限定する。検証せず navigate/openWindow へ
+// 渡すと、正規の通知から任意オリジン(フィッシングサイト)を開けてしまう
+function resolveNotificationUrl(rawUrl) {
+  if (typeof rawUrl !== 'string' || rawUrl === '') return DEFAULT_NOTIFICATION_URL
+  try {
+    const resolved = new URL(rawUrl, self.location.origin)
+    return resolved.origin === self.location.origin
+      ? resolved.href
+      : DEFAULT_NOTIFICATION_URL
+  } catch {
+    return DEFAULT_NOTIFICATION_URL
+  }
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  // 既定の遷移先は manifest の start_url と同じ /landing。
-  // '/' は製品紹介LPへ強制リダイレクトされるため使わない
-  const url = event.notification.data?.url ?? '/landing'
+  const url = resolveNotificationUrl(event.notification.data?.url)
 
   event.waitUntil(
     clients

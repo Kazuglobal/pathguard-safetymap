@@ -219,6 +219,7 @@ function parseIpv4(hostname: string): number[] | null {
 
 function isPrivateIpv4Address(parts: number[]): boolean {
   return (
+    parts[0] === 0 ||
     parts[0] === 10 ||
     parts[0] === 127 ||
     (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
@@ -227,10 +228,29 @@ function isPrivateIpv4Address(parts: number[]): boolean {
   )
 }
 
+function isPrivateIpv6Address(host: string): boolean {
+  if (host === "::1" || host === "::") {
+    return true
+  }
+  // IPv4-mapped / IPv4-compatible (::ffff:127.0.0.1 等)は埋め込みIPv4で判定する
+  const mapped = /^::(?:ffff:)?(\d+\.\d+\.\d+\.\d+)$/.exec(host)
+  if (mapped) {
+    const ipv4 = parseIpv4(mapped[1])
+    return ipv4 ? isPrivateIpv4Address(ipv4) : true
+  }
+  // fc00::/7 (ユニークローカル) と fe80::/10 (リンクローカル)
+  return /^f[cd]/.test(host) || /^fe[89ab]/.test(host)
+}
+
 function isPrivateOrLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase()
   if (host === "localhost" || host === "::1" || host.endsWith(".local") || host.endsWith(".internal")) {
     return true
+  }
+  // WHATWG URL は IPv6 リテラルを角括弧付き("[::1]")で hostname に返すため、
+  // 角括弧を外さないと IPv6 の判定が一切効かない
+  if (host.startsWith("[") && host.endsWith("]")) {
+    return isPrivateIpv6Address(host.slice(1, -1))
   }
   const ipv4 = parseIpv4(host)
   return ipv4 ? isPrivateIpv4Address(ipv4) : false
@@ -291,6 +311,38 @@ function bytesToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...chunk)
   }
   return btoa(binary)
+}
+
+/** 上限を超えたら読み取りを打ち切って null を返す(超過分をメモリに載せない)。 */
+async function readBodyWithCap(response: Response, maxBytes: number): Promise<Uint8Array | null> {
+  if (!response.body) {
+    return new Uint8Array(0)
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    total += value.byteLength
+    if (total > maxBytes) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return merged
 }
 
 async function prepareImageForAnthropic(
@@ -355,19 +407,22 @@ async function prepareImageForAnthropic(
     }
   }
 
-  const bytes = new Uint8Array(await imageResponse.arrayBuffer())
+  // content-length は取得先(攻撃者が制御しうる)の自己申告であり、省略も過少申告も
+  // できる。arrayBuffer() で全量を先に確保すると無制限のメモリ消費を誘発されるため、
+  // 上限に達した時点で打ち切りながら読む。
+  const bytes = await readBodyWithCap(imageResponse, MAX_ANALYSIS_IMAGE_BYTES)
+  if (!bytes) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: `Image is too large for AI analysis (max ${MAX_ANALYSIS_IMAGE_BYTES} bytes)`,
+    }
+  }
   if (bytes.length === 0) {
     return {
       ok: false,
       statusCode: 400,
       error: "Image data is empty",
-    }
-  }
-  if (bytes.length > MAX_ANALYSIS_IMAGE_BYTES) {
-    return {
-      ok: false,
-      statusCode: 400,
-      error: `Image is too large for AI analysis (max ${MAX_ANALYSIS_IMAGE_BYTES} bytes)`,
     }
   }
 

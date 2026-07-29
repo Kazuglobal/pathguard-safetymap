@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
 import { generateImageWithOpenAIWithModel, FORCED_OPENAI_IMAGE_MODEL } from "@/lib/openai-image"
 import { verifyOrRegenerateImages } from "@/lib/disaster-image-verification"
-import { SCENE_PRESERVATION_GUARD_SUFFIX } from "@/lib/disaster-image-prompt-fallbacks"
+import {
+  SCENE_PRESERVATION_GUARD_SUFFIX,
+  TEXT_ASSET_PRIVACY_GUARD_SUFFIX,
+} from "@/lib/disaster-image-prompt-fallbacks"
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import {
@@ -83,14 +86,20 @@ export async function POST(req: NextRequest) {
     // ---- GPT Image 2 併用パス(日本語テキスト入り素材専用) ----
     // CJK文字描画は GPT Image 2 が最も正確なため、textInImage=true のときだけ OpenAI へ。
     // 文字を「入れる」用途なので SCENE_PRESERVATION_GUARD_SUFFIX(余計な文字禁止)は付与せず、
+    // 代わりに TEXT_ASSET_PRIVACY_GUARD_SUFFIX(匿名化+安全看板の描き足し禁止)を付ける。
     // 災害画像向けの機械検証(verifyOrRegenerateImages)も対象外。
     // タイムアウトは lib/openai-image.ts 側の 170s が ROUTE_TIMEOUT_MS(175s) 内で先に効く。
     if (textInImage) {
       apiProvider = "openai"
       modelName = FORCED_OPENAI_IMAGE_MODEL
       apiRequestCount = 1
+      // 「余計な文字禁止」は付けられないが、匿名化と未確認の子ども110番の家の
+      // 描き足し禁止は元写真がある限り必ず効かせる(緩和不可の恒久ルール)
+      const guardedPrompt = imageBase64 && prompt?.trim()
+        ? `${prompt}\n\n${TEXT_ASSET_PRIVACY_GUARD_SUFFIX}`
+        : prompt
       const result = await generateImageWithOpenAIWithModel({
-        prompt,
+        prompt: guardedPrompt,
         imageBase64,
         imageMimeType,
       })

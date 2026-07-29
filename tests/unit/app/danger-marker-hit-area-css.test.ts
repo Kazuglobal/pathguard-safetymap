@@ -20,4 +20,11 @@ describe('danger-marker hit area (app/globals.css)', () => {
   it('.danger-pin-shape(可視ピン)だけが pointer-events: auto で当たり判定を持つ', () => {
     expect(css).toMatch(/\.danger-pin-shape\s*\{[^}]*pointer-events:\s*auto/)
   })
+
+  it('クラスタマーカーにも同じ規律が適用されている', () => {
+    expect(css).toMatch(/\.danger-cluster-marker\s*\{[^}]*pointer-events:\s*none/)
+    expect(css).toMatch(
+      /\.danger-cluster-pin,\s*\.danger-cluster-categories,\s*\.danger-cluster-count\s*\{[^}]*pointer-events:\s*auto/
+    )
+  })
 })

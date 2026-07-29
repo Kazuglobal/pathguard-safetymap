@@ -296,10 +296,65 @@ CONFIRMED 17件 / PLAUSIBLE 1件。対応:
 - SSRFはDNS名→プライベートIP解決の経路が redirect:manual では塞がらない。本命は
   VLM_ALLOWED_IMAGE_HOSTS の必須化(Supabase Storageホスト固定)+egress制限で、運用設定が必要
 
-## 検証結果(2026-07-29)
+## 検証結果(2026-07-29 第1ラウンド)
 - 対象6ファイル34テスト緑(新規: upstash-rate-limiter 5件 / トリップワイヤ4件 / フォーム回帰1件)
 - ミューテーションテスト: フォーム回帰テストが旧実装で失敗することを確認(偽陽性でない)
 - tsc --noEmit: エラー0
+
+## 第2ラウンド: security / simplicity / fix-validation(2026-07-29)
+
+X1 の学びどおり「先にローカルコミット → worktree 隔離でレビュー」の順で再実行し、
+分類器ブロックを解消した。ただし**検証エージェント19件中17件がセッション上限で失敗**したため、
+「CONFIRMED 0」は無罪放免を意味しない(未検証の指摘は自分でコードを読んで裁定した)。
+
+### 対応した指摘(6件。いずれも自分でコードを読んで成立を確認)
+- [修正] public/sw.js: 通知ペイロードの data.url を無検証で navigate/openWindow に渡していた
+  → 自オリジンに限定(resolveNotificationUrl)。正規通知からフィッシングサイトを開ける経路を封鎖。
+  sw.js を疑似 ServiceWorkerGlobalScope で実評価する機能テスト5件を新設
+- [修正] app/api/hazard-game/analyze: レート制限が皆無のまま Vision モデルが
+  gemini-2.5-flash → 3.5-flash(入出力10〜15倍単価)になっており、1アカウントで
+  従量課金とポイント付与(increment_user_points)を無制限に回せた
+  → 兄弟の hunter/analyze と同じ checkGeminiRateLimit(10回/分)を追加。テスト3件新設
+- [修正] analyze-hazard の validateImageUrl: `host === "::1"` は WHATWG URL の hostname が
+  `[::1]` を返すため**一度も一致しない**死に条件だった。角括弧を外して IPv6 を判定し、
+  ULA(fc00::/7)・リンクローカル(fe80::/10)・IPv4-mapped・0.0.0.0/8 を追加
+- [修正] analyze-hazard: content-length(取得先の自己申告)チェック後に arrayBuffer() で
+  全量バッファしており、省略・過少申告でメモリ枯渇を誘発できた
+  → readBodyWithCap で上限到達時に打ち切り
+- [修正] クラスタマーカーにも当たり判定限定を適用(第1ラウンドの修正が個別ピンのみで不完全だった)
+- [修正] textInImage(GPT Image 2 経路)は SCENE_PRESERVATION_GUARD_SUFFIX 非適用が意図的な設計
+  (「余計な文字禁止」と矛盾するため。既存テストで固定)だが、その結果**匿名化と
+  「未確認の子ども110番の家を描き足さない」ガードまで外れていた**
+  → TEXT_ASSET_PRIVACY_GUARD_SUFFIX(文字禁止条項を除いた最小ガード)を新設し、
+  元写真つきリクエストに付与。既存の「文字禁止を付けない」契約は維持
+
+### 対応しなかった指摘と理由
+- SSRF の残穴(私有IPへ解決するDNS名): コードだけでは塞げない。本命は
+  VLM_ALLOWED_IMAGE_HOSTS を Supabase Storage ホストで必須化する運用設定 + egress 制限。
+  値を知らないまま既定allowlistを有効化すると本番を壊すため運用課題として残す
+- fail-open の全リミッター適用(設定ミス時に無警告で恒久無効化): docstring どおりの意図的設計。
+  console.error は出る。監視は別施策
+- danger-report-form 2094行の分割 / DANGER_TYPE 色・アイコンの第3定義源 /
+  logApiUsage ボイラープレート3重 / callGeminiVision の位置引数: いずれも既存構造の
+  リファクタで、レビュー修正とは別コミットにすべき規模
+- コミット995257953にCRLF再出力が混在(規律違反): 既にコミット済みで、
+  巻き戻すと差分がさらに増える。次回以降 .gitattributes 整備とセットで対応
+- articles-v1-backup/ の誤情報(事故年次2019〜2023)保持: ユーザーの成果物であり削除しない。
+  README に「流用しないこと」の警告が既にある
+
+### フルスイートで発見した既存破損(X3)
+- [X3] tests/components/editorial-copy-alignment.test.tsx の詳細ページテストが
+  記事スラッグをハードコードしており、**日次ニュース更新 b082360d6(2026-07-26)が
+  その記事を削除したため 404(notFound)で失敗**していた。X1 で直したのと同じ腐り方が
+  同一ファイルの別テストにも残っていた形。期待値の書き換えでなく getBreakingNews() から
+  導出する形に修正(注目バッジは isBreaking の記事にしか出ないため)。
+  **学び: 日次更新されるコンテンツを参照するテストは、タイトルもスラッグも一切ハードコードしない**
+
+### 検証結果(2026-07-29 第2ラウンド)
+- 対象8ファイル62テスト緑(新規: sw通知クリック5件 / hazard-gameレート制限3件 /
+  textInImageガード1件 / CSS・SSRFトリップワイヤ4件)
+- tsc --noEmit: エラー0 / deno check supabase/functions/analyze-hazard/index.ts: エラー0
+- フルスイート: 203ファイル1702件緑(X3修正後。既知flakyの safety-quest-client も今回は緑)
 
 ### Deviations(2026-07-08 実行結果)
 - [X1] 最終フルvitestで gemini-generate-image-route.test.ts が5件失敗 / 削除5ファイルを一時復元して再実行しても同一失敗を確認 / 今回の変更と無関係の既存問題(@/lib/api-cost-calculator モックに calculateCost 未定義。関連3ファイルの最終コミットは7/5の493938f9e)。修正は本タスクのスコープ外として温存

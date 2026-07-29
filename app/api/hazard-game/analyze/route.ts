@@ -10,6 +10,10 @@ import {
 import type { PipelineAnalysisResultWithComparison } from "@/lib/hazard-game-types"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { calculateCost } from "@/lib/api-cost-calculator"
+import {
+  checkGeminiRateLimit,
+  rateLimitedResponse,
+} from "@/lib/upstash-rate-limiter"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
@@ -80,6 +84,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (includeDebug) console.log(`User authenticated: ${user.id.slice(0, 8)}***`)
+
+    // 従量課金の Vision 呼び出し + 成功時のポイント付与を伴うため、
+    // 兄弟の /api/hunter/analyze と同じ制限をユーザー単位でかける
+    const rateLimit = await checkGeminiRateLimit(user.id)
+    if (!rateLimit.success) {
+      return rateLimitedResponse(rateLimit.reset)
+    }
 
     let body: any
     try {

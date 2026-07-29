@@ -4,7 +4,7 @@ import SchoolRouteNewsPage from "@/app/school-route-news/page"
 import NewsDetailPage from "@/app/school-route-news/[slug]/page"
 import SafeMagazinePage from "@/app/safe-magazine/page"
 import { SchoolRouteNewsSection } from "@/components/landing/SchoolRouteNewsSection"
-import { getAllNewsItems } from "@/lib/school-route-news"
+import { getAllNewsItems, getBreakingNews } from "@/lib/school-route-news"
 
 vi.mock("next/image", () => ({
   default: ({ fill: _fill, priority: _priority, ...props }: any) => <img {...props} />,
@@ -81,9 +81,15 @@ describe("editorial copy alignment", () => {
   })
 
   it("keeps the curated highlight label on the school route news detail page", async () => {
+    // スラッグをハードコードすると日次更新で記事が入れ替わったときに 404 で落ちる
+    // (2026-07-26 の更新 b082360d6 で実際に破損)。注目バッジは isBreaking の記事にだけ
+    // 出るため、データ側から速報記事を1件選んで検証する
+    const breaking = getBreakingNews()[0]
+    expect(breaking).toBeDefined()
+
     render(
       await NewsDetailPage({
-        params: Promise.resolve({ slug: "kitakyushu-kokurakita-izumidai-suspicious-sns-20260420" }),
+        params: Promise.resolve({ slug: breaking.slug }),
       })
     )
 
