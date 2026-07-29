@@ -34,7 +34,10 @@ export type HazardAnalysisResult = {
   score: number
 }
 
-import { getSanitizedGeminiApiKey, getSanitizedGeminiVisionModel } from "./gemini-util"
+import {
+  getSanitizedGeminiApiKey,
+  getSanitizedGeminiVisionModel,
+} from "./gemini-util"
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -68,14 +71,18 @@ export interface GeminiVisionGenerationConfig {
 export async function callGeminiVision(
   imageBase64OrDataUrl: string,
   prompt: string,
-  generationConfig?: GeminiVisionGenerationConfig
+  generationConfig?: GeminiVisionGenerationConfig,
+  // 呼び出し元ごとに既定モデルを分けるための追加引数(後方互換)。
+  // 省略時は getSanitizedGeminiVisionModel の既定(gemini-2.5-flash)。
+  // リアルタイム解析(ハンター/ハザードゲーム)だけ REALTIME_VISION_DEFAULT_MODEL を渡す。
+  defaultModel?: string
 ): Promise<string> {
   if (!imageBase64OrDataUrl || imageBase64OrDataUrl.length < 50) {
     throw new Error("画像データが不足しています")
   }
 
   const apiKey = getSanitizedGeminiApiKey()
-  const model = getSanitizedGeminiVisionModel("gemini-2.5-flash")
+  const model = getSanitizedGeminiVisionModel(defaultModel)
 
   let mimeType = "image/jpeg"
   let dataBase64 = imageBase64OrDataUrl
@@ -389,12 +396,23 @@ export interface AnalyzeImageOptions {
   readonly accidentContext?: string
   /** ログ/コスト計測の区別用 (例: "hunter-explore") */
   readonly purpose?: string
+  /**
+   * Vision解析の既定モデル。ハザードゲーム(hazard-game/analyze)だけが
+   * REALTIME_VISION_DEFAULT_MODEL を渡す。省略時は gemini-2.5-flash 既定のまま。
+   * 共有パイプラインの他の呼び出し元(safety-quest等)を意図せず移行させないための明示指定。
+   */
+  readonly visionModelDefault?: string
 }
 
 function normalizeAnalyzeArgs(
   optionsOrUserMarkers?: AnalyzeImageOptions | readonly UserMarker[],
   legacyPromptType?: PromptType
-): { userMarkers?: readonly UserMarker[]; promptType: PromptType; accidentContext?: string } {
+): {
+  userMarkers?: readonly UserMarker[]
+  promptType: PromptType
+  accidentContext?: string
+  visionModelDefault?: string
+} {
   if (Array.isArray(optionsOrUserMarkers)) {
     return { userMarkers: optionsOrUserMarkers, promptType: legacyPromptType ?? "default" }
   }
@@ -403,6 +421,7 @@ function normalizeAnalyzeArgs(
     userMarkers: opts.userMarkers,
     promptType: opts.promptType ?? legacyPromptType ?? "default",
     accidentContext: opts.accidentContext,
+    visionModelDefault: opts.visionModelDefault,
   }
 }
 
@@ -417,12 +436,17 @@ export async function analyzeImagePipeline(
 ): Promise<PipelineAnalysisResultWithComparison> {
   const startTime = Date.now()
 
-  const { userMarkers, promptType, accidentContext } = normalizeAnalyzeArgs(
+  const { userMarkers, promptType, accidentContext, visionModelDefault } = normalizeAnalyzeArgs(
     optionsOrUserMarkers,
     legacyPromptType
   )
   const prompt = getPipelinePromptByType(promptType, userMarkers, accidentContext)
-  const textResponse = await callGeminiVision(imageBase64OrDataUrl, prompt)
+  const textResponse = await callGeminiVision(
+    imageBase64OrDataUrl,
+    prompt,
+    undefined,
+    visionModelDefault,
+  )
   const parsed = extractFirstJson(textResponse)
   const { vision, think, educationalTips } = parseGeminiPipelineResponse(parsed)
 

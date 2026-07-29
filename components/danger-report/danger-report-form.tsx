@@ -422,6 +422,11 @@ export default function DangerReportForm({
     }
 
     setOriginalImageFile(file)
+    // 差し替え時は手動トリガーも解除する。解析実行中に別の写真を選ぶと、
+    // abort された run の finally は isActive()=false でトリガーを戻さないため、
+    // トリガー残留のまま effect が再実行され新写真の解析+画像生成一式が
+    // ボタン押下なしに自動起動してしまう。
+    setManualAnalysisTriggered(false)
     setCameraError(null) // エラーをクリア
 
     // プレビュー用のURLを作成
@@ -615,8 +620,6 @@ export default function DangerReportForm({
       return
     }
     lastAutoGenKey.current = key
-    // トリガーをリセット
-    setManualAnalysisTriggered(false)
 
     const abortController = new AbortController()
     const runId = ++autoGenRunIdRef.current
@@ -814,7 +817,11 @@ export default function DangerReportForm({
           setAutoGenError(handleError(error, '自動生成に失敗しました。時間をおいて再度お試しください。'))
         }
       } finally {
-        if (isActive()) setAutoGenLoading(false)
+        if (isActive()) {
+          setAutoGenLoading(false)
+          // 実行完了後に戻す。開始直後に戻すと effect cleanup が予約処理を中断する。
+          setManualAnalysisTriggered(false)
+        }
       }
     }
 
@@ -1207,6 +1214,8 @@ export default function DangerReportForm({
   const handleRemoveOriginalImage = () => {
     setOriginalImageFile(null)
     setOriginalImagePreview(null)
+    // 削除→再選択の経路でも解析が自動開始しないよう手動トリガーを解除する
+    setManualAnalysisTriggered(false)
     if (originalFileInputRef.current) {
       originalFileInputRef.current.value = ""
     }
@@ -1283,7 +1292,7 @@ export default function DangerReportForm({
       {!isMobileFullscreen && (
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[17px] font-black" style={{ color: C.ink }}>
-            きけんを おしらせ
+            危険箇所を報告
           </h2>
           <button
             type="button"
@@ -1319,7 +1328,7 @@ export default function DangerReportForm({
                     style={{ background: C.skySoft, borderColor: "rgba(62,143,184,.25)" }}
                   >
                     <p className="text-[12.5px] font-black" style={{ color: "#2A6B8C" }}>
-                      つうがくろ「{selectedRouteName}」の おしらせに なるよ
+                      通学路「{selectedRouteName}」の報告として共有されるよ
                     </p>
                   </div>
                 )}
@@ -1954,7 +1963,7 @@ export default function DangerReportForm({
                     className="mt-4 text-[20px] font-black"
                     style={{ color: C.ink }}
                   >
-                    おしらせ できたよ！
+                    報告できたよ！
                   </motion.h3>
                   <motion.p
                     initial={reduceMotion ? false : { y: 10, opacity: 0 }}

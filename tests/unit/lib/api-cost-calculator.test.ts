@@ -25,6 +25,17 @@ describe('api-cost-calculator', () => {
       expect(pricing.outputPer1kTokens).toBeGreaterThan(0)
     })
 
+    it('リアルタイム解析用 Gemini 3.5/3.6 Flash の料金が公表単価で定義されていること', () => {
+      // Gemini 3.5 Flash: $1.50/M in, $9.00/M out / 3.6 Flash: $1.50/M in, $7.50/M out
+      const flash35 = getModelPricing('gemini', 'gemini-3.5-flash')
+      expect(flash35.inputPer1kTokens).toBeCloseTo(0.0015, 6)
+      expect(flash35.outputPer1kTokens).toBeCloseTo(0.009, 6)
+
+      const flash36 = getModelPricing('gemini', 'gemini-3.6-flash')
+      expect(flash36.inputPer1kTokens).toBeCloseTo(0.0015, 6)
+      expect(flash36.outputPer1kTokens).toBeCloseTo(0.0075, 6)
+    })
+
     it('OpenAI gpt-4oモデルの料金が定義されていること', () => {
       const pricing = getModelPricing('openai', 'gpt-4o')
       expect(pricing).toBeDefined()

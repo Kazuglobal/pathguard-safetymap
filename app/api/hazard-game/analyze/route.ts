@@ -3,11 +3,29 @@ import { NextRequest, NextResponse } from "next/server"
 export const runtime = "nodejs"
 import { createServerClient } from "@/lib/supabase-server"
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
+import {
+  getSanitizedGeminiVisionModel,
+  REALTIME_VISION_DEFAULT_MODEL,
+} from "@/lib/gemini-util"
 import type { PipelineAnalysisResultWithComparison } from "@/lib/hazard-game-types"
 import { logApiUsage } from "@/lib/api-usage-logger"
+import { calculateCost } from "@/lib/api-cost-calculator"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
+
+/** analyzeImagePipeline が実際に使うモデルと同じ手順で解決したモデル名(使用量ログ用)。 */
+const HAZARD_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAULT_MODEL)
+/** 1解析 = 1 Vision呼び出しのトークン概算(画像+プロンプト / JSON応答)。 */
+const ESTIMATED_ANALYZE_INPUT_TOKENS = 2500
+const ESTIMATED_ANALYZE_OUTPUT_TOKENS = 1000
+/** 単価表(api-cost-calculator)から解決モデルで算出し、GEMINI_VISION_MODEL 上書き時もモデル名とコストが整合する。 */
+const ESTIMATED_ANALYZE_COST_USD = calculateCost({
+  provider: "gemini",
+  model: HAZARD_VISION_MODEL,
+  inputTokens: ESTIMATED_ANALYZE_INPUT_TOKENS,
+  outputTokens: ESTIMATED_ANALYZE_OUTPUT_TOKENS,
+})
 
 function toLegacyOverallSafety(score: number): number {
   if (score >= 80) return 5
@@ -103,11 +121,13 @@ export async function POST(request: NextRequest) {
         console.log('Prompt type:', promptType || "default")
       }
 
-      pipelineResult = await analyzeImagePipeline(
-        imageBase64,
-        Array.isArray(userMarkers) ? userMarkers : undefined,
-        promptType || "default"
-      )
+      // visionModelDefault はこのルート(ハザードゲーム)だけが渡す。
+      // 共有パイプラインの他の呼び出し元(safety-quest等)を移行させないための明示指定。
+      pipelineResult = await analyzeImagePipeline(imageBase64, {
+        userMarkers: Array.isArray(userMarkers) ? userMarkers : undefined,
+        promptType: promptType || "default",
+        visionModelDefault: REALTIME_VISION_DEFAULT_MODEL,
+      })
 
       const { score, vision } = pipelineResult
       const totalDetections =
@@ -167,7 +187,7 @@ export async function POST(request: NextRequest) {
       else if (errorMessage.includes('rate limit') || errorMessage.includes('利用枠')) status = 429
       else if (errorMessage.includes('サイズ') || errorMessage.includes('大きすぎ')) status = 413
 
-      logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: 'gemini-2.5-flash', request_count: 3, estimated_cost_usd: 0, success: false, error_message: errorMessage })
+      logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: HAZARD_VISION_MODEL, request_count: 1, estimated_cost_usd: 0, success: false, error_message: errorMessage })
       const clientMessage = includeDebug ? errorMessage : "画像の分析中にエラーが発生しました。"
       return NextResponse.json(
         {
@@ -194,7 +214,7 @@ export async function POST(request: NextRequest) {
       console.error("Error in points transaction:", pointsError)
     }
 
-    logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: 'gemini-2.5-flash', request_count: 3, estimated_cost_usd: 0.006, success: true })
+    logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: HAZARD_VISION_MODEL, request_count: 1, estimated_cost_usd: ESTIMATED_ANALYZE_COST_USD, success: true })
 
     // Return both new pipeline format and legacy-compatible fields
     return NextResponse.json({

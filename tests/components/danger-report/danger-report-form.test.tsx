@@ -248,6 +248,95 @@ describe("DangerReportForm", () => {
     expect(screen.getByText("白線の内側を歩く")).toBeInTheDocument()
   })
 
+  it("starts the hazard analysis request after the manual analysis button is clicked", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ hazards: [] }),
+      text: async () => "",
+    }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { container, unmount } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-analysis", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await user.click(screen.getByTestId("wizard-next"))
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    const pngFile = new File(
+      [Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+      "manual-analysis.png",
+      { type: "image/png" }
+    )
+    await user.upload(originalInput, pngFile)
+    await user.click(await screen.findByTestId("analyze-photo"))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/hazard-game/analyze",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+
+    unmount()
+  })
+
+  it("does not auto-start analysis for a new photo swapped in while a run is in flight (trigger leak regression)", async () => {
+    const user = userEvent.setup()
+    // 解析リクエストを in-flight のまま保持する(解決しない fetch)
+    let resolveAnalyze: ((value: unknown) => void) | undefined
+    const fetchMock = vi.fn(
+      () => new Promise((resolve) => { resolveAnalyze = resolve })
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { container, unmount } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-swap", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await user.click(screen.getByTestId("wizard-next"))
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    const photoA = new File(
+      [Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+      "photo-a.png",
+      { type: "image/png" }
+    )
+    await user.upload(originalInput, photoA)
+    await user.click(await screen.findByTestId("analyze-photo"))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/hazard-game/analyze",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    // 解析中に別の写真へ差し替える(アルバム/カメラボタンは解析中も押せる)
+    const photoB = new File(
+      [Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])],
+      "photo-b.png",
+      { type: "image/png" }
+    )
+    await user.upload(originalInput, photoB)
+
+    // デバウンス(350ms)を確実に超えて待っても、ボタン押下なしで
+    // 新写真の解析(=2回目の fetch)が自動開始しないこと
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    resolveAnalyze?.({ ok: true, json: async () => ({ hazards: [] }), text: async () => "" })
+    unmount()
+  })
+
   it("creates an independent processed preview url when adding a batch image to the report", async () => {
     const user = userEvent.setup()
     const createObjectURL = vi

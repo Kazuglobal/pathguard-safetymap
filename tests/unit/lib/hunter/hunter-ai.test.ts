@@ -7,6 +7,7 @@ vi.mock("@/lib/gemini-hazard", () => ({
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { analyzeHunterImage, buildHunterPrompt, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
 import { HUNTER_GENERATION_CONFIG, HUNTER_RESPONSE_SCHEMA } from "@/lib/hunter/ai-request-schema"
+import { REALTIME_VISION_DEFAULT_MODEL } from "@/lib/gemini-util"
 import { DISPLAY_CONF_MIN, MAX_AREA } from "@/lib/hunter/sanitize"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
 
@@ -77,7 +78,14 @@ describe("analyzeHunterImage", () => {
       expect.any(String),
       expect.any(String),
       HUNTER_GENERATION_CONFIG,
+      REALTIME_VISION_DEFAULT_MODEL,
     )
+  })
+
+  it("リアルタイム解析はGA版Gemini 3世代Flashを既定モデルとして渡す", () => {
+    // preview系ID(-preview)は廃止リスクがあるため既定にしない。
+    expect(REALTIME_VISION_DEFAULT_MODEL).toBe("gemini-3.5-flash")
+    expect(REALTIME_VISION_DEFAULT_MODEL).not.toContain("preview")
   })
 
   it("builds a prompt that hardens against false-positive 'mundane object' hazards", () => {

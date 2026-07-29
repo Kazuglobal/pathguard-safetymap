@@ -77,7 +77,7 @@ export function MapReportForms({
           <MapPin className="h-4 w-4" strokeWidth={2.6} />
           地点を変更
         </button>
-        <h2 className="text-[16px] font-black" style={{ color: "#43392B" }}>きけんを おしらせ</h2>
+        <h2 className="text-[16px] font-black" style={{ color: "#43392B" }}>危険箇所を報告</h2>
         <button
           type="button"
           onClick={onMobileClose}
