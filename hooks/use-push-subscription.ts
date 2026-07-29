@@ -108,8 +108,11 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
 
     const checkState = async () => {
       try {
-        const reg = await navigator.serviceWorker.ready
-        const sub = await reg.pushManager.getSubscription()
+        // ready は SW 未登録だと永久に解決しないため使わない。
+        // getRegistration() は未登録なら undefined を返すので、
+        // 未購読ユーザーでも 'unsubscribed' へ確実に遷移できる
+        const reg = await navigator.serviceWorker.getRegistration()
+        const sub = (await reg?.pushManager.getSubscription()) ?? null
         const permission = Notification.permission
 
         if (permission === 'denied') {
@@ -146,16 +149,24 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
     }
 
     try {
-      // Service Worker 登録
-      await navigator.serviceWorker.register('/sw.js')
-      const reg = await navigator.serviceWorker.ready
-
-      // 通知許可リクエスト
+      // 通知許可はユーザージェスチャの活性中に取る必要がある(特にiOS Safari)ため、
+      // SWの有効化待ちより先にリクエストする
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setState(permission === 'denied' ? 'denied' : 'unsubscribed')
         return
       }
+
+      // Service Worker 登録
+      await navigator.serviceWorker.register('/sw.js')
+      // ready はSWのinstall失敗時に永久に解決しないため、タイムアウトで打ち切って
+      // ボタンが無反応のままになるのを防ぐ(checkStateと同じ理由でreadyを無条件に待たない)
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('service worker ready timeout')), 10_000)
+        ),
+      ])
 
       // プッシュサブスクリプション作成
       const sub = await reg.pushManager.subscribe({

@@ -8,12 +8,10 @@ const mockUnsubscribe = vi.fn()
 const mockRequestPermission = vi.fn()
 const mockRegister = vi.fn()
 const mockGetRegistration = vi.fn()
-const mockReady = Promise.resolve({
-  pushManager: {
-    getSubscription: mockGetSubscription,
-    subscribe: mockSubscribe,
-  },
-})
+// 実ブラウザの仕様どおり「SWが有効化されるまで永久に解決しないPromise」として振る舞わせる。
+// 解決済みPromiseにすると、readyを無条件に await する旧実装(loading固定バグ)でも
+// テストが通ってしまい、回帰を検出できない
+const mockReady = new Promise<never>(() => {})
 
 Object.defineProperty(global, 'Notification', {
   value: {
@@ -50,9 +48,11 @@ describe('usePushSubscription', () => {
     } as any)
   })
 
-  it('初期状態でサブスクリプションがなければ unsubscribed になる', async () => {
-    mockGetSubscription.mockResolvedValueOnce(null)
-
+  it('SW未登録(getRegistrationがnull)でも unsubscribed になる — ready待ちでloading固定にならない回帰テスト', async () => {
+    // beforeEach で mockGetRegistration は null を返す =
+    // 一度も購読していない新規ユーザーの状態。
+    // 旧実装は navigator.serviceWorker.ready を await していたため
+    // この状態で永久に 'loading' のままになり、通知許可UIが表示されなかった
     const { usePushSubscription } = await import('@/hooks/use-push-subscription')
     const { result } = renderHook(() => usePushSubscription())
 
@@ -72,6 +72,12 @@ describe('usePushSubscription', () => {
       endpoint: 'https://example.com/push',
       toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
     }
+    mockGetRegistration.mockResolvedValueOnce({
+      pushManager: {
+        getSubscription: mockGetSubscription,
+        subscribe: mockSubscribe,
+      },
+    })
     mockGetSubscription.mockResolvedValueOnce(mockSub)
     vi.mocked(global.fetch).mockResolvedValueOnce({
       ok: true,
@@ -108,6 +114,12 @@ describe('usePushSubscription', () => {
       endpoint: 'https://example.com/push',
       toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
     }
+    mockGetRegistration.mockResolvedValueOnce({
+      pushManager: {
+        getSubscription: mockGetSubscription,
+        subscribe: mockSubscribe,
+      },
+    })
     mockGetSubscription.mockResolvedValueOnce(mockSub)
     vi.mocked(global.fetch)
       .mockResolvedValueOnce({
@@ -144,6 +156,46 @@ describe('usePushSubscription', () => {
       local_alerts: true,
       daily_digest: true,
     })
+  })
+
+  it('SWが有効化されない場合でも subscribe はタイムアウトして返る(ボタンが無限ハングしない)', async () => {
+    vi.useFakeTimers()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      mockRequestPermission.mockResolvedValue('granted')
+      mockRegister.mockResolvedValue({})
+      // navigator.serviceWorker.ready は永久pending(モック定義どおり)
+
+      const { usePushSubscription } = await import('@/hooks/use-push-subscription')
+      const { result } = renderHook(() => usePushSubscription())
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20)
+      })
+      expect(result.current.state).toBe('unsubscribed')
+
+      let settled = false
+      let subscribePromise: Promise<void> = Promise.resolve()
+      act(() => {
+        subscribePromise = result.current.subscribe().then(() => {
+          settled = true
+        })
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      await act(async () => {
+        await subscribePromise
+      })
+
+      expect(settled).toBe(true)
+      expect(result.current.state).toBe('unsubscribed')
+      expect(errorSpy).toHaveBeenCalledWith('[push] subscribe error', expect.any(Error))
+    } finally {
+      errorSpy.mockRestore()
+      vi.useRealTimers()
+    }
   })
 
   it('地域変更時に既存push subscriptionのprefectureを同期する', async () => {
