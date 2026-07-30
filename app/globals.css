@@ -357,8 +357,14 @@
   height: 56px;
   transform: translateX(-50%);
   filter: drop-shadow(0 4px 5px rgba(15, 23, 42, 0.36));
-  /* .danger-marker 側で無効化した pointer-events を可視ピンだけ復活させる
-     (クリックはバブリングで .danger-marker のリスナーに届く) */
+  /* SVGルート要素は透明部分も含めて箱全体で当たり判定を取る(Chrome実測。
+     pointer-events: visiblePainted を指定しても変わらない)。
+     そのためルートは none のままにし、内側の図形だけ auto に戻して
+     ピンの形そのものを当たり判定にする。検証= scripts/verify-marker-hit-area.mjs */
+  pointer-events: none;
+}
+
+.danger-pin-shape > * {
   pointer-events: auto;
   cursor: pointer;
 }
@@ -452,11 +458,15 @@
   height: 100%;
 }
 
-.danger-cluster-pin,
+/* クラスタピンも個別ピンと同じ扱い。SVGルートに auto を戻すと
+   inset:0 で箱全体を覆っているため当たり判定が全面に復活してしまう */
+.danger-cluster-pin {
+  pointer-events: none;
+}
+
+.danger-cluster-pin > *,
 .danger-cluster-categories,
 .danger-cluster-count {
-  /* .danger-cluster-marker で無効化した pointer-events を可視部分だけ復活させる
-     (クリックはバブリングで use-danger-markers のリスナーに届く) */
   pointer-events: auto;
   cursor: pointer;
 }

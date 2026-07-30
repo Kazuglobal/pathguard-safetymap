@@ -94,9 +94,12 @@ export async function POST(req: NextRequest) {
       modelName = FORCED_OPENAI_IMAGE_MODEL
       apiRequestCount = 1
       // 「余計な文字禁止」は付けられないが、匿名化と未確認の子ども110番の家の
-      // 描き足し禁止は元写真がある限り必ず効かせる(緩和不可の恒久ルール)
-      const guardedPrompt = imageBase64 && prompt?.trim()
-        ? `${prompt}\n\n${TEXT_ASSET_PRIVACY_GUARD_SUFFIX}`
+      // 描き足し禁止は元写真がある限り必ず効かせる(緩和不可の恒久ルール)。
+      // 付与条件は prompt の有無ではなく元写真の有無で決める — prompt 空でも
+      // lib/openai-image.ts が既定文へフォールバックして画像編集を実行するため、
+      // prompt を条件にするとガードだけが外れる
+      const guardedPrompt = imageBase64
+        ? [prompt?.trim(), TEXT_ASSET_PRIVACY_GUARD_SUFFIX].filter(Boolean).join("\n\n")
         : prompt
       const result = await generateImageWithOpenAIWithModel({
         prompt: guardedPrompt,
@@ -122,8 +125,12 @@ export async function POST(req: NextRequest) {
     // standard(本線の可視化/シミュレーション)モードのときだけ、恒久ルール
     // (アスペクト比維持・匿名化・余計な文字禁止)をサーバ側で決定的に付与する。
     // generationMode 未指定(例: /tools/image-gen の自由入力プロンプト)や 'disaster'(カスタム/バッチ)には付けない。
-    const applyGuard = generationMode === "standard" && !!imageBase64 && !!prompt?.trim()
-    const basePrompt = applyGuard ? `${prompt}\n\n${SCENE_PRESERVATION_GUARD_SUFFIX}` : prompt
+    // textInImage 経路と同じ理由で、付与条件に prompt の有無を含めない
+    // (prompt 空でも元写真があれば画像編集は実行されるため、ガードだけが外れる)
+    const applyGuard = generationMode === "standard" && !!imageBase64
+    const basePrompt = applyGuard
+      ? [prompt?.trim(), SCENE_PRESERVATION_GUARD_SUFFIX].filter(Boolean).join("\n\n")
+      : prompt
 
     // 生成プロンプトに是正サフィックスを足して呼び直せるようにする（再生成用）。
     const runGeneration = async (correctiveSuffix?: string) => {

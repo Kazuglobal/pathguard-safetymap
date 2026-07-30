@@ -79,25 +79,48 @@ async function toPng(input, size) {
   return sharp(input).resize(size, size).png()
 }
 
+/**
+ * 入力ソースを1箇所で解決する。
+ * maskable が null の場合はブランド色パディングで作る(ラスタ入力のみ)。
+ */
+function resolveSource() {
+  if (existsSync(SOURCE_SVG)) {
+    const hasMaskable = existsSync(SOURCE_SVG_MASKABLE)
+    return {
+      kind: "svg",
+      any: readFileSync(SOURCE_SVG),
+      maskable: hasMaskable ? readFileSync(SOURCE_SVG_MASKABLE) : null,
+      label: `source: ${SOURCE_SVG}${hasMaskable ? " (+ maskable専用SVG)" : ""}`,
+    }
+  }
+
+  if (existsSync(SOURCE_PNG)) {
+    return {
+      kind: "png",
+      any: null,
+      maskable: null,
+      label: `source: ${SOURCE_PNG}`,
+    }
+  }
+
+  return {
+    kind: "fallback",
+    any: Buffer.from(fallbackSvg()),
+    maskable: Buffer.from(fallbackSvg({ maskable: true })),
+    label: "source: 暫定SVG(assets/pwa/icon-source.svg も .png も未配置のため)",
+  }
+}
+
 async function generate() {
   await mkdir(PUBLIC_DIR, { recursive: true })
 
-  const hasSvg = existsSync(SOURCE_SVG)
-  const hasPng = !hasSvg && existsSync(SOURCE_PNG)
+  const source = resolveSource()
+  console.log(source.label)
 
-  console.log(
-    hasSvg
-      ? `source: ${SOURCE_SVG}${existsSync(SOURCE_SVG_MASKABLE) ? " (+ maskable専用SVG)" : ""}`
-      : hasPng
-        ? `source: ${SOURCE_PNG}`
-        : "source: 暫定SVG(assets/pwa/icon-source.svg も .png も未配置のため)"
-  )
-
-  const anyBase = hasSvg
-    ? readFileSync(SOURCE_SVG)
-    : hasPng
+  const anyBase =
+    source.kind === "png"
       ? await sharp(SOURCE_PNG).resize(1024, 1024, { fit: "cover" }).png().toBuffer()
-      : Buffer.from(fallbackSvg())
+      : source.any
 
   // purpose "any": 全面アイコン
   for (const size of [192, 512]) {
@@ -105,17 +128,10 @@ async function generate() {
   }
 
   // purpose "maskable": セーフゾーン80%版。
-  // ベクター入力があれば専用SVGを直接描画する(パディング由来の継ぎ目が出ない)
-  const maskableBase =
-    hasSvg && existsSync(SOURCE_SVG_MASKABLE)
-      ? readFileSync(SOURCE_SVG_MASKABLE)
-      : !hasSvg && !hasPng
-        ? Buffer.from(fallbackSvg({ maskable: true }))
-        : null
-
-  if (maskableBase) {
+  // 専用ソースがあれば直接描画する(パディング由来の継ぎ目が出ない)
+  if (source.maskable) {
     for (const size of [192, 512]) {
-      await (await toPng(maskableBase, size)).toFile(
+      await (await toPng(source.maskable, size)).toFile(
         resolve(PUBLIC_DIR, `icon-maskable-${size}.png`)
       )
     }

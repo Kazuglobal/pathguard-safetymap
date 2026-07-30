@@ -6,6 +6,8 @@
 package-lock.json
 # リポジトリ内に生成された pnpm ストア(コンテンツアドレス格納庫)
 .pnpm-store/
+# deno check(エッジ関数の型検査)が生成するロックファイル。追跡しない
+deno.lock
 
 # -----------------------------------------
 # Next.js
@@ -14,6 +16,7 @@ package-lock.json
 /.next-dev/
 /.next-dev-codex/
 /.next-verify/
+/.next-playwright/
 /out/
 /next-runtime*/
 /.next-runtime*/

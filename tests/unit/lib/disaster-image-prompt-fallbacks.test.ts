@@ -4,6 +4,7 @@ import {
   FALLBACK_SIMULATION_PROMPTS,
   FALLBACK_VIZ_PROMPT,
   SCENE_PRESERVATION_GUARD_SUFFIX,
+  TEXT_ASSET_PRIVACY_GUARD_SUFFIX,
 } from "@/lib/disaster-image-prompt-fallbacks"
 
 /**
@@ -44,6 +45,7 @@ describe("disaster-image-prompt-fallbacks", () => {
       FALLBACK_VIZ_PROMPT,
       ...Object.values(FALLBACK_SIMULATION_PROMPTS),
       SCENE_PRESERVATION_GUARD_SUFFIX,
+      TEXT_ASSET_PRIVACY_GUARD_SUFFIX,
     ]
     for (const prompt of all) {
       expect(prompt.toLowerCase()).not.toContain("children")
@@ -55,6 +57,7 @@ describe("disaster-image-prompt-fallbacks", () => {
       FALLBACK_VIZ_PROMPT,
       ...Object.values(FALLBACK_SIMULATION_PROMPTS),
       SCENE_PRESERVATION_GUARD_SUFFIX,
+      TEXT_ASSET_PRIVACY_GUARD_SUFFIX,
     ]
 
     for (const prompt of all) {
@@ -74,5 +77,12 @@ describe("disaster-image-prompt-fallbacks", () => {
     expect(SCENE_PRESERVATION_GUARD_SUFFIX).toContain("aspect ratio")
     expect(SCENE_PRESERVATION_GUARD_SUFFIX.toLowerCase()).toContain("face")
     expect(SCENE_PRESERVATION_GUARD_SUFFIX.toLowerCase()).toContain("license plate")
+  })
+
+  it("TEXT_ASSET_PRIVACY_GUARD_SUFFIX は匿名化を含み、文字禁止条項は含まない", () => {
+    expect(TEXT_ASSET_PRIVACY_GUARD_SUFFIX.toLowerCase()).toContain("face")
+    expect(TEXT_ASSET_PRIVACY_GUARD_SUFFIX.toLowerCase()).toContain("license plate")
+    // 文字を描くための経路に使うため、「余計な文字禁止」は入れてはならない
+    expect(TEXT_ASSET_PRIVACY_GUARD_SUFFIX).not.toContain("Add no text beyond")
   })
 })

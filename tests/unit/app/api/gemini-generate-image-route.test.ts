@@ -355,6 +355,27 @@ describe("app/api/gemini/generate-image route", () => {
       expect(prompt).not.toContain("Add no text beyond")
     })
 
+    it("prompt が空でも元写真があれば匿名化ガードを付与する — ガードだけが外れる回帰テスト", async () => {
+      const { TEXT_ASSET_PRIVACY_GUARD_SUFFIX } = await import("@/lib/disaster-image-prompt-fallbacks")
+      const { POST } = await loadRoute()
+
+      // prompt 未指定でも lib/openai-image.ts は既定文へフォールバックして画像編集を実行するため、
+      // prompt の有無を条件にするとガードだけが外れる
+      const file = new File([new Uint8Array([1, 2, 3])], "base.png", { type: "image/png" })
+      const req = {
+        headers: new Headers({ "content-type": "multipart/form-data; boundary=test" }),
+        formData: vi.fn(async () => ({
+          get: (key: string) =>
+            key === "image" ? file : key === "textInImage" ? "true" : null,
+        })),
+      }
+
+      await POST(req as any)
+
+      const prompt: string = mocks.mockGenerateImageWithOpenAI.mock.calls[0][0].prompt
+      expect(prompt).toContain(TEXT_ASSET_PRIVACY_GUARD_SUFFIX)
+    })
+
     it("災害画像向けの機械検証は実行しない", async () => {
       const { POST } = await loadRoute()
       await POST(buildTextInImageRequest() as any)

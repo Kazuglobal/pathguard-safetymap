@@ -644,6 +644,14 @@ export default function DangerReportForm({
           const data = await res.json()
           hazards = Array.isArray(data.hazards) ? data.hazards : []
           if (isActive()) setLastHazards(hazards)
+        } else if (res.status === 429) {
+          // レート制限は「速すぎる」という意味なので、ヒューリスティックで続行すると
+          // ハザードゼロのまま画像生成(最大5回の従量課金)まで走ってしまう。
+          // ここで止めてユーザーに知らせる
+          if (isActive()) {
+            setAutoGenError('AIの解析が混み合っています。少し時間をおいてもう一度お試しください。')
+          }
+          return
         } else if (isActive()) {
           console.warn('hazard analysis failed, proceeding with heuristics')
         }

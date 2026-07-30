@@ -26,10 +26,11 @@ describe('analyze-hazard image fetch (supabase/functions/analyze-hazard/index.ts
     expect(source).toContain('Redirected image URLs are not supported')
   })
 
-  it('IPv6 リテラルの角括弧を外して私有アドレスを判定する', () => {
-    // WHATWG URL の hostname は "[::1]" を返すため、角括弧を外さないと IPv6 判定が効かない
-    expect(source).toContain('isPrivateIpv6Address')
-    expect(source).toMatch(/host\.startsWith\("\["\)/)
+  it('ホスト判定は url-guard.ts に委譲する(実挙動テストは analyze-hazard-url-guard.test.ts)', () => {
+    // 判定ロジックを index.ts に直書きすると Deno 依存で vitest から実行できず、
+    // ソース文字列の照合しか書けない = 判定が死んでいても検出できない
+    expect(source).toContain('./url-guard.ts')
+    expect(source).not.toMatch(/function\s+isPrivateOrLoopbackHost/)
   })
 
   it('本文はサイズ上限で打ち切って読む(content-length の自己申告に依存しない)', () => {

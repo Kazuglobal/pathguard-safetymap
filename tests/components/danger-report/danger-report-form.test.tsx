@@ -337,6 +337,46 @@ describe("DangerReportForm", () => {
     unmount()
   })
 
+  it("解析APIが429を返したら画像生成へ進まずエラーを表示する — 無言劣化の回帰テスト", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (url: string) => {
+      if (typeof url === "string" && url.includes("/api/hazard-game/analyze")) {
+        return { ok: false, status: 429, json: async () => ({}), text: async () => "" }
+      }
+      return { ok: true, status: 200, json: async () => ({}), text: async () => "" }
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { container, unmount } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-429", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await user.click(screen.getByTestId("wizard-next"))
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    const pngFile = new File(
+      [Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+      "rate-limited.png",
+      { type: "image/png" }
+    )
+    await user.upload(originalInput, pngFile)
+    await user.click(await screen.findByTestId("analyze-photo"))
+
+    await waitFor(() => {
+      expect(screen.getByText(/混み合っています/)).toBeInTheDocument()
+    })
+
+    // 429 のあとに従量課金の生成APIを呼ばないこと
+    const calledUrls = fetchMock.mock.calls.map((c) => String(c[0]))
+    expect(calledUrls.some((u) => u.includes("/api/gemini/generate-image"))).toBe(false)
+    expect(calledUrls.some((u) => u.includes("/api/gemini/generate-prompts"))).toBe(false)
+
+    unmount()
+  })
+
   it("creates an independent processed preview url when adding a batch image to the report", async () => {
     const user = userEvent.setup()
     const createObjectURL = vi

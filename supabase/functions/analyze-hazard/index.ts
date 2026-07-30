@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4"
 import { buildAnthropicModelCandidates } from "./model-config.ts"
+import { validateImageUrl as validateImageUrlAgainst } from "./url-guard.ts"
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")
@@ -207,83 +208,9 @@ function checkRateLimit(key: string): { allowed: true } | { allowed: false; retr
   return { allowed: true }
 }
 
-function parseIpv4(hostname: string): number[] | null {
-  const parts = hostname.split(".")
-  if (parts.length !== 4) {
-    return null
-  }
-  const numbers = parts.map((part) => Number(part))
-  const valid = numbers.every((num) => Number.isInteger(num) && num >= 0 && num <= 255)
-  return valid ? numbers : null
-}
-
-function isPrivateIpv4Address(parts: number[]): boolean {
-  return (
-    parts[0] === 0 ||
-    parts[0] === 10 ||
-    parts[0] === 127 ||
-    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
-    (parts[0] === 192 && parts[1] === 168) ||
-    (parts[0] === 169 && parts[1] === 254)
-  )
-}
-
-function isPrivateIpv6Address(host: string): boolean {
-  if (host === "::1" || host === "::") {
-    return true
-  }
-  // IPv4-mapped / IPv4-compatible (::ffff:127.0.0.1 等)は埋め込みIPv4で判定する
-  const mapped = /^::(?:ffff:)?(\d+\.\d+\.\d+\.\d+)$/.exec(host)
-  if (mapped) {
-    const ipv4 = parseIpv4(mapped[1])
-    return ipv4 ? isPrivateIpv4Address(ipv4) : true
-  }
-  // fc00::/7 (ユニークローカル) と fe80::/10 (リンクローカル)
-  return /^f[cd]/.test(host) || /^fe[89ab]/.test(host)
-}
-
-function isPrivateOrLoopbackHost(hostname: string): boolean {
-  const host = hostname.toLowerCase()
-  if (host === "localhost" || host === "::1" || host.endsWith(".local") || host.endsWith(".internal")) {
-    return true
-  }
-  // WHATWG URL は IPv6 リテラルを角括弧付き("[::1]")で hostname に返すため、
-  // 角括弧を外さないと IPv6 の判定が一切効かない
-  if (host.startsWith("[") && host.endsWith("]")) {
-    return isPrivateIpv6Address(host.slice(1, -1))
-  }
-  const ipv4 = parseIpv4(host)
-  return ipv4 ? isPrivateIpv4Address(ipv4) : false
-}
-
+// 判定ロジックの実体は url-guard.ts(Deno非依存の純関数。vitestで実挙動をテストしている)
 function validateImageUrl(imageUrl: string): string | null {
-  let parsed: URL
-
-  try {
-    parsed = new URL(imageUrl)
-  } catch {
-    return "image_url must be a valid HTTPS URL"
-  }
-
-  if (parsed.protocol !== "https:") {
-    return "image_url must use HTTPS"
-  }
-
-  if (isPrivateOrLoopbackHost(parsed.hostname)) {
-    return "image_url host is not allowed"
-  }
-
-  if (ALLOWED_IMAGE_HOSTS.length > 0) {
-    const host = parsed.hostname.toLowerCase()
-    const isAllowed = ALLOWED_IMAGE_HOSTS.some((allowedHost) => {
-      return host === allowedHost || host.endsWith(`.${allowedHost}`)
-    })
-    if (!isAllowed) {
-      return "image_url host is not allowed"
-    }
-  }
-
-  return null
+  return validateImageUrlAgainst(imageUrl, ALLOWED_IMAGE_HOSTS)
 }
 
 interface PreparedImageForAnthropic {

@@ -3,28 +3,39 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * 回帰テスト: 危険マーカーの当たり判定は可視ピンのみに限定すること。
+ * 危険マーカーの当たり判定は「見えている形」に限定すること。
+ * マーカーの箱は可視ピンより大きく、透明余白が当たり判定を持つと近接ピンのタップを
+ * 横取りして別レポートの詳細が開く(誤った user_id へのポイント付与も発生する)。
  *
- * .danger-marker の外形(76×68px)は左右に広い透明余白を持ち、そのまま
- * 当たり判定にすると近接ピンのタップを横取りして別レポートの詳細が開く
- * (誤った user_id へのポイント付与も発生する)。jsdom ではヒットテストを
- * 再現できないため、CSS の不変条件をテキストレベルで固定する。
+ * **実挙動の検証は `node scripts/verify-marker-hit-area.mjs`**(実ブラウザでヒットテスト)。
+ * jsdom はヒットテストを再現できないため、ここでは実挙動が依存する
+ * CSS の構造だけを固定する。特に「SVGルートに auto を戻さないこと」は重要 ——
+ * SVGルート要素は透明部分も含めて箱全体で当たり判定を取るため(Chrome実測)、
+ * ルートに auto を付けると限定が丸ごと無効化される(過去に実際そうなっていた)。
  */
 describe('danger-marker hit area (app/globals.css)', () => {
   const css = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf-8')
 
-  it('.danger-marker 本体は pointer-events: none で当たり判定を持たない', () => {
-    expect(css).toMatch(/\.danger-marker\s*\{[^}]*pointer-events:\s*none/)
+  const ruleBody = (selector: string): string => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const match = new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`, 'm').exec(css)
+    return match?.[1] ?? ''
+  }
+
+  it('マーカーのルート要素は当たり判定を持たない', () => {
+    expect(ruleBody('.danger-marker')).toMatch(/pointer-events:\s*none/)
+    expect(ruleBody('.danger-cluster-marker')).toMatch(/pointer-events:\s*none/)
   })
 
-  it('.danger-pin-shape(可視ピン)だけが pointer-events: auto で当たり判定を持つ', () => {
-    expect(css).toMatch(/\.danger-pin-shape\s*\{[^}]*pointer-events:\s*auto/)
+  it('ピンのSVGルートには auto を戻さない(戻すと箱全体が当たり判定に復活する)', () => {
+    expect(ruleBody('.danger-pin-shape')).toMatch(/pointer-events:\s*none/)
+    expect(ruleBody('.danger-cluster-pin')).toMatch(/pointer-events:\s*none/)
   })
 
-  it('クラスタマーカーにも同じ規律が適用されている', () => {
-    expect(css).toMatch(/\.danger-cluster-marker\s*\{[^}]*pointer-events:\s*none/)
+  it('当たり判定はSVG内側の図形と、可視のクラスタ要素だけに戻す', () => {
+    expect(ruleBody('.danger-pin-shape > *')).toMatch(/pointer-events:\s*auto/)
     expect(css).toMatch(
-      /\.danger-cluster-pin,\s*\.danger-cluster-categories,\s*\.danger-cluster-count\s*\{[^}]*pointer-events:\s*auto/
+      /\.danger-cluster-pin\s*>\s*\*,\s*\.danger-cluster-categories,\s*\.danger-cluster-count\s*\{[^}]*pointer-events:\s*auto/
     )
   })
 })
