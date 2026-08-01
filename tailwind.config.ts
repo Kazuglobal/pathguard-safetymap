@@ -1,4 +1,7 @@
 import type { Config } from "tailwindcss"
+// require() だと Node 22 以降で .ts 設定が ESM として読まれた際に
+// "ReferenceError: require is not defined" で dev/build が落ちる
+import tailwindcssAnimate from "tailwindcss-animate"
 
 const config = {
   darkMode: ["class"],
@@ -134,7 +137,7 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config
 
 export default config
