@@ -610,6 +610,94 @@ Color palette: Purple and blue-violet for policy and official action, green acce
 Mood: Determined, constructive, institutional response to a preventable tragedy
 ${QUALITY_SUFFIX}`,
     description: "小牧市 市議会による信号機設置・通学路緊急点検の要望（2026年7月26日号）"
+  },
+  {
+    slug: "tomakomai-sumikawa-crosswalk-children-20260803",
+    filename: "tomakomai-sumikawa-crosswalk-children-20260803.png",
+    prompt: `Create a Japanese safety awareness illustration about the danger of a car entering a signalized intersection against the light while children are crossing on green.
+
+Scene elements (abstract awareness image, NOT depicting injury or impact):
+- An early summer morning at a Japanese residential intersection with working traffic signals, long low sunlight and pale sky
+- A pedestrian signal clearly showing the green walking-person icon
+- A group of small children in summer clothes waiting at the curb behind the crosswalk stop line, one step back from the white stripes
+- A single car approaching the intersection from the side, drawn at a distance and slightly blurred with motion streaks to suggest it is not slowing down
+- Emphasis on the gap between the children and the car — tension of an unresolved moment, NOT a collision
+- Bold white crosswalk stripes as the visual anchor of the composition
+
+STRICT RULE: No text, no letters, no kanji, no numbers of any kind anywhere in the image, including on signals, signs, or the vehicle.
+STRICT RULE: Do not depict injury, blood, a fallen child, or the moment of impact.
+
+Style: Sober Japanese editorial illustration, safety-awareness poster sensibility
+Color palette: Cool early-morning blues and greys with strong red warning accents
+Mood: Serious and cautionary, focused on the moment before — a green light is not a guarantee
+${QUALITY_SUFFIX}`,
+    description: "苫小牧市澄川町 青信号横断中の児童2人が信号無視の車にはねられた事故（2026年8月7日号）"
+  },
+  {
+    slug: "national-residential-road-30kmh-20260901",
+    filename: "national-residential-road-30kmh-20260901.png",
+    prompt: `Create a Japanese editorial infographic illustration about a nationwide rule change lowering the default speed limit on narrow residential streets used as school routes.
+
+Visual elements (constructive, explanatory, forward-looking):
+- A narrow Japanese residential street with NO painted center line and no lane markings — this absence is the key visual point, so keep the asphalt clean and unmarked down the middle
+- The same street shown with houses, low walls, utility poles and hedges close to the roadway, with no separated sidewalk
+- A car travelling slowly, drawn crisp and stationary-feeling (no motion blur) to suggest reduced speed
+- A circular road sign rendered as a plain white disc with a red rim and a completely EMPTY center — absolutely no numerals inside
+- Elementary school children with yellow caps and school backpacks walking along the road edge, calm and safe
+- A subtle contrast device such as a soft speed-arc or gentle gradient suggesting "slower", without any figures or symbols
+- Bright clear late-summer daylight, start-of-term atmosphere
+
+STRICT RULE: No text, no letters, no kanji, no numbers of any kind anywhere in the image, including inside the round sign, on the road surface, or on the vehicle.
+
+Style: Clean Japanese editorial infographic illustration, calm and instructional
+Color palette: Purple and blue-violet for policy, with red sign accent and warm daylight
+Mood: Reassuring, explanatory, institutional improvement
+${QUALITY_SUFFIX}`,
+    description: "2026年9月1日施行 生活道路の法定速度30km/h引き下げ（2026年8月7日号）"
+  },
+  {
+    slug: "nara-vehicle-approach-cluster-20260804",
+    filename: "nara-vehicle-approach-cluster-20260804.png",
+    prompt: `Create a Japanese crime-prevention awareness illustration about strangers approaching or following children from inside a vehicle.
+
+Visual elements (abstract and cautionary, NOT depicting a real person):
+- A quiet Japanese residential street at dusk, warm orange sky fading into blue
+- A car stopped or crawling alongside the curb, with its driver-side window lowered — the interior kept dark and the driver rendered only as an indistinct shadow with no discernible face or identifying features
+- A child walking or riding a bicycle on the far side of the sidewalk, body turned away from the car, moving in the opposite direction the car is facing
+- A soft arrow-like flow or path motif showing the child's escape direction away from the vehicle, drawn as an abstract shape with no symbols
+- Streetlights just turning on, long shadows, sense of the hours after dinner
+- Emphasis on distance and separation between the child and the vehicle
+
+STRICT RULE: No text, no letters, no kanji, no numbers of any kind anywhere in the image, including on the license plate — leave the plate blank.
+STRICT RULE: Do not depict a recognizable face for the driver, and do not depict any physical contact.
+
+Style: Japanese editorial crime-prevention illustration, alert but not frightening
+Color palette: Orange and amber warning tones against deepening evening blue
+Mood: Watchful and instructive, teaching distance and escape rather than fear
+${QUALITY_SUFFIX}`,
+    description: "奈良県 8月の不審者情報3件がすべて車両関係（2026年8月7日号）"
+  },
+  {
+    slug: "osaka-kodomo110ban-month-20260801",
+    filename: "osaka-kodomo110ban-month-20260801.png",
+    prompt: `Create a warm Japanese community illustration about neighborhood safe-haven houses where children can run for help.
+
+Visual elements (positive, reassuring, community-centered):
+- A friendly Japanese residential street on a bright summer day
+- A house and a small neighborhood shop, each displaying a simple rectangular sign board and a small flag near the entrance — both sign and flag left COMPLETELY BLANK with a plain yellow field and no markings
+- A child in summer clothes running toward the house entrance, and a welcoming adult figure standing in the doorway with an open, calm posture
+- A second child and a parent a little further down the street, pointing toward the sign as if learning where it is — the act of confirming the location together
+- A delivery-style work van parked nearby with a blank sticker panel on its side, suggesting mobile helpers
+- Summer cues: cicada-green trees, bright sky, sunflowers by a fence
+- Overall sense of a neighborhood that has agreed to look after its children
+
+STRICT RULE: No text, no letters, no kanji, no numbers of any kind anywhere in the image, including on the flag, sign board, shop front, or vehicle sticker — all must be blank.
+
+Style: Warm Japanese community editorial illustration, picture-book warmth
+Color palette: Fresh greens and sunny yellows with soft warm neutrals
+Mood: Safe, welcoming, quietly confident — help is nearby and the child knows where it is
+${QUALITY_SUFFIX}`,
+    description: "大阪府 8月は「こども110番月間」（2026年8月7日号）"
   }
 ]
 
