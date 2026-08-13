@@ -100,6 +100,10 @@ export function useDangerReports({
   const [pendingReports, setPendingReports] = useState<DangerReport[]>([])
   const reportsFetchAbortRef = useRef<AbortController | null>(null)
   const reportsFetchRequestIdRef = useRef(0)
+  // 全画面の「地図を読み込み中」オーバーレイは初回取得のときだけ出す。
+  // 地図のパン/ズーム(bbox変更)やフィルタ変更でも再取得が走るため、毎回 setIsLoading すると
+  // スクロールのたびに地図がオーバーレイで覆われてしまう。2回目以降は裏で静かに更新する。
+  const hasCompletedInitialFetchRef = useRef(false)
 
   useEffect(() => {
     if (!supabase || !enabled) return // Ensure supabase is initialized and caller is ready
@@ -111,8 +115,10 @@ export function useDangerReports({
     const abortController = new AbortController()
     reportsFetchAbortRef.current = abortController
 
+    const isInitialFetch = !hasCompletedInitialFetchRef.current
+
     const fetchDangerReports = async () => {
-      setIsLoading(true)
+      if (isInitialFetch) setIsLoading(true)
       try {
         const retryDelaysMs = [0, 250, 800]
 
@@ -188,8 +194,10 @@ export function useDangerReports({
         setDangerReports([])
         setPendingReports([])
       } finally {
+        // 後発のリクエストに追い越された場合は、そちらが後始末をするので何もしない
         if (requestId !== reportsFetchRequestIdRef.current) return
-        setIsLoading(false)
+        hasCompletedInitialFetchRef.current = true
+        if (isInitialFetch) setIsLoading(false)
       }
     }
 

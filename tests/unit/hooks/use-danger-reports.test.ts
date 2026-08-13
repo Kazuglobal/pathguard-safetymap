@@ -203,6 +203,39 @@ describe("useDangerReports", () => {
     expect(pendingBuilder.calls.gte).toEqual([["danger_level", 4]])
   })
 
+  it("初回取得だけ全画面ローディングを出し、bbox 変更による再取得では出さない", async () => {
+    // 地図をパン/ズームすると bbox が変わって再取得が走る。毎回 setIsLoading すると
+    // スクロールのたびに「地図を読み込み中」オーバーレイで地図が覆われてしまう。
+    const { supabase } = makeSupabase([{ id: "report-1" }])
+    const toast = vi.fn()
+    const setIsLoading = vi.fn()
+    const initialFilterOptions = {
+      ...baseFilterOptions,
+      bounds: { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+    }
+
+    const { result, rerender } = renderHook(
+      ({ filterOptions }) =>
+        useDangerReports({ supabase, filterOptions, toast, setIsLoading, enabled: true }),
+      { initialProps: { filterOptions: initialFilterOptions } },
+    )
+
+    await waitFor(() => expect(result.current.dangerReports).toHaveLength(1))
+    expect(setIsLoading.mock.calls).toEqual([[true], [false]])
+
+    setIsLoading.mockClear()
+    // 地図を動かした想定で bbox だけ変える(2回目の from は空配列を返すモック)
+    rerender({
+      filterOptions: {
+        ...baseFilterOptions,
+        bounds: { minLng: 139.5, minLat: 35.5, maxLng: 140.5, maxLat: 36.5 },
+      },
+    })
+
+    await waitFor(() => expect(result.current.dangerReports).toHaveLength(0))
+    expect(setIsLoading).not.toHaveBeenCalled()
+  })
+
   it("enabled=false の間は取得を開始しない", async () => {
     const { approvedBuilder } = renderUseDangerReports(baseFilterOptions, [], null, false)
 
