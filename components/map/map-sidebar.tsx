@@ -275,6 +275,13 @@ export default function MapSidebar({
           </div>
 
           <div className="flex-1 overflow-y-auto p-2">
+            {/* 絞り込み変更時の進行・完了を読み上げる。視覚的にはスケルトンが担い、
+                地図側の全画面オーバーレイは初回取得しか出さないため、ここで補う */}
+            <p role="status" aria-live="polite" className="sr-only">
+              {isLoading
+                ? "危険箇所を読み込んでいます"
+                : `${dangerReports.length}件の危険箇所を表示しています`}
+            </p>
             {isLoading ? (
               // ローディング状態
               Array.from({ length: 3 }).map((_, index) => (
