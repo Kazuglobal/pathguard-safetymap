@@ -124,6 +124,7 @@ export default function MapContainer({
     pendingReports,
     setDangerReports,
     setPendingReports,
+    isFilterRefreshing,
   } = useDangerReports({
     supabase,
     filterOptions: dangerReportsFilterOptions,
@@ -1250,10 +1251,11 @@ export default function MapContainer({
 
         {/* Sidebar (フローティング) */}
         <div className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ${!isSidebarOpen ? '-translate-x-full' : ''}`}>
+          {/* isLoading は「地図の移動による再取得」では立てず、初回取得と絞り込み変更のときだけ一覧に進行を出す */}
           <MapSidebar
             dangerReports={dangerReports}
             pendingReports={pendingReports}
-            isLoading={isLoading}
+            isLoading={isLoading || isFilterRefreshing}
             selectedReport={selectedReport}
             onFilterChange={handleFilterChange}
             filterOptions={filterOptions}
