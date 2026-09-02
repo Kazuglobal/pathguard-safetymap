@@ -66,6 +66,19 @@ export interface GeminiVisionGenerationConfig {
   readonly responseMimeType?: string
   /** Gemini Schema形式(type は "OBJECT"/"STRING" 等の大文字)。responseMimeTypeと併用。 */
   readonly responseSchema?: Record<string, unknown>
+  /**
+   * 1 コールの上限ミリ秒。指定時は AbortSignal.timeout で fetch を打ち切る
+   * (上流ハング時に無期限待ちしないため)。未指定なら従来どおり無期限。
+   * generationConfig には送らない(クライアント側のみの設定)。
+   */
+  readonly timeoutMs?: number
+}
+
+/** AbortSignal.timeout が使える環境(Node 17.3+/Workers/主要ブラウザ)でだけ signal を付ける。 */
+function timeoutSignal(timeoutMs: number | undefined): AbortSignal | undefined {
+  if (!timeoutMs || timeoutMs <= 0) return undefined
+  const ctor = globalThis.AbortSignal as (typeof AbortSignal & { timeout?: (ms: number) => AbortSignal }) | undefined
+  return typeof ctor?.timeout === "function" ? ctor.timeout(timeoutMs) : undefined
 }
 
 export async function callGeminiVision(
@@ -121,6 +134,7 @@ export async function callGeminiVision(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
+      ...(timeoutSignal(generationConfig?.timeoutMs) ? { signal: timeoutSignal(generationConfig?.timeoutMs) } : {}),
     }
   )
 

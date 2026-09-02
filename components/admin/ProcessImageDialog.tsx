@@ -15,8 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image"; // Next.js の Image コンポーネント
-import { useSupabase } from "@/components/providers/supabase-provider"; // Supabaseフックをインポート
-import { v4 as uuidv4 } from 'uuid'; // ファイル名の一意性を高めるためにuuidをインポート
 import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access";
 
 // 親コンポーネントから渡されるレポート情報の型 (仮)
@@ -34,14 +32,13 @@ interface ProcessImageDialogProps {
 }
 
 export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDialogProps) {
-  const { supabase } = useSupabase(); // Supabaseクライアントを取得
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
   // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
-  const signedOriginalImageUrl = useDangerReportSignedImageUrl(supabase, report.originalImageUrl || null);
+  const signedOriginalImageUrl = useDangerReportSignedImageUrl(null, report.originalImageUrl || null);
 
   useEffect(() => {
     if (selectedFile) {
@@ -61,63 +58,30 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !supabase) {
-      alert("加工画像を選択してください。または、Supabaseクライアントが初期化されていません。");
-      setUploadError("加工画像が選択されていないか、クライアントエラーです。");
+    if (!selectedFile) {
+      alert("加工画像を選択してください。");
+      setUploadError("加工画像が選択されていません。");
       return;
     }
     setIsUploading(true);
     setUploadError(null);
 
-    const fileExtension = selectedFile.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExtension}`; // 一意なファイル名
-    const filePath = `processed-images/${report.id}/${fileName}`; // report.id をフォルダパスに含める
-
     try {
-      const { data, error } = await supabase.storage
-        .from("processed_images") // ここは実際に作成したバケット名に置き換えてください
-        .upload(filePath, selectedFile, {
-          cacheControl: "3600", // 任意: キャッシュ設定
-          upsert: false, // 任意: 同名ファイルが存在する場合の動作 (false: エラー, true: 上書き)
-        });
-
-      if (error) {
-        console.error("Upload error:", error);
-        setUploadError(`アップロードに失敗しました: ${error.message}`);
-        throw error;
-      }
-
-      if (data) {
-        // 公開URLの取得 (Storageの設定による)
-        // RLSで保護されている場合や公開URLを直接使わない場合は、パス(data.path)のみDBに保存し、
-        // 表示時に署名付きURLを生成するなどの対応が必要になります。
-        // ここでは、バケットが公開設定されていると仮定して直接URLを組み立てます。
-        // 実際には Supabase の getPublicUrl を使うのがより安全です。
-        const { data: publicUrlData } = supabase.storage
-          .from("processed_images")
-          .getPublicUrl(filePath);
-
-        if (publicUrlData && publicUrlData.publicUrl) {
-            alert(`加工画像 ${selectedFile.name} のアップロードが完了しました。`);
-            if (onUploadComplete) {
-              onUploadComplete(publicUrlData.publicUrl, report.id);
-            }
-            setSelectedFile(null);
-             // モーダルを閉じる
-            const closeButton = document.getElementById(`close-dialog-${report.id}`);
-            if (closeButton) {
-                closeButton.click();
-            }
-        } else {
-            setUploadError("公開URLの取得に失敗しました。");
-            console.error("Failed to get public URL for path:", filePath);
-        }
-      }
-    } catch (e: any) {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('reportId', report.id);
+      formData.append('imageType', 'processed');
+      const response = await fetch('/api/image/process', { method: 'POST', body: formData });
+      const data = await response.json().catch(() => ({})) as { message?: string; processedImageUrl?: string };
+      if (!response.ok || !data.processedImageUrl) throw new Error(data.message ?? 'アップロードに失敗しました');
+      alert(`加工画像 ${selectedFile.name} のアップロードが完了しました。`);
+      onUploadComplete?.(data.processedImageUrl, report.id);
+      setSelectedFile(null);
+      document.getElementById(`close-dialog-${report.id}`)?.click();
+    } catch (e: unknown) {
       console.error("Upload failed:", e);
-      if (!uploadError) { // supabase.storage.upload でのエラーがセットされていなければ汎用エラー
-        setUploadError(`アップロード中に予期せぬエラーが発生しました: ${e.message || e}`);
-      }
+      const message = e instanceof Error ? e.message : String(e);
+      setUploadError(`アップロード中にエラーが発生しました: ${message}`);
     } finally {
       setIsUploading(false);
     }
@@ -205,4 +169,4 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
       </DialogContent>
     </Dialog>
   );
-} 
+}

@@ -6,13 +6,17 @@
  */
 
 import webpush from 'web-push'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { getServiceActor } from '@/lib/auth/service-actor'
+import {
+  deletePushSubscriptionById,
+  listPushSubscriptions,
+} from '@/lib/db/repos/push.repo'
 import type { NotificationPreferences, PushPayload } from '@/lib/notifications/builders'
 
 // VAPID設定
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@pathguardian.jp'
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@path-guardian.com'
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
@@ -30,9 +34,39 @@ export interface PushSubscriptionRow {
   prefecture?: string | null
 }
 
-// push_subscriptions テーブルは生成型未反映のため any キャスト
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = () => getSupabaseAdmin() as any
+const PUSH_SEND_CONCURRENCY = 50
+
+async function sendInBatches(
+  subs: readonly PushSubscriptionRow[],
+  payload: PushPayload,
+  preferenceKey: keyof NotificationPreferences,
+): Promise<number> {
+  let sent = 0
+  for (let index = 0; index < subs.length; index += PUSH_SEND_CONCURRENCY) {
+    const batch = subs.slice(index, index + PUSH_SEND_CONCURRENCY)
+    const results = await Promise.all(batch.map(async (sub) => {
+      const prefs = sub.notification_preferences ?? {}
+      if (prefs[preferenceKey] === false) return 0
+      const result = await sendPushNotification(sub, payload)
+      return result.success ? 1 : 0
+    }))
+    sent += results.reduce((sum, value) => sum + value, 0)
+  }
+  return sent
+}
+
+function toPushSubscriptionRow(row: Awaited<ReturnType<typeof listPushSubscriptions>>[number]): PushSubscriptionRow {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    endpoint: row.endpoint,
+    p256dh: row.p256dh,
+    auth: row.auth,
+    notification_preferences: row.notificationPreferences as unknown as NotificationPreferences,
+    last_notified_at: row.lastNotifiedAt,
+    prefecture: row.prefecture,
+  }
+}
 
 /**
  * 単一サブスクリプションにプッシュ通知を送信する。
@@ -61,7 +95,7 @@ export async function sendPushNotification(
     if (status === 410 || status === 404) {
       // サブスクリプション期限切れ → 削除
       try {
-        await db().from('push_subscriptions').delete().eq('id', sub.id)
+        await deletePushSubscriptionById(getServiceActor(), sub.id)
       } catch (deleteErr) {
         console.error('[web-push] Failed to delete expired subscription', deleteErr)
       }
@@ -81,22 +115,10 @@ export async function sendPushToUser(
   payload: PushPayload,
   preferenceKey: keyof NotificationPreferences
 ): Promise<number> {
-  const { data: subs, error } = await db()
-    .from('push_subscriptions')
-    .select('*')
-    .eq('user_id', userId)
+  const subs = (await listPushSubscriptions(getServiceActor(), { userId }))
+    .map(toPushSubscriptionRow)
 
-  if (error || !subs) return 0
-
-  const results = await Promise.all(
-    subs.map(async (sub: PushSubscriptionRow) => {
-      const prefs = sub.notification_preferences ?? {}
-      if (prefs[preferenceKey] === false) return 0
-      const result = await sendPushNotification(sub, payload)
-      return result.success ? 1 : 0
-    })
-  )
-  return results.reduce((a: number, b: number) => a + b, 0)
+  return sendInBatches(subs, payload, preferenceKey)
 }
 
 /**
@@ -104,29 +126,7 @@ export async function sendPushToUser(
  * 都道府県別のグループ送信など、送信前に全体を分類したい場合に使う。
  */
 export async function fetchAllPushSubscriptions(): Promise<PushSubscriptionRow[]> {
-  const PAGE_SIZE = 200
-  let offset = 0
-  const all: PushSubscriptionRow[] = []
-
-  while (true) {
-    const { data: subs, error } = await db()
-      .from('push_subscriptions')
-      .select('*')
-      .range(offset, offset + PAGE_SIZE - 1)
-
-    if (error) {
-      console.error('[web-push] Failed to fetch push subscriptions', error)
-      throw error
-    }
-    if (!subs || subs.length === 0) break
-
-    all.push(...(subs as PushSubscriptionRow[]))
-
-    if (subs.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
-  }
-
-  return all
+  return (await listPushSubscriptions(getServiceActor())).map(toPushSubscriptionRow)
 }
 
 /**
@@ -139,15 +139,7 @@ export async function sendPushToSubscriptions(
   payload: PushPayload,
   preferenceKey: keyof NotificationPreferences
 ): Promise<number> {
-  const results = await Promise.all(
-    subs.map(async (sub) => {
-      const prefs = sub.notification_preferences ?? {}
-      if (prefs[preferenceKey] === false) return 0
-      const result = await sendPushNotification(sub, payload)
-      return result.success ? 1 : 0
-    })
-  )
-  return results.reduce((a, b) => a + b, 0)
+  return sendInBatches(subs, payload, preferenceKey)
 }
 
 /**

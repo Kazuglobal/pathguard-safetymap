@@ -686,7 +686,8 @@ export function PrimaryCTA({
       disabled={disabled}
       aria-disabled={disabled || undefined}
       className={cn(
-        "inline-flex w-full items-center justify-center gap-2 rounded-full font-black",
+        // touch-manipulation: iOS Safari のダブルタップ拡大を抑止(子どもの連打対策)
+        "inline-flex w-full touch-manipulation items-center justify-center gap-2 rounded-full font-black",
         size === "lg" ? "min-h-[58px] px-8 text-[17px]" : "min-h-[48px] px-6 text-[15px]",
         "transition-[transform,box-shadow,background-color] duration-100",
         !disabled && "active:translate-y-[4px] active:!shadow-none",

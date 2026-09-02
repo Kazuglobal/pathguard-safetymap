@@ -1,0 +1,144 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pathguardian",
+  "main": "custom-worker.ts",
+  "minify": true,
+  "workers_dev": false,
+  "preview_urls": false,
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "routes": [
+    {
+      "pattern": "path-guardian.com",
+      "custom_domain": true
+    }
+  ],
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "pathguardian"
+    },
+    {
+      "binding": "CORE",
+      "service": "pathguardian-core"
+    },
+    {
+      "binding": "EDITORIAL",
+      "service": "pathguardian-editorial"
+    },
+    {
+      "binding": "MAP_3D",
+      "service": "pathguardian-map-3d"
+    },
+    {
+      "binding": "MAP_UI",
+      "service": "pathguardian-map-ui"
+    },
+    {
+      "binding": "ROUTE_QUIZ",
+      "service": "pathguardian-route-quiz"
+    },
+    {
+      "binding": "ROUTE_LIST",
+      "service": "pathguardian-route-list"
+    },
+    {
+      "binding": "MAP_DATA",
+      "service": "pathguardian-map-data"
+    },
+    {
+      "binding": "AI_VISION",
+      "service": "pathguardian-ai-vision"
+    },
+    {
+      "binding": "HUNTER",
+      "service": "pathguardian-hunter"
+    },
+    {
+      "binding": "SAFETY_QUEST",
+      "service": "pathguardian-safety-quest"
+    },
+    {
+      "binding": "AUTH_ADMIN",
+      "service": "pathguardian-auth-admin"
+    },
+    {
+      "binding": "COMMUNITY",
+      "service": "pathguardian-community"
+    },
+    {
+      "binding": "USER",
+      "service": "pathguardian-user"
+    },
+    {
+      "binding": "OPERATIONS",
+      "service": "pathguardian-operations"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pathguardian",
+      // Replace this sentinel with the provisioned D1 id before a remote deploy.
+      "database_id": "8e92d8a8-4b40-4530-89a9-43f6cbc37099",
+      "migrations_dir": "lib/db/migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_PUBLIC",
+      "bucket_name": "pg-media-public"
+    },
+    {
+      "binding": "MEDIA_PRIVATE",
+      "bucket_name": "pg-media-private"
+    },
+    {
+      "binding": "BACKUPS",
+      "bucket_name": "pg-backups"
+    },
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "pg-next-cache"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "workflows": [
+    {
+      "name": "pathguardian-d1-backup",
+      "binding": "D1_BACKUP_WORKFLOW",
+      "class_name": "D1BackupWorkflow"
+    }
+  ],
+  "secrets": {
+    "required": [
+      "D1_BACKUP_API_TOKEN"
+    ]
+  },
+  "vars": {
+    // Replace both sentinels before remote deployment. D1_BACKUP_API_TOKEN is a Wrangler secret.
+    "CLOUDFLARE_ACCOUNT_ID": "64a7afb6120cc316b618480f4a17cc21",
+    "D1_DATABASE_ID": "8e92d8a8-4b40-4530-89a9-43f6cbc37099"
+  },
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  }
+}

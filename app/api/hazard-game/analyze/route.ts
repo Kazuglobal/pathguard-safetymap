@@ -10,6 +10,8 @@ import {
 import type { PipelineAnalysisResultWithComparison } from "@/lib/hazard-game-types"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { calculateCost } from "@/lib/api-cost-calculator"
+import { getServiceActor } from "@/lib/auth/service-actor"
+import { incrementPoints } from "@/lib/db/repos/gamification.repo"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
@@ -200,16 +202,8 @@ export async function POST(request: NextRequest) {
 
     // Award points based on deterministic score
     try {
-      const { error: pointsError } = await supabase.rpc("increment_user_points", {
-        p_user_id: user.id,
-        p_delta: pipelineResult.score.score,
-      })
-
-      if (pointsError) {
-        console.error("Error updating points:", pointsError)
-      } else {
-        console.log(`Points awarded to user ${user.id.slice(0, 8)}***: ${pipelineResult.score.score}`)
-      }
+      await incrementPoints(getServiceActor(), user.id, pipelineResult.score.score)
+      console.log(`Points awarded to user ${user.id.slice(0, 8)}***: ${pipelineResult.score.score}`)
     } catch (pointsError) {
       console.error("Error in points transaction:", pointsError)
     }

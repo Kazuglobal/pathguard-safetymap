@@ -6,7 +6,6 @@ import Image from "next/image"
 import { Upload, Camera, Loader2, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import type { DangerReport } from "@/lib/types"
 
@@ -25,7 +24,6 @@ export function ReportAdminImageUpload({
   isAdmin,
   onProcessedUrlsChange,
 }: ReportAdminImageUploadProps) {
-  const { supabase } = useSupabase()
   const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const [newFile, setNewFile] = useState<File | null>(null)
@@ -134,43 +132,23 @@ export function ReportAdminImageUpload({
   }
 
   const deleteProcessedImage = async (imageUrlToDelete: string) => {
-    if (!supabase) return
-
     const confirmation = confirm("この加工画像を削除してもよろしいですか？この操作は元に戻せません。")
     if (!confirmation) return
 
     setIsUploading(true)
     try {
       const currentUrls = report.processed_image_urls ?? []
-      const updatedUrls = currentUrls.filter((url) => url !== imageUrlToDelete)
-
-      const { error: updateDbError } = await supabase
-        .from("danger_reports")
-        .update({
-          processed_image_urls: updatedUrls,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", report.id)
-
-      if (updateDbError) throw updateDbError
-
-      onProcessedUrlsChange?.(updatedUrls)
-
-      // Attempt storage cleanup
-      try {
-        const urlParts = new URL(imageUrlToDelete)
-        const storagePath = decodeURIComponent(urlParts.pathname.substring(1))
-        const pathSegments = storagePath.split("/")
-        if (pathSegments.length > 4 && pathSegments[3] === "public") {
-          const bucketName = pathSegments[4]
-          const filePath = pathSegments.slice(5).join("/")
-          if (bucketName === "danger-reports" && filePath) {
-            await supabase.storage.from(bucketName).remove([filePath])
-          }
-        }
-      } catch {
-        // Storage cleanup failure is non-critical
-      }
+      const index = currentUrls.indexOf(imageUrlToDelete)
+      if (index < 0) throw new Error('画像が見つかりません')
+      const response = await fetch('/api/image/process', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id, index }),
+      })
+      const data = await response.json().catch(() => ({})) as { message?: string; updatedUrls?: string[] }
+      if (!response.ok) throw new Error(data.message ?? '画像の削除に失敗しました')
+      onProcessedUrlsChange?.(data.updatedUrls ?? currentUrls.filter((_, current) => current !== index))
 
       toast({ title: "削除成功", description: "加工画像が削除されました。" })
     } catch (error: unknown) {

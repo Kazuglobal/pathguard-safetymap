@@ -1,0 +1,15 @@
+[
+  {
+    "name": "known-flood-inside",
+    "latitude": 35.6812,
+    "longitude": 139.7671,
+    "expectedHazardTypes": ["flood"],
+    "expectedMinimumRiskLevel": 1
+  },
+  {
+    "name": "known-outside",
+    "latitude": 35.0,
+    "longitude": 138.0,
+    "expectedHazardTypes": []
+  }
+]

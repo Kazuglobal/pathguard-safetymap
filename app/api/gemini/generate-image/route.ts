@@ -11,15 +11,15 @@ import {
   estimateImageGenerationCost,
 } from "@/lib/api-cost-calculator"
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import {
   getHazardGateMode,
   getHazardGateMessage,
   parseHazardPoint,
-  queryAndLogHazardGate,
-  type HazardGateClient,
+  queryAndLogHazardGateD1,
   type HazardPoint,
 } from "@/lib/hazard-zone-gate"
+import { actorFromUser } from '@/lib/auth/actor'
+import { getServiceActor } from '@/lib/auth/service-actor'
 import {
   checkImageGenerationRateLimit,
   rateLimitedResponse,
@@ -177,10 +177,9 @@ export async function POST(req: NextRequest) {
       situation === "flood" ||
       managedCustomRequiresFloodGate ||
       (inspectPromptText && requestsInundationDepiction(prompt))
-    let floodVerdict: Awaited<ReturnType<typeof queryAndLogHazardGate>> | null = null
+    let floodVerdict: Awaited<ReturnType<typeof queryAndLogHazardGateD1>> | null = null
     if (gateMode !== "off" && requiresFloodGate) {
-      const admin = getSupabaseAdmin()
-      floodVerdict = await queryAndLogHazardGate(admin as unknown as HazardGateClient, {
+      floodVerdict = await queryAndLogHazardGateD1(actorFromUser(user), getServiceActor(), {
         route: "generate-image",
         mode: gateMode,
         situation: situation ?? null,
@@ -219,11 +218,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (situation === "accident" && point) {
-      const stats = await fetchNearbyAccidentStats(
-        supabase,
-        point,
-        ACCIDENT_IMAGE_CONTEXT_PARAMS,
-      )
+      const stats = await fetchNearbyAccidentStats(point, ACCIDENT_IMAGE_CONTEXT_PARAMS)
       const accidentContext = buildAccidentPromptContext(stats)
       if (!accidentContext) {
         return NextResponse.json(

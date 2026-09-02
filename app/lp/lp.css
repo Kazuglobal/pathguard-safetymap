@@ -1,4 +1,4 @@
-/* LP専用フォントユーティリティ(app/lp/layout.tsx の next/font 変数を参照) */
+/* LP専用フォントユーティリティ(外部取得不要のシステムフォント変数を参照) */
 .font-lp-display {
   font-family: var(--font-lp-display), "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
 }

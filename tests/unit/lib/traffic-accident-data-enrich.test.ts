@@ -11,6 +11,7 @@ const mocked = vi.hoisted(() => {
     update: mockUpdate,
   }));
   const mockRpc = vi.fn();
+  const mockFetch = vi.fn();
   return {
     mockSingle,
     mockUpdateEq,
@@ -19,6 +20,7 @@ const mocked = vi.hoisted(() => {
     mockSelect,
     mockFrom,
     mockRpc,
+    mockFetch,
   };
 });
 
@@ -78,28 +80,20 @@ function makeRpcStats() {
 describe("enrichReportWithAccidents", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mocked.mockFetch);
     mocked.mockUpdateEq.mockResolvedValue({});
   });
 
   it("accepts zero coordinates and still fetches accident stats", async () => {
-    mocked.mockSingle.mockResolvedValue({
-      data: { latitude: 0, longitude: 139 },
-      error: null,
-    });
-    mocked.mockRpc.mockResolvedValue({
-      data: makeRpcStats(),
-      error: null,
-    });
+    mocked.mockFetch.mockResolvedValue(new Response(JSON.stringify({ stats: makeRpcStats() }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
 
     const result = await enrichReportWithAccidents("report-0");
 
     expect(result).not.toBeNull();
-    expect(mocked.mockRpc).toHaveBeenCalledWith(
-      "get_nearby_accident_stats",
-      expect.objectContaining({
-        p_latitude: 0,
-        p_longitude: 139,
-      })
-    );
+    const [url] = mocked.mockFetch.mock.calls[0] as [string];
+    expect(url).toBe('/api/reports/report-0/accident-stats');
   });
 });

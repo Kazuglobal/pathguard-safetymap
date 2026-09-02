@@ -1,10 +1,12 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "./database.types"
 
-// サービスロールキーを利用したクライアント（遅延初期化でビルド時エラーを回避）
-let _supabaseAdmin: SupabaseClient<Database> | null = null
+// The service-role client is deliberately narrowed to Auth. D1/R2 are the only
+// production data and media paths after cutover.
+export type SupabaseAuthAdminClient = Pick<SupabaseClient<Database>, "auth">
+let _supabaseAdmin: SupabaseAuthAdminClient | null = null
 
-export function getSupabaseAdmin(): SupabaseClient<Database> {
+export function getSupabaseAdmin(): SupabaseAuthAdminClient {
   if (!_supabaseAdmin) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -19,10 +21,3 @@ export function getSupabaseAdmin(): SupabaseClient<Database> {
   }
   return _supabaseAdmin
 }
-
-/** @deprecated Use getSupabaseAdmin() instead */
-export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
-  get(_target, prop) {
-    return (getSupabaseAdmin() as unknown as Record<string | symbol, unknown>)[prop]
-  },
-})

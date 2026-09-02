@@ -69,8 +69,15 @@ export const hunterQuizItemSchema = z.object({
  * /api/hunter/analyze の入力。
  * consent は「マスク済み写真を第三者AI(国外)へ送信する」ことへの同意ゲート (B3)。必ず true。
  */
+/** マスク確認画面(canvas.toDataURL)が出す形だけを受ける。署名URL等の文字列を画像として Gemini へ送らない。 */
+const IMAGE_DATA_URL_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i
+
 export const hunterAnalyzeSchema = z.object({
-  imageBase64: z.string().min(1).max(MAX_IMAGE_LENGTH),
+  imageBase64: z
+    .string()
+    .min(1)
+    .max(MAX_IMAGE_LENGTH)
+    .regex(IMAGE_DATA_URL_REGEX, "画像は data URL(data:image/...;base64,)で送ってください"),
   pin: hunterPinSchema,
   consent: z.literal(true),
   // 保存はオプトイン。既定 (未指定) は保存しない＝従来挙動を維持 (後方互換)。
@@ -115,6 +122,9 @@ export const hunterSessionSchema = z
     items: z.array(hunterQuizItemSchema).max(20).optional(),
     answers: z.array(hunterQuizAnswerSchema).max(50).optional(),
     sessionId: z.string().max(100).optional(),
+    // 「きろくに のこす」で保存した写真の ID(任意)。所有者検証はルート側で行い、
+    // 他人の ID は無視する(結果には紐づけない)。
+    photoId: z.string().uuid().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.mode === "quiz") {
@@ -153,6 +163,7 @@ export interface HunterSessionInput {
   items?: HunterQuizItem[]
   answers?: HunterQuizAnswer[]
   sessionId?: string
+  photoId?: string
 }
 
 // strictNullChecks:false では判別共用体の絞り込みが効かないため、単一形状にする。

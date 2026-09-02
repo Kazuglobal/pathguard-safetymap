@@ -2,9 +2,10 @@
 
 - 作成日: 2026-08-22
 - 対象: PathGuardian(mapsefe/20250615)
-- ステータス: 設計(実装未着手)
+- ステータス: 実装完了・ローカル/Cloudflare dry-run 検証済み（本番リソース作成、実データリハーサル、DNS 切替は Runbook 実行待ち）
 - 前提調査: コードベース全体の棚卸し(本書 §2)。Cloudflare の制限値は 2026-08-22 時点の公式ドキュメントを参照。
 - 改訂: 2026-08-22 敵対的レビュー(4視点×反証、CONFIRMED 17 / PLAUSIBLE 10)を反映 — JWKS ローカル検証を撤回し `getUser()` 継続、管理者判定を `isAdminUser()` に一本化、`analyze-hazard` Edge Function の移植先を明記、`/leaderboard`・`notifications`・`report_shares` の認可規則を追加、private メディアの認可/キー検証を定義、hunter 写真の保持を DB 連動 cron へ、凍結中の cron 停止を追加、bbox 上限 10,000 維持、数値・行番号の訂正。
+- 実装更新: 2026-08-24 D1/Drizzle、アプリ層認可、R2/Images、OpenNext Workers、7 cron、日次 D1 backup Workflow、移行/照合/性能計測/R2 配信設定スクリプトを反映。実行手順と Go/No-Go 条件は `docs/runbooks/cloudflare-production-cutover.md` を正とする。
 
 ---
 

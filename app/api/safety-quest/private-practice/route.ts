@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
-import { createServerClient } from "@/lib/supabase-server"
+import { getActor } from "@/lib/auth/actor"
 import {
   calculateSafetyQuestPoints,
   parseSafetyQuestMarkers,
@@ -12,13 +12,8 @@ export const runtime = "nodejs"
 const MAX_IMAGE_BASE64_LENGTH = 25 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
+  const actor = await getActor()
+  if (actor.kind !== "user") {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
   }
 

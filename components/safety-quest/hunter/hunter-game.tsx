@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
@@ -21,8 +22,17 @@ import {
   Sparkles,
 } from "lucide-react"
 
+import { mutate } from "swr"
+
 import { pickDailyMission, type HunterDailyMode } from "@/lib/hunter/daily-mission"
+import { loadLastPin, saveLastPin } from "@/lib/hunter/last-pin"
 import { judgeTap } from "@/lib/hunter/scoring"
+import {
+  classifySessionFailure,
+  postHunterSession,
+  type HunterSessionFailure,
+  type HunterSessionSummary,
+} from "@/lib/hunter/session-client"
 import type {
   HunterAccidentSummary,
   HunterAnalysisMode,
@@ -35,13 +45,12 @@ import type {
 } from "@/lib/hunter/types"
 
 import { CareCard } from "./care-card"
-import { DangerMapScreen } from "./danger-map-screen"
 import { ExploreCanvas } from "./explore-canvas"
 import { SafeHuntCanvas } from "./safe-hunt-canvas"
-import { LocationPinPicker } from "./location-pin-picker"
 import { MaskConfirm } from "./mask-confirm"
 import { HunterQuizPanel } from "./quiz-panel"
 import { ResultCard } from "./result-card"
+import { SessionFailureScreen } from "./session-failure-screen"
 import { Onboarding, hasSeenOnboarding, markOnboardingSeen } from "./onboarding"
 import {
   BottomBar,
@@ -78,14 +87,27 @@ interface Pin {
   longitude: number
 }
 
-interface SessionResult {
-  score: number
-  matches: number
-  total: number
-  comboMax: number
-}
+/** 保存の控えめな通知。skipped=「のこす」を選んだが危険 0 件で保存しなかった。 */
+type SaveNotice = "ok" | "error" | "skipped" | null
+
+/** 写真の入口。カメラ直撮り=いま この場所 → ピン画面で現在地を自動提案する。 */
+type PhotoSource = "camera" | "album"
+
+/** AI 解析のクライアント側上限。サーバ側(初回35秒+再試行/再出力20秒)より長く取る。 */
+const ANALYZE_TIMEOUT_MS = 95_000
 
 const C = tokens.color
+
+// These screens embed Mapbox and are only reachable after an explicit user
+// action. Keeping them client-only avoids shipping Mapbox in the Worker.
+const DangerMapScreen = dynamic(
+  () => import("./danger-map-screen").then((module) => module.DangerMapScreen),
+  { ssr: false },
+)
+const LocationPinPicker = dynamic(
+  () => import("./location-pin-picker").then((module) => module.LocationPinPicker),
+  { ssr: false },
+)
 
 /** 画面の「深さ」。遷移方向(すすむ/もどる)の判定に使う。 */
 const SCREEN_DEPTH: Record<Screen, number> = {
@@ -103,7 +125,7 @@ const SCREEN_DEPTH: Record<Screen, number> = {
   result: 8,
 }
 
-export function HunterGame() {
+export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   const router = useRouter()
   const [screen, setScreen] = useState<Screen>("home")
   const [direction, setDirection] = useState<NavDirection>(1)
@@ -122,7 +144,7 @@ export function HunterGame() {
   const [taps, setTaps] = useState<HunterTap[]>([])
   const [lastTap, setLastTap] = useState<{ x: number; y: number } | null>(null)
   const [lastOutcome, setLastOutcome] = useState<HunterTapOutcome | null>(null)
-  const [result, setResult] = useState<SessionResult | null>(null)
+  const [result, setResult] = useState<HunterSessionSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [celebratePoints, setCelebratePoints] = useState<number | null>(null)
@@ -130,7 +152,15 @@ export function HunterGame() {
   // 「のこす(きろく保存)」の同意。第三者AI送信の同意とは別物。既定オフ。
   const [saveConsent, setSaveConsent] = useState(false)
   // 保存結果の控えめな通知(成功/失敗)。ゲームは止めない。
-  const [saveNotice, setSaveNotice] = useState<"ok" | "error" | null>(null)
+  const [saveNotice, setSaveNotice] = useState<SaveNotice>(null)
+  // 「きろくに のこす」で保存できた写真の ID。session に紐づけ、結果画面から きろく へ飛べる。
+  const [savedPhotoId, setSavedPhotoId] = useState<string | null>(null)
+  // 採点(session)に失敗した理由。0 点の結果を捏造せず、理由と復帰導線を出す。
+  const [sessionFailure, setSessionFailure] = useState<HunterSessionFailure | null>(null)
+  const [photoSource, setPhotoSource] = useState<PhotoSource>("album")
+  // きろくから再プレイ中の写真 ID。期限切れ時は再解析ではなく きろくの再取得で復帰する
+  // (maskedUrl は署名URLで data URL ではないため、AI へは送れない)。
+  const [replayPhotoId, setReplayPhotoId] = useState<string | null>(null)
   // オンボーディング: null=判定前(SSR) / true=表示 / false=非表示
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null)
 
@@ -172,11 +202,15 @@ export function HunterGame() {
     setAnalysisMode("explore")
     setNoHazardFollow(null)
     setError(null)
+    setSavedPhotoId(null)
+    setSessionFailure(null)
+    setReplayPhotoId(null)
   }, [resetPlay])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0]
     if (!selected) return
+    setPhotoSource(event.target.id === "hunter-photo-camera" ? "camera" : "album")
     setFile(selected)
     navigate("mask")
   }
@@ -192,10 +226,17 @@ export function HunterGame() {
       setBusy(true)
       setError(null)
       setSaveNotice(null)
+      setReplayPhotoId(null)
       setDirection(1)
       setScreen("analyzing")
       const controller = new AbortController()
       analyzeAbortRef.current = controller
+      // 上流がハングしても無期限に待たせない(「やめて もどる」とは別に時間で打ち切る)。
+      let timedOut = false
+      const timeout = setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, ANALYZE_TIMEOUT_MS)
       try {
         const response = await fetch("/api/hunter/analyze", {
           method: "POST",
@@ -222,8 +263,10 @@ export function HunterGame() {
         setSessionId(body.sessionId ?? null)
         setAnalysisMode(body.mode === "guide" ? "guide" : "explore")
         setNoHazardFollow(body.noHazardFollow ?? null)
-        if (save && body.mode === "explore") {
-          setSaveNotice(body.savedError ? "error" : "ok")
+        const photoId = typeof body.photoId === "string" && !body.savedError ? body.photoId : null
+        setSavedPhotoId(photoId)
+        if (save) {
+          setSaveNotice(body.savedError ? "error" : photoId ? "ok" : body.saveSkipped ? "skipped" : null)
         }
         resetPlay()
         setDirection(1)
@@ -231,11 +274,14 @@ export function HunterGame() {
       } catch (err) {
         setDirection(-1)
         setScreen("consent")
-        // 自分で「やめる」を押したときはエラー扱いにしない
-        if ((err as Error)?.name !== "AbortError") {
+        // 自分で「やめる」を押したときはエラー扱いにしない。時間切れは理由を伝える。
+        if (timedOut) {
+          setError("AIが ねぼうしているみたい。すこし まってから もういちど ためしてね。")
+        } else if ((err as Error)?.name !== "AbortError") {
           setError("つうしんエラーが おきました。もう一度ためしてね。")
         }
       } finally {
+        clearTimeout(timeout)
         analyzeAbortRef.current = null
         setBusy(false)
       }
@@ -256,66 +302,77 @@ export function HunterGame() {
     // (自動 finish だと最終 hit=hazard 1件の写真では学習カードが一度も読めなかった)
   }
 
-  const finishSession = useCallback(
-    async (sessionTaps: HunterTap[], _foundIds: string[]) => {
+  /**
+   * サーバ再採点 → 結果画面。失敗しても 0 点の結果を捏造せず、理由と復帰導線を出す。
+   * ポイント/ミッションが動いたら SWR のキャッシュを更新し、mypage 等の表示を同期する。
+   */
+  const finishWith = useCallback(
+    async (payload: Record<string, unknown>, fallbackTotal: number) => {
       setBusy(true)
+      setSessionFailure(null)
       try {
-        const response = await fetch("/api/hunter/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "explore", hazards, taps: sessionTaps, sessionId }),
-        })
-        const body = await response.json().catch(() => null)
-        if (response.ok && body) {
-          setResult({
-            score: body.score ?? 0,
-            matches: body.matches ?? 0,
-            total: body.total ?? hazards.length,
-            comboMax: body.comboMax ?? 0,
-          })
+        const outcome = await postHunterSession(
+          { ...payload, sessionId: sessionId ?? undefined, photoId: savedPhotoId ?? undefined },
+          fallbackTotal,
+        )
+        if (outcome.ok && outcome.result) {
+          setResult(outcome.result)
+          if (outcome.result.pointsAwarded > 0 || outcome.result.missionsCompleted.length > 0) {
+            void mutate("user_points")
+            void mutate("missions")
+          }
         } else {
-          setResult({ score: 0, matches: _foundIds.length, total: hazards.length, comboMax: 0 })
+          setResult(null)
+          setSessionFailure(outcome.failure ?? classifySessionFailure(0, null))
         }
-      } catch {
-        setResult({ score: 0, matches: _foundIds.length, total: hazards.length, comboMax: 0 })
       } finally {
         setBusy(false)
         setDirection(1)
         setScreen("result")
       }
     },
-    [hazards, sessionId],
+    [sessionId, savedPhotoId],
+  )
+
+  const finishSession = useCallback(
+    (sessionTaps: HunterTap[]) => finishWith({ mode: "explore", hazards, taps: sessionTaps }, hazards.length),
+    [finishWith, hazards],
   )
 
   const finishQuizSession = useCallback(
-    async (answers: HunterQuizAnswer[]) => {
-      setBusy(true)
+    (answers: HunterQuizAnswer[]) => finishWith({ mode: "quiz", items: quizItems, answers }, quizItems.length),
+    [finishWith, quizItems],
+  )
+
+  /**
+   * きろくの写真で もういちど さがす(再解析なし・AI コスト 0・待ち 0)。
+   * GET /api/hunter/photo/[id] が返す検出結果と新しい sessionId でモード選択へ。
+   */
+  const startFromRecord = useCallback(
+    async (photoId: string): Promise<boolean> => {
       try {
-        const response = await fetch("/api/hunter/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "quiz", items: quizItems, answers, sessionId }),
-        })
+        const response = await fetch(`/api/hunter/photo/${photoId}`)
         const body = await response.json().catch(() => null)
-        if (response.ok && body) {
-          setResult({
-            score: body.score ?? 0,
-            matches: body.correct ?? 0,
-            total: body.total ?? quizItems.length,
-            comboMax: 0,
-          })
-        } else {
-          setResult({ score: 0, matches: 0, total: quizItems.length, comboMax: 0 })
-        }
-      } catch {
-        setResult({ score: 0, matches: 0, total: quizItems.length, comboMax: 0 })
-      } finally {
-        setBusy(false)
+        if (!response.ok || !body || typeof body.signedUrl !== "string") return false
+        const loaded: HunterHazard[] = Array.isArray(body.hazards) ? body.hazards : []
+        if (loaded.length === 0) return false
+        resetAll()
+        setMaskedUrl(body.signedUrl)
+        setMaskedCount(0)
+        setPin(body.pin ?? null)
+        setHazards(loaded)
+        setSessionId(typeof body.sessionId === "string" ? body.sessionId : null)
+        setSavedPhotoId(photoId)
+        setReplayPhotoId(photoId)
+        setAnalysisMode("explore")
         setDirection(1)
-        setScreen("result")
+        setScreen("mode")
+        return true
+      } catch {
+        return false
       }
     },
-    [quizItems, sessionId],
+    [resetAll],
   )
 
   // 発見(hit)時に お祝い演出(ハンドラ挙動は変えず lastOutcome を監視)
@@ -336,14 +393,15 @@ export function HunterGame() {
   // けっか画面に入ったら お祝い演出
   const [resultCelebrate, setResultCelebrate] = useState(false)
   useEffect(() => {
-    if (screen !== "result") {
+    // 採点できなかった画面では祝わない(0 点を捏造しない方針と矛盾させない)
+    if (screen !== "result" || sessionFailure) {
       setResultCelebrate(false)
       return
     }
     setResultCelebrate(true)
     const timer = setTimeout(() => setResultCelebrate(false), 1100)
     return () => clearTimeout(timer)
-  }, [screen])
+  }, [screen, sessionFailure])
 
   // ----- 画面記述 -----
 
@@ -391,9 +449,11 @@ export function HunterGame() {
     content = (
       <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col px-3 pb-3">
         <LocationPinPicker
-          initial={pin ?? undefined}
+          initial={pin ?? loadLastPin(userId) ?? undefined}
+          autoLocate={photoSource === "camera" && !pin}
           onConfirm={(confirmed) => {
             setPin(confirmed)
+            saveLastPin(userId, confirmed)
             navigate("consent")
           }}
         />
@@ -465,7 +525,8 @@ export function HunterGame() {
     )
   } else if (screen === "explore" && maskedUrl) {
     title = "きけんを さがせ！"
-    onBack = () => navigate("home")
+    // クイズ/あんぜんさがし と同じく モード選択へ戻す(解析結果を捨てない)
+    onBack = () => navigate("mode")
     progress = { current: foundIds.length, total: hazards.length }
     content = (
       <ExploreScreen
@@ -478,11 +539,34 @@ export function HunterGame() {
         busy={busy}
         remaining={remaining}
         onTap={handleTap}
-        onFinish={() => void finishSession(taps, foundIds)}
+        safeCount={safePoints.length}
+        onSafeHunt={() => navigate("safe")}
+        onFinish={() => void finishSession(taps)}
+      />
+    )
+  } else if (screen === "result" && sessionFailure) {
+    title = mode === "quiz" ? "クイズの けっか" : "たんけんの けっか"
+    onBack = () => navigate("mode")
+    content = (
+      <SessionFailureScreen
+        failure={sessionFailure}
+        foundCount={mode === "quiz" ? null : foundIds.length}
+        canReanalyze={Boolean(replayPhotoId || (pin && maskedUrl?.startsWith("data:")))}
+        onRetryScoring={() => navigate(mode === "quiz" ? "quiz" : "explore")}
+        onReanalyze={() => {
+          // きろく再プレイ中は AI を呼ばず、きろくを取り直して新しい正解鍵をもらう(コスト 0)
+          if (replayPhotoId) void startFromRecord(replayPhotoId)
+          else if (maskedUrl?.startsWith("data:") && pin) void runAnalyze(pin, maskedUrl, false)
+        }}
+        onHome={() => {
+          resetAll()
+          navigate("home")
+        }}
       />
     )
   } else if (screen === "result" && result) {
     title = mode === "quiz" ? "クイズの けっか" : "たんけんの けっか"
+    const canOtherModes = quizItems.length > 0 || safePoints.length > 0
     content = (
       <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">
         <ResultCard
@@ -493,6 +577,11 @@ export function HunterGame() {
           showCombo={mode === "explore"}
           hazards={hazards}
           foundIds={foundIds}
+          pointsAwarded={result.pointsAwarded}
+          missionsCompleted={result.missionsCompleted}
+          persistError={result.persistError}
+          onOtherModes={canOtherModes ? () => navigate("mode") : undefined}
+          onOpenRecords={savedPhotoId ? () => navigate("records") : undefined}
           onRetry={() => {
             if (mode === "quiz") {
               setResult(null)
@@ -519,6 +608,7 @@ export function HunterGame() {
           resetAll()
           navigate("select")
         }}
+        onReplay={startFromRecord}
       />
     )
   } else {
@@ -982,7 +1072,7 @@ function ConsentScreen({
               きろくに のこす
             </span>
             <span className="text-[12px] font-bold leading-snug" style={{ color: C.inkSoft }}>
-              あとで <R k="危険" y="きけん" />マップで 見られるよ。なくても OK
+              あとで <R k="危険" y="きけん" />マップで 見られて、もういちど あそべるよ。90<R k="日" y="にち" />で じどうで きえるよ。なくても OK
             </span>
           </span>
           {/* トグルの見た目(表示専用) */}
@@ -1229,7 +1319,7 @@ function ModeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3.5 rounded-[22px] px-4 py-4 text-left transition-transform active:translate-y-[4px] active:!shadow-none ${tokens.cls.focus}`}
+      className={`flex w-full touch-manipulation items-center gap-3.5 rounded-[22px] px-4 py-4 text-left transition-transform active:translate-y-[4px] active:!shadow-none ${tokens.cls.focus}`}
       style={{ background: bg, color: fg, boxShadow: press }}
     >
       <span
@@ -1269,7 +1359,7 @@ function ModeSelectScreen({
   analysisMode: HunterAnalysisMode
   noHazardFollow: string | null
   safeCount: number
-  saveNotice: "ok" | "error" | null
+  saveNotice: SaveNotice
   onExplore: () => void
   onQuiz: () => void
   onSafeHunt: () => void
@@ -1341,13 +1431,15 @@ function ModeSelectScreen({
             role="status"
             className="rounded-[14px] px-4 py-2.5 text-[12.5px] font-black"
             style={{
-              background: saveNotice === "ok" ? C.primarySoft : C.dangerSoft,
-              color: saveNotice === "ok" ? C.primaryStrong : C.danger,
+              background: saveNotice === "error" ? C.dangerSoft : saveNotice === "skipped" ? C.sunSoft : C.primarySoft,
+              color: saveNotice === "error" ? C.danger : saveNotice === "skipped" ? C.ink : C.primaryStrong,
             }}
           >
             {saveNotice === "ok"
               ? "きろくに のこしたよ！あとで 危険マップで 見られるよ"
-              : "きろくの ほぞんに しっぱいしたよ(あそびは そのまま できるよ)"}
+              : saveNotice === "skipped"
+                ? "こんかいは あぶないところが なかったので、きろくには のこさなかったよ"
+                : "きろくの ほぞんに しっぱいしたよ(あそびは そのまま できるよ)"}
           </motion.p>
         )}
       </AnimatePresence>
@@ -1399,6 +1491,8 @@ export function ExploreScreen({
   remaining,
   onTap,
   onFinish,
+  safeCount = 0,
+  onSafeHunt,
 }: {
   accident: HunterAccidentSummary | null
   maskedUrl: string
@@ -1410,6 +1504,9 @@ export function ExploreScreen({
   remaining: number
   onTap: (tap: HunterTap) => void
   onFinish: () => void
+  /** 安全の工夫の数。全部見つけたあとに「あんぜんの くふうも さがす」を出す。 */
+  safeCount?: number
+  onSafeHunt?: () => void
 }) {
   return (
     <div className="mx-auto flex w-full max-w-2xl min-h-full flex-col px-4 pt-1">
@@ -1429,15 +1526,23 @@ export function ExploreScreen({
       </div>
 
       <BottomBar className="-mx-4 px-4">
-        <PrimaryCTA disabled={busy} variant={remaining > 0 ? "green" : "sun"} onClick={onFinish}>
-          {busy ? (
-            "まとめているよ…"
-          ) : remaining > 0 ? (
-            <>けっかを みる（のこり {remaining}）</>
-          ) : (
-            "ぜんぶ みつけた！けっかを みる"
-          )}
-        </PrimaryCTA>
+        <div className="flex flex-col gap-2">
+          <PrimaryCTA disabled={busy} variant={remaining > 0 ? "green" : "sun"} onClick={onFinish}>
+            {busy ? (
+              "まとめているよ…"
+            ) : remaining > 0 ? (
+              <>けっかを みる（のこり {remaining}）</>
+            ) : (
+              "ぜんぶ みつけた！けっかを みる"
+            )}
+          </PrimaryCTA>
+          {remaining === 0 && safeCount > 0 && onSafeHunt ? (
+            <PrimaryCTA size="md" variant="paper" disabled={busy} onClick={onSafeHunt}>
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+              あんぜんの くふうも さがす（{safeCount}）
+            </PrimaryCTA>
+          ) : null}
+        </div>
       </BottomBar>
     </div>
   )

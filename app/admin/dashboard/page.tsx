@@ -11,13 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ProcessImageDialog } from "@/components/admin/ProcessImageDialog";
-import { useSupabase } from "@/components/providers/supabase-provider";
-import type { Database } from "@/lib/database.types";
 import type { ReportWithProfile } from "@/lib/admin-reports-service";
 import { Button } from "@/components/ui/button";
 import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access";
-
-type ReportImageInsert = Database["public"]["Tables"]["report_images"]["Insert"];
 
 /**
  * 元画像へのダウンロードリンク。danger-reports バケット非公開化に備え、
@@ -25,8 +21,7 @@ type ReportImageInsert = Database["public"]["Tables"]["report_images"]["Insert"]
  * (テーブルの行ごとにフックを1回だけ呼び出すため、独立したコンポーネントに分離)
  */
 function ReportImageDownloadLink({ imageUrl }: { imageUrl: string | null }) {
-  const { supabase } = useSupabase();
-  const signedUrl = useDangerReportSignedImageUrl(supabase, imageUrl);
+  const signedUrl = useDangerReportSignedImageUrl(null, imageUrl);
 
   if (!imageUrl) return <>画像なし</>;
   if (!signedUrl) return <span className="text-muted-foreground">読み込み中...</span>;
@@ -39,7 +34,6 @@ function ReportImageDownloadLink({ imageUrl }: { imageUrl: string | null }) {
 }
 
 export default function AdminDashboardPage() {
-  const { supabase } = useSupabase();
   const [reports, setReports] = useState<ReportWithProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,42 +66,10 @@ export default function AdminDashboardPage() {
 
   // 加工画像アップロード完了時の処理
   const handleImageUploadComplete = async (processedImageUrl: string, reportId: string) => {
-    if (!supabase) {
-      alert("Supabaseクライアントが初期化されていません。");
-      return;
-    }
     console.log(
       `Report ID ${reportId} の加工画像がアップロードされました: ${processedImageUrl}`
     );
-
-    // --- ここに report_images テーブルへの保存処理を実装 ---
-    try {
-      const newReportImage: ReportImageInsert = {
-        report_id: reportId, // reportId は ProcessImageDialog から渡される report.id
-        image_url: processedImageUrl,
-        image_type: "processed", // 'processed' 固定
-        // uploaded_by: (await supabase.auth.getUser()).data.user?.id, // 管理者のID (要認証)
-        // created_at, updated_at はDB側で自動設定される想定
-      };
-
-      const { error: insertError } = await supabase
-        .from("report_images") // ここは実際のテーブル名に置き換えてください
-        .insert(newReportImage);
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      alert(`報告ID ${reportId} の加工画像情報をデータベースに保存しました。`);
-      // 必要に応じて、UIのレポート一覧を再取得またはローカルで更新
-      fetchReports(); // 簡単のため再取得
-    } catch (dbError: any) {
-      console.error("Error saving processed image to DB:", dbError);
-      alert(
-        `加工画像情報のデータベース保存に失敗しました: ${dbError.message}`
-      );
-    }
-    // ---------------------------------------------------------
+    await fetchReports();
   };
 
   // 仮のレポートデータを ProcessImageDialog が期待する形に変換
@@ -190,4 +152,4 @@ export default function AdminDashboardPage() {
       )}
     </div>
   );
-} 
+}

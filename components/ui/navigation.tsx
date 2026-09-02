@@ -165,7 +165,7 @@ export function Navigation({
   const bottomNavItems = mainNavItems
 
   // /hazard-game, /missions, /leaderboard はすべて「活動」タブをアクティブにする
-  const activityPaths = ["/mypage", "/hazard-game", "/missions", "/leaderboard", "/badges"]
+  const activityPaths = ["/mypage", "/hazard-game", "/safety-quest/hunter", "/missions", "/leaderboard", "/badges"]
 
   const isActivePath = (item: NavItem) => {
     if (item.isAction) return false

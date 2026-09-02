@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { ShieldCheck, Sparkles } from "lucide-react"
 
+import { photoAspectRatio } from "@/lib/hunter/photo-aspect"
 import type { HunterSafePoint } from "@/lib/hunter/types"
 import {
   containRect,
@@ -192,9 +193,12 @@ export function SafeHuntCanvas({ imageUrl, safePoints, onDone }: SafeHuntCanvasP
             style={{
               position: "relative",
               width: "100%",
-              aspectRatio: "4 / 3",
+              aspectRatio: photoAspectRatio(natural),
+              maxHeight: "min(62dvh, 560px)",
+              marginInline: "auto",
               cursor: "pointer",
               userSelect: "none",
+              touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
             }}
           >

@@ -122,6 +122,13 @@
 
 @layer base {
   :root {
+    /* Build-reproducible system font stacks (no runtime/build-time font fetch). */
+    --font-app: "Hiragino Maru Gothic ProN";
+    --font-inter: Inter;
+    --font-lp-display: "Hiragino Maru Gothic ProN";
+    --font-lp-body: "Hiragino Kaku Gothic ProN";
+    --font-hunter: "Hiragino Maru Gothic ProN";
+
     /* たんけんノート カラーパレット(紙のフィールドノート世界観) */
     /* 紙面 #FBF5E9 / インク #43392B */
     --background: 40 69% 95%;

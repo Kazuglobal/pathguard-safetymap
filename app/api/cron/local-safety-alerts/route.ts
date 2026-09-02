@@ -1,7 +1,7 @@
 /**
  * Cron: 地域安全アラートのプッシュ通知配信
  *
- * vercel.json で 0 *\/2 * * * (2時間毎) に設定。
+ * wrangler.jsonc の Cron Trigger で 0 *\/2 * * * (2時間毎) に設定。
  * local-alert-fetcher エージェントが local_safety_alerts へ INSERT した
  * 未通知レコードを処理してプッシュ通知を送信する。
  *
@@ -12,9 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = () => getSupabaseAdmin() as any
+import { getServiceActor } from '@/lib/auth/service-actor'
+import { listPendingLocalAlerts } from '@/lib/db/repos/push.repo'
 
 import { verifyCronSecret } from '@/lib/cron-auth'
 import {
@@ -59,17 +58,7 @@ export async function GET(req: NextRequest) {
   // 2時間ではなく24時間さかのぼる（クレーム済みは除外されるので二重通知はない）
   const since = new Date(Date.now() - (24 * 60 + 10) * 60 * 1000).toISOString()
 
-  const { data: alerts, error } = await db()
-    .from('local_safety_alerts')
-    .select('id, prefecture, category')
-    .gte('created_at', since)
-    .is('push_notified_at', null)
-    .order('created_at', { ascending: true })
-
-  if (error) {
-    console.error('[cron/local-safety-alerts] fetch error', error)
-    return NextResponse.json({ error: 'アラート取得に失敗しました' }, { status: 500 })
-  }
+  const alerts = await listPendingLocalAlerts(getServiceActor(), since)
 
   if (!alerts || alerts.length === 0) {
     return NextResponse.json({ processed: 0, notified: 0, failed: 0, skipped: 0 })

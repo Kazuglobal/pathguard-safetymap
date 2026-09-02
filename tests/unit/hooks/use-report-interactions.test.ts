@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   bookmarksDelete: vi.fn(),
   bookmarksDeleteEqUser: vi.fn(),
   bookmarksDeleteEqReport: vi.fn(),
+  toggleApi: vi.fn(),
 }))
 
 vi.mock("swr", () => ({
@@ -37,6 +38,10 @@ vi.mock("@/components/providers/supabase-provider", () => ({
 
 vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: mocks.toast }),
+}))
+
+vi.mock('@/lib/report-interactions-api', () => ({
+  toggleReportInteraction: mocks.toggleApi,
 }))
 
 describe("useReportInteractionsBatch", () => {
@@ -65,45 +70,44 @@ describe("useReportInteractionsBatch", () => {
 
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } })
     mocks.rpc.mockResolvedValue({ error: null })
+    mocks.toggleApi.mockResolvedValue({ active: true, count: 1 })
   })
 
-  it("falls back to direct INSERT when toggleLike RPC fails", async () => {
+  it("sends like mutation through the authenticated D1 API", async () => {
     mocks.useSWR.mockReturnValue({
       data: new Map([["report-1", { liked: false, likeCount: 0, saved: false, saveCount: 0 }]]),
       error: undefined,
       isLoading: false,
       mutate: mocks.mutate,
     })
-    mocks.rpc.mockResolvedValue({ error: { message: "function toggle_report_like does not exist" } })
-
     const { result } = renderHook(() => useReportInteractionsBatch(["report-1"]))
 
     await act(async () => {
       await result.current.toggleLike("report-1")
     })
 
-    expect(mocks.likesInsert).toHaveBeenCalledWith({ user_id: "user-1", report_id: "report-1" })
+    expect(mocks.toggleApi).toHaveBeenCalledWith('report-1', 'like')
+    expect(mocks.likesInsert).not.toHaveBeenCalled()
     expect(mocks.mutate).toHaveBeenCalledWith(expect.any(Map), false)
     const optimistic = mocks.mutate.mock.calls[0][0] as Map<string, { liked: boolean; likeCount: number }>
     expect(optimistic.get("report-1")).toMatchObject({ liked: true, likeCount: 1 })
   })
 
-  it("falls back to direct DELETE for save toggle and keeps count non-negative", async () => {
+  it("sends bookmark mutation through D1 and keeps the optimistic count non-negative", async () => {
     mocks.useSWR.mockReturnValue({
       data: new Map([["report-1", { liked: false, likeCount: 0, saved: true, saveCount: 0 }]]),
       error: undefined,
       isLoading: false,
       mutate: mocks.mutate,
     })
-    mocks.rpc.mockResolvedValue({ error: { message: "function toggle_report_bookmark does not exist" } })
-
     const { result } = renderHook(() => useReportInteractionsBatch(["report-1"]))
 
     await act(async () => {
       await result.current.toggleSave("report-1")
     })
 
-    expect(mocks.bookmarksDelete).toHaveBeenCalled()
+    expect(mocks.toggleApi).toHaveBeenCalledWith('report-1', 'bookmark')
+    expect(mocks.bookmarksDelete).not.toHaveBeenCalled()
     expect(mocks.mutate).toHaveBeenCalledWith(expect.any(Map), false)
     const optimistic = mocks.mutate.mock.calls[0][0] as Map<string, { saved: boolean; saveCount: number }>
     expect(optimistic.get("report-1")).toMatchObject({ saved: false, saveCount: 0 })

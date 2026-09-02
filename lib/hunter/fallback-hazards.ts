@@ -59,11 +59,11 @@ const GUIDE_QUIZ_SEEDS: readonly GuideQuizSeed[] = [
     id: "guide-popout",
     theme: "飛び出し",
     kind: "popout_spot",
-    question: "車の かげの そばを とおるときは？",
+    question: "ものかげから 人や 車が 出てきそうな ところでは？",
     labels: [
       "ゆっくり あるいて、出てこないか 見る",
       "いきおいよく 走って ぬける",
-      "目を つぶって すすむ",
+      "まいにち とおる 道だから だいじょうぶ",
       "音だけで すすむ",
     ],
     explanation: "かげから 人や 車が 出てくるかも。",

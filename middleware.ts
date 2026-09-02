@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { isMaintenanceWriteRequest } from '@/lib/maintenance'
 
 /**
  * 認証が必要なルートプレフィックス一覧
@@ -37,6 +38,13 @@ export async function middleware(request: NextRequest) {
     /\.[a-zA-Z0-9]+$/.test(pathname)
   ) {
     return NextResponse.next()
+  }
+
+  if (isMaintenanceWriteRequest(request.method)) {
+    return NextResponse.json(
+      { error: 'メンテナンス中のため書き込みを停止しています' },
+      { status: 503, headers: { 'Retry-After': '300' } },
+    )
   }
 
   // レスポンスを準備（セッションCookieの書き込みに使用）

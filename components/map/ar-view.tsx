@@ -13,7 +13,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useOptionalSupabase } from "@/components/providers/supabase-provider"
 import type { ARViewProps } from "@/lib/ar-view-types"
 import type { DangerReport } from "@/lib/types"
 import { calculateARHazardData, getARVisibilityOptions, type ARHazardData } from "@/lib/ar-utils"
@@ -75,7 +74,6 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const [guardianConsent, setGuardianConsent] = useState(false)
   const [manualLocationMode, setManualLocationMode] = useState(false)
   const sensorsEnabled = !isParentChildMode || hasSafetyAcknowledged
-  const optionalSupabase = useOptionalSupabase()
 
   // フック
   const {
@@ -321,8 +319,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       !quizCompletedAt ||
       !parentRouteId ||
       !parentSessionId ||
-      remoteSavedQuizCompletedAtRef.current === quizCompletedAt ||
-      !optionalSupabase?.supabase
+      remoteSavedQuizCompletedAtRef.current === quizCompletedAt
     ) {
       return
     }
@@ -330,21 +327,16 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     remoteSavedQuizCompletedAtRef.current = quizCompletedAt
 
     const saveRemoteSession = async () => {
-      const supabase = optionalSupabase.supabase
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) return
-
       const payload = buildRouteLearningSessionPayload({
         checklist: learningSession.state.checklist,
         progress: learningSession.state.progress,
       })
 
-      await supabase.from("route_learning_sessions").upsert(
-        {
-          user_id: user.id,
+      const response = await fetch(`/api/routes/${encodeURIComponent(parentRouteId)}/learning-sessions`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           route_id: parentRouteId,
           session_id: parentSessionId,
           child_id: parentChildId,
@@ -358,10 +350,9 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           quiz_total: learningSession.state.quizTotal,
           checklist: payload.checklist,
           stop_results: payload.stopResults,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,route_id,session_id" }
-      )
+        }),
+      })
+      if (!response.ok) throw new Error(`Failed to save route learning session (${response.status})`)
     }
 
     saveRemoteSession().catch(() => {
@@ -376,7 +367,6 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     learningSession.state.quizScore,
     learningSession.state.quizTotal,
     learningSession.state.startedAt,
-    optionalSupabase,
     parentChildId,
     parentChildName,
     parentRouteId,

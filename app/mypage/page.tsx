@@ -44,7 +44,6 @@ import {
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { useToast } from "@/components/ui/use-toast"
-import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
 interface ReportSummary extends Pick<
@@ -107,22 +106,14 @@ export default function MyPage() {
     let isMounted = true
 
     const loadPersonalData = async () => {
-      if (!supabase) return
       setIsReportsLoading(true)
 
       try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
-
-        if (userError) {
-          if (!userError.message?.includes("Auth session missing")) {
-            console.error("ユーザー情報の取得に失敗しました", userError)
-          }
-        }
-
-        if (!user) {
+        const [profileResponse, reportsResponse] = await Promise.all([
+          fetch("/api/profile", { credentials: "same-origin" }),
+          fetch("/api/reports?owner=me&limit=10", { credentials: "same-origin" }),
+        ])
+        if (profileResponse.status === 401 || reportsResponse.status === 401) {
           if (isMounted) {
             setUserName("ゲスト")
             setReports([])
@@ -130,31 +121,12 @@ export default function MyPage() {
           }
           return
         }
-
-        const fallbackName = user.email?.split("@")[0] ?? "ユーザー"
-
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", user.id)
-          .maybeSingle()
-
-        if (profileError) {
-          console.warn("プロフィール名の取得に失敗しました", profileError.message)
-        }
-
-        const resolvedName = profileData?.display_name ?? fallbackName
-
-        const { data: reportRows, error: reportError } = await supabase
-          .from("danger_reports")
-          .select("id, title, created_at, status, image_url, processed_image_urls")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(10)
-
-        if (reportError) {
-          console.error("アップロード履歴の取得に失敗しました", reportError.message)
-        }
+        if (!profileResponse.ok || !reportsResponse.ok) throw new Error("Personal data request failed")
+        const [{ profile }, { reports: reportRows = [] }] = await Promise.all([
+          profileResponse.json() as Promise<{ profile?: { display_name?: string | null; email?: string | null } }>,
+          reportsResponse.json() as Promise<{ reports?: ReportSummary[] }>,
+        ])
+        const resolvedName = profile?.display_name ?? profile?.email?.split("@")[0] ?? "ユーザー"
 
         if (isMounted) {
           setUserName(resolvedName)
@@ -175,7 +147,7 @@ export default function MyPage() {
     return () => {
       isMounted = false
     }
-  }, [supabase])
+  }, [profileKey])
 
   const completedMissionCount = useMemo(
     () => Object.values(progress).filter((item) => item?.completed).length,
@@ -283,31 +255,16 @@ export default function MyPage() {
 
     setDeletingReportId(reportId)
     try {
-      const { error: deleteError } = await supabase.from("danger_reports").delete().eq("id", reportId)
-      if (deleteError) throw deleteError
-
-      // 関連画像をストレージから削除（ベストエフォート。失敗してもDB削除自体は成功扱い）
-      let storageDeleteFailed = false
-      const imageUrls = [target.image_url, ...(target.processed_image_urls ?? [])].filter(
-        (url): url is string => Boolean(url),
-      )
-      if (imageUrls.length > 0) {
-        const storagePaths = imageUrls
-          .map((url) => extractStoragePathFromPublicUrl(url, "danger-reports"))
-          .filter((path): path is string => Boolean(path))
-        if (storagePaths.length > 0) {
-          const { error: storageError } = await supabase.storage.from("danger-reports").remove(storagePaths)
-          if (storageError) {
-            console.error("投稿画像の削除に失敗しました", storageError)
-            storageDeleteFailed = true
-          }
-        }
-      }
+      const response = await fetch(`/api/reports/${encodeURIComponent(reportId)}`, {
+        method: "DELETE", credentials: "same-origin",
+      })
+      const payload = await response.json().catch(() => ({})) as { mediaDeleteFailed?: boolean; error?: string }
+      if (!response.ok) throw new Error(payload.error ?? "Delete failed")
 
       setReports((prev) => prev.filter((r) => r.id !== reportId))
       toast({
         title: "削除しました",
-        description: storageDeleteFailed
+        description: payload.mediaDeleteFailed
           ? "投稿を削除しました。（画像の削除は一部失敗しました）"
           : "投稿を削除しました。",
       })
@@ -766,20 +723,20 @@ export default function MyPage() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle style={{ color: t.color.ink }}>キケン発見ゲーム</CardTitle>
-                  <CardDescription style={{ color: t.color.inkSoft }}>ゲームで危険感度を高めよう</CardDescription>
+                  <CardTitle style={{ color: t.color.ink }}>きけんハンター</CardTitle>
+                  <CardDescription style={{ color: t.color.inkSoft }}>通学路の写真で危険感度を高めよう</CardDescription>
                 </div>
                 <CardIcon icon={<Gamepad2 className="h-5 w-5" />} color="warning" />
               </div>
             </CardHeader>
             <CardContent className="pt-0">
               <p className="text-sm" style={{ color: t.color.inkSoft }}>
-                写真から危険箇所を発見するトレーニングゲーム。プレイするたびにポイントを獲得できます。
+                通学路の写真から危険を見つけるゲーム。遊ぶとポイントとミッションが進み、写真は「たんけんの きろく」に残せます。
               </p>
             </CardContent>
             <CardFooter className="justify-end pt-4">
               <Button asChild variant="outline" size="sm" className={t.cls.focus}>
-                <Link href="/hazard-game">
+                <Link href="/safety-quest/hunter">
                   ゲームをプレイ
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -853,7 +810,7 @@ export default function MyPage() {
                 <Link href="/map">MAPで報告する</Link>
               </Button>
               <Button asChild size="sm" variant="secondary" className={t.cls.focus}>
-                <Link href="/hazard-game">キケン発見ゲームで学ぶ</Link>
+                <Link href="/safety-quest/hunter">きけんハンターで学ぶ</Link>
               </Button>
               <Button asChild size="sm" variant="secondary" className={t.cls.focus}>
                 <Link href="/badges">バッジコレクションを見る</Link>
@@ -885,22 +842,6 @@ export default function MyPage() {
         onOpenChange={setIsEditDialogOpen}
         onProfileUpdated={() => {
           setProfileKey((k) => k + 1)
-          if (supabase) {
-            supabase.auth.getUser().then(({ data: { user } }: any) => {
-              if (user) {
-                supabase
-                  .from("profiles")
-                  .select("display_name")
-                  .eq("id", user.id)
-                  .maybeSingle()
-                  .then(({ data }: any) => {
-                    if (data?.display_name) {
-                      setUserName(data.display_name)
-                    }
-                  })
-              }
-            })
-          }
         }}
       />
     </div>

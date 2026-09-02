@@ -1,209 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Supabase admin モック (vi.hoisted でホイスティング対応)
-const { mockSelect, mockGte, mockLte, mockEq, mockSingle, mockUpdate, chainMock } = vi.hoisted(() => {
-  const mockSelect = vi.fn()
-  const mockGte = vi.fn()
-  const mockLte = vi.fn()
-  const mockEq = vi.fn()
-  const mockSingle = vi.fn()
-  const mockUpdate = vi.fn()
-
-  const chainMock = {
-    select: mockSelect,
-    gte: mockGte,
-    lte: mockLte,
-    eq: mockEq,
-    single: mockSingle,
-    update: mockUpdate,
-  }
-
-  // チェーンをセットアップ
-  mockSelect.mockReturnValue(chainMock)
-  mockGte.mockReturnValue(chainMock)
-  mockLte.mockReturnValue(chainMock)
-  mockEq.mockReturnValue(chainMock)
-  mockUpdate.mockReturnValue(chainMock)
-
-  return { mockSelect, mockGte, mockLte, mockEq, mockSingle, mockUpdate, chainMock }
-})
-
-vi.mock('@/lib/supabase-admin', () => ({
-  supabaseAdmin: {
-    from: vi.fn().mockReturnValue(chainMock),
-  },
+const mocks = vi.hoisted(() => ({
+  getActor: vi.fn(), listApiUsage: vi.fn(), listApiBudgets: vi.fn(), updateApiBudget: vi.fn(),
+}))
+vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.getActor }))
+vi.mock('@/lib/db/repos/ops.repo', () => ({
+  listApiUsage: mocks.listApiUsage,
+  listApiBudgets: mocks.listApiBudgets,
+  updateApiBudget: mocks.updateApiBudget,
 }))
 
-import {
-  getCostSummary,
-  getDailyBreakdown,
-  getEndpointBreakdown,
-  getBudgetSettings,
-  updateBudgetSettings,
-} from '@/lib/admin-costs-service'
+import { getBudgetSettings, getCostSummary, getDailyBreakdown, getEndpointBreakdown, updateBudgetSettings } from '@/lib/admin-costs-service'
 
-describe('admin-costs-service', () => {
+describe('admin-costs-service on D1', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // デフォルトのチェーン再設定
-    mockSelect.mockReturnValue(chainMock)
-    mockGte.mockReturnValue(chainMock)
-    mockLte.mockReturnValue(chainMock)
-    mockEq.mockReturnValue(chainMock)
-    mockUpdate.mockReturnValue(chainMock)
+    mocks.getActor.mockResolvedValue({ kind: 'user', id: 'admin', email: 'admin@example.com', isAdmin: true })
+    mocks.listApiBudgets.mockResolvedValue([
+      { apiProvider: 'gemini', monthlyBudgetUsd: 10, alertThresholdPercent: 80 },
+      { apiProvider: 'openai', monthlyBudgetUsd: 20, alertThresholdPercent: 80 },
+      { apiProvider: 'mapbox', monthlyBudgetUsd: 5, alertThresholdPercent: 80 },
+    ])
+    mocks.listApiUsage.mockResolvedValue([
+      { apiProvider: 'gemini', apiEndpoint: 'generate-image', estimatedCostUsd: 9, requestCount: 2, createdAt: '2026-02-01T01:00:00Z' },
+      { apiProvider: 'openai', apiEndpoint: 'analyze', estimatedCostUsd: 2, requestCount: 1, createdAt: '2026-02-02T01:00:00Z' },
+    ])
   })
 
-  describe('getCostSummary', () => {
-    it('月次のAPI別コストサマリーを返すこと', async () => {
-      // ログデータのモック
-      mockLte.mockResolvedValueOnce({
-        data: [
-          { api_provider: 'gemini', estimated_cost_usd: 5.0, request_count: 1 },
-          { api_provider: 'gemini', estimated_cost_usd: 3.0, request_count: 1 },
-          { api_provider: 'openai', estimated_cost_usd: 2.0, request_count: 1 },
-          { api_provider: 'mapbox', estimated_cost_usd: 0, request_count: 1 },
-        ],
-        error: null,
-      })
-
-      // 予算データのモック
-      mockSelect.mockResolvedValueOnce({
-        data: [
-          { api_provider: 'gemini', monthly_budget_usd: 50, alert_threshold_percent: 80 },
-          { api_provider: 'openai', monthly_budget_usd: 30, alert_threshold_percent: 80 },
-          { api_provider: 'mapbox', monthly_budget_usd: 20, alert_threshold_percent: 80 },
-        ],
-        error: null,
-      })
-
-      const result = await getCostSummary('2026-02')
-
-      expect(result).toBeDefined()
-      expect(result.gemini).toBeDefined()
-      expect(result.gemini.total_cost).toBeCloseTo(8.0)
-      expect(result.gemini.request_count).toBe(2)
-      expect(result.openai).toBeDefined()
-      expect(result.openai.total_cost).toBeCloseTo(2.0)
-      expect(result.mapbox).toBeDefined()
-    })
-
-    it('各プロバイダーにbudgetとalertフラグが含まれること', async () => {
-      mockLte.mockResolvedValueOnce({
-        data: [
-          { api_provider: 'gemini', estimated_cost_usd: 45.0, request_count: 1 },
-        ],
-        error: null,
-      })
-      mockSelect.mockResolvedValueOnce({
-        data: [
-          { api_provider: 'gemini', monthly_budget_usd: 50, alert_threshold_percent: 80 },
-        ],
-        error: null,
-      })
-
-      const result = await getCostSummary('2026-02')
-
-      expect(result.gemini.budget).toBe(50)
-      expect(result.gemini.alert).toBe(true) // 45/50 = 90% > 80%
-    })
-
-    it('データがない場合でもエラーにならないこと', async () => {
-      mockLte.mockResolvedValueOnce({ data: [], error: null })
-      mockSelect.mockResolvedValueOnce({ data: [], error: null })
-
-      const result = await getCostSummary('2026-02')
-
-      expect(result).toBeDefined()
-      expect(result.gemini.total_cost).toBe(0)
-      expect(result.openai.total_cost).toBe(0)
-      expect(result.mapbox.total_cost).toBe(0)
-    })
+  it('aggregates provider, daily, endpoint, and budget views', async () => {
+    const summary = await getCostSummary('2026-02')
+    expect(summary.gemini).toEqual({ total_cost: 9, request_count: 2, budget: 10, alert: true })
+    expect(await getDailyBreakdown('2026-02')).toEqual([
+      { date: '2026-02-01', gemini: 9, openai: 0, mapbox: 0 },
+      { date: '2026-02-02', gemini: 0, openai: 2, mapbox: 0 },
+    ])
+    expect(await getEndpointBreakdown('2026-02')).toEqual(expect.arrayContaining([
+      { endpoint: 'generate-image', total_cost: 9, request_count: 2, api_provider: 'gemini' },
+    ]))
+    expect(await getBudgetSettings()).toHaveLength(3)
+    expect(mocks.listApiUsage).toHaveBeenCalledWith(expect.objectContaining({ isAdmin: true }), '2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
   })
 
-  describe('getDailyBreakdown', () => {
-    it('日別のコスト内訳を返すこと', async () => {
-      mockLte.mockResolvedValueOnce({
-        data: [
-          { created_at: '2026-02-01T10:00:00Z', api_provider: 'gemini', estimated_cost_usd: 2.0, request_count: 1 },
-          { created_at: '2026-02-01T14:00:00Z', api_provider: 'gemini', estimated_cost_usd: 1.0, request_count: 1 },
-          { created_at: '2026-02-02T10:00:00Z', api_provider: 'openai', estimated_cost_usd: 3.0, request_count: 1 },
-        ],
-        error: null,
-      })
-
-      const result = await getDailyBreakdown('2026-02')
-
-      expect(Array.isArray(result)).toBe(true)
-      expect(result.length).toBeGreaterThan(0)
-      // 日付ごとにグループされていること
-      const day1 = result.find((d: { date: string }) => d.date === '2026-02-01')
-      expect(day1).toBeDefined()
-      expect(day1!.gemini).toBeCloseTo(3.0)
-    })
+  it('updates an allowed provider and rejects invalid providers', async () => {
+    mocks.updateApiBudget.mockResolvedValue({ apiProvider: 'gemini', monthlyBudgetUsd: 100, alertThresholdPercent: 70 })
+    await expect(updateBudgetSettings('gemini', { monthly_budget_usd: 100, alert_threshold_percent: 70 }))
+      .resolves.toEqual({ api_provider: 'gemini', monthly_budget_usd: 100, alert_threshold_percent: 70 })
+    await expect(updateBudgetSettings('invalid' as never, {})).rejects.toThrow('Invalid provider')
   })
 
-  describe('getEndpointBreakdown', () => {
-    it('エンドポイント別の内訳を返すこと', async () => {
-      mockLte.mockResolvedValueOnce({
-        data: [
-          { api_endpoint: 'generate-image', api_provider: 'gemini', estimated_cost_usd: 5.0, request_count: 1 },
-          { api_endpoint: 'generate-prompts', api_provider: 'gemini', estimated_cost_usd: 2.0, request_count: 1 },
-          { api_endpoint: 'directions', api_provider: 'mapbox', estimated_cost_usd: 0, request_count: 10 },
-        ],
-        error: null,
-      })
-
-      const result = await getEndpointBreakdown('2026-02')
-
-      expect(Array.isArray(result)).toBe(true)
-      const imageGen = result.find((e: { endpoint: string }) => e.endpoint === 'generate-image')
-      expect(imageGen).toBeDefined()
-      expect(imageGen!.total_cost).toBeCloseTo(5.0)
-    })
-  })
-
-  describe('getBudgetSettings', () => {
-    it('全プロバイダーの予算設定を返すこと', async () => {
-      mockSelect.mockResolvedValueOnce({
-        data: [
-          { api_provider: 'gemini', monthly_budget_usd: 50, alert_threshold_percent: 80 },
-          { api_provider: 'openai', monthly_budget_usd: 30, alert_threshold_percent: 80 },
-          { api_provider: 'mapbox', monthly_budget_usd: 20, alert_threshold_percent: 80 },
-        ],
-        error: null,
-      })
-
-      const result = await getBudgetSettings()
-
-      expect(Array.isArray(result)).toBe(true)
-      expect(result).toHaveLength(3)
-      expect(result[0].api_provider).toBeDefined()
-      expect(result[0].monthly_budget_usd).toBeDefined()
-      expect(result[0].alert_threshold_percent).toBeDefined()
-    })
-  })
-
-  describe('updateBudgetSettings', () => {
-    it('予算設定を更新できること', async () => {
-      mockSingle.mockResolvedValueOnce({
-        data: { api_provider: 'gemini', monthly_budget_usd: 100, alert_threshold_percent: 70 },
-        error: null,
-      })
-
-      const result = await updateBudgetSettings('gemini', {
-        monthly_budget_usd: 100,
-        alert_threshold_percent: 70,
-      })
-
-      expect(result).toBeDefined()
-      expect(result.monthly_budget_usd).toBe(100)
-      expect(result.alert_threshold_percent).toBe(70)
-    })
-
-    it('無効なプロバイダー名の場合はエラーを投げること', async () => {
-      await expect(
-        updateBudgetSettings('invalid' as any, { monthly_budget_usd: 100 })
-      ).rejects.toThrow()
-    })
+  it('rejects non-admin actors before reading operational data', async () => {
+    mocks.getActor.mockResolvedValue({ kind: 'user', id: 'user', email: null, isAdmin: false })
+    await expect(getCostSummary('2026-02')).rejects.toThrow('管理者権限が必要です')
+    expect(mocks.listApiUsage).not.toHaveBeenCalled()
   })
 })

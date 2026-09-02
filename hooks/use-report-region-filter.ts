@@ -108,7 +108,7 @@ export function useReportRegionFilter(
 
   // 市町村の選択肢: 選択中の県にある報告の city から動的生成(県ごとにキャッシュ)
   React.useEffect(() => {
-    if (!mounted || !client || prefecture === NATIONWIDE) {
+    if (!mounted || prefecture === NATIONWIDE) {
       setCityOptions([])
       return
     }
@@ -123,14 +123,11 @@ export function useReportRegionFilter(
     let ignore = false
     async function fetchCityOptions() {
       try {
-        const { data, error } = await client!
-          .from(table)
-          .select("city")
-          .in("status", [...statuses])
-          .eq("prefecture", prefecture)
-          .not("city", "is", null)
-          .limit(1000)
-        if (error) throw error
+        const params = new URLSearchParams({ prefecture, limit: "2000" })
+        statuses.forEach((status) => params.append("status", status))
+        const response = await fetch(`/api/reports?${params}`, { credentials: "same-origin" })
+        if (!response.ok) throw new Error(`City options request failed (${response.status})`)
+        const { reports: data = [] } = await response.json() as { reports?: Array<{ city: string | null }> }
         if (ignore) return
         const nextOptions = buildMunicipalityOptions(
           ((data ?? []) as Array<{ city: string | null }>).map((row) => row.city),
@@ -146,7 +143,7 @@ export function useReportRegionFilter(
     return () => {
       ignore = true
     }
-  }, [mounted, client, table, statuses, prefecture])
+  }, [mounted, statuses, prefecture])
 
   const regionKey = `${prefecture}|${city ?? ""}|${school?.id ?? ""}`
 

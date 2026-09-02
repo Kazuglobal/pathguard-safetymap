@@ -9,7 +9,7 @@ import {
   runHazardZoneImport,
   streamHazardFeatures,
   type GeoJsonFeature,
-  type HazardZoneImportClient,
+  type HazardZoneImportSink,
 } from "@/lib/hazard-zone-import"
 
 function polygon(minX: number, minY: number, maxX: number, maxY: number) {
@@ -125,23 +125,10 @@ describe("depthRangeToRiskLevel", () => {
 
 describe("runHazardZoneImport", () => {
   it("replaces one region in batches and upserts its coverage envelope last", async () => {
-    const deleteEq = vi.fn()
-    const deleteContains = vi.fn(async () => ({ error: null }))
-    const deleteBuilder = {
-      eq: deleteEq,
-      contains: deleteContains,
-    }
-    deleteEq.mockReturnValue(deleteBuilder)
-
-    const insert = vi.fn(async () => ({ error: null }))
-    const remove = vi.fn(() => deleteBuilder)
-    const upsert = vi.fn(async () => ({ error: null }))
-    const from = vi.fn((table: string) => {
-      if (table === "hazard_zones") return { delete: remove, insert }
-      if (table === "hazard_zone_coverage") return { upsert }
-      throw new Error(`unexpected table ${table}`)
-    })
-    const client: HazardZoneImportClient = { from }
+    const deleteExisting = vi.fn(async () => undefined)
+    const insertZones = vi.fn(async () => undefined)
+    const replaceCoverage = vi.fn(async () => undefined)
+    const client: HazardZoneImportSink = { deleteExisting, insertZones, replaceCoverage }
 
     async function* features() {
       yield feature(0)
@@ -164,30 +151,24 @@ describe("runHazardZoneImport", () => {
     })
 
     expect(result).toEqual({ importedFeatures: 3 })
-    expect(remove).toHaveBeenCalledOnce()
-    expect(deleteEq).toHaveBeenCalledWith("hazard_type", "flood")
-    expect(deleteEq).toHaveBeenCalledWith("source_layer", "A31")
-    expect(deleteContains).toHaveBeenCalledWith("properties", {
-      region_label: "青森県",
-    })
-    expect(insert).toHaveBeenCalledTimes(2)
-    expect(insert.mock.calls[0][0]).toHaveLength(2)
-    expect(insert.mock.calls[0][0][0].properties).toMatchObject({
+    expect(deleteExisting).toHaveBeenCalledWith({ hazardType: "flood", sourceLayer: "A31", regionLabel: "青森県" })
+    expect(insertZones).toHaveBeenCalledTimes(2)
+    expect(insertZones.mock.calls[0][0]).toHaveLength(2)
+    expect(insertZones.mock.calls[0][0][0].properties).toMatchObject({
       region_label: "青森県",
       source: "国土数値情報 A31-12",
     })
-    expect(upsert).toHaveBeenCalledWith(
+    expect(replaceCoverage).toHaveBeenCalledWith(
       expect.objectContaining({
         hazard_type: "flood",
         region_label: "青森県",
         source_layer: "A31",
         imported_features: 3,
-        coverage_geom: {
-          type: "MultiPolygon",
-          coordinates: [polygon(140, 40, 142.5, 42.5).coordinates],
+        geojson: {
+          type: "Polygon",
+          coordinates: polygon(140, 40, 142.5, 42.5).coordinates,
         },
       }),
-      { onConflict: "hazard_type,region_label,source_layer" },
     )
   })
 })

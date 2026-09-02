@@ -21,6 +21,11 @@ import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 export interface LocationPinPickerProps {
   onConfirm: (pin: { latitude: number; longitude: number }) => void
   initial?: { latitude: number; longitude: number }
+  /**
+   * 表示直後に現在地を取り、そこへピンを置く(「カメラで とる」= いま この場所、のとき)。
+   * 位置情報が拒否/失敗なら従来どおり地図タップ・検索に任せる(無言で待たせない)。
+   */
+  autoLocate?: boolean
 }
 
 // 日本(東京)あたりを初期表示の中心にする
@@ -97,6 +102,7 @@ async function fetchMapboxSuggestions(
 export function LocationPinPicker({
   onConfirm,
   initial,
+  autoLocate = false,
 }: LocationPinPickerProps) {
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
   const reduce = useReducedMotion()
@@ -117,6 +123,8 @@ export function LocationPinPicker({
   const [query, setQuery] = useState("")
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [locating, setLocating] = useState(false)
+  /** 現在地の自動取得でピンが置かれた(文言を変える)。 */
+  const [autoPinned, setAutoPinned] = useState(false)
   const [mapStyle, setMapStyle] = useState<MapStyleKey>("street")
 
   /** ラベルを日本語優先にする(子ども向け: 英語表記を避ける)。 */
@@ -139,6 +147,7 @@ export function LocationPinPicker({
   // 地図をタップ/クリックした地点にピンを置く
   const handleMapClick = useCallback((event: MapMouseEvent) => {
     setSuggestions([])
+    setAutoPinned(false)
     setPin({ latitude: event.lngLat.lat, longitude: event.lngLat.lng })
   }, [])
 
@@ -185,18 +194,29 @@ export function LocationPinPicker({
   )
 
   // 現在地へ移動(任意・許可が必要)
-  const handleLocate = useCallback(() => {
+  const handleLocate = useCallback((fromAuto = false) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false)
+        setAutoPinned(fromAuto)
         moveTo(pos.coords.latitude, pos.coords.longitude, 17)
       },
       () => setLocating(false),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     )
   }, [moveTo])
+
+  // カメラで撮った直後は「いま この場所」なので、最初の 1 回だけ現在地を自動で取る。
+  const autoLocatedRef = useRef(false)
+  useEffect(() => {
+    // initial(前回のピン)があっても、カメラ直撮りなら現在地を優先して上書きする。
+    // 位置情報が取れなければ initial が残る(何も起きないよりよい)。
+    if (!autoLocate || autoLocatedRef.current) return
+    autoLocatedRef.current = true
+    handleLocate(true)
+  }, [autoLocate, handleLocate])
 
   // トークンが無い場合は地図を出さずフォールバック表示(throwしない)
   if (!mapToken) {
@@ -408,9 +428,9 @@ export function LocationPinPicker({
         {/* 現在地ボタン(右下) */}
         <button
           type="button"
-          onClick={handleLocate}
+          onClick={() => handleLocate(false)}
           aria-label="いまいる ばしょへ いどう"
-          className={`absolute bottom-3 right-3 z-20 grid h-12 w-12 place-items-center rounded-full border bg-white active:translate-y-[2px] transition-transform ${tokens.cls.focus}`}
+          className={`absolute bottom-3 right-3 z-20 inline-flex h-12 items-center gap-1.5 rounded-full border bg-white px-3.5 text-[12.5px] font-black active:translate-y-[2px] transition-transform ${tokens.cls.focus}`}
           style={{
             borderColor: "rgba(67,57,43,.1)",
             boxShadow: tokens.shadow.card,
@@ -418,9 +438,10 @@ export function LocationPinPicker({
           }}
         >
           <LocateFixed
-            className={`h-6 w-6 ${locating ? "animate-pulse" : ""}`}
+            className={`h-5 w-5 ${locating ? "animate-pulse" : ""}`}
             aria-hidden="true"
           />
+          {locating ? "さがし中…" : "いまの ばしょ"}
         </button>
 
         {/* 下部の小さなヒント(候補表示中は隠す) */}
@@ -448,8 +469,12 @@ export function LocationPinPicker({
             aria-live="polite"
           >
             {pin
-              ? "ピンを おいたよ！ この ばしょで いい？"
-              : "けんさく か ちずタップで ばしょを えらんでね"}
+              ? autoPinned
+                ? "いまの ばしょに ピンを おいたよ！ ここで いい？"
+                : "ピンを おいたよ！ この ばしょで いい？"
+              : locating
+                ? "いまの ばしょを さがしているよ…"
+                : "けんさく か ちずタップで ばしょを えらんでね"}
           </p>
         </div>
         <PrimaryCTA onClick={handleConfirm} disabled={!pin} variant="green">

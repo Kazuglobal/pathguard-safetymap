@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase-server"
+import { getActor } from "@/lib/auth/actor"
+import { getLeaderboard } from "@/lib/db/repos/gamification.repo"
 import Link from "next/link"
 import { Camera, Flag, MapPin, MessageCircleQuestion } from "lucide-react"
 import { Mascot } from "@/components/safety-quest/hunter/theme"
@@ -10,37 +11,21 @@ export const metadata = {
 }
 
 export default async function LeaderboardPage() {
-  const supabase = await createServerClient()
-
-  // セッション確認（未ログインならログインへ）
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session) {
-    redirect("/login")
-  }
-
-  // user_points + profiles を結合して上位50名を取得
-  const { data: rows } = await supabase
-    .from("user_points")
-    .select("user_id, points, level, profiles(display_name)")
-    .order("points", { ascending: false })
-    .limit(50)
-
-  const rankRows = rows ?? []
+  const actor = await getActor()
+  if (actor.kind !== "user") redirect("/login")
+  const result = await getLeaderboard(actor, actor.id)
+  const rankRows = result.top.map((row) => ({
+    user_id: row.userId, points: row.points, level: row.level,
+    profiles: { display_name: row.displayName },
+  }))
   const t = tankenTokens
 
   // 自分のポイントを取得してランクインしていない場合に自身の順位を追加表示
-  const myIndex = rankRows.findIndex((r) => r.user_id === session.user.id)
-  let myRow
-  if (myIndex === -1) {
-    const { data } = await supabase
-      .from("user_points")
-      .select("user_id, points, level, profiles(display_name)")
-      .eq("user_id", session.user.id)
-      .single()
-    myRow = data ?? null
-  }
+  const myIndex = rankRows.findIndex((r) => r.user_id === actor.id)
+  const myRow = result.mine ? {
+    user_id: result.mine.userId, points: result.mine.points, level: result.mine.level,
+    profiles: { display_name: result.mine.displayName },
+  } : null
 
   return (
     <div className="min-h-screen py-8" style={{ backgroundColor: t.color.paper, backgroundImage: PAPER_NOISE, color: t.color.ink }}>
@@ -83,7 +68,7 @@ export default async function LeaderboardPage() {
                   <tr
                     key={row.user_id}
                     className={
-                      row.user_id === session.user.id ? "bg-yellow-50 font-semibold" : "hover:bg-gray-50"
+                      row.user_id === actor.id ? "bg-yellow-50 font-semibold" : "hover:bg-gray-50"
                     }
                   >
                     <td className="py-2 px-4">{idx + 1}</td>

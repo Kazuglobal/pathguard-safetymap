@@ -61,6 +61,14 @@ export const FURIGANA_DICT: Readonly<Record<string, string>> = {
   入口: "いりぐち",
   家: "いえ",
   顔: "かお",
+  // ミッション/きろく画面の語(hunter-game / daily-mission / result-card で使用)
+  学校: "がっこう",
+  記録: "きろく",
+  役目: "やくめ",
+  声: "こえ",
+  動: "うご",
+  回: "かい",
+  豆知識: "まめちしき",
   // 動作・状態
   安全: "あんぜん",
   危険: "きけん",

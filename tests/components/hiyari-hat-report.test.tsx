@@ -1,47 +1,38 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { HiyariHatReport } from "@/components/landing/HiyariHatReport"
 import type { DangerReport } from "@/lib/types"
 
-// Supabase クエリは self-returning のビルダーでモックし、
-// 報告取得(projection に danger_level を含む)と市町村選択肢取得
-// (projection が "city")を projection で区別する。
+// D1 Route Handler の一覧取得と市町村選択肢取得を limit で区別する。
 const mocks = vi.hoisted(() => {
   const state = {
-    builders: [] as any[],
+    requests: [] as string[],
     reportsResult: { data: [] as unknown[], error: null as unknown },
-    cityResult: { data: [] as unknown[], error: null as unknown },
+    cityResult: { data: [] as unknown[], error: null as unknown } as any,
   }
 
-  const from = vi.fn(() => {
-    const q: any = { projection: null }
-    q.select = vi.fn((columns: string) => {
-      q.projection = columns
-      return q
-    })
-    for (const method of ["in", "eq", "not", "gte", "lte", "abortSignal", "order"]) {
-      q[method] = vi.fn(() => q)
-    }
-    q.limit = vi.fn(() =>
-      Promise.resolve(q.projection === "city" ? state.cityResult : state.reportsResult),
+  const fetchApi = vi.fn(async (input: string | URL | Request) => {
+    const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+    state.requests.push(rawUrl)
+    const url = new URL(rawUrl, "https://app.example")
+    const result = await Promise.resolve(
+      url.searchParams.get("limit") === "2000" ? state.cityResult : state.reportsResult,
     )
-    state.builders.push(q)
-    return q
+    return {
+      ok: !result.error,
+      status: result.error ? 500 : 200,
+      json: async () => ({ reports: result.data }),
+    }
   })
 
   return {
     state,
-    from,
-    createBrowserClient: vi.fn(() => ({ from })),
+    fetchApi,
     useLandingReportReactions: vi.fn(),
     toggleLandingReaction: vi.fn(),
     searchSchools: vi.fn(),
   }
 })
-
-vi.mock("@supabase/ssr", () => ({
-  createBrowserClient: mocks.createBrowserClient,
-}))
 
 vi.mock("@/hooks/use-landing-report-reactions", () => ({
   useLandingReportReactions: mocks.useLandingReportReactions,
@@ -85,9 +76,10 @@ vi.mock("@/components/danger-report/danger-report-detail-modal", () => ({
     ) : null,
 }))
 
-const reportBuilders = () =>
-  mocks.state.builders.filter((q) => q.projection && q.projection !== "city")
-const lastReportBuilder = () => reportBuilders()[reportBuilders().length - 1]
+const reportRequests = () => mocks.state.requests
+  .map((request) => new URL(request, "https://app.example"))
+  .filter((url) => url.searchParams.get("limit") !== "2000")
+const lastReportRequest = () => reportRequests()[reportRequests().length - 1]
 
 const zeroCoordReport = {
   id: "report-1",
@@ -146,8 +138,9 @@ const clickableReport = {
 describe("HiyariHatReport", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal("fetch", mocks.fetchApi)
     window.localStorage.clear()
-    mocks.state.builders.length = 0
+    mocks.state.requests.length = 0
     mocks.state.reportsResult = { data: [zeroCoordReport], error: null }
     mocks.state.cityResult = { data: [], error: null }
 
@@ -158,6 +151,8 @@ describe("HiyariHatReport", () => {
     })
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it("renders coordinates even when latitude and longitude are zero", async () => {
     render(<HiyariHatReport />)
 
@@ -166,18 +161,17 @@ describe("HiyariHatReport", () => {
     })
   })
 
-  it("danger_reports クエリはワイルドカードではなく必要カラムのみ取得する", async () => {
+  it("公開ステータスと表示上限を D1 API に渡す", async () => {
     render(<HiyariHatReport />)
 
     await waitFor(() => {
-      expect(reportBuilders().length).toBeGreaterThan(0)
+      expect(reportRequests().length).toBeGreaterThan(0)
     })
 
-    const projection = lastReportBuilder().projection as string
-    expect(projection).not.toContain("*")
-    expect(projection).toContain("id")
-    expect(projection).toContain("title")
-    expect(projection).toContain("danger_level")
+    const request = lastReportRequest()
+    expect(request.pathname).toBe("/api/reports")
+    expect(request.searchParams.get("limit")).toBe("5")
+    expect(request.searchParams.getAll("status")).toEqual(["approved", "published", "resolved"])
   })
 
   it("永続化された helpful リアクションを active 状態で描画する", async () => {
@@ -269,14 +263,10 @@ describe("HiyariHatReport", () => {
       render(<HiyariHatReport />)
 
       await waitFor(() => {
-        expect(reportBuilders().length).toBeGreaterThan(0)
+        expect(reportRequests().length).toBeGreaterThan(0)
       })
 
-      const query = lastReportBuilder()
-      await waitFor(() => {
-        expect(query.limit).toHaveBeenCalled()
-      })
-      expect(query.eq).not.toHaveBeenCalled()
+      expect(lastReportRequest().searchParams.has("prefecture")).toBe(false)
     })
 
     it("都道府県チップを選ぶと prefecture で絞り込み、localStorage に保存する", async () => {
@@ -286,7 +276,7 @@ describe("HiyariHatReport", () => {
       fireEvent.click(chip)
 
       await waitFor(() => {
-        expect(lastReportBuilder().eq).toHaveBeenCalledWith("prefecture", "東京都")
+        expect(lastReportRequest().searchParams.get("prefecture")).toBe("東京都")
       })
       expect(window.localStorage.getItem("pathguardian:selected_prefecture")).toBe("東京都")
     })
@@ -298,7 +288,7 @@ describe("HiyariHatReport", () => {
       fireEvent.change(select, { target: { value: "鳥取県" } })
 
       await waitFor(() => {
-        expect(lastReportBuilder().eq).toHaveBeenCalledWith("prefecture", "鳥取県")
+        expect(lastReportRequest().searchParams.get("prefecture")).toBe("鳥取県")
       })
       expect(window.localStorage.getItem("pathguardian:selected_prefecture")).toBe("鳥取県")
     })
@@ -309,7 +299,7 @@ describe("HiyariHatReport", () => {
       render(<HiyariHatReport />)
 
       await waitFor(() => {
-        expect(lastReportBuilder()?.eq).toHaveBeenCalledWith("prefecture", "大阪府")
+        expect(lastReportRequest()?.searchParams.get("prefecture")).toBe("大阪府")
       })
     })
 
@@ -331,15 +321,13 @@ describe("HiyariHatReport", () => {
 
       fireEvent.click(await screen.findByRole("button", { name: "東京都" }))
       await waitFor(() => {
-        expect(lastReportBuilder().eq).toHaveBeenCalledWith("prefecture", "東京都")
+        expect(lastReportRequest().searchParams.get("prefecture")).toBe("東京都")
       })
 
       fireEvent.click(await screen.findByRole("button", { name: "全国" }))
 
       await waitFor(() => {
-        const query = lastReportBuilder()
-        expect(query.limit).toHaveBeenCalled()
-        expect(query.eq).not.toHaveBeenCalled()
+        expect(lastReportRequest().searchParams.has("prefecture")).toBe(false)
       })
     })
   })
@@ -358,9 +346,9 @@ describe("HiyariHatReport", () => {
       fireEvent.change(citySelect, { target: { value: "港区" } })
 
       await waitFor(() => {
-        const query = lastReportBuilder()
-        expect(query.eq).toHaveBeenCalledWith("prefecture", "東京都")
-        expect(query.eq).toHaveBeenCalledWith("city", "港区")
+        const request = lastReportRequest()
+        expect(request.searchParams.get("prefecture")).toBe("東京都")
+        expect(request.searchParams.get("city")).toBe("港区")
       })
     })
 
@@ -442,12 +430,12 @@ describe("HiyariHatReport", () => {
       })
       expect(screen.getByText("圏内の報告")).toBeInTheDocument()
 
-      const query = lastReportBuilder()
-      expect(query.gte).toHaveBeenCalledWith("latitude", expect.any(Number))
-      expect(query.lte).toHaveBeenCalledWith("latitude", expect.any(Number))
-      expect(query.gte).toHaveBeenCalledWith("longitude", expect.any(Number))
-      expect(query.lte).toHaveBeenCalledWith("longitude", expect.any(Number))
-      expect(query.eq).not.toHaveBeenCalled()
+      const request = lastReportRequest()
+      expect(Number(request.searchParams.get("minLat"))).toBeTypeOf("number")
+      expect(Number(request.searchParams.get("maxLat"))).toBeTypeOf("number")
+      expect(Number(request.searchParams.get("minLng"))).toBeTypeOf("number")
+      expect(Number(request.searchParams.get("maxLng"))).toBeTypeOf("number")
+      expect(request.searchParams.has("prefecture")).toBe(false)
     })
   })
 })

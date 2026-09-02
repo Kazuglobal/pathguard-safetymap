@@ -1,0 +1,15 @@
+diff --git a/dist/cli/build/bundle-server.js b/dist/cli/build/bundle-server.js
+--- a/dist/cli/build/bundle-server.js
++++ b/dist/cli/build/bundle-server.js
+@@ -120,7 +120,11 @@ export async function bundleServer(buildOpts, projectOpts) {
+             // See https://github.com/vercel/next.js/blob/6eb235c/packages/next/src/server/optimize-amp.ts
+             "next/dist/compiled/@ampproject/toolbox-optimizer": path.join(buildOpts.outputDir, "cloudflare-templates/shims/throw.js"),
+             // The edge runtime is not supported
+             "next/dist/compiled/edge-runtime": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
++            // Next still traces sharp when images.unoptimized is enabled. The
++            // native addon cannot run in workerd and is unreachable here.
++            // Alias it to the adapter's existing fail-closed optional shim.
++            "sharp": path.join(buildOpts.outputDir, "cloudflare-templates/shims/throw.js"),
+             // `@next/env` is used by Next to load environment variables from files.
+             // OpenNext inlines the values at build time so this is not needed.
+             "@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),

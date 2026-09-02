@@ -1,0 +1,70 @@
+import { sql } from 'drizzle-orm'
+import {
+  check,
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
+
+import { createdAt, updatedAt } from './common'
+
+export const userRoutes = sqliteTable('user_routes', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  childId: text('child_id'),
+  childName: text('child_name'),
+  name: text('name').notNull(),
+  description: text('description'),
+  startAddress: text('start_address').notNull(),
+  startLat: real('start_lat').notNull(),
+  startLng: real('start_lng').notNull(),
+  endAddress: text('end_address').notNull(),
+  endLat: real('end_lat').notNull(),
+  endLng: real('end_lng').notNull(),
+  distanceMeters: real('distance_meters'),
+  estimatedTimeMinutes: integer('estimated_time_minutes'),
+  routeGeometry: text('route_geometry', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+  isFavorite: integer('is_favorite', { mode: 'boolean' }).notNull().default(false),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (table) => [
+  index('idx_user_routes_user').on(table.userId),
+  index('idx_user_routes_user_favorite').on(table.userId, table.isFavorite),
+  check('route_start_lat', sql`${table.startLat} between -90 and 90`),
+  check('route_start_lng', sql`${table.startLng} between -180 and 180`),
+  check('route_end_lat', sql`${table.endLat} between -90 and 90`),
+  check('route_end_lng', sql`${table.endLng} between -180 and 180`),
+  check('route_geometry_json', sql`${table.routeGeometry} is null or json_valid(${table.routeGeometry})`),
+])
+
+export const routeLearningSessions = sqliteTable('route_learning_sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  routeId: text('route_id').notNull().references(() => userRoutes.id, { onDelete: 'cascade' }),
+  sessionId: text('session_id').notNull(),
+  childId: text('child_id'),
+  childName: text('child_name'),
+  schemaVersion: integer('schema_version').notNull().default(1),
+  startedAt: text('started_at').notNull(),
+  completedAt: text('completed_at'),
+  reviewedCount: integer('reviewed_count').notNull().default(0),
+  savedCount: integer('saved_count').notNull().default(0),
+  quizScore: integer('quiz_score').notNull().default(0),
+  quizTotal: integer('quiz_total').notNull().default(0),
+  checklist: text('checklist', { mode: 'json' }).$type<unknown[]>().notNull().default(sql`'[]'`),
+  stopResults: text('stop_results', { mode: 'json' }).$type<unknown[]>().notNull().default(sql`'[]'`),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (table) => [
+  uniqueIndex('uq_route_learning_user_route_session').on(table.userId, table.routeId, table.sessionId),
+  index('idx_route_learning_user_route_started').on(table.userId, table.routeId, table.startedAt),
+  index('idx_route_learning_route').on(table.routeId),
+  check('route_learning_session_id', sql`length(${table.sessionId}) between 1 and 64`),
+  check('route_learning_counts', sql`${table.reviewedCount} >= 0 and ${table.savedCount} >= 0`),
+  check('route_learning_quiz', sql`${table.quizTotal} between 0 and 3 and ${table.quizScore} between 0 and ${table.quizTotal}`),
+  check('route_learning_checklist_json', sql`json_valid(${table.checklist}) and json_type(${table.checklist}) = 'array'`),
+  check('route_learning_results_json', sql`json_valid(${table.stopResults}) and json_type(${table.stopResults}) = 'array'`),
+])

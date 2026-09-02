@@ -9,15 +9,15 @@ import {
 import { createServerClient } from "@/lib/supabase-server"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { readFileWithSentryContext } from "@/lib/sentry-upload-context"
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import {
   getHazardGateMode,
   parseHazardPoint,
-  queryAndLogHazardGate,
-  type HazardGateClient,
+  queryAndLogHazardGateD1,
   type HazardGateVerdict,
   type HazardPoint,
 } from "@/lib/hazard-zone-gate"
+import { actorFromUser } from '@/lib/auth/actor'
+import { getServiceActor } from '@/lib/auth/service-actor'
 import {
   checkApiRateLimit,
   rateLimitedResponse,
@@ -164,8 +164,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (gateMode !== "off") {
-      const admin = getSupabaseAdmin()
-      floodVerdict = await queryAndLogHazardGate(admin as unknown as HazardGateClient, {
+      floodVerdict = await queryAndLogHazardGateD1(actorFromUser(user), getServiceActor(), {
         route: "generate-prompts",
         mode: gateMode,
         situation: "flood",
@@ -179,11 +178,7 @@ export async function POST(req: NextRequest) {
     let accidentContext: string | undefined
     if (point && isAccidentImageContextEnabled()) {
       try {
-        const stats = await fetchNearbyAccidentStats(
-          supabase,
-          point,
-          ACCIDENT_IMAGE_CONTEXT_PARAMS,
-        )
+        const stats = await fetchNearbyAccidentStats(point, ACCIDENT_IMAGE_CONTEXT_PARAMS)
         accidentContext = buildAccidentPromptContext(stats) ?? undefined
       } catch (error) {
         console.error("[generate-prompts] Accident enrichment failed", error)

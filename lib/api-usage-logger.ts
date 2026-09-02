@@ -5,7 +5,10 @@
  * Automatically calculates estimated cost based on provider/model pricing.
  */
 
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
+
+import { getServiceActor } from '@/lib/auth/service-actor'
+import { insertApiUsage } from '@/lib/db/repos/ops.repo'
 import { calculateCost, calculateMapboxCost } from '@/lib/api-cost-calculator'
 
 // ---------------------------------------------------------------------------
@@ -60,25 +63,22 @@ function autoCalculateCost(entry: ApiUsageEntry): number {
  * and will NOT throw if the insert fails.
  */
 export function logApiUsage(entry: ApiUsageEntry): void {
-  const record = {
-    ...entry,
+  const task = insertApiUsage(getServiceActor(), {
+    apiProvider: entry.api_provider,
+    apiEndpoint: entry.api_endpoint,
+    modelName: entry.model_name,
+    inputTokens: entry.input_tokens,
+    outputTokens: entry.output_tokens,
+    requestCount: entry.request_count ?? 1,
+    estimatedCostUsd: autoCalculateCost(entry),
     success: entry.success ?? true,
-    request_count: entry.request_count ?? 1,
-    estimated_cost_usd: autoCalculateCost(entry),
+    errorMessage: entry.error_message,
+  }).catch((error: unknown) => {
+    console.error('[api-usage-logger] Insert failed:', error instanceof Error ? error.message : 'unknown')
+  })
+  try {
+    getCloudflareContext().ctx.waitUntil(task)
+  } catch {
+    void task
   }
-
-  // Fire-and-forget: intentionally not awaited
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabaseAdmin as any
-  void db
-    .from('api_usage_logs')
-    .insert(record)
-    .then((result: { error?: { message: string } | null }) => {
-      if (result?.error) {
-        console.error('[api-usage-logger] Insert failed:', result.error.message)
-      }
-    })
-    .catch((error: unknown) => {
-      console.error('[api-usage-logger] Unexpected error:', error)
-    })
 }

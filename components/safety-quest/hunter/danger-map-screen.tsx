@@ -6,9 +6,10 @@ import Map, { Marker } from "react-map-gl/mapbox"
 import type { MapRef } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { motion, useReducedMotion } from "framer-motion"
-import { ArrowLeft, ImageOff, MapPin, RefreshCw, Sparkles, Trash2 } from "lucide-react"
+import { ArrowLeft, Hourglass, ImageOff, MapPin, RefreshCw, RotateCcw, Sparkles, Trash2 } from "lucide-react"
 
 import { splitFurigana } from "@/lib/hunter/furigana"
+import type { HunterPhotoPlays } from "@/lib/hunter/rewards"
 import { localizeMapLabels } from "@/lib/hunter/map-labels"
 import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 import { RubyText } from "./ruby-text"
@@ -37,6 +38,8 @@ interface HunterPhoto {
   dangers?: string[]
   /** 最大 severity(ピンの色分け)。 */
   topSeverity?: string | null
+  /** この写真で遊んだ回数と いちばん多く みつけた数(attempts 由来)。取得できなかったときは null(未プレイと区別しない)。 */
+  plays?: HunterPhotoPlays | null
 }
 
 /** severity → ピン/チップの色。 */
@@ -53,9 +56,12 @@ const DEFAULT_CENTER = { latitude: 35.68, longitude: 139.76 }
 export function DangerMapScreen({
   onBack,
   onPlayNew,
+  onReplay,
 }: {
   onBack: () => void
   onPlayNew: () => void
+  /** 保存した写真で もういちど さがす(再解析なし)。false なら開けなかった。 */
+  onReplay?: (photoId: string) => Promise<boolean>
 }) {
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
   const mapRef = useRef<MapRef | null>(null)
@@ -67,6 +73,7 @@ export function DangerMapScreen({
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [replayingId, setReplayingId] = useState<string | null>(null)
 
   /** ラベルを日本語優先にする(子ども向け: 英語表記を避ける)。 */
   const localizeLabels = useCallback(() => {
@@ -163,6 +170,20 @@ export function DangerMapScreen({
       setDeletingId(null)
     }
   }, [])
+
+  const handleReplay = useCallback(async (id: string) => {
+    if (!onReplay) return
+    setErrorMsg(null)
+    setReplayingId(id)
+    try {
+      const opened = await onReplay(id)
+      if (!opened) setErrorMsg("この きろくは いま ひらけなかったよ。もう一度ためしてね。")
+    } catch {
+      setErrorMsg("つうしんエラーが おきました。もう一度ためしてね。")
+    } finally {
+      setReplayingId(null)
+    }
+  }, [onReplay])
 
   // ----- 画面の中身 -----
 
@@ -294,6 +315,8 @@ export function DangerMapScreen({
               confirming={photo.id === confirmId}
               deleting={photo.id === deletingId}
               onFocus={() => handleFocus(photo)}
+              replaying={photo.id === replayingId}
+              onReplay={onReplay ? () => void handleReplay(photo.id) : undefined}
               onAskDelete={() => setConfirmId(photo.id)}
               onCancelDelete={() => setConfirmId(null)}
               onConfirmDelete={() => void handleDelete(photo.id)}
@@ -343,6 +366,8 @@ function PhotoRow({
   confirming,
   deleting,
   onFocus,
+  replaying,
+  onReplay,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -352,6 +377,8 @@ function PhotoRow({
   confirming: boolean
   deleting: boolean
   onFocus: () => void
+  replaying?: boolean
+  onReplay?: () => void
   onAskDelete: () => void
   onCancelDelete: () => void
   onConfirmDelete: () => void
@@ -359,6 +386,7 @@ function PhotoRow({
   const reduce = useReducedMotion()
   const dateText = formatDate(photo.capturedAt ?? photo.createdAt)
   const hasPin = typeof photo.pinLat === "number" && typeof photo.pinLng === "number"
+  const remainingDays = daysLeft(photo.retentionUntil)
 
   return (
     <li>
@@ -420,6 +448,37 @@ function PhotoRow({
               ))}
             </span>
           ) : null}
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] font-bold" style={{ color: C.inkSoft }}>
+            {/* plays が無い(未プレイ/取得失敗)ときは何も断定しない */}
+            {photo.plays ? (
+              <span>
+                {photo.plays.bestFound !== null && photo.plays.bestTotal !== null
+                  ? `みつけた ${photo.plays.bestFound}/${photo.plays.bestTotal}・${photo.plays.count}かい あそんだ`
+                  : `${photo.plays.count}かい あそんだ`}
+              </span>
+            ) : null}
+            {remainingDays !== null ? (
+              <span
+                className="inline-flex items-center gap-0.5"
+                style={{ color: remainingDays <= 7 ? C.accentStrong : C.inkSoft }}
+              >
+                <Hourglass className="h-3 w-3" aria-hidden="true" />
+                {remainingDays === 0 ? "きょう きえるよ" : `のこり ${remainingDays}にち`}
+              </span>
+            ) : null}
+          </span>
+          {onReplay ? (
+            <button
+              type="button"
+              onClick={onReplay}
+              disabled={replaying}
+              className={`mt-0.5 inline-flex min-h-[36px] w-fit touch-manipulation items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-black text-white disabled:opacity-60 ${tokens.cls.focus}`}
+              style={{ background: C.primary, boxShadow: tokens.shadow.soft }}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              {replaying ? "ひらいているよ…" : "もういちど さがす"}
+            </button>
+          ) : null}
         </div>
 
         {confirming ? (
@@ -457,6 +516,14 @@ function PhotoRow({
       </motion.div>
     </li>
   )
+}
+
+/** 保持期限までの残り日数(切り上げ)。期限なし/不正は null。 */
+function daysLeft(iso: string | null, now = Date.now()): number | null {
+  if (!iso) return null
+  const time = new Date(iso).getTime()
+  if (Number.isNaN(time)) return null
+  return Math.max(0, Math.ceil((time - now) / 86_400_000))
 }
 
 function formatDate(iso: string | null) {

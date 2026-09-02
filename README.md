@@ -1,14 +1,10 @@
-# なし
+# PathGuardian
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/globalbunny77-gmailcoms-projects/v0--koujw6zjtpn)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/kOUJW6zJTPN)
+通学路の危険箇所共有、ルート学習、防災ハザード判定を行う Next.js アプリです。本番基盤は Cloudflare Workers（OpenNext）+ D1 + R2、認証のみ Supabase Auth を利用します。
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+データ移行と本番切替は [Cloudflare 本番切替 Runbook](./docs/runbooks/cloudflare-production-cutover.md) を参照してください。
 
 ### 🛣️ 通学路管理（Routes）
 
@@ -51,27 +47,17 @@ npm run dev
 
 ## Deployment
 
-Your project is live at:
-
-**[https://vercel.com/globalbunny77-gmailcoms-projects/v0--koujw6zjtpn](https://vercel.com/globalbunny77-gmailcoms-projects/v0--koujw6zjtpn)**
+```bash
+pnpm check:supabase-auth-only
+pnpm typecheck
+pnpm build:cloudflare
+pnpm deploy:cloudflare
+```
 
 ### 不審者アラートの本番反映メモ
 
-- サーバ審査 API `/api/suspicious-alert/moderate` は `NEXT_PUBLIC_SUPABASE_URL` と `SUPABASE_SERVICE_ROLE_KEY` が必須です。
-- このリポジトリは Supabase migration を手動適用する運用です。本番DBには `supabase/migrations/20260628010000_allow_suspicious_danger_type.sql` を適用し、`danger_reports.danger_type` の CHECK 制約で `suspicious` を許可してください。
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/kOUJW6zJTPN](https://v0.dev/chat/projects/kOUJW6zJTPN)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+- サーバ審査 API `/api/suspicious-alert/moderate` は Supabase Auth の設定と D1 バインディングが必要です。
+- DB スキーマ更新は `pnpm db:migrate:remote` で D1 に適用します。`supabase/migrations/` は移行元の履歴資料であり、本番ランタイムには適用しません。
 
 ## xROAD API連携について
 

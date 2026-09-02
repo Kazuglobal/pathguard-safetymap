@@ -237,6 +237,33 @@ describe("sanitizeDangerPoints — 的外れ正解の構造排除", () => {
     expect(materials[0]).toEqual(KID_QUIZ_FALLBACK_BY_KIND.crossing_no_signal)
   })
 
+  it("drops duplicate choices (correct answer wins) and falls back when fewer than two remain", () => {
+    const { materials } = sanitizeDangerPoints(
+      [
+        point({
+          kind: "narrow_sidewalk",
+          quiz: {
+            question: "せまい 歩道では どこを あるく？",
+            choices: ["道の はし", "道の　はし ", "車道の まんなか", "車道の まんなか"],
+            explanation: "車から はなれよう。",
+          },
+        }),
+        point({
+          kind: "crossing_no_signal",
+          region: { x: 0.5, y: 0.5, w: 0.18, h: 0.18 },
+          quiz: {
+            question: "どうする？",
+            choices: ["止まる", "止まる", " 止まる"],
+            explanation: "x",
+          },
+        }),
+      ],
+      opt,
+    )
+    expect(materials[0].choices).toEqual(["道の はし", "車道の まんなか"])
+    expect(materials[1]).toEqual(KID_QUIZ_FALLBACK_BY_KIND.crossing_no_signal)
+  })
+
   it("passes through a clean AI-provided quiz unchanged (trimmed)", () => {
     const { materials } = sanitizeDangerPoints(
       [

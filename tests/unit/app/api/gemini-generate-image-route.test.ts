@@ -19,8 +19,6 @@ const mocks = vi.hoisted(() => {
   const mockFetchNearbyAccidentStats = vi.fn()
   const mockBuildAccidentPromptContext = vi.fn()
   const mockGetPromptById = vi.fn()
-  const mockAdmin = { from: vi.fn(), rpc: vi.fn() }
-
   return {
     mockGetUser,
     mockGenerateImage,
@@ -40,7 +38,6 @@ const mocks = vi.hoisted(() => {
     mockFetchNearbyAccidentStats,
     mockBuildAccidentPromptContext,
     mockGetPromptById,
-    mockAdmin,
   }
 })
 
@@ -92,11 +89,7 @@ vi.mock("@/lib/hazard-zone-gate", () => ({
       ? { longitude: parsedLongitude, latitude: parsedLatitude }
       : null
   },
-  queryAndLogHazardGate: mocks.mockQueryAndLogHazardGate,
-}))
-
-vi.mock("@/lib/supabase-admin", () => ({
-  getSupabaseAdmin: () => mocks.mockAdmin,
+  queryAndLogHazardGateD1: mocks.mockQueryAndLogHazardGate,
 }))
 
 vi.mock("@/lib/traffic-accident/server", () => ({
@@ -322,7 +315,8 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(200)
     expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
+      expect.objectContaining({ kind: "user", id: "user-1" }),
+      expect.objectContaining({ kind: "service" }),
       expect.objectContaining({
         route: "generate-image",
         mode: "log",
@@ -350,7 +344,8 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(200)
     expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
+      expect.objectContaining({ kind: "user", id: "user-1" }),
+      expect.objectContaining({ kind: "service" }),
       expect.objectContaining({ point: null, mode: "log" }),
     )
   })
@@ -521,7 +516,8 @@ describe("app/api/gemini/generate-image route", () => {
     expect(res.status).toBe(422)
     expect(await res.json()).toEqual({ error: "gate:outside", reason: "outside" })
     expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
+      expect.objectContaining({ kind: "user", id: "user-1" }),
+      expect.objectContaining({ kind: "service" }),
       expect.objectContaining({ situation: "custom", hazardType: "flood" }),
     )
     expect(mocks.mockGenerateImage).not.toHaveBeenCalled()
@@ -679,7 +675,6 @@ describe("app/api/gemini/generate-image route", () => {
 
     expect(res.status).toBe(200)
     expect(mocks.mockFetchNearbyAccidentStats).toHaveBeenCalledWith(
-      expect.anything(),
       { longitude: 140.74, latitude: 40.82 },
       { radiusMeters: 300, years: 5 },
     )

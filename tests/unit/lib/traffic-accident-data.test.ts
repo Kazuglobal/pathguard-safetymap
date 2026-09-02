@@ -14,6 +14,7 @@ const mocked = vi.hoisted(() => {
 
   const mockAdjustYears = vi.fn((years: number) => years);
   const mockNormalizeSummaryYearText = vi.fn((text: string) => text);
+  const mockFetch = vi.fn();
 
   return {
     mockRpc,
@@ -25,6 +26,7 @@ const mocked = vi.hoisted(() => {
     mockFrom,
     mockAdjustYears,
     mockNormalizeSummaryYearText,
+    mockFetch,
   };
 });
 
@@ -96,11 +98,15 @@ function makeStats(overrides?: Record<string, unknown>) {
 describe("getAccidentStatsRPC", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mocked.mockFetch);
   });
 
   it("RPCを呼び出して事故統計を返す", async () => {
     const stats = makeStats();
-    mocked.mockRpc.mockResolvedValueOnce({ data: stats, error: null });
+    mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify(stats), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
 
     const result = await getAccidentStatsRPC({
       latitude: 35.6585,
@@ -109,12 +115,12 @@ describe("getAccidentStatsRPC", () => {
       years: 3,
     });
 
-    expect(mocked.mockRpc).toHaveBeenCalledWith("get_nearby_accident_stats", {
-      p_latitude: 35.6585,
-      p_longitude: 139.7006,
-      p_radius_meters: 500,
-      p_years: 3,
-    });
+    const [url] = mocked.mockFetch.mock.calls[0] as [string];
+    expect(url).toContain('/api/traffic-accidents/nearby?');
+    expect(url).toContain('latitude=35.6585');
+    expect(url).toContain('longitude=139.7006');
+    expect(url).toContain('radiusMeters=500');
+    expect(url).toContain('years=3');
     expect(result.search_params.years).toBe(3);
     expect(mocked.mockNormalizeSummaryYearText).toHaveBeenCalledWith(
       "直近5年で事故1件",
@@ -123,10 +129,10 @@ describe("getAccidentStatsRPC", () => {
   });
 
   it("RPCエラー時は例外を投げる", async () => {
-    mocked.mockRpc.mockResolvedValueOnce({
-      data: null,
-      error: { message: "timeout" },
-    });
+    mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'timeout' }), {
+      status: 504,
+      headers: { 'Content-Type': 'application/json' },
+    }));
 
     await expect(
       getAccidentStatsRPC({
@@ -156,48 +162,34 @@ describe("getAccidentRiskLevel", () => {
 describe("enrichReportWithAccidents", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mocked.mockFetch);
     mocked.mockUpdateEq.mockResolvedValue({});
   });
 
   it("有効な座標のレポートを事故統計で更新し統計を返す", async () => {
     const stats = makeStats({ risk_score: 85 });
-    mocked.mockSingle.mockResolvedValueOnce({
-      data: { latitude: 35.6585, longitude: 139.7006 },
-      error: null,
-    });
-    mocked.mockRpc.mockResolvedValueOnce({ data: stats, error: null });
+    mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ stats }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
 
     const result = await enrichReportWithAccidents("report-123");
 
     expect(result).toEqual(stats);
-    expect(mocked.mockUpdate).toHaveBeenCalledWith({
-      accident_stats: stats,
-      accident_risk_score: 85,
-    });
-    expect(mocked.mockUpdateEq).toHaveBeenCalledWith("id", "report-123");
+    expect(mocked.mockFetch).toHaveBeenCalledWith('/api/reports/report-123/accident-stats', expect.objectContaining({ method: 'POST' }));
   });
 
   it("レポートが見つからない場合は null を返す", async () => {
-    mocked.mockSingle.mockResolvedValueOnce({
-      data: null,
-      error: { message: "not found" },
-    });
+    mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'not found' }), { status: 404 }));
 
     const result = await enrichReportWithAccidents("missing-report");
 
     expect(result).toBeNull();
-    expect(mocked.mockRpc).not.toHaveBeenCalled();
+    expect(mocked.mockFetch).toHaveBeenCalledOnce();
   });
 
-  it("座標が不正な場合は null を返す", async () => {
-    mocked.mockSingle.mockResolvedValueOnce({
-      data: { latitude: null, longitude: 139.7 },
-      error: null,
-    });
-
-    const result = await enrichReportWithAccidents("invalid-coord-report");
-
-    expect(result).toBeNull();
-    expect(mocked.mockRpc).not.toHaveBeenCalled();
+  it("不正なレポートIDはリクエストしない", async () => {
+    await expect(enrichReportWithAccidents("")).resolves.toBeNull();
+    expect(mocked.mockFetch).not.toHaveBeenCalled();
   });
 });

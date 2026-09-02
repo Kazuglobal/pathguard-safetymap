@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = () => getSupabaseAdmin() as any
+import { getServiceActor } from '@/lib/auth/service-actor'
+import { listPendingDangerReportIds } from '@/lib/db/repos/push.repo'
 import {
   claimDangerReportForNotification,
   notifyUsersNearReport,
@@ -11,7 +9,7 @@ import {
 import { verifyCronSecret } from '@/lib/cron-auth'
 
 // Cron: 過去20分の新規レポートを処理してプッシュ通知を送信する安全網
-// vercel.json で */15 * * * * (15分毎) に設定
+// wrangler.jsonc の Cron Trigger で */15 * * * * (15分毎) に設定
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -21,24 +19,14 @@ export async function GET(req: NextRequest) {
   if (authError) return authError
 
   const since = new Date(Date.now() - 20 * 60 * 1000).toISOString()
-  const { data: reports, error } = await db()
-    .from('danger_reports')
-    .select('id')
-    .gte('created_at', since)
-    .is('push_notified_at', null)
-    .order('created_at', { ascending: true })
-
-  if (error) {
-    console.error('[cron/push-danger-reports] fetch error', error)
-    return NextResponse.json({ error: 'レポート取得に失敗しました' }, { status: 500 })
-  }
+  const reports = await listPendingDangerReportIds(getServiceActor(), since)
 
   if (!reports || reports.length === 0) {
     return NextResponse.json({ processed: 0, notified: 0, failed: 0, skipped: 0 })
   }
 
   const results = await Promise.allSettled(
-    reports.map(async (report: { id: string }) => {
+    reports.map(async (report) => {
       const claimed = await claimDangerReportForNotification({ reportId: report.id })
 
       if (claimed.status !== 'claimed') {

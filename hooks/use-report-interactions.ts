@@ -4,6 +4,7 @@ import useSWR, { mutate as globalMutate } from "swr"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { useCallback, useMemo } from "react"
+import { fetchReportInteractions, toggleReportInteraction } from '@/lib/report-interactions-api'
 
 interface ReportInteractionState {
   liked: boolean
@@ -31,11 +32,6 @@ interface UserInteraction {
   saved: boolean
 }
 
-const isUniqueConstraintError = (error: { code?: string; message?: string } | null | undefined) => {
-  if (!error) return false
-  return error.code === "23505" || /duplicate key|already exists/i.test(error.message ?? "")
-}
-
 /**
  * Hook for managing single report's like/save state
  */
@@ -48,75 +44,34 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     if (!reportId) return null
 
     try {
-      // Get like count
-      const { count: likeCount, error: likeError } = await supabase
-        .from("report_likes")
-        .select("*", { count: "exact", head: true })
-        .eq("report_id", reportId)
-
-      if (likeError) {
-        console.error("Failed to fetch like count:", likeError)
-        return null
-      }
-
-      // Get bookmark count
-      const { count: saveCount, error: saveError } = await supabase
-        .from("report_bookmarks")
-        .select("*", { count: "exact", head: true })
-        .eq("report_id", reportId)
-
-      if (saveError) {
-        console.error("Failed to fetch bookmark count:", saveError)
-        return null
-      }
-
+      const [interaction] = await fetchReportInteractions([reportId])
       return {
         report_id: reportId,
-        likes_count: likeCount ?? 0,
-        bookmarks_count: saveCount ?? 0,
+        likes_count: interaction?.likeCount ?? 0,
+        bookmarks_count: interaction?.saveCount ?? 0,
       }
     } catch (e) {
       console.error("useReportInteractions stats fetcher error:", e)
       return null
     }
-  }, [supabase, reportId])
+  }, [reportId])
 
   // Fetch user's interaction state (requires auth)
   const userInteractionFetcher = useCallback(async (): Promise<UserInteraction | null> => {
     if (!reportId) return null
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        return { report_id: reportId, liked: false, saved: false }
-      }
-
-      // Check if user has liked
-      const { data: likeData } = await supabase
-        .from("report_likes")
-        .select("id")
-        .eq("report_id", reportId)
-        .eq("user_id", user.id)
-        .maybeSingle()
-
-      // Check if user has saved/bookmarked
-      const { data: saveData } = await supabase
-        .from("report_bookmarks")
-        .select("id")
-        .eq("report_id", reportId)
-        .eq("user_id", user.id)
-        .maybeSingle()
-
+      const [interaction] = await fetchReportInteractions([reportId])
       return {
         report_id: reportId,
-        liked: !!likeData,
-        saved: !!saveData,
+        liked: interaction?.liked ?? false,
+        saved: interaction?.saved ?? false,
       }
     } catch (e) {
       console.error("useReportInteractions user interaction fetcher error:", e)
       return { report_id: reportId, liked: false, saved: false }
     }
-  }, [supabase, reportId])
+  }, [reportId])
 
   const { data: stats, error: statsError, isLoading: statsLoading } = useSWR(
     reportId ? `report-stats-${reportId}` : null,
@@ -171,28 +126,7 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     }
 
     try {
-      const { error: rpcError } = await supabase.rpc("toggle_report_like", {
-        p_user_id: user.id,
-        p_report_id: reportId,
-      })
-
-      if (rpcError) {
-        // Fallback: direct INSERT / DELETE
-        const wasLiked = (userInteraction ?? { liked: false }).liked
-        if (wasLiked) {
-          const { error } = await supabase
-            .from("report_likes")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("report_id", reportId)
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from("report_likes")
-            .insert({ user_id: user.id, report_id: reportId })
-          if (error) throw error
-        }
-      }
+      await toggleReportInteraction(reportId, 'like')
 
       // Revalidate to get accurate server state
       mutateUserInteraction()
@@ -250,27 +184,7 @@ export function useReportInteractions(reportId: string): UseReportInteractionsRe
     }
 
     try {
-      const { error: rpcError } = await supabase.rpc("toggle_report_bookmark", {
-        p_user_id: user.id,
-        p_report_id: reportId,
-      })
-
-      if (rpcError) {
-        // Fallback: direct INSERT / DELETE
-        if (wasSaved) {
-          const { error } = await supabase
-            .from("report_bookmarks")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("report_id", reportId)
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from("report_bookmarks")
-            .insert({ user_id: user.id, report_id: reportId })
-          if (error) throw error
-        }
-      }
+      await toggleReportInteraction(reportId, 'bookmark')
 
       // Revalidate to get accurate server state
       mutateUserInteraction()
@@ -321,69 +235,16 @@ export function useReportInteractionsBatch(reportIds: string[]): {
     if (!reportIds.length) return new Map()
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      // Fetch all likes counts
-      const { data: likesData, error: likesError } = await supabase
-        .from("report_likes")
-        .select("report_id")
-        .in("report_id", reportIds)
-
-      if (likesError) {
-        console.error("Failed to fetch likes:", likesError)
-      }
-
-      // Fetch all bookmarks counts
-      const { data: bookmarksData, error: bookmarksError } = await supabase
-        .from("report_bookmarks")
-        .select("report_id")
-        .in("report_id", reportIds)
-
-      if (bookmarksError) {
-        console.error("Failed to fetch bookmarks:", bookmarksError)
-      }
-
-      // Count by report_id
-      const likeCounts = new Map<string, number>()
-      const saveCounts = new Map<string, number>()
-
-      likesData?.forEach((item: any) => {
-        likeCounts.set(item.report_id, (likeCounts.get(item.report_id) ?? 0) + 1)
-      })
-
-      bookmarksData?.forEach((item: any) => {
-        saveCounts.set(item.report_id, (saveCounts.get(item.report_id) ?? 0) + 1)
-      })
-
-      // Fetch user's interactions if logged in
-      const userLikes = new Set<string>()
-      const userSaves = new Set<string>()
-
-      if (user) {
-        const { data: userLikesData } = await supabase
-          .from("report_likes")
-          .select("report_id")
-          .eq("user_id", user.id)
-          .in("report_id", reportIds)
-
-        const { data: userSavesData } = await supabase
-          .from("report_bookmarks")
-          .select("report_id")
-          .eq("user_id", user.id)
-          .in("report_id", reportIds)
-
-        userLikesData?.forEach((item: any) => userLikes.add(item.report_id))
-        userSavesData?.forEach((item: any) => userSaves.add(item.report_id))
-      }
-
-      // Build result map
+      const interactions = await fetchReportInteractions(reportIds)
+      const byId = new Map(interactions.map((interaction) => [interaction.reportId, interaction]))
       const result = new Map<string, ReportInteractionState>()
       reportIds.forEach(id => {
+        const interaction = byId.get(id)
         result.set(id, {
-          liked: userLikes.has(id),
-          likeCount: likeCounts.get(id) ?? 0,
-          saved: userSaves.has(id),
-          saveCount: saveCounts.get(id) ?? 0,
+          liked: interaction?.liked ?? false,
+          likeCount: interaction?.likeCount ?? 0,
+          saved: interaction?.saved ?? false,
+          saveCount: interaction?.saveCount ?? 0,
         })
       })
 
@@ -392,7 +253,7 @@ export function useReportInteractionsBatch(reportIds: string[]): {
       console.error("useReportInteractionsBatch fetcher error:", e)
       return new Map()
     }
-  }, [supabase, reportIds])
+  }, [reportIds])
 
   const cacheKey = useMemo(() =>
     reportIds.length > 0 ? `report-interactions-batch-${reportIds.slice().sort().join(",")}` : null,
@@ -432,26 +293,7 @@ export function useReportInteractionsBatch(reportIds: string[]): {
     mutate(optimisticData, false)
 
     try {
-      const { error: rpcError } = await supabase.rpc("toggle_report_like", {
-        p_user_id: user.id,
-        p_report_id: reportId,
-      })
-
-      if (rpcError) {
-        if (wasLiked) {
-          const { error } = await supabase
-            .from("report_likes")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("report_id", reportId)
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from("report_likes")
-            .insert({ user_id: user.id, report_id: reportId })
-          if (error && !isUniqueConstraintError(error)) throw error
-        }
-      }
+      await toggleReportInteraction(reportId, 'like')
 
       // Revalidate
       mutate()
@@ -493,26 +335,7 @@ export function useReportInteractionsBatch(reportIds: string[]): {
     mutate(optimisticData, false)
 
     try {
-      const { error: rpcError } = await supabase.rpc("toggle_report_bookmark", {
-        p_user_id: user.id,
-        p_report_id: reportId,
-      })
-
-      if (rpcError) {
-        if (wasSaved) {
-          const { error } = await supabase
-            .from("report_bookmarks")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("report_id", reportId)
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from("report_bookmarks")
-            .insert({ user_id: user.id, report_id: reportId })
-          if (error && !isUniqueConstraintError(error)) throw error
-        }
-      }
+      await toggleReportInteraction(reportId, 'bookmark')
 
       mutate()
 

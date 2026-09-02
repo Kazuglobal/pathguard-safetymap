@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useSupabase } from "@/components/providers/supabase-provider"
 
 export interface ReportComment {
   id: string
@@ -24,8 +23,6 @@ export function useReportComments(reportId: string) {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { supabase } = useSupabase()
-
   const fetchComments = useCallback(async () => {
     if (!reportId) {
       setComments([])
@@ -37,41 +34,15 @@ export function useReportComments(reportId: string) {
       setIsLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from("report_comments")
-        .select(
-          `
-          id,
-          content,
-          created_at,
-          updated_at,
-          user_id,
-          report_id,
-          is_edited,
-          parent_comment_id,
-          profiles:user_id (
-            display_name
-          )
-        `
-        )
-        .eq("report_id", reportId)
-        .order("created_at", { ascending: false })
-
-      if (fetchError) {
-        setError(fetchError.message)
+      const response = await fetch(`/api/reports/${encodeURIComponent(reportId)}/comments`, {
+        credentials: "same-origin",
+      })
+      if (!response.ok) {
+        setError(`コメントの取得に失敗しました (${response.status})`)
         return
       }
-
-      // Transform the data to match our interface
-      // Supabase returns profiles as an array, but we expect a single object
-      const transformedData = (data || []).map((comment: any) => ({
-        ...comment,
-        profiles: Array.isArray(comment.profiles)
-          ? comment.profiles[0] || null
-          : comment.profiles,
-      })) as ReportComment[]
-
-      setComments(transformedData)
+      const payload = await response.json() as { comments?: ReportComment[] }
+      setComments(payload.comments ?? [])
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "コメントの取得に失敗しました"
@@ -79,7 +50,7 @@ export function useReportComments(reportId: string) {
     } finally {
       setIsLoading(false)
     }
-  }, [reportId, supabase])
+  }, [reportId])
 
   const addComment = useCallback(
     async (content: string) => {
@@ -97,25 +68,14 @@ export function useReportComments(reportId: string) {
       setError(null)
 
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (!user) {
-          setError("ログインが必要です")
-          return false
-        }
-
-        const { error: insertError } = await supabase
-          .from("report_comments")
-          .insert({
-            report_id: reportId,
-            user_id: user.id,
-            content: content.trim(),
-          })
-
-        if (insertError) {
-          setError(insertError.message)
+        const response = await fetch(`/api/reports/${encodeURIComponent(reportId)}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ content: content.trim() }),
+        })
+        if (!response.ok) {
+          setError(response.status === 401 ? "ログインが必要です" : "コメントの投稿に失敗しました")
           return false
         }
 
@@ -131,7 +91,7 @@ export function useReportComments(reportId: string) {
         setIsSubmitting(false)
       }
     },
-    [reportId, supabase, fetchComments]
+    [reportId, fetchComments]
   )
 
   const refreshComments = useCallback(() => {

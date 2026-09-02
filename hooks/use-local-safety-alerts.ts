@@ -8,7 +8,6 @@
  */
 
 import useSWR from 'swr'
-import { supabase } from '@/lib/supabase-client'
 
 export type LocalAlertCategory = 'suspicious' | 'voice_call' | 'following' | 'other'
 
@@ -78,25 +77,12 @@ export function useLocalSafetyAlerts(
   const cacheKey = ['local_safety_alerts', prefecture ?? 'all', limitHours]
 
   const fetcher = async (): Promise<LocalSafetyAlert[]> => {
-    const since = new Date(Date.now() - limitHours * 60 * 60_000).toISOString()
-
-    let query = supabase
-      .from('local_safety_alerts')
-      .select(
-        'id, prefecture, city, category, description, source_url, occurred_at, push_notified_at, created_at'
-      )
-      .gte('occurred_at', since)
-      .order('occurred_at', { ascending: false })
-      .limit(50)
-
-    if (prefecture && prefecture !== '全国') {
-      query = query.eq('prefecture', prefecture)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw new Error(error.message)
-    return (data ?? []) as LocalSafetyAlert[]
+    const params = new URLSearchParams({ hours: String(limitHours) })
+    if (prefecture && prefecture !== '全国') params.set('prefecture', prefecture)
+    const response = await fetch(`/api/local-safety-alerts?${params}`, { credentials: 'same-origin' })
+    if (!response.ok) throw new Error(`地域安全情報の取得に失敗しました (${response.status})`)
+    const payload = await response.json() as { alerts?: LocalSafetyAlert[] }
+    return payload.alerts ?? []
   }
 
   const { data, error, isLoading, mutate } = useSWR<LocalSafetyAlert[]>(

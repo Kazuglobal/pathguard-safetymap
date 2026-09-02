@@ -1,8 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-vi.mock("@/lib/supabase-server", () => ({
-  createServerClient: vi.fn(),
+vi.mock("@/lib/auth/actor", () => ({ getActor: vi.fn() }))
+
+vi.mock("@/lib/db/repos/hunter.repo", () => ({
+  saveHunterPhoto: vi.fn().mockResolvedValue(undefined),
+  getHunterPhoto: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock("@/lib/db/repos/gamification.repo", () => ({
+  recordSafetyQuestAttemptAndAward: vi.fn().mockResolvedValue({ attemptId: "attempt-1", pointsAwarded: 5 }),
+  applyMissionProgress: vi.fn().mockResolvedValue({ completed: [] }),
+}))
+
+vi.mock("@/lib/auth/service-actor", () => ({
+  getServiceActor: () => ({ kind: "service" }),
 }))
 
 vi.mock("@/lib/hunter/hunter-ai", () => ({
@@ -17,6 +29,7 @@ vi.mock("@/lib/hunter/answer-cache", () => ({
   putAnswerKey: vi.fn().mockResolvedValue(undefined),
   getAnswerKey: vi.fn().mockResolvedValue(null),
   isAnswerCacheConfigured: vi.fn().mockReturnValue(false),
+  claimSessionScore: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock("@/lib/traffic-accident/server", () => ({
@@ -30,38 +43,36 @@ vi.mock("@/lib/upstash-rate-limiter", async () => {
   return {
     ...actual,
     checkGeminiRateLimit: vi.fn().mockResolvedValue({ success: true }),
+    checkApiRateLimit: vi.fn().mockResolvedValue({ success: true }),
   }
 })
 
 vi.mock("@/lib/hunter/storage", () => ({
   uploadMaskedPhoto: vi.fn().mockResolvedValue({ path: "user-1/photo-1/masked.webp" }),
-  createPhotoSignedUrl: vi.fn().mockResolvedValue("https://signed.example/masked.webp"),
+  createPhotoSignedUrl: vi.fn().mockReturnValue("/api/media/private/hunter-photos/user-1/photo-1/masked.webp"),
+  deletePhotoObjects: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@/lib/hunter/audit", () => ({
   writeAuditLog: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { createServerClient } from "@/lib/supabase-server"
+import { getActor } from "@/lib/auth/actor"
+import { getHunterPhoto } from "@/lib/db/repos/hunter.repo"
+import { applyMissionProgress, recordSafetyQuestAttemptAndAward } from "@/lib/db/repos/gamification.repo"
 import { analyzeHunterImage } from "@/lib/hunter/hunter-ai"
 import { logAnalyzeFallback } from "@/lib/hunter/observability"
-import { getAnswerKey, isAnswerCacheConfigured, putAnswerKey } from "@/lib/hunter/answer-cache"
-import { checkGeminiRateLimit } from "@/lib/upstash-rate-limiter"
+import { claimSessionScore, getAnswerKey, isAnswerCacheConfigured, putAnswerKey } from "@/lib/hunter/answer-cache"
+import { checkApiRateLimit, checkGeminiRateLimit } from "@/lib/upstash-rate-limiter"
 import { uploadMaskedPhoto, createPhotoSignedUrl } from "@/lib/hunter/storage"
 import { writeAuditLog } from "@/lib/hunter/audit"
 
 const mockUser = { id: "user-1", email: "test@example.com" }
 
 function mockAuth(user: typeof mockUser | null) {
-  vi.mocked(createServerClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
-    },
-    rpc: vi.fn(),
-    from: vi.fn().mockReturnValue({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }),
-  } as any)
+  vi.mocked(getActor).mockResolvedValue(user
+    ? { kind: "user", id: user.id, email: user.email, isAdmin: false }
+    : { kind: "anon" })
 }
 
 function makeJsonRequest(url: string, body: unknown) {
@@ -275,16 +286,18 @@ describe("/api/hunter/analyze", () => {
 
     expect(res.status).toBe(200)
     expect(uploadMaskedPhoto).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(uploadMaskedPhoto).mock.calls[0][1]).toBe(mockUser.id)
-    expect(vi.mocked(uploadMaskedPhoto).mock.calls[0][3]).toBe(validBody.imageBase64)
-    expect(writeAuditLog).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(uploadMaskedPhoto).toHaveBeenCalledWith(
       mockUser.id,
+      expect.any(String),
+      validBody.imageBase64,
+    )
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "user", id: mockUser.id }),
       "analyze_save",
       expect.any(String),
     )
     expect(body.photoId).toEqual(expect.any(String))
-    expect(body.signedUrl).toBe("https://signed.example/masked.webp")
+    expect(body.signedUrl).toBe("/api/media/private/hunter-photos/user-1/photo-1/masked.webp")
     expect(body.savedError).toBe(false)
     expect(body.hazards).toHaveLength(1)
     expect(JSON.stringify(body)).not.toContain("base64")
@@ -311,6 +324,210 @@ describe("/api/hunter/session", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuth(mockUser)
+    vi.mocked(checkApiRateLimit).mockResolvedValue({ success: true })
+    vi.mocked(isAnswerCacheConfigured).mockReturnValue(false)
+    vi.mocked(getAnswerKey).mockResolvedValue(null)
+    vi.mocked(getHunterPhoto).mockResolvedValue(null)
+    vi.mocked(claimSessionScore).mockResolvedValue(true)
+    // 実リポジトリと同じく、要求ポイント(0 or 5)をそのまま返す
+    vi.mocked(recordSafetyQuestAttemptAndAward).mockImplementation(async (_actor, _service, input) => ({
+      attemptId: "attempt-1",
+      pointsAwarded: input.pointsAwarded ?? 0,
+    }))
+    vi.mocked(applyMissionProgress).mockResolvedValue({ completed: [] })
+  })
+
+  /** サーバ保持の正解鍵がある(=記録してよい)状態にする。 */
+  function withServerKey(key: { hazards?: unknown[]; quiz?: unknown[] }) {
+    vi.mocked(isAnswerCacheConfigured).mockReturnValue(true)
+    vi.mocked(getAnswerKey).mockResolvedValue({ hazards: [], quiz: [], ...key } as any)
+  }
+  const exploreKey = {
+    hazards: [{ id: "s-0-0", region: { x: 0.3, y: 0.3, w: 0.3, h: 0.3 }, severity: "high", confidence: 0.9 }],
+  }
+
+  const scoredHazard = {
+    id: "s-0-0",
+    type: "きけんなもの",
+    region: { x: 0.3, y: 0.3, w: 0.3, h: 0.3 },
+    severity: "high",
+    kidExplanation: "あぶないよ",
+    safeAction: "気をつけよう",
+    confidence: 0.9,
+  }
+  const PHOTO_ID = "22222222-2222-4222-8222-222222222222"
+
+  it("returns 429 when the session endpoint is rate limited", async () => {
+    vi.mocked(checkApiRateLimit).mockResolvedValue({ success: false, reset: Date.now() + 60_000 })
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", { mode: "explore", hazards: [scoredHazard], taps: [] }),
+    )
+    expect(res.status).toBe(429)
+  })
+
+  it("records the play through the shared attempts/points contract and advances missions", async () => {
+    withServerKey(exploreKey)
+    vi.mocked(applyMissionProgress).mockResolvedValueOnce({
+      completed: [{ missionId: 1, title: "写真ゲーム初回", rewardPoints: 50 }],
+    })
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore",
+        sessionId: "sess-1",
+        hazards: [scoredHazard],
+        taps: [{ x: 0.4, y: 0.4 }],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.matches).toBe(1)
+    expect(body.pointsAwarded).toBe(5)
+    expect(body.persistError).toBe(false)
+    expect(body.missionsCompleted).toEqual([{ title: "写真ゲーム初回", rewardPoints: 50 }])
+
+    expect(recordSafetyQuestAttemptAndAward).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "user", id: mockUser.id }),
+      { kind: "service" },
+      expect.objectContaining({
+        challengeId: "hunter-explore",
+        mode: "private-practice",
+        score: 100,
+        accuracy: 100,
+        pointsAwarded: 5,
+        userMarkers: [{ x: 0.4, y: 0.4 }],
+        answerPayload: expect.objectContaining({ source: "hunter", sessionId: "sess-1", photoId: null, foundIds: ["s-0-0"] }),
+      }),
+    )
+    // 100% なので play と high_score の両方が進む
+    expect(vi.mocked(applyMissionProgress).mock.calls.map((call) => call[2].targetType)).toEqual([
+      "hazard_game_play",
+      "hazard_game_high_score",
+    ])
+  })
+
+  it("links the play to the photo only when the caller owns it", async () => {
+    withServerKey(exploreKey)
+    vi.mocked(getHunterPhoto).mockResolvedValueOnce({ id: PHOTO_ID } as any)
+    const { POST } = await import("@/app/api/hunter/session/route")
+    await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore", sessionId: "sess-1", hazards: [scoredHazard], taps: [{ x: 0.9, y: 0.9 }], photoId: PHOTO_ID,
+      }),
+    )
+    expect(recordSafetyQuestAttemptAndAward).toHaveBeenLastCalledWith(
+      expect.anything(), expect.anything(),
+      expect.objectContaining({ pointsAwarded: 0, answerPayload: expect.objectContaining({ photoId: PHOTO_ID }) }),
+    )
+
+    vi.mocked(getHunterPhoto).mockRejectedValueOnce(new Error("Forbidden"))
+    await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore", sessionId: "sess-2", hazards: [scoredHazard], taps: [{ x: 0.9, y: 0.9 }], photoId: PHOTO_ID,
+      }),
+    )
+    expect(recordSafetyQuestAttemptAndAward).toHaveBeenLastCalledWith(
+      expect.anything(), expect.anything(),
+      expect.objectContaining({ answerPayload: expect.objectContaining({ photoId: null }) }),
+    )
+  })
+
+  it("does not record anything for a guide session (no hazards in the server key)", async () => {
+    vi.mocked(isAnswerCacheConfigured).mockReturnValue(true)
+    vi.mocked(getAnswerKey).mockResolvedValueOnce({ hazards: [], quiz: [] })
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore", sessionId: "sess-guide", hazards: [scoredHazard], taps: [{ x: 0.4, y: 0.4 }],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.total).toBe(0)
+    expect(body.pointsAwarded).toBe(0)
+    expect(recordSafetyQuestAttemptAndAward).not.toHaveBeenCalled()
+    expect(applyMissionProgress).not.toHaveBeenCalled()
+  })
+
+  it("keeps the score when persistence fails and says so honestly", async () => {
+    withServerKey({ quiz: [{ id: "q-choice-0", kind: "choice", correctChoiceId: "c0" }] })
+    vi.mocked(recordSafetyQuestAttemptAndAward).mockRejectedValueOnce(new Error("D1 down"))
+    vi.mocked(applyMissionProgress).mockRejectedValue(new Error("D1 down"))
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "quiz",
+        sessionId: "sess-q",
+        items: [{ id: "q-choice-0", kind: "choice", theme: null, question: "?", choices: [{ id: "c0", label: "a" }, { id: "c1", label: "b" }], correctChoiceId: "c0", explanation: "x" }],
+        answers: [{ itemId: "q-choice-0", choiceId: "c0" }],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.correct).toBe(1)
+    expect(body.pointsAwarded).toBe(0)
+    expect(body.persistError).toBe(true)
+  })
+
+  it("does not award persistent points when the server holds no answer key (client-supplied definitions)", async () => {
+    vi.mocked(isAnswerCacheConfigured).mockReturnValue(false)
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", {
+        mode: "explore", hazards: [scoredHazard], taps: [{ x: 0.4, y: 0.4 }],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.matches).toBe(1)
+    expect(body.pointsAwarded).toBe(0)
+    expect(body.persistSkipped).toBe("no-server-key")
+    expect(recordSafetyQuestAttemptAndAward).not.toHaveBeenCalled()
+    expect(applyMissionProgress).not.toHaveBeenCalled()
+    expect(claimSessionScore).not.toHaveBeenCalled()
+  })
+
+  it("records the same session and mode only once (re-posting cannot inflate attempts or missions)", async () => {
+    withServerKey(exploreKey)
+    vi.mocked(claimSessionScore).mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const payload = { mode: "explore", sessionId: "sess-1", hazards: [scoredHazard], taps: [{ x: 0.4, y: 0.4 }] }
+    const first = await (await POST(makeJsonRequest("http://localhost/api/hunter/session", payload))).json()
+    const second = await (await POST(makeJsonRequest("http://localhost/api/hunter/session", payload))).json()
+    expect(first.pointsAwarded).toBe(5)
+    expect(second.pointsAwarded).toBe(0)
+    expect(second.persistSkipped).toBe("already-scored")
+    expect(second.matches).toBe(1)
+    expect(recordSafetyQuestAttemptAndAward).toHaveBeenCalledTimes(1)
+    expect(claimSessionScore).toHaveBeenCalledWith("sess-1", "explore")
+  })
+
+  it("records a zero-tap finish as an attempt but does not advance the play mission", async () => {
+    withServerKey(exploreKey)
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", { mode: "explore", sessionId: "sess-1", hazards: [scoredHazard], taps: [] }),
+    )
+    const body = await res.json()
+    expect(body.pointsAwarded).toBe(0)
+    expect(recordSafetyQuestAttemptAndAward).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.objectContaining({ pointsAwarded: 0, score: 0 }),
+    )
+    expect(applyMissionProgress).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 with a machine-readable code when the server key is configured but missing", async () => {
+    vi.mocked(isAnswerCacheConfigured).mockReturnValue(true)
+    vi.mocked(getAnswerKey).mockResolvedValueOnce(null)
+    const { POST } = await import("@/app/api/hunter/session/route")
+    const res = await POST(
+      makeJsonRequest("http://localhost/api/hunter/session", { mode: "explore", sessionId: "gone", hazards: [scoredHazard], taps: [] }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(409)
+    expect(body.code).toBe("session_expired")
+    expect(recordSafetyQuestAttemptAndAward).not.toHaveBeenCalled()
   })
 
   it("requires auth", async () => {

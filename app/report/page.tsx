@@ -28,6 +28,8 @@ import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access
 import ReportComposer from "@/components/danger-report/report-composer"
 import { useReportRegionFilter } from "@/hooks/use-report-region-filter"
 import { ReportRegionFilter } from "@/components/region/report-region-filter"
+import { SCHOOL_RADIUS_KM, latLngBoundsForRadius } from "@/lib/region-filter"
+import { NATIONWIDE } from "@/lib/user-region"
 
 interface PublicReport extends Pick<
   DangerReport,
@@ -129,36 +131,33 @@ export default function ReportHubPage() {
     // (「周辺2km」表示と判定を一致させる)
     coordSlackKm: 0,
   })
-  const { mounted: regionMounted, applyRegionFilter, refineBySchool } = region
+  const { mounted: regionMounted, prefecture, city, school, refineBySchool } = region
 
   useEffect(() => {
-    if (!supabase || !regionMounted) return
+    if (!regionMounted) return
 
     let isMounted = true
 
     const fetchReports = async () => {
       setIsLoading(true)
       try {
-        const query = applyRegionFilter(
-          supabase
-            .from("danger_reports")
-            .select(
-              "id, title, description, danger_type, danger_level, latitude, longitude, status, image_url, processed_image_urls, created_at, prefecture, city, town",
-            )
-            .in("status", [...PUBLIC_DANGER_REPORT_STATUSES]),
-        )
-        const { data, error } = await query
-          .order("created_at", { ascending: false })
-          .limit(60)
+        const params = new URLSearchParams({ limit: "60" })
+        PUBLIC_DANGER_REPORT_STATUSES.forEach((status) => params.append("status", status))
+        if (school) {
+          const bounds = latLngBoundsForRadius(school.latitude, school.longitude, SCHOOL_RADIUS_KM)
+          params.set("minLng", String(bounds.minLng)); params.set("minLat", String(bounds.minLat))
+          params.set("maxLng", String(bounds.maxLng)); params.set("maxLat", String(bounds.maxLat))
+        } else if (prefecture !== NATIONWIDE) {
+          params.set("prefecture", prefecture)
+          if (city) params.set("city", city)
+        }
+        const response = await fetch(`/api/reports?${params}`, { credentials: "same-origin" })
+        if (!response.ok) throw new Error(`Report request failed (${response.status})`)
+        const { reports: data = [] } = await response.json() as { reports?: PublicReport[] }
 
         if (!isMounted) return
 
-        if (error) {
-          console.error("危険報告の取得に失敗しました", error.message)
-          setReports([])
-        } else {
-          setReports(refineBySchool(data ?? []))
-        }
+        setReports(refineBySchool(data))
       } catch (error) {
         console.error("危険報告の読み込みでエラーが発生しました", error)
         if (isMounted) {
@@ -176,7 +175,7 @@ export default function ReportHubPage() {
     return () => {
       isMounted = false
     }
-  }, [supabase, regionMounted, applyRegionFilter, refineBySchool])
+  }, [regionMounted, prefecture, city, school, refineBySchool])
 
   useEffect(() => {
     if (!supabase) return

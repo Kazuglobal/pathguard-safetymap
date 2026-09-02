@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react"
+import dynamic from "next/dynamic"
 import Map, { Layer, Source } from "react-map-gl/mapbox"
 import type { MapRef, MapMouseEvent, MapTouchEvent } from "react-map-gl/mapbox"
 import "mapbox-gl/dist/mapbox-gl.css"
@@ -22,7 +23,6 @@ import { RouteCard } from "@/components/routes/route-card"
 import { RouteOverviewMap } from "@/components/routes/route-overview-map"
 import { ChildSelector } from "@/components/routes/child-selector"
 import { RouteComparisonTable } from "@/components/routes/route-comparison-table"
-import { RouteDangerReportDialog } from "@/components/routes/route-danger-report-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 import { useRouteDangerCounts } from "@/hooks/use-route-danger-counts"
@@ -61,6 +61,15 @@ type ViewMode = "list" | "creation" | "edit"
 interface RouteManagerProps {
   onRouteSelect?: (route: UserRoute) => void
 }
+
+// PDF/image report generation pulls browser-only canvas libraries. Load it
+// only after a user opens the dialog so it never enters the Worker bundle.
+const RouteDangerReportDialog = dynamic(
+  () => import("@/components/routes/route-danger-report-dialog").then(
+    (module) => module.RouteDangerReportDialog,
+  ),
+  { ssr: false },
+)
 
 export function pruneComparisonRouteIds(
   previousRouteIds: string[],

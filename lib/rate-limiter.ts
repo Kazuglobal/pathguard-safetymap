@@ -1,5 +1,5 @@
 /**
- * @deprecated Vercelサーバーレス環境では共有メモリがないため、このレート制限は無効です。
+ * @deprecated Worker isolate 間では共有されないため、このレート制限は分散制御に使えません。
  * サーバーレス対応の分散レート制限には lib/upstash-rate-limiter.ts を使用してください。
  */
 

@@ -1,9 +1,7 @@
 "use client"
 
 import useSWR from "swr";
-import { useSupabase } from "@/components/providers/supabase-provider";
 import { useToast } from "@/components/ui/use-toast";
-import type { Database } from "@/lib/database.types";
 
 interface UserPointsRow {
   user_id: string;
@@ -12,30 +10,13 @@ interface UserPointsRow {
 }
 
 export function useGamification() {
-  const { supabase } = useSupabase();
   const { toast } = useToast();
   
   const fetcher = async (): Promise<UserPointsRow | null> => {
     try {
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
-      if (userErr) {
-        // "Auth session missing"は未ログイン状態なのでエラーではない
-        if (!userErr.message?.includes("Auth session missing")) {
-          console.error("useGamification: getUser error", userErr)
-        }
-        return null
-      }
-      if (!user) return null;
-
-      const { data } = await supabase
-        .from("user_points")
-        .select("points, level")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data as UserPointsRow | null;
+      const response = await fetch("/api/gamification", { credentials: "same-origin" })
+      if (!response.ok) return null
+      return await response.json() as UserPointsRow
     } catch (e) {
       console.error("useGamification: unexpected error", e)
       return null
@@ -73,4 +54,4 @@ export function useGamification() {
     showPointsNotification,
     showLevelUpNotification,
   };
-} 
+}

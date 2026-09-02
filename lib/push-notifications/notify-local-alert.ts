@@ -6,11 +6,8 @@
  * notify-danger-report.ts と同じ楽観的ロックパターンを採用。
  */
 
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
-// local_safety_alerts は database.types.ts に追加済みだが
-// push_subscriptions が未反映のため any キャストを維持
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = () => getSupabaseAdmin() as any
+import { getServiceActor } from '@/lib/auth/service-actor'
+import { claimLocalAlert, releaseLocalAlertClaim } from '@/lib/db/repos/push.repo'
 
 import { broadcastPush } from '@/lib/web-push'
 import {
@@ -64,34 +61,18 @@ export type LocalAlertClaimResult =
 export async function claimLocalAlertForNotification(
   alertId: string
 ): Promise<LocalAlertClaimResult> {
-  const { data: existing, error: lookupError } = await db()
-    .from('local_safety_alerts')
-    .select('id, prefecture, city, category, description, push_notified_at')
-    .eq('id', alertId)
-    .maybeSingle()
-
-  if (lookupError) throw lookupError
-  if (!existing) return { status: 'not_found' }
-  if (existing.push_notified_at) return { status: 'already_claimed' }
-  if (!shouldNotifyAlert(existing.category)) return { status: 'skip' }
-
-  const claimedAt = new Date().toISOString()
-
-  const { data: claimed, error: claimError } = await db()
-    .from('local_safety_alerts')
-    .update({ push_notified_at: claimedAt })
-    .eq('id', alertId)
-    .is('push_notified_at', null)
-    .select('id, prefecture, city, category, description')
-    .maybeSingle()
-
-  if (claimError) throw claimError
-  if (!claimed) return { status: 'already_claimed' }
-
+  const result = await claimLocalAlert(getServiceActor(), alertId)
+  if (result.status !== 'claimed') return result
   return {
     status: 'claimed',
-    alert: claimed as LocalAlertForNotification,
-    claimedAt,
+    claimedAt: result.claimedAt,
+    alert: {
+      id: result.alert.id,
+      prefecture: result.alert.prefecture,
+      city: result.alert.city,
+      category: result.alert.category as LocalAlertCategory,
+      description: result.alert.description,
+    },
   }
 }
 
@@ -103,11 +84,7 @@ export async function releaseLocalAlertNotificationClaim(params: {
   alertId: string
   claimedAt: string
 }): Promise<void> {
-  await db()
-    .from('local_safety_alerts')
-    .update({ push_notified_at: null })
-    .eq('id', params.alertId)
-    .eq('push_notified_at', params.claimedAt)
+  await releaseLocalAlertClaim(getServiceActor(), params.alertId, params.claimedAt)
 }
 
 /**

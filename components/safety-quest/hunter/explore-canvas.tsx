@@ -37,8 +37,10 @@ import {
   type Size,
 } from "@/lib/hunter/image-geometry"
 import { computeHintLevel, selectHintTarget } from "@/lib/hunter/hint"
+import { photoAspectRatio } from "@/lib/hunter/photo-aspect"
 
 import { Celebrate, Mascot, PhotoFrame, StampSeal, StatPill, tokens } from "./theme"
+import { RubyText } from "./ruby-text"
 
 export interface ExploreCanvasProps {
   imageUrl: string
@@ -323,9 +325,14 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
           style={{
             position: "relative",
             width: "100%",
-            aspectRatio: "4 / 3",
+            // 写真の比率に合わせる(縦長写真で的が小さくならないように)。座標変換は箱サイズから都度計算。
+            aspectRatio: photoAspectRatio(natural),
+            maxHeight: "min(62dvh, 560px)",
+            marginInline: "auto",
             cursor: "pointer",
             userSelect: "none",
+            // iOS Safari のダブルタップ拡大を抑止(外したとき同じ場所を連打する子が多い)
+            touchAction: "manipulation",
             WebkitTapHighlightColor: "transparent",
           }}
         >
@@ -568,14 +575,14 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
             className="mt-3 rounded-[18px] px-4 py-3"
             style={{ background: C.primarySoft, boxShadow: tokens.shadow.soft }}
           >
-            <p className="text-[14px] font-black leading-relaxed" style={{ color: C.primaryStrong }}>
-              {activeHitHazard.type}
+            <p className="text-[14.5px] font-black leading-relaxed" style={{ color: C.primaryStrong }}>
+              <RubyText text={activeHitHazard.type} />
             </p>
-            <p className="mt-0.5 text-[13.5px] font-bold leading-relaxed" style={{ color: C.ink }}>
-              {activeHitHazard.kidExplanation}
+            <p className="mt-0.5 text-[14px] font-bold leading-relaxed" style={{ color: C.ink }}>
+              <RubyText text={activeHitHazard.kidExplanation} />
             </p>
-            <p className="mt-1 text-[13px] font-black leading-relaxed" style={{ color: C.inkSoft }}>
-              つぎに すること：{activeHitHazard.safeAction}
+            <p className="mt-1 text-[14px] font-black leading-relaxed" style={{ color: C.inkSoft }}>
+              つぎに すること：<RubyText text={activeHitHazard.safeAction} />
             </p>
           </motion.div>
         ) : null}
