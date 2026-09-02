@@ -1,221 +1,222 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NextRequest } from "next/server"
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
 
-vi.mock("@/lib/supabase-server", () => ({
-  createServerClient: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  getActor: vi.fn(),
+  getPhoto: vi.fn(),
+  deletePhoto: vi.fn(),
+  listPhotos: vi.fn(),
+  getWithDetections: vi.fn(),
+  listAttempts: vi.fn(),
+  putAnswerKey: vi.fn(),
+  deleteObjects: vi.fn(),
+  mediaUrl: vi.fn(),
+  audit: vi.fn(),
+  rateLimit: vi.fn(),
 }))
 
-vi.mock("@/lib/hunter/storage", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/hunter/storage")>()
-  return {
-    ...actual,
-    deletePhotoObjects: vi.fn().mockResolvedValue(undefined),
-    createPhotoSignedUrl: vi.fn(),
-  }
+vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.getActor }))
+vi.mock('@/lib/db/repos/hunter.repo', () => ({
+  getHunterPhoto: mocks.getPhoto,
+  deleteHunterPhoto: mocks.deletePhoto,
+  listHunterPhotos: mocks.listPhotos,
+  getHunterPhotoWithDetections: mocks.getWithDetections,
+}))
+vi.mock('@/lib/db/repos/gamification.repo', () => ({
+  listHunterAttempts: mocks.listAttempts,
+}))
+vi.mock('@/lib/hunter/answer-cache', () => ({
+  putAnswerKey: mocks.putAnswerKey,
+}))
+vi.mock('@/lib/hunter/storage', () => ({
+  deletePhotoObjects: mocks.deleteObjects,
+  createPhotoSignedUrl: mocks.mediaUrl,
+}))
+vi.mock('@/lib/hunter/audit', () => ({ writeAuditLog: mocks.audit }))
+vi.mock('@/lib/upstash-rate-limiter', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/upstash-rate-limiter')>('@/lib/upstash-rate-limiter')
+  return { ...actual, checkApiRateLimit: mocks.rateLimit }
 })
 
-vi.mock("@/lib/hunter/audit", () => ({
-  writeAuditLog: vi.fn().mockResolvedValue(undefined),
-}))
+import { DELETE, GET as GET_PHOTO } from '@/app/api/hunter/photo/[id]/route'
+import { GET } from '@/app/api/hunter/photos/route'
 
-import { createServerClient } from "@/lib/supabase-server"
-import { createPhotoSignedUrl, deletePhotoObjects } from "@/lib/hunter/storage"
-import { writeAuditLog } from "@/lib/hunter/audit"
+const OWNER_ID = '11111111-1111-4111-8111-111111111111'
+const PHOTO_ID = '22222222-2222-4222-8222-222222222222'
+const actor = { kind: 'user' as const, id: OWNER_ID, email: 'kid@example.com', isAdmin: false }
+const imageKey = `hunter-photos/${OWNER_ID}/${PHOTO_ID}/masked.webp`
 
-const OWNER_ID = "11111111-1111-1111-1111-111111111111"
-const PHOTO_ID = "22222222-2222-2222-2222-222222222222"
-const OTHER_PHOTO_ID = "33333333-3333-3333-3333-333333333333"
-
-const mockUser = { id: OWNER_ID, email: "kid@example.com" }
-
-interface BuilderConfig {
-  singleResult?: { data: unknown; error: unknown }
-  awaitResult?: { data?: unknown; error: unknown }
-}
-
-/**
- * Supabase クエリビルダの最小モック。
- * - select/eq/order/delete はチェーン用に同じビルダを返す。
- * - maybeSingle は singleResult を解決 (DELETE の所有者取得用)。
- * - ビルダ自体を await したとき (GET の一覧 / DELETE の delete 実行) は awaitResult を解決。
- */
-function makeBuilder(config: BuilderConfig) {
-  const builder: any = {
-    select: vi.fn(() => builder),
-    eq: vi.fn(() => builder),
-    order: vi.fn(() => builder),
-    limit: vi.fn(() => builder),
-    delete: vi.fn(() => builder),
-    maybeSingle: vi.fn().mockResolvedValue(config.singleResult ?? { data: null, error: null }),
-    single: vi.fn().mockResolvedValue(config.singleResult ?? { data: null, error: null }),
-    then: (resolve: (value: unknown) => unknown) =>
-      Promise.resolve(config.awaitResult ?? { data: [], error: null }).then(resolve),
-  }
-  return builder
-}
-
-function mockClient(user: typeof mockUser | null, config: BuilderConfig = {}) {
-  const builder = makeBuilder(config)
-  vi.mocked(createServerClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
-    },
-    from: vi.fn(() => builder),
-  } as any)
-  return builder
-}
-
-function makeRequest(url: string, method: string) {
+function request(url: string, method = 'GET') {
   return new NextRequest(url, { method })
 }
 
-describe("DELETE /api/hunter/photo/[id]", () => {
+describe('hunter photo D1 + R2 routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it("requires auth (401)", async () => {
-    mockClient(null)
-    const { DELETE } = await import("@/app/api/hunter/photo/[id]/route")
-    const res = await DELETE(
-      makeRequest(`http://localhost/api/hunter/photo/${PHOTO_ID}`, "DELETE"),
-      { params: Promise.resolve({ id: PHOTO_ID }) },
-    )
-    expect(res.status).toBe(401)
-    expect(deletePhotoObjects).not.toHaveBeenCalled()
-  })
-
-  it("rejects a malformed photo id (400)", async () => {
-    mockClient(mockUser)
-    const { DELETE } = await import("@/app/api/hunter/photo/[id]/route")
-    const res = await DELETE(
-      makeRequest("http://localhost/api/hunter/photo/not-a-uuid", "DELETE"),
-      { params: Promise.resolve({ id: "not-a-uuid" }) },
-    )
-    expect(res.status).toBe(400)
-    expect(deletePhotoObjects).not.toHaveBeenCalled()
-  })
-
-  it("refuses to delete another user's photo (404, no leak)", async () => {
-    // 行は存在するが player_id が別人 → 404、削除は呼ばれない。
-    mockClient(mockUser, {
-      singleResult: { data: { id: OTHER_PHOTO_ID, player_id: "99999999-9999-9999-9999-999999999999" }, error: null },
-    })
-    const { DELETE } = await import("@/app/api/hunter/photo/[id]/route")
-    const res = await DELETE(
-      makeRequest(`http://localhost/api/hunter/photo/${OTHER_PHOTO_ID}`, "DELETE"),
-      { params: Promise.resolve({ id: OTHER_PHOTO_ID }) },
-    )
-    expect(res.status).toBe(404)
-    expect(deletePhotoObjects).not.toHaveBeenCalled()
-    expect(writeAuditLog).not.toHaveBeenCalled()
-  })
-
-  it("returns 404 when the photo does not exist", async () => {
-    mockClient(mockUser, { singleResult: { data: null, error: null } })
-    const { DELETE } = await import("@/app/api/hunter/photo/[id]/route")
-    const res = await DELETE(
-      makeRequest(`http://localhost/api/hunter/photo/${PHOTO_ID}`, "DELETE"),
-      { params: Promise.resolve({ id: PHOTO_ID }) },
-    )
-    expect(res.status).toBe(404)
-    expect(deletePhotoObjects).not.toHaveBeenCalled()
-  })
-
-  it("deletes the owner's photo (200) and writes an audit log", async () => {
-    mockClient(mockUser, {
-      singleResult: { data: { id: PHOTO_ID, player_id: OWNER_ID }, error: null },
-      awaitResult: { error: null },
-    })
-    const { DELETE } = await import("@/app/api/hunter/photo/[id]/route")
-    const res = await DELETE(
-      makeRequest(`http://localhost/api/hunter/photo/${PHOTO_ID}`, "DELETE"),
-      { params: Promise.resolve({ id: PHOTO_ID }) },
-    )
-    expect(res.status).toBe(200)
-    expect(deletePhotoObjects).toHaveBeenCalledWith(expect.anything(), OWNER_ID, PHOTO_ID)
-    expect(writeAuditLog).toHaveBeenCalledWith(expect.anything(), OWNER_ID, "delete_photo", PHOTO_ID)
-  })
-})
-
-describe("GET /api/hunter/photos", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("requires auth (401)", async () => {
-    mockClient(null)
-    const { GET } = await import("@/app/api/hunter/photos/route")
-    const res = await GET(makeRequest("http://localhost/api/hunter/photos", "GET"))
-    expect(res.status).toBe(401)
-  })
-
-  it("returns the owner's photos with short-TTL signed URLs (no public URL)", async () => {
-    mockClient(mockUser, {
-      awaitResult: {
-        data: [
-          {
-            id: PHOTO_ID,
-            image_path: `${OWNER_ID}/${PHOTO_ID}/masked.webp`,
-            pin_lat: 33.59,
-            pin_lng: 130.4,
-            captured_at: "2026-06-26T00:00:00.000Z",
-            masked: true,
-            retention_until: null,
-            created_at: "2026-06-26T00:00:00.000Z",
-          },
-        ],
-        error: null,
+    mocks.getActor.mockResolvedValue(actor)
+    mocks.getPhoto.mockResolvedValue({ id: PHOTO_ID, playerId: OWNER_ID, imageKey })
+    mocks.deletePhoto.mockResolvedValue({ id: PHOTO_ID })
+    mocks.rateLimit.mockResolvedValue({ success: true })
+    mocks.listPhotos.mockResolvedValue([])
+    mocks.listAttempts.mockResolvedValue([])
+    mocks.putAnswerKey.mockResolvedValue(undefined)
+    mocks.getWithDetections.mockResolvedValue({
+      photo: {
+        id: PHOTO_ID, playerId: OWNER_ID, imageKey, pinLat: 33.59, pinLng: 130.4,
+        capturedAt: '2026-06-26T00:00:00.000Z', retentionUntil: '2026-09-24T00:00:00.000Z',
       },
+      detections: [
+        { type: '見通しの悪い角', kind: 'blind_corner', accidentLink: '出会い頭', region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 }, severity: 'high', kidExplanation: 'みぎの かどが 見えないよ', safeAction: 'とまって みぎを 見よう', confidence: 0.9 },
+        { type: 'こわれた行', kind: null, accidentLink: null, region: null, severity: 'high', kidExplanation: 'x', safeAction: 'y', confidence: 0.5 },
+      ],
     })
-    vi.mocked(createPhotoSignedUrl).mockResolvedValue("https://signed.example/abc?token=xyz")
-
-    const { GET } = await import("@/app/api/hunter/photos/route")
-    const res = await GET(makeRequest("http://localhost/api/hunter/photos", "GET"))
-    const body = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(body.photos).toHaveLength(1)
-    expect(body.photos[0].signedUrl).toBe("https://signed.example/abc?token=xyz")
-    expect(createPhotoSignedUrl).toHaveBeenCalledWith(
-      expect.anything(),
-      `${OWNER_ID}/${PHOTO_ID}/masked.webp`,
-    )
-    // 公開URL/生パスは漏らさない (image_path は応答に含めない)。
-    expect(JSON.stringify(body)).not.toContain("image_path")
+    mocks.deleteObjects.mockResolvedValue(undefined)
+    mocks.audit.mockResolvedValue(undefined)
+    mocks.mediaUrl.mockReturnValue(`/api/media/private/${imageKey}`)
   })
 
-  it("summarizes detected danger types (deduped) and the top severity", async () => {
-    mockClient(mockUser, {
-      awaitResult: {
-        data: [
-          {
-            id: PHOTO_ID,
-            image_path: `${OWNER_ID}/${PHOTO_ID}/masked.webp`,
-            pin_lat: 33.59,
-            pin_lng: 130.4,
-            captured_at: "2026-06-26T00:00:00.000Z",
-            masked: true,
-            retention_until: null,
-            created_at: "2026-06-26T00:00:00.000Z",
-            hazard_detections: [
-              { type: "見通しの悪い角", kind: "blind_corner", severity: "high" },
-              { type: "車のかげ", kind: "parked_car_shadow", severity: "medium" },
-              { type: "見通しの悪い角", kind: "blind_corner", severity: "high" },
-            ],
-          },
-        ],
-        error: null,
-      },
+  it('requires authentication for delete and list', async () => {
+    mocks.getActor.mockResolvedValue({ kind: 'anon' })
+    const deleted = await DELETE(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`, 'DELETE'), {
+      params: Promise.resolve({ id: PHOTO_ID }),
     })
-    vi.mocked(createPhotoSignedUrl).mockResolvedValue("https://signed.example/abc")
+    const listed = await GET(request('http://localhost/api/hunter/photos'))
+    expect(deleted.status).toBe(401)
+    expect(listed.status).toBe(401)
+    expect(mocks.deleteObjects).not.toHaveBeenCalled()
+  })
 
-    const { GET } = await import("@/app/api/hunter/photos/route")
-    const res = await GET(makeRequest("http://localhost/api/hunter/photos", "GET"))
-    const body = await res.json()
+  it('rejects malformed IDs before loading D1', async () => {
+    const response = await DELETE(request('http://localhost/api/hunter/photo/not-a-uuid', 'DELETE'), {
+      params: Promise.resolve({ id: 'not-a-uuid' }),
+    })
+    expect(response.status).toBe(400)
+    expect(mocks.getPhoto).not.toHaveBeenCalled()
+  })
 
-    expect(res.status).toBe(200)
-    expect(body.photos[0].dangers).toEqual(["見通しの悪い角", "車のかげ"])
-    expect(body.photos[0].topSeverity).toBe("high")
+  it('conceals missing or unauthorized photos as 404', async () => {
+    mocks.getPhoto.mockRejectedValueOnce(new Error('Forbidden'))
+    const response = await DELETE(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`, 'DELETE'), {
+      params: Promise.resolve({ id: PHOTO_ID }),
+    })
+    expect(response.status).toBe(404)
+    expect(mocks.deleteObjects).not.toHaveBeenCalled()
+    expect(mocks.audit).not.toHaveBeenCalled()
+  })
+
+  it('deletes the exact private object, then its D1 row, and audits it', async () => {
+    const response = await DELETE(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`, 'DELETE'), {
+      params: Promise.resolve({ id: PHOTO_ID }),
+    })
+    expect(response.status).toBe(200)
+    expect(mocks.getPhoto).toHaveBeenCalledWith(actor, PHOTO_ID)
+    expect(mocks.deleteObjects).toHaveBeenCalledWith(OWNER_ID, PHOTO_ID)
+    expect(mocks.deletePhoto).toHaveBeenCalledWith(actor, PHOTO_ID)
+    expect(mocks.audit).toHaveBeenCalledWith(actor, 'delete_photo', PHOTO_ID)
+  })
+
+  it('replays a saved photo: rebuilds hazards, issues a fresh server-held answer key, no image key leak', async () => {
+    const response = await GET_PHOTO(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`), {
+      params: Promise.resolve({ id: PHOTO_ID }),
+    })
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.photoId).toBe(PHOTO_ID)
+    expect(body.signedUrl).toBe(`/api/media/private/${imageKey}`)
+    expect(body.pin).toEqual({ latitude: 33.59, longitude: 130.4 })
+    expect(body.retentionUntil).toBe('2026-09-24T00:00:00.000Z')
+    expect(body.hazards).toHaveLength(1)
+    expect(body.hazards[0]).toMatchObject({
+      id: `${body.sessionId}-0`, kind: 'blind_corner', accidentLink: '出会い頭', severity: 'high',
+      region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 },
+    })
+    expect(mocks.putAnswerKey).toHaveBeenCalledWith(body.sessionId, {
+      hazards: [{ id: `${body.sessionId}-0`, region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 }, severity: 'high', confidence: 0.9 }],
+      quiz: [],
+    })
+    expect(mocks.audit).toHaveBeenCalledWith(actor, 'replay_photo', PHOTO_ID)
+    expect(JSON.stringify(body)).not.toContain('imageKey')
+  })
+
+  it('rate-limits replay and listing so a loop cannot mint answer keys or audit rows', async () => {
+    mocks.rateLimit.mockResolvedValue({ success: false, reset: Date.now() + 60_000 })
+    const replay = await GET_PHOTO(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`), {
+      params: Promise.resolve({ id: PHOTO_ID }),
+    })
+    const listed = await GET(request('http://localhost/api/hunter/photos'))
+    expect(replay.status).toBe(429)
+    expect(listed.status).toBe(429)
+    expect(mocks.putAnswerKey).not.toHaveBeenCalled()
+    expect(mocks.getWithDetections).not.toHaveBeenCalled()
+  })
+
+  it('conceals other players\' photos from replay as 404 and issues no key', async () => {
+    mocks.getWithDetections.mockRejectedValueOnce(new Error('Forbidden'))
+    const response = await GET_PHOTO(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`), {
+      params: Promise.resolve({ id: PHOTO_ID }),
+    })
+    expect(response.status).toBe(404)
+    expect(mocks.putAnswerKey).not.toHaveBeenCalled()
+
+    mocks.getActor.mockResolvedValueOnce({ kind: 'anon' })
+    const anon = await GET_PHOTO(request(`http://localhost/api/hunter/photo/${PHOTO_ID}`), {
+      params: Promise.resolve({ id: PHOTO_ID }),
+    })
+    expect(anon.status).toBe(401)
+  })
+
+  it('attaches per-photo play stats from hunter attempts and tolerates their failure', async () => {
+    const row = {
+      photo: {
+        id: PHOTO_ID, playerId: OWNER_ID, imageKey, pinLat: 33.59, pinLng: 130.4,
+        capturedAt: '2026-06-26T00:00:00.000Z', masked: true, retentionUntil: null, createdAt: '2026-06-26T00:00:00.000Z',
+      },
+      detections: [],
+    }
+    mocks.listPhotos.mockResolvedValue([row])
+    mocks.listAttempts.mockResolvedValue([
+      { answerPayload: { source: 'hunter', mode: 'explore', photoId: PHOTO_ID, matches: 2, total: 3 }, createdAt: '2026-09-02T00:00:00.000Z' },
+      { answerPayload: { source: 'hunter', mode: 'quiz', photoId: PHOTO_ID, matches: 1, total: 1 }, createdAt: '2026-09-01T00:00:00.000Z' },
+    ])
+    const ok = await (await GET(request('http://localhost/api/hunter/photos'))).json()
+    expect(ok.photos[0].plays).toEqual({ count: 2, bestFound: 2, bestTotal: 3, lastPlayedAt: '2026-09-02T00:00:00.000Z' })
+
+    mocks.listAttempts.mockRejectedValueOnce(new Error('D1 down'))
+    const degraded = await GET(request('http://localhost/api/hunter/photos'))
+    expect(degraded.status).toBe(200)
+    expect((await degraded.json()).photos[0].plays).toBeNull()
+  })
+
+  it('returns only private media routes and summarized detections', async () => {
+    mocks.listPhotos.mockResolvedValue([{
+      photo: {
+        id: PHOTO_ID,
+        playerId: OWNER_ID,
+        imageKey,
+        pinLat: 33.59,
+        pinLng: 130.4,
+        capturedAt: '2026-06-26T00:00:00.000Z',
+        masked: true,
+        retentionUntil: null,
+        createdAt: '2026-06-26T00:00:00.000Z',
+      },
+      detections: [
+        { type: '見通しの悪い角', severity: 'high' },
+        { type: '車のかげ', severity: 'medium' },
+        { type: '見通しの悪い角', severity: 'high' },
+      ],
+    }])
+
+    const response = await GET(request('http://localhost/api/hunter/photos'))
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.photos[0]).toMatchObject({
+      id: PHOTO_ID,
+      signedUrl: `/api/media/private/${imageKey}`,
+      dangers: ['見通しの悪い角', '車のかげ'],
+      topSeverity: 'high',
+    })
+    expect(mocks.mediaUrl).toHaveBeenCalledWith(imageKey)
+    expect(JSON.stringify(body)).not.toContain('imageKey')
   })
 })

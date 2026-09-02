@@ -189,7 +189,7 @@ function isVlmHazard(value: unknown): value is VlmHazard {
   )
 }
 
-function isVlmAnalysisResult(value: unknown): value is VlmAnalysisResult {
+export function isVlmAnalysisResult(value: unknown): value is VlmAnalysisResult {
   if (!isRecord(value)) {
     return false
   }
@@ -249,7 +249,7 @@ function isVlmAnalysisResult(value: unknown): value is VlmAnalysisResult {
  * @throws Error if network fails or validation fails
  */
 export async function analyzeHazardWithVLM(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   request: AnalyzeHazardRequest
 ): Promise<AnalyzeHazardResponse> {
   const imageUrl = request.image_url?.trim()
@@ -271,18 +271,15 @@ export async function analyzeHazardWithVLM(
     )
   }
 
-  // Validate image URL format and protocol
-  try {
-    const parsed = new URL(imageUrl)
-    if (parsed.protocol !== "https:") {
-      throw new Error("image_url must use HTTPS")
+  // R2 private media uses a same-origin route; legacy absolute URLs must remain HTTPS.
+  if (!imageUrl.startsWith('/api/media/private/')) {
+    try {
+      const parsed = new URL(imageUrl)
+      if (parsed.protocol !== "https:") throw new Error("image_url must use HTTPS")
+    } catch (err) {
+      if (err instanceof Error && err.message === "image_url must use HTTPS") throw err
+      throw new Error("image_url must be a valid HTTPS URL")
     }
-  } catch (err) {
-    // Re-throw protocol errors, convert URL parsing errors to generic message
-    if (err instanceof Error && err.message === "image_url must use HTTPS") {
-      throw err
-    }
-    throw new Error("image_url must be a valid HTTPS URL")
   }
 
   // 🔧 Development mode: Return mock data when Edge Function is not deployed
@@ -366,25 +363,21 @@ export async function analyzeHazardWithVLM(
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke("analyze-hazard", {
-      body: {
+    const response = await fetch('/api/vlm/analyze-hazard', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         image_url: imageUrl,
         report_id: reportId,
         additional_context: additionalContext,
-      },
+      }),
     })
-
-    if (error) {
-      const parsedError = await parseFunctionInvokeError(error)
-      console.error("[VLM Analysis] Edge Function error:", {
-        originalError: error,
-        status: parsedError.status,
-        statusText: parsedError.statusText,
-        responseBody: parsedError.responseBody?.slice(0, 500),
-      })
+    const data = await response.json().catch(() => null) as AnalyzeHazardResponse | null
+    if (!response.ok) {
       return {
         success: false,
-        error: parsedError.message || "分析に失敗しました",
+        error: data?.error || `分析に失敗しました (HTTP ${response.status})`,
       }
     }
 

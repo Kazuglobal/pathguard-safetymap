@@ -13,7 +13,6 @@
 
 "use client";
 
-import { supabase } from "@/lib/supabase-client";
 import {
   ACCIDENT_IMAGE_CONTEXT_PARAMS,
   adjustYearsForAccidentDataset,
@@ -189,7 +188,7 @@ export function getTimeSlotLabel(slot: string): string {
 }
 
 // ============================================================
-// Supabase RPC呼び出し
+// D1 Route Handler 呼び出し
 // ============================================================
 export async function getAccidentStatsRPC(params: {
   latitude: number;
@@ -201,39 +200,22 @@ export async function getAccidentStatsRPC(params: {
   const adjustedYears = adjustYearsForAccidentDataset(requestedYears);
   const radiusMeters = params.radiusMeters ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters;
 
-  let data: unknown = null;
-  let error: { message?: string } | null = null;
-  let yearsForQuery = adjustedYears;
-
-  // DB関数のstatement timeoutが発生する場合は、年数を段階的に下げて再試行
-  while (yearsForQuery >= requestedYears) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await (supabase as any).rpc("get_nearby_accident_stats", {
-      p_latitude: params.latitude,
-      p_longitude: params.longitude,
-      p_radius_meters: radiusMeters,
-      p_years: yearsForQuery,
-    });
-
-    if (!res.error) {
-      data = res.data;
-      error = null;
-      break;
-    }
-
-    const isTimeout = /statement timeout|canceling statement due to statement timeout/i.test(
-      res.error.message || ""
-    );
-    if (!isTimeout || yearsForQuery === requestedYears) {
-      error = { message: res.error.message };
-      break;
-    }
-
-    yearsForQuery -= 1;
+  const query = new URLSearchParams({
+    latitude: String(params.latitude),
+    longitude: String(params.longitude),
+    radiusMeters: String(radiusMeters),
+    years: String(adjustedYears),
+  });
+  const response = await fetch(`/api/traffic-accidents/nearby?${query.toString()}`, {
+    method: "GET",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error("事故統計取得エラー: " + (body?.error ?? `HTTP ${response.status}`));
   }
-
-  if (error) throw new Error("事故統計取得エラー: " + error.message);
-  const stats = data as AccidentStats;
+  const stats = await response.json() as AccidentStats;
 
   // UI表示はユーザー要求年数を優先（DB年限補正はRPC引数側で吸収）
   if (stats?.search_params) {
@@ -248,50 +230,19 @@ export async function getAccidentStatsRPC(params: {
 
   return stats;
 }
-
-// ============================================================
-// レポートに事故統計を自動付与
-// ============================================================
-export async function enrichReportWithAccidents(
-  reportId: string
-): Promise<AccidentStats | null> {
-  const { data: report, error } = await supabase
-    .from("danger_reports")
-    .select("latitude, longitude")
-    .eq("id", reportId)
-    .single();
-
-  if (error || !report) return null;
-
-  // Type assertion to access latitude/longitude after null check
-  const { latitude, longitude } = report as { latitude: number; longitude: number };
-
-  if (
-    latitude == null ||
-    longitude == null ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude)
-  ) {
-    return null;
-  }
-
-  const stats = await getAccidentStatsRPC({
-    latitude,
-    longitude,
+/** レポート座標の事故統計をサーバ側で再計算し、D1へ保存する。 */
+export async function enrichReportWithAccidents(reportId: string): Promise<AccidentStats | null> {
+  if (!reportId || reportId.length > 128) return null;
+  const response = await fetch(`/api/reports/${encodeURIComponent(reportId)}/accident-stats`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
   });
-
-  // Update report with accident statistics (type assertion needed due to Supabase type limitations)
-  try {
-    await (supabase as any)
-      .from("danger_reports")
-      .update({
-        accident_stats: stats,
-        accident_risk_score: stats.risk_score,
-      })
-      .eq("id", reportId);
-  } catch (error) {
-    console.error("Failed to update report with accident stats:", error);
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error ?? `事故統計の保存に失敗しました (HTTP ${response.status})`);
   }
-
-  return stats;
+  const body = await response.json() as { stats?: AccidentStats };
+  return body.stats ?? null;
 }

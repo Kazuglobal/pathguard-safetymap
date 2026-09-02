@@ -23,6 +23,7 @@ const emptyReactionState = (): LandingReactionState => ({
 
 export function useLandingReportReactions(reportIds: string[]) {
   const { supabase } = useSupabase()
+  const auth = supabase.auth
   const { toast } = useToast()
   const [reactions, setReactions] = React.useState<Record<string, LandingReactionState>>({})
   const [isLoading, setIsLoading] = React.useState(false)
@@ -59,7 +60,7 @@ export function useLandingReportReactions(reportIds: string[]) {
       setIsLoading(true)
 
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user } } = await auth.getUser()
         if (!user) {
           if (!cancelled) {
             updateReactions({})
@@ -68,13 +69,11 @@ export function useLandingReportReactions(reportIds: string[]) {
           return
         }
 
-        const { data, error } = await supabase
-          .from("danger_report_reactions")
-          .select("report_id, reaction_type")
-          .eq("user_id", user.id)
-          .in("report_id", stableReportIds)
-
-        if (error) throw error
+        const params = new URLSearchParams()
+        stableReportIds.forEach((reportId) => params.append("reportId", reportId))
+        const response = await fetch(`/api/reactions?${params}`, { credentials: "same-origin" })
+        if (!response.ok) throw new Error(`Reaction request failed (${response.status})`)
+        const { reactions: data = [] } = await response.json() as { reactions?: ReactionRow[] }
 
         const nextReactions: Record<string, LandingReactionState> = {}
         stableReportIds.forEach((reportId) => {
@@ -121,7 +120,7 @@ export function useLandingReportReactions(reportIds: string[]) {
     return () => {
       cancelled = true
     }
-  }, [reportIdsKey, stableReportIds, supabase, updateReactions])
+  }, [auth, reportIdsKey, stableReportIds, updateReactions])
 
   const toggleReaction = React.useCallback(async (reportId: string, reactionType: LandingReactionType) => {
     const reactionKey = `${reportId}:${reactionType}`
@@ -132,7 +131,7 @@ export function useLandingReportReactions(reportIds: string[]) {
     inFlightToggleKeysRef.current.add(reactionKey)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await auth.getUser()
       if (!user) {
         toast({
           title: "ログインが必要です",
@@ -157,26 +156,13 @@ export function useLandingReportReactions(reportIds: string[]) {
         },
       }))
 
-      if (wasActive) {
-        const { error } = await supabase
-          .from("danger_report_reactions")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("report_id", reportId)
-          .eq("reaction_type", reactionType)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from("danger_report_reactions")
-          .insert({
-            user_id: user.id,
-            report_id: reportId,
-            reaction_type: reactionType,
-          })
-
-        if (error) throw error
-      }
+      const response = await fetch("/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ reportId, reactionType }),
+      })
+      if (!response.ok) throw new Error(`Reaction update failed (${response.status})`)
     } catch {
       const current = reactionsRef.current[reportId] ?? emptyReactionState()
       const revertedValue = !current[reactionType]
@@ -199,7 +185,7 @@ export function useLandingReportReactions(reportIds: string[]) {
         pendingOptimisticKeysRef.current.delete(reactionKey)
       }
     }
-  }, [supabase, toast, updateReactions])
+  }, [auth, toast, updateReactions])
 
   return {
     reactions,

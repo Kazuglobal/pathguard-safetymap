@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { createServerClient } from "@/lib/supabase-server"
+import { getActor } from "@/lib/auth/actor"
+import { getServiceActor } from "@/lib/auth/service-actor"
+import { toDangerReportJson } from "@/lib/danger-report-api"
+import { getDangerReportById } from "@/lib/db/repos/danger-reports.repo"
+import { recordSafetyQuestAttemptAndAward } from "@/lib/db/repos/gamification.repo"
 import {
   buildSafetyQuestChallengesFromReports,
   findSampleSafetyQuestChallenge,
@@ -11,27 +14,22 @@ import {
   type SafetyQuestChallenge,
   type SafetyQuestReportRow,
 } from "@/lib/safety-quest"
+import { checkApiRateLimit, rateLimitedResponse } from "@/lib/upstash-rate-limiter"
 
 export const runtime = "nodejs"
 
 const VALID_MODES = new Set<SafetyQuestAttemptMode>(["hazard", "quiz-battle", "private-practice"])
 
-async function loadReportChallenge(challengeId: string): Promise<SafetyQuestChallenge | null> {
+async function loadReportChallenge(actor: Awaited<ReturnType<typeof getActor>>, challengeId: string): Promise<SafetyQuestChallenge | null> {
   if (!challengeId.startsWith("report-")) return null
   const reportId = challengeId.slice("report-".length)
-  const admin = getSupabaseAdmin() as any
-  const { data, error } = await admin
-    .from("danger_reports")
-    .select("id,title,status,image_url,processed_image_url,processed_image_urls,city,town,prefecture,danger_type,danger_level")
-    .eq("id", reportId)
-    .maybeSingle()
-
-  if (error || !data) return null
-  return buildSafetyQuestChallengesFromReports([data as SafetyQuestReportRow])[0] ?? null
+  const report = await getDangerReportById(actor, reportId)
+  if (!report || !["approved", "published", "resolved"].includes(report.status)) return null
+  return buildSafetyQuestChallengesFromReports([toDangerReportJson(report) as SafetyQuestReportRow])[0] ?? null
 }
 
 async function persistAttempt({
-  userId,
+  actor,
   challengeId,
   mode,
   userMarkers,
@@ -39,7 +37,7 @@ async function persistAttempt({
   result,
   durationMs,
 }: {
-  userId: string
+  actor: Extract<Awaited<ReturnType<typeof getActor>>, { kind: "user" }>
   challengeId: string
   mode: SafetyQuestAttemptMode
   userMarkers: unknown
@@ -47,34 +45,25 @@ async function persistAttempt({
   result: ReturnType<typeof scoreSafetyQuestAttempt>
   durationMs: number | null
 }) {
-  try {
-    const admin = getSupabaseAdmin() as any
-    await admin.from("safety_quest_attempts").insert({
-      user_id: userId,
-      challenge_id: challengeId,
-      mode,
-      user_markers: userMarkers,
-      answer_payload: answerPayload ?? null,
-      score: result.score,
-      accuracy: result.accuracy,
-      duration_ms: durationMs,
-      points_awarded: result.pointsAwarded,
-    })
-  } catch (error) {
-    console.warn("Safety Quest attempt persistence skipped", error)
-  }
+  return recordSafetyQuestAttemptAndAward(actor, getServiceActor(), {
+    challengeId,
+    mode,
+    userMarkers: userMarkers as unknown[],
+    answerPayload: answerPayload && typeof answerPayload === "object" ? answerPayload as Record<string, unknown> : null,
+    score: result.score,
+    accuracy: result.accuracy,
+    durationMs,
+    pointsAwarded: result.pointsAwarded,
+  })
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
+  const actor = await getActor()
+  if (actor.kind !== "user") {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
   }
+  const rate = await checkApiRateLimit(`safety-quest-attempt:${actor.id}`)
+  if (!rate.success) return rateLimitedResponse(rate.reset)
 
   let body: Record<string, unknown>
   try {
@@ -93,7 +82,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "チャレンジID、モード、マーカーが必要です" }, { status: 400 })
   }
 
-  const challenge = findSampleSafetyQuestChallenge(challengeId) ?? await loadReportChallenge(challengeId)
+  const challenge = findSampleSafetyQuestChallenge(challengeId) ?? await loadReportChallenge(actor, challengeId)
   if (!challenge) {
     return NextResponse.json({ error: "チャレンジが見つかりません" }, { status: 404 })
   }
@@ -110,20 +99,23 @@ export async function POST(request: NextRequest) {
     durationMs,
   })
 
-  await persistAttempt({
-    userId: user.id,
-    challengeId,
-    mode,
-    userMarkers,
-    answerPayload,
-    result,
-    durationMs,
-  })
+  let awardedPoints: number
+  try {
+    const saved = await persistAttempt({ actor, challengeId, mode, userMarkers, answerPayload, result, durationMs })
+    awardedPoints = saved.pointsAwarded
+  } catch (error) {
+    console.error("Safety Quest attempt persistence failed", error instanceof Error ? error.message : "unknown")
+    return NextResponse.json({ error: "結果の保存に失敗しました" }, { status: 500 })
+  }
+
+  const persistedResult = awardedPoints === result.pointsAwarded
+    ? result
+    : { ...result, pointsAwarded: awardedPoints, rewardKeys: [] }
 
   return NextResponse.json({
-    result,
+    result: persistedResult,
     next: {
-      rewardsUnlocked: result.rewardKeys,
+      rewardsUnlocked: persistedResult.rewardKeys,
       dailyMissionDelta: {
         hazardFinds: result.matches,
         quizCorrect: answerPayload?.correct === true || answerPayload?.answer === "danger" ? 1 : 0,

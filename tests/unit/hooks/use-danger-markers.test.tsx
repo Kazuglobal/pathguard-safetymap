@@ -37,8 +37,6 @@ vi.mock("mapbox-gl", () => ({
   },
 }))
 
-vi.mock("@/lib/gamification", () => ({ addPoints: vi.fn() }))
-
 describe("useDangerMarkers", () => {
   beforeEach(() => {
     mocks.markers.length = 0

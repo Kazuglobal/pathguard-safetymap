@@ -1,68 +1,47 @@
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import type { Database } from '@/lib/database.types'
+import { inArray } from 'drizzle-orm'
 
-type DangerReportRow = Database['public']['Tables']['danger_reports']['Row']
+import { getActor } from '@/lib/auth/actor'
+import { toDangerReportJson } from '@/lib/danger-report-api'
+import { assertCan } from '@/lib/db/authz'
+import { getDb } from '@/lib/db/client'
+import { listDangerReports, updateDangerReportStatus } from '@/lib/db/repos/danger-reports.repo'
+import { profiles } from '@/lib/db/schema'
 
-interface ProfileEntry {
-  id: string
-  display_name: string | null
-}
+const D1_IN_CLAUSE_CHUNK_SIZE = 50
 
-export interface ReportWithProfile extends DangerReportRow {
+export type ReportWithProfile = ReturnType<typeof toDangerReportJson> & {
   profiles: { display_name: string | null } | null
 }
 
-// danger_reports には profiles への FK がないため、
-// 2 つのクエリで取得し、メモリ上で結合する
+async function requireAdminActor() {
+  const actor = await getActor()
+  if (actor.kind !== 'user' || !actor.isAdmin) throw new Error('管理者権限が必要です')
+  return actor
+}
+
 export async function getReportsWithProfiles(): Promise<ReportWithProfile[]> {
-  const { data: reports, error: reportsError } = await supabaseAdmin
-    .from('danger_reports')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (reportsError) {
-    throw new Error(`レポートの取得に失敗しました: ${reportsError.message}`)
+  const actor = await requireAdminActor()
+  const reports = await listDangerReports(actor, { limit: 2_000 })
+  if (!reports.length) return []
+  assertCan(actor, 'select', 'profiles', { displayOnly: true })
+  const userIds = [...new Set(reports.map((report) => report.userId))]
+  const db = getDb()
+  const profileRows = []
+  for (let offset = 0; offset < userIds.length; offset += D1_IN_CLAUSE_CHUNK_SIZE) {
+    const chunk = userIds.slice(offset, offset + D1_IN_CLAUSE_CHUNK_SIZE)
+    profileRows.push(...await db.select({ id: profiles.id, displayName: profiles.displayName })
+      .from(profiles).where(inArray(profiles.id, chunk)))
   }
-
-  const rows = reports ?? []
-  if (rows.length === 0) {
-    return []
-  }
-
-  const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))]
-
-  const { data: profilesData, error: profilesError } = await supabaseAdmin
-    .from('profiles')
-    .select('id, display_name')
-    .in('id', userIds)
-
-  if (profilesError) {
-    throw new Error(`プロフィールの取得に失敗しました: ${profilesError.message}`)
-  }
-
-  const profileMap = new Map<string, ProfileEntry>(
-    ((profilesData ?? []) as ProfileEntry[]).map((p) => [p.id, p])
-  )
-
-  return rows.map((report) => {
-    const profile = profileMap.get(report.user_id) ?? null
-    return {
-      ...report,
-      profiles: profile ? { display_name: profile.display_name } : null,
-    }
-  })
+  const byId = new Map(profileRows.map((profile) => [profile.id, profile.displayName]))
+  return reports.map((report) => ({
+    ...toDangerReportJson(report),
+    profiles: byId.has(report.userId) ? { display_name: byId.get(report.userId) ?? null } : null,
+  }))
 }
 
 export async function updateReportStatus(
   reportId: string,
-  status: 'pending' | 'approved' | 'published' | 'resolved' | 'rejected'
+  status: 'pending' | 'approved' | 'published' | 'resolved' | 'rejected',
 ): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('danger_reports')
-    .update({ status })
-    .eq('id', reportId)
-
-  if (error) {
-    throw new Error(`ステータス更新に失敗しました: ${error.message}`)
-  }
+  await updateDangerReportStatus(await requireAdminActor(), reportId, status)
 }

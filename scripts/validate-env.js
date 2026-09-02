@@ -49,6 +49,8 @@ const requiredEnvVars = [
   'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_MEDIA_BASE_URL',
+  'NEXT_PUBLIC_SITE_URL',
 ]
 
 const optionalEnvVars = [
@@ -90,9 +92,35 @@ function validateEnvironmentVariables() {
     }
 
     if (envVar.includes('SUPABASE_URL')) {
-      if (!value.startsWith('https://') || !value.includes('.supabase.co')) {
-        invalid.push(`${envVar} must be a valid Supabase URL`)
+      try {
+        const url = new URL(value)
+        if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co') || url.pathname !== '/' || url.search || url.hash) {
+          invalid.push(`${envVar} must be an HTTPS *.supabase.co origin`)
+        }
+      } catch {
+        invalid.push(`${envVar} must be an HTTPS *.supabase.co origin`)
       }
+    }
+
+    if (envVar === 'NEXT_PUBLIC_MEDIA_BASE_URL' || envVar === 'NEXT_PUBLIC_SITE_URL') {
+      try {
+        const url = new URL(value)
+        if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+          invalid.push(`${envVar} must contain only an HTTPS origin`)
+        }
+      } catch {
+        invalid.push(`${envVar} must contain only an HTTPS origin`)
+      }
+    }
+  }
+
+  if (process.env.NEXT_PUBLIC_MEDIA_BASE_URL && process.env.NEXT_PUBLIC_SITE_URL) {
+    try {
+      if (new URL(process.env.NEXT_PUBLIC_MEDIA_BASE_URL).origin === new URL(process.env.NEXT_PUBLIC_SITE_URL).origin) {
+        invalid.push('NEXT_PUBLIC_MEDIA_BASE_URL must use a dedicated media origin')
+      }
+    } catch {
+      // Individual URL validation above reports the actionable error.
     }
   }
 

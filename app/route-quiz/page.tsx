@@ -4,23 +4,20 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import * as turf from "@turf/turf"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { AlertTriangle, Car, Check, HelpCircle, MapPin, RotateCcw, Shield } from "lucide-react"
 import shuffle from "lodash.shuffle"
-import { addPoints } from "@/lib/gamification"
 import type { DangerReport } from "@/lib/types"
 import { canStartRouteQuiz, selectNextQuizPoint } from "@/lib/route-quiz-selection"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
+import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 mapboxgl.accessToken = MAPBOX_TOKEN
 
 export default function RouteQuizPage() {
-  const { supabase } = useSupabase()
-
   /** Mapbox GL コンテナ */
   const mapContainer = useRef<HTMLDivElement>(null)
   /** Mapbox GL インスタンス */
@@ -45,13 +42,14 @@ export default function RouteQuizPage() {
   /* ---------------------------------------------------------- */
   useEffect(() => {
     const fetchHazards = async () => {
-      const { data } = await supabase
-        .from("danger_reports")
-        .select("id, latitude, longitude, danger_type")
-      setHazards((data as DangerReport[]) ?? [])
+      const params = new URLSearchParams({ limit: "2000" })
+      PUBLIC_DANGER_REPORT_STATUSES.forEach((status) => params.append("status", status))
+      const response = await fetch(`/api/reports?${params}`, { credentials: "same-origin" })
+      const payload = response.ok ? await response.json() as { reports?: DangerReport[] } : null
+      setHazards(payload?.reports ?? [])
     }
     fetchHazards()
-  }, [supabase])
+  }, [])
 
   /* ---------------------------------------------------------- */
   /*  2. マップ初期化                                           */
@@ -298,16 +296,6 @@ export default function RouteQuizPage() {
     const isLast = idx + 1 === quizList.length
     if (isLast) {
       setStep("result")
-      // ポイント付与
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (user)
-          await addPoints(supabase, user.id, correct ? 10 : 0)
-      } catch (e) {
-        console.error(e)
-      }
     } else {
       setIdx((i) => i + 1)
     }

@@ -18,5 +18,5 @@ export default async function HunterPage() {
     redirect("/login")
   }
 
-  return <HunterGame />
+  return <HunterGame userId={user.id} />
 }

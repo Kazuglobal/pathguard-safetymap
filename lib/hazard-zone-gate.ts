@@ -3,6 +3,12 @@ import {
   type HazardAreaContext,
   type HazardType,
 } from "@/lib/types"
+import type { Actor } from '@/lib/db/authz'
+import {
+  hasCoverageAtPoint,
+  logGateVerdict as logGateVerdictToD1,
+  zonesAtPoint,
+} from '@/lib/db/repos/hazard.repo'
 
 export type HazardGateVerdict =
   | { kind: "inside"; zone: HazardZoneHit }
@@ -40,26 +46,6 @@ export interface HazardZoneRpcRow {
   depth_max_m: number | string | null
   area_context: string
 }
-
-type RpcResult = {
-  data: unknown
-  error: unknown
-}
-
-export interface HazardGateRpcClient {
-  rpc(
-    name: string,
-    args: Record<string, unknown>,
-  ): PromiseLike<RpcResult>
-}
-
-export interface HazardGateLogClient {
-  from(table: "image_generation_gate_log"): {
-    insert(row: Record<string, unknown>): PromiseLike<{ error: unknown }>
-  }
-}
-
-export type HazardGateClient = HazardGateRpcClient & HazardGateLogClient
 
 type QueryHazardGateOptions = {
   toleranceMeters?: number
@@ -181,48 +167,31 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   })
 }
 
-export async function queryHazardGate(
-  client: HazardGateRpcClient,
+/** D1-backed replacement for the two PostGIS point RPCs. */
+export async function queryHazardGateD1(
+  actor: Actor,
   point: HazardPoint,
   hazardType: HazardType,
   options: QueryHazardGateOptions = {},
 ): Promise<HazardGateVerdict> {
-  if (!isPointInJapan(point)) return { kind: "no_coverage" }
-
-  const sharedArgs = {
-    p_longitude: point.longitude,
-    p_latitude: point.latitude,
-    p_hazard_type: hazardType,
-  }
-
+  if (!isPointInJapan(point)) return { kind: 'no_coverage' }
   try {
-    const [zonesResult, coverageResult] = await withTimeout(
-      Promise.all([
-        Promise.resolve(
-          client.rpc("get_hazard_zones_at_point", {
-            ...sharedArgs,
-            p_tolerance_m: clampTolerance(options.toleranceMeters),
-          }),
-        ),
-        Promise.resolve(
-          client.rpc("has_hazard_zone_coverage_at_point", sharedArgs),
-        ),
-      ]),
-      options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    )
-
-    if (zonesResult.error || coverageResult.error) return { kind: "unavailable" }
-    if (!Array.isArray(zonesResult.data)) return { kind: "unavailable" }
-    if (typeof coverageResult.data !== "boolean") return { kind: "unavailable" }
-
-    return resolveHazardGate(
-      zonesResult.data as HazardZoneRpcRow[],
-      coverageResult.data,
-      point,
-      hazardType,
-    )
+    const [zones, coverage] = await withTimeout(Promise.all([
+      zonesAtPoint(actor, {
+        longitude: point.longitude,
+        latitude: point.latitude,
+        hazardType,
+        toleranceMeters: clampTolerance(options.toleranceMeters),
+      }),
+      hasCoverageAtPoint(actor, {
+        longitude: point.longitude,
+        latitude: point.latitude,
+        hazardType,
+      }),
+    ]), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
+    return resolveHazardGate(zones, coverage, point, hazardType)
   } catch {
-    return { kind: "unavailable" }
+    return { kind: 'unavailable' }
   }
 }
 
@@ -297,11 +266,6 @@ export function getHazardGateReason(
   return verdict.kind
 }
 
-function roundCoordinate(value: number): number | null {
-  if (!Number.isFinite(value)) return null
-  return Math.round(value * 1_000) / 1_000
-}
-
 type LogHazardGateInput = {
   route: HazardGateRoute
   mode: HazardGateMode
@@ -321,60 +285,35 @@ type QueryAndLogHazardGateInput = Omit<
   toleranceMeters?: number
 }
 
-export async function logHazardGateVerdict(
-  client: HazardGateLogClient,
-  input: LogHazardGateInput,
-): Promise<void> {
-  if (input.mode === "off") return
-
-  try {
-    const { error } = await withTimeout(
-      Promise.resolve(client.from("image_generation_gate_log").insert({
-        route: input.route,
-        mode: input.mode,
-        situation: input.situation,
-        verdict: input.verdict.kind,
-        zone_id: input.verdict.kind === "inside" ? input.verdict.zone.zoneId : null,
-        lat_rounded: input.point ? roundCoordinate(input.point.latitude) : null,
-        lng_rounded: input.point ? roundCoordinate(input.point.longitude) : null,
-        user_id: input.userId,
-        latency_ms: Math.max(0, Math.round(input.latencyMs)),
-      })),
-      input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    )
-    if (error) throw error
-  } catch (error) {
-    console.error("[hazard-zone-gate] Failed to write gate audit log", error)
-  }
-}
-
-export async function queryAndLogHazardGate(
-  client: HazardGateClient,
+/** D1-backed gate evaluation with an append-only service-authorized audit row. */
+export async function queryAndLogHazardGateD1(
+  actor: Actor,
+  serviceActor: Actor,
   input: QueryAndLogHazardGateInput,
 ): Promise<HazardGateVerdict> {
-  if (input.mode === "off") return { kind: "unavailable" }
+  if (input.mode === 'off') return { kind: 'unavailable' }
 
   const startedAt = Date.now()
   const verdict = input.point
-    ? await queryHazardGate(
-        client,
-        input.point,
-        input.hazardType,
-        {
-          toleranceMeters: input.toleranceMeters,
-          timeoutMs: input.timeoutMs,
-        },
-      )
-    : { kind: "unavailable" } as const
-  await logHazardGateVerdict(client, {
-    route: input.route,
-    mode: input.mode,
-    situation: input.situation,
-    verdict,
-    point: input.point,
-    userId: input.userId,
-    latencyMs: Date.now() - startedAt,
-    timeoutMs: input.timeoutMs,
-  })
+    ? await queryHazardGateD1(actor, input.point, input.hazardType, {
+        toleranceMeters: input.toleranceMeters,
+        timeoutMs: input.timeoutMs,
+      })
+    : { kind: 'unavailable' } as const
+  try {
+    await logGateVerdictToD1(serviceActor, {
+      route: input.route,
+      mode: input.mode,
+      situation: input.situation,
+      verdict: verdict.kind,
+      zoneId: verdict.kind === 'inside' ? verdict.zone.zoneId : null,
+      latitude: input.point?.latitude ?? null,
+      longitude: input.point?.longitude ?? null,
+      userId: input.userId,
+      latencyMs: Date.now() - startedAt,
+    })
+  } catch (error) {
+    console.error('[hazard-zone-gate] Failed to write D1 gate audit log', error)
+  }
   return verdict
 }

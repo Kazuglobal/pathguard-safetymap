@@ -188,20 +188,20 @@ export default function MapContainer({
   // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
   // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
   useEffect(() => {
-    if (!supabase || !initialReportId) return
+    if (!initialReportId) return
     if (openedDeepLinkReportIdRef.current === initialReportId) return
     openedDeepLinkReportIdRef.current = initialReportId
 
     let cancelled = false
     const openDeepLinkedReport = async () => {
-      const { data, error } = await supabase
-        .from("danger_reports")
-        .select("*")
-        .eq("id", initialReportId)
-        .maybeSingle()
+      const response = await fetch(`/api/reports/${encodeURIComponent(initialReportId)}`, {
+        credentials: "same-origin",
+      })
+      const payload = response.ok ? await response.json() as { report?: DangerReport } : null
+      const data = payload?.report
 
       if (cancelled) return
-      if (error || !data) {
+      if (!data) {
         toast({
           title: "報告を表示できません",
           description: "報告が削除されたか、表示する権限がありません。",
@@ -218,42 +218,7 @@ export default function MapContainer({
     return () => {
       cancelled = true
     }
-  }, [initialReportId, supabase, toast])
-
-  // 審査中・却下済みの報告は通常の地図一覧に含まれないため、ディープリンク時は
-  // RLS（公開済み / 投稿者本人 / 管理者）を通してID指定で取得する。
-  useEffect(() => {
-    if (!supabase || !initialReportId) return
-    if (openedDeepLinkReportIdRef.current === initialReportId) return
-    openedDeepLinkReportIdRef.current = initialReportId
-
-    let cancelled = false
-    const openDeepLinkedReport = async () => {
-      const { data, error } = await supabase
-        .from("danger_reports")
-        .select("*")
-        .eq("id", initialReportId)
-        .maybeSingle()
-
-      if (cancelled) return
-      if (error || !data) {
-        toast({
-          title: "報告を表示できません",
-          description: "報告が削除されたか、表示する権限がありません。",
-          variant: "destructive",
-        })
-        return
-      }
-
-      setSelectedReport(data as DangerReport)
-      setIsDetailModalOpen(true)
-    }
-
-    void openDeepLinkedReport()
-    return () => {
-      cancelled = true
-    }
-  }, [initialReportId, supabase, toast])
+  }, [initialReportId, toast])
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()

@@ -16,8 +16,6 @@ const mocks = vi.hoisted(() => {
   const mockFetchNearbyAccidentStats = vi.fn()
   const mockBuildAccidentPromptContext = vi.fn()
   const mockIsAccidentImageContextEnabled = vi.fn()
-  const mockAdmin = { from: vi.fn(), rpc: vi.fn() }
-
   return {
     mockGetUser,
     mockGenerateDisasterPrompts,
@@ -30,7 +28,6 @@ const mocks = vi.hoisted(() => {
     mockFetchNearbyAccidentStats,
     mockBuildAccidentPromptContext,
     mockIsAccidentImageContextEnabled,
-    mockAdmin,
   }
 })
 
@@ -69,11 +66,7 @@ vi.mock("@/lib/hazard-zone-gate", () => ({
       ? { longitude: parsedLongitude, latitude: parsedLatitude }
       : null
   },
-  queryAndLogHazardGate: mocks.mockQueryAndLogHazardGate,
-}))
-
-vi.mock("@/lib/supabase-admin", () => ({
-  getSupabaseAdmin: () => mocks.mockAdmin,
+  queryAndLogHazardGateD1: mocks.mockQueryAndLogHazardGate,
 }))
 
 vi.mock("@/lib/traffic-accident/server", () => ({
@@ -182,7 +175,8 @@ describe("app/api/gemini/generate-prompts route", () => {
 
     expect(response.status).toBe(200)
     expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
+      expect.objectContaining({ kind: "user", id: "user-1" }),
+      expect.objectContaining({ kind: "service" }),
       expect.objectContaining({
         route: "generate-prompts",
         mode: "log",
@@ -259,7 +253,8 @@ describe("app/api/gemini/generate-prompts route", () => {
       fire: "fire prompt",
     })
     expect(mocks.mockQueryAndLogHazardGate).toHaveBeenCalledWith(
-      mocks.mockAdmin,
+      expect.objectContaining({ kind: "user", id: "user-1" }),
+      expect.objectContaining({ kind: "service" }),
       expect.objectContaining({ point: null, mode: "enforce" }),
     )
   })
@@ -348,7 +343,6 @@ describe("app/api/gemini/generate-prompts route", () => {
 
     expect(response.status).toBe(200)
     expect(mocks.mockFetchNearbyAccidentStats).toHaveBeenCalledWith(
-      expect.anything(),
       { longitude: 140.74, latitude: 40.82 },
       { radiusMeters: 300, years: 5 },
     )

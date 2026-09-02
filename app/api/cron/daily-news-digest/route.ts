@@ -1,7 +1,7 @@
 /**
  * Cron: 朝のダイジェスト通知（毎朝7:30 JST・1日1通）
  *
- * vercel.json で 30 22 * * * (UTC 22:30 = JST 7:30) に設定。
+ * wrangler.jsonc の Cron Trigger で 30 22 * * * (UTC 22:30 = JST 7:30) に設定。
  * 購読者を登録都道府県でグループ化し、「全国X件・{都道府県}でY件」の
  * 地域別文面を daily_digest プリファレンスの購読者へ配信する。
  * 地域未登録（prefecture が null）の購読者には全国文面を送る。
@@ -14,9 +14,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = () => getSupabaseAdmin() as any
+import { getServiceActor } from '@/lib/auth/service-actor'
+import { coverPendingLocalAlerts, listDigestLocalAlerts } from '@/lib/db/repos/push.repo'
 
 import { verifyCronSecret } from '@/lib/cron-auth'
 import { fetchAllPushSubscriptions, sendPushToSubscriptions, type PushSubscriptionRow } from '@/lib/web-push'
@@ -35,17 +34,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
 
   // 直近24時間の地域アラート（全体件数と都道府県別件数の両方に使う）
-  const { data: alertRows, error: alertError } = await db()
-    .from('local_safety_alerts')
-    .select('prefecture')
-    .gte('occurred_at', since)
-
-  if (alertError) {
-    console.error('[cron/daily-news-digest] alert fetch error', alertError)
-    return NextResponse.json({ error: 'アラート集計に失敗しました' }, { status: 500 })
-  }
-
-  const alerts = (alertRows ?? []) as Array<{ prefecture: string | null }>
+  const alerts = await listDigestLocalAlerts(getServiceActor(), since)
   const alertCount = alerts.length
   const alertCountByPrefecture = new Map<string, number>()
   for (const alert of alerts) {
@@ -85,22 +74,13 @@ export async function GET(req: NextRequest) {
   // 送信「後」に夜間発生の未通知アラートをカバー済みにする（Layer 2との二重通知防止）。
   // 送信前に埋めると、送信失敗時にアラートが「通知済み扱いで未配信」のまま失われる。
   // 逆順なら最悪でも Layer 2 の24時間フォールバックが個別配信で拾う（重複はあり得るが欠落はない）
-  const { data: covered, error: coverError } = await db()
-    .from('local_safety_alerts')
-    .update({ push_notified_at: now.toISOString() })
-    .is('push_notified_at', null)
-    .gte('created_at', since)
-    .select('id')
-
-  if (coverError) {
-    console.error('[cron/daily-news-digest] cover overnight alerts error', coverError)
-  }
+  const covered = await coverPendingLocalAlerts(getServiceActor(), since, now.toISOString())
 
   return NextResponse.json({
     notified,
     prefectureGroups: subsByPrefecture.size,
     newsCount: digest.nationalCount,
     alertCount,
-    coveredAlerts: covered?.length ?? 0,
+    coveredAlerts: covered.length,
   })
 }

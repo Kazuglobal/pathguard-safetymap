@@ -56,17 +56,12 @@ function isPlaceEligible(hazard: HunterHazard): boolean {
   return area >= PLACE_AREA_MIN && area <= PLACE_AREA_MAX
 }
 
-function themeFor(
-  hazard: HunterHazard,
-  accident?: HunterAccidentSummary,
-): string | null {
+function themeFor(hazard: HunterHazard): string | null {
   // hazard.accidentLink は sanitizeDangerPoints で既に kidAccidentLabel を通過済み
   // (子ども向け語彙が保証済み)なので、ここで再度かけない(二重適用による劣化防止)。
-  if (hazard.accidentLink) return hazard.accidentLink
-  if (accident?.hasData && accident.topAccidentType) {
-    return kidAccidentLabel(accident.topAccidentType)
-  }
-  return null
+  // AI が「写真の状況と対応しない」と判断して null にした点へ、地域統計の事故タイプを
+  // テーマ札として被せない(写真と無関係な事故類型の誤学習を防ぐ)。
+  return hazard.accidentLink ?? null
 }
 
 /**
@@ -83,7 +78,6 @@ export function buildQuizItemsFromAi(
   max: number = MAX_QUIZ,
 ): HunterQuizItem[] {
   const limit = Math.max(1, max)
-  const reality = accident ? realityLine(accident) : ""
   const placeBudget = Math.ceil(limit / 2)
   const items: HunterQuizItem[] = []
   let placeCount = 0
@@ -92,7 +86,9 @@ export function buildQuizItemsFromAi(
   for (let i = 0; i < count; i += 1) {
     const hazard = hazards[i]
     const material = materials[i]
-    const theme = themeFor(hazard, accident)
+    const theme = themeFor(hazard)
+    // 事故の一言は 1 問目にだけ添える(3 問連続で同じ文が並ぶと解説の情報量が下がる)。
+    const reality = i === 0 && accident ? realityLine(accident) : ""
 
     if (isPlaceEligible(hazard) && placeCount < placeBudget) {
       placeCount += 1

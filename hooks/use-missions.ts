@@ -1,7 +1,6 @@
 "use client"
 
 import useSWR from "swr"
-import { useSupabase } from "@/components/providers/supabase-provider"
 
 export interface MissionRow {
   id: string
@@ -21,38 +20,11 @@ interface ProgressRow {
 }
 
 export function useMissions() {
-  const { supabase } = useSupabase()
-
   const fetcher = async () => {
     try {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser()
-      if (error) {
-        // "Auth session missing"は未ログイン状態なのでエラーではない
-        if (!error.message?.includes("Auth session missing")) {
-          console.error("useMissions: getUser error", error)
-        }
-        return { missions: [], progress: {} as Record<string, ProgressRow> }
-      }
-      if (!user) return { missions: [], progress: {} as Record<string, ProgressRow> }
-
-      const { data: missions } = await supabase
-        .from("missions")
-        .select("id, title, description, period, target_value, reward_points, reward_badge_id, target_type")
-
-      const { data: progressRows } = await supabase
-        .from("user_mission_progress")
-        .select("mission_id, progress, completed")
-        .eq("user_id", user.id)
-
-      const progressMap: Record<string, ProgressRow> = {}
-      ;(progressRows ?? []).forEach((p: any) => {
-        progressMap[String(p.mission_id)] = p
-      })
-
-      return { missions: (missions ?? []) as MissionRow[], progress: progressMap }
+      const response = await fetch("/api/missions", { credentials: "same-origin" })
+      if (!response.ok) return { missions: [], progress: {} as Record<string, ProgressRow> }
+      return await response.json() as { missions: MissionRow[]; progress: Record<string, ProgressRow> }
     } catch (e) {
       console.error("useMissions: unexpected error", e)
       return { missions: [], progress: {} as Record<string, ProgressRow> }

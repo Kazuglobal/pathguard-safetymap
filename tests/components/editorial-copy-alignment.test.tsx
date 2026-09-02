@@ -4,6 +4,8 @@ import SchoolRouteNewsPage from "@/app/school-route-news/page"
 import NewsDetailPage from "@/app/school-route-news/[slug]/page"
 import SafeMagazinePage from "@/app/safe-magazine/page"
 import { SchoolRouteNewsSection } from "@/components/landing/SchoolRouteNewsSection"
+import { getLandingNewsPreview } from "@/lib/landing-news-preview"
+import { getAllNewsItems } from "@/lib/school-route-news"
 
 vi.mock("next/image", () => ({
   default: ({ fill: _fill, priority: _priority, ...props }: any) => <img {...props} />,
@@ -21,9 +23,7 @@ describe("editorial copy alignment", () => {
   it("renders the newest curated school route story in the landing news section", () => {
     render(<SchoolRouteNewsSection />)
 
-    expect(
-      screen.getByText("【静岡県浜松市】通学中の9歳女児が横断歩道ではねられ一時重体—信号無視の疑いで21歳男を現行犯逮捕")
-    ).toBeInTheDocument()
+    expect(screen.getByText(getLandingNewsPreview(1)[0].title)).toBeInTheDocument()
   })
 
   it("renders the landing school route news badge as editorially curated", () => {
@@ -72,9 +72,11 @@ describe("editorial copy alignment", () => {
   })
 
   it("keeps the curated highlight label on the school route news detail page", async () => {
+    const highlighted = getAllNewsItems().find((item) => item.isBreaking)
+    expect(highlighted).toBeDefined()
     render(
       await NewsDetailPage({
-        params: Promise.resolve({ slug: "kitakyushu-kokurakita-izumidai-suspicious-sns-20260420" }),
+        params: Promise.resolve({ slug: highlighted!.slug }),
       })
     )
 

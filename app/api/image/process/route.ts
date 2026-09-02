@@ -1,309 +1,190 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import sharp from "sharp";
-import type { Database } from "@/lib/database.types";
-import { createServerClient } from "@/lib/supabase-server";
-import { isAdminEmail } from "@/lib/admin";
-import { readFileWithSentryContext } from "@/lib/sentry-upload-context";
-import { extractStoragePathFromPublicUrl } from "@/lib/storage-path";
-// Node.js ランタイムを強制
-export const runtime = "nodejs";
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 
-const BUCKET_NAME = "danger-reports";
-let supabaseAdminClient: SupabaseClient<Database> | null | undefined;
+import { getActor } from '@/lib/auth/actor'
+import { AuthzError } from '@/lib/db/authz'
+import {
+  getDangerReportForImageUpdate,
+  setDangerReportImages,
+} from '@/lib/db/repos/danger-reports.repo'
+import { privateMediaUrl } from '@/lib/media/url'
 
-type ImageType = "processed" | "original";
+export const runtime = 'nodejs'
 
-type ReencodedImage = {
-  buffer: Buffer;
-  contentType: string;
-  ext: string;
-};
+const MAX_REQUEST_SIZE = 25 * 1024 * 1024
+const MAX_FILE_SIZE = 20 * 1024 * 1024
+const MAX_PROCESSED_IMAGES = 20
+const KEY_SEGMENT = /^[A-Za-z0-9_-]{1,128}$/
+const ALLOWED_IMAGE_TYPES = new Map([
+  ['image/jpeg', new Set(['jpg', 'jpeg'])],
+  ['image/png', new Set(['png'])],
+  ['image/webp', new Set(['webp'])],
+])
 
-/**
- * アップロード前に必ず sharp で再エンコードし、EXIF(GPS位置情報・機種情報・撮影時刻)を除去する。
- * - rotate(): EXIFのOrientationを画素へ反映してから、そのEXIF自体は破棄する。
- * - withMetadata()を呼ばない: sharpはデフォルトで出力にメタデータ(EXIF/ICC等)を引き継がないため、
- *   GPS等の位置情報は確実に落ちる。
- * - 出力フォーマットは元のcontentTypeに応じてjpeg/png/webpへ正規化する。
- * 失敗時(壊れた画像等)はthrowし、呼び出し側で400を返す(生バッファのフォールスルーは行わない)。
- */
-async function reencodeImageForUpload(
-  buffer: Buffer,
-  contentType: string,
-): Promise<ReencodedImage> {
-  const pipeline = sharp(buffer).rotate();
+type ImageType = 'processed' | 'original'
 
-  if (contentType === "image/png") {
-    return {
-      buffer: await pipeline.png().toBuffer(),
-      contentType: "image/png",
-      ext: "png",
-    };
-  }
+interface ImageTransformationResult {
+  image(): ReadableStream<Uint8Array>
+}
+interface ImageTransformer {
+  output(options: { format: 'image/webp'; quality: number }): Promise<ImageTransformationResult>
+}
+interface ImagesBindingLike {
+  info(stream: ReadableStream<Uint8Array>): Promise<unknown>
+  input(stream: ReadableStream<Uint8Array>): ImageTransformer
+}
+interface MediaBucket {
+  put(
+    key: string,
+    value: ReadableStream<Uint8Array>,
+    options: { httpMetadata: { contentType: string; cacheControl: string } },
+  ): Promise<unknown>
+  delete(keys: string | string[]): Promise<void>
+}
 
-  if (contentType === "image/webp") {
-    return {
-      buffer: await pipeline.webp({ quality: 85 }).toBuffer(),
-      contentType: "image/webp",
-      ext: "webp",
-    };
-  }
-
-  return {
-    buffer: await pipeline.jpeg({ quality: 85 }).toBuffer(),
-    contentType: "image/jpeg",
-    ext: "jpg",
-  };
+function json(message: string, status: number, extra: Record<string, unknown> = {}) {
+  return Response.json({ message, ...extra }, { status })
 }
 
 function parseImageType(value: FormDataEntryValue | null): ImageType {
-  return value === "original" ? "original" : "processed";
+  return value === 'original' ? 'original' : 'processed'
 }
 
 function parseReplaceIndex(value: FormDataEntryValue | null): number | null {
-  if (typeof value !== "string" || value.trim() === "") return null;
-  if (!/^-?\d+$/.test(value.trim())) return Number.NaN;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) ? parsed : Number.NaN;
+  if (typeof value !== 'string' || value.trim() === '') return null
+  if (!/^\d+$/.test(value.trim())) return Number.NaN
+  const parsed = Number.parseInt(value, 10)
+  return Number.isSafeInteger(parsed) ? parsed : Number.NaN
 }
 
-function getSupabaseAdminClient(): SupabaseClient<Database> | null {
-  if (supabaseAdminClient !== undefined) return supabaseAdminClient;
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  supabaseAdminClient =
-    supabaseUrl && supabaseKey
-      ? createClient<Database>(supabaseUrl, supabaseKey)
-      : null;
-
-  return supabaseAdminClient;
+function validateFile(file: File): string | null {
+  if (file.size <= 0 || file.size > MAX_FILE_SIZE) return '画像サイズは20MB以下にしてください'
+  const extensions = ALLOWED_IMAGE_TYPES.get(file.type)
+  if (!extensions) return 'JPEG、PNG、WebP形式の画像のみ使用できます'
+  const extension = file.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1]
+  if (!extension || !extensions.has(extension)) return '画像の拡張子と形式が一致しません'
+  return null
 }
 
-
-// --- POST 関数定義 ---
-export async function POST(req: Request) {
-  // 認証チェック
-  const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return new Response(
-      JSON.stringify({ message: "認証が必要です" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+export async function POST(request: Request) {
+  const contentLength = Number(request.headers.get('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_SIZE) {
+    return json('リクエストサイズが大きすぎます', 413)
   }
 
-  // Supabase Admin クライアントが初期化されているかチェック
-  const supabaseAdmin = getSupabaseAdminClient();
-  if (!supabaseAdmin) {
-    return new Response(
-      JSON.stringify({
-        message: "Server configuration error: Failed to initialize Supabase.",
-      }),
-      { status: 500 },
-    );
-  }
+  const actor = await getActor()
+  if (actor.kind === 'anon') return json('認証が必要です', 401)
 
+  let uploadedKey: string | null = null
+  let bucket: MediaBucket | null = null
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const reportId = formData.get("reportId") as string;
-    const imageType = parseImageType(formData.get("imageType"));
-    const replaceIndex = parseReplaceIndex(formData.get("replaceIndex"));
+    const formData = await request.formData()
+    const fileValue = formData.get('file')
+    const reportIdValue = formData.get('reportId')
+    const imageType = parseImageType(formData.get('imageType'))
+    const replaceIndex = parseReplaceIndex(formData.get('replaceIndex'))
+    if (!(fileValue instanceof File)) return json('file not provided', 400)
+    if (typeof reportIdValue !== 'string' || !reportIdValue || reportIdValue.length > 128) {
+      return json('reportId is invalid', 400)
+    }
+    if (!KEY_SEGMENT.test(reportIdValue)) return json('reportId is invalid', 400)
+    if (Number.isNaN(replaceIndex)) return json('replaceIndex must be a non-negative integer', 400)
+    const validationError = validateFile(fileValue)
+    if (validationError) return json(validationError, 400)
 
-    if (!file) {
-      return new Response(JSON.stringify({ message: "file not provided" }), {
-        status: 400,
-      });
-    }
-    if (!reportId) {
-      return new Response(JSON.stringify({ message: "reportId not provided" }), {
-        status: 400,
-      });
-    }
-    if (Number.isNaN(replaceIndex)) {
-      return new Response(
-        JSON.stringify({ message: "replaceIndex must be an integer" }),
-        { status: 400 },
-      );
+    const report = await getDangerReportForImageUpdate(actor, reportIdValue)
+    if (!report) return json('Report not found', 404)
+    if (!KEY_SEGMENT.test(report.userId) || !KEY_SEGMENT.test(report.id)) {
+      return json('Report contains an invalid media key segment', 500)
     }
 
-    // 1. 対象レポートを取得し、所有者/管理者を検証
-    const { data: existingReport, error: fetchError } = await supabaseAdmin
-      .from("danger_reports")
-      .select("user_id, image_url, processed_image_urls, status, ai_moderation_status, ai_moderation_reason")
-      .eq("id", reportId)
-      .maybeSingle();
-
-    if (fetchError) {
-      return new Response(
-        JSON.stringify({
-          message: `Database fetch error: ${fetchError.message}`,
-        }),
-        { status: 500 },
-      );
+    const cloudflare = getCloudflareContext()
+    const env = cloudflare.env as unknown as {
+      IMAGES: ImagesBindingLike
+      MEDIA_PRIVATE: MediaBucket
     }
+    bucket = env.MEDIA_PRIVATE
 
-    if (!existingReport) {
-      return new Response(
-        JSON.stringify({ message: `Report with id ${reportId} not found.` }),
-        { status: 404 },
-      );
-    }
-
-    const admin = isAdminEmail(user.email) || user.app_metadata?.role === "admin";
-    if (existingReport.user_id !== user.id && !admin) {
-      return new Response(
-        JSON.stringify({ message: "このレポートを更新する権限がありません" }),
-        { status: 403 },
-      );
-    }
-
-    const rawBuffer = Buffer.from(
-      await readFileWithSentryContext({
-        route: "/api/image/process",
-        fieldName: "file",
-        file,
-      }),
-    );
-
-    let reencoded: ReencodedImage;
     try {
-      reencoded = await reencodeImageForUpload(rawBuffer, file.type || "");
-    } catch (reencodeError: unknown) {
-      const message =
-        reencodeError instanceof Error ? reencodeError.message : "unknown error";
-      return new Response(
-        JSON.stringify({
-          message: `画像の処理に失敗しました。壊れた画像またはサポートされていない形式です: ${message}`,
-        }),
-        { status: 400 },
-      );
+      await env.IMAGES.info(fileValue.stream())
+    } catch {
+      return json('壊れた画像またはサポートされていない画像です', 400)
     }
 
-    const timestamp = Date.now();
-    const fileName = `${reportId}-${timestamp}-${Math.random().toString(36).substring(2, 15)}.${reencoded.ext}`;
-    // danger-reports bucket enforces owner-scoped folder policies:
-    // storage.foldername(name)[1] must match auth.uid().
-    // Store under the report owner's folder to satisfy RLS consistently.
-    const ownerFolder = existingReport.user_id;
-    const filePath = `${ownerFolder}/${reportId}/${fileName}`;
-
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .upload(filePath, reencoded.buffer, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: reencoded.contentType,
-      });
-
-    if (uploadError) {
-      return new Response(
-        JSON.stringify({
-          message: `Storage upload error: ${uploadError.message}`,
-        }),
-        { status: 500 },
-      );
-    }
-
-    const { data: urlData } = supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
-
-    const processedUrl = urlData.publicUrl;
-
-    if (imageType === "original") {
-      const { error: originalUpdateError } = await (supabaseAdmin as any)
-        .rpc("set_danger_report_image", {
-          p_report_id: reportId,
-          p_image_url: processedUrl,
-          p_processed_image_urls: null,
-        })
-        .maybeSingle();
-
-      if (originalUpdateError) {
-        await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
-        return new Response(
-          JSON.stringify({
-            message: `Database update error: ${originalUpdateError.message}`,
-          }),
-          { status: 500 },
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          message: "Original image uploaded and report updated successfully.",
-          imageUrl: processedUrl,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // processed image: append or replace
-    const currentUrls = existingReport.processed_image_urls || [];
-    let updatedUrls = [...currentUrls];
-    let oldReplacedUrl: string | null = null;
-
-    if (replaceIndex === null) {
-      updatedUrls = [...currentUrls, processedUrl];
-    } else {
-      if (replaceIndex < 0 || replaceIndex >= currentUrls.length) {
-        await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
-        return new Response(
-          JSON.stringify({ message: "replaceIndex is out of range" }),
-          { status: 400 },
-        );
-      }
-      oldReplacedUrl = currentUrls[replaceIndex] || null;
-      updatedUrls[replaceIndex] = processedUrl;
-    }
-
-    const { error: processedUpdateError } = await (supabaseAdmin as any)
-      .rpc("set_danger_report_image", {
-        p_report_id: reportId,
-        p_image_url: null,
-        p_processed_image_urls: updatedUrls,
-      })
-      .maybeSingle();
-
-    if (processedUpdateError) {
-      await supabaseAdmin.storage.from(BUCKET_NAME).remove([filePath]);
-      return new Response(
-        JSON.stringify({
-          message: `Database update error: ${processedUpdateError.message}`,
-        }),
-        { status: 500 },
-      );
-    }
-
-    // replace時は旧ファイルをベストエフォートで削除
-    if (oldReplacedUrl) {
-      const oldPath = extractStoragePathFromPublicUrl(oldReplacedUrl, BUCKET_NAME);
-      if (oldPath) {
-        await supabaseAdmin.storage.from(BUCKET_NAME).remove([oldPath]);
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        message: "Processed image uploaded and report updated successfully.",
-        processedImageUrl: processedUrl,
-        updatedUrls,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+    const transformed = await env.IMAGES.input(fileValue.stream())
+      .output({ format: 'image/webp', quality: 85 })
+    uploadedKey = `danger-reports/${report.userId}/${report.id}/${crypto.randomUUID()}.webp`
+    await bucket.put(uploadedKey, transformed.image(), {
+      httpMetadata: {
+        contentType: 'image/webp',
+        cacheControl: 'private, max-age=31536000, immutable',
       },
-    );
-  } catch (err: unknown) {
-    const errorMessage =
-      err instanceof Error ? err.message : "Internal Server Error";
-    return new Response(JSON.stringify({ message: errorMessage }), {
-      status: 500,
-    });
+    })
+
+    if (imageType === 'original') {
+      const oldKey = report.imageKey
+      await setDangerReportImages(actor, report.id, { imageKey: uploadedKey })
+      if (oldKey && oldKey !== uploadedKey) await bucket.delete(oldKey).catch(() => undefined)
+      return json('Original image uploaded and report updated successfully.', 200, {
+        imageUrl: privateMediaUrl(uploadedKey),
+      })
+    }
+
+    const updatedKeys = [...report.processedImageKeys]
+    let oldKey: string | null = null
+    if (replaceIndex == null) {
+      if (updatedKeys.length >= MAX_PROCESSED_IMAGES) {
+        await bucket.delete(uploadedKey)
+        uploadedKey = null
+        return json(`加工画像は${MAX_PROCESSED_IMAGES}枚までです`, 400)
+      }
+      updatedKeys.push(uploadedKey)
+    } else {
+      if (replaceIndex >= updatedKeys.length) {
+        await bucket.delete(uploadedKey)
+        uploadedKey = null
+        return json('replaceIndex is out of range', 400)
+      }
+      oldKey = updatedKeys[replaceIndex] ?? null
+      updatedKeys[replaceIndex] = uploadedKey
+    }
+
+    await setDangerReportImages(actor, report.id, { processedImageKeys: updatedKeys })
+    if (oldKey && oldKey !== uploadedKey) await bucket.delete(oldKey).catch(() => undefined)
+    return json('Processed image uploaded and report updated successfully.', 200, {
+      processedImageUrl: privateMediaUrl(uploadedKey),
+      updatedUrls: updatedKeys.map(privateMediaUrl),
+    })
+  } catch (error) {
+    if (uploadedKey && bucket) await bucket.delete(uploadedKey).catch(() => undefined)
+    if (error instanceof AuthzError) return json('このレポートを更新する権限がありません', 403)
+    console.error('[api/image/process] failed', error instanceof Error ? error.message : 'unknown')
+    return json('画像の処理に失敗しました', 500)
+  }
+}
+
+export async function DELETE(request: Request) {
+  const actor = await getActor()
+  if (actor.kind === 'anon') return json('認証が必要です', 401)
+  try {
+    const body = await request.json() as Record<string, unknown>
+    const reportId = typeof body.reportId === 'string' ? body.reportId : ''
+    const index = Number(body.index)
+    if (!KEY_SEGMENT.test(reportId) || !Number.isInteger(index) || index < 0) {
+      return json('reportId または index が不正です', 400)
+    }
+    const report = await getDangerReportForImageUpdate(actor, reportId)
+    if (!report) return json('Report not found', 404)
+    const key = report.processedImageKeys[index]
+    if (!key) return json('Processed image not found', 404)
+    const updatedKeys = report.processedImageKeys.filter((_, current) => current !== index)
+    await setDangerReportImages(actor, report.id, { processedImageKeys: updatedKeys })
+    const { env } = getCloudflareContext()
+    await (env as unknown as { MEDIA_PRIVATE: MediaBucket }).MEDIA_PRIVATE.delete(key).catch(() => undefined)
+    return json('Processed image deleted.', 200, { updatedUrls: updatedKeys.map(privateMediaUrl) })
+  } catch (error) {
+    if (error instanceof AuthzError) return json('このレポートを更新する権限がありません', 403)
+    if (error instanceof SyntaxError) return json('リクエストが不正です', 400)
+    console.error('[api/image/process] delete failed', error instanceof Error ? error.message : 'unknown')
+    return json('画像の削除に失敗しました', 500)
   }
 }

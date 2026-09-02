@@ -140,8 +140,18 @@ function isCleanKidText(text: unknown): text is string {
  * kind 既定のフォールバックへ丸ごと差し替える(部分置換はしない)。
  * quiz 自体が欠落(undefined)・非配列 choices でも、点を落とさず kind 既定へ倒す。
  */
+/** 選択肢の同一判定用に空白を正規化する(全角/半角/連続空白の違いで別物扱いしない)。 */
+function normalizeChoice(choice: string): string {
+  return choice.trim().replace(/[\s\u3000]+/g, " ")
+}
+
 function safeQuiz(quiz: RawAiQuiz | undefined, kind: HunterDangerKind): RawAiQuiz {
   const fallback = KID_QUIZ_FALLBACK_BY_KIND[kind]
+  const fallbackQuiz = (): RawAiQuiz => ({
+    question: fallback.question,
+    choices: [...fallback.choices],
+    explanation: fallback.explanation,
+  })
   if (
     !quiz ||
     !Array.isArray(quiz.choices) ||
@@ -150,11 +160,23 @@ function safeQuiz(quiz: RawAiQuiz | undefined, kind: HunterDangerKind): RawAiQui
     !isCleanKidText(quiz.explanation) ||
     !quiz.choices.every((choice) => isCleanKidText(choice))
   ) {
-    return { question: fallback.question, choices: [...fallback.choices], explanation: fallback.explanation }
+    return fallbackQuiz()
   }
+  // 重複した選択肢(正解と同文の誤答・同じ誤答が2つ)は、画面に同じ文が2つ並び
+  // 片方だけ不正解になる矛盾を生むため、正解(index0)を残して重複を落とす。
+  // 落とした結果 2 択未満なら kind 既定へ丸ごと差し替える(部分置換はしない)。
+  const seen = new Set<string>()
+  const choices: string[] = []
+  for (const raw of quiz.choices) {
+    const choice = normalizeChoice(raw)
+    if (seen.has(choice)) continue
+    seen.add(choice)
+    choices.push(choice)
+  }
+  if (choices.length < 2) return fallbackQuiz()
   return {
     question: quiz.question.trim(),
-    choices: quiz.choices.map((choice) => choice.trim()),
+    choices,
     explanation: quiz.explanation.trim(),
   }
 }

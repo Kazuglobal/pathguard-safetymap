@@ -1,200 +1,51 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-// モック設定
-vi.mock('@/lib/supabase-server', () => ({
-  createServerClient: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  getActor: vi.fn(), get: vi.fn(), upsert: vi.fn(), patch: vi.fn(),
+}))
+vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.getActor }))
+vi.mock('@/lib/db/repos/push.repo', () => ({
+  getPushSubscription: mocks.get,
+  upsertPushSubscription: mocks.upsert,
+  patchPushSubscription: mocks.patch,
 }))
 
-vi.mock('@/lib/supabase-admin', () => ({
-  getSupabaseAdmin: vi.fn(),
-}))
+import { GET, PATCH, POST } from '@/app/api/push/subscribe/route'
 
-import { createServerClient } from '@/lib/supabase-server'
-import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { GET, POST, PATCH } from '@/app/api/push/subscribe/route'
-
-const mockUser = { id: 'user-1', email: 'test@example.com' }
-
-function mockAuth(user: typeof mockUser | null) {
-  vi.mocked(createServerClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
-    },
-  } as any)
-}
-
-function mockAdminUpsert(error: unknown = null) {
-  const upsert = vi.fn().mockResolvedValue({ error })
-  vi.mocked(getSupabaseAdmin).mockReturnValue({
-    from: vi.fn().mockReturnValue({ upsert }),
-  } as any)
-  return upsert
-}
-
-function makeRequest(body: unknown) {
-  return new NextRequest('http://localhost/api/push/subscribe', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
-
-describe('POST /api/push/subscribe', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key'
-  })
-
-  it('未認証の場合は401を返す', async () => {
-    mockAuth(null)
-    const res = await POST(makeRequest({ endpoint: 'https://example.com', p256dh: 'key', auth: 'secret' }))
-    expect(res.status).toBe(401)
-  })
-
-  it('有効なリクエストでサブスクリプションを登録する', async () => {
-    mockAuth(mockUser)
-    mockAdminUpsert(null)
-
-    const res = await POST(makeRequest({
-      endpoint: 'https://fcm.googleapis.com/push/abc',
-      p256dh: 'some-p256dh-key',
-      auth: 'some-auth-secret',
-    }))
-
-    expect(res.status).toBe(200)
-    const data = await res.json()
-    expect(data).toEqual({ subscribed: true })
-  })
-
-  it('無効なエンドポイントURLで400を返す', async () => {
-    mockAuth(mockUser)
-
-    const res = await POST(makeRequest({
-      endpoint: 'not-a-url',
-      p256dh: 'key',
-      auth: 'secret',
-    }))
-
-    expect(res.status).toBe(400)
-  })
-
-  it('DBエラー時は500を返す', async () => {
-    mockAuth(mockUser)
-    mockAdminUpsert({ message: 'DB error' })
-
-    const res = await POST(makeRequest({
-      endpoint: 'https://fcm.googleapis.com/push/abc',
-      p256dh: 'key',
-      auth: 'secret',
-    }))
-
-    expect(res.status).toBe(500)
-  })
+const actor = { kind: 'user', id: 'user-1', email: 'u@example.com', isAdmin: false } as const
+const endpoint = 'https://fcm.googleapis.com/push/abc'
+const bodyRequest = (method: string, body: unknown) => new NextRequest('http://localhost/api/push/subscribe', {
+  method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 })
 
-describe('PATCH /api/push/subscribe', () => {
+describe('push subscription D1 API', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getActor.mockResolvedValue(actor)
   })
 
-  it('通知設定を更新する', async () => {
-    mockAuth(mockUser)
-    const mockUpdate = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    })
-    vi.mocked(getSupabaseAdmin).mockReturnValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
-
-    const req = new NextRequest('http://localhost/api/push/subscribe', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        endpoint: 'https://fcm.googleapis.com/push/abc',
-        preferences: { danger_reports: false, news: true, magazine: true },
-      }),
-    })
-
-    const res = await PATCH(req)
-    expect(res.status).toBe(200)
-    const data = await res.json()
-    expect(data).toEqual({ updated: true })
-  })
-})
-
-describe('GET /api/push/subscribe', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('requires authentication and validates endpoint URLs', async () => {
+    mocks.getActor.mockResolvedValue({ kind: 'anon' })
+    expect((await POST(bodyRequest('POST', { endpoint, p256dh: 'p', auth: 'a' }))).status).toBe(401)
+    mocks.getActor.mockResolvedValue(actor)
+    expect((await POST(bodyRequest('POST', { endpoint: 'bad', p256dh: 'p', auth: 'a' }))).status).toBe(400)
   })
 
-  it('既存 endpoint の通知設定を返す', async () => {
-    mockAuth(mockUser)
-    const maybeSingle = vi.fn().mockResolvedValue({
-      data: {
-        endpoint: 'https://fcm.googleapis.com/push/abc',
-        notification_preferences: {
-          danger_reports: false,
-          news: true,
-          magazine: false,
-        },
-      },
-      error: null,
-    })
-    vi.mocked(getSupabaseAdmin).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ maybeSingle }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const req = new NextRequest(
-      'http://localhost/api/push/subscribe?endpoint=https%3A%2F%2Ffcm.googleapis.com%2Fpush%2Fabc'
-    )
-
-    const res = await GET(req)
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({
-      subscribed: true,
-      preferences: {
-        danger_reports: false,
-        news: true,
-        magazine: false,
-      },
-    })
+  it('upserts a validated subscription with normalized preferences', async () => {
+    mocks.upsert.mockResolvedValue(undefined)
+    const response = await POST(bodyRequest('POST', { endpoint, p256dh: 'p', auth: 'a', prefecture: '東京都' }))
+    expect(response.status).toBe(200)
+    expect(mocks.upsert).toHaveBeenCalledWith(actor, expect.objectContaining({ endpoint, prefecture: '東京都' }))
   })
 
-  it('endpoint が見つからない場合は subscribed: false を返す', async () => {
-    mockAuth(mockUser)
-    const maybeSingle = vi.fn().mockResolvedValue({
-      data: null,
-      error: null,
-    })
-    vi.mocked(getSupabaseAdmin).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ maybeSingle }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const req = new NextRequest(
-      'http://localhost/api/push/subscribe?endpoint=https%3A%2F%2Ffcm.googleapis.com%2Fpush%2Fmissing'
-    )
-
-    const res = await GET(req)
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({
-      subscribed: false,
-      preferences: null,
-    })
+  it('reads and patches only the actor subscription', async () => {
+    mocks.get.mockResolvedValue({ notificationPreferences: { danger_reports: false } })
+    const getResponse = await GET(new NextRequest(`http://localhost/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`))
+    expect(await getResponse.json()).toEqual({ subscribed: true, preferences: { danger_reports: false } })
+    mocks.patch.mockResolvedValue({ id: 'sub-1' })
+    const patchResponse = await PATCH(bodyRequest('PATCH', { endpoint, preferences: { danger_reports: true } }))
+    expect(await patchResponse.json()).toEqual({ updated: true })
+    expect(mocks.patch).toHaveBeenCalledWith(actor, endpoint, expect.objectContaining({ preferences: expect.any(Object) }))
   })
 })

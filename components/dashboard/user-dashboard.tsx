@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowRight, Flag, Map, Sparkles, Trophy } from "lucide-react"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { useGamification } from "@/hooks/use-gamification"
 import {
   getReportStatusPresentation,
@@ -22,7 +21,6 @@ type RecentReport = {
 }
 
 export default function UserDashboard() {
-  const { supabase } = useSupabase()
   const { points, level, isLoading: pointsLoading } = useGamification()
   const [reports, setReports] = useState<RecentReport[]>([])
   const [name, setName] = useState("ユーザー")
@@ -36,30 +34,22 @@ export default function UserDashboard() {
     async function load() {
       try {
         setLoadError(false)
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-          // 取得失敗を「報告0件」と区別する(誤ったデフォルト値の正常表示を防ぐ)
-          if (active && userError) setLoadError(true)
-          return
-        }
-
-        const [profileResult, reportsResult] = await Promise.all([
-          supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
-          supabase
-            .from("danger_reports")
-            .select("id, title, status, ai_moderation_status, ai_moderation_reason, created_at")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(3),
+        const [profileResponse, reportsResponse] = await Promise.all([
+          fetch("/api/profile", { credentials: "same-origin" }),
+          fetch("/api/reports?owner=me&limit=3", { credentials: "same-origin" }),
         ])
 
         if (!active) return
-        if (reportsResult.error) {
+        if (!profileResponse.ok || !reportsResponse.ok) {
           setLoadError(true)
           return
         }
-        setName(profileResult.data?.display_name || user.email?.split("@")[0] || "ユーザー")
-        setReports(reportsResult.data ?? [])
+        const [{ profile }, { reports: reportRows = [] }] = await Promise.all([
+          profileResponse.json() as Promise<{ profile?: { display_name?: string | null; email?: string | null } }>,
+          reportsResponse.json() as Promise<{ reports?: RecentReport[] }>,
+        ])
+        setName(profile?.display_name || profile?.email?.split("@")[0] || "ユーザー")
+        setReports(reportRows)
       } catch {
         if (active) setLoadError(true)
       } finally {
@@ -69,7 +59,7 @@ export default function UserDashboard() {
 
     load()
     return () => { active = false }
-  }, [supabase, reloadKey])
+  }, [reloadKey])
 
   const t = tankenTokens
   // 状態の判定・ラベルは getReportStatusPresentation 系に一元化(ローカル辞書を新設しない)

@@ -40,47 +40,33 @@ interface UseDangerReportsParams {
  * 公開レポートと自分の審査中レポートの両方に同じ条件を使う
  * (pending側にだけ適用し忘れると、絞り込み中も審査中リストに全件出続ける)。
  */
-function applyReportContentFilters(query: any, filterOptions: DangerReportFilterOptions) {
-  // Filter by prefecture (region)
+function reportQuery(filterOptions: DangerReportFilterOptions): string {
+  const params = new URLSearchParams({ limit: "2000" })
+  PUBLIC_DANGER_REPORT_STATUSES.forEach((status) => params.append("status", status))
+  if (filterOptions.showPending) params.append("status", "pending")
   if (filterOptions.prefecture && filterOptions.prefecture !== NATIONWIDE) {
-    query = query.eq('prefecture', filterOptions.prefecture)
+    params.set("prefecture", filterOptions.prefecture)
   }
-  // Filter by map viewport (bbox) — 大量報告時に全件取得しないための絞り込み
   if (filterOptions.bounds) {
-    const { minLng, minLat, maxLng, maxLat } = filterOptions.bounds
-    query = query
-      .gte('latitude', minLat)
-      .lte('latitude', maxLat)
-      .gte('longitude', minLng)
-      .lte('longitude', maxLng)
+    params.set("minLng", String(filterOptions.bounds.minLng))
+    params.set("minLat", String(filterOptions.bounds.minLat))
+    params.set("maxLng", String(filterOptions.bounds.maxLng))
+    params.set("maxLat", String(filterOptions.bounds.maxLat))
   }
-  // Filter by danger type
-  if (filterOptions.dangerType !== "all") {
-    query = query.eq('danger_type', filterOptions.dangerType)
-  }
-  // Filter by danger level
-  // 表示は1〜4にクランプ(danger-level-presentation)だが、生データには
-  // 5がありうる。最上位(4)のフィルタは gte で4と5の両方にマッチさせる
+  if (filterOptions.dangerType !== "all") params.set("dangerType", filterOptions.dangerType)
   if (filterOptions.dangerLevel !== "all") {
-    const level = parseInt(filterOptions.dangerLevel, 10)
-    if (level >= DANGER_LEVEL_MAX) {
-      query = query.gte('danger_level', DANGER_LEVEL_MAX)
-    } else {
-      query = query.eq('danger_level', level)
-    }
+    const level = Number.parseInt(filterOptions.dangerLevel, 10)
+    params.set(level >= DANGER_LEVEL_MAX ? "minimumDangerLevel" : "dangerLevel", String(level))
   }
-  // Filter by date range
-  // 注意: 旧実装は new Date(0)(1970年)に setDate していたため実質no-opだった。
-  // 現在時刻を起点に週/月/年を遡る
   if (filterOptions.dateRange !== "all") {
     const now = new Date()
     const startDate = new Date(now)
     if (filterOptions.dateRange === "week") startDate.setDate(now.getDate() - 7)
     else if (filterOptions.dateRange === "month") startDate.setMonth(now.getMonth() - 1)
     else if (filterOptions.dateRange === "year") startDate.setFullYear(now.getFullYear() - 1)
-    query = query.gte('created_at', startDate.toISOString())
+    params.set("createdAfter", startDate.toISOString())
   }
-  return query
+  return `/api/reports?${params}`
 }
 
 /**
@@ -148,43 +134,18 @@ export function useDangerReports({
           }
 
           try {
-            // Use cached session state to avoid unnecessary auth network calls on each filter change.
-            const { data: sessionData } = await supabase.auth.getSession()
-            const userId = sessionData.session?.user?.id
-
-            // Base query for publicly visible reports
-            let approvedQuery = supabase
-              .from("danger_reports")
-              .select(`*`) // Select を最初に戻す
-              .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
-              .abortSignal(abortController.signal)
-
-            approvedQuery = applyReportContentFilters(approvedQuery, filterOptions)
-
-            const { data: approvedData, error: approvedError } = await approvedQuery.order("created_at", { ascending: false })
-
-            if (approvedError) throw approvedError
+            const response = await fetch(reportQuery(filterOptions), {
+              signal: abortController.signal,
+              credentials: "same-origin",
+            })
+            if (!response.ok) throw new Error(`danger_reports request failed (${response.status})`)
+            const payload = await response.json() as { reports?: DangerReport[] }
+            const rows = payload.reports ?? []
             if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current) return
-            setDangerReports((approvedData ?? []) as DangerReport[])
-
-            // Fetch user's pending reports if logged in and filter is enabled
-            let userPendingReports: DangerReport[] = []
-            if (userId && filterOptions.showPending) {
-              let pendingQuery = supabase
-                .from("danger_reports")
-                .select(`*`) // Select を最初に戻す
-                .eq("status", "pending")
-                .eq("user_id", userId)
-                .abortSignal(abortController.signal)
-
-              pendingQuery = applyReportContentFilters(pendingQuery, filterOptions)
-
-              const { data: pendingData, error: pendingError } = await pendingQuery
-                .order("created_at", { ascending: false })
-
-              if (pendingError) console.error("Error fetching pending reports:", pendingError)
-              else userPendingReports = (pendingData ?? []) as DangerReport[]
-            }
+            setDangerReports(rows.filter((report) => report.status !== "pending"))
+            const userPendingReports = filterOptions.showPending
+              ? rows.filter((report) => report.status === "pending")
+              : []
 
             if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current) return
             setPendingReports(userPendingReports)

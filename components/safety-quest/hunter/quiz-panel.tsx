@@ -6,6 +6,7 @@ import { Check, Lightbulb, X } from "lucide-react"
 
 import { judgeQuizAnswer } from "@/lib/hunter/quiz"
 import { splitFurigana } from "@/lib/hunter/furigana"
+import { photoAspectRatio } from "@/lib/hunter/photo-aspect"
 import type { HunterQuizAnswer, HunterQuizItem } from "@/lib/hunter/types"
 import {
   containRect,
@@ -153,7 +154,13 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
             aria-label="しゃしんの上を タップして こたえよう"
             onClick={handleImageTap}
             className={`relative w-full ${tokens.cls.focus}`}
-            style={{ cursor: revealed ? "default" : "pointer", aspectRatio: "4 / 3" }}
+            style={{
+              cursor: revealed ? "default" : "pointer",
+              aspectRatio: photoAspectRatio(natural),
+              maxHeight: "min(56dvh, 520px)",
+              marginInline: "auto",
+              touchAction: "manipulation",
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -224,7 +231,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
                 type="button"
                 disabled={Boolean(revealed)}
                 onClick={() => submit({ itemId: item.id, choiceId: choice.id })}
-                className={`flex items-center gap-2.5 rounded-[18px] border-2 px-4 py-3.5 text-left text-[15px] font-black transition-[transform,background-color,color] ${
+                className={`flex touch-manipulation items-center gap-2.5 rounded-[18px] border-2 px-4 py-3.5 text-left text-[15px] font-black transition-[transform,background-color,color] ${
                   revealed ? "" : "active:translate-y-[3px]"
                 } ${tokens.cls.focus}`}
                 style={{

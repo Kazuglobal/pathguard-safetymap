@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useSupabase } from "@/components/providers/supabase-provider"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import type { DangerReport, UserRoute } from "@/lib/types"
 import {
@@ -32,8 +31,6 @@ export function useRouteDangers(
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const { supabase } = useSupabase()
-
   const fetchDangers = useCallback(async () => {
     if (!routeId) {
       setDangers([])
@@ -45,19 +42,14 @@ export function useRouteDangers(
       setIsLoading(true)
       setError(null)
 
-      // Fetch the route
-      const { data: route, error: routeError } = await supabase
-        .from("user_routes")
-        .select("*")
-        .eq("id", routeId)
-        .single()
-
-      if (routeError) {
-        setError(routeError.message)
+      const routeResponse = await fetch(`/api/routes/${encodeURIComponent(routeId)}`, { credentials: "same-origin" })
+      if (!routeResponse.ok) {
+        setError(routeResponse.status === 404 ? "ルートが見つかりません" : "ルートの取得に失敗しました")
         setDangers([])
         setIsLoading(false)
         return
       }
+      const { route } = await routeResponse.json() as { route?: UserRoute }
 
       if (!route) {
         setError("ルートが見つかりません")
@@ -75,19 +67,16 @@ export function useRouteDangers(
         return
       }
 
-      // Fetch all danger reports
-      const { data: allDangers, error: dangersError } = await supabase
-        .from("danger_reports")
-        .select("*")
-        .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
-        .order("created_at", { ascending: false })
-
-      if (dangersError) {
-        setError(dangersError.message)
+      const params = new URLSearchParams({ limit: "2000" })
+      PUBLIC_DANGER_REPORT_STATUSES.forEach((status) => params.append("status", status))
+      const dangersResponse = await fetch(`/api/reports?${params}`, { credentials: "same-origin" })
+      if (!dangersResponse.ok) {
+        setError("危険箇所の取得に失敗しました")
         setDangers([])
         setIsLoading(false)
         return
       }
+      const { reports: allDangers = [] } = await dangersResponse.json() as { reports?: DangerReport[] }
 
       if (!allDangers || allDangers.length === 0) {
         setDangers([])
@@ -117,7 +106,7 @@ export function useRouteDangers(
     } finally {
       setIsLoading(false)
     }
-  }, [routeId, bufferMeters, supabase])
+  }, [routeId, bufferMeters])
 
   const refetch = useCallback(() => {
     setRefreshKey((k) => k + 1)

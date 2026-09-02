@@ -57,14 +57,17 @@ export function useRouteDangerCounts(
 
     const load = async () => {
       try {
-        const { data, error } = await supabase
-          .from("danger_reports")
-          .select("latitude, longitude")
-          .in("status", [...PUBLIC_DANGER_REPORT_STATUSES])
+        const params = new URLSearchParams({ limit: "2000" })
+        PUBLIC_DANGER_REPORT_STATUSES.forEach((status) => params.append("status", status))
+        const response = await fetch(`/api/reports?${params}`, { credentials: "same-origin" })
+        const payload = response.ok
+          ? await response.json() as { reports?: DangerReportCoordinates[] }
+          : null
+        const data = payload?.reports
 
         if (cancelled) return
 
-        if (error || !Array.isArray(data)) {
+        if (!Array.isArray(data)) {
           setCounts({})
           return
         }

@@ -2,6 +2,7 @@
 # 依存パッケージ
 # -----------------------------------------
 /node_modules
+/.pnpm-store/
 # pnpm 管理のため npm の lockfile は追跡しない(正は pnpm-lock.yaml)
 package-lock.json
 
@@ -12,6 +13,8 @@ package-lock.json
 /.next-dev/
 /.next-dev-codex/
 /.next-verify/
+/.open-next/
+/.wrangler/
 /out/
 /next-runtime*/
 /.next-runtime*/
@@ -20,6 +23,9 @@ package-lock.json
 # ビルド成果物
 # -----------------------------------------
 /build
+/artifacts/migration/
+/.codex-artifacts/
+/.codex-worktrees/
 
 # -----------------------------------------
 # デバッグログ

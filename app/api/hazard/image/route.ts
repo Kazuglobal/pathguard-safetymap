@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "node:crypto"
+import { getCloudflareContext } from "@opennextjs/cloudflare"
 
 import { generateImageWithGeminiWithModel, FORCED_GEMINI_IMAGE_MODEL } from "@/lib/gemini-image"
 import {
@@ -12,11 +13,13 @@ import {
   getHazardGateMessage,
   getHazardGateMode,
   getHazardGateReason,
-  queryAndLogHazardGate,
-  type HazardGateClient,
+  queryAndLogHazardGateD1,
   type HazardPoint,
 } from "@/lib/hazard-zone-gate"
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { actorFromUser } from '@/lib/auth/actor'
+import { getServiceActor } from '@/lib/auth/service-actor'
+import { getCachedHazardImage, upsertCachedHazardImage } from '@/lib/db/repos/hazard.repo'
+import { publicMediaUrl } from '@/lib/media/url'
 import { createServerClient } from "@/lib/supabase-server"
 import {
   isHazardAreaContext,
@@ -31,8 +34,17 @@ import {
 export const runtime = "nodejs"
 export const maxDuration = 180
 
-const BUCKET_NAME = "hazard-simulations"
 const MODEL_NAME = FORCED_GEMINI_IMAGE_MODEL
+const MAX_GENERATED_IMAGE_BYTES = 20 * 1024 * 1024
+
+interface ImagesBinding {
+  info(stream: ReadableStream<Uint8Array>): Promise<unknown>
+  input(stream: ReadableStream<Uint8Array>): { output(options: { format: 'image/webp'; quality: number }): Promise<{ image(): ReadableStream<Uint8Array> }> }
+}
+interface MediaBucket {
+  put(key: string, value: ReadableStream<Uint8Array>, options: { httpMetadata: { contentType: string; cacheControl: string } }): Promise<unknown>
+  delete(key: string): Promise<void>
+}
 
 function createPromptSignature(prompt: string): string {
   return createHash("md5").update(prompt).digest("hex")
@@ -140,16 +152,18 @@ function validateScenario(request: ResolvedHazardImageRequest): void {
   }
 }
 
-function parseDataUrl(dataUrl: string): { mimeType: string; buffer: Buffer } {
+function parseDataUrl(dataUrl: string): { mimeType: string; buffer: ArrayBuffer } {
   const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl)
   if (!match) {
     throw new Error("Generated image is not a valid data URL")
   }
 
-  return {
-    mimeType: match[1],
-    buffer: Buffer.from(match[2], "base64"),
-  }
+  if (!/^image\/(png|jpeg|webp)$/i.test(match[1])) throw new Error('Generated image type is not allowed')
+  const bytes = new Uint8Array(Buffer.from(match[2], "base64"))
+  if (!bytes.length || bytes.length > MAX_GENERATED_IMAGE_BYTES) throw new Error('Generated image size is invalid')
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
+  return { mimeType: match[1], buffer }
 }
 
 export async function POST(req: NextRequest) {
@@ -163,11 +177,12 @@ export async function POST(req: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
     }
+    const actor = actorFromUser(user)
+    const serviceActor = getServiceActor()
 
     const request = parseRequestBody(await req.json())
     const gateMode = getHazardGateMode()
     const legacyRequest = parseLegacyAttributes(request)
-    const admin = getSupabaseAdmin() as any
     let payload: ResolvedHazardImageRequest
 
     if (gateMode === "off") {
@@ -176,7 +191,7 @@ export async function POST(req: NextRequest) {
       }
       payload = legacyRequest
     } else if (request.point) {
-      const verdict = await queryAndLogHazardGate(admin as HazardGateClient, {
+      const verdict = await queryAndLogHazardGateD1(actor, serviceActor, {
         route: "hazard-image",
         mode: gateMode,
         situation: request.hazardType,
@@ -208,7 +223,7 @@ export async function POST(req: NextRequest) {
         )
       }
     } else if (gateMode === "log" && legacyRequest) {
-      await queryAndLogHazardGate(admin as HazardGateClient, {
+      await queryAndLogHazardGateD1(actor, serviceActor, {
         route: "hazard-image",
         mode: gateMode,
         situation: request.hazardType,
@@ -232,28 +247,22 @@ export async function POST(req: NextRequest) {
       locationLabel: payload.locationLabel,
     })
     const promptSignature = createPromptSignature(prompt)
-    const { data: cachedEntry, error: cacheError } = await admin
-      .from("hazard_image_cache")
-      .select("public_url, prompt_en, scenario_key, generated_at")
-      .eq("hazard_type", payload.hazardType)
-      .eq("risk_level", payload.riskLevel)
-      .eq("area_context", payload.areaContext)
-      .eq("scenario_key", payload.scenarioKey)
-      .eq("provider", "gemini")
-      .eq("prompt_signature", promptSignature)
-      .maybeSingle()
+    const cachedEntry = await getCachedHazardImage(actor, {
+      hazardType: payload.hazardType,
+      riskLevel: payload.riskLevel,
+      areaContext: payload.areaContext,
+      scenarioKey: payload.scenarioKey,
+      provider: 'gemini',
+      promptSignature,
+    })
 
-    if (cacheError) {
-      throw cacheError
-    }
-
-    if (cachedEntry?.public_url) {
+    if (cachedEntry?.objectKey) {
       return NextResponse.json({
         cached: true,
-        imageUrl: cachedEntry.public_url,
-        prompt: cachedEntry.prompt_en,
-        generatedAt: cachedEntry.generated_at,
-        scenarioKey: cachedEntry.scenario_key,
+        imageUrl: publicMediaUrl(cachedEntry.objectKey),
+        prompt: cachedEntry.promptEn,
+        generatedAt: cachedEntry.generatedAt,
+        scenarioKey: cachedEntry.scenarioKey,
       })
     }
 
@@ -273,23 +282,21 @@ export async function POST(req: NextRequest) {
     }
 
     const { mimeType, buffer } = parseDataUrl(image.dataUrl)
-    const extension = mimeType.includes("jpeg") ? "jpg" : "png"
     const objectPath =
-      `${user.id}/${payload.hazardType}-${payload.riskLevel}-${payload.areaContext}-${payload.scenarioKey}-${Date.now()}.${extension}`
-
-    const uploadResult = await admin.storage.from(BUCKET_NAME).upload(objectPath, buffer, {
-      upsert: false,
-      cacheControl: "3600",
-      contentType: mimeType,
-    })
-
-    if (uploadResult.error) {
-      throw uploadResult.error
+      `hazard-simulations/${payload.hazardType}-${payload.riskLevel}-${payload.areaContext}-${payload.scenarioKey}-${promptSignature}.webp`
+    const { env } = getCloudflareContext()
+    const bindings = env as unknown as { IMAGES: ImagesBinding; MEDIA_PUBLIC: MediaBucket }
+    const source = () => {
+      const stream = new Response(buffer, { headers: { 'content-type': mimeType } }).body
+      if (!stream) throw new Error('Generated image stream is unavailable')
+      return stream
     }
-
-    const {
-      data: { publicUrl },
-    } = admin.storage.from(BUCKET_NAME).getPublicUrl(objectPath)
+    await bindings.IMAGES.info(source())
+    const transformed = await bindings.IMAGES.input(source()).output({ format: 'image/webp', quality: 85 })
+    await bindings.MEDIA_PUBLIC.put(objectPath, transformed.image(), {
+      httpMetadata: { contentType: 'image/webp', cacheControl: 'public, max-age=31536000, immutable' },
+    })
+    const publicUrl = publicMediaUrl(objectPath)
 
     const generatedAt = new Date().toISOString()
     const depthLabel = formatDepthLabel(
@@ -297,25 +304,22 @@ export async function POST(req: NextRequest) {
       payload.depthMaxMeters ?? null,
     )
 
-    const { error: upsertError } = await admin.from("hazard_image_cache").upsert({
-      hazard_type: payload.hazardType,
-      risk_level: payload.riskLevel,
-      area_context: payload.areaContext,
-      scenario_key: payload.scenarioKey,
-      provider: "gemini",
-      prompt_signature: promptSignature,
-      prompt_en: prompt,
-      depth_label: depthLabel,
-      storage_path: objectPath,
-      public_url: publicUrl,
-      status: "ready",
-      generated_at: generatedAt,
-    }, {
-      onConflict: "hazard_type,risk_level,area_context,scenario_key,provider,prompt_signature",
-    })
-
-    if (upsertError) {
-      throw upsertError
+    try {
+      await upsertCachedHazardImage(serviceActor, {
+        hazardType: payload.hazardType,
+        riskLevel: payload.riskLevel,
+        areaContext: payload.areaContext,
+        scenarioKey: payload.scenarioKey,
+        provider: 'gemini',
+        promptSignature,
+        promptEn: prompt,
+        depthLabel,
+        objectKey: objectPath,
+        generatedAt,
+      })
+    } catch (error) {
+      await bindings.MEDIA_PUBLIC.delete(objectPath).catch(() => undefined)
+      throw error
     }
 
     return NextResponse.json({

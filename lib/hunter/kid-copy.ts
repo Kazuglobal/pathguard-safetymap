@@ -126,11 +126,13 @@ export const KID_QUIZ_FALLBACK_BY_KIND: Readonly<Record<HunterDangerKind, KidQui
     explanation: "止まれば 曲がってくる 車に 気づけるよ。",
   },
   popout_spot: {
-    question: "車の かげの そばを とおるときは？",
+    // parked_car_shadow(止まっている車のそば)と同じ状況を問わない。物かげからの飛び出しが主題。
+    question: "ものかげから 人や 車が 出てきそうな ところでは？",
     choices: [
       "ゆっくり あるいて、出てこないか 見る",
       "いきおいよく 走って ぬける",
-      "目を つぶって すすむ",
+      // プロンプトが禁じる荒唐無稽な誤答(目をつぶる)ではなく、子どもが実際にしがちな思い込み
+      "まいにち とおる 道だから だいじょうぶ",
       "音だけで すすむ",
     ],
     explanation: "かげから 人や 車が 出てくるかも。",

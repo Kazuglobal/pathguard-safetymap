@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { createServerClient } from "@/lib/supabase-server"
+import { getActor } from "@/lib/auth/actor"
+import { saveHunterPhoto } from "@/lib/db/repos/hunter.repo"
 import { fetchNearbyAccidentStats } from "@/lib/traffic-accident/server"
 import {
   buildAccidentPromptContext,
@@ -13,6 +14,7 @@ import { logAnalyzeFallback } from "@/lib/hunter/observability"
 import { parseAnalyzeBody } from "@/lib/hunter/validation"
 import {
   createPhotoSignedUrl,
+  deletePhotoObjects,
   uploadMaskedPhoto,
 } from "@/lib/hunter/storage"
 import { writeAuditLog } from "@/lib/hunter/audit"
@@ -44,58 +46,43 @@ const PHOTO_RETENTION_DAYS = 90
  * - 失敗してもゲームは継続できるよう、ここでは throw せず結果を返す。
  */
 async function savePhoto(
-  supabase: Awaited<ReturnType<typeof createServerClient>>,
-  userId: string,
+  actor: Extract<Awaited<ReturnType<typeof getActor>>, { kind: "user" }>,
   imageBase64: string,
   pin: { latitude: number; longitude: number },
   hazards: readonly HunterHazard[],
 ): Promise<{ photoId: string | null; signedUrl: string | null; savedError: boolean }> {
   try {
     const photoId = crypto.randomUUID()
-    const { path } = await uploadMaskedPhoto(supabase, userId, photoId, imageBase64)
+    const { path } = await uploadMaskedPhoto(actor.id, photoId, imageBase64)
 
     const retentionUntil = new Date(
       Date.now() + PHOTO_RETENTION_DAYS * 24 * 60 * 60 * 1000,
     ).toISOString()
 
-    const { error: photoError } = await supabase.from("hunter_photos").insert({
-      id: photoId,
-      player_id: userId,
-      image_path: path,
-      pin_lat: pin.latitude,
-      pin_lng: pin.longitude,
-      masked: true,
-      exif_stripped: true,
-      retention_until: retentionUntil,
-    })
-    if (photoError) {
-      throw new Error(`写真メタデータの保存に失敗しました: ${photoError.message}`)
-    }
-
-    if (hazards.length > 0) {
-      const detectionRows = hazards.map((hazard) => ({
-        photo_id: photoId,
+    try {
+      await saveHunterPhoto(actor, {
+        id: photoId, imageKey: path, pinLat: pin.latitude, pinLng: pin.longitude,
+        retentionUntil,
+        detections: hazards.map((hazard) => ({
         type: hazard.type,
         kind: hazard.kind ?? null,
-        accident_link: hazard.accidentLink ?? null,
-        region: hazard.region,
+        accidentLink: hazard.accidentLink ?? null,
+        region: { ...hazard.region },
         severity: hazard.severity,
-        kid_explanation: hazard.kidExplanation,
-        safe_action: hazard.safeAction,
+        kidExplanation: hazard.kidExplanation,
+        safeAction: hazard.safeAction,
         confidence: hazard.confidence,
         model: HUNTER_VISION_MODEL,
-      }))
-      const { error: detectionError } = await supabase
-        .from("hazard_detections")
-        .insert(detectionRows)
-      if (detectionError) {
-        throw new Error(`検出結果の保存に失敗しました: ${detectionError.message}`)
-      }
+        })),
+      })
+    } catch (error) {
+      await deletePhotoObjects(actor.id, photoId).catch(() => undefined)
+      throw error
     }
 
-    await writeAuditLog(supabase, userId, "analyze_save", photoId)
+    await writeAuditLog(actor, "analyze_save", photoId)
 
-    const signedUrl = await createPhotoSignedUrl(supabase, path)
+    const signedUrl = createPhotoSignedUrl(path)
     return { photoId, signedUrl, savedError: false }
   } catch (error) {
     console.error("hunter/analyze save failed:", error)
@@ -113,17 +100,12 @@ async function savePhoto(
  * - ピン周辺の事故統計を AI プロンプトに注入し、「気をつけるカード」用サマリを返す。
  */
 export async function POST(request: NextRequest) {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
+  const actor = await getActor()
+  if (actor.kind !== "user") {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
   }
 
-  const rate = await checkGeminiRateLimit(`hunter-analyze:${user.id}`)
+  const rate = await checkGeminiRateLimit(`hunter-analyze:${actor.id}`)
   if (!rate.success) {
     return rateLimitedResponse(rate.reset)
   }
@@ -143,7 +125,7 @@ export async function POST(request: NextRequest) {
   const { imageBase64, pin, save } = parsed.data
 
   // 事故統計は失敗してもゲームを止めない (graceful degrade)。
-  const accidentStats = await fetchNearbyAccidentStats(supabase, pin)
+  const accidentStats = await fetchNearbyAccidentStats(pin)
   const accidentContext = buildAccidentPromptContext(accidentStats)
   const accidentSummary = buildAccidentSummary(accidentStats)
 
@@ -185,7 +167,7 @@ export async function POST(request: NextRequest) {
     // 保存はオプトイン (save=true) かつ explore で hazards があるときのみ。
     const saved =
       save && analysis.mode === "explore" && analysis.hazards.length > 0
-        ? await savePhoto(supabase, user.id, imageBase64, pin, analysis.hazards)
+        ? await savePhoto(actor, imageBase64, pin, analysis.hazards)
         : null
 
     return NextResponse.json({
@@ -206,6 +188,9 @@ export async function POST(request: NextRequest) {
             savedError: saved.savedError,
           }
         : {}),
+      // 「のこす」を選んだのに保存しなかった理由(guide=危険が見つからなかった)。
+      // 黙って空のノートにせず、クライアントが子どもに理由を伝えるための印。
+      ...(save && !saved ? { saveSkipped: analysis.mode === "guide" ? "guide" : "no-hazards" } : {}),
     })
   } catch (error) {
     // belt: 想定外の例外でも 502 を出さず、ガイドモード 200 で体験を止めない。

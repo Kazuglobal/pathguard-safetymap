@@ -89,8 +89,16 @@ export const HUNTER_RESPONSE_SCHEMA = {
  * - responseMimeType+responseSchema で構造化出力を強制し、JSON崩れ(parse_error)を構造的に減らす。
  * - 万一 API がこの設定を拒否しても、呼び出し側(hunter-ai.ts)は例外を guide モードへ吸収するため安全側に倒れる。
  */
+/**
+ * 1 コールの時間上限。初回 35 秒 + 再試行/再出力 20 秒 = 最悪 75 秒で必ず guide へ落ち、
+ * 上流ハング時に子どもを無期限に待たせない(クライアント側の上限 95 秒より短い)。
+ */
+export const HUNTER_VISION_TIMEOUT_MS = 35_000
+export const HUNTER_VISION_RETRY_TIMEOUT_MS = 20_000
+
 export const HUNTER_GENERATION_CONFIG: GeminiVisionGenerationConfig = {
   temperature: 0.3,
   responseMimeType: "application/json",
   responseSchema: HUNTER_RESPONSE_SCHEMA,
+  timeoutMs: HUNTER_VISION_TIMEOUT_MS,
 }

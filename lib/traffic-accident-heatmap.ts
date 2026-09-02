@@ -151,10 +151,10 @@ function buildLimitCandidates(initialLimit: number): number[] {
 
 /**
  * Fetch accident GeoJSON for the given viewport bounds and filters.
- * Uses Supabase RPC `get_accidents_in_bbox`.
+ * Uses the authenticated D1 Route Handler while preserving the existing hook contract.
  */
 export async function fetchAccidentsInBounds(
-  supabase: SupabaseClient<Database>,
+  _supabase: SupabaseClient<Database>,
   bounds: ViewportBounds,
   filters: AccidentHeatmapFilters,
   options: FetchAccidentsOptions = {},
@@ -176,38 +176,49 @@ export async function fetchAccidentsInBounds(
       throw new Error('AbortError')
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not yet in generated types
-    let request = (supabase.rpc as any)('get_accidents_in_bbox', {
-      p_min_lng: normalizedBounds.minLng,
-      p_min_lat: normalizedBounds.minLat,
-      p_max_lng: normalizedBounds.maxLng,
-      p_max_lat: normalizedBounds.maxLat,
-      p_min_year: normalizedFilters.minYear,
-      p_max_year: normalizedFilters.maxYear,
-      p_severity_filter: normalizedFilters.severityFilter,
-      p_child_filter: normalizedFilters.childFilter,
-      p_young_filter: normalizedFilters.youngFilter,
-      p_pedestrian_filter: normalizedFilters.pedestrianFilter,
-      p_limit: limit,
+    const query = new URLSearchParams({
+      minLng: String(normalizedBounds.minLng),
+      minLat: String(normalizedBounds.minLat),
+      maxLng: String(normalizedBounds.maxLng),
+      maxLat: String(normalizedBounds.maxLat),
+      minYear: String(normalizedFilters.minYear),
+      maxYear: String(normalizedFilters.maxYear),
+      severity: normalizedFilters.severityFilter,
+      limit: String(limit),
     })
-    if (options.signal && typeof request?.abortSignal === 'function') {
-      request = request.abortSignal(options.signal)
-    }
+    if (normalizedFilters.childFilter) query.set('child', 'true')
+    if (normalizedFilters.youngFilter) query.set('young', 'true')
+    if (normalizedFilters.pedestrianFilter) query.set('pedestrian', 'true')
 
-    const { data, error } = await request
-
-    if (error) {
-      const message = String(error.message ?? '')
+    let response: Response
+    try {
+      response = await fetch(`/api/traffic-accidents/bbox?${query.toString()}`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+        signal: options.signal,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       if (options.signal?.aborted || isAbortLikeMessage(message)) {
         throw new Error('AbortError')
       }
-
       lastErrorMessage = message || lastErrorMessage
-      if (isRetriableStatementCancel(message) && limit !== limitCandidates[limitCandidates.length - 1]) {
+      throw new Error(`事故データの取得に失敗しました: ${lastErrorMessage}`)
+    }
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { error?: string } | null
+      const message = body?.error ?? `HTTP ${response.status}`
+      lastErrorMessage = message
+      if ((response.status === 503 || response.status === 504 || isRetriableStatementCancel(message))
+        && limit !== limitCandidates[limitCandidates.length - 1]) {
         continue
       }
       throw new Error(`事故データの取得に失敗しました: ${lastErrorMessage}`)
     }
+
+    const data = await response.json()
 
     // Validate shape
     const result = data as unknown as AccidentGeoJSON | null

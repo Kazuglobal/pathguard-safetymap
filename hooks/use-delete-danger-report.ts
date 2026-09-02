@@ -4,7 +4,6 @@ import type { Dispatch, SetStateAction } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { DangerReport } from "@/lib/types"
 import type { useToast } from "@/components/ui/use-toast"
-import { extractStoragePathFromPublicUrl } from "@/lib/storage-path"
 
 interface UseDeleteDangerReportParams {
   supabase: SupabaseClient | null
@@ -69,32 +68,13 @@ export function useDeleteDangerReport({
     try {
       setIsLoading(true) // 処理中の表示
 
-      // 1. DBからレポートを削除
-      const { error: deleteError } = await supabase
-        .from('danger_reports')
-        .delete()
-        .eq('id', reportId)
-
-      if (deleteError) throw deleteError
-
-      // 2. 関連する画像をストレージから削除する（ベストエフォート。失敗してもDB削除自体は成功扱い）
-      let storageDeleteFailed = false
-      const imageUrls = [reportToDelete.image_url, ...(reportToDelete.processed_image_urls ?? [])].filter(
-        (url): url is string => Boolean(url),
-      )
-      if (imageUrls.length > 0) {
-        const storagePaths = imageUrls
-          .map((url) => extractStoragePathFromPublicUrl(url, 'danger-reports'))
-          .filter((path): path is string => Boolean(path))
-
-        if (storagePaths.length > 0) {
-          const { error: storageError } = await supabase.storage.from('danger-reports').remove(storagePaths)
-          if (storageError) {
-            console.error("Error deleting report images from storage:", storageError)
-            storageDeleteFailed = true
-          }
-        }
+      const response = await fetch(`/api/reports/${encodeURIComponent(reportId)}`, { method: 'DELETE' })
+      const payload = await response.json().catch(() => ({})) as {
+        error?: string
+        mediaDeleteFailed?: boolean
       }
+      if (!response.ok) throw new Error(payload.error || 'レポートの削除に失敗しました')
+      const storageDeleteFailed = payload.mediaDeleteFailed === true
 
       toast({
         title: "削除成功",
@@ -103,11 +83,11 @@ export function useDeleteDangerReport({
           : `レポート (ID: ${reportId}) を削除しました。`,
       })
 
-      // 3. ローカルの state を更新
+      // 2. ローカルの state を更新
       setDangerReports(prev => prev.filter(report => report.id !== reportId))
       setPendingReports(prev => prev.filter(report => report.id !== reportId))
 
-      // 4. (任意) 選択中のレポートだったら選択解除
+      // 3. (任意) 選択中のレポートだったら選択解除
       if (selectedReport?.id === reportId) {
         setSelectedReport(null)
         setIsDetailModalOpen(false)

@@ -31,7 +31,10 @@ export interface HunterAnswerKey {
   quiz: CachedQuizKey[]
 }
 
-const TTL_SECONDS = 1800 // 30分
+// 3 時間。hit ごとの学習カードを親子で読み、安全さがし→クイズ→たんけんと遊ぶと
+// 30 分は容易に超え、「けっかを みる」で 409(期限切れ)になっていたため延長。
+// getAnswerKey で触るたびに同じ TTL へ延長(スライド)する。画像/PII は保存しない。
+const TTL_SECONDS = 3 * 60 * 60
 
 let RedisCtor: typeof import("@upstash/redis").Redis | null = null
 
@@ -83,6 +86,31 @@ export async function putAnswerKey(sessionId: string, key: HunterAnswerKey): Pro
   }
 }
 
+function scoredKey(sessionId: string, mode: string): string {
+  return `hunter:scored:${sessionId}:${mode}`
+}
+
+/**
+ * 「この sessionId・この あそびかた の記録はもう付けた」を SET NX で 1 回だけ取る。
+ * 同じ sessionId を何度も再採点して attempts 行やミッション回数を水増しできないようにする。
+ * true=初回(記録してよい) / false=2 回目以降・未設定・障害(記録しない=安全側)。
+ */
+export async function claimSessionScore(sessionId: string, mode: string): Promise<boolean> {
+  if (!sessionId || !mode || !isConfigured()) return false
+  const Ctor = await getRedisCtor()
+  if (!Ctor) return false
+  try {
+    const redis = new Ctor({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+    const result = await redis.set(scoredKey(sessionId, mode), "1", { nx: true, ex: TTL_SECONDS })
+    return result === "OK"
+  } catch {
+    return false
+  }
+}
+
 /**
  * 正解鍵を取得する。未設定・ミス・例外時は null(=クライアント供給で採点)。
  */
@@ -97,6 +125,12 @@ export async function getAnswerKey(sessionId: string): Promise<HunterAnswerKey |
     })
     const raw = await redis.get(cacheKey(sessionId))
     if (raw == null) return null
+    // スライド延長(best-effort)。遊んでいる間は鍵を切らさない。
+    try {
+      await redis.expire(cacheKey(sessionId), TTL_SECONDS)
+    } catch {
+      // 延長失敗は無視(鍵の取得自体は成功している)
+    }
     // Upstash は JSON を自動デシリアライズすることがある(文字列/オブジェクト両対応)。
     if (typeof raw === "string") return JSON.parse(raw) as HunterAnswerKey
     return raw as HunterAnswerKey

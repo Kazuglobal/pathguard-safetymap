@@ -7,8 +7,9 @@
 // 全面的な client/server 分割は Phase 1 で実施する。
 // =============================================
 
-import type { SupabaseClient } from "@supabase/supabase-js"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
+import { getActor } from '@/lib/auth/actor'
+import { nearbyStats } from '@/lib/db/repos/accidents.repo'
 import {
   ACCIDENT_IMAGE_CONTEXT_PARAMS,
   adjustYearsForAccidentDataset,
@@ -22,11 +23,11 @@ export interface FetchNearbyAccidentOptions {
 /**
  * ピン地点周辺の事故統計を取得する (server-safe)。
  *
- * 認証用に既に作成済みの Supabase クライアントを受け取り、同じ接続で RPC を呼ぶ。
+ * 既存呼び出し側の契約互換のため Supabase クライアント引数は残し、
+ * 認証はリクエストCookie、データはD1リポジトリから取得する。
  * 取得に失敗した場合は **null を返す**（ゲームは事故データ無しで継続＝graceful degrade）。
  */
 export async function fetchNearbyAccidentStats(
-  client: SupabaseClient,
   pin: { latitude: number; longitude: number },
   options: FetchNearbyAccidentOptions = {},
 ): Promise<AccidentStats | null> {
@@ -48,17 +49,14 @@ export async function fetchNearbyAccidentStats(
   const years = adjustYearsForAccidentDataset(requestedYears)
 
   try {
-    // 既存 RPC（get_nearby_accident_stats）は生成型に無いため any キャストで呼ぶ。
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (client as any).rpc("get_nearby_accident_stats", {
-      p_latitude: latitude,
-      p_longitude: longitude,
-      p_radius_meters: radiusMeters,
-      p_years: years,
+    const actor = await getActor()
+    if (actor.kind === 'anon') return null
+    return await nearbyStats(actor, {
+      latitude,
+      longitude,
+      radiusMeters,
+      years,
     })
-
-    if (error || !data) return null
-    return data as AccidentStats
   } catch (error) {
     console.error("fetchNearbyAccidentStats failed:", error)
     return null

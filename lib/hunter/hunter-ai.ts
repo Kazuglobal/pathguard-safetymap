@@ -14,7 +14,7 @@ import { DISPLAY_CONF_MIN, MAX_AREA, sanitizeDangerPoints, sanitizeSafePoints } 
 import { buildQuizItemsFromAi } from "@/lib/hunter/quiz"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
 import { accidentTypeToKind, KID_DANGER_KINDS, KID_LABEL_BY_KIND } from "@/lib/hunter/kid-copy"
-import { HUNTER_GENERATION_CONFIG } from "@/lib/hunter/ai-request-schema"
+import { HUNTER_GENERATION_CONFIG, HUNTER_VISION_RETRY_TIMEOUT_MS } from "@/lib/hunter/ai-request-schema"
 import type { HunterAccidentSummary, HunterAnalyzeResult } from "@/lib/hunter/types"
 
 export interface AnalyzeHunterOptions {
@@ -191,8 +191,14 @@ export function isRetryableGeminiError(err: unknown): boolean {
   }
   if (/did not contain text output/i.test(msg)) return true // 空candidates
   if (/fetch failed|Failed to fetch|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(msg)) return true
+  // AbortSignal.timeout による打ち切り(TimeoutError/AbortError)。短い予算で 1 回だけ再試行する。
+  if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) return true
+  if (/TimeoutError|operation was aborted|signal is aborted/i.test(msg)) return true
   return false // 不明・入力起因は保守的に再試行しない
 }
+
+/** 再試行/再出力用: 初回より短い時間予算(合計を有界にする)。 */
+const HUNTER_RETRY_CONFIG = { ...HUNTER_GENERATION_CONFIG, timeoutMs: HUNTER_VISION_RETRY_TIMEOUT_MS }
 
 /**
  * 低温度+構造化出力でGeminiを呼ぶ。一時的失敗のときだけ、短いバックオフを挟んで
@@ -202,13 +208,14 @@ async function callHunterVision(
   imageBase64: string,
   prompt: string,
   allowRetry: boolean,
+  config: typeof HUNTER_GENERATION_CONFIG = HUNTER_GENERATION_CONFIG,
 ): Promise<string> {
   try {
-    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
+    return await callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL)
   } catch (err) {
     if (!allowRetry || !isRetryableGeminiError(err)) throw err
     await sleep(RETRY_BACKOFF_MS)
-    return await callGeminiVision(imageBase64, prompt, HUNTER_GENERATION_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
+    return await callGeminiVision(imageBase64, prompt, HUNTER_RETRY_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
   }
 }
 
@@ -236,7 +243,8 @@ export async function analyzeHunterImage(
   let extracted = extractHunterJson(text)
   if (!extracted.ok && allowRetry) {
     try {
-      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false)
+      // 再出力も短い予算(合計を 35+0.4+20+20 秒に有界化。クライアント上限 95 秒より短い)
+      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false, HUNTER_RETRY_CONFIG)
       extracted = extractHunterJson(retryText)
     } catch {
       return buildGuideMode(accidentSummary, "ai_error", [], sessionId)

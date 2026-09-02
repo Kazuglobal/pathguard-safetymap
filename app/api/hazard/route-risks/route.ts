@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 
+import { getActor } from '@/lib/auth/actor'
+import { routeIntersections } from '@/lib/db/repos/hazard.repo'
+import { getRouteById } from '@/lib/db/repos/routes.repo'
 import { getHazardScenarioOptions } from "@/lib/hazard-scenarios"
-import { createServerClient } from "@/lib/supabase-server"
-import type { RouteHazardMarker, UserRoute } from "@/lib/types"
+import type { HazardAreaContext, HazardType } from "@/lib/types"
 
 export const runtime = "nodejs"
-
-type RpcMarkerRow = Omit<RouteHazardMarker, "coordinates" | "hazard_type"> & {
-  hazard_type: RouteHazardMarker["hazard_type"]
-  longitude: number
-  latitude: number
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,60 +15,40 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "routeId is required" }, { status: 400 })
     }
 
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const actor = await getActor()
+    if (actor.kind === 'anon') {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
     }
 
-    const { data: route, error: routeError } = await supabase
-      .from("user_routes")
-      .select("*")
-      .eq("id", routeId)
-      .eq("user_id", user.id)
-      .maybeSingle()
-
-    if (routeError) {
-      throw routeError
-    }
-
+    const route = await getRouteById(actor, routeId)
     if (!route) {
       return NextResponse.json({ error: "ルートが見つかりません" }, { status: 404 })
     }
 
-    const typedRoute = route as UserRoute
-    if (!typedRoute.route_geometry) {
+    if (!route.routeGeometry) {
       return NextResponse.json({ markers: [] })
     }
 
-    const rpcResponse = await (supabase as any).rpc("get_route_hazard_intersections", {
-      p_route_geometry: typedRoute.route_geometry,
-    })
-
-    if (rpcResponse.error) {
-      throw rpcResponse.error
-    }
-
-    const markers = ((rpcResponse.data ?? []) as RpcMarkerRow[]).map((row) => ({
+    const result = await routeIntersections(actor, route.routeGeometry as unknown as GeoJSON.LineString)
+    const markers = result.markers.map((row) => ({
       ...row,
+      hazard_type: row.hazard_type as HazardType,
+      area_context: row.area_context as HazardAreaContext,
       coordinates: [row.longitude, row.latitude] as [number, number],
       scenario_options: getHazardScenarioOptions({
-        hazardType: row.hazard_type,
-        areaContext: row.area_context,
+        hazardType: row.hazard_type as HazardType,
+        areaContext: row.area_context as HazardAreaContext,
       }),
     }))
 
     return NextResponse.json({
       route: {
-        id: typedRoute.id,
-        name: typedRoute.name,
-        route_geometry: typedRoute.route_geometry,
+        id: route.id,
+        name: route.name,
+        route_geometry: route.routeGeometry,
       },
       markers,
+      truncated: result.truncated,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"

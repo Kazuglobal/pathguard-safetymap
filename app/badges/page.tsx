@@ -1,70 +1,26 @@
 // app/badges/page.tsx
-import { createServerClient } from "@/lib/supabase-server";
-import { Database } from "@/lib/database.types";
+import { getActor } from "@/lib/auth/actor";
+import { listBadges } from "@/lib/db/repos/gamification.repo";
 import { BadgeCard, BadgeData } from "@/components/badges/badge-card";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-
-type BadgeRow = Database["public"]["Tables"]["badges"]["Row"];
+import { redirect } from "next/navigation";
 
 export default async function BadgePage() {
-  // 1) Supabase クライアント生成
-  const supabase = await createServerClient();
-
-  // 2) セッション取得
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  const isLoggedIn = !sessionError && session?.user;
-  const userId = session?.user?.id;
-
-  // 3) 全バッジを取得（ログイン不要）
-  const { data: allBadges, error: badgesError } = await supabase
-    .from("badges")
-    .select("id, name, icon, threshold, created_at")
-    .order("threshold", { ascending: true });
-
-  if (badgesError) {
-    console.error("Failed to fetch badges:", badgesError);
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 data-testid="badges-title" className="text-2xl font-bold mb-4">
-          バッジ一覧
-        </h1>
-        <p className="text-destructive">バッジの取得に失敗しました。</p>
-      </div>
-    );
-  }
+  const actor = await getActor();
+  if (actor.kind !== "user") redirect("/login?redirect=/badges");
+  const isLoggedIn = true;
+  const result = await listBadges(actor, actor.id);
+  const allBadges = result.badges;
 
   // 4) ユーザー取得済みバッジを取得（ログイン時のみ）
   let userBadges: { badge_id: number; acquired_at: string | null }[] = [];
-  let userBadgesFetchFailed = false;
   let currentPoints = 0;
 
-  if (isLoggedIn && userId) {
-    const { data, error: userBadgesError } = await supabase
-      .from("user_badges")
-      .select("badge_id, acquired_at")
-      .eq("user_id", userId as any);
-
-    if (userBadgesError) {
-      console.error("Failed to fetch user badges:", userBadgesError);
-      userBadgesFetchFailed = true;
-    } else {
-      userBadges = data ?? [];
-    }
-
-    // ユーザーポイントを取得
-    const { data: userPointsData } = await supabase
-      .from("user_points")
-      .select("points")
-      .eq("user_id", userId as any)
-      .single();
-
-    currentPoints = userPointsData?.points ?? 0;
+  if (isLoggedIn) {
+    userBadges = result.owned.map((row) => ({ badge_id: row.badgeId, acquired_at: row.acquiredAt }));
+    currentPoints = result.points;
   }
 
   // 5) 取得済みバッジをマップに変換
@@ -74,7 +30,7 @@ export default async function BadgePage() {
   });
 
   // 6) バッジデータを整形
-  const badges: BadgeData[] = (allBadges ?? []).map((badge: BadgeRow) => ({
+  const badges: BadgeData[] = allBadges.map((badge) => ({
     id: badge.id,
     name: badge.name,
     icon: badge.icon,
@@ -108,15 +64,6 @@ export default async function BadgePage() {
         <div className="bg-muted/50 rounded-lg p-4 mb-6">
           <p className="text-muted-foreground text-center">
             ログインすると取得状況が表示されます
-          </p>
-        </div>
-      )}
-
-      {/* 取得状況取得失敗メッセージ（ログイン時のみ） */}
-      {isLoggedIn && userBadgesFetchFailed && (
-        <div className="bg-destructive/10 text-destructive rounded-lg p-4 mb-6">
-          <p className="text-sm text-center">
-            取得状況の取得に失敗しました。表示内容が正確でない可能性があります。時間をおいて再読み込みしてください。
           </p>
         </div>
       )}

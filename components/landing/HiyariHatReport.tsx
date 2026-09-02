@@ -5,7 +5,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { ThumbsUp, AlertCircle, ChevronRight, MessageCircle, MapPin, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createBrowserClient } from "@supabase/ssr"
 import type { DangerReport } from "@/lib/types"
 import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
 import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
@@ -13,6 +12,7 @@ import { tankenTokens } from "@/lib/design/tanken"
 import { NATIONWIDE } from "@/lib/user-region"
 import { useReportRegionFilter } from "@/hooks/use-report-region-filter"
 import { ReportRegionFilter } from "@/components/region/report-region-filter"
+import { PREVIEW_COORD_SLACK_KM, SCHOOL_RADIUS_KM, latLngBoundsForRadius } from "@/lib/region-filter"
 
 const C = tankenTokens.color
 
@@ -40,25 +40,6 @@ const DANGER_TYPE_LABELS: Record<string, string> = {
 // されており、匿名ユーザーは元々これらのURLへアクセスできないため)。
 // 存在しない列を SELECT すると PostgREST がエラーを返し、報告一覧全体が
 // 空表示になってしまうので、ここでは列一覧から除外する。
-const LANDING_REPORT_SELECT_COLUMNS = [
-  "id",
-  "title",
-  "description",
-  "danger_type",
-  "danger_level",
-  "status",
-  "latitude",
-  "longitude",
-  "prefecture",
-  "prefecture_code",
-  "city",
-  "municipality_code",
-  "town",
-  "postal_code",
-  "created_at",
-  "updated_at",
-].join(", ")
-
 const LANDING_PUBLIC_STATUSES = ["approved", "published", "resolved"] as const
 
 const LANDING_REPORT_DISPLAY_LIMIT = 5
@@ -91,32 +72,22 @@ export function HiyariHatReport() {
     setIsModalOpen(true)
   }, [])
 
-  // Supabase クライアントはブラウザ専用のためマウント後に一度だけ生成する
-  const [supabase, setSupabase] = React.useState<ReturnType<typeof createBrowserClient> | null>(null)
-  React.useEffect(() => {
-    setSupabase(
-      createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-    )
-  }, [])
-
   const region = useReportRegionFilter({
-    client: supabase,
+    client: null,
     table: "danger_reports_public_preview",
     statuses: LANDING_PUBLIC_STATUSES,
   })
   const {
     mounted,
+    prefecture,
+    city,
     school,
     scopeLabel,
-    applyRegionFilter,
     refineBySchool,
   } = region
 
   React.useEffect(() => {
-    if (!mounted || !supabase) return
+    if (!mounted) return
 
     const abortController = new AbortController()
     let ignore = false
@@ -124,25 +95,27 @@ export function HiyariHatReport() {
     async function fetchReports() {
       setIsLoading(true)
       try {
-        // 未ログイン(anon)からは緯度経度を約1.1km四方へ丸めた公開プレビュー
-        // VIEW (danger_reports_public_preview) のみを参照する。
-        // ベーステーブル danger_reports への anon SELECT は閉じている
-        // (supabase/migrations/20260704090300_restrict_public_read_and_storage.sql)。
-        const query = applyRegionFilter(
-          supabase!
-            .from("danger_reports_public_preview")
-            .select(LANDING_REPORT_SELECT_COLUMNS)
-            .in("status", [...LANDING_PUBLIC_STATUSES])
-            .abortSignal(abortController.signal)
-        )
-
-        const { data, error } = await query
-          .order("created_at", { ascending: false })
-          .limit(school ? SCHOOL_MODE_FETCH_LIMIT : LANDING_REPORT_DISPLAY_LIMIT)
-
-        if (error) throw error
+        const params = new URLSearchParams({
+          limit: String(school ? SCHOOL_MODE_FETCH_LIMIT : LANDING_REPORT_DISPLAY_LIMIT),
+        })
+        LANDING_PUBLIC_STATUSES.forEach((status) => params.append("status", status))
+        if (school) {
+          const bounds = latLngBoundsForRadius(
+            school.latitude, school.longitude, SCHOOL_RADIUS_KM + PREVIEW_COORD_SLACK_KM,
+          )
+          params.set("minLng", String(bounds.minLng)); params.set("minLat", String(bounds.minLat))
+          params.set("maxLng", String(bounds.maxLng)); params.set("maxLat", String(bounds.maxLat))
+        } else if (prefecture !== NATIONWIDE) {
+          params.set("prefecture", prefecture)
+          if (city) params.set("city", city)
+        }
+        const response = await fetch(`/api/reports?${params}`, {
+          signal: abortController.signal, credentials: "same-origin",
+        })
+        if (!response.ok) throw new Error(`Report preview request failed (${response.status})`)
+        const { reports: data = [] } = await response.json() as { reports?: DangerReport[] }
         if (ignore || abortController.signal.aborted) return
-        const rows = refineBySchool((data ?? []) as unknown as DangerReport[])
+        const rows = refineBySchool(data)
         setReports(rows.slice(0, LANDING_REPORT_DISPLAY_LIMIT))
       } catch (error) {
         if (ignore || abortController.signal.aborted) return
@@ -158,7 +131,7 @@ export function HiyariHatReport() {
       ignore = true
       abortController.abort()
     }
-  }, [mounted, supabase, school, applyRegionFilter, refineBySchool])
+  }, [mounted, prefecture, city, school, refineBySchool])
 
   const thumbnailUrl = (report: DangerReport): string | undefined => {
     if (report.processed_image_urls && report.processed_image_urls.length > 0) {

@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { createInterface } from "node:readline"
+import * as turf from '@turf/turf'
 
 import {
   isHazardAreaContext,
@@ -35,10 +36,43 @@ export type HazardImportArgs = {
   inputFormat: HazardImportInputFormat
 }
 
-export interface HazardZoneImportClient {
-  // Supabase's query builders are thenable and vary by operation. Keeping the
-  // boundary structural lets both the generated client and test doubles work.
-  from(table: string): any
+export interface D1HazardZoneRow {
+  id: string
+  zone_group_id: string
+  hazard_type: HazardType
+  source_layer: string
+  risk_level: number
+  depth_min_m: number | null
+  depth_max_m: number | null
+  area_context: HazardAreaContext
+  properties: FeatureProperties
+  geojson: GeoJSON.Polygon
+  bbox_min_lng: number
+  bbox_min_lat: number
+  bbox_max_lng: number
+  bbox_max_lat: number
+}
+
+export interface D1HazardCoverageRow {
+  id: string
+  coverage_group_id: string
+  hazard_type: HazardType
+  region_label: string
+  source: string
+  source_layer: string
+  geojson: GeoJSON.Polygon
+  bbox_min_lng: number
+  bbox_min_lat: number
+  bbox_max_lng: number
+  bbox_max_lat: number
+  imported_features: number
+  imported_at: string
+}
+
+export interface HazardZoneImportSink {
+  deleteExisting(args: Pick<HazardImportArgs, 'hazardType' | 'sourceLayer' | 'regionLabel'>): Promise<void>
+  insertZones(rows: readonly D1HazardZoneRow[]): Promise<void>
+  replaceCoverage(row: D1HazardCoverageRow): Promise<void>
 }
 
 function parsePositiveInteger(value: string | undefined, fallback: number): number {
@@ -286,31 +320,58 @@ type RunHazardZoneImportInput = {
   features: AsyncIterable<GeoJsonFeature>
 }
 
+const MAX_GEOJSON_ROW_BYTES = 1_500_000
+const turfOps = turf as unknown as {
+  simplify(
+    feature: GeoJSON.Feature<GeoJSON.Polygon>,
+    options: { tolerance: number; highQuality: boolean; mutate: boolean },
+  ): GeoJSON.Feature<GeoJSON.Polygon>
+}
+
+function polygonBounds(polygon: GeoJSON.Polygon): Bounds {
+  const bounds = extendBounds(null, polygon.coordinates)
+  if (!bounds) throw new Error('Polygon has no finite coordinates')
+  return bounds
+}
+
+function fitPolygonToD1(polygon: GeoJSON.Polygon): GeoJSON.Polygon {
+  let candidate = polygon
+  if (Buffer.byteLength(JSON.stringify(candidate), 'utf8') <= MAX_GEOJSON_ROW_BYTES) return candidate
+  for (const tolerance of [0.00001, 0.00005, 0.0001, 0.0005, 0.001]) {
+    const simplified = turfOps.simplify(
+      { type: 'Feature', properties: {}, geometry: candidate },
+      { tolerance, highQuality: true, mutate: false },
+    ).geometry
+    if (simplified.type !== 'Polygon') throw new Error('Hazard polygon simplification changed geometry type')
+    candidate = simplified
+    if (Buffer.byteLength(JSON.stringify(candidate), 'utf8') <= MAX_GEOJSON_ROW_BYTES) return candidate
+  }
+  throw new Error(`Hazard polygon exceeds the D1 row safety limit (${MAX_GEOJSON_ROW_BYTES} bytes)`)
+}
+
 export async function runHazardZoneImport(
-  client: HazardZoneImportClient,
+  sink: HazardZoneImportSink,
   input: RunHazardZoneImportInput,
 ): Promise<{ importedFeatures: number }> {
   const { args } = input
-  const deleteResult = await client
-    .from("hazard_zones")
-    .delete()
-    .eq("hazard_type", args.hazardType)
-    .eq("source_layer", args.sourceLayer)
-    .contains("properties", { region_label: args.regionLabel })
-  if (deleteResult.error) throw deleteResult.error
+  await sink.deleteExisting({
+    hazardType: args.hazardType,
+    sourceLayer: args.sourceLayer,
+    regionLabel: args.regionLabel,
+  })
 
   let importedFeatures = 0
   let bounds: Bounds | null = null
-  let batch: Record<string, unknown>[] = []
+  let batch: D1HazardZoneRow[] = []
 
   const flush = async () => {
     if (batch.length === 0) return
     const payload = batch
     batch = []
-    const { error } = await client.from("hazard_zones").insert(payload)
-    if (error) throw error
+    await sink.insertZones(payload)
   }
 
+  let featureIndex = 0
   for await (const feature of input.features) {
     if (!feature.geometry) continue
     const geometry = toMultiPolygon(feature.geometry)
@@ -327,23 +388,31 @@ export async function runHazardZoneImport(
       "depthMaxMeters",
       "max_depth",
     ])
-    bounds = extendBounds(bounds, geometry.coordinates)
-    batch.push({
-      hazard_type: args.hazardType,
-      source_layer: args.sourceLayer,
-      risk_level: pickRiskLevel(properties, depthMinMeters, depthMaxMeters),
-      depth_min_m: depthMinMeters,
-      depth_max_m: depthMaxMeters,
-      area_context: pickAreaContext(properties, args.defaultAreaContext),
-      properties: {
-        ...properties,
-        region_label: args.regionLabel,
-        source: args.source,
-      },
-      geom: geometry,
-    })
-    importedFeatures += 1
-    if (batch.length >= args.batchSize) await flush()
+    const zoneGroupId = `${args.sourceLayer}:${args.regionLabel}:${featureIndex}`
+    featureIndex += 1
+    for (const coordinates of geometry.coordinates) {
+      const polygon = fitPolygonToD1({ type: 'Polygon', coordinates })
+      const polygonBbox = polygonBounds(polygon)
+      bounds = extendBounds(bounds, polygon.coordinates)
+      batch.push({
+        id: crypto.randomUUID(),
+        zone_group_id: zoneGroupId,
+        hazard_type: args.hazardType,
+        source_layer: args.sourceLayer,
+        risk_level: pickRiskLevel(properties, depthMinMeters, depthMaxMeters),
+        depth_min_m: depthMinMeters,
+        depth_max_m: depthMaxMeters,
+        area_context: pickAreaContext(properties, args.defaultAreaContext),
+        properties: { ...properties, region_label: args.regionLabel, source: args.source },
+        geojson: polygon,
+        bbox_min_lng: polygonBbox.minLongitude,
+        bbox_min_lat: polygonBbox.minLatitude,
+        bbox_max_lng: polygonBbox.maxLongitude,
+        bbox_max_lat: polygonBbox.maxLatitude,
+      })
+      importedFeatures += 1
+      if (batch.length >= args.batchSize) await flush()
+    }
   }
   await flush()
 
@@ -351,21 +420,25 @@ export async function runHazardZoneImport(
     throw new Error("No importable Polygon or MultiPolygon features found")
   }
 
-  const { error: coverageError } = await client
-    .from("hazard_zone_coverage")
-    .upsert(
-      {
-        hazard_type: args.hazardType,
-        region_label: args.regionLabel,
-        source: args.source,
-        source_layer: args.sourceLayer,
-        coverage_geom: envelope(bounds),
-        imported_features: importedFeatures,
-        imported_at: new Date().toISOString(),
-      },
-      { onConflict: "hazard_type,region_label,source_layer" },
-    )
-  if (coverageError) throw coverageError
+  const coverageMultiPolygon = envelope(bounds)
+  const coveragePolygon: GeoJSON.Polygon = {
+    type: 'Polygon', coordinates: coverageMultiPolygon.coordinates[0],
+  }
+  await sink.replaceCoverage({
+    id: crypto.randomUUID(),
+    coverage_group_id: `${args.hazardType}:${args.regionLabel}:${args.sourceLayer}`,
+    hazard_type: args.hazardType,
+    region_label: args.regionLabel,
+    source: args.source,
+    source_layer: args.sourceLayer,
+    geojson: coveragePolygon,
+    bbox_min_lng: bounds.minLongitude,
+    bbox_min_lat: bounds.minLatitude,
+    bbox_max_lng: bounds.maxLongitude,
+    bbox_max_lat: bounds.maxLatitude,
+    imported_features: importedFeatures,
+    imported_at: new Date().toISOString(),
+  })
 
   return { importedFeatures }
 }

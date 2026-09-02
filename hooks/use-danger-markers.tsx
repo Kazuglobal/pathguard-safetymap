@@ -12,7 +12,6 @@ import {
   UserX,
 } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
-import { addPoints } from "@/lib/gamification"
 import { SUSPICIOUS_DANGER_TYPE } from "@/lib/suspicious-alert"
 import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
 import { isValidCoordinates } from "@/lib/coordinates"
@@ -131,23 +130,19 @@ export function useDangerMarkers({
         .addTo(map);
       markerResources.push({ marker, unmount: () => root.unmount() })
 
-      const openReport = async () => {
+      const openReport = () => {
         onSelectReport(report);
-        if (supabase && report.user_id) {
-          try { await addPoints(supabase, report.user_id, 5); }
-          catch (err) { console.error("Error adding points on marker click:", err); }
-        }
       };
 
       markerElement.addEventListener("click", (e) => {
         e.stopPropagation();
-        void openReport();
+        openReport();
       });
       markerElement.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          void openReport();
+          openReport();
         }
       });
     };

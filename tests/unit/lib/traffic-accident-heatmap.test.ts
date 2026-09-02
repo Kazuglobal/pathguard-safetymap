@@ -1,16 +1,27 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
 import {
-  fetchAccidentsInBounds,
   DEFAULT_HEATMAP_FILTERS,
+  fetchAccidentsInBounds,
   type AccidentGeoJSON,
 } from '@/lib/traffic-accident-heatmap'
 
-function createSupabaseRpcMock(
-  impl: (fn: string, params: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>,
+function createApiMock(
+  impl: (url: string) => Promise<{ data: unknown; error: { message: string } | null; status?: number }>,
 ) {
-  return {
-    rpc: vi.fn(impl),
-  } as any
+  const fetchMock = vi.fn(async (input: string | URL | Request) => {
+    const result = await impl(String(input))
+    return new Response(JSON.stringify(result.error ? { error: result.error.message } : result.data), {
+      status: result.error ? (result.status ?? 500) : 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return { supabase: {} as any, fetchMock }
+}
+
+function calledUrl(fetchMock: ReturnType<typeof vi.fn>, index = 0): URL {
+  return new URL(String(fetchMock.mock.calls[index][0]), 'http://localhost')
 }
 
 describe('traffic-accident-heatmap', () => {
@@ -18,11 +29,8 @@ describe('traffic-accident-heatmap', () => {
     expect(DEFAULT_HEATMAP_FILTERS.maxYear).toBe(2024)
   })
 
-  it('returns empty collection and skips RPC when bounds are invalid', async () => {
-    const supabase = createSupabaseRpcMock(async () => ({
-      data: null,
-      error: null,
-    }))
+  it('returns empty collection and skips API when bounds are invalid', async () => {
+    const { supabase, fetchMock } = createApiMock(async () => ({ data: null, error: null }))
 
     const result = await fetchAccidentsInBounds(
       supabase,
@@ -31,15 +39,12 @@ describe('traffic-accident-heatmap', () => {
     )
 
     expect(result).toEqual({ type: 'FeatureCollection', features: [] })
-    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('normalizes bounds and filter inputs before RPC call', async () => {
+  it('normalizes bounds and filter inputs before the D1 API call', async () => {
     const response: AccidentGeoJSON = { type: 'FeatureCollection', features: [] }
-    const supabase = createSupabaseRpcMock(async () => ({
-      data: response,
-      error: null,
-    }))
+    const { supabase, fetchMock } = createApiMock(async () => ({ data: response, error: null }))
 
     await fetchAccidentsInBounds(
       supabase,
@@ -54,43 +59,39 @@ describe('traffic-accident-heatmap', () => {
       },
     )
 
-    expect(supabase.rpc).toHaveBeenCalledTimes(1)
-    const [, params] = vi.mocked(supabase.rpc).mock.calls[0]
-    expect(params).toMatchObject({
-      p_min_lng: 139,
-      p_min_lat: 35,
-      p_max_lng: 140,
-      p_max_lat: 36,
-      p_min_year: 2020,
-      p_max_year: 2024,
-      p_severity_filter: 'all',
-      p_child_filter: null,
-      p_young_filter: true,
-      p_pedestrian_filter: true,
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const url = calledUrl(fetchMock)
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      minLng: '139',
+      minLat: '35',
+      maxLng: '140',
+      maxLat: '36',
+      minYear: '2020',
+      maxYear: '2024',
+      severity: 'all',
+      young: 'true',
+      pedestrian: 'true',
     })
+    expect(url.searchParams.has('child')).toBe(false)
   })
 
-  it('throws with readable message when RPC fails', async () => {
-    const supabase = createSupabaseRpcMock(async () => ({
+  it('throws with a readable message when the API fails', async () => {
+    const { supabase, fetchMock } = createApiMock(async () => ({
       data: null,
       error: { message: 'permission denied' },
+      status: 403,
     }))
 
-    await expect(
-      fetchAccidentsInBounds(
-        supabase,
-        { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
-        DEFAULT_HEATMAP_FILTERS,
-      ),
-    ).rejects.toThrow('事故データの取得に失敗しました: permission denied')
-    expect(supabase.rpc).toHaveBeenCalledTimes(1)
+    await expect(fetchAccidentsInBounds(
+      supabase,
+      { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+      DEFAULT_HEATMAP_FILTERS,
+    )).rejects.toThrow('事故データの取得に失敗しました: permission denied')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('returns empty collection when RPC returns malformed payload', async () => {
-    const supabase = createSupabaseRpcMock(async () => ({
-      data: { foo: 'bar' },
-      error: null,
-    }))
+  it('returns empty collection when the API returns malformed payload', async () => {
+    const { supabase } = createApiMock(async () => ({ data: { foo: 'bar' }, error: null }))
 
     const result = await fetchAccidentsInBounds(
       supabase,
@@ -101,39 +102,26 @@ describe('traffic-accident-heatmap', () => {
     expect(result).toEqual({ type: 'FeatureCollection', features: [] })
   })
 
-  it('retries with lower limit when statement gets canceled', async () => {
+  it('retries with a lower limit when D1 reports a statement timeout', async () => {
     const response: AccidentGeoJSON = { type: 'FeatureCollection', features: [] }
-    const supabase = createSupabaseRpcMock(async () => {
-      const callCount = vi.mocked(supabase.rpc).mock.calls.length
-      if (callCount === 1) {
-        return {
-          data: null,
-          error: { message: 'canceling statement due to statement timeout' },
-        }
-      }
-      return {
-        data: response,
-        error: null,
-      }
-    })
+    const api = createApiMock(async () => api.fetchMock.mock.calls.length === 1
+      ? { data: null, error: { message: 'statement timeout' }, status: 504 }
+      : { data: response, error: null })
 
     const result = await fetchAccidentsInBounds(
-      supabase,
+      api.supabase,
       { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
       DEFAULT_HEATMAP_FILTERS,
     )
 
     expect(result).toEqual(response)
-    expect(supabase.rpc).toHaveBeenCalledTimes(2)
-
-    const [, firstParams] = vi.mocked(supabase.rpc).mock.calls[0]
-    const [, secondParams] = vi.mocked(supabase.rpc).mock.calls[1]
-    expect(firstParams.p_limit).toBe(10000)
-    expect(secondParams.p_limit).toBe(5000)
+    expect(api.fetchMock).toHaveBeenCalledTimes(2)
+    expect(calledUrl(api.fetchMock, 0).searchParams.get('limit')).toBe('10000')
+    expect(calledUrl(api.fetchMock, 1).searchParams.get('limit')).toBe('5000')
   })
 
-  it('uses safer initial limit for child-only filter', async () => {
-    const supabase = createSupabaseRpcMock(async () => ({
+  it('uses a safer initial limit for the child-only filter', async () => {
+    const { supabase, fetchMock } = createApiMock(async () => ({
       data: { type: 'FeatureCollection', features: [] },
       error: null,
     }))
@@ -141,20 +129,17 @@ describe('traffic-accident-heatmap', () => {
     await fetchAccidentsInBounds(
       supabase,
       { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
-      {
-        ...DEFAULT_HEATMAP_FILTERS,
-        childFilter: true,
-      },
+      { ...DEFAULT_HEATMAP_FILTERS, childFilter: true },
     )
 
-    const [, params] = vi.mocked(supabase.rpc).mock.calls[0]
-    expect(params.p_child_filter).toBe(true)
-    expect(params.p_young_filter).toBeNull()
-    expect(params.p_limit).toBe(5000)
+    const url = calledUrl(fetchMock)
+    expect(url.searchParams.get('child')).toBe('true')
+    expect(url.searchParams.has('young')).toBe(false)
+    expect(url.searchParams.get('limit')).toBe('5000')
   })
 
-  it('passes both child and young filters together for AND semantics', async () => {
-    const supabase = createSupabaseRpcMock(async () => ({
+  it('passes child and young filters together for AND semantics', async () => {
+    const { supabase, fetchMock } = createApiMock(async () => ({
       data: { type: 'FeatureCollection', features: [] },
       error: null,
     }))
@@ -162,32 +147,27 @@ describe('traffic-accident-heatmap', () => {
     await fetchAccidentsInBounds(
       supabase,
       { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
-      {
-        ...DEFAULT_HEATMAP_FILTERS,
-        childFilter: true,
-        youngFilter: true,
-      },
+      { ...DEFAULT_HEATMAP_FILTERS, childFilter: true, youngFilter: true },
     )
 
-    const [, params] = vi.mocked(supabase.rpc).mock.calls[0]
-    expect(params.p_child_filter).toBe(true)
-    expect(params.p_young_filter).toBe(true)
+    const url = calledUrl(fetchMock)
+    expect(url.searchParams.get('child')).toBe('true')
+    expect(url.searchParams.get('young')).toBe('true')
   })
 
-  it('surfaces canceling statement errors when request is not aborted by client', async () => {
-    const supabase = createSupabaseRpcMock(async () => ({
+  it('surfaces non-timeout cancellation errors after bounded retries', async () => {
+    const { supabase, fetchMock } = createApiMock(async () => ({
       data: null,
       error: { message: 'canceling statement due to user request' },
+      status: 500,
     }))
 
-    await expect(
-      fetchAccidentsInBounds(
-        supabase,
-        { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
-        DEFAULT_HEATMAP_FILTERS,
-      ),
-    ).rejects.toThrow('事故データの取得に失敗しました: canceling statement due to user request')
+    await expect(fetchAccidentsInBounds(
+      supabase,
+      { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
+      DEFAULT_HEATMAP_FILTERS,
+    )).rejects.toThrow('事故データの取得に失敗しました: canceling statement due to user request')
 
-    expect(supabase.rpc).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
   })
 })

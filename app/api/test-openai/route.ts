@@ -5,11 +5,11 @@ import { openai } from "@/lib/openai"
 // APIキーの部分的な漏洩を防ぐため
 
 export async function GET(request: NextRequest) {
-  // 本番環境では常に403を返す
+  // 本番環境ではエンドポイントの存在自体を公開しない
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json(
-      { error: "This endpoint is disabled in production" },
-      { status: 403 }
+      { error: "Not found" },
+      { status: 404 }
     )
   }
 

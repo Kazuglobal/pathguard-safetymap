@@ -7,12 +7,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { reverseGeocodeLocation } from "@/lib/map/reverse-geocode"
 import {
-  resolveInitialDangerReportStatus,
-  shouldRetryDangerReportInsertAsPending,
-} from "@/lib/danger-report-status"
-import { buildRouteReportNotification } from "@/hooks/use-notifications"
-import { addPoints } from "@/lib/gamification"
-import {
   buildFamilyShareAction,
   buildFamilyShareMapLabel,
   buildFamilyShareSummary,
@@ -102,62 +96,34 @@ export function useDangerReportSubmit({
         ? await reverseGeocodeLocation(selectedLocation[1], selectedLocation[0])
         : { prefecture: null as string | null, city: null as string | null };
 
-      const initialStatus = resolveInitialDangerReportStatus(reportDataToInsert.status);
-
-      const insertReport = async (status: string) =>
-        supabase
-          .from("danger_reports")
-          .insert({
-            ...reportDataToInsert, // imageFile を除外したデータ
-            user_id: user.id,
-            latitude: selectedLocation[1],
-            longitude: selectedLocation[0],
-            prefecture: locationDetails.prefecture,
-            city: locationDetails.city,
-            status,
-            title: reportDataToInsert.title || '無題の報告',
-            danger_type: reportDataToInsert.danger_type || 'other',
-            danger_level: reportDataToInsert.danger_level || 1,
-            // processed_image_urls は API 側で設定されるため、ここでは設定しない (NULL or default)
-            // processed_image_urls: [], // ← 削除
-          })
-          .select()
-          .single();
-
-      let { data: insertedData, error: insertError } = await insertReport(initialStatus);
-
-      // Some environments enforce stricter insert checks for "published".
-      // Retry once as "pending" to avoid blocking report submissions.
-      if (shouldRetryDangerReportInsertAsPending(initialStatus, insertError)) {
-        console.warn("[danger_reports] insert blocked for published, retrying as pending", insertError);
-        const retryResult = await insertReport("pending");
-        insertedData = retryResult.data;
-        insertError = retryResult.error;
-      }
-
-      if (insertError) throw insertError;
+      const createResponse = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...reportDataToInsert,
+          latitude: selectedLocation[1],
+          longitude: selectedLocation[0],
+          prefecture: locationDetails.prefecture,
+          city: locationDetails.city,
+          title: reportDataToInsert.title || "無題の報告",
+          danger_type: reportDataToInsert.danger_type || "other",
+          danger_level: reportDataToInsert.danger_level || 1,
+          route_context_id,
+          route_context_name,
+        }),
+      });
+      const createPayload = await createResponse.json().catch(() => ({})) as {
+        report?: DangerReport
+        pointsAwarded?: number
+        error?: string
+      };
+      if (!createResponse.ok) throw new Error(createPayload.error || "レポートの保存に失敗しました");
+      const insertedData = createPayload.report;
       if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
+      const pointsAwarded = Number(createPayload.pointsAwarded) || 0;
 
       const newReportId = insertedData.id;
       console.log(`Report inserted successfully with ID: ${newReportId}`);
-
-      if (route_context_name) {
-        const routeNotification = buildRouteReportNotification({
-          userId: user.id,
-          reportId: newReportId,
-          reportTitle: reportDataToInsert.title || "無題の報告",
-          routeId: route_context_id,
-          routeName: route_context_name,
-        })
-
-        const { error: notificationError } = await supabase
-          .from("notifications")
-          .insert(routeNotification)
-
-        if (notificationError) {
-          console.warn("route notification insert failed", notificationError)
-        }
-      }
 
       // 危険レポートアラート: 通学路300m圏内のユーザーにプッシュ通知 (fire-and-forget)
       fetch('/api/push/notify-danger-report', {
@@ -244,17 +210,9 @@ export function useDangerReportSubmit({
         toast({ title: "報告完了", description: "危険箇所報告が送信されました。" }); // 最終的な完了トースト
       }
 
-      // Gamification (エラーがあっても続行)
-      try {
-        if (user?.id) { // user.id が存在するか確認
-           await addPoints(supabase, user.id, 20);
-           if (!options?.suppressSuccessToast) {
-             toast({ title: "ポイント獲得", description: "報告送信で +20pt 獲得しました。" });
-           }
-        } else {
-           console.warn("User ID not found for gamification points.");
-        }
-      } catch (e: any) { console.error("Gamification error:", e); }
+      if (pointsAwarded > 0 && !options?.suppressSuccessToast) {
+        toast({ title: "ポイント獲得", description: `報告送信で +${pointsAwarded}pt 獲得しました。` });
+      }
 
       // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)
       if (selectedLocation && !options?.suppressPreview) {

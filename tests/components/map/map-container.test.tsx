@@ -516,11 +516,13 @@ describe('MapContainer characterization', () => {
   describe('報告ディープリンク', () => {
     it('一覧に含まれない本人の報告もID指定で取得して詳細を開く', async () => {
       const rejectedReport = sampleReport({ id: 'rejected-1', status: 'rejected' })
-      const maybeSingle = vi.fn(async () => ({ data: rejectedReport, error: null }))
-      const eq = vi.fn(() => ({ maybeSingle }))
-      const select = vi.fn(() => ({ eq }))
-      const from = vi.fn(() => ({ select }))
-      h.supabase = { from }
+      vi.mocked(fetch).mockImplementation(async (input) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+        if (url === '/api/reports/rejected-1') {
+          return { ok: true, json: async () => ({ report: rejectedReport }) } as Response
+        }
+        return { ok: true, json: async () => ({ markers: [] }) } as Response
+      })
 
       renderMapContainer({ initialReportId: 'rejected-1' })
 
@@ -529,8 +531,9 @@ describe('MapContainer characterization', () => {
           expect.objectContaining({ isOpen: true, report: rejectedReport }),
         )
       })
-      expect(from).toHaveBeenCalledWith('danger_reports')
-      expect(eq).toHaveBeenCalledWith('id', 'rejected-1')
+      expect(fetch).toHaveBeenCalledWith('/api/reports/rejected-1', {
+        credentials: 'same-origin',
+      })
     })
   })
 
@@ -872,8 +875,7 @@ describe('MapContainer characterization', () => {
       })
 
       expect(confirmSpy).toHaveBeenCalled()
-      expect(h.supabase._spies.from).toHaveBeenCalledWith('danger_reports')
-      expect(h.supabase._spies.eq).toHaveBeenCalledWith('id', 'r-2')
+      expect(fetch).toHaveBeenCalledWith('/api/reports/r-2', { method: 'DELETE' })
       expect(h.reports.setDangerReports).toHaveBeenCalled()
       expect(h.reports.setPendingReports).toHaveBeenCalled()
       expect(h.toast).toHaveBeenCalledWith(

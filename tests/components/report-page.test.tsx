@@ -1,39 +1,35 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import ReportHubPage from "@/app/report/page"
 
-// Supabase クエリは self-returning のビルダーでモックし、報告取得と
-// 市町村選択肢取得(projection が "city")を projection で区別する。
+// Supabase は Auth のみ、報告データは D1 Route Handler をモックする。
 const mocks = vi.hoisted(() => {
   const state = {
-    builders: [] as any[],
+    requests: [] as string[],
     reportsResult: { data: [] as unknown[], error: null as unknown },
-    cityResult: { data: [] as unknown[], error: null as unknown },
+    cityResult: { data: [] as unknown[], error: null as unknown } as any,
   }
-
-  const from = vi.fn(() => {
-    const q: any = { projection: null }
-    q.select = vi.fn((columns: string) => {
-      q.projection = columns
-      return q
-    })
-    for (const method of ["in", "eq", "not", "gte", "lte", "order"]) {
-      q[method] = vi.fn(() => q)
-    }
-    q.limit = vi.fn(() =>
-      Promise.resolve(q.projection === "city" ? state.cityResult : state.reportsResult),
+  const fetchApi = vi.fn(async (input: string | URL | Request) => {
+    const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+    state.requests.push(rawUrl)
+    const url = new URL(rawUrl, "https://app.example")
+    const result = await Promise.resolve(
+      url.searchParams.get("limit") === "2000" ? state.cityResult : state.reportsResult,
     )
-    state.builders.push(q)
-    return q
+    return {
+      ok: !result.error,
+      status: result.error ? 500 : 200,
+      json: async () => ({ reports: result.data }),
+    }
   })
 
   return {
     state,
+    fetchApi,
     toast: vi.fn(),
     shareFamilyShareCard: vi.fn(),
     supabase: {
-      from,
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
         onAuthStateChange: vi.fn(() => ({
@@ -48,9 +44,10 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-const reportBuilders = () =>
-  mocks.state.builders.filter((q) => q.projection && q.projection !== "city")
-const lastReportBuilder = () => reportBuilders()[reportBuilders().length - 1]
+const reportRequests = () => mocks.state.requests
+  .map((request) => new URL(request, "https://app.example"))
+  .filter((url) => url.searchParams.get("limit") !== "2000")
+const lastReportRequest = () => reportRequests()[reportRequests().length - 1]
 
 const schoolSearchMocks = vi.hoisted(() => ({
   searchSchools: vi.fn(),
@@ -122,8 +119,9 @@ vi.mock("@/lib/report-generation/family-share-card", async () => {
 describe("ReportHubPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal("fetch", mocks.fetchApi)
     window.localStorage.clear()
-    mocks.state.builders.length = 0
+    mocks.state.requests.length = 0
     mocks.state.reportsResult = { data: [], error: null }
     mocks.state.cityResult = { data: [], error: null }
     mocks.supabase.auth.getUser.mockResolvedValue({ data: { user: null } })
@@ -132,12 +130,13 @@ describe("ReportHubPage", () => {
     })
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it("does not render the 3D gallery tab", async () => {
     render(<ReportHubPage />)
 
     await waitFor(() => {
-      expect(reportBuilders().length).toBeGreaterThan(0)
-      expect(lastReportBuilder().limit).toHaveBeenCalled()
+      expect(reportRequests().length).toBeGreaterThan(0)
     })
 
     expect(screen.queryByRole("tab", { name: "3Dギャラリー" })).not.toBeInTheDocument()
@@ -191,10 +190,9 @@ describe("ReportHubPage", () => {
       render(<ReportHubPage />)
 
       await waitFor(() => {
-        expect(reportBuilders().length).toBeGreaterThan(0)
-        expect(lastReportBuilder().limit).toHaveBeenCalled()
+        expect(reportRequests().length).toBeGreaterThan(0)
       })
-      expect(lastReportBuilder().eq).not.toHaveBeenCalled()
+      expect(lastReportRequest().searchParams.has("prefecture")).toBe(false)
     })
 
     it("都道府県チップを選ぶと prefecture で絞り込む", async () => {
@@ -204,7 +202,7 @@ describe("ReportHubPage", () => {
       fireEvent.click(chip)
 
       await waitFor(() => {
-        expect(lastReportBuilder().eq).toHaveBeenCalledWith("prefecture", "東京都")
+        expect(lastReportRequest().searchParams.get("prefecture")).toBe("東京都")
       })
     })
 
@@ -218,9 +216,9 @@ describe("ReportHubPage", () => {
       fireEvent.change(citySelect, { target: { value: "千代田区" } })
 
       await waitFor(() => {
-        const query = lastReportBuilder()
-        expect(query.eq).toHaveBeenCalledWith("prefecture", "東京都")
-        expect(query.eq).toHaveBeenCalledWith("city", "千代田区")
+        const request = lastReportRequest()
+        expect(request.searchParams.get("prefecture")).toBe("東京都")
+        expect(request.searchParams.get("city")).toBe("千代田区")
       })
     })
 

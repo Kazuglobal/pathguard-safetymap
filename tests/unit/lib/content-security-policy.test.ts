@@ -13,4 +13,10 @@ describe("buildContentSecurityPolicy", () => {
   it("does not allow the public Nominatim endpoint", () => {
     expect(buildContentSecurityPolicy()).not.toContain("nominatim.openstreetmap.org")
   })
+
+  it("allows the configured R2 media origin without accepting non-HTTPS origins", () => {
+    const policy = buildContentSecurityPolicy("https://media.example.com/assets")
+    expect(policy).toContain("https://media.example.com")
+    expect(buildContentSecurityPolicy("http://media.example.com")).not.toContain("http://media.example.com")
+  })
 })

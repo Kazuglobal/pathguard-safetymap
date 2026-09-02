@@ -1,0 +1,64 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pathguardian-server-template",
+  "main": "cloudflare/workers/server-core.ts",
+  "workers_dev": false,
+  "minify": true,
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "pathguardian"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pathguardian",
+      "database_id": "8e92d8a8-4b40-4530-89a9-43f6cbc37099",
+      "migrations_dir": "lib/db/migrations"
+    },
+    {
+      "binding": "TRAFFIC_DB",
+      "database_name": "pathguardian-traffic",
+      "database_id": "84db49b6-e9f4-4886-8319-2b7d32d59438",
+      "migrations_dir": "lib/db/traffic-migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_PUBLIC",
+      "bucket_name": "pg-media-public"
+    },
+    {
+      "binding": "MEDIA_PRIVATE",
+      "bucket_name": "pg-media-private"
+    },
+    {
+      "binding": "BACKUPS",
+      "bucket_name": "pg-backups"
+    },
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "pg-next-cache"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "vars": {
+    "CLOUDFLARE_ACCOUNT_ID": "64a7afb6120cc316b618480f4a17cc21",
+    "D1_DATABASE_ID": "8e92d8a8-4b40-4530-89a9-43f6cbc37099"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  }
+}

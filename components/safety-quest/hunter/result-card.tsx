@@ -5,14 +5,18 @@ import { motion, useReducedMotion } from "framer-motion"
 import {
   Camera,
   Eye,
+  Lightbulb,
+  Map as MapIcon,
   MessageCircleHeart,
   RotateCcw,
   Search,
   ShieldCheck,
   Star as StarIcon,
+  Trophy,
   Zap,
 } from "lucide-react"
 
+import type { HunterMissionReward } from "@/lib/hunter/rewards"
 import type { HunterHazard } from "@/lib/hunter/types"
 import { splitFurigana } from "@/lib/hunter/furigana"
 import { RubyText } from "./ruby-text"
@@ -37,6 +41,16 @@ export interface ResultCardProps {
   foundIds: readonly string[]
   onRetry: () => void
   onNewPhoto: () => void
+  /** きょう この あそびかたで はじめて みつけたときの +pt(0 なら出さない=否定しない)。 */
+  pointsAwarded?: number
+  /** このプレイで達成したミッション。 */
+  missionsCompleted?: readonly HunterMissionReward[]
+  /** サーバに記録できなかった(あそび自体は成立)。正直に小さく伝える。 */
+  persistError?: boolean
+  /** 同じ写真で クイズ/あんぜんさがし へ戻る(袋小路にしない)。 */
+  onOtherModes?: () => void
+  /** 「きろくに のこす」を選んだ写真から きろく画面へ。 */
+  onOpenRecords?: () => void
 }
 
 const C = tokens.color
@@ -103,6 +117,11 @@ export function ResultCard(props: ResultCardProps) {
     foundIds,
     onRetry,
     onNewPhoto,
+    pointsAwarded = 0,
+    missionsCompleted = [],
+    persistError = false,
+    onOtherModes,
+    onOpenRecords,
   } = props
 
   const reduce = useReducedMotion()
@@ -227,7 +246,40 @@ export function ResultCard(props: ResultCardProps) {
             value={comboMax}
           />
         )}
+        {pointsAwarded > 0 && (
+          <StatPill
+            tone="green"
+            icon={<Trophy className="h-3.5 w-3.5" aria-hidden="true" />}
+            label="たまった ポイント"
+            value={`+${pointsAwarded}pt`}
+          />
+        )}
       </motion.div>
+
+      {/* ミッション達成(このプレイで進んだぶんだけ) */}
+      {missionsCompleted.length > 0 && (
+        <motion.div {...rise(0.12)}>
+          <PaperPanel tone="sun" className="px-4 py-3.5">
+            <p className="flex items-center gap-1.5 text-[14px] font-black" style={{ color: C.ink }}>
+              <Trophy className="h-5 w-5 shrink-0" aria-hidden="true" style={{ color: C.sunDeep }} />
+              ミッション たっせい！
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {missionsCompleted.map((mission) => (
+                <li key={mission.title} className="text-[13px] font-bold" style={{ color: C.inkSoft }}>
+                  <RubyText text={mission.title} />
+                  {mission.rewardPoints > 0 ? `（+${mission.rewardPoints}pt）` : ""}
+                </li>
+              ))}
+            </ul>
+          </PaperPanel>
+        </motion.div>
+      )}
+      {persistError && (
+        <p role="status" className="text-center text-[12px] font-bold" style={{ color: C.inkSoft }}>
+          きょうの ポイントは のこせなかったよ。あそびは ちゃんと できているよ。
+        </p>
+      )}
 
       {/* おうちの人と はなそう(会話のタネ) */}
       <motion.div {...rise(0.14)}>
@@ -335,6 +387,18 @@ export function ResultCard(props: ResultCardProps) {
           <RotateCcw className="h-5 w-5" aria-hidden="true" />
           もういちど さがす
         </PrimaryCTA>
+        {onOtherModes && (
+          <PrimaryCTA onClick={onOtherModes} variant="sun">
+            <Lightbulb className="h-5 w-5" aria-hidden="true" />
+            おなじ<RubyText text="写真" />で ほかの あそびかた
+          </PrimaryCTA>
+        )}
+        {onOpenRecords && (
+          <PrimaryCTA onClick={onOpenRecords} variant="paper">
+            <MapIcon className="h-5 w-5" aria-hidden="true" />
+            たんけんの きろくを <RubyText text="見" />る
+          </PrimaryCTA>
+        )}
         <PrimaryCTA onClick={onNewPhoto} variant="paper">
           <Camera className="h-5 w-5" aria-hidden="true" />
           べつの<RubyText text="写真" />で あそぶ

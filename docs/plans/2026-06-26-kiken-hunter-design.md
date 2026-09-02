@@ -368,6 +368,27 @@ POST /api/hunter/session   (nodejs, 認証必須)
 
 ---
 
+## 19.5 実用化改善(2026-09-02 実装・v3 への追記)
+
+「遊んだ結果がアプリに還流しない・結果画面と きろく が袋小路・採点失敗で 0 点を捏造」を解消した。
+
+| 項目 | 実装 |
+|---|---|
+| ポイント/記録 | `/api/hunter/session` が再採点後に `safety_quest_attempts` + `user_points` へ記録(`lib/hunter/rewards.ts`)。`mode='private-practice'`, `challengeId='hunter-explore'|'hunter-quiz'`, **+5pt/日/モード**(部分ユニーク索引で二重付与遮断)。記録は**サーバ保持の正解鍵で採点したときだけ**(Upstash 未設定では採点のみ)、**同じ session×モードは 1 回だけ**(SET NX)。guide(危険 0 件)は記録しない |
+| ミッション | `gamification.repo.applyMissionProgress`(旧 `update_mission_progress` の D1 移植)。`hazard_game_play` 毎回 +1、`hazard_game_high_score` は正規化 80% 以上で +1。達成の瞬間だけ報酬(条件付き UPDATE RETURNING)。period リセットは未対応(累積) |
+| きろく再プレイ | `GET /api/hunter/photo/[id]` が保存済み検出を hazards に戻し新 sessionId を発行(AI 再解析なし)。一覧に「みつけた N/M・回数」「のこり N にち」 |
+| 採点失敗 | 0 点の結果を出さず、理由(期限切れ/通信/サーバ)と復帰 CTA(再解析/再送)を出す(`lib/hunter/session-client.ts`) |
+| 袋小路 | 結果画面から「おなじ写真で ほかの あそびかた」「きろくを 見る」、explore の戻るは モード選択へ、全発見後に「あんぜんの くふうも さがす」 |
+| ピン | カメラ直撮りは現在地を自動提案、前回ピンを端末に記憶(東京固定をやめる) |
+| 待ち時間 | Gemini 呼び出しに時間上限(35s/再試行 20s)、クライアント 95s、答え鍵 TTL 3 時間(スライド) |
+| 実機 | タップ面を写真比率に合わせる(縦長写真で的が縮まない)、`touch-action: manipulation`(iOS ダブルタップ拡大抑止)、発見カードにルビ |
+| データ | `hazard_detections.kind/accident_link` を保存(集計・再プレイ用) |
+| 導線 | mypage の写真ゲーム導線を `/safety-quest/hunter` へ統一 |
+
+未着手(次段): きろく→危険報告への昇格導線、保護者向け要約(mypage/dashboard カード)、通学路(user_routes)との地理的紐付け、hunter-game.tsx の画面分割、思考トークン/出力上限の調整(要ライブ検証)、ミッションの period リセット。
+
+---
+
 ## 19. 未決定・要決定事項
 
 実装着手前に決めたい（v3で顕在化）:

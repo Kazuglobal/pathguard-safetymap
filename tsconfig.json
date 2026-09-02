@@ -45,6 +45,9 @@
     "node_modules",
     "tests",
     "supabase/functions",
-    "tools"
+    "tools",
+    "custom-worker.ts",
+    "cloudflare/workers",
+    "worker-configuration.d.ts"
   ]
 }

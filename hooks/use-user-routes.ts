@@ -86,18 +86,13 @@ export function useUserRoutes() {
         return
       }
 
-      const { data, error: fetchError } = await supabase
-        .from("user_routes")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("is_favorite", { ascending: false })
-
-      if (fetchError) {
-        setError(fetchError.message)
+      const response = await fetch("/api/routes", { credentials: "same-origin" })
+      if (!response.ok) {
+        setError(`通学路の取得に失敗しました (${response.status})`)
         return
       }
-
-      setRoutes(data || [])
+      const payload = await response.json() as { routes?: UserRoute[] }
+      setRoutes(payload.routes ?? [])
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "通学路の取得に失敗しました"
@@ -162,26 +157,15 @@ export function useUserRoutes() {
       }
 
       try {
-        const { error: insertError } = await supabase
-          .from("user_routes")
-          .insert({
-            user_id: user.id,
-            name: input.name.trim(),
-            description: input.description?.trim() || null,
-            child_id: input.child_id ?? null,
-            child_name: input.child_name?.trim() || null,
-            start_lat: input.start_lat,
-            start_lng: input.start_lng,
-            end_lat: input.end_lat,
-            end_lng: input.end_lng,
-            start_address: input.start_address,
-            end_address: input.end_address,
-            route_geometry: input.route_geometry || null,
-            is_favorite: false,
-          })
-
-        if (insertError) {
-          setError(insertError.message)
+        const response = await fetch("/api/routes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ ...input, is_favorite: false }),
+        })
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({})) as { error?: string }
+          setError(payload.error ?? "ルートの作成に失敗しました")
           return false
         }
 
@@ -253,13 +237,15 @@ export function useUserRoutes() {
           updateData.is_favorite = input.is_favorite
         }
 
-        const { error: updateError } = await supabase
-          .from("user_routes")
-          .update(updateData)
-          .match({ id, user_id: user.id })
-
-        if (updateError) {
-          setError(updateError.message)
+        const response = await fetch(`/api/routes/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify(updateData),
+        })
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({})) as { error?: string }
+          setError(payload.error ?? "ルートの更新に失敗しました")
           return false
         }
 
@@ -294,13 +280,13 @@ export function useUserRoutes() {
       }
 
       try {
-        const { error: deleteError } = await supabase
-          .from("user_routes")
-          .delete()
-          .match({ id, user_id: user.id })
-
-        if (deleteError) {
-          setError(deleteError.message)
+        const response = await fetch(`/api/routes/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          credentials: "same-origin",
+        })
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({})) as { error?: string }
+          setError(payload.error ?? "ルートの削除に失敗しました")
           return false
         }
 
@@ -333,24 +319,15 @@ export function useUserRoutes() {
           return
         }
 
-        const { error: clearError } = await supabase
-          .from("user_routes")
-          .update({ is_favorite: false })
-          .eq("user_id", user.id)
-
-        if (clearError) {
-          setError(clearError.message)
-          return
-        }
-
-        // Then set the new primary
-        const { error: setErrorResult } = await supabase
-          .from("user_routes")
-          .update({ is_favorite: true })
-          .match({ id, user_id: user.id })
-
-        if (setErrorResult) {
-          setError(setErrorResult.message)
+        const response = await fetch(`/api/routes/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ primary: true }),
+        })
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({})) as { error?: string }
+          setError(payload.error ?? "プライマリルートの設定に失敗しました")
           return
         }
 

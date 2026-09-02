@@ -50,29 +50,13 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setIsLoading(true)
       setError(null)
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        setNotifications([])
-        setUnreadCount(0)
+      const response = await fetch("/api/notifications", { credentials: "same-origin" })
+      if (!response.ok) {
+        setError(`通知の取得に失敗しました (${response.status})`)
         return
       }
-
-      const { data, error: fetchError } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50)
-
-      if (fetchError) {
-        setError(fetchError.message)
-        return
-      }
-
-      const notificationsList: Notification[] = (data || []) as Notification[]
+      const payload = await response.json() as { notifications?: Notification[] }
+      const notificationsList = payload.notifications ?? []
       setNotifications(notificationsList)
       setUnreadCount(notificationsList.filter((n: Notification) => !n.is_read).length)
     } catch (err) {
@@ -87,13 +71,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const markAsRead = useCallback(
     async (id: string) => {
       try {
-        const { error: updateError } = await supabase
-          .from("notifications")
-          .update({ is_read: true })
-          .eq("id", id)
-
-        if (updateError) {
-          setError(updateError.message)
+        const response = await fetch("/api/notifications", {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          credentials: "same-origin", body: JSON.stringify({ id }),
+        })
+        if (!response.ok) {
+          setError("通知の更新に失敗しました")
           return
         }
 
@@ -107,25 +90,17 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         )
       }
     },
-    [supabase]
+    []
   )
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) return
-
-      const { error: updateError } = await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false)
-
-      if (updateError) {
-        setError(updateError.message)
+      const response = await fetch("/api/notifications", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        credentials: "same-origin", body: JSON.stringify({ all: true }),
+      })
+      if (!response.ok) {
+        setError("通知の一括更新に失敗しました")
         return
       }
 
@@ -136,7 +111,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         err instanceof Error ? err.message : "通知の一括更新に失敗しました"
       )
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     if (!enabled) {

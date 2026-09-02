@@ -13,6 +13,7 @@ vi.mock("@upstash/redis", () => ({
 }))
 
 import {
+  claimSessionScore,
   getAnswerKey,
   putAnswerKey,
   type HunterAnswerKey,
@@ -54,6 +55,20 @@ function unconfigure() {
   delete process.env.UPSTASH_REDIS_REST_TOKEN
 }
 
+describe("claimSessionScore (once per session and mode)", () => {
+  it("returns true only for the first SET NX and false afterwards, on failure, or when unconfigured", async () => {
+    configure()
+    setSpy.mockResolvedValueOnce("OK").mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("redis down"))
+    await expect(claimSessionScore("sess", "explore")).resolves.toBe(true)
+    expect(setSpy).toHaveBeenCalledWith("hunter:scored:sess:explore", "1", { nx: true, ex: 10800 })
+    await expect(claimSessionScore("sess", "explore")).resolves.toBe(false)
+    await expect(claimSessionScore("sess", "quiz")).resolves.toBe(false)
+
+    unconfigure()
+    await expect(claimSessionScore("sess", "explore")).resolves.toBe(false)
+  })
+})
+
 describe("answer-cache (unconfigured = no-op / backward compatible)", () => {
   it("putAnswerKey does not call redis when Upstash is unconfigured", async () => {
     unconfigure()
@@ -69,14 +84,14 @@ describe("answer-cache (unconfigured = no-op / backward compatible)", () => {
 })
 
 describe("answer-cache (configured)", () => {
-  it("putAnswerKey stores the JSON with a 30-minute TTL", async () => {
+  it("putAnswerKey stores the JSON with a 3-hour TTL (slides on every read)", async () => {
     configure()
     await putAnswerKey("sess", sampleKey)
     expect(setSpy).toHaveBeenCalledTimes(1)
     expect(setSpy).toHaveBeenCalledWith(
       "hunter:answer:sess",
       JSON.stringify(sampleKey),
-      { ex: 1800 },
+      { ex: 10800 },
     )
   })
 

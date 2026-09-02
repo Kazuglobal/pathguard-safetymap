@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787387822928,
+      "tag": "20260822083702_curious_ikaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787387963081,
+      "tag": "20260822083923_sparkling_carmella_unuscione",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788358565058,
+      "tag": "20260902141605_hunter_detection_kind",
+      "breakpoints": true
+    }
+  ]
+}

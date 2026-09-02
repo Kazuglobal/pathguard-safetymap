@@ -128,6 +128,25 @@ describe("buildQuizItemsFromAi", () => {
     expect(items[0].theme).toBe("角での出会い頭")
   })
 
+  it("leaves the theme empty when the AI judged the photo unrelated to the local accident type", () => {
+    // AI の慎重な null を地域統計で上書きしない(写真と無関係な事故類型の誤学習防止)
+    const items = buildQuizItemsFromAi([hazard({ accidentLink: null })], [material()], accidentWithData, 1)
+    expect(items[0].theme).toBeNull()
+  })
+
+  it("adds the accident reality line to the first question only", () => {
+    const items = buildQuizItemsFromAi(
+      [hazard({ confidence: 0.5 }), hazard({ id: "s-1", confidence: 0.5 }), hazard({ id: "s-2", confidence: 0.5 })],
+      [material(), material(), material()],
+      accidentWithData,
+      3,
+    )
+    expect(items).toHaveLength(3)
+    expect(items[0].explanation).toContain("件 あったよ")
+    expect(items[1].explanation).not.toContain("件 あったよ")
+    expect(items[2].explanation).not.toContain("件 あったよ")
+  })
+
   it("returns an empty array when there are no hazards", () => {
     expect(buildQuizItemsFromAi([], [], accidentWithData, 3)).toEqual([])
   })

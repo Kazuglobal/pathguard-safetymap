@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { createServerClient } from "@/lib/supabase-server"
+import { getActor } from '@/lib/auth/actor'
+import { flagDangerReport } from '@/lib/db/repos/social.repo'
 import { checkApiRateLimit, rateLimitedResponse } from "@/lib/upstash-rate-limiter"
 
 export const runtime = "nodejs"
@@ -11,17 +12,12 @@ const AbuseReportSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
+  const actor = await getActor()
+  if (actor.kind !== 'user') {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
   }
 
-  const rate = await checkApiRateLimit(`abuse-report:${user.id}`)
+  const rate = await checkApiRateLimit(`abuse-report:${actor.id}`)
   if (!rate.success) {
     return rateLimitedResponse(rate.reset)
   }
@@ -43,26 +39,16 @@ export async function POST(request: NextRequest) {
 
   const { target_report_id, reason } = parsed.data
 
-  const { error: insertError } = await supabase
-    .from("report_flags")
-    .insert({
-      reporter_user_id: user.id,
-      target_report_id,
-      reason: reason || null,
-    })
-
-  if (insertError) {
-    console.error("abuse report insert failed:", insertError)
-    // 外部キー違反(通報対象が存在しない)は404として扱う
-    const status = insertError.code === "23503" ? 404 : 500
+  try {
+    const inserted = await flagDangerReport(actor, target_report_id, reason)
+    if (!inserted) {
+      return NextResponse.json({ error: "通報対象のレポートが見つかりません" }, { status: 404 })
+    }
+  } catch (error) {
+    console.error("abuse report insert failed:", error)
     return NextResponse.json(
-      {
-        error:
-          status === 404
-            ? "通報対象のレポートが見つかりません"
-            : "通報の送信に失敗しました",
-      },
-      { status },
+      { error: "通報の送信に失敗しました" },
+      { status: 500 },
     )
   }
 
