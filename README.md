@@ -54,6 +54,13 @@ pnpm build:cloudflare
 pnpm deploy:cloudflare
 ```
 
+PRでは `.github/workflows/cloudflare-preview.yml` がPR番号ごとの隔離Worker群を
+デプロイし、CloudflareプレビューURLをコメントします。リポジトリの
+`cloudflare-preview` Environmentに `CLOUDFLARE_API_TOKEN`、
+`CLOUDFLARE_ACCOUNT_ID` とビルドに必要な `NEXT_PUBLIC_*` secretsを設定してください。
+PRを閉じると隔離Worker群は自動削除されます。D1/R2は本番とは分離したプレビュー専用リソースを使います。
+セットアップ・制約は [Cloudflare PRプレビュー](./docs/runbooks/cloudflare-pr-preview.md) を参照してください。
+
 ### 不審者アラートの本番反映メモ
 
 - サーバ審査 API `/api/suspicious-alert/moderate` は Supabase Auth の設定と D1 バインディングが必要です。

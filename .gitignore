@@ -104,7 +104,10 @@ env.defaults.json
 .crush/
 .factory/
 .gemini/
-.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/cloudflare-preview.yml
 .goose/
 .junie/
 .kilocode/

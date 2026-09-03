@@ -1,0 +1,23 @@
+{
+  "name": "pathguardian-preview-resources",
+  "account_id": "64a7afb6120cc316b618480f4a17cc21",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pathguardian-preview",
+      "database_id": "48c480e4-ebf5-439b-a2c4-33546dcf6072",
+      "migrations_dir": "lib/db/migrations"
+    },
+    {
+      "binding": "TRAFFIC_DB",
+      "database_name": "pathguardian-traffic-preview",
+      "database_id": "a5404251-54d6-48e0-9f9d-111c206f5ce6",
+      "migrations_dir": "lib/db/traffic-migrations"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA_PUBLIC", "bucket_name": "pg-preview-media-public" },
+    { "binding": "MEDIA_PRIVATE", "bucket_name": "pg-preview-media-private" },
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "pg-preview-next-cache" }
+  ]
+}
