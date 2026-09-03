@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceActor } from '@/lib/auth/service-actor'
 import { listPendingDangerReportIds } from '@/lib/db/repos/push.repo'
-import {
-  claimDangerReportForNotification,
-  notifyUsersNearReport,
-  releaseDangerReportNotificationClaim,
-} from '@/lib/push-notifications/notify-danger-report'
+import { dispatchDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 import { verifyCronSecret } from '@/lib/cron-auth'
 
 // Cron: 過去20分の新規レポートを処理してプッシュ通知を送信する安全網
@@ -27,23 +23,11 @@ export async function GET(req: NextRequest) {
 
   const results = await Promise.allSettled(
     reports.map(async (report) => {
-      const claimed = await claimDangerReportForNotification({ reportId: report.id })
-
-      if (claimed.status !== 'claimed') {
+      const dispatched = await dispatchDangerReportNotification({ reportId: report.id })
+      if (dispatched.status !== 'notified') {
         return { notified: 0, skipped: 1 }
       }
-
-      try {
-        const notified = await notifyUsersNearReport(claimed.report)
-        return { notified, skipped: 0 }
-      } catch (error) {
-        await releaseDangerReportNotificationClaim({
-          reportId: claimed.report.id,
-          claimedAt: claimed.claimedAt,
-        })
-        console.error('[cron/push-danger-reports] notify error for report', claimed.report.id, error)
-        throw error
-      }
+      return { notified: dispatched.notified, skipped: 0 }
     })
   )
 

@@ -1,8 +1,26 @@
-import { and, asc, desc, eq, gte, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
 import { dangerReports, localSafetyAlerts, pushSubscriptions, userRoutes } from '../schema'
+
+export const DANGER_REPORT_NOTIFICATION_STATUSES = ['approved', 'published', 'resolved'] as const
+
+export function isDangerReportNotificationReady(report: {
+  status: string
+  aiModerationStatus: string | null
+}): boolean {
+  return DANGER_REPORT_NOTIFICATION_STATUSES.includes(
+    report.status as (typeof DANGER_REPORT_NOTIFICATION_STATUSES)[number],
+  ) && report.aiModerationStatus === 'approved'
+}
+
+function dangerReportNotificationReadyPredicate() {
+  return and(
+    inArray(dangerReports.status, [...DANGER_REPORT_NOTIFICATION_STATUSES]),
+    eq(dangerReports.aiModerationStatus, 'approved'),
+  )!
+}
 
 export interface LocalAlertWriteInput {
   prefecture: string
@@ -109,6 +127,7 @@ export function createPushRepo(db: AppDb) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       return db.select({ id: dangerReports.id }).from(dangerReports).where(and(
         gte(dangerReports.createdAt, since), isNull(dangerReports.pushNotifiedAt),
+        dangerReportNotificationReadyPredicate(),
       )).orderBy(asc(dangerReports.createdAt)).limit(500)
     },
 
@@ -117,20 +136,28 @@ export function createPushRepo(db: AppDb) {
       const predicates = [eq(dangerReports.id, reportId)]
       if (userId) predicates.push(eq(dangerReports.userId, userId))
       const [existing] = await db.select({
-        id: dangerReports.id, title: dangerReports.title, latitude: dangerReports.latitude,
+        id: dangerReports.id, dangerType: dangerReports.dangerType,
+        prefecture: dangerReports.prefecture, status: dangerReports.status,
+        aiModerationStatus: dangerReports.aiModerationStatus, latitude: dangerReports.latitude,
         longitude: dangerReports.longitude, pushNotifiedAt: dangerReports.pushNotifiedAt,
       }).from(dangerReports).where(and(...predicates)).limit(1)
       if (!existing) return { status: 'not_found' as const }
       if (existing.pushNotifiedAt) return { status: 'already_claimed' as const }
-      const claimedAt = new Date().toISOString()
+      if (!isDangerReportNotificationReady(existing)) return { status: 'not_ready' as const }
+      const claimedAt = `claim:${crypto.randomUUID()}`
       const [claimed] = await db.update(dangerReports).set({ pushNotifiedAt: claimedAt })
-        .where(and(...predicates, isNull(dangerReports.pushNotifiedAt))).returning({
-          id: dangerReports.id, title: dangerReports.title,
+        .where(and(
+          ...predicates,
+          isNull(dangerReports.pushNotifiedAt),
+          dangerReportNotificationReadyPredicate(),
+        )).returning({
+          id: dangerReports.id, dangerType: dangerReports.dangerType,
+          prefecture: dangerReports.prefecture,
           latitude: dangerReports.latitude, longitude: dangerReports.longitude,
         })
       return claimed
         ? { status: 'claimed' as const, report: claimed, claimedAt }
-        : { status: 'already_claimed' as const }
+        : { status: 'not_ready' as const }
     },
 
     async releaseReportClaim(actor: Actor, reportId: string, claimedAt: string) {
@@ -138,6 +165,26 @@ export function createPushRepo(db: AppDb) {
       await db.update(dangerReports).set({ pushNotifiedAt: null }).where(and(
         eq(dangerReports.id, reportId), eq(dangerReports.pushNotifiedAt, claimedAt),
       ))
+    },
+
+    async confirmReportClaim(actor: Actor, reportId: string, claimedAt: string) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      const [confirmed] = await db.update(dangerReports).set({ pushNotifiedAt: claimedAt })
+        .where(and(
+          eq(dangerReports.id, reportId),
+          eq(dangerReports.pushNotifiedAt, claimedAt),
+          dangerReportNotificationReadyPredicate(),
+        )).returning({ id: dangerReports.id })
+      return Boolean(confirmed)
+    },
+
+    async completeReportClaim(actor: Actor, reportId: string, claimedAt: string) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      const [completed] = await db.update(dangerReports).set({ pushNotifiedAt: new Date().toISOString() })
+        .where(and(
+          eq(dangerReports.id, reportId), eq(dangerReports.pushNotifiedAt, claimedAt),
+        )).returning({ id: dangerReports.id })
+      return Boolean(completed)
     },
 
     async listRoutesWithGeometry(actor: Actor) {
@@ -227,6 +274,8 @@ export function deletePushSubscriptionById(actor: Actor, id: string) { return cr
 export function listPendingDangerReportIds(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingReportIds(actor, since) }
 export function claimDangerReport(actor: Actor, reportId: string, userId?: string) { return createPushRepo(getDb()).claimReport(actor, reportId, userId) }
 export function releaseDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).releaseReportClaim(actor, reportId, claimedAt) }
+export function confirmDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).confirmReportClaim(actor, reportId, claimedAt) }
+export function completeDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).completeReportClaim(actor, reportId, claimedAt) }
 export function listNotificationRoutes(actor: Actor) { return createPushRepo(getDb()).listRoutesWithGeometry(actor) }
 export function listPendingLocalAlerts(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingAlerts(actor, since) }
 export function claimLocalAlert(actor: Actor, alertId: string) { return createPushRepo(getDb()).claimAlert(actor, alertId) }

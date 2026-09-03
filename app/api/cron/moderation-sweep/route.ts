@@ -10,6 +10,8 @@ import {
   moderateDangerReportRecord,
 } from '@/lib/danger-report-moderation-d1'
 import { hasModerationSweepTimeRemaining } from '@/lib/danger-report-moderation-sweep'
+import { isDangerReportNotificationReady } from '@/lib/db/repos/push.repo'
+import { queueDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -54,7 +56,12 @@ export async function GET(request: NextRequest) {
         }
       }
       const result = await moderateDangerReportRecord(report, mode)
-      if (result.outcome === 'updated') updated += 1
+      if (result.outcome === 'updated') {
+        updated += 1
+        if (isDangerReportNotificationReady(result.report)) {
+          queueDangerReportNotification({ reportId: result.report.id })
+        }
+      }
       if (result.outcome === 'shadow') shadow += 1
       if (result.outcome === 'conflict') conflict += 1
       if (result.outcome === 'retry') retry += 1

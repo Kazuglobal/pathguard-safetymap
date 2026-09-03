@@ -12,6 +12,8 @@ import {
   type DangerReportRow,
 } from '@/lib/danger-report-moderation-d1'
 import { AuthzError } from '@/lib/db/authz'
+import { isDangerReportNotificationReady } from '@/lib/db/repos/push.repo'
+import { queueDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 interface HandlerOptions {
@@ -91,6 +93,9 @@ export async function handleDangerReportModeration(
         verdict: { status: result.verdict.status },
         report: reportForClient(result.report),
       }, { status: 202 })
+    }
+    if (result.outcome === 'updated' && isDangerReportNotificationReady(result.report)) {
+      queueDangerReportNotification({ reportId: result.report.id })
     }
     return NextResponse.json({
       mode,

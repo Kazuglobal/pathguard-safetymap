@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   fallbackCount: vi.fn(),
   markFailed: vi.fn(),
   moderate: vi.fn(),
+  queueNotification: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.actor }))
@@ -22,6 +23,9 @@ vi.mock('@/lib/danger-report-moderation-d1', () => ({
   getDangerModerationFallbackCount: mocks.fallbackCount,
   markDangerReportModerationFailed: mocks.markFailed,
   moderateDangerReportRecord: mocks.moderate,
+}))
+vi.mock('@/lib/push-notifications/notify-danger-report', () => ({
+  queueDangerReportNotification: mocks.queueNotification,
 }))
 
 import { POST as postDanger } from '@/app/api/danger-report/moderate/route'
@@ -73,6 +77,7 @@ describe('POST /api/danger-report/moderate (D1)', () => {
     expect(response.status).toBe(200)
     expect(mocks.moderate).toHaveBeenCalledWith(ownReport, 'live')
     expect((await response.json()).report.status).toBe('approved')
+    expect(mocks.queueNotification).toHaveBeenCalledWith({ reportId: 'report-1' })
   })
 
   it('does not expose internal moderation reason or score', async () => {
@@ -91,6 +96,7 @@ describe('POST /api/danger-report/moderate (D1)', () => {
     const response = await postDanger(request('/api/danger-report/moderate', { reportId: 'report-1' }))
     expect(response.status).toBe(202)
     expect(await response.json()).toMatchObject({ mode: 'live', pending: true })
+    expect(mocks.queueNotification).not.toHaveBeenCalled()
   })
 
   it('stops retries after the live fallback budget', async () => {
@@ -119,5 +125,32 @@ describe('POST /api/danger-report/moderate (D1)', () => {
   it('keeps the suspicious endpoint but rejects non-suspicious reports', async () => {
     const response = await postSuspicious(request('/api/suspicious-alert/moderate', { reportId: 'report-1' }))
     expect(response.status).toBe(400)
+  })
+
+  it('queues the suspicious compatibility path only after persisted approval', async () => {
+    const suspicious = { ...ownReport, dangerType: 'suspicious' }
+    mocks.report.mockResolvedValue(suspicious)
+    mocks.moderate.mockResolvedValue({
+      outcome: 'updated', verdict: { status: 'approved' },
+      report: { ...suspicious, status: 'approved', aiModerationStatus: 'approved' },
+    })
+
+    const response = await postSuspicious(request('/api/suspicious-alert/moderate', { reportId: 'report-1' }))
+
+    expect(response.status).toBe(200)
+    expect(mocks.queueNotification).toHaveBeenCalledWith({ reportId: 'report-1' })
+  })
+
+  it.each([
+    { status: 'rejected', aiModerationStatus: 'rejected' },
+    { status: 'pending', aiModerationStatus: 'needs_review' },
+  ])('does not queue a $aiModerationStatus result', async (state) => {
+    mocks.moderate.mockResolvedValue({
+      outcome: 'updated', verdict: { status: state.aiModerationStatus },
+      report: { ...ownReport, ...state },
+    })
+
+    expect((await postDanger(request('/api/danger-report/moderate', { reportId: 'report-1' }))).status).toBe(200)
+    expect(mocks.queueNotification).not.toHaveBeenCalled()
   })
 })

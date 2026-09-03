@@ -56,13 +56,21 @@ export function buildRouteReportNotification(params: {
 
 export function buildDangerReportPushPayload(params: {
   reportId: string
-  reportTitle: string
-  routeName?: string | null
+  dangerType: string
+  prefecture?: string | null
 }): PushPayload {
-  const routeLabel = params.routeName?.trim() || "通学路"
+  const dangerTypeLabels: Record<string, string> = {
+    traffic: "交通危険",
+    crime: "防犯上の危険",
+    suspicious: "不審者情報",
+    disaster: "災害危険",
+    construction: "工事中の危険",
+    other: "通学路の危険",
+  }
+  const dangerLabel = dangerTypeLabels[params.dangerType] ?? "通学路の危険"
   return {
-    title: `${routeLabel}に危険報告`,
-    body: params.reportTitle,
+    title: "近隣の通学路に危険報告",
+    body: `${dangerLabel}に関する新しい報告が公開されました。`,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',
     tag: `danger-report-${params.reportId}`,
