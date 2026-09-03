@@ -212,6 +212,7 @@ export function createDangerReportsRepo(db: AppDb) {
           else ${dangerReports.aiModerationReason}
         end`,
         aiModerationCheckedAt: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then ${now} else ${dangerReports.aiModerationCheckedAt} end`,
+        pushNotifiedAt: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then null else ${dangerReports.pushNotifiedAt} end`,
         updatedAt: now,
       }
       const values = input.imageKey !== undefined
@@ -249,7 +250,12 @@ export function createDangerReportsRepo(db: AppDb) {
         throw new RangeError('Invalid report status')
       }
       assertCan(actor, 'update', 'danger_reports', { changedFields: ['status'] })
-      const [row] = await db.update(dangerReports).set({ status, updatedAt: new Date().toISOString() })
+      const keepsNotificationState = ['approved', 'published', 'resolved'].includes(status)
+      const [row] = await db.update(dangerReports).set({
+        status,
+        ...(!keepsNotificationState ? { pushNotifiedAt: null } : {}),
+        updatedAt: new Date().toISOString(),
+      })
         .where(eq(dangerReports.id, reportId)).returning()
       if (!row) throw new Error('Danger report not found')
       return row

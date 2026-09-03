@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   fallbackCount: vi.fn(),
   markFailed: vi.fn(),
   moderate: vi.fn(),
+  queueNotification: vi.fn(),
 }))
 
 vi.mock('@/lib/danger-report-moderation-d1', () => ({
@@ -16,6 +17,9 @@ vi.mock('@/lib/danger-report-moderation-d1', () => ({
   getDangerModerationFallbackCount: mocks.fallbackCount,
   markDangerReportModerationFailed: mocks.markFailed,
   moderateDangerReportRecord: mocks.moderate,
+}))
+vi.mock('@/lib/push-notifications/notify-danger-report', () => ({
+  queueDangerReportNotification: mocks.queueNotification,
 }))
 
 import { GET } from '@/app/api/cron/moderation-sweep/route'
@@ -35,7 +39,10 @@ describe('GET /api/cron/moderation-sweep (D1)', () => {
     mocks.list.mockResolvedValue([])
     mocks.fallbackCount.mockResolvedValue(0)
     mocks.markFailed.mockResolvedValue({ id: 'exhausted-report' })
-    mocks.moderate.mockResolvedValue({ outcome: 'updated' })
+    mocks.moderate.mockImplementation(async (report: { id: string }) => ({
+      outcome: 'updated',
+      report: { ...report, status: 'approved', aiModerationStatus: 'approved' },
+    }))
   })
   afterEach(() => vi.unstubAllEnvs())
 
@@ -57,12 +64,13 @@ describe('GET /api/cron/moderation-sweep (D1)', () => {
       order.push(`start:${report.id}`)
       await Promise.resolve()
       order.push(`end:${report.id}`)
-      return { outcome: 'updated' }
+      return { outcome: 'updated', report: { ...report, status: 'approved', aiModerationStatus: 'approved' } }
     })
     const response = await GET(request())
     expect(response.status).toBe(200)
     expect(mocks.list).toHaveBeenCalledWith(expect.any(String), 'live', 10)
     expect(order).toEqual(['start:r-1', 'end:r-1', 'start:r-2', 'end:r-2'])
+    expect(mocks.queueNotification).toHaveBeenCalledTimes(2)
   })
 
   it('moves a report to human review after three live fallbacks', async () => {
@@ -82,5 +90,17 @@ describe('GET /api/cron/moderation-sweep (D1)', () => {
     const response = await GET(request())
     expect((await response.json()).shadow).toBe(1)
     expect(mocks.fallbackCount).not.toHaveBeenCalled()
+    expect(mocks.queueNotification).not.toHaveBeenCalled()
+  })
+
+  it('does not queue a persisted non-approved moderation result', async () => {
+    mocks.list.mockResolvedValue([{ id: 'rejected' }])
+    mocks.moderate.mockResolvedValue({
+      outcome: 'updated',
+      report: { id: 'rejected', status: 'rejected', aiModerationStatus: 'rejected' },
+    })
+
+    expect((await GET(request())).status).toBe(200)
+    expect(mocks.queueNotification).not.toHaveBeenCalled()
   })
 })

@@ -6,17 +6,11 @@ vi.mock('@/lib/supabase-server', () => ({
 }))
 
 vi.mock('@/lib/push-notifications/notify-danger-report', () => ({
-  claimDangerReportForNotification: vi.fn(),
-  releaseDangerReportNotificationClaim: vi.fn(),
-  notifyUsersNearReport: vi.fn(),
+  dispatchDangerReportNotification: vi.fn(),
 }))
 
 import { createServerClient } from '@/lib/supabase-server'
-import {
-  claimDangerReportForNotification,
-  releaseDangerReportNotificationClaim,
-  notifyUsersNearReport,
-} from '@/lib/push-notifications/notify-danger-report'
+import { dispatchDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 
 const mockUser = { id: 'user-1', email: 'test@example.com' }
 
@@ -52,80 +46,44 @@ describe('POST /api/push/notify-danger-report', () => {
 
   it('本人所有でない、または存在しないレポートは404を返す', async () => {
     mockAuth(mockUser)
-    vi.mocked(claimDangerReportForNotification).mockResolvedValue({ status: 'not_found' })
+    vi.mocked(dispatchDangerReportNotification).mockResolvedValue({ status: 'not_found' })
     const { POST } = await import('@/app/api/push/notify-danger-report/route')
 
     const res = await POST(makeRequest({ reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01' }))
 
     expect(res.status).toBe(404)
-    expect(claimDangerReportForNotification).toHaveBeenCalledWith({
+    expect(dispatchDangerReportNotification).toHaveBeenCalledWith({
       reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01',
       userId: mockUser.id,
-    })
+    }, { background: true })
   })
 
-  it('既に通知確定済みのレポートは再送せず skip を返す', async () => {
+  it.each(['already_claimed', 'not_ready'] as const)(
+    '%s は送信対象数を漏らさない固定応答を返す', async (status) => {
     mockAuth(mockUser)
-    vi.mocked(claimDangerReportForNotification).mockResolvedValue({
-      status: 'already_claimed',
-    })
+    vi.mocked(dispatchDangerReportNotification).mockResolvedValue({ status })
     const { POST } = await import('@/app/api/push/notify-danger-report/route')
 
     const res = await POST(makeRequest({ reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01' }))
 
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ notified: 0, skipped: true })
-    expect(notifyUsersNearReport).not.toHaveBeenCalled()
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ notified: true })
   })
 
-  it('claim 済みレポートのみ通知送信する', async () => {
+  it('accepted でも送信対象数を漏らさない固定応答を返す', async () => {
     mockAuth(mockUser)
-    vi.mocked(claimDangerReportForNotification).mockResolvedValue({
-      status: 'claimed',
-      claimedAt: '2026-03-21T12:34:56.000Z',
-      report: {
-        id: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01',
-        title: 'テスト',
-        latitude: 35.6812,
-        longitude: 139.7671,
-      },
-    })
-    vi.mocked(notifyUsersNearReport).mockResolvedValue(3)
+    vi.mocked(dispatchDangerReportNotification).mockResolvedValue({ status: 'accepted' })
     const { POST } = await import('@/app/api/push/notify-danger-report/route')
 
     const res = await POST(makeRequest({ reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01' }))
 
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ notified: 3 })
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ notified: true })
   })
 
-  it('送信失敗時は claim を解放して500を返す', async () => {
+  it('dispatch 受付自体が失敗した場合は500を返す', async () => {
     mockAuth(mockUser)
-    vi.mocked(claimDangerReportForNotification).mockResolvedValue({
-      status: 'claimed',
-      claimedAt: '2026-03-21T12:34:56.000Z',
-      report: {
-        id: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01',
-        title: 'テスト',
-        latitude: 35.6812,
-        longitude: 139.7671,
-      },
-    })
-    vi.mocked(notifyUsersNearReport).mockRejectedValue(new Error('boom'))
-    const { POST } = await import('@/app/api/push/notify-danger-report/route')
-
-    const res = await POST(makeRequest({ reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01' }))
-
-    expect(res.status).toBe(500)
-    expect(releaseDangerReportNotificationClaim).toHaveBeenCalledWith({
-      reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01',
-      claimedAt: '2026-03-21T12:34:56.000Z',
-    })
-  })
-
-  it('claim 取得自体が失敗した場合は500を返す', async () => {
-    mockAuth(mockUser)
-    vi.mocked(claimDangerReportForNotification).mockRejectedValue(new Error('db down'))
+    vi.mocked(dispatchDangerReportNotification).mockRejectedValue(new Error('db down'))
     const { POST } = await import('@/app/api/push/notify-danger-report/route')
 
     const res = await POST(makeRequest({ reportId: '6e981e3e-1b4d-4eb7-b0d5-4338406e6d01' }))

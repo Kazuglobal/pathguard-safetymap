@@ -58,6 +58,20 @@ describe('danger reports D1 repository', () => {
     expect(updated.aiModerationReason).toContain('automatic / AI承認後に画像が追加されたため')
   })
 
+  it('invalidates an in-flight push claim when moderation removes public status', async () => {
+    const repo = createDangerReportsRepo(database.db as unknown as AppDb)
+    const report = await repo.create(owner, {
+      title: 'test', dangerType: 'other', dangerLevel: 1, latitude: 35, longitude: 139,
+    })
+    await database.db.update(dangerReports).set({
+      status: 'approved', aiModerationStatus: 'approved', pushNotifiedAt: 'claim:test-token',
+    })
+
+    const updated = await repo.updateStatus({ ...owner, isAdmin: true }, report.id, 'rejected')
+
+    expect(updated).toMatchObject({ status: 'rejected', pushNotifiedAt: null })
+  })
+
   it('deletes the row and returns every persisted media key', async () => {
     const repo = createDangerReportsRepo(database.db as unknown as AppDb)
     const report = await repo.create(owner, {

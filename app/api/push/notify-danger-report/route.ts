@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase-server'
-import {
-  claimDangerReportForNotification,
-  notifyUsersNearReport,
-  releaseDangerReportNotificationClaim,
-} from '@/lib/push-notifications/notify-danger-report'
+import { dispatchDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 
 const bodySchema = z.object({
   reportId: z.string().uuid(),
@@ -33,34 +29,20 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let claimed
+  let dispatched
   try {
-    claimed = await claimDangerReportForNotification({
+    dispatched = await dispatchDangerReportNotification({
       reportId: parsed.data.reportId,
       userId: user.id,
-    })
+    }, { background: true })
   } catch (error) {
-    console.error('[push/notify-danger-report] claim error', error)
+    console.error('[push/notify-danger-report] dispatch error', error)
     return NextResponse.json({ error: '通知送信に失敗しました' }, { status: 500 })
   }
 
-  if (claimed.status === 'not_found') {
+  if (dispatched.status === 'not_found') {
     return NextResponse.json({ error: 'レポートが見つかりません' }, { status: 404 })
   }
 
-  if (claimed.status === 'already_claimed') {
-    return NextResponse.json({ notified: 0, skipped: true })
-  }
-
-  try {
-    const notified = await notifyUsersNearReport(claimed.report)
-    return NextResponse.json({ notified })
-  } catch (error) {
-    await releaseDangerReportNotificationClaim({
-      reportId: parsed.data.reportId,
-      claimedAt: claimed.claimedAt,
-    })
-    console.error('[push/notify-danger-report] notify error', error)
-    return NextResponse.json({ error: '通知送信に失敗しました' }, { status: 500 })
-  }
+  return NextResponse.json({ notified: true }, { status: 202 })
 }
