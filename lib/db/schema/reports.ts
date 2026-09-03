@@ -20,6 +20,8 @@ export const dangerReports = sqliteTable('danger_reports', {
   latitude: real('latitude').notNull(),
   longitude: real('longitude').notNull(),
   status: text('status').notNull().default('pending'),
+  // NULL preserves legacy awards; new submissions explicitly opt in with 0.
+  rewardPoints: integer('reward_points'),
   imageKey: text('image_key'),
   processedImageKey: text('processed_image_key'),
   processedImageKeys: text('processed_image_keys', { mode: 'json' })
@@ -56,9 +58,20 @@ export const dangerReports = sqliteTable('danger_reports', {
   check('dr_lat_range', sql`${table.latitude} between -90 and 90`),
   check('dr_lng_range', sql`${table.longitude} between -180 and 180`),
   check('dr_status', sql`${table.status} in ('pending','approved','rejected','resolved','published')`),
+  check('dr_reward_points', sql`${table.rewardPoints} is null or ${table.rewardPoints} in (0, 20)`),
   check('dr_geocode_source', sql`${table.geocodeSource} is null or ${table.geocodeSource} in ('mapbox','gsi','osm','manual','batch')`),
   check('dr_processed_keys_json', sql`json_valid(${table.processedImageKeys}) and json_type(${table.processedImageKeys}) = 'array'`),
   check('dr_accident_stats_json', sql`${table.accidentStats} is null or json_valid(${table.accidentStats})`),
+])
+
+// Deliberately no report FK: deleting a report must not replenish the quota.
+export const reportCreateHistory = sqliteTable('report_create_history', {
+  reportId: text('report_id').primaryKey(),
+  userId: text('user_id').notNull(),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('idx_report_create_user_time').on(table.userId, table.createdAt),
+  index('idx_report_create_time').on(table.createdAt),
 ])
 
 export const dangerReportModerationLog = sqliteTable('danger_report_moderation_log', {

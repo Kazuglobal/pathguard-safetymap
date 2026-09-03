@@ -114,13 +114,11 @@ export function useDangerReportSubmit({
       });
       const createPayload = await createResponse.json().catch(() => ({})) as {
         report?: DangerReport
-        pointsAwarded?: number
         error?: string
       };
       if (!createResponse.ok) throw new Error(createPayload.error || "レポートの保存に失敗しました");
       const insertedData = createPayload.report;
       if (!insertedData) throw new Error("挿入されたレポートデータの取得に失敗しました。");
-      const pointsAwarded = Number(createPayload.pointsAwarded) || 0;
 
       const newReportId = insertedData.id;
       console.log(`Report inserted successfully with ID: ${newReportId}`);
@@ -196,13 +194,9 @@ export function useDangerReportSubmit({
       }
 
 
-      // 3. 後続処理 (トースト、ポイント、プレビュー、ローカル状態更新)
+      // 3. 後続処理 (トースト、プレビュー、ローカル状態更新)
       if (!options?.suppressSuccessToast) {
-        toast({ title: "報告完了", description: "危険箇所報告が送信されました。" }); // 最終的な完了トースト
-      }
-
-      if (pointsAwarded > 0 && !options?.suppressSuccessToast) {
-        toast({ title: "ポイント獲得", description: `報告送信で +${pointsAwarded}pt 獲得しました。` });
+        toast({ title: "報告完了", description: "危険箇所報告が送信されました。承認後に20ptを獲得できます。" }); // 最終的な完了トースト
       }
 
       // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)

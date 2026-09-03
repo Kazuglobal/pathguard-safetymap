@@ -2,7 +2,8 @@ import { and, desc, eq, gte, inArray, lte, or, sql, type SQL } from 'drizzle-orm
 
 import { assertCan, AuthzError, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { dangerReports, reportImages } from '../schema'
+import { isReportCreateLimitViolation, ReportCreateRateLimitError, ReportCreateUnavailableError } from '../report-create-errors'
+import { dangerReports, reportCreateHistory, reportImages } from '../schema'
 
 const IMAGE_REOPEN_REASON = 'AI承認後に画像が追加されたため、人間の確認に差し戻しました。'
 
@@ -145,30 +146,55 @@ export function createDangerReportsRepo(db: AppDb) {
       assertCan(actor, 'insert', 'danger_reports', { ownerId: actor.id, status: 'pending' })
       validateCreate(input)
 
-      const [created] = await db.insert(dangerReports).values({
-        id: crypto.randomUUID(),
-        userId: actor.id,
-        title: input.title.trim(),
-        description: input.description?.trim() || null,
-        dangerType: input.dangerType,
-        dangerLevel: input.dangerLevel,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        status: 'pending',
-        prefecture: input.prefecture,
-        prefectureCode: input.prefectureCode,
-        city: input.city,
-        municipalityCode: input.municipalityCode,
-        town: input.town,
-        postalCode: input.postalCode,
-        geocodeSource: input.geocodeSource,
-        geocodeConfidence: input.geocodeConfidence,
-        geocodedAt: input.geocodedAt,
-        addressHash: input.addressHash,
-        alertRadiusM: input.alertRadiusM,
-      }).returning()
-      if (!created) throw new Error('Failed to create danger report')
-      return created
+      try {
+        const [created] = await db.insert(dangerReports).values({
+          id: crypto.randomUUID(),
+          userId: actor.id,
+          title: input.title.trim(),
+          description: input.description?.trim() || null,
+          dangerType: input.dangerType,
+          dangerLevel: input.dangerLevel,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          status: 'pending',
+          rewardPoints: 0,
+          prefecture: input.prefecture,
+          prefectureCode: input.prefectureCode,
+          city: input.city,
+          municipalityCode: input.municipalityCode,
+          town: input.town,
+          postalCode: input.postalCode,
+          geocodeSource: input.geocodeSource,
+          geocodeConfidence: input.geocodeConfidence,
+          geocodedAt: input.geocodedAt,
+          addressHash: input.addressHash,
+          alertRadiusM: input.alertRadiusM,
+        }).returning()
+        if (!created) throw new Error('Failed to create danger report')
+        return created
+      } catch (error) {
+        if (!isReportCreateLimitViolation(error)) throw new ReportCreateUnavailableError(error)
+        // The failed INSERT is already rolled back. Compute both windows from
+        // the DB clock; quota checks themselves happen inside the INSERT trigger.
+        try {
+          const [limits] = await db.select({
+            hourlyReset: sql<number | null>`case when sum(case when ${reportCreateHistory.createdAt} > unixepoch() - 3600 then 1 else 0 end) >= 10
+              then min(case when ${reportCreateHistory.createdAt} > unixepoch() - 3600 then ${reportCreateHistory.createdAt} end) + 3600 end`,
+            dailyReset: sql<number | null>`case when count(*) >= 50 then min(${reportCreateHistory.createdAt}) + 86400 end`,
+          }).from(reportCreateHistory).where(and(
+            eq(reportCreateHistory.userId, actor.id),
+            sql`${reportCreateHistory.createdAt} > unixepoch() - 86400`,
+          ))
+          throw new ReportCreateRateLimitError(Math.max(
+            (limits?.hourlyReset ?? 0) * 1000,
+            (limits?.dailyReset ?? 0) * 1000,
+            Date.now() + 1000,
+          ))
+        } catch (resetError) {
+          if (resetError instanceof ReportCreateRateLimitError) throw resetError
+          throw new ReportCreateUnavailableError(resetError)
+        }
+      }
     },
 
     async getForImageUpdate(actor: Actor, reportId: string) {
@@ -283,7 +309,13 @@ export function createDangerReportsRepo(db: AppDb) {
 }
 
 export function createDangerReport(actor: Actor, input: CreateDangerReportInput) {
-  return createDangerReportsRepo(getDb()).create(actor, input)
+  let db: AppDb
+  try {
+    db = getDb()
+  } catch (error) {
+    throw new ReportCreateUnavailableError(error)
+  }
+  return createDangerReportsRepo(db).create(actor, input)
 }
 
 export function listDangerReports(actor: Actor, input?: DangerReportListInput) {

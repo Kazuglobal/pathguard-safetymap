@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
-import { getServiceActor } from '@/lib/auth/service-actor'
 import { toDangerReportJson, toPublicDangerReportPreviewJson } from '@/lib/danger-report-api'
 import { AuthzError } from '@/lib/db/authz'
 import {
@@ -10,8 +9,9 @@ import {
   type CreateDangerReportInput,
   type DangerReportListInput,
 } from '@/lib/db/repos/danger-reports.repo'
-import { incrementPoints } from '@/lib/db/repos/gamification.repo'
+import { ReportCreateRateLimitError, ReportCreateUnavailableError } from '@/lib/db/report-create-errors'
 import { createRouteReportNotification } from '@/lib/db/repos/notifications.repo'
+import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 export const runtime = 'nodejs'
 
@@ -115,6 +115,14 @@ export async function POST(request: Request) {
   if (actor.kind !== 'user') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
+    const rate = await checkApiRateLimit(`report-create:${actor.id}`)
+    if (!rate.success) return rateLimitedResponse(Math.max(rate.reset ?? 0, Date.now() + 1000))
+  } catch {
+    // D1 enforces the mandatory quotas even if the optional Redis guard fails.
+    console.error('[api/reports] Redis rate limit unavailable; enforcing D1 quotas')
+  }
+
+  try {
     const body = await request.json() as unknown
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
@@ -136,15 +144,15 @@ export async function POST(request: Request) {
         console.error('[api/reports] route notification failed', error instanceof Error ? error.message : 'unknown')
       }
     }
-    let pointsAwarded = 0
-    try {
-      await incrementPoints(getServiceActor(), actor.id, 20)
-      pointsAwarded = 20
-    } catch (error) {
-      console.error('[api/reports] failed to award points', error instanceof Error ? error.message : 'unknown')
-    }
-    return NextResponse.json({ report: toDangerReportJson(report), pointsAwarded }, { status: 201 })
+    return NextResponse.json({ report: toDangerReportJson(report), pointsAwarded: 0 }, { status: 201 })
   } catch (error) {
+    if (error instanceof ReportCreateRateLimitError) {
+      return rateLimitedResponse(Math.max(error.reset, Date.now() + 1000))
+    }
+    if (error instanceof ReportCreateUnavailableError) {
+      console.error('[api/reports] D1 report creation unavailable')
+      return NextResponse.json({ error: '報告を保存できません。しばらく後にお試しください。' }, { status: 503 })
+    }
     if (error instanceof AuthzError) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     if (error instanceof RangeError || error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid danger report' }, { status: 400 })

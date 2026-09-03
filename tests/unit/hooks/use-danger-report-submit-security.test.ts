@@ -11,5 +11,7 @@ describe('danger report submission notification boundary', () => {
 
     expect(source).not.toContain('/api/push/notify-danger-report')
     expect(source).toContain('/api/danger-report/moderate')
+    expect(source).toContain('承認後に20pt')
+    expect(source).not.toContain('title: "ポイント獲得"')
   })
 })
