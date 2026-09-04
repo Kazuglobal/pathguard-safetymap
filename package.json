@@ -16,6 +16,8 @@
     "build:cloudflare": "node scripts/cloudflare/build-free-workers.mjs",
     "preview:cloudflare": "node scripts/cloudflare/build-free-workers.mjs --skip-next-build && wrangler dev --config wrangler.jsonc",
     "deploy:cloudflare": "node scripts/cloudflare/deploy-free-workers.mjs",
+    "deploy:cloudflare-preview": "node scripts/cloudflare/deploy-preview.mjs",
+    "delete:cloudflare-preview": "node scripts/cloudflare/deploy-preview.mjs --delete",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply pathguardian --local",

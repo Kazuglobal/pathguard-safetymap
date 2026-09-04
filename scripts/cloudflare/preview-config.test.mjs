@@ -1,0 +1,62 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { createPreviewConfig, previewName, previewPublicNames, previewSecrets, previewBuildEnvironment, forbiddenBuildFiles } from './preview-config.mjs'
+
+const base = {
+  name: 'pathguardian', main: 'custom-worker.ts',
+  routes: [{ pattern: 'production.example' }], triggers: { crons: ['* * * * *'] },
+  workflows: [{ name: 'backup' }], secrets: { required: ['D1_BACKUP_API_TOKEN'] },
+  vars: { D1_DATABASE_ID: 'production-id' },
+  assets: { directory: '.open-next/assets', binding: 'ASSETS' },
+  services: [{ binding: 'CORE', service: 'pathguardian-core' }, { binding: 'WORKER_SELF_REFERENCE', service: 'pathguardian' }],
+  d1_databases: [{ database_id: 'production-id' }],
+  r2_buckets: [{ bucket_name: 'pg-media-public' }],
+}
+const resources = {
+  account_id: 'account',
+  d1_databases: [{ binding: 'DB', database_name: 'pathguardian-preview', database_id: 'preview-id', migrations_dir: 'lib/db/migrations' }],
+  r2_buckets: [{ binding: 'MEDIA_PUBLIC', bucket_name: 'pg-preview-media-public' }],
+}
+test('names are PR-scoped and invalid / ambiguous IDs fail closed', () => {
+  assert.equal(previewName('pathguardian', 'pr-186'), 'pathguardian-pr-186')
+  for (const id of ['', 'main', 'PR-1', 'pr-01', 'pr-0', '../pr-1', 'pr-1;rm', 'pr-99999999999']) {
+    assert.throws(() => previewName('pathguardian', id))
+  }
+})
+test('router has only isolated bindings and no operational production configuration', () => {
+  const config = createPreviewConfig(base, resources, 'pr-186', process.cwd(), true)
+  assert.equal(config.workers_dev, true)
+  assert.equal(config.services[0].service, 'pathguardian-core-pr-186')
+  assert.equal(config.services[1].service, 'pathguardian-pr-186')
+  assert.equal(config.d1_databases[0].database_id, 'preview-id')
+  assert.equal(config.r2_buckets[0].bucket_name, 'pg-preview-media-public')
+  for (const key of ['routes', 'triggers', 'workflows', 'secrets', 'vars']) assert.equal(config[key], undefined)
+  assert.equal(base.services[0].service, 'pathguardian-core')
+})
+test('backend Worker cannot be accessed directly over workers.dev', () => {
+  const config = createPreviewConfig(base, resources, 'pr-186', process.cwd())
+  assert.equal(config.workers_dev, false)
+  assert.equal(config.preview_urls, false)
+  assert.equal(config.assets, undefined)
+})
+test('production D1 and R2 bindings are rejected', () => {
+  assert.throws(() => createPreviewConfig(base, { ...resources, d1_databases: [{ ...resources.d1_databases[0], database_id: 'production-id' }] }, 'pr-186', process.cwd()))
+  assert.throws(() => createPreviewConfig(base, { ...resources, r2_buckets: [{ bucket_name: 'pg-media-public' }] }, 'pr-186', process.cwd()))
+})
+test('only explicit public values are propagated, never production private keys', () => {
+  const env = Object.fromEntries(previewPublicNames.map((name) => [name, 'value']))
+  const secrets = previewSecrets({ ...env, SUPABASE_SERVICE_ROLE_KEY: 'private', CRON_SECRET: 'private', D1_REST_API_TOKEN: 'private' })
+  assert.deepEqual(secrets, env)
+  assert.throws(() => previewSecrets({}))
+})
+
+test('preview build rejects local production files and removes inherited credentials', () => {
+  const env = Object.fromEntries(previewPublicNames.map((name) => [name, 'value']))
+  for (const file of forbiddenBuildFiles) assert.throws(() => previewBuildEnvironment(env, [file]))
+  const buildEnv = previewBuildEnvironment({ ...env, PATH: '/bin', CLOUDFLARE_API_TOKEN: 'private', OPENAI_API_KEY: 'private', NODE_OPTIONS: '--import=unexpected' }, [])
+  assert.equal(buildEnv.PATH, '/bin')
+  assert.equal(buildEnv.CI, 'true')
+  assert.equal(buildEnv.CLOUDFLARE_API_TOKEN, undefined)
+  assert.equal(buildEnv.OPENAI_API_KEY, undefined)
+  assert.equal(buildEnv.NODE_OPTIONS, undefined)
+})
