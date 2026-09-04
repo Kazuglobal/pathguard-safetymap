@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isochroneService } from '@/lib/routing/isochrone'
 import { createServerClient } from '@/lib/supabase-server'
+import { checkPaidApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
+import { isochroneCost } from '@/lib/routing/isochrone-validation'
 
 const MAX_BATCH_SIZE = 10
 
@@ -19,7 +21,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 })
+    }
     const { type, ...options } = body
+    const cost = isochroneCost(type, options)
+    if (cost === null) return NextResponse.json({ error: 'Invalid isochrone request or batch size' }, { status: 400 })
+    const rate = await checkPaidApiRateLimit('mapbox', user.id, cost)
+    if (!rate.success) return rateLimitedResponse(rate.reset)
 
     switch (type) {
       case 'generateIsochrone':
@@ -192,6 +201,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Isochrone API error:', error)
+    if (error instanceof SyntaxError) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -238,6 +248,12 @@ export async function GET(request: NextRequest) {
       polygons: searchParams.get('polygons') !== 'false',
     }
 
+    if (centerParam.split(',').length !== 2 || centerParam.split(',').some(v => !v.trim()) ||
+        isochroneCost('generateIsochrone', isochroneRequest) === null) {
+      return NextResponse.json({ error: 'Invalid coordinates or contours' }, { status: 400 })
+    }
+    const rate = await checkPaidApiRateLimit('mapbox', user.id)
+    if (!rate.success) return rateLimitedResponse(rate.reset)
     const result = await isochroneService.generateIsochrone(isochroneRequest)
 
     if (!result.success) {

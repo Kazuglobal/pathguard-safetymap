@@ -14,7 +14,8 @@ import {
 import { AuthzError } from '@/lib/db/authz'
 import { isDangerReportNotificationReady } from '@/lib/db/repos/push.repo'
 import { queueDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
-import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
+import { checkApiRateLimit, checkPaidApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
+import { moderationImageKeys } from '@/lib/danger-report-moderation-images'
 
 interface HandlerOptions {
   requiredDangerType?: string
@@ -49,7 +50,7 @@ export async function handleDangerReportModeration(
   } catch {
     return NextResponse.json({ error: '不正なリクエストです' }, { status: 400 })
   }
-  const reportId = typeof body.reportId === 'string' ? body.reportId : ''
+  const reportId = typeof body?.reportId === 'string' ? body.reportId : ''
   if (!reportId || reportId.length > 128) {
     return NextResponse.json({ error: 'reportId が必要です' }, { status: 400 })
   }
@@ -82,6 +83,9 @@ export async function handleDangerReportModeration(
       }
     }
 
+    // One text call plus up to three image calls. Reserve conservatively before R2/AI.
+    const paidRate = await checkPaidApiRateLimit('ai', actor.id, 1 + moderationImageKeys(report).length)
+    if (!paidRate.success) return rateLimitedResponse(paidRate.reset)
     const result = await moderateDangerReportRecord(report, mode)
     if (result.outcome === 'conflict') {
       return NextResponse.json({ error: 'この報告はすでに処理済みです' }, { status: 409 })

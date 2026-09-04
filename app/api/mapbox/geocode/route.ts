@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { enhancedGeocodingService } from '@/lib/geocoding/enhanced-geocoding'
 import { logApiUsage } from '@/lib/api-usage-logger'
 import { createServerClient } from '@/lib/supabase-server'
+import { checkPaidApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 20
@@ -21,7 +22,7 @@ async function requireAuthenticatedUser() {
     )
   }
 
-  return null
+  return user
 }
 
 function parseCoordinatePair(value: string | null): [number, number] | undefined {
@@ -54,8 +55,8 @@ function normalizeQuery(value: string | null): string | null {
 
 export async function GET(request: NextRequest) {
   try {
-    const authError = await requireAuthenticatedUser()
-    if (authError) return authError
+    const user = await requireAuthenticatedUser()
+    if (user instanceof NextResponse) return user
 
     const { searchParams } = new URL(request.url)
     const query = normalizeQuery(searchParams.get('query'))
@@ -79,6 +80,8 @@ export async function GET(request: NextRequest) {
       includeDetails: searchParams.get('includeDetails') === 'true'
     }
 
+    const rate = await checkPaidApiRateLimit('mapbox', user.id)
+    if (!rate.success) return rateLimitedResponse(rate.reset)
     const result = await enhancedGeocodingService.geocode(query, options)
     
     if (!result.success) {
@@ -101,11 +104,39 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authError = await requireAuthenticatedUser()
-    if (authError) return authError
+    const user = await requireAuthenticatedUser()
+    if (user instanceof NextResponse) return user
 
     const body = await request.json()
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 })
+    }
     const { type, ...options } = body
+    let cost = 0
+    if (['autocomplete', 'smartSearch'].includes(type)) {
+      const query = normalizeQuery(options.query)
+      if (!query) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
+      options.query = query
+      cost = query.length < 2 ? 0 : 1
+    } else if (type === 'reverse') {
+      const c = options.coordinates
+      if (!Array.isArray(c) || c.length !== 2 || !c.every(Number.isFinite) ||
+          Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90) {
+        return NextResponse.json({ error: 'Invalid coordinates' }, { status: 400 })
+      }
+      cost = 2
+    } else if (type === 'batch') {
+      if (!Array.isArray(options.queries) || options.queries.length < 1 || options.queries.length > 10 ||
+          options.queries.some((q: unknown) => typeof q !== 'string' || !normalizeQuery(q))) {
+        return NextResponse.json({ error: 'Queries must contain 1-10 non-empty strings of at most 200 characters' }, { status: 400 })
+      }
+      options.queries = options.queries.map((q: string) => q.trim())
+      cost = options.queries.length
+    }
+    if (cost > 0) {
+      const rate = await checkPaidApiRateLimit('mapbox', user.id, cost)
+      if (!rate.success) return rateLimitedResponse(rate.reset)
+    }
 
     switch (type) {
       case 'autocomplete':
@@ -151,7 +182,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 2, success: true })
         return NextResponse.json(reverseResult.data)
 
       case 'smartSearch':
@@ -197,7 +228,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: 1, success: true })
+        logApiUsage({ api_provider: 'mapbox', api_endpoint: 'geocode', request_count: options.queries.length, success: true })
         return NextResponse.json(batchResult.data)
 
       case 'createSession':
@@ -243,6 +274,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Geocoding POST API error:', error)
+    if (error instanceof SyntaxError) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

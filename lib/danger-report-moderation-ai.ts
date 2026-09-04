@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto"
 import { z } from "zod"
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
+// Keep provider fanout aligned with the API's paid reservation and image loader.
+import { MAX_MODERATION_IMAGES } from '@/lib/danger-report-moderation-images'
 import {
   getSanitizedGeminiApiKey,
   getSanitizedGeminiVisionModel,
@@ -21,7 +23,6 @@ const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta"
 const TEXT_MODERATION_TIMEOUT_MS = 15_000
 const IMAGE_MODERATION_TIMEOUT_MS = 25_000
-const MAX_VISION_IMAGES = 3
 const AUTO_APPROVE_MIN_CONFIDENCE = 0.7
 
 export const dangerVerdictSchema = z.object({
@@ -327,7 +328,7 @@ interface AggregatedImageFindings {
 async function moderateImagesWithVision(
   imageDataUrls: readonly string[],
 ): Promise<AggregatedImageFindings | null> {
-  const targets = imageDataUrls.slice(0, MAX_VISION_IMAGES)
+  const targets = imageDataUrls.slice(0, MAX_MODERATION_IMAGES)
   if (targets.length === 0) return null
 
   const results = await Promise.all(

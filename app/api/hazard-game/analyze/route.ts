@@ -10,8 +10,7 @@ import {
 import type { PipelineAnalysisResultWithComparison } from "@/lib/hazard-game-types"
 import { logApiUsage } from "@/lib/api-usage-logger"
 import { calculateCost } from "@/lib/api-cost-calculator"
-import { getServiceActor } from "@/lib/auth/service-actor"
-import { incrementPoints } from "@/lib/db/repos/gamification.repo"
+import { checkPaidApiRateLimit, rateLimitedResponse } from "@/lib/upstash-rate-limiter"
 
 // Request size limit (25MB to allow for base64 encoding overhead)
 const MAX_REQUEST_SIZE = 25 * 1024 * 1024
@@ -94,6 +93,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: "リクエストデータの形式が正しくありません" }, { status: 400 })
+    }
     const { imageBase64, userMarkers, promptType } = body
 
     if (!imageBase64) {
@@ -111,6 +113,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    if (imageBase64.length > MAX_REQUEST_SIZE) {
+      return NextResponse.json({ error: "画像データが大きすぎます" }, { status: 413 })
+    }
+    const rate = await checkPaidApiRateLimit('ai', user.id)
+    if (!rate.success) return rateLimitedResponse(rate.reset)
 
     if (includeDebug) console.log(`Image data received, size: ${imageBase64.length} characters`)
 
@@ -200,13 +208,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Award points based on deterministic score
-    try {
-      await incrementPoints(getServiceActor(), user.id, pipelineResult.score.score)
-      console.log(`Points awarded to user ${user.id.slice(0, 8)}***: ${pipelineResult.score.score}`)
-    } catch (pointsError) {
-      console.error("Error in points transaction:", pointsError)
-    }
+    // AI-derived safety scores are display-only, never persistent currency.
 
     logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: HAZARD_VISION_MODEL, request_count: 1, estimated_cost_usd: ESTIMATED_ANALYZE_COST_USD, success: true })
 

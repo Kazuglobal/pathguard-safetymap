@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { analyzeImagePipeline } from "@/lib/gemini-hazard"
 import { getActor } from "@/lib/auth/actor"
+import { checkPaidApiRateLimit, rateLimitedResponse } from "@/lib/upstash-rate-limiter"
 import {
   calculateSafetyQuestPoints,
   parseSafetyQuestMarkers,
@@ -24,6 +25,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "リクエストJSONが正しくありません" }, { status: 400 })
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: "リクエストJSONが正しくありません" }, { status: 400 })
+  }
   const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : ""
   const userMarkers = parseSafetyQuestMarkers(body.userMarkers ?? [])
 
@@ -31,6 +35,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "画像データまたはマーカーが正しくありません" }, { status: 400 })
   }
 
+  const rate = await checkPaidApiRateLimit('ai', actor.id)
+  if (!rate.success) return rateLimitedResponse(rate.reset)
   const analysis = await analyzeImagePipeline(imageBase64, userMarkers, "child")
   const pointsAwarded = calculateSafetyQuestPoints({
     rawPoints: analysis.score.score,

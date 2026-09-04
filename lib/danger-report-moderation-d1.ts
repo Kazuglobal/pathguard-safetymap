@@ -1,4 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { moderationImageKeys } from '@/lib/danger-report-moderation-images'
 import { and, count, eq, gte, isNull, lte, ne, notExists, or, sql } from 'drizzle-orm'
 
 import { calculateDistance } from '@/lib/ar-utils'
@@ -42,8 +43,7 @@ function hasImage(report: DangerReportRow): boolean {
 }
 
 async function collectImageDataUrls(report: DangerReportRow): Promise<string[]> {
-  const keys = [report.imageKey, report.processedImageKey, ...report.processedImageKeys]
-    .filter((key): key is string => Boolean(key)).slice(0, 3)
+  const keys = moderationImageKeys(report)
   if (keys.length === 0) return []
   const cloudflare = getCloudflareContext()
   const bucket = (cloudflare.env as unknown as { MEDIA_PRIVATE: MediaBucket }).MEDIA_PRIVATE
