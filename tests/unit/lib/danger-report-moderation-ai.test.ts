@@ -5,6 +5,7 @@ vi.mock("@/lib/gemini-hazard", () => ({
 }))
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
+import { moderationImageKeys } from '@/lib/danger-report-moderation-images'
 import type { DangerModerationInput } from "@/lib/danger-report-moderation"
 import {
   buildDangerModerationPrompt,
@@ -135,6 +136,17 @@ describe("moderateDangerReportWithAi", () => {
       heuristicStatus: "approved",
       aiVerdict: APPROVE,
     })
+  })
+
+  it('keeps actual provider fanout within the reserved text-plus-image units', async () => {
+    const text = mockTextAi(APPROVE)
+    vi.mocked(callGeminiVision).mockResolvedValue(JSON.stringify(CLEAN_IMAGE))
+    const keys = moderationImageKeys({ imageKey: 'a', processedImageKey: 'b', processedImageKeys: ['c', 'd'] })
+    await moderateDangerReportWithAi(input({ hasImage: true, imageDataUrls: keys.map(() => 'data:image/jpeg;base64,QUJD') }))
+    expect(keys).toEqual(['a', 'b', 'c'])
+    expect(text).toHaveBeenCalledTimes(1)
+    expect(callGeminiVision).toHaveBeenCalledTimes(3)
+    expect(text.mock.calls.length + vi.mocked(callGeminiVision).mock.calls.length).toBe(1 + keys.length)
   })
 
   it("sends an approve verdict below the 0.7 threshold to review", async () => {

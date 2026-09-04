@@ -373,6 +373,10 @@ export class EnhancedGeocodingService {
     queries: string[],
     options: EnhancedGeocodingOptions = {}
   ): Promise<MapboxAPIResponse<BatchGeocodingResult[]>> {
+    if (!Array.isArray(queries) || queries.length < 1 || queries.length > 10 ||
+        queries.some(q => typeof q !== 'string' || !q.trim() || q.trim().length > 200)) {
+      return { success: false, error: 'Queries must contain 1-10 non-empty strings of at most 200 characters' }
+    }
     const startTime = Date.now()
     
     const requests = queries.map(query => async () => {

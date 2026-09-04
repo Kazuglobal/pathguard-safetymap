@@ -7,6 +7,7 @@ import {
   setDangerReportImages,
 } from '@/lib/db/repos/danger-reports.repo'
 import { privateMediaUrl } from '@/lib/media/url'
+import { checkPaidApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 export const runtime = 'nodejs'
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   }
 
   const actor = await getActor()
-  if (actor.kind === 'anon') return json('認証が必要です', 401)
+  if (actor.kind !== 'user') return json('認証が必要です', 401)
 
   let uploadedKey: string | null = null
   let bucket: MediaBucket | null = null
@@ -97,6 +98,16 @@ export async function POST(request: Request) {
       return json('Report contains an invalid media key segment', 500)
     }
 
+    if (imageType === 'processed') {
+      if (replaceIndex == null && report.processedImageKeys.length >= MAX_PROCESSED_IMAGES) {
+        return json(`加工画像は${MAX_PROCESSED_IMAGES}枚までです`, 400)
+      }
+      if (replaceIndex != null && replaceIndex >= report.processedImageKeys.length) {
+        return json('replaceIndex is out of range', 400)
+      }
+    }
+    const rate = await checkPaidApiRateLimit('image-processing', actor.id)
+    if (!rate.success) return rateLimitedResponse(rate.reset)
     const cloudflare = getCloudflareContext()
     const env = cloudflare.env as unknown as {
       IMAGES: ImagesBindingLike

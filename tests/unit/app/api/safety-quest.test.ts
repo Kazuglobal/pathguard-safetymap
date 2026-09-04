@@ -24,6 +24,7 @@ vi.mock('@/lib/db/repos/gamification.repo', () => ({
 vi.mock('@/lib/gemini-hazard', () => ({ analyzeImagePipeline: mocks.analyze }))
 vi.mock('@/lib/upstash-rate-limiter', () => ({
   checkApiRateLimit: mocks.rateLimit,
+  checkPaidApiRateLimit: mocks.rateLimit,
   rateLimitedResponse: () => new Response(null, { status: 429 }),
 }))
 

@@ -8,9 +8,14 @@ const mocks = vi.hoisted(() => ({
   imageOutput: vi.fn(),
   r2Put: vi.fn(),
   r2Delete: vi.fn(),
+  rate: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.getActor }))
+vi.mock('@/lib/upstash-rate-limiter', async (original) => ({
+  ...await original<typeof import('@/lib/upstash-rate-limiter')>(),
+  checkPaidApiRateLimit: mocks.rate,
+}))
 vi.mock('@/lib/db/repos/danger-reports.repo', () => ({
   getDangerReportForImageUpdate: mocks.getReport,
   setDangerReportImages: mocks.setImages,
@@ -62,6 +67,7 @@ describe('app/api/image/process D1 + R2 upload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getActor.mockResolvedValue(owner)
+    mocks.rate.mockResolvedValue({ success: true })
     mocks.getReport.mockResolvedValue(report())
     mocks.setImages.mockResolvedValue(report())
     mocks.imageInfo.mockResolvedValue({ format: 'image/png' })
@@ -113,13 +119,14 @@ describe('app/api/image/process D1 + R2 upload', () => {
     })
   })
 
-  it('removes the newly uploaded object when replaceIndex is out of range', async () => {
+  it('rejects an out-of-range replaceIndex before paid work', async () => {
     mocks.getReport.mockResolvedValue(report({ processedImageKeys: [] }))
     const response = await POST(requestWith({
       file: imageFile(), reportId: 'report-1', imageType: 'processed', replaceIndex: '0',
     }))
     expect(response.status).toBe(400)
-    expect(mocks.r2Delete).toHaveBeenCalledWith(expect.stringContaining('danger-reports/owner-1/report-1/'))
+    expect(mocks.rate).not.toHaveBeenCalled()
+    expect(mocks.r2Put).not.toHaveBeenCalled()
     expect(mocks.setImages).not.toHaveBeenCalled()
   })
 
@@ -127,6 +134,16 @@ describe('app/api/image/process D1 + R2 upload', () => {
     mocks.imageInfo.mockRejectedValue(new Error('invalid image'))
     const response = await POST(requestWith({ file: imageFile(), reportId: 'report-1' }))
     expect(response.status).toBe(400)
+    expect(mocks.r2Put).not.toHaveBeenCalled()
+  })
+
+  it('blocks image processing before any Images or R2 work', async () => {
+    mocks.rate.mockResolvedValue({ success: false, reset: Date.now() + 60_000 })
+    const response = await POST(requestWith({ file: imageFile(), reportId: 'report-1' }))
+    expect(response.status).toBe(429)
+    expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0)
+    expect(mocks.rate).toHaveBeenCalledWith('image-processing', owner.id)
+    expect(mocks.imageInfo).not.toHaveBeenCalled()
     expect(mocks.r2Put).not.toHaveBeenCalled()
   })
 })

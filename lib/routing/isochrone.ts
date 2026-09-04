@@ -5,6 +5,7 @@
 
 import { mapboxMCP, IsochroneOptions, MapboxAPIResponse } from '../mapbox-mcp-services'
 import { mapboxLogger } from '../mapbox-logger'
+import { validCoordinates, validContours, validLocations, validServiceTypes } from './isochrone-validation'
 
 export type IsochroneProfile = 'walking' | 'cycling' | 'driving'
 
@@ -123,6 +124,9 @@ export class IsochroneService {
    * Generate isochrone polygons for a single location
    */
   async generateIsochrone(request: IsochroneRequest): Promise<MapboxAPIResponse<IsochroneResponse>> {
+    if (!validCoordinates(request.center) || !validContours(request.contours)) {
+      return { success: false, error: 'Invalid coordinates or contours' }
+    }
     const cacheKey = this.generateCacheKey(request)
     const cached = this.cache.get(cacheKey)
     
@@ -172,6 +176,9 @@ export class IsochroneService {
    * Generate multiple isochrones in parallel
    */
   async batchGenerateIsochrones(request: BatchIsochroneRequest): Promise<MapboxAPIResponse<IsochroneResponse[]>> {
+    if (!validLocations(request.locations) || !validContours(request.contours)) {
+      return { success: false, error: 'Invalid locations or contours' }
+    }
     const requests = request.locations.map(location => ({
       center: location.coordinates,
       contours: request.contours,
@@ -329,6 +336,9 @@ export class IsochroneService {
     location: [number, number],
     serviceTypes: Array<'hospital' | 'school' | 'shopping' | 'transport' | 'park'> = ['hospital', 'school', 'shopping']
   ): Promise<MapboxAPIResponse<AccessibilityAnalysis>> {
+    if (!validCoordinates(location) || !validServiceTypes(serviceTypes)) {
+      return { success: false, error: 'Invalid location or service types' }
+    }
     const contours = [5, 10, 15, 20] // minutes
     const profiles: IsochroneProfile[] = ['walking', 'cycling', 'driving']
 

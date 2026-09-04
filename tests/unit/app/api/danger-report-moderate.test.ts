@@ -9,12 +9,13 @@ const mocks = vi.hoisted(() => ({
   markFailed: vi.fn(),
   moderate: vi.fn(),
   queueNotification: vi.fn(),
+  paidRate: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.actor }))
 vi.mock('@/lib/upstash-rate-limiter', async () => {
   const actual = await vi.importActual<typeof import('@/lib/upstash-rate-limiter')>('@/lib/upstash-rate-limiter')
-  return { ...actual, checkApiRateLimit: vi.fn().mockResolvedValue({ success: true }) }
+  return { ...actual, checkApiRateLimit: vi.fn().mockResolvedValue({ success: true }), checkPaidApiRateLimit: mocks.paidRate }
 })
 vi.mock('@/lib/danger-report-moderation-d1', () => ({
   MAX_DANGER_MODERATION_FALLBACKS: 3,
@@ -55,6 +56,7 @@ describe('POST /api/danger-report/moderate (D1)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.actor.mockResolvedValue(owner)
+    mocks.paidRate.mockResolvedValue({ success: true })
     mocks.mode.mockReturnValue('live')
     mocks.report.mockResolvedValue(ownReport)
     mocks.fallbackCount.mockResolvedValue(0)
@@ -72,12 +74,40 @@ describe('POST /api/danger-report/moderate (D1)', () => {
     expect(mocks.report).not.toHaveBeenCalled()
   })
 
+  it('does not charge off mode', async () => {
+    mocks.mode.mockReturnValue('off')
+    expect((await postDanger(request('/api/danger-report/moderate', { reportId: 'report-1' }))).status).toBe(200)
+    expect(mocks.paidRate).not.toHaveBeenCalled()
+    expect(mocks.moderate).not.toHaveBeenCalled()
+  })
+
+  it.each(['live', 'shadow'])('blocks %s AI work when the shared quota is exhausted', async (mode) => {
+    mocks.mode.mockReturnValue(mode)
+    mocks.paidRate.mockResolvedValue({ success: false, reset: Date.now() + 60_000 })
+    expect((await postDanger(request('/api/danger-report/moderate', { reportId: 'report-1' }))).status).toBe(429)
+    expect(mocks.paidRate).toHaveBeenCalledWith('ai', owner.id, 1)
+    expect(mocks.moderate).not.toHaveBeenCalled()
+    expect(mocks.queueNotification).not.toHaveBeenCalled()
+  })
+
   it('allows the owner and delegates to the D1 moderation service', async () => {
     const response = await postDanger(request('/api/danger-report/moderate', { reportId: 'report-1' }))
     expect(response.status).toBe(200)
     expect(mocks.moderate).toHaveBeenCalledWith(ownReport, 'live')
     expect((await response.json()).report.status).toBe('approved')
     expect(mocks.queueNotification).toHaveBeenCalledWith({ reportId: 'report-1' })
+  })
+
+  it('reserves all text and image calls and blocks the compatibility path too', async () => {
+    mocks.report.mockResolvedValue({ ...ownReport, dangerType: 'suspicious', imageKey: 'a',
+      processedImageKey: 'b', processedImageKeys: ['c', 'd'] })
+    mocks.paidRate.mockResolvedValue({ success: false })
+    for (const handler of [postDanger, postSuspicious]) {
+      expect((await handler(request('/api/moderate', { reportId: 'report-1' }))).status).toBe(429)
+    }
+    expect(mocks.paidRate).toHaveBeenNthCalledWith(1, 'ai', owner.id, 4)
+    expect(mocks.paidRate).toHaveBeenNthCalledWith(2, 'ai', owner.id, 4)
+    expect(mocks.moderate).not.toHaveBeenCalled()
   })
 
   it('does not expose internal moderation reason or score', async () => {
