@@ -12,6 +12,28 @@ export interface LandingSafeMagazinePreviewItem {
 
 const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
   {
+    id: "2026-09-04-autumn-twilight-reflective-gear",
+    slug: "autumn-twilight-reflective-gear",
+    title: "【10月がピーク】小1の歩行中事故は4月の2.2倍——秋の夕方に効く備え",
+    excerpt: "小学1年生の歩行中の死者・重傷者数は10月が最多で、入学直後の4月の約2.2倍（内閣府『令和7年交通安全白書』）。リスクが高まるのは春ではなく秋です。日没が早まり下校時間が薄暮に重なるこの時期に、今日からできる3つの備えをまとめました。",
+    categoryLabel: "安全対策",
+    categoryColor: "#3B82F6",
+    categoryIcon: "Shield",
+    publishedDate: "2026-09-04",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-twilight-reflective-gear.png",
+  },
+  {
+    id: "2026-09-04-30kmh-speed-limit-enforced",
+    slug: "30kmh-speed-limit-enforced",
+    title: "【9月1日施行】生活道路は30km/hへ——通学路の「いつもの道」はこう変わる",
+    excerpt: "2026年9月1日、中央線などがない生活道路の法定速度が60km/hから30km/hへ引き下げられました。対象は全国の一般道の約7割。新しい標識は立たないため、通学路が対象かどうかは親子で見分ける必要があります。",
+    categoryLabel: "施策・制度",
+    categoryColor: "#8B5CF6",
+    categoryIcon: "FileText",
+    publishedDate: "2026-09-04",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit-enforced.png",
+  },
+  {
     id: "2026-07-14-gifu-mizuho-crosswalk-accident",
     slug: "gifu-mizuho-crosswalk-accident",
     title: "【7月・岐阜】信号のない横断歩道で登校中事故、自転車通学の見えない危険",
