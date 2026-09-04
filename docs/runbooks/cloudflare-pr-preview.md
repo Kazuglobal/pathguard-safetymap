@@ -20,14 +20,15 @@ PRごとに14個のprivate backend Workerと1個のpublic router Workerを作成
    - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`
    - `NEXT_PUBLIC_MEDIA_BASE_URL`: プレビュー画像専用R2 URL
-   - `NEXT_PUBLIC_SITE_URL`: プレビューのHTTPS origin
+   Environment variable `CLOUDFLARE_WORKERS_SUBDOMAIN` にWorkersサブドメイン（このaccountは `globalbunny`）を登録する。
+   `NEXT_PUBLIC_SITE_URL` はworkflowがPR番号ごとに組み立てる（固定URLを別PRへ使い回さない）。
 
    CloudflareへのローカルOAuthログインはGitHub Actions用トークンの代わりにはならない。
    Environmentのrequired reviewer設定を推奨。fork PRにはデプロイしない。
 
 ## ローカルからのデプロイ
 
-上記のpublic値だけを `.env.preview.local` に設定する。本番のenvファイルをコピーしない。
+上記のpublic値と該当PRの `NEXT_PUBLIC_SITE_URL` だけを `.env.preview.local` に設定する。本番のenvファイルをコピーしない。
 クリーンなチェックアウトを使用する。`.env.local` 等の通常のenvファイルや
 `env.defaults.json` がある場合、ビルドは拒否する。継承されたprivate環境変数もビルドへ渡さない。
 
