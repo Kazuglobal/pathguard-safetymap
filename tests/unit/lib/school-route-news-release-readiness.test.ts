@@ -12,22 +12,22 @@ describe("school route news release readiness regressions", () => {
     const allNewsItems = getAllNewsItems()
     const latestNews = getLatestNews(5)
 
-    expect(allNewsItems[0]?.slug).toBe("kawasaki-kannon-citybus-redlight-20260724")
-    expect(allNewsItems[1]?.slug).toBe("hiroshima-city-child-contact-cluster-20260720")
-    expect(allNewsItems[2]?.slug).toBe("kitakyushu-kokuraminami-higashitsuranuki-touch-20260709")
-    expect(allNewsItems[3]?.slug).toBe("komaki-council-signal-request-20260722")
-    expect(allNewsItems[4]?.slug).toBe("bunkyo-nezu-schoolguard-meeting-20260625")
+    expect(allNewsItems[0]?.slug).toBe("kawanishi-tadain-schoolgate-hitandrun-20260827")
+    expect(allNewsItems[1]?.slug).toBe("sapporo-nishi-hassamu-crosswalk-20260827")
+    expect(allNewsItems[2]?.slug).toBe("sendai-izumi-koyodai-stalking-20260903")
+    expect(allNewsItems[3]?.slug).toBe("matsuyama-hirata-store-touch-20260901")
+    expect(allNewsItems[4]?.slug).toBe("national-autumn-traffic-safety-campaign-20260921")
     expect(latestNews.map((item) => item.slug)).toEqual([
-      "kawasaki-kannon-citybus-redlight-20260724",
-      "hiroshima-city-child-contact-cluster-20260720",
-      "kitakyushu-kokuraminami-higashitsuranuki-touch-20260709",
-      "komaki-council-signal-request-20260722",
-      "bunkyo-nezu-schoolguard-meeting-20260625",
+      "kawanishi-tadain-schoolgate-hitandrun-20260827",
+      "sapporo-nishi-hassamu-crosswalk-20260827",
+      "sendai-izumi-koyodai-stalking-20260903",
+      "matsuyama-hirata-store-touch-20260901",
+      "national-autumn-traffic-safety-campaign-20260921",
     ])
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
-    const now = new Date("2026-07-26T00:00:00+09:00")
+    const now = new Date("2026-09-04T00:00:00+09:00")
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
     for (const item of NEWS_ITEMS) {
       expect(new Date(item.publishedDate).getTime(), `${item.slug} is older than the 90-day retention window`)
