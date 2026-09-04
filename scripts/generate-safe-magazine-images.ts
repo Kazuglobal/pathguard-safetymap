@@ -783,6 +783,114 @@ ${QUALITY_SUFFIX}`,
         description: "IoT見守り端末が通過記録を残す仕組み（携帯→通過→保護者へ通知）の3ステップ図解"
       }
     ]
+  },
+  {
+    articleId: "2026-09-04-30kmh-speed-limit-enforced",
+    articleSlug: "30kmh-speed-limit-enforced",
+    category: "policy-update",
+    title: "生活道路30km/h 9月1日施行",
+    thumbnailPrompt: `Create a Japanese editorial illustration announcing that residential streets are now limited to 30 km/h.
+
+Scene elements (Japanese specific):
+- A narrow Japanese residential street (生活道路) with NO white center line painted on the road surface
+- Traditional tile-roofed houses and a low block wall along the street
+- A green-painted pedestrian strip along the pavement edge
+- Elementary school children in yellow safety caps with red and black school backpacks walking single file
+- A small car driving slowly and calmly in the background
+- A large stylized round speed-limit graphic showing the number 30 floating as a design element (red ring, white field, bold numerals only)
+- Completely blank asphalt: absolutely no painted words, no kanji, no lettering anywhere on the road surface
+
+Mood: Calm, reassuring, "the street just got safer but stay careful"
+Style: Japanese manga/anime inspired editorial illustration with soft shading
+Color palette: Soft morning light, warm neutrals, red accent only on the speed sign
+
+CRITICAL: The image must contain NO written language at all. No Japanese characters, no labels, no captions, no corner badges or banners, no callout tags. The only characters permitted in the entire image are the two numerals 3 and 0 inside the round sign.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos, garbled or invented characters, any painted text or kanji on the road surface, any text anywhere other than the numerals 30 inside the round sign
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "center-line-check",
+        prompt: `Create a clean Japanese educational infographic that teaches how to tell which roads are now limited to 30 km/h, using a simple two-panel comparison.
+
+LEFT PANEL:
+- A narrow street with NO white center line on the road surface
+- A round speed-limit graphic showing 30 (red ring, white field, bold numerals)
+- A child in a yellow cap with randoseru walking at the edge on a green belt marking
+Background: soft green gradient
+
+RIGHT PANEL:
+- A wider street WITH a clear white dashed center line down the middle
+- A round speed-limit graphic showing 60 (red ring, white field, bold numerals)
+- Two cars passing in opposite directions
+Background: soft blue-grey gradient
+
+Between the panels: a simple vertical divider with a magnifying glass icon focusing on the road surface.
+
+Style: Clean flat Japanese infographic design, friendly rounded icons, high contrast, educational aesthetic
+Avoid (negative prompt): photographic faces, real brand logos, garbled or duplicated text, any characters other than the numerals 30 and 60
+${QUALITY_SUFFIX}`,
+        description: "中央線の有無で見分ける30km/h対象道路の比較図"
+      }
+    ]
+  },
+  {
+    articleId: "2026-09-04-autumn-twilight-reflective-gear",
+    articleSlug: "autumn-twilight-reflective-gear",
+    category: "safety-tips",
+    title: "秋の薄暮と反射材",
+    thumbnailPrompt: `Create a Japanese editorial illustration about autumn twilight safety on the way home from school.
+
+Scene elements (Japanese specific):
+- Japanese residential neighborhood at dusk in autumn, sun low on the horizon, long shadows
+- Warm orange and deep blue twilight sky gradient
+- Two elementary school children with randoseru backpacks (ランドセル) and yellow safety caps walking home
+- Bright reflective strips and reflector charms glowing on their backpacks, shoes and sleeves, catching car headlights
+- A car in the middle distance with headlights already switched on, beams reaching the children
+- A marked crosswalk (横断歩道) and a street lamp just turning on
+- A few fallen autumn leaves and a ginkgo tree to signal the season
+
+Mood: Warm and protective, not frightening; the reflectors are the hero element
+Style: Japanese manga/anime inspired editorial illustration, soft shading, cinematic dusk lighting
+Color palette: Sunset orange, indigo blue, with bright yellow-green highlights on the reflective material
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, text overlays
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "reflector-visibility-distance",
+        prompt: `Create a clean Japanese educational infographic comparing how far away a driver can spot a pedestrian at night, as three stacked horizontal distance bars.
+
+Layout: three horizontal lanes, each showing a car with headlights on the left and a walking pedestrian silhouette at a different distance to the right. A ruler-like scale runs along the bottom.
+
+LANE 1 (shortest): pedestrian in dark clothing, silhouette barely visible, dim grey tone, marker at roughly 26 metres
+LANE 2 (medium): pedestrian in light coloured clothing, pale but visible, marker at roughly 38 metres
+LANE 3 (longest): pedestrian wearing glowing reflective bands on arms, ankles and backpack, brilliantly lit by the headlight beam, marker at roughly 57 metres
+
+Include a dashed vertical reference line partway along, representing the stopping distance of a car, so the viewer can compare.
+
+Style: Flat Japanese infographic design on a dark navy night background, bright yellow-green highlight for the reflective figure, clean geometric bars, educational aesthetic
+Avoid (negative prompt): photographic faces, real brand logos, garbled text, any lettering other than the numerals 26, 38 and 57
+${QUALITY_SUFFIX}`,
+        description: "服装別の夜間視認距離比較（約26m／約38m／約57m以上）"
+      },
+      {
+        id: "reflector-three-spots",
+        prompt: `Create a friendly Japanese educational illustration showing the three best places to attach reflective material on an elementary school child.
+
+Center: a single elementary school child seen from a three-quarter back view, wearing a randoseru backpack (ランドセル) and a yellow safety cap, holding a clear umbrella.
+
+Three glowing highlight callouts with simple circular markers numbered 1, 2 and 3 pointing to:
+1. The side and back of the randoseru backpack, with a reflective cover and a charm
+2. The shoes and shoelaces, with reflective strips
+3. The umbrella rim and the cuff of the jacket sleeve, with reflective tape
+
+Each highlighted reflective element glows bright yellow-green as if catching headlights. Soft dusk background so the glow reads clearly.
+
+Style: Warm Japanese manga/anime inspired educational illustration with clean flat callout markers
+Avoid (negative prompt): photographic realistic faces, identifiable real children, real brand logos, garbled text, any lettering other than the numerals 1, 2 and 3
+${QUALITY_SUFFIX}`,
+        description: "反射材をつける3か所（ランドセル／靴／傘・袖口）"
+      }
+    ]
   }
 ]
 
