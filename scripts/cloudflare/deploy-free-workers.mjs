@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import dotenv from 'dotenv'
+import { isSensitiveBuildVariable } from './secret-policy.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const wranglerCli = path.join(projectRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
@@ -114,10 +115,7 @@ for (const envFile of ['.env.production.local', '.env.local', '.env.production']
 if (!skipBuild) run([buildScript])
 
 const sensitiveBuildTimeValues = secretNames
-  .filter((name) => {
-    const isPublic = name.startsWith('NEXT_PUBLIC_') || name.includes('ANON_KEY')
-    return !isPublic && /(?:API_KEY|AUTH_TOKEN|PRIVATE_KEY|SECRET|SERVICE_ROLE)/.test(name)
-  })
+  .filter(isSensitiveBuildVariable)
   .map((name) => process.env[name])
   .filter((value) => typeof value === 'string' && value.length >= 8)
 

@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 /**
  * Upstash Redis ベースのサーバーレス対応分散レート制限
  *
- * 環境変数 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN が未設定の場合は
- * allow-all で graceful fallback（開発環境・Upstash未設定環境でも動作する）
+ * 環境変数またはSDKが利用できない場合、本番は fail-closed、非本番は
+ * allow-all でフォールバックする。
  */
 
 export type RateLimitResult = { success: boolean; reset?: number }
@@ -12,9 +12,19 @@ export type PaidApiKind = 'ai' | 'mapbox' | 'image-processing'
 
 let Ratelimit: typeof import('@upstash/ratelimit').Ratelimit | null = null
 let Redis: typeof import('@upstash/redis').Redis | null = null
+const reportedFallbacks = new Set<RateLimitFallbackReason>()
 
-async function getModules() {
-  if (Ratelimit && Redis) return { Ratelimit, Redis }
+type RateLimitFallbackReason = 'missing_configuration' | 'module_import_failed'
+type UpstashModules = {
+  Ratelimit: typeof import('@upstash/ratelimit').Ratelimit
+  Redis: typeof import('@upstash/redis').Redis
+}
+type ModuleLoadResult =
+  | { modules: UpstashModules; error?: never }
+  | { modules: null; error: unknown }
+
+async function getModules(): Promise<ModuleLoadResult> {
+  if (Ratelimit && Redis) return { modules: { Ratelimit, Redis } }
   try {
     const [rl, r] = await Promise.all([
       import('@upstash/ratelimit'),
@@ -22,15 +32,58 @@ async function getModules() {
     ])
     Ratelimit = rl.Ratelimit
     Redis = r.Redis
-    return { Ratelimit, Redis }
+    return { modules: { Ratelimit, Redis } }
+  } catch (error) {
+    return { modules: null, error }
+  }
+}
+
+function fallbackResult(
+  reason: RateLimitFallbackReason,
+  error?: unknown,
+): RateLimitResult {
+  const failClosed = process.env.NODE_ENV === 'production'
+  if (!reportedFallbacks.has(reason)) {
+    reportedFallbacks.add(reason)
+    console.error(JSON.stringify({
+      event: 'rate_limit_fallback',
+      reason,
+      mode: failClosed ? 'fail_closed' : 'fail_open',
+    }))
+    void reportFallbackToSentry(reason, failClosed, error)
+  }
+  return { success: !failClosed }
+}
+
+async function reportFallbackToSentry(
+  reason: RateLimitFallbackReason,
+  failClosed: boolean,
+  error?: unknown,
+): Promise<void> {
+  try {
+    const Sentry = await import('@sentry/nextjs')
+    const context = {
+      level: 'error' as const,
+      tags: {
+        component: 'rate_limit',
+        rate_limit_fallback_reason: reason,
+        rate_limit_fallback_mode: failClosed ? 'fail_closed' : 'fail_open',
+      },
+    }
+    if (error !== undefined) {
+      Sentry.captureException?.(error, context)
+    } else {
+      Sentry.captureMessage?.(`rate_limit_fallback:${reason}`, context)
+    }
   } catch {
-    return null
+    // The structured console error above remains available when Sentry is unavailable.
   }
 }
 
 function isConfigured(): boolean {
   return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+      process.env.UPSTASH_REDIS_REST_TOKEN?.trim(),
   )
 }
 
@@ -42,12 +95,12 @@ async function checkLimit(
   cost?: number,
 ): Promise<RateLimitResult> {
   if (!isConfigured()) {
-    return { success: true }
+    return fallbackResult('missing_configuration')
   }
 
-  const modules = await getModules()
-  if (!modules) return { success: true }
-  const { Ratelimit: RL, Redis: R } = modules
+  const loaded = await getModules()
+  if (!loaded.modules) return fallbackResult('module_import_failed', loaded.error)
+  const { Ratelimit: RL, Redis: R } = loaded.modules
 
   const redis = new R({
     url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -127,7 +180,7 @@ export async function checkPaidApiRateLimit(
   if (!Number.isSafeInteger(cost) || cost < 1) {
     throw new RangeError('Rate limit cost must be a positive safe integer')
   }
-  if (!isConfigured()) return { success: true }
+  if (!isConfigured()) return fallbackResult('missing_configuration')
 
   const policy = PAID_API_POLICY[kind]
   const dailyLimit = boundedPositiveInteger(
@@ -149,9 +202,9 @@ export async function checkPaidApiRateLimit(
   // Resolve the day after the asynchronous minute check (which can cross midnight).
   const { date, reset: dailyReset } = jstDailyWindow(Date.now())
 
-  const modules = await getModules()
-  if (!modules) return { success: true }
-  const redis = new modules.Redis({
+  const loaded = await getModules()
+  if (!loaded.modules) return fallbackResult('module_import_failed', loaded.error)
+  const redis = new loaded.modules.Redis({
     url: process.env.UPSTASH_REDIS_REST_URL!,
     token: process.env.UPSTASH_REDIS_REST_TOKEN!,
   })

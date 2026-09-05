@@ -53,6 +53,18 @@ const requiredEnvVars = [
   'NEXT_PUBLIC_SITE_URL',
 ]
 
+// Server secrets must come from the deployment environment. Never accept values
+// from env.defaults.json, which is intended only for non-secret public defaults.
+const requiredServerEnvVars = [
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'CRON_SECRET',
+]
+const minimumServerSecretLengths = {
+  UPSTASH_REDIS_REST_TOKEN: 16,
+  CRON_SECRET: 32,
+}
+
 const optionalEnvVars = [
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
@@ -111,6 +123,30 @@ function validateEnvironmentVariables() {
       } catch {
         invalid.push(`${envVar} must contain only an HTTPS origin`)
       }
+    }
+  }
+
+  for (const envVar of requiredServerEnvVars) {
+    const value = process.env[envVar]
+    if (!value || !value.trim()) {
+      missing.push(envVar)
+      continue
+    }
+    const minimumLength = minimumServerSecretLengths[envVar]
+    if (minimumLength && value.trim().length < minimumLength) {
+      invalid.push(`${envVar} must be at least ${minimumLength} characters`)
+    }
+  }
+
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL
+  if (upstashUrl && upstashUrl.trim()) {
+    try {
+      const url = new URL(upstashUrl)
+      if (url.protocol !== 'https:') {
+        invalid.push('UPSTASH_REDIS_REST_URL must be an HTTPS URL')
+      }
+    } catch {
+      invalid.push('UPSTASH_REDIS_REST_URL must be an HTTPS URL')
     }
   }
 

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, copyFileSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
+import { isSensitiveBuildVariable } from './secret-policy.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const openNextDir = path.join(projectRoot, '.open-next')
@@ -63,9 +64,7 @@ function scrubOpenNextBuildEnvironment() {
   for (const match of source.matchAll(/^export const \w+ = (\{.*\});$/gm)) {
     const values = JSON.parse(match[1])
     for (const [name, value] of Object.entries(values)) {
-      const isPublic = name.startsWith('NEXT_PUBLIC_') || name.includes('ANON_KEY')
-      const isSensitive = /(?:API_KEY|AUTH_TOKEN|PRIVATE_KEY|SECRET|SERVICE_ROLE)/.test(name)
-      if (!isPublic && isSensitive && typeof value === 'string' && value.length >= 8) {
+      if (isSensitiveBuildVariable(name) && typeof value === 'string' && value.length >= 8) {
         secretValues.push(value)
       }
     }
