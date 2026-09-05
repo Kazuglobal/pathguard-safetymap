@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   slidingWindow: vi.fn(() => ({ kind: "sliding-window" })),
   limit: vi.fn(async () => ({ success: true, reset: Date.now() + 1_000 })),
   eval: vi.fn(async () => [1, 1]),
+  prefixes: [] as string[],
   moduleError: null as Error | null,
   captureException: vi.fn(),
   captureMessage: vi.fn(),
@@ -14,6 +15,9 @@ vi.mock("@upstash/ratelimit", () => ({
     if (mocks.moduleError) throw mocks.moduleError
     return class FakeRatelimit {
       static slidingWindow = mocks.slidingWindow
+      constructor(options: { prefix: string }) {
+        mocks.prefixes.push(options.prefix)
+      }
       limit = mocks.limit
     }
   },
@@ -34,6 +38,7 @@ describe("checkImageGenerationRateLimit", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    mocks.prefixes.length = 0
     process.env.UPSTASH_REDIS_REST_URL = "https://example.invalid"
     process.env.UPSTASH_REDIS_REST_TOKEN = "test-token"
     mocks.moduleError = null
@@ -47,6 +52,7 @@ describe("checkImageGenerationRateLimit", () => {
     delete process.env.AI_DAILY_RATE_LIMIT
     delete process.env.MAPBOX_DAILY_RATE_LIMIT
     delete process.env.IMAGE_PROCESS_DAILY_RATE_LIMIT
+    delete process.env.RATE_LIMIT_NAMESPACE
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
@@ -72,6 +78,17 @@ describe("checkImageGenerationRateLimit", () => {
 
     expect(mocks.slidingWindow).toHaveBeenCalledWith(20, "300 s")
     expect(mocks.limit).toHaveBeenCalledWith("hazard-image:user-1")
+  })
+
+  it("isolates a preview namespace when sharing a Redis database", async () => {
+    process.env.RATE_LIMIT_NAMESPACE = "preview:pr-190"
+    const { checkImageGenerationRateLimit } = await import(
+      "@/lib/upstash-rate-limiter"
+    )
+
+    await checkImageGenerationRateLimit("hazard-image:user-1")
+
+    expect(mocks.prefixes).toContain("preview:pr-190:image-generation")
   })
 
   it("keeps allow-all outside production when Upstash is not configured and reports it", async () => {
@@ -193,7 +210,7 @@ describe("checkPaidApiRateLimit", () => {
     expect(mocks.limit).toHaveBeenCalledWith("user-1", { rate: 10 })
     expect(mocks.eval).toHaveBeenCalledWith(
       expect.any(String),
-      [expect.stringMatching(/^paid:daily:mapbox:\d{4}-\d{2}-\d{2}:user-1$/)],
+      [expect.stringMatching(/^production:paid:daily:mapbox:\d{4}-\d{2}-\d{2}:user-1$/)],
       ["10", "300", expect.stringMatching(/^\d+$/)],
     )
   })
@@ -229,7 +246,7 @@ describe("checkPaidApiRateLimit", () => {
 
     expect(mocks.eval).toHaveBeenCalledWith(
       expect.any(String),
-      ["paid:daily:ai:2026-09-04:user-1"],
+      ["production:paid:daily:ai:2026-09-04:user-1"],
       ["1", "30", String(Date.parse("2026-09-04T15:00:00.000Z"))],
     )
   })
@@ -263,7 +280,7 @@ describe("checkPaidApiRateLimit", () => {
     })
     const { checkPaidApiRateLimit } = await import('@/lib/upstash-rate-limiter')
     await checkPaidApiRateLimit('ai', 'user-1')
-    expect(mocks.eval).toHaveBeenCalledWith(expect.any(String), ['paid:daily:ai:2026-09-05:user-1'],
+    expect(mocks.eval).toHaveBeenCalledWith(expect.any(String), ['production:paid:daily:ai:2026-09-05:user-1'],
       ['1', '30', String(Date.parse('2026-09-05T15:00:00Z'))])
   })
 

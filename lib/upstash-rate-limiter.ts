@@ -87,6 +87,16 @@ function isConfigured(): boolean {
   )
 }
 
+function rateLimitPrefix(prefix: string): string {
+  // A shared free-tier Redis database is safe to use across environments only
+  // when every environment uses an isolated, explicit key namespace.
+  const namespace = process.env.RATE_LIMIT_NAMESPACE?.trim()
+  if (!namespace || !/^[a-z0-9][a-z0-9:_-]*$/i.test(namespace)) {
+    return `production:${prefix}`
+  }
+  return `${namespace}:${prefix}`
+}
+
 async function checkLimit(
   prefix: string,
   identifier: string,
@@ -110,7 +120,7 @@ async function checkLimit(
   const ratelimit = new RL({
     redis,
     limiter: RL.slidingWindow(requests, `${windowSeconds} s`),
-    prefix,
+    prefix: rateLimitPrefix(prefix),
   })
 
   const { success, reset } = cost === undefined
@@ -210,7 +220,7 @@ export async function checkPaidApiRateLimit(
   })
   const result = await redis.eval<string[], [number, number]>(
     DAILY_LIMIT_SCRIPT,
-    [`paid:daily:${kind}:${date}:${userId}`],
+    [rateLimitPrefix(`paid:daily:${kind}:${date}:${userId}`)],
     [String(cost), String(dailyLimit), String(dailyReset)],
   )
 

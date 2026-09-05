@@ -29,6 +29,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_MEDIA_BASE_URL: ${{ secrets.NEXT_PUBLIC_MEDIA_BASE_URL }}
       NEXT_PUBLIC_SITE_URL: https://pathguardian-pr-${{ github.event.pull_request.number }}.${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev
+      RATE_LIMIT_NAMESPACE: preview:pr-${{ github.event.pull_request.number }}
       UPSTASH_REDIS_REST_URL: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_URL }}
       UPSTASH_REDIS_REST_TOKEN: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_TOKEN }}
       CRON_SECRET: ${{ secrets.PREVIEW_CRON_SECRET }}
