@@ -40,9 +40,10 @@
   - `r2-private`: `pg-media-private`。
   - `r2-backups`: `pg-backups`。
 - `NEXT_PUBLIC_MEDIA_BASE_URL` は `pg-media-public` の HTTPS custom domain を指定する。
-- ビルド時に `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`、`NEXT_PUBLIC_MEDIA_BASE_URL`、`NEXT_PUBLIC_SITE_URL` を設定する。`provision:cloudflare` は同じ値をWorker secretにも同期する。
+- ビルド時に `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`、`NEXT_PUBLIC_MEDIA_BASE_URL`、`NEXT_PUBLIC_SITE_URL` に加え、`UPSTASH_REDIS_REST_URL`、`UPSTASH_REDIS_REST_TOKEN`、`CRON_SECRET` を設定する。秘密値は `env.defaults.json` に置かない。`provision:cloudflare` は同じ値をWorker secretにも同期する。
 - `ADMIN_EMAILS` に本番管理者をカンマ区切りで設定する。最終 `migrate:verify` は旧 `profiles.role='admin'` の全メールが含まれない限り失敗する。
 - `CRON_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`（LINE Auth Admin専用）、AI/Upstash/VAPID/LINE/XROADの利用中キーをプロセス環境へ設定してから `provision:cloudflare` を実行する。未設定値は警告付きでスキップされる。
+- PRプレビューには専用Upstashデータベースを用意し、GitHubの `cloudflare-preview` Environmentへ `PREVIEW_UPSTASH_REDIS_REST_URL`、`PREVIEW_UPSTASH_REDIS_REST_TOKEN`、専用の `PREVIEW_CRON_SECRET` を登録する。ワークフローだけが標準の実行時変数名へ変換し、本番値は共有しない。
 - Sentry source map を利用する場合は Releases 作成と source map upload 権限を持つ `SENTRY_AUTH_TOKEN` をビルド環境に設定する。未設定なら source map は生成しない。無効な token を設定したままビルドしない。
 - `docs/runbooks/hazard-golden.example.json` を実データの20地点以上で複製・確定する。
 
