@@ -12,6 +12,17 @@ export interface LandingSafeMagazinePreviewItem {
 
 const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
   {
+    id: "2026-09-11-autumn-campaign-bicycle-rules",
+    slug: "autumn-campaign-bicycle-rules",
+    title: "【9月21日から】秋の交通安全運動の重点に自転車——中高生の通学を3点見直す",
+    excerpt: "9月21日から30日まで実施される「令和8年秋の全国交通安全運動」の全国重点3番目は、自転車・特定小型原動機付自転車の交通ルール徹底です。自転車ヘルメットの全国着用率21.2%という現実をふまえ、今週末15分でできる3つの見直しをまとめました。",
+    categoryLabel: "施策・制度",
+    categoryColor: "#8B5CF6",
+    categoryIcon: "FileText",
+    publishedDate: "2026-09-11",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-campaign-bicycle-rules.png",
+  },
+  {
     id: "2026-09-04-autumn-twilight-reflective-gear",
     slug: "autumn-twilight-reflective-gear",
     title: "【10月がピーク】小1の歩行中事故は4月の2.2倍——秋の夕方に効く備え",

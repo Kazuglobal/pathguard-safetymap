@@ -47,6 +47,55 @@ Technical specifications:
 // 記事ごとの画像設定（高品質プロンプト）
 const ARTICLE_IMAGES: ImageConfig[] = [
   {
+    articleId: "2026-09-11-autumn-campaign-bicycle-rules",
+    articleSlug: "autumn-campaign-bicycle-rules",
+    category: "policy-update",
+    title: "秋の交通安全運動と自転車のルール",
+    thumbnailPrompt: `Create a Japanese editorial illustration about bicycle safety during the autumn national traffic safety campaign.
+
+Scene elements (Japanese specific):
+- A Japanese junior high / high school student in a school uniform riding a bicycle to school, wearing a properly fitted bicycle helmet with the chin strap fastened
+- The student has one foot down at a stop line, looking right and left at a blind residential intersection
+- Japanese residential street in early autumn, a "とまれ" style stop marking painted on the road surface, a school zone sign and a green belt road edge marking
+- A crossing guard volunteer with an armband standing at the corner in the background
+- Warm early autumn morning light, ginkgo and maple leaves starting to turn
+
+Mood: Calm, positive and instructive; the helmet and the foot-down stop are the hero elements. Not frightening, no crash depicted.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Autumn amber and warm green, with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, police enforcement imagery that looks punitive, text overlays
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "helmet-three-checks",
+        prompt: `Create a clean Japanese educational infographic showing the three checkpoints for a child's bicycle helmet, as three numbered panels side by side.
+
+PANEL 1 - FIT: a side view of a child's head wearing a helmet positioned correctly so the forehead is covered, with a small curved arrow showing that the helmet should not rock back and forth. A faded "wrong" ghost version tilted back on the head sits behind it for contrast.
+PANEL 2 - CHIN STRAP: a close-up of the jaw and chin strap, with one or two fingers shown fitting in the gap between the strap and the chin, indicating the correct tightness.
+PANEL 3 - DAMAGE AND AGE: a helmet shown at an angle with a small crack highlighted on the shell and a magnifying glass over an inner label area, indicating checking the manufacture date and expiry.
+
+Style: Flat Japanese infographic design on a light neutral background, clear numbered circles 1, 2 and 3, purple and amber accent colours, educational aesthetic, generic child character with simple non-photographic features
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 1, 2 and 3
+${QUALITY_SUFFIX}`,
+        description: "ヘルメットの3点チェック（サイズ／あごひも／傷・使用年数）"
+      },
+      {
+        id: "age-rule-tokutei-kogata",
+        prompt: `Create a clear Japanese educational infographic explaining the age rule for 特定小型原動機付自転車 (a standing electric kick scooter class that needs no driving licence in Japan).
+
+Layout: a single horizontal age axis split into two zones by a bold vertical divider labelled with the numeral 16.
+
+LEFT ZONE (under 16): a standing electric kick scooter drawn inside a red prohibition circle with a diagonal bar. Beside it, a second small red prohibition symbol over a simple icon of an adult hand passing the scooter to a smaller child, to show that lending, buying or giving one to an under-16 is also prohibited.
+RIGHT ZONE (16 and over): the same scooter drawn normally in a calm green-tinted zone, with a helmet icon beside it.
+
+Style: Flat Japanese infographic design on a light background, bold red for the prohibited side and muted green for the permitted side, clean geometric shapes, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numeral 16
+${QUALITY_SUFFIX}`,
+        description: "特定小型原動機付自転車の年齢ルール（16歳未満は運転禁止・提供も禁止）"
+      }
+    ]
+  },
+  {
     articleId: "2026-02-06-chikushino-accident",
     articleSlug: "chikushino-accident",
     category: "accident-news",
