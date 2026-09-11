@@ -12,22 +12,22 @@ describe("school route news release readiness regressions", () => {
     const allNewsItems = getAllNewsItems()
     const latestNews = getLatestNews(5)
 
-    expect(allNewsItems[0]?.slug).toBe("kawanishi-tadain-schoolgate-hitandrun-20260827")
-    expect(allNewsItems[1]?.slug).toBe("sapporo-nishi-hassamu-crosswalk-20260827")
-    expect(allNewsItems[2]?.slug).toBe("sendai-izumi-koyodai-stalking-20260903")
-    expect(allNewsItems[3]?.slug).toBe("matsuyama-hirata-store-touch-20260901")
-    expect(allNewsItems[4]?.slug).toBe("national-autumn-traffic-safety-campaign-20260921")
+    expect(allNewsItems[0]?.slug).toBe("ichinomiya-fuji-bicycle-collision-20260910")
+    expect(allNewsItems[1]?.slug).toBe("kumamoto-kita-shimizukamei-stalking-20260909")
+    expect(allNewsItems[2]?.slug).toBe("hiroshima-city-september-voice-calls-20260903")
+    expect(allNewsItems[3]?.slug).toBe("gifu-kano-schoolguard-watch-20260828")
+    expect(allNewsItems[4]?.slug).toBe("kawanishi-tadain-schoolgate-hitandrun-20260827")
     expect(latestNews.map((item) => item.slug)).toEqual([
+      "ichinomiya-fuji-bicycle-collision-20260910",
+      "kumamoto-kita-shimizukamei-stalking-20260909",
+      "hiroshima-city-september-voice-calls-20260903",
+      "gifu-kano-schoolguard-watch-20260828",
       "kawanishi-tadain-schoolgate-hitandrun-20260827",
-      "sapporo-nishi-hassamu-crosswalk-20260827",
-      "sendai-izumi-koyodai-stalking-20260903",
-      "matsuyama-hirata-store-touch-20260901",
-      "national-autumn-traffic-safety-campaign-20260921",
     ])
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
-    const now = new Date("2026-09-04T00:00:00+09:00")
+    const now = new Date("2026-09-11T00:00:00+09:00")
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
     for (const item of NEWS_ITEMS) {
       expect(new Date(item.publishedDate).getTime(), `${item.slug} is older than the 90-day retention window`)
