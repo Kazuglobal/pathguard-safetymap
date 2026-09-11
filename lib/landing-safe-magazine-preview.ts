@@ -12,6 +12,28 @@ export interface LandingSafeMagazinePreviewItem {
 
 const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
   {
+    id: "2026-09-11-autumn-bicycle-blue-ticket-watch-2026",
+    slug: "autumn-bicycle-blue-ticket-watch-2026",
+    title: "【9/21〜30】秋の交通安全運動の重点に自転車——通学で確認する2点",
+    excerpt: "内閣府は令和8年7月1日、秋の全国交通安全運動（9月21日〜30日）の推進要綱を決定し、全国重点の3番目に「自転車・特定小型原動機付自転車の交通ルールの理解・遵守の徹底」を掲げました。青切符の実データから割り出した、通学で確認すべき2点をまとめます。",
+    categoryLabel: "施策・制度",
+    categoryColor: "#8B5CF6",
+    categoryIcon: "FileText",
+    publishedDate: "2026-09-11",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-bicycle-blue-ticket-watch-2026.png",
+  },
+  {
+    id: "2026-09-11-e-scooter-under16-family-rules",
+    slug: "e-scooter-under16-family-rules",
+    title: "【保存版】電動キックボードは16歳未満が運転禁止——家庭で決める5つのルール",
+    excerpt: "電動キックボード等（特定小型原動機付自転車）は16歳未満の運転が禁止され、16歳未満が運転するおそれのある人への「提供」も禁じられています。シェアサービスの普及で「親が解錠して子どもに渡す」形がいちばん起きやすい状況です。印刷して使える家庭のルール5つをまとめました。",
+    categoryLabel: "安全対策",
+    categoryColor: "#3B82F6",
+    categoryIcon: "Shield",
+    publishedDate: "2026-09-11",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/e-scooter-under16-family-rules.png",
+  },
+  {
     id: "2026-09-04-autumn-twilight-reflective-gear",
     slug: "autumn-twilight-reflective-gear",
     title: "【10月がピーク】小1の歩行中事故は4月の2.2倍——秋の夕方に効く備え",

@@ -1,0 +1,226 @@
+{
+  "researchDate": "2026-09-11",
+  "editorialCalendarPeriod": "9月: 新学期・生活リズムの立て直し / 10〜11月「薄暮時間帯の事故・反射材」への接続期",
+  "priorityTheme": "令和8年 秋の全国交通安全運動（2026年9月21日〜30日）の全国重点3番目「自転車・特定小型原動機付自転車の交通ルールの理解・遵守の徹底」",
+  "priorityThemeReason": "2026-09-04公開記事『【10月がピーク】小1の歩行中事故は4月の2.2倍』の次回予告で『秋の全国交通安全運動の全国重点3番目（自転車・特定小型原動機付自転車）を取り上げる』と読者に約束済み。運動開始の10日前という配信タイミングも先回り配信として最適。",
+  "environmentConstraints": {
+    "imageGeneration": "実行しない（クラウド環境・GEMINI_API_KEY なし）。ARTICLE_IMAGES への追記のみ。",
+    "webFetch": "本セッションでは WebFetch が全ドメインで EGRESS_BLOCKED（go.jp / lg.jp / 報道各社 / wikipedia すべて）。一次資料の本文を直接取得できないため、検証は WebSearch の結果本文（複数の独立クエリによる相互一致）に限定した。",
+    "verificationPolicy": "採用したのは『独立した2クエリ以上で文言・数値が完全に一致した事実』のみ。一致しなかった数値（通学路対策済み箇所数 73,621 か所 vs 73,575 か所など）は記事に使用しない。"
+  },
+  "categoriesSearched": [
+    "policy-update",
+    "safety-tips",
+    "accident-news",
+    "danger-ranking",
+    "volunteer-activity",
+    "続報チェック"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "category": "policy-update",
+      "status": "ADOPTED",
+      "topic": "令和8年 秋の全国交通安全運動",
+      "facts": [
+        "運動期間: 令和8年9月21日（月）から9月30日（水）までの10日間",
+        "令和8年9月30日（水）は「交通事故死ゼロを目指す日」",
+        "全国重点は3つ: (1)〈歩行者〉歩行者の安全確保と反射材用品の着用促進 (2)〈自動車〉夕暮れ時の早めのライト点灯と飲酒運転や「ながらスマホ」の根絶 (3)〈自転車〉自転車・特定小型原動機付自転車の交通ルールの理解・遵守の徹底",
+        "推進要綱は令和8年7月1日 中央交通安全対策会議 交通対策本部決定"
+      ],
+      "primarySource": {
+        "name": "内閣府「令和８年秋の全国交通安全運動推進要綱」（令和8年7月1日 中央交通安全対策会議交通対策本部決定）",
+        "url": "https://www8.cao.go.jp/koutu/keihatsu/undou/r08_aki/youkou.html",
+        "grade": "[公式発表]",
+        "dataAsOf": "令和8年7月1日決定 / 実施期間 2026年9月21日〜30日"
+      },
+      "corroboration": [
+        "https://www.mext.go.jp/a_menu/kenko/anzen/1417343_00065.htm （文部科学省・実施依頼）",
+        "https://www.pref.chiba.lg.jp/seikouan/koutsuuanzen/jikoboushi/kenminundou/r8/akinoyoukou.html （千葉県実施要綱）",
+        "https://www.pref.gunma.jp/page/765739.html （群馬県）",
+        "https://www.pref.niigata.lg.jp/sec/kenminseikatsu/r8aki.html （新潟県）",
+        "https://www.jmpsa.or.jp/block/kinki/safety/e14168.html （日本二輪車普及安全協会）"
+      ],
+      "independentQueriesAgreeing": 4
+    },
+    {
+      "id": "F2",
+      "category": "policy-update",
+      "status": "ADOPTED",
+      "topic": "自転車の交通反則通告制度（青切符）施行1か月の運用状況",
+      "facts": [
+        "2026年4月1日施行、対象は16歳以上",
+        "施行後1か月間の青切符告知件数は暫定値で2,147件",
+        "内訳: 指定場所一時不停止846件、携帯電話使用等713件、信号無視298件、しゃ断踏切立入156件、通行区分違反63件、その他71件",
+        "指導警告票は135,855件（月平均の約1.5倍）"
+      ],
+      "primarySource": {
+        "name": "警察庁交通局交通企画課「自転車に対する交通反則通告制度導入後１月間の運用状況について」（2026年5月14日公表・暫定値）",
+        "url": "https://www.npa.go.jp/news/release/2026/20260514.pdf",
+        "grade": "[公的統計]",
+        "dataAsOf": "2026年4月1日〜4月30日の暫定値（2026年5月14日公表）"
+      },
+      "corroboration": [
+        "時事ドットコム「自転車青切符、初月２１４７件 違反検挙減、指導警告は１．５倍に―警察庁」 https://www.jiji.com/jc/article?k=2026051400382&g=soc [報道]",
+        "SAFE MAGAZINE 2026-07-05 記事で検証済み（社内一次検証）"
+      ],
+      "independentQueriesAgreeing": 2,
+      "note": "施行3か月・6か月の運用状況は本日時点で公表を確認できなかった。次回続報候補として保持する。"
+    },
+    {
+      "id": "F3",
+      "category": "safety-tips",
+      "status": "ADOPTED",
+      "topic": "自転車用ヘルメット着用率（警察庁 全国調査）",
+      "facts": [
+        "全国平均の着用率は21.2%（令和7年6月調査）。前年から4.2ポイント上昇",
+        "調査は平日夕方、駅周辺・商業施設周辺などで自転車利用者 約53,400人を対象に実施",
+        "都道府県別の最高は愛媛県70.3%、次いで大分県53.7%。最低は大阪府7.2%",
+        "2023年（令和5年）4月1日から、すべての自転車利用者にヘルメット着用の努力義務"
+      ],
+      "primarySource": {
+        "name": "警察庁「自転車乗車用ヘルメット着用率調査結果」（令和7年6月調査・2025年9月11日公表）",
+        "url": "https://www.npa.go.jp/bureau/traffic/anzen/toubuhogo.html",
+        "grade": "[公的統計]",
+        "dataAsOf": "令和7年（2025年）6月調査"
+      },
+      "corroboration": [
+        "時事ドットコム「自転車ヘルメット着用率２１％ 昨年比４ポイント上昇―警察庁」 https://www.jiji.com/jc/article?k=2025091100383&g=soc [報道]",
+        "2クエリで 21.2% / 愛媛70.3% / 大阪7.2% が完全一致"
+      ],
+      "independentQueriesAgreeing": 2,
+      "note": "令和8年6月調査版の公表は本日時点で確認できなかった（例年9月中旬公表）。次回続報候補。"
+    },
+    {
+      "id": "F4",
+      "category": "policy-update",
+      "status": "ADOPTED",
+      "topic": "特定小型原動機付自転車（電動キックボード等）の交通ルール",
+      "facts": [
+        "令和5年（2023年）7月1日から、基準を満たす電動キックボード等に特定小型原動機付自転車としての新ルールが適用",
+        "16歳未満の者が運転することは禁止",
+        "16歳未満の者が運転するおそれのある者に対して車体を提供することも禁止。提供の罰則は6月以下の拘禁刑又は10万円以下の罰金",
+        "車体基準: 長さ190cm以下・幅60cm以下、定格出力0.6kW以下の電動機、時速20kmを超える速度が出せないこと",
+        "特例特定小型原動機付自転車: 最高速度表示灯を点滅させ、時速6kmを超える速度が出ない構造であるものに限り、「普通自転車等及び歩行者等専用」の標識がある歩道を通行できる。歩道では中央から車道寄りを通行し、歩行者優先で、歩行者の通行を妨げる場合は直ちに停止する",
+        "ヘルメットの着用は努力義務"
+      ],
+      "primarySource": {
+        "name": "警察庁「特定小型原動機付自転車に関する交通ルール等について」",
+        "url": "https://www.npa.go.jp/bureau/traffic/anzen/tokuteikogata.html",
+        "grade": "[公式発表]",
+        "dataAsOf": "令和5年7月1日施行の制度（2026年9月時点で継続）"
+      },
+      "corroboration": [
+        "警視庁「特定小型原動機付自転車に関する交通ルール等について」 https://www.keishicho.metro.tokyo.lg.jp/kotsu/jikoboshi/electric_mobility/electric_kickboard.html",
+        "大阪府警本部「特定小型原動機付自転車安全利用ハンドブック」 https://www.police.pref.osaka.lg.jp/kotsu/anzen/12/21736.html",
+        "警察庁リーフレット https://www.npa.go.jp/bureau/traffic/anzen/poster/tokuteikogata_leaflet.pdf"
+      ],
+      "independentQueriesAgreeing": 3,
+      "note": "罰則「6月以下の拘禁刑又は10万円以下の罰金」は、絞り込みクエリでは『16歳未満の者への提供』に対する罰則として一致した。運転者本人への罰則額は表記が揺れたため記事では扱わず、『提供の禁止』側のみを明記する。"
+    },
+    {
+      "id": "F5",
+      "category": "accident-news",
+      "status": "ADOPTED_WITH_CAUTION",
+      "topic": "特定小型原動機付自転車の事故状況（施行後1年間）",
+      "facts": [
+        "施行後1年間（2023年7月〜2024年6月）の事故件数は219件、死者0人、負傷者226人",
+        "都道府県別では東京都での発生が7割超",
+        "用途別ではレンタル車両による事故が9割超",
+        "運転者の年齢別では20歳代が5割超",
+        "同期間の検挙件数は25,156件"
+      ],
+      "primarySource": {
+        "name": "警察庁「特定小型原動機付自転車に関する規定の施行後1年間の状況」（2024年公表）",
+        "url": "https://www.npa.go.jp/bureau/traffic/anzen/tokuteikogata.html",
+        "grade": "[公的統計]",
+        "dataAsOf": "2023年7月1日〜2024年6月30日"
+      },
+      "corroboration": [
+        "JAF Mate Online https://jafmate.jp/car/traffic_topics_20241031_1196560.html [報道]",
+        "Car Watch https://car.watch.impress.co.jp/docs/news/1625871.html [報道]"
+      ],
+      "independentQueriesAgreeing": 1,
+      "note": "データ時点が2年前であることを記事本文に明記して使用する。施行後2年目（令和6年7月〜令和7年6月）の数値は検索結果に断片的にしか現れず、確定した数値を取得できなかったため使用しない。"
+    },
+    {
+      "id": "F6",
+      "category": "policy-update",
+      "status": "REJECTED_FOR_THIS_ISSUE",
+      "topic": "第12次交通安全基本計画",
+      "facts": [
+        "令和8年3月27日 中央交通安全対策会議決定",
+        "計画期間は令和8年度から令和12年度",
+        "令和12年までに24時間死者数1,900人以下、重傷者数20,000人以下を目標"
+      ],
+      "primarySource": {
+        "name": "内閣府「第12次交通安全基本計画」",
+        "url": "https://www8.cao.go.jp/koutu/kihon/keikaku12/index.html",
+        "grade": "[公式発表]",
+        "dataAsOf": "令和8年3月27日決定"
+      },
+      "rejectionReason": "事実は確認できたが、決定から半年が経過しており速報性がなく、9月の編集カレンダー重点とも合致しない。次回以降の続報候補として保持する。"
+    },
+    {
+      "id": "F7",
+      "category": "danger-ranking",
+      "status": "REJECTED_FACT_CONFLICT",
+      "topic": "通学路合同点検 対策必要箇所の対策完了状況",
+      "facts": [
+        "対策必要箇所は全体で76,404か所",
+        "対策済み箇所数について、検索結果の記述が一致しなかった（令和7年3月末時点として『73,621か所』と『73,575か所・96.3%』の2種類が出現）"
+      ],
+      "rejectionReason": "『調査主体・調査年・集計期間』をセットで確定できず、かつ数値が独立クエリ間で一致しなかった。必須ルール1に反するため本号では記事化しない。WebFetch が使える環境で内閣府『令和8年版交通安全白書』本文を直接確認したうえで、既存記事 school-route-safety-statistics（91%完了）の T4 続報として扱う。"
+    }
+  ],
+  "followUpCandidates": [
+    {
+      "topic": "自転車青切符ウォッチ: 施行6か月／半年間の運用状況",
+      "expectedTiming": "2026年10〜11月頃（警察庁が1か月版を施行後6週で公表した実績あり）",
+      "relatedArticle": "bicycle-blue-ticket-one-month-report"
+    },
+    {
+      "topic": "自転車用ヘルメット着用率調査（令和8年6月調査版）",
+      "expectedTiming": "例年9月中旬公表。2026年9月下旬に再チェック",
+      "relatedArticle": "autumn-bicycle-blue-ticket-watch-2026"
+    },
+    {
+      "topic": "通学路合同点検の対策完了率（令和8年版交通安全白書・令和8年3月末時点）",
+      "expectedTiming": "公表済み（令和8年6月）。WebFetch 可能な環境で数値を確定させ次第",
+      "relatedArticle": "school-route-safety-statistics"
+    },
+    {
+      "topic": "生活道路30km/h規制ウォッチ: 施行3か月後の実態・取締り状況",
+      "expectedTiming": "2026年12月頃",
+      "relatedArticle": "30kmh-speed-limit-enforced"
+    },
+    {
+      "topic": "ゾーン30プラス モデル地域65箇所の整備進捗",
+      "expectedTiming": "年度末（2027年3月）前後",
+      "relatedArticle": "zone30plus-model-areas"
+    },
+    {
+      "topic": "第12次交通安全基本計画（令和8年度〜令和12年度）の通学路関連施策",
+      "expectedTiming": "初年度の施策実施状況が見える2027年春頃",
+      "relatedArticle": null
+    },
+    {
+      "topic": "特定小型原動機付自転車 施行後3年目の事故状況",
+      "expectedTiming": "2026年秋〜冬（施行後2年目・3年目の集計公表時）",
+      "relatedArticle": "e-scooter-under16-family-rules"
+    }
+  ],
+  "articlesProduced": [
+    {
+      "slug": "autumn-bicycle-blue-ticket-watch-2026",
+      "template": "T4 シリーズ追跡型 (follow-up)",
+      "series": "自転車青切符ウォッチ",
+      "category": "policy-update"
+    },
+    {
+      "slug": "e-scooter-under16-family-rules",
+      "template": "T5 実践ガイド型 (action-guide)",
+      "category": "safety-tips"
+    }
+  ]
+}

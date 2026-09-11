@@ -891,6 +891,124 @@ ${QUALITY_SUFFIX}`,
         description: "反射材をつける3か所（ランドセル／靴／傘・袖口）"
       }
     ]
+  },
+  {
+    articleId: "2026-09-11-autumn-bicycle-blue-ticket-watch-2026",
+    articleSlug: "autumn-bicycle-blue-ticket-watch-2026",
+    category: "policy-update",
+    title: "秋の全国交通安全運動と自転車青切符ウォッチ",
+    thumbnailPrompt: `Create a Japanese editorial illustration about the autumn national traffic safety campaign focused on bicycles.
+
+Scene elements (Japanese specific):
+- A Japanese high school student in a school uniform riding a commuter bicycle, coming to a complete stop with one foot planted on the ground
+- A red inverted-triangle Japanese stop sign (止まれ) at a narrow residential intersection, clearly the focus of the student's attention
+- A friendly uniformed traffic safety officer standing at the roadside, raising a hand in a calm greeting rather than a confrontational gesture
+- Japanese residential street with a low block wall, utility poles, a green belt road marking (グリーンベルト) along the edge
+- A small autumn cue: ginkgo leaves turning yellow, early evening warm light
+- The student is wearing a bicycle helmet, shown as a natural everyday item
+
+Mood: Calm, instructive and encouraging. This is about guidance and habit, not punishment. Absolutely no scolding, no ticket being handed over, no distressed expression.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, warm autumn afternoon lighting
+Color palette: Warm autumn ochre and amber, with a clear red accent from the stop sign and a cool blue-purple accent for the policy theme
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real police insignia or real agency logos, depiction of a crash or injury, a fine or ticket document being issued, fear-based imagery, real brand logos, text overlays, garbled lettering
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "blue-ticket-first-month-breakdown",
+        prompt: `Create a clean Japanese educational infographic showing the breakdown of bicycle traffic violations in the first month of the blue ticket system, as a horizontal stacked ranking chart.
+
+Layout: six horizontal bars, longest at the top, each paired with a simple flat pictogram on the left.
+
+BAR 1 (longest, strongest accent colour): a bicycle stopping at an inverted-triangle stop sign, value marker 846
+BAR 2 (second longest, second accent colour): a rider holding a smartphone while riding, value marker 713
+BAR 3: a bicycle passing a traffic signal, value marker 298
+BAR 4: a bicycle at a railway crossing barrier, value marker 156
+BAR 5 (short): a bicycle riding on the wrong side of the road, value marker 63
+BAR 6 (shortest, neutral grey): a generic bicycle icon, value marker 71
+
+Emphasise visually that the top two bars together dominate the chart, taking up roughly three quarters of the total length.
+
+Style: Flat Japanese infographic design on a light off-white background, clean geometric bars with rounded ends, consistent line-weight pictograms, generous whitespace, educational aesthetic
+Avoid (negative prompt): photographic faces, real brand logos, garbled text, any lettering other than the numerals 846, 713, 298, 156, 63 and 71
+${QUALITY_SUFFIX}`,
+        description: "自転車青切符・施行1か月の違反内訳（暫定値／上位2項目で7割超）"
+      },
+      {
+        id: "helmet-rate-region-gap",
+        prompt: `Create a clean Japanese educational infographic contrasting bicycle helmet wearing rates between regions, as a simple side-by-side comparison.
+
+Layout: three vertical columns of differing height on a light background, with a horizontal dashed national-average reference line crossing all three.
+
+COLUMN 1 (tallest, warm green): a group of five stylised cyclist silhouettes where roughly seven in ten wear helmets, value marker 70.3
+COLUMN 2 (dashed reference line label, medium, neutral blue): a group where roughly two in ten wear helmets, value marker 21.2
+COLUMN 3 (shortest, muted amber): a group where fewer than one in ten wears a helmet, value marker 7.2
+
+Helmeted silhouettes are filled with a bright accent colour; bare-headed silhouettes are outlined only, so the ratio is readable at a glance without any words.
+
+Style: Flat Japanese infographic design, clean geometric columns, consistent silhouette style, calm non-judgemental tone, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, prefecture name labels, real brand logos, garbled text, any lettering other than the numerals 70.3, 21.2 and 7.2
+${QUALITY_SUFFIX}`,
+        description: "自転車用ヘルメット着用率の地域差（全国平均21.2%／最高70.3%／最低7.2%・令和7年6月調査）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-09-11-e-scooter-under16-family-rules",
+    articleSlug: "e-scooter-under16-family-rules",
+    category: "safety-tips",
+    title: "電動キックボードは16歳未満が運転禁止",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a family agreeing on rules for electric kick scooters.
+
+Scene elements (Japanese specific):
+- A parent and a junior-high-school-aged child standing together on a Japanese residential street, talking calmly face to face
+- A standing electric kick scooter (electric kick board) parked beside them at a shared-mobility port with a simple docking rack
+- The parent is gesturing towards the scooter while explaining; the child is listening and nodding, not being scolded
+- A clear visual cue that the child is not riding: the child's hands are at their sides, the scooter is parked and upright
+- Japanese street details: a low block wall, a utility pole, a pedestrian sidewalk with tactile paving, a bicycle-and-pedestrian shared path sign
+- Early autumn afternoon light
+
+Mood: Warm, conversational and reassuring. This is a family agreement, not a warning poster. No confrontation, no fear.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, friendly rounded shapes
+Color palette: Soft blue and warm cream base, with a single bright teal accent on the scooter
+Avoid (negative prompt): photographic realistic faces, identifiable real people, a child actually riding the scooter, real sharing-service brand logos or app screens, depiction of a crash or injury, prohibition signs with a red slash, text overlays, garbled lettering
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "e-scooter-spec-standard",
+        prompt: `Create a clean Japanese educational infographic showing the technical standard that defines a "specified small motorised bicycle" (electric kick scooter class).
+
+Layout: a single side-view line drawing of a standing electric kick scooter at the centre, on a light off-white background, with four measurement callouts arranged around it.
+
+CALLOUT 1 (horizontal dimension line along the length): value marker 190 with a small centimetre tick scale
+CALLOUT 2 (short dimension line across the deck width): value marker 60 with a centimetre tick scale
+CALLOUT 3 (pointing at the hub motor, with a simple motor pictogram): value marker 0.6 alongside a small power symbol
+CALLOUT 4 (pointing at a speedometer dial pictogram near the handlebar): value marker 20 on the dial face
+
+Add a small separate inset in one corner showing the maximum speed indicator lamp on the scooter, drawn twice: once steady and once flashing with radiating arcs, so the two states are visually distinguishable.
+
+Style: Flat technical-diagram style with clean thin line work, Japanese infographic aesthetic, single teal accent colour for the callout lines, generous whitespace
+Avoid (negative prompt): photographic rendering, real brand logos or model names, human figures, garbled text, any lettering other than the numerals 190, 60, 0.6 and 20
+${QUALITY_SUFFIX}`,
+        description: "特定小型原動機付自転車の車体基準（長さ190cm／幅60cm／0.6kW／時速20km）と最高速度表示灯"
+      },
+      {
+        id: "under16-provision-ban",
+        prompt: `Create a calm Japanese educational illustration explaining that handing an electric kick scooter to a person under sixteen is itself restricted.
+
+Layout: two panels side by side, separated by a thin vertical divider, both on a light background.
+
+LEFT PANEL: an adult hand holding out a scooter handlebar towards a smaller, younger hand reaching for it. A soft amber caution halo surrounds the point where the two hands meet, drawing the eye to the act of handing over rather than to the riding.
+
+RIGHT PANEL: the same two people instead standing side by side beside the parked scooter, talking, with a simple warm green check-style halo around them to signal the agreed alternative.
+
+Both panels show only hands, arms and simplified upper bodies, no detailed faces, keeping the focus on the action.
+
+Style: Flat Japanese educational illustration, soft rounded shapes, restrained two-accent palette of amber and green on cream, non-judgemental and calm
+Avoid (negative prompt): photographic realistic faces, identifiable real people, red prohibition slashes, handcuffs, police or courtroom imagery, fear-based or shaming imagery, real brand logos, text overlays, garbled lettering, any numerals
+${QUALITY_SUFFIX}`,
+        description: "16歳未満への「提供」も禁止——渡す側の行為に焦点を当てた対比図"
+      }
+    ]
   }
 ]
 
