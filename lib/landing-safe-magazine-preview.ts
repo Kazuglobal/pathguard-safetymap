@@ -12,6 +12,28 @@ export interface LandingSafeMagazinePreviewItem {
 
 const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
   {
+    id: "2026-09-12-autumn-campaign-bicycle-rules-2026",
+    slug: "autumn-campaign-bicycle-rules-2026",
+    title: "【9/21〜30】交通安全運動の重点は自転車——16歳で変わる3つのルール",
+    excerpt: "令和8年秋の全国交通安全運動（9/21〜30）の全国重点の3番目は「自転車・特定小型原動機付自転車の交通ルールの理解・遵守の徹底」。境目は学年ではなく16歳の誕生日です。16歳の前後で何が変わるのかを整理し、10分でできる点検をまとめました。",
+    categoryLabel: "施策・制度",
+    categoryColor: "#8B5CF6",
+    categoryIcon: "FileText",
+    publishedDate: "2026-09-12",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-campaign-bicycle-rules-2026.png",
+  },
+  {
+    id: "2026-09-12-bicycle-commute-sensor-alert",
+    slug: "bicycle-commute-sensor-alert",
+    title: "【国交省】中高生の死傷8割が自転車——通学路にセンサー注意喚起が始まる",
+    excerpt: "中高生の交通事故は死傷原因の約8割が自転車乗車中で、そのうち約6割が通学中に起きています（国土交通省）。令和8年度から先行対策地区で、車両接近感知センサーと電光掲示による注意喚起など、地区全体をまとめて対策する「面的」な取り組みが始まりました。",
+    categoryLabel: "安全対策",
+    categoryColor: "#3B82F6",
+    categoryIcon: "Shield",
+    publishedDate: "2026-09-12",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/bicycle-commute-sensor-alert.png",
+  },
+  {
     id: "2026-09-04-autumn-twilight-reflective-gear",
     slug: "autumn-twilight-reflective-gear",
     title: "【10月がピーク】小1の歩行中事故は4月の2.2倍——秋の夕方に効く備え",
