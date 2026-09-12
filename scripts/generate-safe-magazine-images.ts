@@ -891,6 +891,139 @@ ${QUALITY_SUFFIX}`,
         description: "反射材をつける3か所（ランドセル／靴／傘・袖口）"
       }
     ]
+  },
+  {
+    articleId: "2026-09-12-autumn-campaign-bicycle-rules-2026",
+    articleSlug: "autumn-campaign-bicycle-rules-2026",
+    category: "policy-update",
+    title: "秋の交通安全運動の重点は自転車——16歳で変わる3つのルール",
+    thumbnailPrompt: `Create a warm illustration of Japanese junior high and high school students commuting by bicycle on an autumn morning.
+
+Scene elements (Japanese specific):
+- Japanese residential neighborhood (住宅街) with tile-roofed houses and a low block wall
+- Two students in Japanese school uniforms riding bicycles, both wearing bicycle helmets with the chin straps fastened
+- A school commuter bag in the front basket of one bicycle
+- A marked crosswalk (横断歩道) and a green belt road marking (グリーンベルト) along the road edge
+- A "School Zone" warning sign (スクールゾーン標識) - yellow diamond shape
+- A stop line and a triangular stop marking on the road surface
+- A guardrail (ガードレール) separating the road from the sidewalk
+- An elderly neighborhood watch volunteer (見守りボランティア) in a yellow vest waving from the corner
+- Autumn atmosphere: ginkgo and maple trees with yellow and red leaves, low warm morning sunlight
+
+Mood: Calm, positive and reassuring - safe behaviour done right, not danger
+Style: Japanese manga/anime inspired illustration with soft shading, suitable for family and education content
+Color palette: Warm autumn tones, yellow and amber accents, soft golden light
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos, reconstruction of any real accident scene, garbled text, any lettering or numerals
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "age-16-line",
+        prompt: `Create a clean Japanese-style educational comparison infographic about a bicycle rule threshold, split into two vertical panels by a soft vertical divider.
+
+LEFT PANEL:
+- A younger Japanese junior high school student in uniform standing beside a bicycle, wearing a helmet
+- Next to the student, a small electric kick scooter drawn inside a soft grey circle with a gentle prohibition slash across it
+- A simple icon of a traffic ticket drawn faded and semi-transparent, suggesting "not applicable"
+Background: Soft cool blue gradient
+
+RIGHT PANEL:
+- An older Japanese high school student in uniform riding a bicycle, wearing a helmet
+- Next to the student, the same electric kick scooter drawn normally, with a helmet resting on its handlebar
+- A simple icon of a traffic ticket drawn in full colour and clearly visible, suggesting "applicable"
+Background: Soft warm amber gradient
+
+Between the panels, a vertical dividing line with a small birthday cake icon at its centre, suggesting a birthday as the dividing point.
+
+Style: Flat vector educational infographic with rounded shapes, Japanese textbook aesthetic, clean and uncluttered
+Color palette: Blue on the left, amber on the right, neutral light background
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos, garbled text, any lettering or numerals
+${QUALITY_SUFFIX}`,
+        description: "16歳の前後で変わるルールの比較図（自転車青切符・特定小型原動機付自転車）"
+      },
+      {
+        id: "three-bicycle-habits",
+        prompt: `Create a Japanese-style educational illustration showing three bicycle safety habits for teenage students, arranged as three equal panels in a horizontal row.
+
+Three glowing circular markers numbered 1, 2 and 3 label the panels:
+1. A Japanese student in school uniform stopped at the roadside with both feet on the ground, putting a smartphone away into a bag - the bicycle is stationary
+2. A Japanese student in school uniform stopped at a stop line on a narrow residential street, one foot firmly on the ground, looking left and right at a blind intersection with a block wall
+3. A Japanese student in school uniform riding at dusk with the bicycle headlight switched on and glowing, a reflector on the rear mudguard catching the light
+
+All students wear fastened bicycle helmets. Japanese residential street setting with tile-roofed houses, guardrail and green belt road marking.
+
+Style: Warm Japanese manga/anime inspired educational illustration with clean flat callout markers
+Color palette: Daylight blue for panels 1 and 2, warm dusk orange for panel 3
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 1, 2 and 3
+${QUALITY_SUFFIX}`,
+        description: "中高生の自転車で守りたい3つの習慣（止まってスマホ／一時停止で足をつく／夜はライト）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-09-12-bicycle-commute-sensor-alert",
+    articleSlug: "bicycle-commute-sensor-alert",
+    category: "safety-tips",
+    title: "中高生の死傷8割が自転車——通学路にセンサー注意喚起が始まる",
+    thumbnailPrompt: `Create an illustration of a Japanese residential intersection equipped with a vehicle approach warning system for student cyclists.
+
+Scene elements (Japanese specific):
+- A narrow Japanese residential street (生活道路) with no centre line, tile-roofed houses and a concrete block wall creating a blind corner
+- A pole-mounted electronic display panel at the intersection, glowing amber, with a simple arrow symbol and a warning triangle symbol only - no words
+- A small sensor unit mounted on the same pole, aimed along the cross street, with subtle radiating detection arcs drawn as thin translucent curves
+- A Japanese high school student in uniform on a bicycle, wearing a fastened helmet, stopping at the stop line with one foot on the ground and looking toward the display
+- A car approaching from the hidden cross street, only partly visible behind the block wall
+- A stop line and a triangular stop marking painted on the road surface, and a green belt road marking (グリーンベルト) along the edge
+- A "School Zone" warning sign (スクールゾーン標識) - yellow diamond shape - further down the street
+- Morning commute light, soft shadows
+
+Mood: Reassuring and modern - technology helping a student make the right decision, not a depiction of a crash
+Style: Japanese manga/anime inspired illustration with clean lines and soft shading
+Color palette: Cool morning blues with amber accents from the glowing display
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos, depiction or reconstruction of a real accident or collision, blood or injury, garbled text, any lettering or numerals
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "point-vs-area",
+        prompt: `Create a Japanese-style educational infographic comparing two approaches to school route safety measures, shown as two aerial-view map panels side by side.
+
+LEFT PANEL - the "point" approach:
+- A simplified top-down map of a Japanese residential district with a school building icon
+- Only two isolated intersections are highlighted with small circular markers
+- The rest of the district is plain and untreated
+- Arrows showing cars entering the district freely from a large arterial road
+Background: Cool grey-blue
+
+RIGHT PANEL - the "area" approach:
+- The same simplified top-down map of the district with the same school building icon
+- The entire district is covered by a soft translucent coloured overlay, showing it is treated as one zone
+- Multiple small icons distributed across the district: a road hump, a narrowed road entry, a sensor pole, a bicycle lane marking along a street
+- Arrows from the arterial road are deflected away at the district entrances
+Background: Warm green
+
+Style: Flat vector educational map infographic, Japanese textbook aesthetic, clean and uncluttered, simple icon language
+Color palette: Grey-blue on the left, green on the right
+Avoid (negative prompt): photographic realism, real place names, real brand logos, garbled text, any lettering or numerals
+${QUALITY_SUFFIX}`,
+        description: "「点」の対策と「面的」対策の違い（地区全体をまとめて対策する考え方）"
+      },
+      {
+        id: "sensor-alert-flow",
+        prompt: `Create a Japanese-style educational diagram explaining how a vehicle approach sensor and electronic display warn a student cyclist, shown as three sequential steps left to right with soft arrows connecting them.
+
+Three glowing circular markers numbered 1, 2 and 3 label the steps:
+1. A car travelling along a narrow Japanese residential street passes a pole-mounted sensor unit; thin translucent detection arcs show the sensor noticing the car
+2. The pole-mounted electronic display panel at the blind intersection lights up amber, showing only a simple arrow symbol and a warning triangle symbol - no words
+3. A Japanese high school student in uniform on a bicycle, wearing a fastened helmet, stops at the stop line with one foot on the ground and lets the car pass safely
+
+Setting: Japanese residential street with no centre line, concrete block wall creating the blind corner, tile-roofed houses, stop line painted on the road surface.
+
+Style: Warm Japanese manga/anime inspired educational illustration with clean flat callout markers and simple icon language
+Color palette: Soft daylight blues with amber accents from the glowing display
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos, depiction of a collision, garbled text, any lettering other than the numerals 1, 2 and 3
+${QUALITY_SUFFIX}`,
+        description: "車両接近感知センサーと電光掲示による注意喚起の仕組み（3ステップ）"
+      }
+    ]
   }
 ]
 
