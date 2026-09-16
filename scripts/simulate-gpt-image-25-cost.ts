@@ -216,9 +216,34 @@ for (const imgTokens of [1000, 2000, 4000, 8000]) {
   )
 }
 
+// --- ハイブリッド構成 -------------------------------------------------------
+
+section('5) ハイブリッド構成 — viz のみ GPT Image 2.5 / シミュレーションは Gemini 継続')
+console.log('日本語ラベル入りの viz(オーバーレイ注釈)だけ GPT Image 2.5 に出し、')
+console.log('写実シミュレーション4枚は現行 Gemini のまま据え置く構成。\n')
+console.log(
+  `${pad('viz品質', 12)}${padL('viz$/報告', 13)}${padL('sim$/報告', 13)}${padL('計$/報告', 12)}${padL('現行比', 9)}${padL('月次$@1000', 13)}`,
+)
+console.log('-'.repeat(78))
+
+const vizPerReport = 1 * (1 + PARAMS.regenerationRate)
+const simPerReport = (PARAMS.generationsPerReport - 1) * (1 + PARAMS.regenerationRate)
+const simCost = GEMINI_LITE_COST_PER_IMAGE_USD * simPerReport
+
+for (const quality of ['low', 'medium', 'high']) {
+  const vizCost = perImage[quality] * vizPerReport
+  const total = vizCost + simCost
+  console.log(
+    `${pad(quality, 12)}${padL(usd(vizCost), 13)}${padL(usd(simCost), 13)}${padL(usd(total), 12)}${padL(`${(total / geminiPerReport).toFixed(2)}x`, 9)}${padL(usd2(total * 1000), 13)}`,
+  )
+}
+console.log('')
+console.log(`参考: 全枚数を 2.5 medium にした場合 = ${usd2(perReport.medium * 1000)}/月 @1,000件`)
+console.log('→ viz だけ high にしても、全枚数 medium とほぼ同額に収まる。')
+
 // --- 付随コスト -------------------------------------------------------------
 
-section('5) 付随する論点')
+section('6) 付随する論点')
 const batchPromptCount = 24
 console.log(`一括生成(24プロンプト)1回の追加コスト:`)
 console.log(`  現行Gemini : ${usd2(GEMINI_LITE_COST_PER_IMAGE_USD * batchPromptCount)}`)
