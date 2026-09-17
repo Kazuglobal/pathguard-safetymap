@@ -44,11 +44,20 @@ export const previewPublicNames = [
   'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN', 'NEXT_PUBLIC_MEDIA_BASE_URL', 'NEXT_PUBLIC_SITE_URL',
 ]
 
+// Values must be provisioned specifically for the cloudflare-preview GitHub
+// Environment. Production server credentials remain excluded.
+export const previewSecretNames = [
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'CRON_SECRET',
+]
+
 export function previewSecrets(env) {
-  for (const name of previewPublicNames) {
+  const allowedNames = [...previewPublicNames, ...previewSecretNames]
+  for (const name of allowedNames) {
     if (!env[name]?.trim()) throw new Error(`Preview requires ${name}`)
   }
-  return Object.fromEntries(previewPublicNames.map((name) => [name, env[name]]))
+  return Object.fromEntries(allowedNames.map((name) => [name, env[name]]))
 }
 
 export const forbiddenBuildFiles = ['.env', '.env.local', '.env.production', '.env.production.local', 'env.defaults.json']
