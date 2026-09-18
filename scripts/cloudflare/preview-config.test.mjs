@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createPreviewConfig, previewName, previewPublicNames, previewSecrets, previewBuildEnvironment, forbiddenBuildFiles } from './preview-config.mjs'
+import { readFileSync } from 'node:fs'
+import { createPreviewConfig, previewName, previewPublicNames, previewSecretNames, previewSecrets, previewBuildEnvironment, forbiddenBuildFiles } from './preview-config.mjs'
+import { isSensitiveBuildVariable } from './secret-policy.mjs'
 
 const base = {
   name: 'pathguardian', main: 'custom-worker.ts',
@@ -43,15 +45,16 @@ test('production D1 and R2 bindings are rejected', () => {
   assert.throws(() => createPreviewConfig(base, { ...resources, d1_databases: [{ ...resources.d1_databases[0], database_id: 'production-id' }] }, 'pr-186', process.cwd()))
   assert.throws(() => createPreviewConfig(base, { ...resources, r2_buckets: [{ bucket_name: 'pg-media-public' }] }, 'pr-186', process.cwd()))
 })
-test('only explicit public values are propagated, never production private keys', () => {
-  const env = Object.fromEntries(previewPublicNames.map((name) => [name, 'value']))
-  const secrets = previewSecrets({ ...env, SUPABASE_SERVICE_ROLE_KEY: 'private', CRON_SECRET: 'private', D1_REST_API_TOKEN: 'private' })
+test('only explicit public values and preview-only server secrets are propagated', () => {
+  const allowedNames = [...previewPublicNames, ...previewSecretNames]
+  const env = Object.fromEntries(allowedNames.map((name) => [name, `preview-${name}`]))
+  const secrets = previewSecrets({ ...env, SUPABASE_SERVICE_ROLE_KEY: 'production-private', D1_REST_API_TOKEN: 'production-private' })
   assert.deepEqual(secrets, env)
   assert.throws(() => previewSecrets({}))
 })
 
 test('preview build rejects local production files and removes inherited credentials', () => {
-  const env = Object.fromEntries(previewPublicNames.map((name) => [name, 'value']))
+  const env = Object.fromEntries([...previewPublicNames, ...previewSecretNames].map((name) => [name, 'value']))
   for (const file of forbiddenBuildFiles) assert.throws(() => previewBuildEnvironment(env, [file]))
   const buildEnv = previewBuildEnvironment({ ...env, PATH: '/bin', CLOUDFLARE_API_TOKEN: 'private', OPENAI_API_KEY: 'private', NODE_OPTIONS: '--import=unexpected' }, [])
   assert.equal(buildEnv.PATH, '/bin')
@@ -59,4 +62,21 @@ test('preview build rejects local production files and removes inherited credent
   assert.equal(buildEnv.CLOUDFLARE_API_TOKEN, undefined)
   assert.equal(buildEnv.OPENAI_API_KEY, undefined)
   assert.equal(buildEnv.NODE_OPTIONS, undefined)
+  for (const name of previewSecretNames) assert.equal(buildEnv[name], 'value')
+})
+
+test('Upstash credentials are treated as sensitive build values', () => {
+  assert.equal(isSensitiveBuildVariable('UPSTASH_REDIS_REST_URL'), true)
+  assert.equal(isSensitiveBuildVariable('UPSTASH_REDIS_REST_TOKEN'), true)
+  assert.equal(isSensitiveBuildVariable('CRON_SECRET'), true)
+  assert.equal(isSensitiveBuildVariable('NEXT_PUBLIC_SUPABASE_ANON_KEY'), false)
+})
+
+test('preview workflow reads distinct preview-only secret names', () => {
+  const workflow = readFileSync('.github/workflows/cloudflare-preview.yml', 'utf8')
+  assert.match(workflow, /secrets\.PREVIEW_UPSTASH_REDIS_REST_URL/)
+  assert.match(workflow, /secrets\.PREVIEW_UPSTASH_REDIS_REST_TOKEN/)
+  assert.match(workflow, /secrets\.PREVIEW_CRON_SECRET/)
+  assert.doesNotMatch(workflow, /secrets\.UPSTASH_REDIS_REST_(?:URL|TOKEN)/)
+  assert.doesNotMatch(workflow, /secrets\.CRON_SECRET/)
 })
