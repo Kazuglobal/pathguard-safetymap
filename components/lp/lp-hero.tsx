@@ -31,7 +31,7 @@ export function LpHero() {
       <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col justify-center px-5 pb-24 pt-28 md:flex-row md:items-center md:justify-between md:gap-12 md:px-8">
         <div className="max-w-2xl">
           <motion.p
-            initial={{ opacity: 1, y: 24 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15, ease }}
             className="font-lp-display mb-6 inline-flex -rotate-2 items-center gap-2 rounded-full bg-[#E8A33D] px-5 py-2 text-sm font-black tracking-wider text-[#2B2723] shadow-[4px_4px_0_rgba(0,0,0,0.35)]"
@@ -44,7 +44,7 @@ export function LpHero() {
             {LP_HERO.headline.map((line, i) => (
               <motion.span
                 key={line}
-                initial={{ opacity: 1, y: 32 }}
+                initial={{ opacity: 0, y: 32 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.9, delay: 0.3 + i * 0.15, ease }}
                 className="block whitespace-nowrap"
@@ -55,7 +55,7 @@ export function LpHero() {
           </h1>
 
           <motion.p
-            initial={{ opacity: 1, y: 24 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.7, ease }}
             className="mt-6 max-w-md text-base leading-relaxed text-white/75 md:text-lg"
@@ -64,7 +64,7 @@ export function LpHero() {
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 1, y: 24 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.85, ease }}
             className="mt-9 flex flex-wrap items-center gap-4"
@@ -84,7 +84,7 @@ export function LpHero() {
           </motion.div>
 
           <motion.p
-            initial={{ opacity: 1 }}
+            initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 1.1 }}
             className="mt-5 text-xs text-white/70"
