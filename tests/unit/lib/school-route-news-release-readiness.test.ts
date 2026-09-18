@@ -13,12 +13,26 @@ describe("school route news release readiness regressions", () => {
     const latestNews = getLatestNews(5)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+    expect(allNewsItems[0]?.slug).toBe("hiroshima-city-photographing-and-approach-20260915")
+    expect(allNewsItems[1]?.slug).toBe("saitama-city-child-approach-cluster-20260915")
+=======
+    expect(allNewsItems[0]?.slug).toBe("national-student-bicycle-commute-accidents-20260912")
+    expect(allNewsItems[1]?.slug).toBe("kumamoto-statewide-child-approach-cluster-20260910")
+>>>>>>> origin/main
     expect(allNewsItems[0]?.slug).toBe("national-student-bicycle-commute-accidents-20260912")
     expect(allNewsItems[1]?.slug).toBe("kumamoto-statewide-child-approach-cluster-20260910")
     expect(allNewsItems[2]?.slug).toBe("kawanishi-tadain-schoolgate-hitandrun-20260827")
     expect(allNewsItems[3]?.slug).toBe("sapporo-nishi-hassamu-crosswalk-20260827")
     expect(allNewsItems[4]?.slug).toBe("sendai-izumi-koyodai-stalking-20260903")
     expect(latestNews.map((item) => item.slug)).toEqual([
+<<<<<<< HEAD
+      "hiroshima-city-photographing-and-approach-20260915",
+      "saitama-city-child-approach-cluster-20260915",
+=======
+      "national-student-bicycle-commute-accidents-20260912",
+      "kumamoto-statewide-child-approach-cluster-20260910",
+>>>>>>> origin/main
       "national-student-bicycle-commute-accidents-20260912",
       "kumamoto-statewide-child-approach-cluster-20260910",
       "kawanishi-tadain-schoolgate-hitandrun-20260827",
@@ -28,6 +42,11 @@ describe("school route news release readiness regressions", () => {
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
+<<<<<<< HEAD
+    const now = new Date("2026-09-16T00:00:00+09:00")
+=======
+    const now = new Date("2026-09-13T00:00:00+09:00")
+>>>>>>> origin/main
     const now = new Date("2026-09-13T00:00:00+09:00")
 =======
     const latestSlugs = latestNews.map((item) => item.slug)
