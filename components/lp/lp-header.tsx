@@ -40,7 +40,7 @@ export function LpHeader() {
         <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className="hidden rounded-full bg-[#2B2723] px-5 py-2.5 text-sm font-bold text-white transition-transform hover:scale-[1.03] active:scale-[0.98] sm:block"
+            className="rounded-full bg-[#2B2723] px-3 py-2.5 text-xs font-bold text-white transition-transform hover:scale-[1.03] active:scale-[0.98] sm:px-5 sm:text-sm"
           >
             ログイン
           </Link>
