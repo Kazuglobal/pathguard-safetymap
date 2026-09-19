@@ -624,7 +624,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "8月27日午前11時ごろ、川西市多田院の小学校敷地内・正門付近で下校中の7歳男児が車にはねられ頭の骨と右鎖骨を折る重傷。児童指導員の女（53）がひき逃げなどの疑いで逮捕された",
       "校門を出た直後の数十メートルも車が通る場所として、今日いっしょに歩いて確認する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/kawanishi-tadain-schoolgate-hitandrun-20260827.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kawanishi-tadain-schoolgate-hitandrun-20260827.jpg",
     isBreaking: false,
     verifiedAt: "2026-09-04T06:30:00+09:00",
     actionAdvice: "校門を出た直後の数十メートルも車が通る場所として、今日いっしょに歩いて確認する"
@@ -687,7 +687,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "8月27日午後1時40分ごろ、札幌市西区発寒4条2丁目の信号機のある横断歩道で1人で渡っていた10歳未満の女児が左から来た軽乗用車にはねられ鎖骨を骨折（8月27日時点で命に別条なし）",
       "青信号でも渡り始める前に、左から来る車が止まったか目で見る練習を今夜やってみる"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/sapporo-nishi-hassamu-crosswalk-20260827.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/sapporo-nishi-hassamu-crosswalk-20260827.jpg",
     isBreaking: false,
     verifiedAt: "2026-09-04T06:30:00+09:00",
     actionAdvice: "青信号でも渡り始める前に、左から来る車が止まったか目で見る練習を今夜やってみる"
@@ -757,7 +757,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "9月3日午後2時10分ごろ、仙台市泉区向陽台5丁目の路上で2人で下校途中の女子中学生らが男にしつこくつきまとわれ、追い越されて顔をのぞき込まれた（男は30〜40歳くらい・黒色短髪・黒色半袖Tシャツ・茶色長ズボン）",
       "後ろから人が近づいたら立ち止まって振り返り、コンビニや店に入る手順を今夜決める"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/sendai-izumi-koyodai-stalking-20260903.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/sendai-izumi-koyodai-stalking-20260903.jpg",
     isBreaking: true,
     verifiedAt: "2026-09-04T06:30:00+09:00",
     actionAdvice: "後ろから人が近づいたら立ち止まって振り返り、コンビニや店に入る手順を今夜決める"
@@ -828,7 +828,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "9月1日午後3時30分ごろ、松山市平田町の商業施設で小学生の女児2人が男に声をかけられた後に服をめくり上げられた（男は65〜70歳くらい・黒色長髪・黒色長袖パーカー・マスク着用・自転車使用）",
       "お店の中でも「体や服にさわられたらすぐ離れて店員に言う」を今日いっしょに練習する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/matsuyama-hirata-store-touch-20260901.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/matsuyama-hirata-store-touch-20260901.jpg",
     isBreaking: true,
     verifiedAt: "2026-09-04T06:30:00+09:00",
     actionAdvice: "お店の中でも「体や服にさわられたらすぐ離れて店員に言う」を今日いっしょに練習する"
@@ -892,7 +892,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "令和8年秋の全国交通安全運動は9月21日（月）〜30日（水）の10日間。全国重点は歩行者の安全確保と反射材着用促進、夕暮れ時の早めのライト点灯とながらスマホ根絶、自転車のルール遵守とヘルメット着用",
       "夕方の下校時間に合わせて、ランドセルや靴に反射材を1つ足しておく"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/national-autumn-traffic-safety-campaign-20260921.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-autumn-traffic-safety-campaign-20260921.jpg",
     isBreaking: false,
     verifiedAt: "2026-09-04T06:30:00+09:00",
     actionAdvice: "夕方の下校時間に合わせて、ランドセルや靴に反射材を1つ足しておく"
@@ -964,7 +964,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "7月24日午後3時25分ごろ川崎市川崎区観音の丁字路交差点で、赤信号に変わった直後に進入した市営バスとキックスケーターで横断中の小2男児が衝突（命に別条なし）",
       "キックスケーターや自転車は横断歩道の手前でいったん降り、車が止まったのを目で見てから渡ると今日決める"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/kawasaki-kannon-citybus-redlight-20260724.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kawasaki-kannon-citybus-redlight-20260724.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-26T06:40:00+09:00",
     actionAdvice: "キックスケーターや自転車は横断歩道の手前で降り、車が止まったのを見てから渡る"
@@ -1038,7 +1038,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "広島市の東区・安芸区・安佐北区で7月15日〜20日に帰宅中の子どもへの事案が3件発生し、7月20日には女子小学生が背後から腕をつかまれた",
       "腕をつかまれたら体を低くして振り払い、人のいる店や家に駆け込むところまで今日練習する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-city-child-contact-cluster-20260720.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-city-child-contact-cluster-20260720.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-26T06:45:00+09:00",
     actionAdvice: "腕をつかまれたら体を低くして振り払い、人のいる店や家に駆け込む練習を今日する"
@@ -1111,7 +1111,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "7月9日午後3時55分ごろ北九州市小倉南区東貫2丁目で、女子児童が20〜30歳位の男に学年・年齢・学校を尋ねられたうえ体を触られる事案が発生",
       "学年や学校を知らない人に聞かれても答えなくていいと伝え、その場を離れて大人に知らせる練習を今日する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/kitakyushu-kokuraminami-higashitsuranuki-touch-20260709.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kitakyushu-kokuraminami-higashitsuranuki-touch-20260709.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-26T06:50:00+09:00",
     actionAdvice: "学年や学校を知らない人に聞かれても答えず、その場を離れて大人に知らせると今日約束する"
@@ -1181,7 +1181,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "7月15日の女児死亡事故を受け、小牧市議会が7月22日に市長へ緊急要望書を提出。現場への信号機設置・市内通学路の緊急点検・児童の心のケアの3点を求めた",
       "通学路で「ここは危ない」と感じる場所を1か所書き出し、学校やPTAに伝える準備を今日始める"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/komaki-council-signal-request-20260722.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/komaki-council-signal-request-20260722.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-26T06:55:00+09:00",
     actionAdvice: "通学路で「ここは危ない」と感じる場所を1か所書き出し学校やPTAに伝える準備をする"
@@ -1250,7 +1250,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "大網白里市みやこ野で7月11日午後5時30分ごろ、下校中の男子児童が40〜50代の男に声をかけられ太ももを触られる事案が発生",
       "知らない人に体を触られそうになったら、大声を出して振りほどきその場から離れることを今日練習する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/oamishirasato-miyakono-thigh-touch-suspicious-20260711.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/oamishirasato-miyakono-thigh-touch-suspicious-20260711.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-18T06:30:00+09:00",
     actionAdvice: "知らない人に体を触られそうになったら大声を出して振りほどきその場を離れる練習を今日する"
@@ -1312,7 +1312,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "奈良県内で7月7日〜13日、登下校中の小学生への声かけ・つきまとい事案が3件相次ぎ、うち1件は手首をつかまれる身体接触を伴った（県警は同時期に中高生対象の事案も6件公表）",
       "知らない人に手や腕をつかまれたら、大声で助けを呼びながら振りほどいて逃げることを今日練習する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/nara-statewide-child-approach-cluster-20260718.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/nara-statewide-child-approach-cluster-20260718.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-18T06:30:00+09:00",
     actionAdvice: "手や腕をつかまれたら大声で助けを呼びながら振りほどいて逃げる練習を今日する"
@@ -1365,7 +1365,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "神奈川県大和市のいちょう団地周辺で、通学路の交差点への車止め(ボラード)18カ所設置と、歩行者用信号の時間延長が実施された(2026年6月5日付県政報告で判明)",
       "深見小学校通学路の歩道橋補修は2026年度予算に計上され、今後優先的に実施される予定"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/yamato-ichoudanchi-bollard-signal-safety-20260605.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/yamato-ichoudanchi-bollard-signal-safety-20260605.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-18T07:00:00+09:00"
   },
@@ -1412,7 +1412,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "文京区の根津小学校PTAが2026年6月25日、防犯専門家を招いて「第1回スクールガード連絡会」を開催し、「笑顔と挨拶を大切にする見守り」の考え方を共有した",
       "同校では当番制でなく、地域の大人が自主的に毎日見守り活動を行っている"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/bunkyo-nezu-schoolguard-meeting-20260625.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/bunkyo-nezu-schoolguard-meeting-20260625.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-18T07:00:00+09:00"
   },
@@ -1482,7 +1482,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "小牧市村中の信号のない交差点で7月15日午前8時ごろ、集団登校中の小学1年女児(6)が横断歩道で乗用車にはねられ死亡。40歳男を過失運転致死に切り替えて捜査",
       "信号のない横断歩道では、列の先頭・最後尾を問わず一人ひとりが車の停止を目で確認してから渡ることを今日子どもと確認する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/komaki-muranaka-crosswalk-fatal-20260715.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/komaki-muranaka-crosswalk-fatal-20260715.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-17T06:30:00+09:00",
     actionAdvice: "信号のない横断歩道では列の位置に関わらず車の停止を目で確認してから渡ると今日確認する"
@@ -1550,7 +1550,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "西東京市泉町6丁目で7月16日午前9時ごろ、登校中の小3男児(8)が青信号の横断歩道で右折してきた貨物車にはねられ死亡。59歳の運送業の男を過失運転致死容疑で逮捕",
       "信号が青でも、横断歩道を渡り始める前に左右から曲がってくる車がいないか確認する習慣を今日練習する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/nishitokyo-izumicho-crosswalk-fatal-20260716.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/nishitokyo-izumicho-crosswalk-fatal-20260716.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-17T06:30:00+09:00",
     actionAdvice: "信号が青でも渡る前に左右から曲がってくる車がないか確認する習慣を今日練習する"
@@ -1610,7 +1610,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "那覇市松川のスクールゾーンで7月16日午前8時前、逃走したバイクが信号待ちの女児と男子高校生に衝突し軽傷。58歳男を道交法違反容疑で逮捕、無免許運転容疑も視野",
       "横断歩道の信号待ちでは車道からできるだけ離れた位置に立つことを今日子どもと確認する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/naha-matsukawa-schoolzone-motorcycle-20260716.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/naha-matsukawa-schoolzone-motorcycle-20260716.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-17T06:30:00+09:00",
     actionAdvice: "横断歩道の信号待ちでは車道からできるだけ離れた位置に立つことを今日確認する"
@@ -1680,7 +1680,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "浜松市中央区で7月3日午前8時ごろ、通学中の9歳女児が青信号の横断歩道で車にはねられ一時重体、21歳男が過失運転致傷容疑で現行犯逮捕。事故直後の報道では意識を回復し命に別状はないと伝えられた",
       "青信号でも渡る前に必ず立ち止まり、車が完全に止まったのを目で確認してから渡ることを今日子どもと確認する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/hamamatsu-chuo-crosswalk-accident-20260703.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/hamamatsu-chuo-crosswalk-accident-20260703.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-18T07:00:00+09:00",
     actionAdvice: "青信号でも渡る前に必ず立ち止まり、車が完全に止まったのを目で確認してから渡る"
@@ -1740,7 +1740,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "仙台市宮城野区鶴ケ谷2丁目で7月10日午前8時20分ごろ、登校中の女子小学生が80代の男から「おうちどこ」と声をかけられる事案が発生",
       "知らない人に家の場所を聞かれても答えず、大人がいる場所へすぐ逃げることを今晩家族で確認する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/sendai-miyagino-tsurugaya-suspicious-20260710.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/sendai-miyagino-tsurugaya-suspicious-20260710.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-14T07:00:00+09:00",
     actionAdvice: "知らない人に家の場所を聞かれても答えず、大人がいる場所へすぐ逃げる"
@@ -1800,7 +1800,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "鹿嶋市港ケ丘で7月10日午後4時ごろ、下校中の児童らが60代男から「ガリガリ君あるけど食べる」と声をかけられる事案が発生",
       "知らない人からお菓子を差し出されても受け取らず、その場を離れる練習を今日家庭でする"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/kashima-minatogaoka-candy-suspicious-20260710.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kashima-minatogaoka-candy-suspicious-20260710.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-14T07:00:00+09:00",
     actionAdvice: "知らない人からお菓子を差し出されても受け取らず、その場を離れる練習を今日する"
@@ -1859,7 +1859,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "6月29日〜7月5日に本アプリが新規収集した地域アラートは0件（前週も0件・収集範囲には限りあり）",
       "夏休み前に「行っていい場所・帰る時間・駆け込み先」の3つの約束を子どもと確認する"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/national-weekly-trend-20260706.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-weekly-trend-20260706.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-06T07:00:00+09:00",
     actionAdvice: "夏休み前に「行っていい場所・帰る時間・駆け込み先」の3つの約束を子どもと決めておく",
@@ -1914,7 +1914,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "仙台市青葉区川平4丁目周辺で、下校中の女子小学生を狙った声かけ事案が6/11・6/15・7/1と3週間で3件発生",
       "下校時間帯（13時台・15時台）は同じ道を避け、複数人で歩く約束を今日子どもとする"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/sendai-aoba-kawadaira-repeated-suspicious-20260706.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/sendai-aoba-kawadaira-repeated-suspicious-20260706.jpg",
     isBreaking: true,
     verifiedAt: "2026-07-06T09:00:00+09:00",
     actionAdvice: "下校時間帯（13時台・15時台）は同じ道を避け、複数人で歩く約束を今日子どもとする"
@@ -1955,7 +1955,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "岡山市古都学区の児童通学路沿い（用水路脇）に、2026年6月ごろガードレールが設置された",
       "地域住民から安全対策を求める声を受けての対応で、危険箇所の共有が今後も有効"
     ],
-    thumbnailUrl: "/images/school-route-news/thumbnails/okayama-koto-guardrail-installed-20260627.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/okayama-koto-guardrail-installed-20260627.jpg",
     isBreaking: false,
     verifiedAt: "2026-07-06T09:00:00+09:00"
   }

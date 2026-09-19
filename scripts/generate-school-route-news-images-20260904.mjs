@@ -34,7 +34,7 @@ Technical specifications:
 
 const IMAGES = [
   {
-    filename: "kawanishi-tadain-schoolgate-hitandrun-20260827.png",
+    filename: "kawanishi-tadain-schoolgate-hitandrun-20260827.jpg",
     description: "兵庫県川西市 校門付近のひき逃げ（交通事故）",
     prompt: `Create a Japanese safety awareness illustration about the danger zone right outside an elementary school's main gate.
 
@@ -50,7 +50,7 @@ Color palette: Muted tones with red warning accents
 ${QUALITY_SUFFIX}`
   },
   {
-    filename: "sapporo-nishi-hassamu-crosswalk-20260827.png",
+    filename: "sapporo-nishi-hassamu-crosswalk-20260827.jpg",
     description: "北海道札幌市 信号のある横断歩道の事故",
     prompt: `Create a Japanese safety awareness illustration about a child crossing alone at a signalized crosswalk.
 
@@ -66,7 +66,7 @@ Color palette: Cool blues and grays with a red warning accent
 ${QUALITY_SUFFIX}`
   },
   {
-    filename: "sendai-izumi-koyodai-stalking-20260903.png",
+    filename: "sendai-izumi-koyodai-stalking-20260903.jpg",
     description: "宮城県仙台市泉区 下校中のつきまとい",
     prompt: `Create a Japanese crime-prevention awareness illustration about being followed on the way home from school.
 
@@ -82,7 +82,7 @@ Color palette: Warm afternoon tones with orange alert accents
 ${QUALITY_SUFFIX}`
   },
   {
-    filename: "matsuyama-hirata-store-touch-20260901.png",
+    filename: "matsuyama-hirata-store-touch-20260901.jpg",
     description: "愛媛県松山市 商業施設での声かけ・接触事案",
     prompt: `Create a Japanese crime-prevention awareness illustration about staying safe inside a shopping centre.
 
@@ -98,7 +98,7 @@ Color palette: Bright interior neutrals with orange alert accents
 ${QUALITY_SUFFIX}`
   },
   {
-    filename: "national-autumn-traffic-safety-campaign-20260921.png",
+    filename: "national-autumn-traffic-safety-campaign-20260921.jpg",
     description: "全国 秋の全国交通安全運動（施策）",
     prompt: `Create a Japanese public-information style illustration about the autumn national traffic safety campaign.
 
@@ -142,6 +142,9 @@ async function generateImage(config) {
 
   for (const part of parts) {
     if (part.inlineData) {
+      if (part.inlineData.mimeType !== "image/jpeg") {
+        throw new Error(`Expected image/jpeg but received ${part.inlineData.mimeType}`)
+      }
       fs.writeFileSync(outputPath, Buffer.from(part.inlineData.data, "base64"))
       console.log(`  Saved: ${outputPath}`)
       return

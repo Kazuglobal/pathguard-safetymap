@@ -35,7 +35,7 @@
     "title": "「魔の7歳」5月の事故ピーク——GW明けに親子で点検したい通学路の5つの危険ポイント | SAFE MAGAZINE",
     "description": "警察庁データで小1の歩行中死傷者は小6の約2.5〜2.9倍。新1年生の事故は4月より5月中旬〜下旬がピーク。GW明けに親子で点検したい通学路の5つの危険ポイントを公的統計に基づき解説します。",
     "keywords": ["通学路", "魔の7歳", "小学1年生", "5月", "新1年生", "歩行中事故", "GW明け", "通学路点検", "横断歩道", "飛び出し", "下校時間", "子ども110番の家"],
-    "og_image": "/images/safe-magazine/thumbnails/first-grader-may-peak.png",
+    "og_image": "/images/safe-magazine/thumbnails/first-grader-may-peak.jpg",
     "og_type": "article",
     "twitter_card": "summary_large_image"
   },
@@ -53,7 +53,7 @@
       "@type": "Organization",
       "name": "PathGuardian"
     },
-    "image": "/images/safe-magazine/thumbnails/first-grader-may-peak.png",
+    "image": "/images/safe-magazine/thumbnails/first-grader-may-peak.jpg",
     "articleSection": "安全対策"
   }
 }

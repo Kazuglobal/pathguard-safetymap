@@ -18,9 +18,9 @@
     }
   ],
   "outputPaths": {
-    "thumbnail": "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.png",
+    "thumbnail": "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.jpg",
     "contentImages": {
-      "violation-breakdown": "/images/safe-magazine/articles/bicycle-blue-ticket-one-month-report/violation-breakdown.png"
+      "violation-breakdown": "/images/safe-magazine/articles/bicycle-blue-ticket-one-month-report/violation-breakdown.jpg"
     }
   },
   "accessibility": {

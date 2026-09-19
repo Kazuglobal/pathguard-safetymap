@@ -3,9 +3,23 @@ import path from "path"
 import ts from "typescript"
 import { describe, expect, it } from "vitest"
 
-import { getArticleBySlug } from "@/lib/safe-magazine"
+import { getAllArticles, getArticleBySlug } from "@/lib/safe-magazine"
 
 const ROOT = process.cwd()
+
+function listImageFiles(directory: string): string[] {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name)
+    return entry.isDirectory() ? listImageFiles(entryPath) : [entryPath]
+  })
+}
+
+function imageFormatFromMagic(filePath: string): "jpg" | "png" | null {
+  const bytes = fs.readFileSync(filePath)
+  if (bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return "jpg"
+  if (bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png"
+  return null
+}
 
 describe("SAFE MAGAZINE release readiness regressions", () => {
   it("keeps image generator scripts free of committed Gemini API keys", () => {
@@ -37,6 +51,35 @@ describe("SAFE MAGAZINE release readiness regressions", () => {
     )
 
     expect(errors).toHaveLength(0)
+  })
+
+  it("gives every magazine article its own generated thumbnail", () => {
+    const generatorPath = path.join(ROOT, "scripts/generate-safe-magazine-images.ts")
+    const generatorSource = fs.readFileSync(generatorPath, "utf8")
+
+    for (const article of getAllArticles()) {
+      const extension = path.extname(article.thumbnailUrl)
+      expect([".jpg", ".png"]).toContain(extension)
+      expect(article.thumbnailUrl).toBe(
+        `/images/safe-magazine/thumbnails/${article.slug}${extension}`,
+      )
+      expect(fs.existsSync(path.join(ROOT, "public", article.thumbnailUrl))).toBe(true)
+      expect(generatorSource).toContain(`articleSlug: "${article.slug}"`)
+    }
+  })
+
+  it("keeps editorial image extensions aligned with their binary format", () => {
+    const editorialRoots = ["safe-magazine", "school-route-news"]
+
+    for (const root of editorialRoots) {
+      const imageDirectory = path.join(ROOT, "public", "images", root)
+      for (const filePath of listImageFiles(imageDirectory)) {
+        const extension = path.extname(filePath).slice(1)
+        if (extension !== "jpg" && extension !== "png") continue
+
+        expect(imageFormatFromMagic(filePath)).toBe(extension)
+      }
+    }
   })
 
   it("uses verified Kakogawa camera facts instead of claiming every camera is AI-enabled", () => {

@@ -20,7 +20,7 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryColor: "#8B5CF6",
     categoryIcon: "FileText",
     publishedDate: "2026-09-11",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-campaign-bicycle-rules.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-campaign-bicycle-rules.jpg",
   },
   {
     id: "2026-09-04-autumn-twilight-reflective-gear",
@@ -31,7 +31,7 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryColor: "#3B82F6",
     categoryIcon: "Shield",
     publishedDate: "2026-09-04",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-twilight-reflective-gear.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-twilight-reflective-gear.jpg",
   },
   {
     id: "2026-09-04-30kmh-speed-limit-enforced",
@@ -42,7 +42,7 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryColor: "#8B5CF6",
     categoryIcon: "FileText",
     publishedDate: "2026-09-04",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit-enforced.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit-enforced.jpg",
   },
   {
     id: "2026-07-14-gifu-mizuho-crosswalk-accident",
@@ -53,7 +53,7 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryColor: "#EF4444",
     categoryIcon: "AlertTriangle",
     publishedDate: "2026-07-14",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/gifu-mizuho-crosswalk-accident.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/gifu-mizuho-crosswalk-accident.jpg",
   },
   {
     id: "2026-07-14-otta-iot-mimamori-kawachinagano",
@@ -64,7 +64,7 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryColor: "#3B82F6",
     categoryIcon: "Shield",
     publishedDate: "2026-07-14",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/otta-iot-mimamori-kawachinagano.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/otta-iot-mimamori-kawachinagano.jpg",
   },
   {
     id: "2026-07-05-summer-break-safety-2026",
@@ -75,7 +75,7 @@ const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
     categoryColor: "#3B82F6",
     categoryIcon: "Shield",
     publishedDate: "2026-07-05",
-    thumbnailUrl: "/images/safe-magazine/thumbnails/summer-break-safety-2026.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/summer-break-safety-2026.jpg",
   },
 ]
 

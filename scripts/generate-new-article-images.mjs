@@ -157,6 +157,10 @@ async function generateImage(prompt, outputPath) {
 
     const imagePart = parts.find(p => p.inlineData)
     if (!imagePart) { console.error("No image data"); return false }
+    if (imagePart.inlineData.mimeType !== "image/jpeg") {
+      console.error(`Expected image/jpeg but received ${imagePart.inlineData.mimeType}`)
+      return false
+    }
 
     const dir = path.dirname(outputPath)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -176,7 +180,7 @@ async function main() {
 
   for (const article of NEW_ARTICLES) {
     console.log(`\n--- ${article.title} ---`)
-    const outputPath = path.join(thumbnailDir, `${article.slug}.png`)
+    const outputPath = path.join(thumbnailDir, `${article.slug}.jpg`)
     await generateImage(article.prompt, outputPath)
     await new Promise(r => setTimeout(r, 3000))
   }
