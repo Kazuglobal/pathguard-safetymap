@@ -81,10 +81,10 @@ export const ARTICLES: SafeMagazineArticle[] = [
     categoryIcon: "FileText",
     publishedDate: "2026-09-11",
     tags: ["秋の全国交通安全運動", "自転車", "特定小型原動機付自転車", "ヘルメット", "青切符", "対象:高学年", "対象:中高生"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-campaign-bicycle-rules.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-campaign-bicycle-rules.jpg",
     contentImages: [
-      { id: "helmet-three-checks", url: "/images/safe-magazine/articles/autumn-campaign-bicycle-rules/helmet-three-checks.png", description: "ヘルメットの3点チェック（サイズ／あごひも／傷・使用年数）" },
-      { id: "age-rule-tokutei-kogata", url: "/images/safe-magazine/articles/autumn-campaign-bicycle-rules/age-rule-tokutei-kogata.png", description: "特定小型原動機付自転車の年齢ルール（16歳未満は運転禁止・提供も禁止）" }
+      { id: "helmet-three-checks", url: "/images/safe-magazine/articles/autumn-campaign-bicycle-rules/helmet-three-checks.jpg", description: "ヘルメットの3点チェック（サイズ／あごひも／傷・使用年数）" },
+      { id: "age-rule-tokutei-kogata", url: "/images/safe-magazine/articles/autumn-campaign-bicycle-rules/age-rule-tokutei-kogata.jpg", description: "特定小型原動機付自転車の年齢ルール（16歳未満は運転禁止・提供も禁止）" }
     ],
     keyPoints: [
       "令和8年秋の全国交通安全運動（2026年9月21日〜30日）の全国重点3番目は「自転車・特定小型原動機付自転車の交通ルールの理解・遵守の徹底」。推進要綱は特定小型原付の対歩行者事故の割合が自転車対歩行者の約3倍と指摘している",
@@ -247,9 +247,9 @@ export const ARTICLES: SafeMagazineArticle[] = [
     categoryIcon: "FileText",
     publishedDate: "2026-09-04",
     tags: ["法定速度", "30km/h", "生活道路", "通学路", "道路交通法改正", "シリーズ:30km/h規制ウォッチ", "対象:低学年", "対象:高学年", "対象:中高生"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit-enforced.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit-enforced.jpg",
     contentImages: [
-      { id: "center-line-check", url: "/images/safe-magazine/articles/30kmh-speed-limit-enforced/center-line-check.png", description: "中央線の有無で見分ける30km/h対象道路の比較図" }
+      { id: "center-line-check", url: "/images/safe-magazine/articles/30kmh-speed-limit-enforced/center-line-check.jpg", description: "中央線の有無で見分ける30km/h対象道路の比較図" }
     ],
     keyPoints: [
       "2026年9月1日、中央線等がない生活道路の法定速度が60km/hから30km/hへ引き下げられた。対象は全国の一般道の約7割とされる",
@@ -363,10 +363,10 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "Shield",
     publishedDate: "2026-09-04",
     tags: ["薄暮時間帯", "反射材", "秋の全国交通安全運動", "下校時間", "交通安全白書", "対象:新1年生", "対象:低学年", "対象:高学年"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-twilight-reflective-gear.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/autumn-twilight-reflective-gear.jpg",
     contentImages: [
-      { id: "reflector-visibility-distance", url: "/images/safe-magazine/articles/autumn-twilight-reflective-gear/reflector-visibility-distance.png", description: "服装別の夜間視認距離比較（約26m／約38m／約57m以上）" },
-      { id: "reflector-three-spots", url: "/images/safe-magazine/articles/autumn-twilight-reflective-gear/reflector-three-spots.png", description: "反射材をつける3か所（ランドセル／靴／傘・袖口）" }
+      { id: "reflector-visibility-distance", url: "/images/safe-magazine/articles/autumn-twilight-reflective-gear/reflector-visibility-distance.jpg", description: "服装別の夜間視認距離比較（約26m／約38m／約57m以上）" },
+      { id: "reflector-three-spots", url: "/images/safe-magazine/articles/autumn-twilight-reflective-gear/reflector-three-spots.jpg", description: "反射材をつける3か所（ランドセル／靴／傘・袖口）" }
     ],
     keyPoints: [
       "令和2〜6年の5年間合計で、小学1年生の歩行中死者・重傷者数は10月が61人で最多。4月の27人の約2.2倍にあたる（内閣府『令和7年交通安全白書』）",
@@ -498,9 +498,9 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "AlertTriangle",
     publishedDate: "2026-07-14",
     tags: ["自転車事故", "信号のない横断歩道", "中学生", "岐阜県", "対象:中高生", "地域:岐阜県", "ヘルメット"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/gifu-mizuho-crosswalk-accident.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/gifu-mizuho-crosswalk-accident.jpg",
     contentImages: [
-      { id: "no-signal-crossing-steps", url: "/images/safe-magazine/articles/gifu-mizuho-crosswalk-accident/no-signal-crossing-steps.png", description: "信号のない横断歩道の渡り方3ステップ" }
+      { id: "no-signal-crossing-steps", url: "/images/safe-magazine/articles/gifu-mizuho-crosswalk-accident/no-signal-crossing-steps.jpg", description: "信号のない横断歩道の渡り方3ステップ" }
     ],
     keyPoints: [
       "2026年7月9日午前7時20分ごろ、岐阜県瑞穂市の信号機のない横断歩道で、自転車で登校中の中学1年生の女子生徒(12)が軽乗用車にはねられ、意識不明の重体となった",
@@ -572,9 +572,9 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "Shield",
     publishedDate: "2026-07-14",
     tags: ["IoT見守り", "見守りサービス", "河内長野市", "焼津市", "地域:大阪府", "地域:静岡県", "対象:低学年", "対象:高学年"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/otta-iot-mimamori-kawachinagano.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/otta-iot-mimamori-kawachinagano.jpg",
     contentImages: [
-      { id: "mimamori-tag-how-it-works", url: "/images/safe-magazine/articles/otta-iot-mimamori-kawachinagano/mimamori-tag-how-it-works.png", description: "IoT見守り端末の通過記録の仕組み" }
+      { id: "mimamori-tag-how-it-works", url: "/images/safe-magazine/articles/otta-iot-mimamori-kawachinagano/mimamori-tag-how-it-works.jpg", description: "IoT見守り端末の通過記録の仕組み" }
     ],
     keyPoints: [
       "大阪府河内長野市が2026年6月24日、株式会社ottaと見守りサービス導入協定を締結し、市立小学校全13校の児童を対象にIoT見守り端末を無償配布する",
@@ -654,9 +654,9 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "AlertTriangle",
     publishedDate: "2026-02-06",
     tags: ["通学路事故", "小学生", "交通事故", "危険箇所", "福岡県"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/chikushino-accident.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/chikushino-accident.jpg",
     contentImages: [
-      { id: "hard-vs-soft", url: "/images/safe-magazine/articles/chikushino-accident/hard-vs-soft.png", description: "ハード対策とソフト対策の比較" }
+      { id: "hard-vs-soft", url: "/images/safe-magazine/articles/chikushino-accident/hard-vs-soft.jpg", description: "ハード対策とソフト対策の比較" }
     ],
     keyPoints: [
       "危険箇所としてリストアップされ対策済みだった通学路でも事故は発生した",
@@ -722,10 +722,10 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "BarChart2",
     publishedDate: "2026-02-06",
     tags: ["統計", "小学生事故", "1年生", "交通安全", "通学路", "入学準備"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/school-route-safety-statistics.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/school-route-safety-statistics.jpg",
     contentImages: [
-      { id: "grade-comparison", url: "/images/safe-magazine/articles/school-route-safety-statistics/grade-comparison.png", description: "学年別事故リスク比較" },
-      { id: "progress-circle", url: "/images/safe-magazine/articles/school-route-safety-statistics/progress-circle.png", description: "91%完了の進捗" }
+      { id: "grade-comparison", url: "/images/safe-magazine/articles/school-route-safety-statistics/grade-comparison.jpg", description: "学年別事故リスク比較" },
+      { id: "progress-circle", url: "/images/safe-magazine/articles/school-route-safety-statistics/progress-circle.jpg", description: "91%完了の進捗" }
     ],
     keyPoints: [
       "全国の通学路危険箇所の約91%で安全対策が完了（2023年12月末時点）",
@@ -824,10 +824,10 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "Users",
     publishedDate: "2026-02-06",
     tags: ["見守り", "ボランティア", "ながら見守り", "防犯", "子ども110番", "地域安全"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/nagara-mimamori-guide.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/nagara-mimamori-guide.jpg",
     contentImages: [
-      { id: "nagara-examples", url: "/images/safe-magazine/articles/nagara-mimamori-guide/nagara-examples.png", description: "ながら見守りの例" },
-      { id: "hachimitsu-jiman", url: "/images/safe-magazine/articles/nagara-mimamori-guide/hachimitsu-jiman.png", description: "防犯合言葉「はちみつじまん」" }
+      { id: "nagara-examples", url: "/images/safe-magazine/articles/nagara-mimamori-guide/nagara-examples.jpg", description: "ながら見守りの例" },
+      { id: "hachimitsu-jiman", url: "/images/safe-magazine/articles/nagara-mimamori-guide/hachimitsu-jiman.jpg", description: "防犯合言葉「はちみつじまん」" }
     ],
     keyPoints: [
       "見守りボランティアの高齢化・担い手不足が全国で深刻化している",
@@ -932,10 +932,10 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "FileText",
     publishedDate: "2026-03-15",
     tags: ["自転車", "青切符", "交通違反", "通学", "中高生", "道路交通法改正"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/bicycle-blue-ticket.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/bicycle-blue-ticket.jpg",
     contentImages: [
-      { id: "violation-fines", url: "/images/safe-magazine/articles/bicycle-blue-ticket/violation-fines.png", description: "主な違反行為と反則金一覧" },
-      { id: "age-target", url: "/images/safe-magazine/articles/bicycle-blue-ticket/age-target.png", description: "対象年齢（16歳以上）の説明図" }
+      { id: "violation-fines", url: "/images/safe-magazine/articles/bicycle-blue-ticket/violation-fines.jpg", description: "主な違反行為と反則金一覧" },
+      { id: "age-target", url: "/images/safe-magazine/articles/bicycle-blue-ticket/age-target.jpg", description: "対象年齢（16歳以上）の説明図" }
     ],
     keyPoints: [
       "2026年4月1日から、16歳以上の自転車違反に青切符が適用開始",
@@ -1008,10 +1008,10 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "FileText",
     publishedDate: "2026-03-15",
     tags: ["法定速度", "30km/h", "生活道路", "通学路", "道路交通法改正", "ゾーン30"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/30kmh-speed-limit.jpg",
     contentImages: [
-      { id: "fatality-rate", url: "/images/safe-magazine/articles/30kmh-speed-limit/fatality-rate.png", description: "衝突速度別の歩行者致死率比較" },
-      { id: "zone30-comparison", url: "/images/safe-magazine/articles/30kmh-speed-limit/zone30-comparison.png", description: "ゾーン30と今回の法改正の違い" }
+      { id: "fatality-rate", url: "/images/safe-magazine/articles/30kmh-speed-limit/fatality-rate.jpg", description: "衝突速度別の歩行者致死率比較" },
+      { id: "zone30-comparison", url: "/images/safe-magazine/articles/30kmh-speed-limit/zone30-comparison.jpg", description: "ゾーン30と今回の法改正の違い" }
     ],
     keyPoints: [
       "2026年9月1日から、速度標識のない生活道路の法定速度が60km/h→30km/hへ",
@@ -1078,10 +1078,10 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "Shield",
     publishedDate: "2026-03-15",
     tags: ["AIカメラ", "防犯カメラ", "加古川市", "テクノロジー", "見守り", "通学路安全"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/ai-camera-kakogawa.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/ai-camera-kakogawa.jpg",
     contentImages: [
-      { id: "crime-reduction", url: "/images/safe-magazine/articles/ai-camera-kakogawa/crime-reduction.png", description: "刑法犯認知件数の推移（6年で4割減）" },
-      { id: "ai-features", url: "/images/safe-magazine/articles/ai-camera-kakogawa/ai-features.png", description: "高度化見守りカメラの主な機能" }
+      { id: "crime-reduction", url: "/images/safe-magazine/articles/ai-camera-kakogawa/crime-reduction.jpg", description: "刑法犯認知件数の推移（6年で4割減）" },
+      { id: "ai-features", url: "/images/safe-magazine/articles/ai-camera-kakogawa/ai-features.jpg", description: "高度化見守りカメラの主な機能" }
     ],
     keyPoints: [
       "加古川市は見守りカメラ約1,500ヵ所と、高度化見守りカメラ150台を整備",
@@ -1141,9 +1141,9 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "Shield",
     publishedDate: "2026-03-15",
     tags: ["不審者", "声かけ事案", "防犯", "下校時間", "統計", "はちみつじまん"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/suspicious-person-statistics.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/suspicious-person-statistics.jpg",
     contentImages: [
-      { id: "time-chart", url: "/images/safe-magazine/articles/suspicious-person-statistics/time-chart.png", description: "声かけ事案の発生時間帯グラフ" }
+      { id: "time-chart", url: "/images/safe-magazine/articles/suspicious-person-statistics/time-chart.jpg", description: "声かけ事案の発生時間帯グラフ" }
     ],
     keyPoints: [
       "千葉県警の公開グラフでは15時台が23.9%で最多",
@@ -1212,7 +1212,7 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "FileText",
     publishedDate: "2026-05-01",
     tags: ["交通安全運動", "令和8年", "通学路", "歩行者保護", "新学期", "可搬式オービス"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/spring-traffic-safety-2026.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/spring-traffic-safety-2026.jpg",
     contentImages: [],
     keyPoints: [
       "第一重点は『通学路・生活道路における歩行者の安全確保』",
@@ -1300,7 +1300,7 @@ JAF会員へのアンケートでは、「どこからが対象道路なのか�
     categoryIcon: "FileText",
     publishedDate: "2026-05-01",
     tags: ["ゾーン30プラス", "国土交通省", "面的対策", "ETC2.0", "ハンプ", "通学路"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/zone30plus-model-areas.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/zone30plus-model-areas.jpg",
     contentImages: [],
     keyPoints: [
       "国土交通省が小学校周辺のモデル地域65箇所を選定し、面的な安全対策を推進",
@@ -1402,10 +1402,10 @@ ETC2.0は、自動車のETCに準拠した走行データを匿名で収集す�
     categoryIcon: "Shield",
     publishedDate: "2026-05-03",
     tags: ["魔の7歳", "小学1年生", "5月ピーク", "GW明け", "通学路点検", "横断中", "飛び出し", "下校時間"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/first-grader-may-peak.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/first-grader-may-peak.jpg",
     contentImages: [
-      { id: "may-peak-chart", url: "/images/safe-magazine/articles/first-grader-may-peak/may-peak-chart.png", description: "新1年生の月別事故ピーク（4月→5月）" },
-      { id: "five-checkpoints", url: "/images/safe-magazine/articles/first-grader-may-peak/five-checkpoints-v2.png", description: "親子で点検したい5つの危険ポイント" }
+      { id: "may-peak-chart", url: "/images/safe-magazine/articles/first-grader-may-peak/may-peak-chart.jpg", description: "新1年生の月別事故ピーク（4月→5月）" },
+      { id: "five-checkpoints", url: "/images/safe-magazine/articles/first-grader-may-peak/five-checkpoints-v2.jpg", description: "親子で点検したい5つの危険ポイント" }
     ],
     keyPoints: [
       "歩行中の死者・重傷者は小1が小6の約2.5〜2.9倍。年齢別では7歳が突出（魔の7歳）",
@@ -1507,9 +1507,9 @@ ETC2.0は、自動車のETCに準拠した走行データを匿名で収集す�
     categoryIcon: "FileText",
     publishedDate: "2026-07-05",
     tags: ["シリーズ:自転車青切符ウォッチ", "自転車", "青切符", "交通違反", "通学", "対象:中高生", "一時不停止", "ながらスマホ"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.jpg",
     contentImages: [
-      { id: "violation-breakdown", url: "/images/safe-magazine/articles/bicycle-blue-ticket-one-month-report/violation-breakdown.png", description: "施行1か月間の違反内訳（暫定値）の割合グラフ" }
+      { id: "violation-breakdown", url: "/images/safe-magazine/articles/bicycle-blue-ticket-one-month-report/violation-breakdown.jpg", description: "施行1か月間の違反内訳（暫定値）の割合グラフ" }
     ],
     keyPoints: [
       "施行後1か月間（暫定値・2026年5月14日公表）の青切符告知件数は2,147件。一時不停止（846件・40%）とながらスマホ（713件・33%）で7割超を占める",
@@ -1587,7 +1587,7 @@ ETC2.0は、自動車のETCに準拠した走行データを匿名で収集す�
     categoryIcon: "AlertTriangle",
     publishedDate: "2026-07-05",
     tags: ["声かけ事案", "不審者", "下校", "仙台市", "子ども110番の家", "はちみつじまん", "対象:小学生"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/suspicious-person-statistics.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/sendai-suspicious-person-incident.jpg",
     keyPoints: [
       "2026年7月3日午後5時頃、仙台市青葉区で下校中の女子小学生が女に腕をつかまれ、道をしつこく尋ねられる事案が発生した",
       "道を尋ねるふりで子どもに近づく手口は、地域を問わず起こりうるため、通学路の逃げ場所を親子で確認しておく必要がある",
@@ -1685,10 +1685,10 @@ ETC2.0は、自動車のETCに準拠した走行データを匿名で収集す�
     categoryIcon: "Shield",
     publishedDate: "2026-07-05",
     tags: ["熱中症", "転落事故", "水難事故", "ライフジャケット", "こどもの事故防止週間", "夏休み", "対象:低学年", "対象:高学年", "季節:夏休み前"],
-    thumbnailUrl: "/images/safe-magazine/thumbnails/summer-break-safety-2026.png",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/summer-break-safety-2026.jpg",
     contentImages: [
-      { id: "three-risks-checklist", url: "/images/safe-magazine/articles/summer-break-safety-2026/three-risks-checklist.png", description: "「熱中症・転落・水難」3つのリスクと対策の一覧表インフォグラフィック" },
-      { id: "accident-prevention-week-calendar", url: "/images/safe-magazine/articles/summer-break-safety-2026/accident-prevention-week-calendar.png", description: "「こどもの事故防止週間」（7月13日〜19日）の1週間カレンダービジュアル" }
+      { id: "three-risks-checklist", url: "/images/safe-magazine/articles/summer-break-safety-2026/three-risks-checklist.jpg", description: "「熱中症・転落・水難」3つのリスクと対策の一覧表インフォグラフィック" },
+      { id: "accident-prevention-week-calendar", url: "/images/safe-magazine/articles/summer-break-safety-2026/accident-prevention-week-calendar.jpg", description: "「こどもの事故防止週間」（7月13日〜19日）の1週間カレンダービジュアル" }
     ],
     keyPoints: [
       "文部科学省によると、学校管理下（登下校中を含む）の熱中症事故は令和7年度に2,813件確認され、2026年5月8日付で全国の学校に対策強化が依頼されました",

@@ -277,6 +277,10 @@ async function generateImage(prompt, outputPath) {
 
     const imagePart = parts.find(p => p.inlineData)
     if (!imagePart) { console.error("No image data in response"); return false }
+    if (imagePart.inlineData.mimeType !== "image/jpeg") {
+      console.error(`Expected image/jpeg but received ${imagePart.inlineData.mimeType}`)
+      return false
+    }
 
     const dir = path.dirname(outputPath)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -295,7 +299,7 @@ async function main() {
   const baseDir = path.join(ROOT, "public", "images", "safe-magazine", "articles")
 
   for (const img of CONTENT_IMAGES) {
-    const outputPath = path.join(baseDir, img.articleSlug, `${img.id}.png`)
+    const outputPath = path.join(baseDir, img.articleSlug, `${img.id}.jpg`)
     console.log(`\n[${img.articleSlug}] ${img.description}`)
     await generateImage(img.prompt, outputPath)
     await new Promise(r => setTimeout(r, 3000))

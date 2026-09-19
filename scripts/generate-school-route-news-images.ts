@@ -30,7 +30,7 @@ interface NewsImageConfig {
 const NEWS_IMAGES: NewsImageConfig[] = [
   {
     slug: "fukuoka-asakura-accident",
-    filename: "fukuoka-asakura-accident.png",
+    filename: "fukuoka-asakura-accident.jpg",
     prompt: `Create a Japanese safety awareness illustration about a traffic accident at an intersection involving children on bicycles.
 
 Scene elements (abstract, NOT depicting actual accident):
@@ -49,7 +49,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "bicycle-blue-ticket",
-    filename: "bicycle-blue-ticket.png",
+    filename: "bicycle-blue-ticket.jpg",
     prompt: `Create a Japanese infographic-style illustration about new bicycle traffic rules starting April 2026.
 
 Visual elements:
@@ -68,7 +68,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "zone30plus-model",
-    filename: "zone30plus-model.png",
+    filename: "zone30plus-model.jpg",
     prompt: `Create a Japanese illustration showing a "Zone 30 Plus" school safety zone.
 
 Visual elements:
@@ -87,7 +87,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "iga-safety-signs",
-    filename: "iga-safety-signs.png",
+    filename: "iga-safety-signs.jpg",
     prompt: `Create a warm Japanese community scene showing a safety sign donation ceremony for school routes.
 
 Scene elements (Japanese specific):
@@ -127,7 +127,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "mext-volunteer-awards",
-    filename: "mext-volunteer-awards.png",
+    filename: "mext-volunteer-awards.jpg",
     prompt: `Create a warm Japanese illustration showing school safety volunteer activities.
 
 Visual elements:
@@ -147,7 +147,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "residential-road-30kmh",
-    filename: "residential-road-30kmh.png",
+    filename: "residential-road-30kmh.jpg",
     prompt: `Create a Japanese infographic illustration about a new speed limit law reducing residential road limits to 30km/h.
 
 Visual elements:
@@ -166,7 +166,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "spring-suspicious-alert",
-    filename: "spring-suspicious-alert.png",
+    filename: "spring-suspicious-alert.jpg",
     prompt: `Create a Japanese safety awareness illustration about protecting children from suspicious strangers during spring.
 
 Visual elements:
@@ -186,7 +186,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "zone30plus-model-districts",
-    filename: "zone30plus-model-districts.png",
+    filename: "zone30plus-model-districts.jpg",
     prompt: `Create a Japanese illustration showing Zone 30 Plus model districts rollout across Japan.
 
 Visual elements:
@@ -205,7 +205,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "new-first-grader-safety",
-    filename: "new-first-grader-safety.png",
+    filename: "new-first-grader-safety.jpg",
     prompt: `Create a warm Japanese illustration showing a family walking a new school route with their first-grade child.
 
 Visual elements:
@@ -225,7 +225,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "national-spring-traffic-safety-campaign-20260330",
-    filename: "national-spring-traffic-safety-campaign-20260330.png",
+    filename: "national-spring-traffic-safety-campaign-20260330.jpg",
     prompt: `Create a Japanese illustration about the national spring traffic safety campaign (令和8年春の全国交通安全運動).
 
 Visual elements:
@@ -245,7 +245,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "national-model-zone-65-areas-20260330",
-    filename: "national-model-zone-65-areas-20260330.png",
+    filename: "national-model-zone-65-areas-20260330.jpg",
     prompt: `Create a Japanese infographic illustration about the Ministry of Land Infrastructure Transport and Tourism selecting 65 model zones for school route safety improvements.
 
 Visual elements:
@@ -265,7 +265,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "national-school-watch-activity-handbook-20260330",
-    filename: "national-school-watch-activity-handbook-20260330.png",
+    filename: "national-school-watch-activity-handbook-20260330.jpg",
     prompt: `Create a warm Japanese illustration about community school route watch activities strengthened before the new school term.
 
 Visual elements:
@@ -285,7 +285,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "national-weekly-trend-20260706",
-    filename: "national-weekly-trend-20260706.png",
+    filename: "national-weekly-trend-20260706.jpg",
     prompt: `Create a calm Japanese infographic-style illustration for a weekly school route safety trend report.
 
 Visual elements:
@@ -307,7 +307,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "sendai-aoba-kawadaira-repeated-suspicious-20260706",
-    filename: "sendai-aoba-kawadaira-repeated-suspicious-20260706.png",
+    filename: "sendai-aoba-kawadaira-repeated-suspicious-20260706.jpg",
     prompt: `Create a Japanese safety awareness illustration about repeated voice-calling incidents targeting children on a school route in a residential neighborhood.
 
 Scene elements (abstract, NOT depicting any actual person or incident):
@@ -327,7 +327,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "okayama-koto-guardrail-installed-20260627",
-    filename: "okayama-koto-guardrail-installed-20260627.png",
+    filename: "okayama-koto-guardrail-installed-20260627.jpg",
     prompt: `Create a bright, reassuring Japanese illustration about a new guardrail installed beside an irrigation canal along a school route.
 
 Visual elements:
@@ -345,7 +345,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "hamamatsu-chuo-crosswalk-accident-20260703",
-    filename: "hamamatsu-chuo-crosswalk-accident-20260703.png",
+    filename: "hamamatsu-chuo-crosswalk-accident-20260703.jpg",
     prompt: `Create a Japanese safety awareness illustration about a traffic accident at a crosswalk involving a child on the way to school.
 
 Scene elements (abstract, NOT depicting actual injury):
@@ -364,7 +364,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "sendai-miyagino-tsurugaya-suspicious-20260710",
-    filename: "sendai-miyagino-tsurugaya-suspicious-20260710.png",
+    filename: "sendai-miyagino-tsurugaya-suspicious-20260710.jpg",
     prompt: `Create a Japanese safety awareness illustration about a stranger-danger voice-call incident on a school route.
 
 Scene elements (abstract, NOT depicting the perpetrator's face):
@@ -382,7 +382,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "kashima-minatogaoka-candy-suspicious-20260710",
-    filename: "kashima-minatogaoka-candy-suspicious-20260710.png",
+    filename: "kashima-minatogaoka-candy-suspicious-20260710.jpg",
     prompt: `Create a Japanese safety awareness illustration about a stranger offering candy to children on a school route.
 
 Scene elements (abstract, NOT depicting the perpetrator's face):
@@ -400,7 +400,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "komaki-muranaka-crosswalk-fatal-20260715",
-    filename: "komaki-muranaka-crosswalk-fatal-20260715.png",
+    filename: "komaki-muranaka-crosswalk-fatal-20260715.jpg",
     prompt: `Create a Japanese safety awareness illustration about a fatal traffic accident at an unsignalized crosswalk during a group school walk.
 
 Scene elements (abstract, NOT depicting actual injury or any person):
@@ -419,7 +419,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "nishitokyo-izumicho-crosswalk-fatal-20260716",
-    filename: "nishitokyo-izumicho-crosswalk-fatal-20260716.png",
+    filename: "nishitokyo-izumicho-crosswalk-fatal-20260716.jpg",
     prompt: `Create a Japanese safety awareness illustration about a fatal traffic accident where a right-turning vehicle struck a child crossing on a green pedestrian signal.
 
 Scene elements (abstract, NOT depicting actual injury or any person):
@@ -438,7 +438,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "naha-matsukawa-schoolzone-motorcycle-20260716",
-    filename: "naha-matsukawa-schoolzone-motorcycle-20260716.png",
+    filename: "naha-matsukawa-schoolzone-motorcycle-20260716.jpg",
     prompt: `Create a Japanese safety awareness illustration about a motorcycle fleeing a police stop and striking pedestrians waiting at a crosswalk near a school.
 
 Scene elements (abstract, NOT depicting actual injury or any person's face):
@@ -457,7 +457,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "oamishirasato-miyakono-thigh-touch-suspicious-20260711",
-    filename: "oamishirasato-miyakono-thigh-touch-suspicious-20260711.png",
+    filename: "oamishirasato-miyakono-thigh-touch-suspicious-20260711.jpg",
     prompt: `Create a Japanese safety awareness illustration about a stranger touching a child on a school route.
 
 Scene elements (abstract, NOT depicting the perpetrator's face):
@@ -475,7 +475,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "nara-statewide-child-approach-cluster-20260718",
-    filename: "nara-statewide-child-approach-cluster-20260718.png",
+    filename: "nara-statewide-child-approach-cluster-20260718.jpg",
     prompt: `Create a Japanese safety awareness illustration about a cluster of stranger-danger incidents targeting elementary school children across multiple towns in a prefecture.
 
 Scene elements (abstract, NOT depicting any actual person):
@@ -494,7 +494,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "yamato-ichoudanchi-bollard-signal-safety-20260605",
-    filename: "yamato-ichoudanchi-bollard-signal-safety-20260605.png",
+    filename: "yamato-ichoudanchi-bollard-signal-safety-20260605.jpg",
     prompt: `Create a bright, reassuring Japanese illustration about new bollards and extended pedestrian signal timing installed near a school route.
 
 Visual elements:
@@ -513,7 +513,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "bunkyo-nezu-schoolguard-meeting-20260625",
-    filename: "bunkyo-nezu-schoolguard-meeting-20260625.png",
+    filename: "bunkyo-nezu-schoolguard-meeting-20260625.jpg",
     prompt: `Create a warm Japanese illustration showing a PTA-organized school safety guard meeting and lecture.
 
 Visual elements:
@@ -531,7 +531,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "kawasaki-kannon-citybus-redlight-20260724",
-    filename: "kawasaki-kannon-citybus-redlight-20260724.png",
+    filename: "kawasaki-kannon-citybus-redlight-20260724.jpg",
     prompt: `Create a Japanese safety awareness illustration about a city bus entering an intersection on a red light while a child crosses on a kick scooter.
 
 Scene elements (abstract, NOT depicting actual injury or any person's face):
@@ -552,7 +552,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "hiroshima-city-child-contact-cluster-20260720",
-    filename: "hiroshima-city-child-contact-cluster-20260720.png",
+    filename: "hiroshima-city-child-contact-cluster-20260720.jpg",
     prompt: `Create a Japanese safety awareness illustration about a cluster of incidents targeting children on their way home in the early evening across several wards of one city.
 
 Scene elements (abstract, NOT depicting any actual person's face):
@@ -572,7 +572,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "kitakyushu-kokuraminami-higashitsuranuki-touch-20260709",
-    filename: "kitakyushu-kokuraminami-higashitsuranuki-touch-20260709.png",
+    filename: "kitakyushu-kokuraminami-higashitsuranuki-touch-20260709.jpg",
     prompt: `Create a Japanese safety awareness illustration about a stranger questioning a child about her school and age before touching her.
 
 Scene elements (abstract, NOT depicting the perpetrator's face or actual contact):
@@ -592,7 +592,7 @@ ${QUALITY_SUFFIX}`,
   },
   {
     slug: "komaki-council-signal-request-20260722",
-    filename: "komaki-council-signal-request-20260722.png",
+    filename: "komaki-council-signal-request-20260722.jpg",
     prompt: `Create a Japanese editorial illustration about a city council submitting an urgent safety petition calling for a traffic signal and city-wide school route inspections.
 
 Visual elements (constructive and forward-looking, NOT depicting an accident):
@@ -671,6 +671,9 @@ async function generateImage(config: NewsImageConfig): Promise<void> {
 
   for (const part of parts) {
     if (part.inlineData) {
+      if (part.inlineData.mimeType !== "image/jpeg") {
+        throw new Error(`Expected image/jpeg but received ${part.inlineData.mimeType}`)
+      }
       const buffer = Buffer.from(part.inlineData.data, "base64")
       fs.writeFileSync(outputPath, buffer)
       console.log(`  Saved: ${outputPath}`)

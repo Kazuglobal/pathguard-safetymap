@@ -15,7 +15,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 const GEMINI_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-lite-image"
 
 console.log("API Key loaded:", GEMINI_API_KEY ? "Yes" : "No")
-console.log("API Key prefix:", GEMINI_API_KEY?.substring(0, 10) + "...")
 console.log("Model:", GEMINI_MODEL)
 
 interface ImageConfig {
@@ -629,6 +628,29 @@ ${QUALITY_SUFFIX}`,
     ]
   },
   {
+    articleId: "2026-07-05-sendai-suspicious-person-incident",
+    articleSlug: "sendai-suspicious-person-incident",
+    category: "accident-news",
+    title: "仙台・下校中の声かけ事案から親子で備える",
+    thumbnailPrompt: `Create a Japanese safety-awareness editorial illustration about children returning home safely from school.
+
+Scene elements (abstract, no incident or physical contact):
+- A quiet Japanese residential street in Sendai at late-afternoon, with gentle hills in the distance
+- Two elementary school children in yellow safety caps and randoseru backpacks walking together, seen from behind
+- A clearly visible child-safe refuge sign and a bright local shop ahead, suggesting where to seek help
+- A small safety buzzer attached to one backpack and an adult community volunteer in the background
+- Warm light and a calm, empowering mood that emphasizes preparation and getting to a safe place
+
+Strict rules:
+- Do not depict a suspect, physical contact, injury, or fear
+- No legible text, letters, numbers, watermarks, or signatures
+
+Style: Warm Japanese editorial illustration, suitable for a family safety magazine
+Color palette: Soft late-afternoon amber, safe greens, and yellow safety accents
+${QUALITY_SUFFIX}`,
+    contentImages: []
+  },
+  {
     articleId: "2026-07-05-summer-break-safety-2026",
     articleSlug: "summer-break-safety-2026",
     category: "safety-tips",
@@ -1004,6 +1026,11 @@ async function generateImage(prompt: string, outputPath: string): Promise<boolea
       return false
     }
 
+    if (imagePart.inlineData.mimeType !== "image/jpeg") {
+      console.error(`Expected image/jpeg but received ${imagePart.inlineData.mimeType}`)
+      return false
+    }
+
     // Save image to file
     const imageData = imagePart.inlineData.data
     const buffer = Buffer.from(imageData, "base64")
@@ -1033,7 +1060,7 @@ async function generateAllImages() {
     console.log(`\n--- Article: ${config.title} ---`)
 
     // Generate thumbnail (skip if exists unless --force)
-    const thumbnailPath = path.join(basePath, "thumbnails", `${config.articleSlug}.png`)
+    const thumbnailPath = path.join(basePath, "thumbnails", `${config.articleSlug}.jpg`)
     if (!forceRegenerate && fs.existsSync(thumbnailPath)) {
       console.log(`⊘ Skipped (exists): ${path.basename(thumbnailPath)}`)
     } else {
@@ -1043,7 +1070,7 @@ async function generateAllImages() {
 
     // Generate content images (skip if exists unless --force)
     for (const contentImage of config.contentImages) {
-      const imagePath = path.join(basePath, "articles", config.articleSlug, `${contentImage.id}.png`)
+      const imagePath = path.join(basePath, "articles", config.articleSlug, `${contentImage.id}.jpg`)
       if (!forceRegenerate && fs.existsSync(imagePath)) {
         console.log(`⊘ Skipped (exists): ${path.basename(imagePath)}`)
         continue

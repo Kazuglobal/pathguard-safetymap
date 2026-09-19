@@ -107,9 +107,9 @@
   ],
   "relatedArticleSlug": "bicycle-blue-ticket",
   "seriesName": "自転車青切符ウォッチ",
-  "thumbnailUrl": "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.png",
+  "thumbnailUrl": "/images/safe-magazine/thumbnails/bicycle-blue-ticket-one-month-report.jpg",
   "contentImages": [
-    { "id": "violation-breakdown", "url": "/images/safe-magazine/articles/bicycle-blue-ticket-one-month-report/violation-breakdown.png", "description": "施行1か月間の違反内訳（暫定値）の割合グラフ" }
+    { "id": "violation-breakdown", "url": "/images/safe-magazine/articles/bicycle-blue-ticket-one-month-report/violation-breakdown.jpg", "description": "施行1か月間の違反内訳（暫定値）の割合グラフ" }
   ]
 }
 ```
