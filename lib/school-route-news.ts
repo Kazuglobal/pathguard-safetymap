@@ -50,7 +50,7 @@ export interface SchoolRouteNewsItem {
 // サンプルニュースデータ（実際はAPIから取得）
 export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
-    id: "news-2026-09-24-001",
+    id: "news-2026-09-25-001",
     slug: "uji-child-roadside-collision-20260908",
     title: "【京都府宇治市】下校中の小学生が路側帯で後方から車に衝突され重体 市と宇治署が注意喚起",
     excerpt: "宇治市の公表によると、9月8日に市内で下校中の小学生が路側帯内を歩行中、後方から来た軽自動車に衝突され重体となった。宇治警察署はこの事故を受けて注意喚起のチラシを作成し、宇治市が市公式サイトで公開している。",
@@ -105,7 +105,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     categoryLabel: "交通事故",
     categoryColor: "#EF4444",
     categoryIcon: "AlertTriangle",
-    publishedDate: "2026-09-24T07:30:00+09:00",
+    publishedDate: "2026-09-25T07:30:00+09:00",
     location: {
       prefecture: "京都府",
       city: "宇治市"
@@ -120,11 +120,11 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "通学路の路側帯を子どもと歩き、後ろから車が来る向きを一緒に確かめる"
     ],
     isBreaking: false,
-    verifiedAt: "2026-09-24T20:50:00+09:00",
+    verifiedAt: "2026-09-25T05:50:00+09:00",
     actionAdvice: "通学路の路側帯を子どもと歩き、後ろから車が来る向きを一緒に確かめる"
   },
   {
-    id: "news-2026-09-24-002",
+    id: "news-2026-09-25-002",
     slug: "suginami-takaidonishi-voice-call-20260922",
     title: "【東京都杉並区】帰宅途中の女子児童が「一緒に行こう」と自転車の男に声をかけられる",
     excerpt: "警視庁高井戸警察署の発表によると、9月22日午前10時15分ごろ、杉並区高井戸西3丁目の路上で帰宅途中の女子児童が自転車の男から「一緒に行こう」「ちょっと待って」と声をかけられた。男は60歳くらい、黒色の半袖と黒色のキャップ帽を着用。",
@@ -176,7 +176,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     categoryLabel: "不審者情報",
     categoryColor: "#F97316",
     categoryIcon: "AlertCircle",
-    publishedDate: "2026-09-24T07:20:00+09:00",
+    publishedDate: "2026-09-25T07:20:00+09:00",
     location: {
       prefecture: "東京都",
       city: "杉並区",
@@ -193,11 +193,11 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "「一緒に行こう」と誘われたら、返事をせず来た道を戻る練習を今夜する"
     ],
     isBreaking: false,
-    verifiedAt: "2026-09-24T20:50:00+09:00",
+    verifiedAt: "2026-09-25T05:50:00+09:00",
     actionAdvice: "「一緒に行こう」と誘われたら、返事をせず来た道を戻る練習を今夜する"
   },
   {
-    id: "news-2026-09-24-003",
+    id: "news-2026-09-25-003",
     slug: "kitakyushu-yahatahigashi-chuo-stalking-20260911",
     title: "【福岡県北九州市】「さっきはありがとう」帰宅中の女児が知人を装う男につきまとわれる",
     excerpt: "福岡県警察の防犯メール配信（八幡東警察署）によると、9月11日午後4時20分ごろ、北九州市八幡東区中央3丁目の路上で徒歩で帰宅中の女児が見知らぬ男から「さっきはありがとう」と声をかけられ、その後つきまとわれた。男は50歳くらいで黒色のスリッパを着用。",
@@ -252,7 +252,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     categoryLabel: "不審者情報",
     categoryColor: "#F97316",
     categoryIcon: "AlertCircle",
-    publishedDate: "2026-09-24T07:10:00+09:00",
+    publishedDate: "2026-09-25T07:10:00+09:00",
     location: {
       prefecture: "福岡県",
       city: "北九州市",
@@ -270,11 +270,11 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "知らない人に「さっき」と言われても立ち止まらず歩き続ける約束をする"
     ],
     isBreaking: false,
-    verifiedAt: "2026-09-24T20:50:00+09:00",
+    verifiedAt: "2026-09-25T05:50:00+09:00",
     actionAdvice: "知らない人に「さっき」と言われても立ち止まらず歩き続ける約束をする"
   },
   {
-    id: "news-2026-09-24-004",
+    id: "news-2026-09-25-004",
     slug: "mizumaki-eburi-stalking-20260907",
     title: "【福岡県水巻町】下校中の小学生男児が50歳位の男につきまとわれる えぶり1丁目付近",
     excerpt: "福岡県警察の防犯メール配信（折尾警察署）によると、9月7日午後2時45分ごろ、遠賀郡水巻町えぶり1丁目付近の路上で下校中の小学生男児が見知らぬ男につきまとわれた。男は50歳くらい、身長170センチくらいで、水色と白色のストライプ柄の長袖上着を着用。",
@@ -332,7 +332,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     categoryLabel: "不審者情報",
     categoryColor: "#F97316",
     categoryIcon: "AlertCircle",
-    publishedDate: "2026-09-24T07:00:00+09:00",
+    publishedDate: "2026-09-25T07:00:00+09:00",
     location: {
       prefecture: "福岡県",
       city: "水巻町",
@@ -350,7 +350,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "後ろをついて来る人に気づいたら、こども110番の家に入る道順を確認する"
     ],
     isBreaking: false,
-    verifiedAt: "2026-09-24T20:50:00+09:00",
+    verifiedAt: "2026-09-25T05:50:00+09:00",
     actionAdvice: "後ろをついて来る人に気づいたら、こども110番の家に入る道順を確認する"
   },
   {
