@@ -12,6 +12,17 @@ export interface LandingSafeMagazinePreviewItem {
 
 const LANDING_SAFE_MAGAZINE_PREVIEW_ITEMS: LandingSafeMagazinePreviewItem[] = [
   {
+    id: "2026-09-26-community-safety-campaign-2026",
+    slug: "community-safety-campaign-2026",
+    title: "【10月11日から】地域安全運動——少年が「受け子」になる入口は知人6割",
+    excerpt: "10月11日から20日まで「令和8年全国地域安全運動」が実施されます。全国重点の3番目は「犯罪に加担させないための対策」。少年が特殊詐欺の受け子等になった経緯は、知人等紹介が約6割で最多です。SNSの利用制限だけでは入口の6割を塞げません。知人から誘われたときに備える、今日5分の準備をまとめました。",
+    categoryLabel: "施策・制度",
+    categoryColor: "#8B5CF6",
+    categoryIcon: "FileText",
+    publishedDate: "2026-09-26",
+    thumbnailUrl: "/images/safe-magazine/thumbnails/community-safety-campaign-2026.jpg",
+  },
+  {
     id: "2026-09-11-autumn-campaign-bicycle-rules",
     slug: "autumn-campaign-bicycle-rules",
     title: "【9月21日から】秋の交通安全運動の重点に自転車——中高生の通学を3点見直す",
