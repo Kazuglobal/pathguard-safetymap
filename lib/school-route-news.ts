@@ -419,6 +419,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "8月27日午後2時30分ごろ大牟田市一浦町で帰宅中の小学生が白色の車に乗った3人組から「名前は？」「どこの小学校？」と尋ねられ、翌28日午後4時35分ごろには福岡市南区三宅3丁目で女児が男に声をかけられた",
       "学校名や名前を聞かれても答えずにその場を離れる練習を、今日おうちでやってみる"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/fukuoka-late-august-child-approach-cluster-20260828.png",
     isBreaking: false,
     verifiedAt: "2026-09-12T06:40:00+09:00",
     actionAdvice: "学校名や名前を聞かれても答えずにその場を離れる練習を、今日おうちでやってみる"
@@ -497,6 +498,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "警察庁の5年間集計（2021〜2025年・幅員5.5メートル未満の生活道路）で死者・重傷者は3万4262人。うち小学生と65歳以上の高齢者が計1万4945人と4割超を占め、小学生の半数近くは歩行中だった",
       "通学路のうち「中央線がない道路」がどこかを、子どもと歩いて1か所だけ確かめておく"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-living-road-casualty-analysis-20260910.png",
     isBreaking: false,
     verifiedAt: "2026-09-12T06:50:00+09:00",
     actionAdvice: "通学路のうち「中央線がない道路」がどこかを、子どもと歩いて1か所確かめる"
@@ -558,6 +560,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "2026年8月24日の「学校交通安全関係者の情報交換会」に相模原市中央区の見守りボランティア22人が参加し、団体同士の「横のつながり」強化を要望した",
       "相模原市の見守りは有償の学童通学安全指導員（8月3日時点で226人登録）と、PTA・地域主体の見守り隊の二つで担われている"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/sagamihara-watch-volunteer-exchange-20260824.png",
     isBreaking: false,
     verifiedAt: "2026-09-12T06:55:00+09:00"
   },
@@ -631,6 +634,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "9月10日午後3時15分ごろ、一宮市富士の信号機のない交差点で自転車の8歳男児と乗用車が衝突し意識不明の重体（9月10日の報道時点）。現場は9月1日から法定速度が時速30キロになった生活道路で、77歳の男が過失運転致傷の疑いで現行犯逮捕された",
       "中央線のない交差点では自転車を降りて左右を見る練習を今日やってみる"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/ichinomiya-fuji-bicycle-collision-20260910.png",
     isBreaking: true,
     verifiedAt: "2026-09-11T06:40:00+09:00",
     actionAdvice: "中央線のない交差点では自転車を降りて左右を見る練習を今日やってみる"
@@ -700,6 +704,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "9月8日と9日の2日続けて、熊本市北区清水亀井町付近で下校中の女子児童がつきまとわれた。人物は男女不明で黒っぽい上着・黒色の帽子・白色のマスク着用（熊本北合志警察署）",
       "同じ人を2日見たら日時と服装をメモして学校と警察にその日に伝える"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/kumamoto-kita-shimizukamei-stalking-20260909.png",
     isBreaking: true,
     verifiedAt: "2026-09-11T06:40:00+09:00",
     actionAdvice: "同じ人を2日見たら日時と服装をメモして学校と警察にその日に伝える"
@@ -786,6 +791,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "9月2日午後4時20分ごろ安芸区中野7丁目で帰宅中の女子小学生が軽トラックから降りてきた70歳代くらいの女に学年を尋ねられ、9月3日午後3時15分ごろ安佐南区長束西3丁目の公園で女子小学生が20歳代くらいの男に「一緒に遊ぼう」と誘われた（広島市防犯情報メール）",
       "車から降りてきた大人に話しかけられたら2歩下がって離れる練習をする"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-city-september-voice-calls-20260903.png",
     isBreaking: false,
     verifiedAt: "2026-09-11T06:40:00+09:00",
     actionAdvice: "車から降りてきた大人に話しかけられたら2歩下がって離れる練習をする"
@@ -851,6 +857,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "8月28日の夏休み明け登校初日、岐阜市の加納小学校の通学路に地域ボランティアと岐阜南警察署員ら約50人が立ち、児童を見守るとともに9月1日施行の生活道路30キロ規制をドライバーに周知した",
       "通学路で見守りの大人がどこに立っているかを、子どもと歩いて確かめる"
     ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/gifu-kano-schoolguard-watch-20260828.png",
     isBreaking: false,
     verifiedAt: "2026-09-11T06:40:00+09:00",
     actionAdvice: "通学路で見守りの大人がどこに立っているかを、子どもと歩いて確かめる"
