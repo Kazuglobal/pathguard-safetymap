@@ -1,7 +1,8 @@
 import * as turf from '@turf/turf'
-import { and, eq, gte, lte, or, type SQL } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lte, notInArray, or, type SQL } from 'drizzle-orm'
 
 import type { AccidentStats, NearbyAccident } from '@/lib/traffic-accident-data'
+import { normalizeAccidentRow, PEDESTRIAN_ACCIDENT_CODE } from '@/lib/traffic-accident/codes'
 
 import { assertCan, type Actor } from '../authz'
 import { getTrafficDb, type AppDb } from '../client'
@@ -27,6 +28,27 @@ const turfOps = turf as unknown as {
 }
 
 type AccidentRow = typeof trafficAccidents.$inferSelect
+
+/** Year filter as IN (...) so D1 can use idx (source_year, lat, lng) for the lat/lng range too.
+ *  A BETWEEN/>= on source_year stops the index at the year column and scans ~1.5M rows per query. */
+function yearsIn(minYear: number, maxYear: number): SQL {
+  const years: number[] = []
+  for (let year = minYear; year <= maxYear; year += 1) years.push(year)
+  return inArray(trafficAccidents.sourceYear, years)
+}
+
+/** 人対車両（大分類コード01）も歩行者関与として扱う（取り込みで involves_pedestrian が常に false のため）。 */
+function pedestrianPredicate(pedestrian: boolean): SQL {
+  const isPedestrian = or(
+    eq(trafficAccidents.involvesPedestrian, true),
+    inArray(trafficAccidents.accidentTypeCode, [PEDESTRIAN_ACCIDENT_CODE, '1']),
+  )!
+  if (pedestrian) return isPedestrian
+  return and(
+    eq(trafficAccidents.involvesPedestrian, false),
+    or(isNull(trafficAccidents.accidentTypeCode), notInArray(trafficAccidents.accidentTypeCode, [PEDESTRIAN_ACCIDENT_CODE, '1'])),
+  )!
+}
 
 export interface AccidentsInBboxInput {
   minLng: number
@@ -372,12 +394,11 @@ export function createAccidentsRepo(db: AppDb) {
         lte(trafficAccidents.longitude, input.maxLng),
         gte(trafficAccidents.latitude, input.minLat),
         lte(trafficAccidents.latitude, input.maxLat),
-        gte(trafficAccidents.sourceYear, input.minYear),
-        lte(trafficAccidents.sourceYear, input.maxYear),
+        yearsIn(input.minYear, input.maxYear),
       ]
       if (input.severity === 'fatal') predicates.push(eq(trafficAccidents.severityCode, 1))
       if (input.child != null) predicates.push(eq(trafficAccidents.involvesChild, input.child))
-      if (input.pedestrian != null) predicates.push(eq(trafficAccidents.involvesPedestrian, input.pedestrian))
+      if (input.pedestrian != null) predicates.push(pedestrianPredicate(input.pedestrian))
       if (input.young != null) {
         const young = or(eq(trafficAccidents.partyAAge, 1), eq(trafficAccidents.partyBAge, 1))
         predicates.push(input.young ? young! : and(
@@ -391,7 +412,8 @@ export function createAccidentsRepo(db: AppDb) {
         requestedLimit,
         input.child === true ? MAX_CHILD_BBOX_RESULTS : MAX_BBOX_RESULTS,
       )
-      const rows = await db.select().from(trafficAccidents).where(and(...predicates)).limit(limit)
+      const rows = (await db.select().from(trafficAccidents).where(and(...predicates)).limit(limit))
+        .map(normalizeAccidentRow)
 
       return {
         type: 'FeatureCollection',
@@ -439,12 +461,13 @@ export function createAccidentsRepo(db: AppDb) {
           lte(trafficAccidents.latitude, input.latitude + latitudeDelta),
           gte(trafficAccidents.longitude, input.longitude - longitudeDelta),
           lte(trafficAccidents.longitude, input.longitude + longitudeDelta),
-          gte(trafficAccidents.sourceYear, currentYear - years),
+          yearsIn(currentYear - years, currentYear),
         ))
         .limit(MAX_NEARBY_CANDIDATES)
 
       const center = turfOps.point([input.longitude, input.latitude])
       const nearbyRows = candidateRows
+        .map(normalizeAccidentRow)
         .map((row) => ({
           row,
           distanceMeters: turfOps.distance(
