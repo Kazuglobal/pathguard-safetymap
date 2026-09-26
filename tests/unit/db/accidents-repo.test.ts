@@ -94,6 +94,54 @@ describe('accidents repository', () => {
     expect(result.nearest_accidents[0]).toMatchObject({ distance_m: 0, year: 2026 })
   })
 
+  describe('with rows shaped like the production import (detail labels on major-class codes)', () => {
+    beforeEach(() => {
+      const insert = database.sqlite.prepare(`
+        insert into traffic_accidents (
+          id, record_number, prefecture_code, police_station_code, lat, lng, source_year,
+          severity_code, fatalities, injuries, involves_child, involves_pedestrian,
+          accident_type_code, accident_type_label
+        ) values (?, ?, 13, '001', 36, 140, 2026, 2, 0, 1, 0, 0, ?, ?)
+      `)
+      insert.run(10, 'prod-vehicles', '21', '車両相互_正面衝突')
+      insert.run(11, 'prod-pedestrian', '01', '人対車両_横断中')
+      insert.run(12, 'prod-unknown-code', null, null)
+    })
+
+    it('aggregates by the major class derived from the code and counts 人対車両 as pedestrian', async () => {
+      const repo = createAccidentsRepo(database.db as unknown as AppDb)
+
+      const result = await repo.nearbyStats(actor, {
+        latitude: 36,
+        longitude: 140,
+        radiusMeters: 100,
+        years: 5,
+        currentYear: 2026,
+      })
+
+      expect(result.total_accidents).toBe(3)
+      expect(result.by_accident_type).toMatchObject({ 車両相互: 1, 人対車両: 1 })
+      expect(result.pedestrian_involved).toBe(1)
+      expect(result.nearest_accidents.map((item) => item.type).filter(Boolean).sort()).toEqual(['人対車両', '車両相互'])
+    })
+
+    it('returns normalized labels on the map and includes 人対車両 in the pedestrian filter', async () => {
+      const repo = createAccidentsRepo(database.db as unknown as AppDb)
+      const bbox = { minLng: 139.99, minLat: 35.99, maxLng: 140.01, maxLat: 36.01, minYear: 2026, maxYear: 2026 }
+
+      const all = await repo.accidentsInBbox(actor, bbox)
+      const byId = Object.fromEntries(all.features.map((feature) => [feature.properties.id, feature.properties]))
+      expect(byId[10]).toMatchObject({ type: '車両相互', hasPedestrian: false })
+      expect(byId[11]).toMatchObject({ type: '人対車両', hasPedestrian: true })
+
+      const pedestrian = await repo.accidentsInBbox(actor, { ...bbox, pedestrian: true })
+      expect(pedestrian.features.map((feature) => feature.properties.id)).toEqual([11])
+
+      const notPedestrian = await repo.accidentsInBbox(actor, { ...bbox, pedestrian: false })
+      expect(notPedestrian.features.map((feature) => feature.properties.id).sort()).toEqual([10, 12])
+    })
+  })
+
   it('rejects unbounded nearby scans', async () => {
     const repo = createAccidentsRepo(database.db as unknown as AppDb)
 
