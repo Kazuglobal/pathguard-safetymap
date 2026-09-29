@@ -22,7 +22,7 @@ export function RubyText({
         tk.r ? (
           <ruby key={i} className="leading-none">
             {tk.t}
-            <rt className="text-[0.5em] font-bold leading-none">{tk.r}</rt>
+            <rt aria-hidden="true" className="text-[0.5em] font-bold leading-none">{tk.r}</rt>
           </ruby>
         ) : (
           <Fragment key={i}>{tk.t}</Fragment>

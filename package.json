@@ -100,6 +100,7 @@
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.4.0",
     "@sentry/nextjs": "10.71.0",
+    "@sparkjsdev/spark": "2.1.0",
     "@supabase/ssr": "0.12.5",
     "@supabase/supabase-js": "2.112.4",
     "@turf/turf": "^7.2.0",
