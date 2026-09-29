@@ -1,0 +1,57 @@
+.route-notebook { --paper:#fbf8ed; --ink:#39291f; --green:#006b58; --line:#ded8c9; color:var(--ink); background:var(--paper); font-family:var(--font-app), 'Hiragino Maru Gothic ProN', sans-serif; min-height:100dvh; padding:24px 20px 48px; }
+.notebook-page { width:100%; max-width:620px; margin:0 auto; }
+.notebook-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:28px; }
+.notebook-brand { display:flex; align-items:center; gap:8px; color:var(--green); font-weight:900; font-size:18px; }
+.notebook-lupe { width:64px; height:64px; object-fit:contain; border-radius:50%; mix-blend-mode:multiply; flex-shrink:0; }
+.notebook-title { font-size:clamp(28px,7vw,36px); line-height:1.45; font-weight:900; letter-spacing:.025em; margin:0 0 12px; overflow-wrap:anywhere; }
+.notebook-title > span { text-decoration:underline; text-decoration-color:#ffd13e; text-decoration-thickness:5px; text-underline-offset:9px; }
+.notebook-subtitle { font-size:18px; line-height:1.8; margin:18px 0 24px; }
+.notebook-button { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:56px; padding:12px 20px; border:1px solid var(--green); border-radius:999px; background:transparent; color:var(--green); font-size:17px; font-weight:800; line-height:1.6; text-align:center; overflow-wrap:anywhere; }
+.notebook-button:focus-visible,.notebook-link:focus-visible,.notebook-tab:focus-visible { outline:3px solid #007b9a; outline-offset:4px; }
+.notebook-button:disabled { opacity:.45; cursor:not-allowed; }
+.notebook-button-primary { background:#ffcf38; border-color:#ffcf38; color:#302317; box-shadow:0 4px 0 #d9a719; font-size:19px; }
+.notebook-button-primary:not(:disabled):hover { background:#ffda60; }
+.notebook-link { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--green); font-weight:800; font-size:16px; text-align:left; }
+.notebook-tabs { display:flex; border-bottom:1px solid var(--line); margin:24px 0; }
+.notebook-tab { flex:1; min-height:56px; padding:12px 8px; color:#706c62; font-size:18px; font-weight:800; border-bottom:4px solid transparent; }
+.notebook-tab[aria-pressed=true] { color:var(--green); border-bottom-color:var(--green); }
+.notebook-course { padding:18px 0; border-bottom:1px solid var(--line); }
+.notebook-course:first-child { background:#fff; border:0; padding:12px; border-radius:18px; box-shadow:0 4px 16px #39291f08; margin-bottom:12px; }
+.notebook-course-row { display:grid; grid-template-columns:minmax(0,42%) minmax(0,1fr); gap:18px; align-items:center; }
+.notebook-photo { width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; background:#eee9dd; }
+.notebook-photo-empty { display:flex; align-items:center; justify-content:center; min-height:100px; color:var(--green); }
+.notebook-course h2 { font-size:20px; font-weight:900; line-height:1.6; overflow-wrap:anywhere; }
+.notebook-meta { font-size:15px; color:#6c665e; line-height:1.7; margin:6px 0; }
+.notebook-course .notebook-button { width:100%; margin-top:14px; }
+.notebook-utilities { margin-top:24px; display:grid; gap:20px; }
+.notebook-print-link { display:flex; align-items:center; gap:16px; text-align:left; padding:20px 4px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.notebook-print-link strong { display:block; font-size:18px; }
+.notebook-empty { padding:24px 0 32px; text-align:center; }
+.notebook-empty img { width:100%; max-width:300px; max-height:220px; object-fit:contain; margin:0 auto 20px; border-radius:16px; }
+.notebook-trail { margin:28px 0 32px; list-style:none; padding:0; }
+.notebook-stop { display:grid; grid-template-columns:36px minmax(0,1fr); gap:14px; position:relative; padding-bottom:26px; }
+.notebook-stop:not(:last-child)::before { content:''; position:absolute; left:17px; top:40px; bottom:0; border-left:3px dotted var(--line); }
+.notebook-number { position:relative; display:grid; place-items:center; width:36px; height:36px; margin-top:28px; border-radius:50%; background:#eae4d3; font-weight:900; font-size:19px; }
+.notebook-stop[data-current=true] .notebook-number { background:#ffcf38; }
+.notebook-stop[data-cleared=true] .notebook-number { background:var(--green); color:#fff; }
+.notebook-stop-content { display:grid; grid-template-columns:minmax(0,42%) minmax(0,1fr); gap:16px; align-items:center; }
+.notebook-stop[data-current=true] .notebook-photo { outline:2px solid #ffcf38; outline-offset:4px; }
+.notebook-stop h3 { font-size:20px; font-weight:900; overflow-wrap:anywhere; }
+.notebook-status { margin:16px 0; padding:14px; background:#edf4ea; border-radius:12px; line-height:1.8; }
+.notebook-settings { margin-top:24px; padding-top:16px; border-top:1px solid var(--line); }
+.notebook-settings summary { min-height:48px; cursor:pointer; font-weight:800; color:var(--green); }
+.notebook-settings button { margin:8px 8px 8px 0; }
+.notebook-form { margin-top:24px; }
+.route-notebook .quiz-adventure { margin:0; border:0; padding:0; background:transparent; color:var(--ink); }
+.route-notebook .quiz-adventure button { transition:none; }
+.route-notebook .quiz-adventure h3 { color:var(--ink); font-size:28px; line-height:1.6; }
+.route-notebook .quiz-adventure fieldset label { background:#fff; border-radius:16px; color:var(--ink); }
+.route-notebook .quiz-adventure .quiz-photo { border:8px solid #fff; box-shadow:0 3px 12px #39291f10; border-radius:18px; }
+@media(min-width:768px) { .route-notebook { padding:40px 32px 64px; } .notebook-page { max-width:660px; } .notebook-course h2 {font-size:24px;} }
+@media(max-width:359px) { .route-notebook {padding:16px 14px 32px;} .notebook-course-row,.notebook-stop-content { gap:10px; } .notebook-course h2,.notebook-stop h3 {font-size:18px;} .notebook-lupe {width:48px;height:48px;} }
+
+.notebook-title:focus { outline:none; }
+.route-notebook .quiz-adventure progress { appearance:none; border:0; border-radius:999px; overflow:hidden; background:#eae4d3; color:#006b58; }
+.route-notebook .quiz-adventure progress::-webkit-progress-bar { background:#eae4d3; border-radius:999px; }
+.route-notebook .quiz-adventure progress::-webkit-progress-value { background:#006b58; border-radius:999px; }
+.route-notebook .quiz-adventure progress::-moz-progress-bar { background:#006b58; border-radius:999px; }

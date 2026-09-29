@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
@@ -812,6 +813,9 @@ function HomeScreen({
           <MapIcon className="h-5 w-5" aria-hidden="true" />
           きろく・きけんマップ
         </PrimaryCTA>
+        <Link href="/safety-quest/hunter/routes" className="flex min-h-14 items-center justify-between rounded-2xl border-2 border-teal-700 bg-teal-50 px-5 py-3 font-bold text-teal-900">
+          <span>通学路 3分クイズ</span><span className="text-xs">写真で学ぼう →</span>
+        </Link>
       </motion.div>
       </div>
 
