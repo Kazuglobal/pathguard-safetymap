@@ -88,6 +88,21 @@ Scene rules:
 ${QUALITY_SUFFIX}`
 }
 
+function buildNewsFigurePrompt(item: { category: string }, description: string): string {
+  const tone = CATEGORY_TONE[item.category] ?? CATEGORY_TONE.policy
+  return `Create a clean, pictogram-style Japanese explanatory illustration (an instructional figure, not a scene) for a parent-facing school-route safety article.
+
+Figure to depict: ${description}
+Layout: 2 to 4 simple panels or icons arranged left to right with arrows, each panel showing one step or one object.
+Mood and palette: ${tone}
+
+Rules:
+- Children wear yellow caps and randoseru backpacks and are seen from behind or drawn as faceless simple figures
+- Never depict any threatening person, injury or incident; show only the safe action
+- Purely pictorial: no text, no letters, no kanji, no numbers anywhere (the caption is added separately)
+${QUALITY_SUFFIX}`
+}
+
 function loadNewsOverrides(): Record<string, string> {
   return readJson<Record<string, string>>(path.join(ROOT, "scripts", "image-prompts", "school-route-news.json")) ?? {}
 }
@@ -95,12 +110,17 @@ function loadNewsOverrides(): Record<string, string> {
 async function collectNewsJobs(): Promise<ImageJob[]> {
   const { NEWS_ITEMS } = await import("../lib/school-route-news")
   const overrides = loadNewsOverrides()
-  return NEWS_ITEMS.filter((item) => item.thumbnailUrl).map((item) => ({
-    kind: "news" as const,
-    slug: item.slug,
-    url: item.thumbnailUrl as string,
-    prompt: overrides[item.slug] ?? buildNewsPrompt(item),
-  }))
+  const jobs: ImageJob[] = []
+  for (const item of NEWS_ITEMS) {
+    if (item.thumbnailUrl) {
+      jobs.push({ kind: "news", slug: item.slug, url: item.thumbnailUrl, prompt: overrides[item.slug] ?? buildNewsPrompt(item) })
+    }
+    for (const image of item.contentImages ?? []) {
+      const key = `${item.slug}/${image.id}`
+      jobs.push({ kind: "news", slug: key, url: image.url, prompt: overrides[key] ?? buildNewsFigurePrompt(item, image.description) })
+    }
+  }
+  return jobs
 }
 
 interface VisualSpec {
