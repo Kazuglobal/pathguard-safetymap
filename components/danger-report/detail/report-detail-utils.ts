@@ -1,12 +1,6 @@
-import {
-  Car,
-  Shield,
-  AlertTriangle,
-  HelpCircle,
-  UserX,
-  type LucideIcon,
-} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import type { DangerReport } from "@/lib/types"
+import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 import { getDangerLevelPresentation, formatDangerLevelBadgeText } from "@/lib/report-generation/danger-level-presentation"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 
@@ -28,22 +22,12 @@ export function getDangerTypeLabel(type: string): string {
   }
 }
 
-/** Danger type icon mapping */
+/**
+ * Danger type icon mapping
+ * lib/map/danger-type-presentation.ts の一元定義に委譲(地図ピンと同じ絵にする)。
+ */
 export function getDangerTypeIcon(type: string): LucideIcon {
-  switch (type) {
-    case "traffic":
-      return Car
-    case "crime":
-      return Shield
-    case "disaster":
-      return AlertTriangle
-    case "suspicious":
-      return UserX
-    case "other":
-      return HelpCircle
-    default:
-      return HelpCircle
-  }
+  return getDangerTypePresentation(type).icon
 }
 
 /**

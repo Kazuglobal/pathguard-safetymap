@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChevronLeft, ChevronRight, AlertTriangle, MapPin, Trash2, Car, Shield, HelpCircle, UserX, X, RotateCcw } from "lucide-react"
+import { ChevronLeft, ChevronRight, AlertTriangle, MapPin, Trash2, X, RotateCcw } from "lucide-react"
+import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 import type { DangerReport } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -83,21 +84,10 @@ export default function MapSidebar({
     })
   }
 
+  // 種類の絵は地図ピンと同じ一元定義に委譲(色は危険度専用なので種類では色分けしない)
   const getDangerTypeIcon = (type: string) => {
-    switch (type) {
-      case "traffic":
-        return <Car className="h-4 w-4 text-blue-600" />
-      case "crime":
-        return <Shield className="h-4 w-4 text-red-600" />
-      case "disaster":
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />
-      case "suspicious":
-        return <UserX className="h-4 w-4 text-orange-600" />
-      case "other":
-        return <HelpCircle className="h-4 w-4 text-gray-600" />
-      default:
-        return <HelpCircle className="h-4 w-4 text-gray-600" />
-    }
+    const Icon = getDangerTypePresentation(type).icon
+    return <Icon className="h-4 w-4 text-slate-700" />
   }
 
   // 危険度の配色・段階表示は danger-level-presentation.ts の一元定義に委譲

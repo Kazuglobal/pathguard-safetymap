@@ -1,6 +1,9 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { Building2, Flame, ScanEye, Waves } from "lucide-react"
+
+import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 
 export type MapTopOverlayPanel = "3d" | "ar" | "heatmap" | "hazard" | "suspicious" | null
 
@@ -23,12 +26,14 @@ interface MapTopOverlayProps {
   suspiciousPanelSlot: ReactNode
 }
 
+// 文字だけだと何が起きるか伝わりにくいため、各チップに絵を付ける。
+// 不審者情報は地図ピンと同じ絵(danger-type-presentation)を使う。
 const CHIP_CONFIG = [
-  { id: "3d" as const, label: "3D" },
-  { id: "ar" as const, label: "AR" },
-  { id: "heatmap" as const, label: "事故ヒートマップ" },
-  { id: "suspicious" as const, label: "不審者情報" },
-  { id: "hazard" as const, label: "ハザード" },
+  { id: "3d" as const, label: "3D", icon: Building2 },
+  { id: "ar" as const, label: "AR", icon: ScanEye },
+  { id: "heatmap" as const, label: "事故ヒートマップ", icon: Flame },
+  { id: "suspicious" as const, label: "不審者情報", icon: getDangerTypePresentation("suspicious").icon },
+  { id: "hazard" as const, label: "ハザード", icon: Waves },
 ]
 
 function getPanelSlot({
@@ -117,7 +122,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                   type="button"
                   aria-label={chip.label}
                   aria-pressed={isActive}
-                  className="chunky-press rounded-full border-2 px-4 py-2 text-[13px] font-black transition-colors"
+                  className="chunky-press flex items-center gap-1.5 rounded-full border-2 px-3.5 py-2 text-[13px] font-black transition-colors"
                   style={
                     isActive
                       ? {
@@ -135,6 +140,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                   }
                   onClick={() => handleChipClick(chip.id)}
                 >
+                  <chip.icon className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden="true" />
                   {chip.label}
                 </button>
               )

@@ -32,8 +32,19 @@ export const CLUSTER_MAX_ZOOM = 17
 /** 扇状展開時に「重なっている」とみなす画面ピクセル距離 */
 const SPREAD_PIXEL_THRESHOLD = 20
 
-/** 扇状展開の半径(画面ピクセル) */
-const SPREAD_RADIUS_PX = 26
+/** このズーム以上でピンの下に種類名・段階のラベルを出す(広域では絵だけにして地図を文字で埋めない) */
+export const PIN_LABEL_MIN_ZOOM = 16
+
+/**
+ * ラベルを出すのに必要な空き(画面ピクセル)。ラベルはピン直下に中央寄せで出るため、
+ * この範囲に他のマーカーがあると、ラベル同士が重なるか隣のピンを覆ってしまう。
+ */
+export const PIN_LABEL_CLEARANCE_X_PX = 110
+// ピンの高さ54 + ラベル約22 + 余白: 真下のピンの頭にラベルが掛からない距離
+export const PIN_LABEL_CLEARANCE_Y_PX = 84
+
+/** 扇状展開の半径(画面ピクセル)。ピン幅44pxで隣同士が重なりすぎない値 */
+const SPREAD_RADIUS_PX = 32
 
 /**
  * 画面ピクセル距離を経度差(度)に変換する。
@@ -128,4 +139,31 @@ export function spreadOverlappingPins<T extends ClusterablePoint>(
   }
 
   return result
+}
+
+/**
+ * 各ポイントの周囲にラベルを出せる空きがあるかを返す(入力と同じ順の配列)。
+ * 「空きがあるピンだけラベルを出す」ための判定で、近くに他のマーカー
+ * (単独ピン・クラスタ・扇状に散らしたピン)があるポイントは false になる。
+ * 表示範囲内の件数を前提とした O(n^2)。
+ */
+export function findPointsWithLabelRoom(
+  points: ClusterablePoint[],
+  zoom: number,
+  clearanceXPx: number = PIN_LABEL_CLEARANCE_X_PX,
+  clearanceYPx: number = PIN_LABEL_CLEARANCE_Y_PX,
+): boolean[] {
+  const clearanceLngDeg = pixelsToLngDegrees(clearanceXPx, zoom)
+  const clearanceYDeg = pixelsToLngDegrees(clearanceYPx, zoom)
+
+  return points.map((point, index) => {
+    // 緯度1度は経度1度より画面上で 1/cos(lat) 倍長いので、縦のしきい値を補正する
+    const clearanceLatDeg = clearanceYDeg * Math.cos((point.latitude * Math.PI) / 180)
+    return !points.some(
+      (other, otherIndex) =>
+        otherIndex !== index &&
+        Math.abs(other.longitude - point.longitude) < clearanceLngDeg &&
+        Math.abs(other.latitude - point.latitude) < clearanceLatDeg,
+    )
+  })
 }
