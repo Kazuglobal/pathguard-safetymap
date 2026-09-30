@@ -85,8 +85,9 @@ describe("daily habit v3 data quality gates", () => {
     }
   })
 
-  it("references only existing thumbnail files", () => {
+  it("gives every item an existing thumbnail file", () => {
     for (const item of NEWS_ITEMS) {
+      expect(item.thumbnailUrl, `${item.slug}: thumbnailUrl is missing`).toBeTruthy()
       if (!item.thumbnailUrl) continue
       const filePath = path.join(ROOT, "public", item.thumbnailUrl)
       expect(fs.existsSync(filePath), `${item.slug}: missing ${item.thumbnailUrl}`).toBe(true)
