@@ -179,6 +179,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-26-001",
     slug: "kurume-agetsu-bicycle-commute-collision-20260925",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kurume-agetsu-bicycle-commute-collision-20260925.jpg",
     title: "【福岡県久留米市】自転車通学の高校生が点滅信号の交差点で車と出合い頭 意識不明の重体",
     excerpt: "9月25日午前6時20分ごろ、久留米市上津の点滅信号がある市道の交差点で、自転車で通学中の16歳の男子高校生と乗用車が出合い頭に衝突した。高校生は搬送時に意識がなく、ヘルメットは衝撃で外れたとみられる。運転していた53歳の男性は無傷で、警察は過失運転傷害容疑での立件も視野に調べている。",
     content: `## 事案の概要
@@ -263,6 +264,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-26-002",
     slug: "kumamoto-late-september-girl-approach-cluster-20260924",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kumamoto-late-september-girl-approach-cluster-20260924.jpg",
     title: "【熊本県】帰宅中の女子児童への声かけが2日で3件 熊本市とあさぎり町で相次ぐ",
     excerpt: "熊本県警の「ゆっぴー安心メール」によると、9月24日午後4時ごろあさぎり町免田東で車から降りてきた男が女子児童に学年や家を尋ね、同日午後5時ごろ熊本市中央区東子飼町の子飼橋で別の男が卑わいな言葉をかけた。翌25日午後3時20分ごろには同区京町本丁でも脅す言葉をかける男がいた。",
     content: `## 事案の概要
@@ -342,6 +344,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-26-003",
     slug: "saitama-iwatsuki-kakura-stalking-20260924",
+    thumbnailUrl: "/images/school-route-news/thumbnails/saitama-iwatsuki-kakura-stalking-20260924.jpg",
     title: "【埼玉県さいたま市】路上で小学生女児に「こんにちは」と声をかけた男がつきまとう 岩槻区",
     excerpt: "埼玉県警の公表によると、9月24日午後3時30分ごろ、さいたま市岩槻区加倉1丁目の路上で小学生の女児が男に「こんにちは」などと声をかけられ、そのままつきまとわれた。男は50〜60歳くらい、身長180センチくらいで、黒色の半袖に長ズボン。岩槻警察署が警戒している。",
     content: `## 事案の概要
@@ -409,6 +412,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-26-004",
     slug: "hiroshima-saiki-ishiuchikita-voice-call-20260916",
+    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-saiki-ishiuchikita-voice-call-20260916.jpg",
     title: "【広島県広島市】下校中の女子児童に「家どこ？」と何度も声をかける男 佐伯区石内北",
     excerpt: "広島市の防災情報メール配信システムによると、9月16日午後3時ごろ、広島市佐伯区石内北1丁目で下校中の女子小学生が60〜70代の男から何度も「家どこ？」と声をかけられた。男は白髪で、オレンジ色のベスト・黒色ズボン・帽子を着用。佐伯警察署が問い合わせ先となっている。",
     content: `## 事案の概要
@@ -473,6 +477,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-12-001",
     slug: "fukuoka-late-august-child-approach-cluster-20260828",
+    thumbnailUrl: "/images/school-route-news/thumbnails/fukuoka-late-august-child-approach-cluster-20260828.jpg",
     title: "【福岡県】小学生への声かけが2日連続 車の3人組が「どこの小学校？」と質問",
     excerpt: "福岡県警察の防犯メール配信によると、8月27日午後2時半ごろ大牟田市一浦町で帰宅中の小学生が車で来た3人組に学校名などを尋ねられ、翌28日午後4時半ごろには福岡市南区三宅で小学生の女児が見知らぬ男に声をかけられた。県内で2日続けての発生となる。",
     content: `## 事案の概要
@@ -553,6 +558,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-12-002",
     slug: "national-living-road-casualty-analysis-20260910",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-living-road-casualty-analysis-20260910.jpg",
     title: "【全国】生活道路の死傷者の4割超が小学生と高齢者 警察庁が5年間の集計を公表",
     excerpt: "警察庁は、幅員5.5メートル未満の「生活道路」で2021〜2025年の5年間に起きた事故の死者・重傷者が3万4262人にのぼると公表した。うち小学生と65歳以上の高齢者は計1万4945人で4割超を占める。9月1日には生活道路の法定速度が時速60キロから30キロに引き下げられたばかりだ。",
     content: `## 何が公表されたか
@@ -631,6 +637,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-12-003",
     slug: "sagamihara-watch-volunteer-exchange-20260824",
+    thumbnailUrl: "/images/school-route-news/thumbnails/sagamihara-watch-volunteer-exchange-20260824.jpg",
     title: "【神奈川県相模原市】通学路の見守りボランティア22人が情報交換 横のつながり強化を要望",
     excerpt: "相模原市中央区の学区で通学路の見守りを担うボランティア22人が8月24日、「学校交通安全関係者の情報交換会」に参加し、日頃の活動の不安や工夫を報告した。参加者からは団体同士の「横のつながり」を強化してほしいという要望が出た。",
     content: `## 取り組みの概要
@@ -691,6 +698,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-11-001",
     slug: "ichinomiya-fuji-bicycle-collision-20260910",
+    thumbnailUrl: "/images/school-route-news/thumbnails/ichinomiya-fuji-bicycle-collision-20260910.jpg",
     title: "【愛知県一宮市】自転車の8歳男児が信号のない交差点で車と衝突し意識不明の重体",
     excerpt: "一宮市富士の信号機のない交差点で9月10日午後3時15分ごろ、自転車に乗っていた8歳の男の子と乗用車が衝突し、男の子は意識不明の重体となった（9月10日時点）。現場は9月1日から法定速度が時速30キロに引き下げられた生活道路で、警察は77歳の男を逮捕し当時の速度を調べている。",
     content: `## 事案の概要
@@ -765,6 +773,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-11-002",
     slug: "kumamoto-kita-shimizukamei-stalking-20260909",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kumamoto-kita-shimizukamei-stalking-20260909.jpg",
     title: "【熊本県熊本市】下校中の女子児童が2日続けてつきまとわれる 北区清水亀井町",
     excerpt: "熊本市北区清水亀井町付近で9月8日と9日の2日続けて、下校中の女子児童が不審な人物につきまとわれる事案が発生した。人物は男女不明で、黒っぽい色の上着・黒色の帽子・白色のマスクを着用。熊本北合志警察署が注意を呼びかけている。",
     content: `## 事案の概要
@@ -834,6 +843,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-11-003",
     slug: "hiroshima-city-september-voice-calls-20260903",
+    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-city-september-voice-calls-20260903.jpg",
     title: "【広島県広島市】2学期最初の週に声かけ2件 車から降りてきた女・公園で誘う男",
     excerpt: "広島市では9月2日に安芸区中野で帰宅中の女子小学生が軽トラックから降りてきた女に学年を尋ねられ、9月3日には安佐南区長束西の公園で遊んでいた女子小学生が男に「一緒に遊ぼう」と声をかけられた。いずれも広島市の防犯メールで配信された。",
     content: `## 事案の概要
@@ -920,6 +930,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-11-004",
     slug: "gifu-kano-schoolguard-watch-20260828",
+    thumbnailUrl: "/images/school-route-news/thumbnails/gifu-kano-schoolguard-watch-20260828.jpg",
     title: "【岐阜県岐阜市】夏休み明け初日に約50人が見守り 生活道路30キロをドライバーへ周知",
     excerpt: "岐阜市内の小中学校が夏休み明けの登校初日を迎えた8月28日、地域のボランティアと岐阜南警察署員ら約50人が加納小学校の通学路に立ち、児童に声をかけながら見守った。9月からの生活道路の法定速度30キロ引き下げについて、パネルでドライバーに注意を呼びかけた。",
     content: `## 取り組みの概要
