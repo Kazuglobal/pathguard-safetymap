@@ -23,12 +23,12 @@ describe('accidents repository', () => {
         lat, lng, source_year, severity_code, fatalities, injuries,
         involves_child, involves_pedestrian, party_a_age,
         accident_type_label, occurred_at, weather_label, road_shape_label
-      ) values (?, ?, 13, '001', ?, ?, 2026, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, 13, '001', ?, ?, 2025, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
-    insert.run(1, 'near-fatal', 35, 139, 1, 1, 0, 1, 0, 1, '人対車両', '2026-04-01T08:00:00.000Z', '晴', '交差点')
-    insert.run(2, 'near-child', 35.0005, 139.0005, 2, 0, 2, 0, 1, 2, '車両相互', '2026-05-01T15:00:00.000Z', '雨', '単路')
-    insert.run(3, 'far', 35.02, 139.02, 2, 0, 1, 0, 0, null, '車両単独', '2026-06-01T12:00:00.000Z', '晴', '単路')
+    insert.run(1, 'near-fatal', 35, 139, 1, 1, 0, 1, 0, 1, '人対車両', '2025-04-01T08:00:00.000Z', '晴', '交差点')
+    insert.run(2, 'near-child', 35.0005, 139.0005, 2, 0, 2, 0, 1, 2, '車両相互', '2025-05-01T15:00:00.000Z', '雨', '単路')
+    insert.run(3, 'far', 35.02, 139.02, 2, 0, 1, 0, 0, null, '車両単独', '2025-06-01T12:00:00.000Z', '晴', '単路')
   })
 
   afterEach(() => {
@@ -43,8 +43,8 @@ describe('accidents repository', () => {
       minLat: 34.99,
       maxLng: 139.01,
       maxLat: 35.01,
-      minYear: 2026,
-      maxYear: 2026,
+      minYear: 2025,
+      maxYear: 2025,
       severity: 'fatal',
       young: true,
       limit: 10_000,
@@ -71,7 +71,6 @@ describe('accidents repository', () => {
       longitude: 139,
       radiusMeters: 200,
       years: 5,
-      currentYear: 2026,
     })
 
     expect(result).toMatchObject({
@@ -81,7 +80,7 @@ describe('accidents repository', () => {
       child_involved: 1,
       pedestrian_involved: 1,
       fatal_accidents: 1,
-      by_year: { '2026': 2 },
+      by_year: { '2025': 2 },
       risk_score: 60,
       search_params: {
         latitude: 35,
@@ -91,7 +90,23 @@ describe('accidents repository', () => {
       },
     })
     expect(result.nearest_accidents).toHaveLength(2)
-    expect(result.nearest_accidents[0]).toMatchObject({ distance_m: 0, year: 2026 })
+    expect(result.nearest_accidents[0]).toMatchObject({ distance_m: 0, year: 2025 })
+  })
+
+  it('counts "past N years" back from the latest data year, not the calendar year', async () => {
+    const insert = database.sqlite.prepare(`
+      insert into traffic_accidents (id, record_number, prefecture_code, police_station_code, lat, lng, source_year)
+      values (?, ?, 13, '001', 35, 139, ?)
+    `)
+    insert.run(20, 'edge-2021', 2021)
+    insert.run(21, 'outside-2020', 2020)
+    const repo = createAccidentsRepo(database.db as unknown as AppDb)
+
+    const result = await repo.nearbyStats(actor, { latitude: 35, longitude: 139, radiusMeters: 200, years: 5 })
+
+    expect(result.by_year).toEqual({ '2021': 1, '2025': 2 })
+    expect(result.search_params).toMatchObject({ years: 5, min_year: 2021, max_year: 2025 })
+    expect(result.situation_summary.total_text).toBe('3件の事故が過去5年間（2021〜2025年）に半径200m以内で発生')
   })
 
   describe('with rows shaped like the production import (detail labels on major-class codes)', () => {
@@ -101,7 +116,7 @@ describe('accidents repository', () => {
           id, record_number, prefecture_code, police_station_code, lat, lng, source_year,
           severity_code, fatalities, injuries, involves_child, involves_pedestrian,
           accident_type_code, accident_type_label
-        ) values (?, ?, 13, '001', 36, 140, 2026, 2, 0, 1, 0, 0, ?, ?)
+        ) values (?, ?, 13, '001', 36, 140, 2025, 2, 0, 1, 0, 0, ?, ?)
       `)
       insert.run(10, 'prod-vehicles', '21', '車両相互_正面衝突')
       insert.run(11, 'prod-pedestrian', '01', '人対車両_横断中')
@@ -116,7 +131,6 @@ describe('accidents repository', () => {
         longitude: 140,
         radiusMeters: 100,
         years: 5,
-        currentYear: 2026,
       })
 
       expect(result.total_accidents).toBe(3)
@@ -127,7 +141,7 @@ describe('accidents repository', () => {
 
     it('returns normalized labels on the map and includes 人対車両 in the pedestrian filter', async () => {
       const repo = createAccidentsRepo(database.db as unknown as AppDb)
-      const bbox = { minLng: 139.99, minLat: 35.99, maxLng: 140.01, maxLat: 36.01, minYear: 2026, maxYear: 2026 }
+      const bbox = { minLng: 139.99, minLat: 35.99, maxLng: 140.01, maxLat: 36.01, minYear: 2025, maxYear: 2025 }
 
       const all = await repo.accidentsInBbox(actor, bbox)
       const byId = Object.fromEntries(all.features.map((feature) => [feature.properties.id, feature.properties]))

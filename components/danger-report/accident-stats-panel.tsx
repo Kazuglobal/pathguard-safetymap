@@ -3,7 +3,7 @@
  * 交通事故統計 拡張表示パネル v4
  * PathGuardian - 通学路安全マップ
  *
- * 153万件の警察庁オープンデータから、事故の詳細状況・
+ * 警察庁オープンデータ（本票）から、事故の詳細状況・
  * 道路環境・当事者分析・時間帯分析をリッチUIで表示
  *
  * shadcn/ui + Tailwind CSS
@@ -12,6 +12,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import {
+  accidentYearWindow,
+  DEFAULT_ACCIDENT_YEARS,
+  formatAccidentYearWindow,
+  statsYearRangeSuffix,
+} from "@/lib/accident-stats-year-window";
 import {
   BarChart2,
   Clock,
@@ -1250,7 +1256,7 @@ function CompactPanel({ stats }: { stats: AccidentStats }) {
       )}
       <p className="text-xs text-gray-400 text-center">
         半径{stats.search_params.radius_meters}m / 過去
-        {stats.search_params.years}年 ・出典: 警察庁オープンデータ
+        {stats.search_params.years}年{statsYearRangeSuffix(stats.search_params)} ・出典: 警察庁オープンデータ
       </p>
     </div>
   );
@@ -1382,7 +1388,7 @@ export function AccidentStatsEmpty({ radius }: { radius: number }) {
         半径{radius}m以内に交通事故の記録はありません
       </p>
       <p className="text-xs text-green-600 mt-1">
-        過去5年間の警察庁オープンデータに基づく
+        過去{DEFAULT_ACCIDENT_YEARS}年間（{formatAccidentYearWindow(accidentYearWindow())}）の警察庁オープンデータに基づく
       </p>
     </div>
   );
@@ -1528,7 +1534,7 @@ export default function AccidentStatsPanel({
           <div className="border-t px-4 py-2 text-xs text-gray-400 text-center space-y-0.5">
             <p>
               半径{stats.search_params.radius_meters}m以内 / 過去
-              {stats.search_params.years}年間 / {stats.total_accidents}件
+              {stats.search_params.years}年間{statsYearRangeSuffix(stats.search_params)} / {stats.total_accidents}件
             </p>
             <p>出典: 警察庁「交通事故統計情報のオープンデータ」</p>
           </div>

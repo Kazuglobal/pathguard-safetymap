@@ -12,8 +12,6 @@ const mocked = vi.hoisted(() => {
     update: mockUpdate,
   }));
 
-  const mockAdjustYears = vi.fn((years: number) => years);
-  const mockNormalizeSummaryYearText = vi.fn((text: string) => text);
   const mockFetch = vi.fn();
 
   return {
@@ -24,8 +22,6 @@ const mocked = vi.hoisted(() => {
     mockUpdateEq,
     mockUpdate,
     mockFrom,
-    mockAdjustYears,
-    mockNormalizeSummaryYearText,
     mockFetch,
   };
 });
@@ -40,8 +36,6 @@ vi.mock("@/lib/supabase-client", () => ({
 vi.mock("@/lib/accident-stats-year-window", () => ({
   ACCIDENT_IMAGE_CONTEXT_PARAMS: { radiusMeters: 300, years: 5 },
   DEFAULT_ACCIDENT_YEARS: 5,
-  adjustYearsForAccidentDataset: mocked.mockAdjustYears,
-  normalizeSummaryYearText: mocked.mockNormalizeSummaryYearText,
 }));
 
 import {
@@ -121,11 +115,7 @@ describe("getAccidentStatsRPC", () => {
     expect(url).toContain('longitude=139.7006');
     expect(url).toContain('radiusMeters=500');
     expect(url).toContain('years=3');
-    expect(result.search_params.years).toBe(3);
-    expect(mocked.mockNormalizeSummaryYearText).toHaveBeenCalledWith(
-      "直近5年で事故1件",
-      3
-    );
+    expect(result).toEqual(stats);
   });
 
   it("RPCエラー時は例外を投げる", async () => {

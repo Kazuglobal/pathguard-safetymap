@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import {
-  ACCIDENT_IMAGE_CONTEXT_PARAMS,
-  adjustYearsForAccidentDataset,
-} from "@/lib/accident-stats-year-window"
+import { ACCIDENT_IMAGE_CONTEXT_PARAMS } from "@/lib/accident-stats-year-window"
 
 const mocked = vi.hoisted(() => ({
   getActor: vi.fn(),
@@ -18,7 +15,7 @@ import { fetchNearbyAccidentStats } from "@/lib/traffic-accident/server"
 describe("fetchNearbyAccidentStats", () => {
   afterEach(() => vi.useRealTimers())
 
-  it("uses the shared radius and dataset-anchored effective year window", async () => {
+  it("passes the shared radius and five-year window (the repo anchors it to the latest data year)", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-07-19T00:00:00Z"))
     mocked.getActor.mockResolvedValue({ kind: 'user', id: 'user-1', email: null, isAdmin: false })
@@ -36,9 +33,8 @@ describe("fetchNearbyAccidentStats", () => {
         latitude: 40.82,
         longitude: 140.74,
         radiusMeters: 300,
-        years: adjustYearsForAccidentDataset(5, 2026),
+        years: 5,
       },
     )
-    expect(adjustYearsForAccidentDataset(5, 2026)).toBe(7)
   })
 })

@@ -2,6 +2,7 @@ import * as turf from '@turf/turf'
 import { and, eq, gte, inArray, isNull, lte, notInArray, or, type SQL } from 'drizzle-orm'
 
 import type { AccidentStats, NearbyAccident } from '@/lib/traffic-accident-data'
+import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
 import { normalizeAccidentRow, PEDESTRIAN_ACCIDENT_CODE } from '@/lib/traffic-accident/codes'
 
 import { assertCan, type Actor } from '../authz'
@@ -69,7 +70,6 @@ export interface NearbyStatsInput {
   longitude: number
   radiusMeters?: number
   years?: number
-  currentYear?: number
 }
 
 export interface AccidentFeatureCollection {
@@ -205,7 +205,7 @@ function nearbyAccident(row: AccidentRow, distanceMeters: number): NearbyAcciden
 
 function aggregateNearby(
   rows: Array<{ row: AccidentRow; distanceMeters: number }>,
-  input: Required<Pick<NearbyStatsInput, 'latitude' | 'longitude' | 'radiusMeters' | 'years'>>,
+  input: Required<Pick<NearbyStatsInput, 'latitude' | 'longitude' | 'radiusMeters' | 'years'>> & AccidentYearWindow,
 ): AccidentStats {
   const byYear: Record<string, number> = {}
   const byTimeOfDay: Record<string, number> = {}
@@ -333,7 +333,7 @@ function aggregateNearby(
       peak_month: peakKey(byMonth),
     },
     situation_summary: {
-      total_text: `${total}件の事故が過去${input.years}年間に半径${input.radiusMeters}m以内で発生`,
+      total_text: `${total}件の事故が過去${input.years}年間（${formatAccidentYearWindow(input)}）に半径${input.radiusMeters}m以内で発生`,
       severity_text: fatalAccidents > 0 ? `死亡事故${fatalAccidents}件を含む` : '死亡事故なし',
       pedestrian_text: pedestrianTypeRows > 0
         ? `歩行者事故${pedestrianTypeRows}件（横断中${crossingRows}件）`
@@ -370,6 +370,8 @@ function aggregateNearby(
       longitude: input.longitude,
       radius_meters: input.radiusMeters,
       years: input.years,
+      min_year: input.minYear,
+      max_year: input.maxYear,
     },
   }
 }
@@ -447,8 +449,8 @@ export function createAccidentsRepo(db: AppDb) {
       const years = input.years ?? 5
       assertIntegerInRange('radiusMeters', radiusMeters, 1, MAX_RADIUS_METERS)
       assertIntegerInRange('years', years, 1, 10)
-      const currentYear = input.currentYear ?? new Date().getUTCFullYear()
-      assertIntegerInRange('currentYear', currentYear, 1900, 2200)
+      // 「過去N年」は今年ではなくデータの最新年から数える（例: 5年 → 2021〜2025）
+      const window = accidentYearWindow(years)
 
       const latitudeDelta = radiusMeters / 111_320
       const longitudeScale = Math.max(Math.cos((input.latitude * Math.PI) / 180), 0.01)
@@ -461,7 +463,7 @@ export function createAccidentsRepo(db: AppDb) {
           lte(trafficAccidents.latitude, input.latitude + latitudeDelta),
           gte(trafficAccidents.longitude, input.longitude - longitudeDelta),
           lte(trafficAccidents.longitude, input.longitude + longitudeDelta),
-          yearsIn(currentYear - years, currentYear),
+          yearsIn(window.minYear, window.maxYear),
         ))
         .limit(MAX_NEARBY_CANDIDATES)
 
@@ -483,6 +485,7 @@ export function createAccidentsRepo(db: AppDb) {
         longitude: input.longitude,
         radiusMeters,
         years,
+        ...window,
       })
     },
   }
