@@ -111,4 +111,13 @@ describe("thumbnail coverage", () => {
       expect(fs.existsSync(file), `${item.slug}: ${item.thumbnailUrl} does not exist`).toBe(true)
     }
   })
+
+  it("keeps every contentImages entry pointing at an existing file", () => {
+    for (const item of NEWS_ITEMS) {
+      for (const image of item.contentImages ?? []) {
+        expect(image.description.length, `${item.slug}/${image.id}: description is empty`).toBeGreaterThan(0)
+        expect(fs.existsSync(path.join(ROOT, "public", image.url)), `${item.slug}/${image.id}: ${image.url} does not exist`).toBe(true)
+      }
+    }
+  })
 })

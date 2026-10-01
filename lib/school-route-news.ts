@@ -39,6 +39,13 @@ export interface SchoolRouteNewsItem {
   sources: string[]
   keyPoints: string[]
   thumbnailUrl?: string
+  /** 記事本文の下に図版として表示する画像（任意）。ファイルは public/ に実在させる */
+  contentImages?: Array<{
+    id: string
+    url: string
+    /** 図のキャプション兼 alt テキスト */
+    description: string
+  }>
   isBreaking?: boolean
   verifiedAt?: string
   /** そなえの一言（30〜60字の具体行動）。accident/suspicious では必須運用 */
@@ -110,6 +117,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     isBreaking: true,
     verifiedAt: "2026-09-30T22:10:00+09:00",
     actionAdvice: "防犯ブザーが鳴るか今夜いっしょに試し、取り出しやすい所に付け直す",
+    contentImages: [
+      {
+        id: "buzzer-position",
+        url: "/images/school-route-news/articles/setagaya-kinuta-elementary-girl-touched-20260929/buzzer-position.jpg",
+        description: "防犯ブザーは片手ですぐ引ける肩ひも付近に付け、鳴らして逃げる（①付ける→②引く→③人のいる場所へ）"
+      }
+    ],
     thumbnailUrl: "/images/school-route-news/thumbnails/setagaya-kinuta-elementary-girl-touched-20260929.jpg"
   },
   {
@@ -174,6 +188,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     isBreaking: false,
     verifiedAt: "2026-09-30T22:00:00+09:00",
     actionAdvice: "帰り道にある「こども110番の家」を1軒、子どもと一緒に指さして確認する",
+    contentImages: [
+      {
+        id: "follow-escape-steps",
+        url: "/images/school-route-news/articles/joetsu-saijomachi-schoolway-following-20260928/follow-escape-steps.jpg",
+        description: "つけられたときの動き方（①角を曲がって確かめる→②人のいる場所・こども110番の家へ入る→③大人に伝える）"
+      }
+    ],
     thumbnailUrl: "/images/school-route-news/thumbnails/joetsu-saijomachi-schoolway-following-20260928.jpg"
   },
   {
