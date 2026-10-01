@@ -1,9 +1,10 @@
 "use client"
 
 import type { MapDisplayOption } from "@/lib/map-display-options"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
+import { MapPin, MapPinPlus, HelpCircle, Trophy, PlusCircle, List, Loader2 } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
 import HelpDialog from "./help-dialog"
+import { MapLegendButton, MapLegendCompact } from "./map-legend"
 import { useGamification } from "@/hooks/use-gamification"
 import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
 import { tankenTokens } from "@/lib/design/tanken"
@@ -117,6 +118,9 @@ export default function MapFloatingControls({
             </HelpDialog>
           )}
         </div>
+
+        {/* スマホは凡例を常時出す場所がないため、ボタンから開く */}
+        {isMobile && <MapLegendButton />}
       </div>
 
       {/* 右下: 地図表示ドック */}
@@ -180,7 +184,7 @@ export default function MapFloatingControls({
                   </>
                 ) : (
                   <>
-                    <Crosshair className="h-4 w-4" strokeWidth={2.6} />
+                    <MapPinPlus className="h-4 w-4" strokeWidth={2.6} />
                     現在地
                   </>
                 )}
@@ -254,7 +258,7 @@ export default function MapFloatingControls({
                 </>
               ) : (
                 <>
-                  <Crosshair className="h-4 w-4" strokeWidth={2.6} />
+                  <MapPinPlus className="h-4 w-4" strokeWidth={2.6} />
                   現在地で報告
                 </>
               )}
@@ -298,26 +302,11 @@ export default function MapFloatingControls({
         </div>
       )}
 
-      {/* 危険種別レジェンド（コンパクト版） - 画面下部 */}
+      {/* 凡例（コンパクト版） - 画面下部。絵=種類 / 色=あぶなさ */}
       {showLegend && (
         <div className="absolute left-3 z-10" style={legendBottomStyle}>
-          <div className="flex gap-1 rounded-full border px-2 py-1.5" style={floatPill}>
-            <div className="flex items-center gap-1 px-1.5" title="交通危険">
-              <Car className="h-3.5 w-3.5" style={{ color: "#3E8FB8" }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>交通</span>
-            </div>
-            <div className="flex items-center gap-1 px-1.5" title="犯罪危険">
-              <Shield className="h-3.5 w-3.5" style={{ color: C.danger }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>犯罪</span>
-            </div>
-            <div className="flex items-center gap-1 px-1.5" title="災害危険">
-              <AlertTriangle className="h-3.5 w-3.5" style={{ color: C.accent }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>災害</span>
-            </div>
-            <div className="flex items-center gap-1 px-1.5" title="その他">
-              <HelpCircle className="h-3.5 w-3.5" style={{ color: C.inkFaint }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>他</span>
-            </div>
+          <div className="rounded-full border px-3 py-1.5" style={floatPill}>
+            <MapLegendCompact />
           </div>
         </div>
       )}

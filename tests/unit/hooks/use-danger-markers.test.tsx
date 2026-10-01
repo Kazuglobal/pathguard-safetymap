@@ -105,7 +105,7 @@ describe("useDangerMarkers", () => {
     )
     expect(markerOptions.element).toHaveAttribute(
       "aria-label",
-      "交通の危険報告。詳細を開きます",
+      "交通の危険報告（ちゅうい）。詳細を開きます",
     )
     expect(markerOptions.element.style.width).toBe("")
     expect(markerOptions.element.style.height).toBe("")
@@ -120,5 +120,52 @@ describe("useDangerMarkers", () => {
     expect(mocks.markers[1].remove).toHaveBeenCalledTimes(1)
     expect(mocks.roots[1].unmount).toHaveBeenCalledTimes(1)
     expect(map.off).toHaveBeenCalledWith("zoomend", expect.any(Function))
+  })
+
+  it("ラベルは拡大時かつ周囲に空きがあるピンだけに出す", () => {
+    const makeReport = (id: string, latitude: number, longitude: number) => ({
+      id,
+      user_id: "user-1",
+      title: id,
+      description: null,
+      latitude,
+      longitude,
+      danger_type: "traffic",
+      danger_level: 2,
+      status: "approved",
+    })
+    // near-a / near-b は経度0.00045度差(zoom16で約42px)、far は十分離れている
+    const reports = [
+      makeReport("near-a", 35.68, 139.7),
+      makeReport("near-b", 35.68, 139.70045),
+      makeReport("far", 35.7, 139.75),
+    ]
+    const renderAt = (zoom: number) => {
+      mocks.markers.length = 0
+      mocks.roots.length = 0
+      const map = { getZoom: vi.fn(() => zoom), on: vi.fn(), off: vi.fn(), easeTo: vi.fn() }
+      const { unmount } = renderHook(() =>
+        useDangerMarkers({
+          mapRef: { current: map } as never,
+          mapInitializedRef: { current: true },
+          dangerReports: reports as never,
+          pendingReports: [],
+          showPending: false,
+          supabase: null,
+          onSelectReport: vi.fn(),
+        }),
+      )
+      const labels = mocks.roots.map(
+        (root) =>
+          (root.render.mock.calls[0][0] as { props: { showLabel?: boolean } }).props.showLabel,
+      )
+      unmount()
+      return labels
+    }
+
+    // zoom15: しきい値未満なので、単独ピンにもラベルを出さない
+    expect(renderAt(15).filter(Boolean)).toHaveLength(0)
+    // zoom17: 3件とも単独ピン。近い2件はラベルなし、離れた1件だけラベルあり
+    expect(renderAt(17)).toEqual([false, false, true])
   })
 })

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react"
 import mapboxgl from "mapbox-gl"
-import { createRoot } from "react-dom/client"
-import { AlertTriangle } from "lucide-react"
+import { createRoot, type Root } from "react-dom/client"
+import { PIN_LABEL_MIN_ZOOM } from "@/lib/map/marker-clustering"
+import { getRouteHazardPresentation } from "@/lib/map/route-hazard-presentation"
 import type { RouteHazardMarker } from "@/lib/types"
 
 interface UseRouteHazardMarkersParams {
@@ -44,25 +45,50 @@ export function useRouteHazardMarkers({
     clearRouteHazardMarkers()
     clearRouteHazardPopup()
 
+    const map = mapRef.current
+    const roots: Root[] = []
+    const markerElements: HTMLElement[] = []
+
+    // 文字ラベルは拡大時だけ(危険ピンと同じしきい値)。ズームのたびに作り直さずクラスで切り替える
+    const updateLabelVisibility = () => {
+      const showLabel = map.getZoom() >= PIN_LABEL_MIN_ZOOM
+      markerElements.forEach((element) => {
+        element.classList.toggle("route-hazard-marker--labeled", showLabel)
+      })
+    }
+
     visibleRouteHazards.forEach((hazard) => {
+      const presentation = getRouteHazardPresentation(hazard.hazard_type)
+      const Icon = presentation.icon
+
       const markerElement = document.createElement("button")
       markerElement.type = "button"
       markerElement.className = "route-hazard-marker"
-      markerElement.style.width = "30px"
-      markerElement.style.height = "30px"
-      markerElement.style.borderRadius = "9999px"
-      markerElement.style.border = "2px solid white"
-      markerElement.style.background = hazard.hazard_type === "tsunami" ? "#1d4ed8" : "#f97316"
-      markerElement.style.color = "white"
-      markerElement.style.boxShadow = "0 6px 16px rgba(15,23,42,0.28)"
-      markerElement.style.cursor = "pointer"
+      // Mapbox は role のないマーカー要素に role="img" を付けるため、ボタンであることを明示する
+      markerElement.setAttribute("role", "button")
+      markerElement.style.setProperty("--hazard-color", presentation.colorHex)
+      markerElement.setAttribute(
+        "aria-label",
+        `${presentation.label}ハザード: ${hazard.title}。詳細を開きます`,
+      )
 
       const root = createRoot(markerElement)
-      root.render(<AlertTriangle className="h-4 w-4" />)
+      root.render(
+        <>
+          <span className="route-hazard-marker-disc" aria-hidden="true">
+            <Icon className="route-hazard-marker-icon" strokeWidth={2.4} />
+          </span>
+          <span className="map-marker-label" aria-hidden="true">
+            {presentation.label}
+          </span>
+        </>,
+      )
+      roots.push(root)
+      markerElements.push(markerElement)
 
       const markerInstance = new mapboxgl.Marker(markerElement)
         .setLngLat(hazard.coordinates)
-        .addTo(mapRef.current!)
+        .addTo(map)
 
       markerElement.addEventListener("click", (event) => {
         event.stopPropagation()
@@ -121,9 +147,15 @@ export function useRouteHazardMarkers({
       routeHazardMarkersRef.current.push(markerInstance)
     })
 
+    updateLabelVisibility()
+    map.on("zoomend", updateLabelVisibility)
+
     return () => {
+      map.off("zoomend", updateLabelVisibility)
       clearRouteHazardMarkers()
       clearRouteHazardPopup()
+      // effect のクリーンアップ中に同期 unmount すると React が警告するため遅延させる
+      queueMicrotask(() => roots.forEach((root) => root.unmount()))
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearRouteHazardMarkers, clearRouteHazardPopup, visibleRouteHazards])

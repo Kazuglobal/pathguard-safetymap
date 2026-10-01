@@ -35,6 +35,7 @@ import { useHazardTileLayers } from "@/hooks/use-hazard-tile-layers"
 import { useSelectedRouteLayer } from "@/hooks/use-selected-route-layer"
 import { useRouteHazards } from "@/hooks/use-route-hazards"
 import { useRouteHazardMarkers } from "@/hooks/use-route-hazard-markers"
+import { buildPointPinSvg } from "@/lib/map/pin-shape"
 import { useDeleteDangerReport } from "@/hooks/use-delete-danger-report"
 import { useSuspiciousAlert } from "@/hooks/use-suspicious-alert"
 import {
@@ -411,41 +412,16 @@ export default function MapContainer({
 
     const markerElement = document.createElement("div");
     
-    if (isSubmitted) {
-      markerElement.className = "submitted-marker";
-      markerElement.style.cssText = `
-        width: 20px; height: 20px; border-radius: 50%;
-        background: #22c55e; border: 3px solid white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer;
-      `;
-    } else {
-      markerElement.className = "selection-marker";
-      markerElement.style.cssText = `
-        width: 24px; height: 24px; border-radius: 50%;
-        background: #3b82f6; border: 4px solid white;
-        box-shadow: 0 4px 15px rgba(59,130,246,0.5);
-        cursor: grab; transition: all 0.2s ease;
-        animation: pulse 2s infinite;
-      `;
-      
-      // パルスアニメーション用のスタイルを追加
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes pulse {
-          0% { box-shadow: 0 4px 15px rgba(59,130,246,0.5); }
-          50% { box-shadow: 0 4px 25px rgba(59,130,246,0.8); }
-          100% { box-shadow: 0 4px 15px rgba(59,130,246,0.5); }
-        }
-      `;
-      if (!document.querySelector('#marker-pulse-style')) {
-        style.id = 'marker-pulse-style';
-        document.head.appendChild(style);
-      }
-    }
+    // 現在地の青い丸(GeolocateControl)と見分けられるよう、みどりのしずく形にする。
+    // 見た目は globals.css の .selection-marker / .submitted-marker。
+    markerElement.className = isSubmitted ? "submitted-marker" : "selection-marker";
+    markerElement.innerHTML = buildPointPinSvg(isSubmitted ? "submitted" : "select");
+    markerElement.setAttribute("aria-label", isSubmitted ? "送信した報告の場所" : "報告する場所");
 
-    selectionMarker.current = new mapboxgl.Marker({ 
-      element: markerElement, 
-      draggable: !isSubmitted 
+    selectionMarker.current = new mapboxgl.Marker({
+      element: markerElement,
+      anchor: "bottom",
+      draggable: !isSubmitted
     }).setLngLat(coordinates).addTo(map.current);
 
     if (isSubmitted) {

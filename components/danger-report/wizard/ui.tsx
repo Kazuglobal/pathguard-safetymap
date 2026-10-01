@@ -7,9 +7,10 @@
 
 import type { CSSProperties, ReactNode } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { Car, Shield, CloudRainWind, HelpCircle, Check } from "lucide-react"
+import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -232,20 +233,23 @@ export function StepSlider({
  * きけんの しゅるい カード
  * ------------------------------------------------------------------ */
 
+// 絵は地図ピンと同じ一元定義から取る(選んだ絵がそのまま地図に立つようにする)
 export const DANGER_TYPES = [
   {
     id: "traffic",
     label: "こうつう",
     sub: "くるま・じてんしゃ",
-    icon: Car,
+    icon: getDangerTypePresentation("traffic").icon,
     color: "#3E8FB8",
     soft: "#E3F1F8",
   },
   {
     id: "crime",
-    label: "ふしんしゃ",
+    // 地図・凡例・一覧では crime を「犯罪」と表示する。「ふしんしゃ」は別種類(suspicious)の
+    // 名前なので、ここで使うと投稿した絵と地図のラベルが食い違う。
+    label: "はんざい",
     sub: "こわい ひと・ばしょ",
-    icon: Shield,
+    icon: getDangerTypePresentation("crime").icon,
     color: "#D95555",
     soft: "#FBE9E9",
   },
@@ -253,7 +257,7 @@ export const DANGER_TYPES = [
     id: "disaster",
     label: "さいがい",
     sub: "みず・じしん・くずれ",
-    icon: CloudRainWind,
+    icon: getDangerTypePresentation("disaster").icon,
     color: "#F4801F",
     soft: "#FDEBD7",
   },
@@ -261,7 +265,7 @@ export const DANGER_TYPES = [
     id: "other",
     label: "そのほか",
     sub: "きになる こと",
-    icon: HelpCircle,
+    icon: getDangerTypePresentation("other").icon,
     color: "#847661",
     soft: "#F3EAD6",
   },
