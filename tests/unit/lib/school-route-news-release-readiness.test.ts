@@ -102,3 +102,13 @@ describe("daily habit v3 data quality gates", () => {
     expect(preview.map((p) => p.title)).toEqual(top5.map((i) => i.title))
   })
 })
+
+describe("thumbnail coverage", () => {
+  it("gives every news item a thumbnailUrl whose file exists", () => {
+    for (const item of NEWS_ITEMS) {
+      expect(item.thumbnailUrl, `${item.slug}: thumbnailUrl is missing`).toBeTruthy()
+      const file = path.join(ROOT, "public", item.thumbnailUrl as string)
+      expect(fs.existsSync(file), `${item.slug}: ${item.thumbnailUrl} does not exist`).toBe(true)
+    }
+  })
+})
