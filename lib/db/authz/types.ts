@@ -37,6 +37,7 @@ export const AUTHZ_TABLES = [
   'api_usage_logs',
   'api_budget_settings',
   'traffic_accidents',
+  'accident_hotspots',
 ] as const
 
 export type Table = (typeof AUTHZ_TABLES)[number]

@@ -6,6 +6,7 @@ import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow }
 import { normalizeAccidentRow, PEDESTRIAN_ACCIDENT_CODE } from '@/lib/traffic-accident/codes'
 
 import { assertCan, type Actor } from '../authz'
+import { createAccidentHotspotsRepo } from './accident-hotspots.repo'
 import { getTrafficDb, type AppDb } from '../client'
 import { trafficAccidents } from '../schema'
 
@@ -377,6 +378,19 @@ function aggregateNearby(
 }
 
 export function createAccidentsRepo(db: AppDb) {
+  /**
+   * 多発地点は補足情報なので、取得に失敗しても事故統計そのものは返す
+   * （accident_hotspots の本番適用前や、件数データの欠落時に統計全体を落とさないため）。
+   */
+  async function nearbyHotspots(actor: Actor, latitude: number, longitude: number, radiusMeters: number) {
+    try {
+      return await createAccidentHotspotsRepo(db).hotspotsNearPoint(actor, { latitude, longitude, radiusMeters })
+    } catch (error) {
+      console.error('[accidents.repo] nearby hotspots failed', error instanceof Error ? error.message : 'unknown')
+      return []
+    }
+  }
+
   return {
     async accidentsInBbox(actor: Actor, input: AccidentsInBboxInput): Promise<AccidentFeatureCollection> {
       assertCan(actor, 'select', 'traffic_accidents')
@@ -480,13 +494,14 @@ export function createAccidentsRepo(db: AppDb) {
         }))
         .filter(({ distanceMeters }) => distanceMeters <= radiusMeters)
 
-      return aggregateNearby(nearbyRows, {
+      const stats = aggregateNearby(nearbyRows, {
         latitude: input.latitude,
         longitude: input.longitude,
         radiusMeters,
         years,
         ...window,
       })
+      return { ...stats, hotspots: await nearbyHotspots(actor, input.latitude, input.longitude, radiusMeters) }
     },
   }
 }

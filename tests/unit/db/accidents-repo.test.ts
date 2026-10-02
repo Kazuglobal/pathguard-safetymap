@@ -4,6 +4,7 @@ import type { Actor } from '@/lib/db/authz'
 import { createAccidentsRepo } from '@/lib/db/repos/accidents.repo'
 import type { AppDb } from '@/lib/db/client'
 import { createTestDatabase, type TestDatabase } from '@/lib/db/testing'
+import { HOTSPOT_DATASET_VERSION } from '@/lib/traffic-accident/hotspot-config'
 
 const actor: Actor = {
   kind: 'user',
@@ -91,6 +92,32 @@ describe('accidents repository', () => {
     })
     expect(result.nearest_accidents).toHaveLength(2)
     expect(result.nearest_accidents[0]).toMatchObject({ distance_m: 0, year: 2025 })
+  })
+
+  it('attaches hotspots within the radius to the nearby stats', async () => {
+    database.sqlite.prepare(`
+      insert into accident_hotspots (
+        id, dataset_version, lat, lng, radius_meters, min_year, max_year, accident_count, fatal_count,
+        pedestrian_count, young_count, by_year_json, by_class_json, peak_hour, prefecture_code,
+        municipality_code, national_rank
+      ) values (1, ?, 35.0001, 139, 30, 2021, 2025, 7, 0, 2, 1, '{}', '{"人対車両":2,"車両相互":5}', 8, 30, '101', 40)
+    `).run(HOTSPOT_DATASET_VERSION)
+    const repo = createAccidentsRepo(database.db as unknown as AppDb)
+
+    const result = await repo.nearbyStats(actor, { latitude: 35, longitude: 139, radiusMeters: 200, years: 5 })
+
+    expect(result.hotspots).toHaveLength(1)
+    expect(result.hotspots?.[0]).toMatchObject({ accidentCount: 7, distanceMeters: 11, nationalRank: 40 })
+  })
+
+  it('still returns the stats when the hotspot table is unavailable', async () => {
+    database.sqlite.exec('drop table accident_hotspots')
+    const repo = createAccidentsRepo(database.db as unknown as AppDb)
+
+    const result = await repo.nearbyStats(actor, { latitude: 35, longitude: 139, radiusMeters: 200, years: 5 })
+
+    expect(result.total_accidents).toBe(2)
+    expect(result.hotspots).toEqual([])
   })
 
   it('counts "past N years" back from the latest data year, not the calendar year', async () => {

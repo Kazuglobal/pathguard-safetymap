@@ -13,6 +13,7 @@
 
 "use client";
 
+import type { AccidentHotspotSummary } from "@/lib/traffic-accident/hotspot-types";
 import {
   ACCIDENT_IMAGE_CONTEXT_PARAMS,
   DEFAULT_ACCIDENT_YEARS,
@@ -112,6 +113,8 @@ export interface AccidentStats {
     min_year?: number;
     max_year?: number;
   };
+  /** 半径内の事故多発地点（件数の多い順・最大3件）。古いキャッシュには無い。 */
+  hotspots?: AccidentHotspotSummary[];
 }
 
 export interface RiskLevelInfo {
