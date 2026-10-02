@@ -45,6 +45,7 @@ import {
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
+import { AccidentHotspotLayer } from "./accident-hotspot-layer"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
 import { useUserRoutes } from "@/hooks/use-user-routes"
@@ -222,6 +223,7 @@ export default function MapContainer({
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
+  const [isHotspotVisible, setIsHotspotVisible] = useState(false)
 
   // --- Accident Statistics for clicked location ---
   const {
@@ -1064,10 +1066,12 @@ export default function MapContainer({
     () =>
       buildMapDisplayOverlayOptions({
         isHeatmapVisible: accidentHeatmap.isVisible,
+        isHotspotVisible,
         isFloodVisible: hazardLayerVisibility.flood,
         isTsunamiVisible: hazardLayerVisibility.tsunami,
         isSuspiciousVisible: isSuspiciousVisible,
         onToggleHeatmap: accidentHeatmap.toggleVisibility,
+        onToggleHotspot: () => setIsHotspotVisible((visible) => !visible),
         onToggleFlood: () => handleHazardLayerToggle("flood", !hazardLayerVisibility.flood),
         onToggleTsunami: () => handleHazardLayerToggle("tsunami", !hazardLayerVisibility.tsunami),
         onToggleSuspicious: () => setIsSuspiciousVisible((v) => !v),
@@ -1075,6 +1079,7 @@ export default function MapContainer({
     [
       accidentHeatmap.isVisible,
       accidentHeatmap.toggleVisibility,
+      isHotspotVisible,
       handleHazardLayerToggle,
       hazardLayerVisibility.flood,
       hazardLayerVisibility.tsunami,
@@ -1271,6 +1276,9 @@ export default function MapContainer({
             setIsDetailModalOpen(true)
           }}
         />
+
+        {/* 事故多発地点レイヤー（警察庁オープンデータから事前計算） */}
+        <AccidentHotspotLayer map={map.current} isVisible={isHotspotVisible} />
 
         {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
         <SuspiciousAlertLayer
