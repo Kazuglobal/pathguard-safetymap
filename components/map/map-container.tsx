@@ -46,6 +46,8 @@ import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
 import { AccidentHotspotLayer } from "./accident-hotspot-layer"
+import { RouteAccidentHotspotList } from "./route-accident-hotspot-list"
+import { useRouteAccidentHotspots } from "@/hooks/use-route-accident-hotspots"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
 import { useUserRoutes } from "@/hooks/use-user-routes"
@@ -295,6 +297,7 @@ export default function MapContainer({
     setRouteHazardError,
     resetRouteHazards,
   } = useRouteHazards({ selectedUserRoute, hazardLayerVisibility })
+  const routeAccidentHotspots = useRouteAccidentHotspots(selectedUserRoute?.id ?? null)
   const visibleRouteHazards = useMemo(
     () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
     [hazardLayerVisibility, routeHazards],
@@ -1174,6 +1177,16 @@ export default function MapContainer({
                 summary={selectedUserRouteId ? routeSafetySummary : undefined}
                 evidenceItems={selectedUserRouteId ? routeSafetyEvidenceItems : []}
                 hazards={visibleRouteHazards}
+                accidentHotspotSlot={
+                  <RouteAccidentHotspotList
+                    {...routeAccidentHotspots}
+                    onSelect={(hotspot) => {
+                      // 地図上で場所が分かるよう、多発地点レイヤーも表示する
+                      setIsHotspotVisible(true)
+                      flyToLocation(hotspot.longitude, hotspot.latitude, 17)
+                    }}
+                  />
+                }
                 toggles={hazardLayerVisibility}
                 isLoading={isRouteHazardsLoading}
                 onRouteChange={handleRouteSelectionChange}
