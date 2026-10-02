@@ -4,6 +4,7 @@ import {
   hotspotBreakdown,
   hotspotHeadline,
   hotspotOneLine,
+  hotspotPromptLine,
   hotspotPeakHourLabel,
   hotspotsToGeoJSON,
   hotspotTier,
@@ -68,5 +69,13 @@ describe('hotspot presentation', () => {
       geometry: { type: 'Point', coordinates: [139.66047, 35.67252] },
       properties: { id: 7, accidentCount: 12, tier: 'medium', color: HOTSPOT_TIER_COLORS.medium },
     })
+  })
+
+  it('writes the AI prompt line from data only', () => {
+    expect(hotspotPromptLine([SPOT, { ...SPOT, id: 8, accidentCount: 30, distanceMeters: 120 }], 300))
+      .toBe('半径300m以内に事故多発地点が2か所（最大: 半径30m以内で30件・主に車両相互・120m先）')
+    expect(hotspotPromptLine([{ ...SPOT, byClass: {} }], undefined)).toBe('近くに事故多発地点が1か所（最大: 半径30m以内で12件）')
+    expect(hotspotPromptLine([], 300)).toBeNull()
+    expect(hotspotPromptLine(undefined, 300)).toBeNull()
   })
 })

@@ -80,3 +80,23 @@ export function hotspotsToGeoJSON(
     }),
   }
 }
+
+/**
+ * AI への注入文用の1文。データにある数値だけを使う（件数・距離を作らない）。
+ * 例: 「半径300m以内に事故多発地点が2か所（最大: 半径30m以内で12件・主に車両相互・85m先）」
+ */
+export function hotspotPromptLine(
+  hotspots: readonly AccidentHotspotSummary[] | null | undefined,
+  searchRadiusMeters: number | null | undefined,
+): string | null {
+  const valid = (hotspots ?? []).filter((spot) => Number.isSafeInteger(spot.accidentCount) && spot.accidentCount > 0)
+  if (valid.length === 0) return null
+  const top = valid.reduce((best, spot) => (spot.accidentCount > best.accidentCount ? spot : best))
+  const details = [
+    `半径${top.radiusMeters}m以内で${top.accidentCount}件`,
+    dominantAccidentClass(top.byClass) ? `主に${dominantAccidentClass(top.byClass)}` : null,
+    top.distanceMeters != null ? `${top.distanceMeters}m先` : null,
+  ].filter((part): part is string => part !== null)
+  const where = Number.isFinite(searchRadiusMeters) && searchRadiusMeters > 0 ? `半径${searchRadiusMeters}m以内に` : '近くに'
+  return `${where}事故多発地点が${valid.length}か所（最大: ${details.join('・')}）`
+}

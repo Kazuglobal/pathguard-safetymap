@@ -18,6 +18,7 @@ import {
   formatAccidentYearWindow,
   statsYearRangeSuffix,
 } from "@/lib/accident-stats-year-window";
+import { NearbyHotspotsSection } from "@/components/danger-report/nearby-hotspots-section";
 import {
   BarChart2,
   Clock,
@@ -1498,6 +1499,8 @@ export default function AccidentStatsPanel({
                 hot={fatalAccidentCount > 0}
               />
             </div>
+
+            <NearbyHotspotsSection hotspots={stats.hotspots} />
 
             <DetailsAccordion>
               <RiskScoreBar score={stats.risk_score} />
