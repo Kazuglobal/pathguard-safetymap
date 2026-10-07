@@ -40,6 +40,7 @@ const REFERENCE_TABLES = new Set<Table>([
   'hazard_zone_coverage',
   'hazard_image_cache',
   'traffic_accidents',
+  'accident_hotspots',
 ])
 
 const OPERATIONAL_TABLES = new Set<Table>([

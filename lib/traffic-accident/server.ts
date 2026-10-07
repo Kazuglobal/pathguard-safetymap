@@ -10,10 +10,7 @@
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import { getActor } from '@/lib/auth/actor'
 import { nearbyStats } from '@/lib/db/repos/accidents.repo'
-import {
-  ACCIDENT_IMAGE_CONTEXT_PARAMS,
-  adjustYearsForAccidentDataset,
-} from "@/lib/accident-stats-year-window"
+import { ACCIDENT_IMAGE_CONTEXT_PARAMS } from "@/lib/accident-stats-year-window"
 
 export interface FetchNearbyAccidentOptions {
   readonly radiusMeters?: number
@@ -45,8 +42,7 @@ export async function fetchNearbyAccidentStats(
   }
 
   const radiusMeters = options.radiusMeters ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters
-  const requestedYears = options.years ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.years
-  const years = adjustYearsForAccidentDataset(requestedYears)
+  const years = options.years ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.years
 
   try {
     const actor = await getActor()

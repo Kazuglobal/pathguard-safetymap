@@ -1,5 +1,6 @@
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import { ACCIDENT_IMAGE_CONTEXT_PARAMS } from "@/lib/accident-stats-year-window"
+import { hotspotPromptLine } from "@/lib/traffic-accident/hotspot-presentation"
 
 const TIME_SLOT_LABELS: Record<string, string> = {
   "07-09_morning_commute": "朝の通学時間（7-9時）",
@@ -72,9 +73,10 @@ export function buildAccidentPromptContext(
     topAccidentType ? `多い事故類型: ${topAccidentType}` : null,
     topWeather ? `多い天候: ${topWeather}` : null,
   ].filter((value): value is string => value !== null)
+  const hotspotLine = hotspotPromptLine(stats.hotspots, ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters, stats.hotspot_count)
 
   return `[この地点の客観データ（半径${ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters}m・直近${ACCIDENT_IMAGE_CONTEXT_PARAMS.years}年・警察庁交通事故統計オープンデータ）]
-${countLine}${topFacts.length > 0 ? `\n- ${topFacts.join(" / ")}` : ""}
+${countLine}${topFacts.length > 0 ? `\n- ${topFacts.join(" / ")}` : ""}${hotspotLine ? `\n- ${hotspotLine}` : ""}
 [このデータの使い方]
 - 上記データが示すリスク（例: 出会い頭・登下校時間帯）に対応する注意表現を優先する。
 - データにない事故・件数・被害を描かない。数値を変えない。
