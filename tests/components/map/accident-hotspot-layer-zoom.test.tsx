@@ -97,3 +97,22 @@ describe('AccidentHotspotLayer zoom-based visibility', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
+
+describe('hotspotLayerMessage while the zoom filter is active', () => {
+  const base = { isVisible: true, error: null, isZoomedOut: false, truncated: false, count: 2000 }
+
+  it('says only busy spots are shown when the cut-off list still includes every spot at or above the threshold', async () => {
+    const { hotspotLayerMessage } = await import('@/components/map/accident-hotspot-layer')
+    // 2000件で打ち切られても、返った中で一番少ない地点が6件なら、20件以上の地点は全部そろっている
+    expect(hotspotLayerMessage({ ...base, truncated: true, minCountShown: 20, lowestCount: 6 }))
+      .toBe('件数の多い地点（20件以上）だけ表示しています。拡大するとすべて表示されます')
+  })
+
+  it('keeps the cut-off notice when even the threshold spots may be incomplete', async () => {
+    const { hotspotLayerMessage } = await import('@/components/map/accident-hotspot-layer')
+    expect(hotspotLayerMessage({ ...base, truncated: true, minCountShown: 20, lowestCount: 25 }))
+      .toBe('件数の多い2000か所を表示しています。拡大するとすべて表示されます')
+    expect(hotspotLayerMessage({ ...base, truncated: true, minCountShown: 5, lowestCount: 6 }))
+      .toBe('件数の多い2000か所を表示しています。拡大するとすべて表示されます')
+  })
+})

@@ -165,14 +165,20 @@ export function hotspotLayerMessage(state: {
   count: number
   /** 縮尺に応じて表示を絞っている最小件数（絞っていなければ HOTSPOT_MIN_COUNT）。 */
   minCountShown?: number
+  /** 返ってきた地点のうち最も少ない件数（件数の多い順に返るので、打ち切り時の境目）。 */
+  lowestCount?: number
 }): string | null {
   if (!state.isVisible) return null
   if (state.error) return state.error
   if (state.isZoomedOut) return '地図を拡大すると事故多発地点が表示されます'
-  if (state.truncated) return `件数の多い${state.count}か所を表示しています。拡大するとすべて表示されます`
-  if (state.minCountShown != null && state.minCountShown > HOTSPOT_MIN_COUNT) {
-    return `件数の多い地点（${state.minCountShown}件以上）だけ表示しています。拡大するとすべて表示されます`
+  const filtering = state.minCountShown != null && state.minCountShown > HOTSPOT_MIN_COUNT
+  const filterMessage = `件数の多い地点（${state.minCountShown}件以上）だけ表示しています。拡大するとすべて表示されます`
+  if (state.truncated) {
+    // 件数の多い順に打ち切っているので、境目が絞り込みの件数より少なければ、表示対象は全部そろっている
+    const thresholdComplete = filtering && state.lowestCount != null && state.lowestCount < (state.minCountShown as number)
+    return thresholdComplete ? filterMessage : `件数の多い${state.count}か所を表示しています。拡大するとすべて表示されます`
   }
+  if (filtering) return filterMessage
   return null
 }
 
@@ -274,7 +280,8 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
     if (map) removeSourceAndLayers(map)
   }, [map])
 
-  const message = hotspotLayerMessage({ isVisible, error, isZoomedOut, truncated, count: hotspots.length, minCountShown })
+  const lowestCount = hotspots.length > 0 ? Math.min(...hotspots.map((spot) => spot.accidentCount)) : undefined
+  const message = hotspotLayerMessage({ isVisible, error, isZoomedOut, truncated, count: hotspots.length, minCountShown, lowestCount })
   if (!message) return null
   return (
     <div
