@@ -132,16 +132,16 @@ function topEntries(source: Record<string, number>, limit: number): Record<strin
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 /**
- * occurred_at の時・月。
- * 2025年以降の取り込み（scripts/migrate/import-traffic-honhyo-year.ts の既定）は '+09:00' 付きの本当の時刻なので日本時間で読む。
- * それ以前の行は従来どおり UTC の時刻で読む（既存の集計結果を変えない）。
+ * occurred_at の日本時間での時・月。
+ * occurred_at は本当の時刻（既存行は '2024-04-08T23:15:00+00:00' のようなUTC表記、2025年取り込みは '+09:00' 表記）。
+ * 以前は UTC の時で数えていたため、時間帯・月の集計が9時間ずれていた（2026-10-07 に本番の行とCSVを突き合わせて確認）。
  */
 function dateParts(value: string | null): { hour: number; month: number } | null {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.valueOf())) return null
-  const wallClock = /\+09:00$/.test(value) ? new Date(date.valueOf() + JST_OFFSET_MS) : date
-  return { hour: wallClock.getUTCHours(), month: wallClock.getUTCMonth() + 1 }
+  const tokyo = new Date(date.valueOf() + JST_OFFSET_MS)
+  return { hour: tokyo.getUTCHours(), month: tokyo.getUTCMonth() + 1 }
 }
 
 function timeBucket(hour: number): string {

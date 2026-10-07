@@ -29,11 +29,10 @@
 - `ACCIDENT_DATA_MIN_YEAR` を 2019 にした。
   - 本番の件数（年ごとの集計）では、2020〜2024年の合計が 1,484,137件、全体が 1,869,032件。差の約38万件は2019年分と判断した（2019年の全国の人身事故は約38万件）。
   - 2018年の行は無い見込み。
-- `occurred_at` の書式は生成時に `--occurred-at` で必ず指定する（既定値なし）。
-  - `jst`: `2025-01-02T11:50:00+09:00`（本当の時刻）。集計側（`dateParts`）は `+09:00` 付きを日本時間で読むので、時間帯・月の集計は正しい。
-  - `wallclock-utc`: `2025-01-02T11:50:00+00:00`（日本時間の時刻をUTC表記で）。既存行がこの形ならこちらに合わせる。
-  - 既存行の書式は本番を読めなかったため未確認。読み出し側はどちらも `new Date()` で解釈するので動作は同じ。
-  - ただし `dateParts` は UTC の時を使っている。既存行が UTC で入っていれば、時間帯の集計で既存行と9時間ずれる可能性がある。**本番適用前に下の「突き合わせ」で確認すること。**
+- `occurred_at` は本当の時刻で入れる（`2025-01-02T11:50:00+09:00`）。
+  - 2026-10-07 に本番の2024年行5件を CSV と突き合わせた。既存行は本当の時刻を UTC で記録している（例: 本番 `2024-04-08T23:15:00+00:00` ＝ CSV 2024-04-09 08:15、昼夜コード12＝昼）。2025年分の `+09:00` 表記と同じ瞬間を表す。
+  - 市区町村コード（3桁）・天候コード・昼夜コードの書式も一致した。
+  - **既存の不具合も見つかった**: 時間帯・月の集計（`dateParts`、旧 Supabase の `EXTRACT(HOUR …)` も）が UTC の時で数えていて、過去データ全体が9時間ずれていた（朝8時台の事故が23時に入る）。日本時間で数えるよう修正した。本番デプロイ後は「多い時間帯」の表示が変わる。
 - `party_a_age` / `party_b_age` は本票の年齢区分コードを整数で入れる（01 → 1）。既存の「若年（=1）」「高齢（>=65）」判定と同じ。
 - `involves_child` は常に 0。本票の年齢区分の最小が「0〜24歳」なので、子ども（15歳以下）は判別できない（2026-09-26 の補正と同じ扱い）。
 - 重傷の件数は出さない。本票の人身損傷程度は「死亡・負傷・損傷なし」だけで、重傷を区別できない。
@@ -43,7 +42,7 @@
 - `/api/traffic-accidents/__health` は件数の完全一致を見る。取り込み前（1,869,032）と取り込み後（2,156,052）の両方を正常として受け付ける。取り込みが終わったら旧値を消してよい。
 
 ## 敵対的レビュー（2026-10-02）で直したこと
-- 2025年行（`+09:00`）の時間帯・月の集計が9時間ずれていた → `dateParts` で `+09:00` 付きを日本時間で読むよう修正。既存行の読み方は変えていない。
+- 時間帯・月の集計が9時間ずれていた → `dateParts` を日本時間で数えるよう修正（既存行も対象。上の「決めたこと」参照）。
 - 「近くに事故多発地点がNか所」が上位3件で頭打ちになっていた → 総数 `hotspot_count` を返し、パネルと注入文は総数を使う。
 - 7年より長く要求すると「過去10年間（2019〜2025年）」と食い違っていた → 実際に集計した年数を書く。
 - 一時テーブルに索引が無く、都道府県ごとの INSERT で51回全件走査していた → 索引を追加。実行計画で使われることを確認した。
@@ -58,15 +57,13 @@ CSV の取得先: `https://www.npa.go.jp/publications/statistics/koutsuu/opendat
 
 ```bash
 # 0. SQL を生成する（D1 には書かない）
-pnpm tsx scripts/migrate/import-traffic-honhyo-year.ts --csv-dir=<dir> --year=2025 --out=<out>/import-2025 --occurred-at=<手順2で決める>
+pnpm tsx scripts/migrate/import-traffic-honhyo-year.ts --csv-dir=<dir> --year=2025 --out=<out>/import-2025
 pnpm tsx scripts/migrate/build-traffic-hotspots.ts --csv-dir=<dir> --out=<out>/hotspots
 
 # 1. 復元点を控える（ID はリポジトリに書かない）
 npx wrangler d1 time-travel info pathguardian-traffic -c wrangler.server.jsonc
 
-# 2. 突き合わせ（読み取りのみ）: 2024年の数行を本番から抜き出し、同じ変換の結果と全列を比べる
-#    特に occurred_at の書式、municipality_code の桁、weather_code、day_night_code
-#    occurred_at が「日本時間の時刻なのに +00:00 / Z」の形なら、手順0を --occurred-at=wallclock-utc で作り直す
+# 2. 突き合わせ（読み取りのみ・2026-10-07 実施済み、結果は上記）: 2024年の数行を本番から抜き出し、CSV と比べる
 npx wrangler d1 execute pathguardian-traffic -c wrangler.server.jsonc --remote --command \
   "SELECT * FROM traffic_accidents WHERE source_year=2024 AND prefecture_code=10 ORDER BY record_number LIMIT 5"
 

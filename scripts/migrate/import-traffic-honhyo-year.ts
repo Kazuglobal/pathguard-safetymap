@@ -2,9 +2,9 @@
  * 警察庁「本票」CSV の新しい年を traffic_accidents に追加する SQL を作る（D1 には何も書かない。生成のみ）。
  *
  * Usage:
- *   pnpm tsx scripts/migrate/import-traffic-honhyo-year.ts --csv-dir=<dir with honhyo_YYYY.csv> --year=2025 --out=<dir> --occurred-at=jst|wallclock-utc
- * --occurred-at（必須）: jst は '2025-01-02T11:50:00+09:00'（本当の時刻）。wallclock-utc は日本時間の時刻を UTC として
- *   '2025-01-02T11:50:00+00:00' で入れる（既存行がこの形なら合わせる。docs/plans/2026-10-02-traffic-accidents-2025-and-hotspots.md）。
+ *   pnpm tsx scripts/migrate/import-traffic-honhyo-year.ts --csv-dir=<dir with honhyo_YYYY.csv> --year=2025 --out=<dir>
+ * occurred_at は本当の時刻（'2025-01-02T11:50:00+09:00'）。既存行も本当の時刻のUTC表記（'…+00:00'）で、同じ瞬間を表す
+ * （2026-10-07 に本番の2024年行とCSVを突き合わせて確認）。
  * 出力（D1 の制約: 1文 100KB 以内・1文 30 秒以内 に合わせて分割）:
  *   preflight.sql     … 同じ年の行が既にあるか数える（0 でなければ取り込まない）
  *   stage-0-create.sql / stage-<year>.sql … 一時テーブル traffic_import に入れる（traffic_accidents は触らない）
@@ -90,13 +90,6 @@ async function main(): Promise<void> {
     throw new Error('Use --csv-dir=<dir> --year=YYYY --out=<dir>')
   }
   const year = Number(yearText)
-  // 既存行の時刻の書式を本番で確かめてから選ぶ（docs/plans/2026-10-02-traffic-accidents-2025-and-hotspots.md の手順2）
-  const occurredAtMode = argument('occurred-at')
-  if (occurredAtMode !== 'jst' && occurredAtMode !== 'wallclock-utc') {
-    throw new Error('--occurred-at=jst|wallclock-utc is required (check the existing occurred_at format first)')
-  }
-  const formatOccurredAt = (value: string | null) =>
-    value != null && occurredAtMode === 'wallclock-utc' ? value.replace(/\+09:00$/, '+00:00') : value
   await mkdir(out, { recursive: true })
 
   const columns = [...KEY_COLUMNS, ...VALUE_COLUMNS.map(([, column]) => column)]
@@ -127,8 +120,7 @@ async function main(): Promise<void> {
       else stat.skippedOther += 1
       continue
     }
-    const { key } = converted
-    const values = { ...converted.values, occurredAt: formatOccurredAt(converted.values.occurredAt) }
+    const { key, values } = converted
     const keyText = `${key.prefectureCode}/${key.policeStationCode}/${key.recordNumber}`
     if (seen.has(keyText)) {
       stat.duplicateKeys += 1
@@ -158,7 +150,7 @@ async function main(): Promise<void> {
     + 'AND t.record_number = i.record_number);')
   await writeFile(path.join(out, 'apply-chunks.txt'), chunks.join('\n') + '\n', 'utf8')
   await writeFile(path.join(out, 'cleanup.sql'), 'DROP TABLE IF EXISTS traffic_import;\n', 'utf8')
-  console.log(JSON.stringify({ out, year, occurredAtMode, stat, prefectures: prefectures.size, chunks: chunks.length }, null, 2))
+  console.log(JSON.stringify({ out, year, stat, prefectures: prefectures.size, chunks: chunks.length }, null, 2))
 }
 
 main().catch((error: unknown) => {

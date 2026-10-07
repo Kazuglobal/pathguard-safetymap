@@ -94,13 +94,14 @@ describe('accidents repository', () => {
     expect(result.nearest_accidents[0]).toMatchObject({ distance_m: 0, year: 2025 })
   })
 
-  it('reads +09:00 times (2025 import) in Japan time but keeps legacy UTC rows as before', async () => {
+  it('counts hours and months in Japan time for both the 2025 (+09:00) and existing (UTC) formats', async () => {
     const insert = database.sqlite.prepare(`
       insert into traffic_accidents (id, record_number, prefecture_code, police_station_code, lat, lng, source_year, occurred_at)
       values (?, ?, 13, '001', 36.5, 140.5, 2025, ?)
     `)
     insert.run(30, 'jst-morning', '2025-01-01T07:30:00+09:00')
-    insert.run(31, 'legacy-morning', '2024-06-01T07:30:00.000Z')
+    // 本番の既存行と同じ形: 2024-06-01 07:30（日本時間）の事故が UTC で前日22:30と記録されている
+    insert.run(31, 'legacy-morning', '2024-05-31T22:30:00+00:00')
     const repo = createAccidentsRepo(database.db as unknown as AppDb)
 
     const result = await repo.nearbyStats(actor, { latitude: 36.5, longitude: 140.5, radiusMeters: 50, years: 5 })
