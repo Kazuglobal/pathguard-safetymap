@@ -103,7 +103,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
 - 北海道警察本部交通企画課「小学生の交通事故実態 〜歩行中・自転車乗用中〜」（令和8年3月11日・集計範囲は北海道内）`,
     category: "accident",
     categoryLabel: "交通事故",
-    categoryColor: "#DC2626",
+    categoryColor: "#EF4444",
     categoryIcon: "AlertTriangle",
     publishedDate: "2026-10-08T07:30:00+09:00",
     location: {
@@ -128,7 +128,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "一時停止の標識がある交差点で足をつけて止まれるか、今夜いっしょに通学路の地図で確かめる"
     ],
     isBreaking: true,
-    verifiedAt: "2026-10-07T22:40:00+09:00",
+    verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "一時停止の標識がある交差点で足をつけて止まれるか、今夜いっしょに通学路の地図で確かめる",
     thumbnailUrl: "/images/school-route-news/thumbnails/isesaki-hashie-bicycle-commute-collision-20261007.jpg"
   },
@@ -179,7 +179,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
 - ABEMA TIMES「横断歩道で女児ひき逃げか 43歳男を逮捕」（2026年10月3日）`,
     category: "accident",
     categoryLabel: "交通事故",
-    categoryColor: "#DC2626",
+    categoryColor: "#EF4444",
     categoryIcon: "AlertTriangle",
     publishedDate: "2026-10-08T07:20:00+09:00",
     location: {
@@ -203,7 +203,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "横断歩道では車が完全に止まったのを目で確かめてから渡る、と今夜いっしょに練習する"
     ],
     isBreaking: false,
-    verifiedAt: "2026-10-07T22:40:00+09:00",
+    verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "横断歩道では車が完全に止まったのを目で確かめてから渡る、と今夜いっしょに練習する",
     thumbnailUrl: "/images/school-route-news/thumbnails/inzai-kikari-crosswalk-hitandrun-20261001.jpg"
   },
@@ -237,6 +237,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
 
 **収集範囲の注意**：上記は奈良県警察が「子供や女性に不安を与える事案」として公表したもののうち、10月5日時点で掲載されていた3件である。同ページには全件を網羅したものではない旨が明記されており、**県内の発生件数そのものではない**。
 
+なお本フィードでは、2026年7月18日にも「【奈良県】登下校中の児童への声かけ・つきまとい事案が2週間で3件—手首をつかまれる事案も」として、7月7日〜13日の3件を取り上げている。**今回の3件は約3か月後の別の事案**だが、**奈良県内で登下校中の声かけ・つきまといが短期間に複数公表されるのは今年2度目**である。
+
 ### 「見ただけ」の情報が共有される意味
 
 刃物のような物の目撃は、被害が出ていないため記録に残りにくい。それでも警察と市が公表するのは、**同じ人物が同じ時間帯に同じ道にいる可能性**を地域で共有するためである。子どもが「あれ、変だな」と思ったことを家で話せるようにしておくことが、次の一歩につながる。
@@ -258,7 +260,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     category: "suspicious",
     categoryLabel: "不審者情報",
     categoryColor: "#F97316",
-    categoryIcon: "Eye",
+    categoryIcon: "AlertCircle",
     publishedDate: "2026-10-08T07:10:00+09:00",
     location: {
       prefecture: "奈良県",
@@ -277,7 +279,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "刃物のような物を持つ人を見たら近づかず、来た道を戻って家か店に入ると今夜決める"
     ],
     isBreaking: false,
-    verifiedAt: "2026-10-07T22:40:00+09:00",
+    verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "刃物のような物を持つ人を見たら近づかず、来た道を戻って家か店に入ると今夜決める",
     thumbnailUrl: "/images/school-route-news/thumbnails/ikoma-tawaraguchi-knife-sighting-20261002.jpg"
   },
@@ -327,7 +329,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     category: "suspicious",
     categoryLabel: "不審者情報",
     categoryColor: "#F97316",
-    categoryIcon: "Eye",
+    categoryIcon: "AlertCircle",
     publishedDate: "2026-10-08T07:00:00+09:00",
     location: {
       prefecture: "徳島県",
@@ -346,7 +348,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "知らない人に食べ物を差し出されたら受け取らず走って離れる、と今夜声に出して練習する"
     ],
     isBreaking: false,
-    verifiedAt: "2026-10-07T22:40:00+09:00",
+    verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "知らない人に食べ物を差し出されたら受け取らず走って離れる、と今夜声に出して練習する",
     thumbnailUrl: "/images/school-route-news/thumbnails/tokushima-kokufu-hiraki-voice-call-20261001.jpg"
   },
@@ -403,7 +405,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     category: "suspicious",
     categoryLabel: "不審者情報",
     categoryColor: "#F97316",
-    categoryIcon: "Eye",
+    categoryIcon: "AlertCircle",
     publishedDate: "2026-10-08T06:50:00+09:00",
     location: {
       prefecture: "熊本県",
@@ -424,7 +426,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "追いかけられたら曲がり角で振り返らず、明かりのある店に飛び込むと今夜いっしょに決める"
     ],
     isBreaking: false,
-    verifiedAt: "2026-10-07T22:40:00+09:00",
+    verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "追いかけられたら曲がり角で振り返らず、明かりのある店に飛び込むと今夜いっしょに決める",
     thumbnailUrl: "/images/school-route-news/thumbnails/kumamoto-higashi-nagamineminami-following-20261006.jpg"
   },
