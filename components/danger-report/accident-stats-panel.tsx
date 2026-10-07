@@ -1500,7 +1500,7 @@ export default function AccidentStatsPanel({
               />
             </div>
 
-            <NearbyHotspotsSection hotspots={stats.hotspots} />
+            <NearbyHotspotsSection hotspots={stats.hotspots} total={stats.hotspot_count} />
 
             <DetailsAccordion>
               <RiskScoreBar score={stats.risk_score} />

@@ -62,9 +62,16 @@ describe('accident hotspots repository', () => {
 
   it('finds hotspots within a radius and returns the distance', async () => {
     const near = await repo().hotspotsNearPoint(user, { latitude: 35, longitude: 139, radiusMeters: 300 })
-    expect(near.map((spot) => [spot.id, spot.distanceMeters])).toEqual([[1, 0], [2, 100]])
+    expect(near.hotspots.map((spot) => [spot.id, spot.distanceMeters])).toEqual([[1, 0], [2, 100]])
+    expect(near.total).toBe(2)
     const tight = await repo().hotspotsNearPoint(user, { latitude: 35, longitude: 139, radiusMeters: 50 })
-    expect(tight.map((spot) => spot.id)).toEqual([1])
+    expect(tight.hotspots.map((spot) => spot.id)).toEqual([1])
+  })
+
+  it('reports the full count when only the top hotspots are returned', async () => {
+    const near = await repo().hotspotsNearPoint(user, { latitude: 35, longitude: 139, radiusMeters: 300, limit: 1 })
+    expect(near.hotspots.map((spot) => spot.id)).toEqual([1])
+    expect(near.total).toBe(2)
   })
 
   it('finds hotspots along a route within the buffer', async () => {

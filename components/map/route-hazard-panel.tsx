@@ -281,7 +281,7 @@ export function RouteHazardPanel({
               <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
                 {summary && <RouteSafetySummaryCard summary={summary} />}
                 <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
-        {accidentHotspotSlot}
+                {accidentHotspotSlot}
                 <HazardReasonList items={evidenceItems} />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>

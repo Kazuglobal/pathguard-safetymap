@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 
 import { useAccidentHotspots } from '@/hooks/use-accident-hotspots'
@@ -19,6 +19,8 @@ import { dominantAccidentClass, type AccidentHotspotSummary } from '@/lib/traffi
 const SOURCE_ID = 'accident-hotspot-source'
 const CIRCLE_LAYER_ID = 'accident-hotspot-circle'
 const LABEL_LAYER_ID = 'accident-hotspot-label'
+/** これより引いた地図では取得しない（全国表示で毎回6.6万件を並べ替えないため）。 */
+export const HOTSPOT_MIN_FETCH_ZOOM = 10
 
 interface AccidentHotspotLayerProps {
   map: mapboxgl.Map | null
@@ -140,9 +142,25 @@ export function buildHotspotPopupContent(spot: AccidentHotspotSummary): HTMLDivE
   return root
 }
 
+/** 地図下部に出す状態表示（エラー・引きすぎ・件数の打ち切り）。何も無ければ null。 */
+export function hotspotLayerMessage(state: {
+  isVisible: boolean
+  error: string | null
+  isZoomedOut: boolean
+  truncated: boolean
+  count: number
+}): string | null {
+  if (!state.isVisible) return null
+  if (state.error) return state.error
+  if (state.isZoomedOut) return '地図を拡大すると事故多発地点が表示されます'
+  if (state.truncated) return `件数の多い${state.count}か所を表示しています。拡大するとすべて表示されます`
+  return null
+}
+
 /** 事故多発地点の Mapbox レイヤー（表示範囲の取得・ポップアップ・スタイル変更時の再追加を含む）。 */
 export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerProps) {
-  const { hotspots, error, fetchForViewport, clear } = useAccidentHotspots()
+  const { hotspots, truncated, error, fetchForViewport, clear } = useAccidentHotspots()
+  const [isZoomedOut, setIsZoomedOut] = useState(false)
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const geoJSON = hotspotsToGeoJSON(hotspots)
 
@@ -163,7 +181,14 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
   })
 
   const handleMoveEnd = useCallback(() => {
-    const bounds = map?.getBounds()
+    if (!map) return
+    if (map.getZoom() < HOTSPOT_MIN_FETCH_ZOOM) {
+      setIsZoomedOut(true)
+      clear()
+      return
+    }
+    setIsZoomedOut(false)
+    const bounds = map.getBounds()
     if (!bounds) return
     fetchForViewport({
       minLng: bounds.getWest(),
@@ -171,7 +196,7 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
       maxLng: bounds.getEast(),
       maxLat: bounds.getNorth(),
     })
-  }, [map, fetchForViewport])
+  }, [map, fetchForViewport, clear])
 
   const setPointer = useCallback((event: mapboxgl.MapMouseEvent) => {
     (event.target as mapboxgl.Map).getCanvas().style.cursor = 'pointer'
@@ -211,19 +236,22 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
     source?.setData(hotspotsToGeoJSON(hotspots))
   }, [map, isVisible, hotspots])
 
+  // 部品が外れたら、表示中のレイヤーも地図から外す（listener だけ外して円が残らないように）
   useEffect(() => () => {
     popupRef.current?.remove()
     popupRef.current = null
-  }, [])
+    if (map) removeSourceAndLayers(map)
+  }, [map])
 
-  if (!isVisible || !error) return null
+  const message = hotspotLayerMessage({ isVisible, error, isZoomedOut, truncated, count: hotspots.length })
+  if (!message) return null
   return (
     <div
       role="status"
       className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-xs shadow"
-      style={{ color: tankenTokens.color.danger }}
+      style={{ color: error ? tankenTokens.color.danger : tankenTokens.color.ink }}
     >
-      {error}
+      {message}
     </div>
   )
 }

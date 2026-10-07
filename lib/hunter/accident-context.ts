@@ -188,7 +188,7 @@ export function buildAccidentPromptContext(stats: AccidentStats | null): string 
   if (peakTimeSlot !== null) {
     lines.push(`事故が多い時間帯: ${peakTimeSlot}。`);
   }
-  const hotspotLine = hotspotPromptLine(stats.hotspots, stats.search_params.radius_meters);
+  const hotspotLine = hotspotPromptLine(stats.hotspots, stats.search_params.radius_meters, stats.hotspot_count);
   if (hotspotLine !== null) {
     lines.push(`${hotspotLine}。`);
   }

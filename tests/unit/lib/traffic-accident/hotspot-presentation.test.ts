@@ -75,6 +75,8 @@ describe('hotspot presentation', () => {
     expect(hotspotPromptLine([SPOT, { ...SPOT, id: 8, accidentCount: 30, distanceMeters: 120 }], 300))
       .toBe('半径300m以内に事故多発地点が2か所（最大: 半径30m以内で30件・主に車両相互・120m先）')
     expect(hotspotPromptLine([{ ...SPOT, byClass: {} }], undefined)).toBe('近くに事故多発地点が1か所（最大: 半径30m以内で12件）')
+    expect(hotspotPromptLine([SPOT], 300, 7)).toBe('半径300m以内に事故多発地点が7か所（最大: 半径30m以内で12件・主に車両相互）')
+    expect(hotspotPromptLine([SPOT], 300, 0)).toBe('半径300m以内に事故多発地点が1か所（最大: 半径30m以内で12件・主に車両相互）')
     expect(hotspotPromptLine([], 300)).toBeNull()
     expect(hotspotPromptLine(undefined, 300)).toBeNull()
   })

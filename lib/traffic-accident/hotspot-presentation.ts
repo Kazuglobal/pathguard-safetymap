@@ -88,6 +88,8 @@ export function hotspotsToGeoJSON(
 export function hotspotPromptLine(
   hotspots: readonly AccidentHotspotSummary[] | null | undefined,
   searchRadiusMeters: number | null | undefined,
+  /** 半径内の総数（hotspots が上位だけのとき）。無ければ hotspots の件数を使う。 */
+  total?: number | null,
 ): string | null {
   const valid = (hotspots ?? []).filter((spot) => Number.isSafeInteger(spot.accidentCount) && spot.accidentCount > 0)
   if (valid.length === 0) return null
@@ -98,5 +100,6 @@ export function hotspotPromptLine(
     top.distanceMeters != null ? `${top.distanceMeters}m先` : null,
   ].filter((part): part is string => part !== null)
   const where = Number.isFinite(searchRadiusMeters) && searchRadiusMeters > 0 ? `半径${searchRadiusMeters}m以内に` : '近くに'
-  return `${where}事故多発地点が${valid.length}か所（最大: ${details.join('・')}）`
+  const count = Number.isSafeInteger(total) && (total as number) > valid.length ? (total as number) : valid.length
+  return `${where}事故多発地点が${count}か所（最大: ${details.join('・')}）`
 }

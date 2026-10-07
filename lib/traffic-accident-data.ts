@@ -115,6 +115,8 @@ export interface AccidentStats {
   };
   /** 半径内の事故多発地点（件数の多い順・最大3件）。古いキャッシュには無い。 */
   hotspots?: AccidentHotspotSummary[];
+  /** 半径内の事故多発地点の総数（hotspots は上位のみ）。古いキャッシュには無い。 */
+  hotspot_count?: number;
 }
 
 export interface RiskLevelInfo {

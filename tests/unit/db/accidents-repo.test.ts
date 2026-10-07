@@ -94,6 +94,31 @@ describe('accidents repository', () => {
     expect(result.nearest_accidents[0]).toMatchObject({ distance_m: 0, year: 2025 })
   })
 
+  it('reads +09:00 times (2025 import) in Japan time but keeps legacy UTC rows as before', async () => {
+    const insert = database.sqlite.prepare(`
+      insert into traffic_accidents (id, record_number, prefecture_code, police_station_code, lat, lng, source_year, occurred_at)
+      values (?, ?, 13, '001', 36.5, 140.5, 2025, ?)
+    `)
+    insert.run(30, 'jst-morning', '2025-01-01T07:30:00+09:00')
+    insert.run(31, 'legacy-morning', '2024-06-01T07:30:00.000Z')
+    const repo = createAccidentsRepo(database.db as unknown as AppDb)
+
+    const result = await repo.nearbyStats(actor, { latitude: 36.5, longitude: 140.5, radiusMeters: 50, years: 5 })
+
+    expect(result.by_time_of_day).toEqual({ '07-09_morning_commute': 2 })
+    expect(result.time_analysis.by_hour).toEqual({ '7': 2 })
+    expect(result.time_analysis.by_month).toEqual({ '1': 1, '6': 1 })
+  })
+
+  it('labels the real number of data years when more years are requested than exist', async () => {
+    const repo = createAccidentsRepo(database.db as unknown as AppDb)
+
+    const result = await repo.nearbyStats(actor, { latitude: 35, longitude: 139, radiusMeters: 200, years: 10 })
+
+    expect(result.search_params).toMatchObject({ years: 7, min_year: 2019, max_year: 2025 })
+    expect(result.situation_summary.total_text).toBe('2件の事故が過去7年間（2019〜2025年）に半径200m以内で発生')
+  })
+
   it('attaches hotspots within the radius to the nearby stats', async () => {
     database.sqlite.prepare(`
       insert into accident_hotspots (
@@ -107,6 +132,7 @@ describe('accidents repository', () => {
     const result = await repo.nearbyStats(actor, { latitude: 35, longitude: 139, radiusMeters: 200, years: 5 })
 
     expect(result.hotspots).toHaveLength(1)
+    expect(result.hotspot_count).toBe(1)
     expect(result.hotspots?.[0]).toMatchObject({ accidentCount: 7, distanceMeters: 11, nationalRank: 40 })
   })
 
@@ -118,6 +144,7 @@ describe('accidents repository', () => {
 
     expect(result.total_accidents).toBe(2)
     expect(result.hotspots).toEqual([])
+    expect(result.hotspot_count).toBe(0)
   })
 
   it('counts "past N years" back from the latest data year, not the calendar year', async () => {

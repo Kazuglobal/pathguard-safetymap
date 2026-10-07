@@ -28,6 +28,11 @@ export interface HotspotBboxInput {
   limit?: number
 }
 
+export interface NearbyHotspots {
+  hotspots: AccidentHotspotSummary[]
+  total: number
+}
+
 export interface HotspotNearPointInput {
   latitude: number
   longitude: number
@@ -164,19 +169,24 @@ export function createAccidentHotspotsRepo(db: AppDb) {
       }
     },
 
-    /** ある地点から半径 radiusMeters 以内の多発地点（件数の多い順、既定3件）。 */
-    async hotspotsNearPoint(actor: Actor, input: HotspotNearPointInput): Promise<AccidentHotspotSummary[]> {
+    /**
+     * ある地点から半径 radiusMeters 以内の多発地点。hotspots は件数の多い順に上位 limit 件（既定3件）、
+     * total は半径内の全件数（「Nか所」の表示・AI への注入文で上位件数を全体と取り違えないため）。
+     */
+    async hotspotsNearPoint(actor: Actor, input: HotspotNearPointInput): Promise<NearbyHotspots> {
       assertCan(actor, 'select', 'accident_hotspots')
       assertFiniteInRange('latitude', input.latitude, -90, 90)
       assertFiniteInRange('longitude', input.longitude, -180, 180)
       assertFiniteInRange('radiusMeters', input.radiusMeters, 1, MAX_RADIUS_METERS)
       const center = { lat: input.latitude, lng: input.longitude }
       const rows = await inBox(boxAround(input.latitude, input.longitude, input.radiusMeters), MAX_BBOX_RESULTS)
-      return rows
+      const within = rows
         .map((row) => ({ row, distance: distanceMeters(center, { lat: row.latitude, lng: row.longitude }) }))
         .filter(({ distance }) => distance <= input.radiusMeters)
-        .slice(0, input.limit ?? 3)
-        .map(({ row, distance }) => toSummary(row, distance))
+      return {
+        hotspots: within.slice(0, input.limit ?? 3).map(({ row, distance }) => toSummary(row, distance)),
+        total: within.length,
+      }
     },
 
     /** 経路の近く（ROUTE_HOTSPOT_BUFFER_METERS 以内）を通る多発地点（件数の多い順）。 */

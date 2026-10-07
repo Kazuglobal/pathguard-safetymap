@@ -73,7 +73,7 @@ export function buildAccidentPromptContext(
     topAccidentType ? `多い事故類型: ${topAccidentType}` : null,
     topWeather ? `多い天候: ${topWeather}` : null,
   ].filter((value): value is string => value !== null)
-  const hotspotLine = hotspotPromptLine(stats.hotspots, ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters)
+  const hotspotLine = hotspotPromptLine(stats.hotspots, ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters, stats.hotspot_count)
 
   return `[この地点の客観データ（半径${ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters}m・直近${ACCIDENT_IMAGE_CONTEXT_PARAMS.years}年・警察庁交通事故統計オープンデータ）]
 ${countLine}${topFacts.length > 0 ? `\n- ${topFacts.join(" / ")}` : ""}${hotspotLine ? `\n- ${hotspotLine}` : ""}

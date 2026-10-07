@@ -266,6 +266,17 @@ describe('AccidentStatsPanel', () => {
     expect(section).toHaveTextContent('警察庁「交通事故統計情報のオープンデータ」を加工して作成')
   })
 
+  it('shows the full hotspot count when only the top ones are listed', () => {
+    const spot = {
+      id: 1, latitude: 35, longitude: 139, radiusMeters: 30, minYear: 2021, maxYear: 2025,
+      accidentCount: 14, fatalCount: 0, pedestrianCount: 0, youngCount: 0,
+      byYear: {}, byClass: {}, peakHour: null, nationalRank: 300, distanceMeters: 85,
+    }
+    render(<AccidentStatsPanel stats={createStats({ hotspots: [spot, { ...spot, id: 2 }, { ...spot, id: 3 }], hotspot_count: 7 })} />)
+
+    expect(screen.getByRole('region', { name: '近くの事故多発地点' })).toHaveTextContent('近くに事故多発地点があります（7か所）・件数の多い3か所を表示')
+  })
+
   it('does not show the hotspot section when there are none', () => {
     render(<AccidentStatsPanel stats={createStats({ hotspots: [] })} />)
     expect(screen.queryByRole('region', { name: '近くの事故多発地点' })).not.toBeInTheDocument()

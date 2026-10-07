@@ -129,11 +129,19 @@ function topEntries(source: Record<string, number>, limit: number): Record<strin
   )
 }
 
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+/**
+ * occurred_at の時・月。
+ * 2025年以降の取り込み（scripts/migrate/import-traffic-honhyo-year.ts の既定）は '+09:00' 付きの本当の時刻なので日本時間で読む。
+ * それ以前の行は従来どおり UTC の時刻で読む（既存の集計結果を変えない）。
+ */
 function dateParts(value: string | null): { hour: number; month: number } | null {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.valueOf())) return null
-  return { hour: date.getUTCHours(), month: date.getUTCMonth() + 1 }
+  const wallClock = /\+09:00$/.test(value) ? new Date(date.valueOf() + JST_OFFSET_MS) : date
+  return { hour: wallClock.getUTCHours(), month: wallClock.getUTCMonth() + 1 }
 }
 
 function timeBucket(hour: number): string {
@@ -208,6 +216,8 @@ function aggregateNearby(
   rows: Array<{ row: AccidentRow; distanceMeters: number }>,
   input: Required<Pick<NearbyStatsInput, 'latitude' | 'longitude' | 'radiusMeters' | 'years'>> & AccidentYearWindow,
 ): AccidentStats {
+  // 要求年数がデータの年数より多くても、実際に集計した年数を書く（例: 10年要求 → 2019〜2025 の7年）
+  const spanYears = input.maxYear - input.minYear + 1
   const byYear: Record<string, number> = {}
   const byTimeOfDay: Record<string, number> = {}
   const byWeather: Record<string, number> = {}
@@ -334,7 +344,7 @@ function aggregateNearby(
       peak_month: peakKey(byMonth),
     },
     situation_summary: {
-      total_text: `${total}件の事故が過去${input.years}年間（${formatAccidentYearWindow(input)}）に半径${input.radiusMeters}m以内で発生`,
+      total_text: `${total}件の事故が過去${spanYears}年間（${formatAccidentYearWindow(input)}）に半径${input.radiusMeters}m以内で発生`,
       severity_text: fatalAccidents > 0 ? `死亡事故${fatalAccidents}件を含む` : '死亡事故なし',
       pedestrian_text: pedestrianTypeRows > 0
         ? `歩行者事故${pedestrianTypeRows}件（横断中${crossingRows}件）`
@@ -370,7 +380,7 @@ function aggregateNearby(
       latitude: input.latitude,
       longitude: input.longitude,
       radius_meters: input.radiusMeters,
-      years: input.years,
+      years: spanYears,
       min_year: input.minYear,
       max_year: input.maxYear,
     },
@@ -387,7 +397,7 @@ export function createAccidentsRepo(db: AppDb) {
       return await createAccidentHotspotsRepo(db).hotspotsNearPoint(actor, { latitude, longitude, radiusMeters })
     } catch (error) {
       console.error('[accidents.repo] nearby hotspots failed', error instanceof Error ? error.message : 'unknown')
-      return []
+      return { hotspots: [], total: 0 }
     }
   }
 
@@ -501,7 +511,8 @@ export function createAccidentsRepo(db: AppDb) {
         years,
         ...window,
       })
-      return { ...stats, hotspots: await nearbyHotspots(actor, input.latitude, input.longitude, radiusMeters) }
+      const nearby = await nearbyHotspots(actor, input.latitude, input.longitude, radiusMeters)
+      return { ...stats, hotspots: nearby.hotspots, hotspot_count: nearby.total }
     },
   }
 }

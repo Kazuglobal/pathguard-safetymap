@@ -4,7 +4,8 @@
  * Usage:
  *   pnpm tsx scripts/migrate/build-traffic-hotspots.ts --csv-dir=<dir with honhyo_YYYY.csv> --out=<dir> [--top=20]
  * 出力:
- *   hotspots-insert.sql … 同じ dataset_version の行を消してから入れ直す（BATCH=100）
+ *   hotspots-insert.sql … 多発地点を入れる（BATCH=100。削除はしない）
+ *   hotspots-reset.sql  … 同じ dataset_version の行を消す（途中で失敗して入れ直すときだけ、insert の前に流す）
  *   hotspots-cleanup-old.sql … 他の dataset_version の行を消す（新しい版を確認したあとに流す）
  *   hotspots-top.json   … 件数上位（確認用）
  * 年・半径・件数の条件は lib/traffic-accident/hotspot-config.ts。
@@ -32,7 +33,10 @@ function argument(name: string): string | null {
 
 function sqlValue(value: string | number | null): string {
   if (value == null) return 'NULL'
-  if (typeof value === 'number') return String(value)
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`non-finite number in SQL: ${value}`)
+    return String(value)
+  }
   return `'${value.replaceAll("'", "''")}'`
 }
 
@@ -42,12 +46,17 @@ async function readYear(csvDir: string, year: number): Promise<HotspotPoint[]> {
   const index = honhyoInsertColumnIndex(lines[0].split(','))
   const minCells = Math.max(...Object.values(index)) + 1
   const points: HotspotPoint[] = []
+  // import-traffic-honhyo-year と同じく、同じキーの行は1件として数える（D1 の件数と揃える）
+  const seen = new Set<string>()
   for (const line of lines.slice(1)) {
     if (!line.trim()) continue
     const cells = line.split(',')
     const converted = cells.length >= minCells ? honhyoRowToInsert(cells, year, index) : null
     if (!converted) continue
     const { values, key } = converted
+    const keyText = `${key.prefectureCode}/${key.policeStationCode}/${key.recordNumber}`
+    if (seen.has(keyText)) continue
+    seen.add(keyText)
     const hour = values.occurredAt ? Number(values.occurredAt.slice(11, 13)) : null
     points.push({
       lat: values.latitude,
@@ -69,7 +78,9 @@ async function main(): Promise<void> {
   const csvDir = argument('csv-dir')
   const out = argument('out')
   const top = Number(argument('top') ?? '20')
-  if (!csvDir || !out) throw new Error('Use --csv-dir=<dir> --out=<dir> [--top=20]')
+  if (!csvDir || !out || !Number.isInteger(top) || top < 1) {
+    throw new Error('Use --csv-dir=<dir> --out=<dir> [--top=20]')
+  }
   await mkdir(out, { recursive: true })
 
   const points: HotspotPoint[] = []
@@ -89,7 +100,7 @@ async function main(): Promise<void> {
     'pedestrian_count', 'young_count', 'by_year_json', 'by_class_json', 'peak_hour', 'prefecture_code',
     'municipality_code', 'national_rank',
   ]
-  const statements = [`DELETE FROM accident_hotspots WHERE dataset_version = ${sqlValue(HOTSPOT_DATASET_VERSION)};`]
+  const statements: string[] = []
   for (let start = 0; start < hotspots.length; start += BATCH) {
     const rows = hotspots.slice(start, start + BATCH).map((spot) => `(${[
       HOTSPOT_DATASET_VERSION, spot.lat, spot.lng, HOTSPOT_RADIUS_METERS, HOTSPOT_MIN_YEAR, HOTSPOT_MAX_YEAR,
@@ -100,6 +111,8 @@ async function main(): Promise<void> {
     statements.push(`INSERT INTO accident_hotspots (${columns.join(', ')}) VALUES ${rows.join(',')};`)
   }
   await writeFile(path.join(out, 'hotspots-insert.sql'), statements.join('\n') + '\n', 'utf8')
+  await writeFile(path.join(out, 'hotspots-reset.sql'),
+    `DELETE FROM accident_hotspots WHERE dataset_version = ${sqlValue(HOTSPOT_DATASET_VERSION)};\n`, 'utf8')
   await writeFile(path.join(out, 'hotspots-cleanup-old.sql'),
     `DELETE FROM accident_hotspots WHERE dataset_version <> ${sqlValue(HOTSPOT_DATASET_VERSION)};\n`, 'utf8')
   await writeFile(path.join(out, 'hotspots-top.json'), JSON.stringify(hotspots.slice(0, top), null, 2), 'utf8')

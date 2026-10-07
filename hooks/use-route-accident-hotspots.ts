@@ -12,8 +12,11 @@ interface RouteAccidentHotspotsState {
 
 const EMPTY: RouteAccidentHotspotsState = { hotspots: [], isLoading: false, error: null }
 
-/** 選択中の通学路の近く（50m以内）を通る事故多発地点。ルートが変わるたびに取り直す。 */
-export function useRouteAccidentHotspots(routeId: string | null): RouteAccidentHotspotsState {
+/**
+ * 選択中の通学路の近く（50m以内）を通る事故多発地点。
+ * ルートが変わったとき、同じルートの経路が編集されたとき（routeVersion = updated_at が変わる）に取り直す。
+ */
+export function useRouteAccidentHotspots(routeId: string | null, routeVersion?: string | null): RouteAccidentHotspotsState {
   const [state, setState] = useState<RouteAccidentHotspotsState>(EMPTY)
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function useRouteAccidentHotspots(routeId: string | null): RouteAccidentH
         })
       })
     return () => controller.abort()
-  }, [routeId])
+  }, [routeId, routeVersion])
 
   return state
 }

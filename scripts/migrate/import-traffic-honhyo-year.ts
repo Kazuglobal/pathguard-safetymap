@@ -2,8 +2,8 @@
  * 警察庁「本票」CSV の新しい年を traffic_accidents に追加する SQL を作る（D1 には何も書かない。生成のみ）。
  *
  * Usage:
- *   pnpm tsx scripts/migrate/import-traffic-honhyo-year.ts --csv-dir=<dir with honhyo_YYYY.csv> --year=2025 --out=<dir> [--occurred-at=jst|wallclock-utc]
- * --occurred-at: 既定 jst は '2025-01-02T11:50:00+09:00'（本当の時刻）。wallclock-utc は日本時間の時刻を UTC として
+ *   pnpm tsx scripts/migrate/import-traffic-honhyo-year.ts --csv-dir=<dir with honhyo_YYYY.csv> --year=2025 --out=<dir> --occurred-at=jst|wallclock-utc
+ * --occurred-at（必須）: jst は '2025-01-02T11:50:00+09:00'（本当の時刻）。wallclock-utc は日本時間の時刻を UTC として
  *   '2025-01-02T11:50:00+00:00' で入れる（既存行がこの形なら合わせる。docs/plans/2026-10-02-traffic-accidents-2025-and-hotspots.md）。
  * 出力（D1 の制約: 1文 100KB 以内・1文 30 秒以内 に合わせて分割）:
  *   preflight.sql     … 同じ年の行が既にあるか数える（0 でなければ取り込まない）
@@ -90,9 +90,10 @@ async function main(): Promise<void> {
     throw new Error('Use --csv-dir=<dir> --year=YYYY --out=<dir>')
   }
   const year = Number(yearText)
-  const occurredAtMode = argument('occurred-at') ?? 'jst'
+  // 既存行の時刻の書式を本番で確かめてから選ぶ（docs/plans/2026-10-02-traffic-accidents-2025-and-hotspots.md の手順2）
+  const occurredAtMode = argument('occurred-at')
   if (occurredAtMode !== 'jst' && occurredAtMode !== 'wallclock-utc') {
-    throw new Error('--occurred-at must be jst or wallclock-utc')
+    throw new Error('--occurred-at=jst|wallclock-utc is required (check the existing occurred_at format first)')
   }
   const formatOccurredAt = (value: string | null) =>
     value != null && occurredAtMode === 'wallclock-utc' ? value.replace(/\+09:00$/, '+00:00') : value
@@ -102,7 +103,9 @@ async function main(): Promise<void> {
   await writeFile(path.join(out, 'preflight.sql'),
     `SELECT COUNT(*) AS existing_rows FROM traffic_accidents WHERE source_year = ${year};\n`, 'utf8')
   await writeFile(path.join(out, 'stage-0-create.sql'),
-    `DROP TABLE IF EXISTS traffic_import;\nCREATE TABLE traffic_import (${columns.join(', ')});\n`, 'utf8')
+    `DROP TABLE IF EXISTS traffic_import;\nCREATE TABLE traffic_import (${columns.join(', ')});\n`
+    // apply-chunks は都道府県ずつ読むので、一時テーブルを51回全件走査しないよう索引を張る
+    + 'CREATE INDEX idx_traffic_import_prefecture ON traffic_import (prefecture_code);\n', 'utf8')
 
   const text = new TextDecoder('shift_jis').decode(await readFile(path.join(csvDir, `honhyo_${year}.csv`)))
   const lines = text.split(/\r?\n/)

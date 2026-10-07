@@ -69,4 +69,14 @@ describe('useRouteAccidentHotspots', () => {
     rerender({ id: 'r2' })
     await waitFor(() => expect(result.current.error).toBe('ルートが見つかりません'))
   })
+
+  it('refetches when the same route is edited (updated_at changes)', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ hotspots: [], truncated: false }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { rerender } = renderHook(({ version }) => useRouteAccidentHotspots('r1', version), { initialProps: { version: 'v1' } })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    rerender({ version: 'v2' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  })
 })

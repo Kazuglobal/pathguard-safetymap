@@ -297,7 +297,7 @@ export default function MapContainer({
     setRouteHazardError,
     resetRouteHazards,
   } = useRouteHazards({ selectedUserRoute, hazardLayerVisibility })
-  const routeAccidentHotspots = useRouteAccidentHotspots(selectedUserRoute?.id ?? null)
+  const routeAccidentHotspots = useRouteAccidentHotspots(selectedUserRoute?.id ?? null, selectedUserRoute?.updated_at ?? null)
   const visibleRouteHazards = useMemo(
     () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
     [hazardLayerVisibility, routeHazards],
