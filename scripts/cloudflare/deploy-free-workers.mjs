@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import dotenv from 'dotenv'
 import { isSensitiveBuildVariable } from './secret-policy.mjs'
+import { serverWorkerDeployEnv } from './ci-worker-env.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const wranglerCli = path.join(projectRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
@@ -177,7 +178,8 @@ try {
     }
     console.log(`\n=== ${dryRun ? 'Checking' : 'Deploying'} ${name} ===`)
     if (dryRun) runDryRun(args, name)
-    else run(args)
+    // Workers Builds の名前・タグ固定を外さないと、--name を無視して router に上書きされる（ci-worker-env.mjs）
+    else run(args, serverWorkerDeployEnv(process.env))
   }
 
   if (deployRouter) {
