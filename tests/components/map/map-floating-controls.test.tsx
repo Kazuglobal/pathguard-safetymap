@@ -51,7 +51,7 @@ describe('MapFloatingControls mobile layout', () => {
 
     expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
     expect(screen.getByTestId('map-display-dock')).toHaveStyle({
-      bottom: '5.75rem',
+      bottom: '9rem',
     })
     expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
   })

@@ -22,7 +22,7 @@ describe("map overlay ui helpers", () => {
 
   it("keeps the display dock above the mobile action dock and desktop mapbox controls", () => {
     expect(getMapDisplayDockBottomOffset(true)).toBe("calc(env(safe-area-inset-bottom, 0px) + 10.5rem)")
-    expect(getMapDisplayDockBottomOffset(false)).toBe("5.75rem")
+    expect(getMapDisplayDockBottomOffset(false)).toBe("9rem")
   })
 
   it("puts the mobile action dock at the bottom edge because the map page hides the bottom tab bar", () => {
