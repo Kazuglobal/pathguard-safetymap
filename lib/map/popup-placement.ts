@@ -5,11 +5,23 @@
 // 下の「危険箇所を報告」ボタンの下に潜り込んで読めなくなる（2026-10-08 ユーザー指摘）。
 // =============================================
 
-export type PopupAnchor = 'top' | 'bottom'
+export type PopupAnchor = 'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
-/** タップした点が地図の上半分なら下向き（anchor=top）、下半分なら上向き（anchor=bottom）に開く。 */
-export function popupAnchorForPoint(pointY: number, mapHeight: number): PopupAnchor {
-  return pointY < mapHeight / 2 ? 'top' : 'bottom'
+/** 画面の左右この割合より端の点は、吹き出しを画面の内側へ向けて開く。 */
+const EDGE_RATIO = 0.3
+
+/**
+ * タップした点から吹き出しを開く向き（Mapbox の anchor = 吹き出しのどの辺を点に付けるか）。
+ * 上半分なら下向き（top）、下半分なら上向き（bottom）。左右の端に近いときは画面の内側へ開く。
+ */
+export function popupAnchorForPoint(
+  point: { x: number; y: number },
+  map: { width: number; height: number },
+): PopupAnchor {
+  const vertical = point.y < map.height / 2 ? 'top' : 'bottom'
+  if (point.x < map.width * EDGE_RATIO) return `${vertical}-left`
+  if (point.x > map.width * (1 - EDGE_RATIO)) return `${vertical}-right`
+  return vertical
 }
 
 export interface VerticalBox {
@@ -53,4 +65,14 @@ export function overlaySafeArea(
   const top = Math.max(0, ...overlays.top.filter(visible).map((box) => box.bottom - map.top + OVERLAY_GAP_PX))
   const bottom = Math.max(0, ...overlays.bottom.filter(visible).map((box) => map.bottom - box.top + OVERLAY_GAP_PX))
   return { top, bottom }
+}
+
+/** 吹き出しが画面の左右にはみ出したとき、地図を横にずらす量（map.panBy の x。正=地図の中身を左へ）。 */
+export function popupHorizontalPanOffset(
+  popup: { left: number; right: number },
+  map: { left: number; right: number },
+): number {
+  if (popup.left < map.left + OVERLAY_GAP_PX) return Math.round(popup.left - (map.left + OVERLAY_GAP_PX))
+  if (popup.right > map.right - OVERLAY_GAP_PX) return Math.round(popup.right - (map.right - OVERLAY_GAP_PX))
+  return 0
 }

@@ -122,6 +122,7 @@ export default function MapFloatingControls({
       {/* 右下: 地図表示ドック */}
       <div
         data-testid="map-display-dock"
+        data-map-overlay="bottom"
         className="absolute right-3 z-20"
         style={displayDockBottomStyle}
       >
@@ -302,7 +303,7 @@ export default function MapFloatingControls({
 
       {/* 危険種別レジェンド（コンパクト版） - 画面下部 */}
       {showLegend && (
-        <div className="absolute left-3 z-10" style={legendBottomStyle}>
+        <div data-map-overlay="bottom" className="absolute left-3 z-10" style={legendBottomStyle}>
           <div className="flex gap-1 rounded-full border px-2 py-1.5" style={floatPill}>
             <div className="flex items-center gap-1 px-1.5" title="交通危険">
               <Car className="h-3.5 w-3.5" style={{ color: "#3E8FB8" }} />

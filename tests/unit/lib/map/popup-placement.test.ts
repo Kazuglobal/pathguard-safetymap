@@ -1,13 +1,40 @@
 import { describe, expect, it } from 'vitest'
 
-import { overlaySafeArea, popupAnchorForPoint, popupPanOffset } from '@/lib/map/popup-placement'
+import { overlaySafeArea, popupAnchorForPoint, popupHorizontalPanOffset, popupPanOffset } from '@/lib/map/popup-placement'
 
 describe('popupAnchorForPoint', () => {
+  const size = { width: 1000, height: 700 }
+
   it('opens below the point in the upper half and above it in the lower half', () => {
-    expect(popupAnchorForPoint(100, 700)).toBe('top')
-    expect(popupAnchorForPoint(349, 700)).toBe('top')
-    expect(popupAnchorForPoint(350, 700)).toBe('bottom')
-    expect(popupAnchorForPoint(650, 700)).toBe('bottom')
+    expect(popupAnchorForPoint({ x: 500, y: 100 }, size)).toBe('top')
+    expect(popupAnchorForPoint({ x: 500, y: 349 }, size)).toBe('top')
+    expect(popupAnchorForPoint({ x: 500, y: 350 }, size)).toBe('bottom')
+    expect(popupAnchorForPoint({ x: 500, y: 650 }, size)).toBe('bottom')
+  })
+
+  it('opens toward the middle of the screen when the point is near the left or right edge', () => {
+    // 左寄りの点は吹き出しを右側へ（anchor=*-left）、右寄りの点は左側へ（anchor=*-right）
+    expect(popupAnchorForPoint({ x: 120, y: 100 }, size)).toBe('top-left')
+    expect(popupAnchorForPoint({ x: 880, y: 650 }, size)).toBe('bottom-right')
+    expect(popupAnchorForPoint({ x: 299, y: 650 }, size)).toBe('bottom-left')
+    expect(popupAnchorForPoint({ x: 701, y: 100 }, size)).toBe('top-right')
+  })
+})
+
+describe('popupHorizontalPanOffset', () => {
+  const map = { left: 0, right: 390 }
+
+  it('moves the map so a popup sticking out on the left comes back on screen with a margin', () => {
+    // 左端が -19px なら、地図の中身を右へ 27px（余白8px）ずらす = panBy の x は -27
+    expect(popupHorizontalPanOffset({ left: -19, right: 261 }, map)).toBe(-27)
+  })
+
+  it('moves the map the other way when it sticks out on the right', () => {
+    expect(popupHorizontalPanOffset({ left: 150, right: 400 }, map)).toBe(18)
+  })
+
+  it('does not move when the popup fits', () => {
+    expect(popupHorizontalPanOffset({ left: 20, right: 300 }, map)).toBe(0)
   })
 })
 

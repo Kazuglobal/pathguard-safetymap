@@ -1,6 +1,12 @@
 import mapboxgl from 'mapbox-gl'
 
-import { overlaySafeArea, popupAnchorForPoint, popupPanOffset, type VerticalBox } from '@/lib/map/popup-placement'
+import {
+  overlaySafeArea,
+  popupAnchorForPoint,
+  popupHorizontalPanOffset,
+  popupPanOffset,
+  type VerticalBox,
+} from '@/lib/map/popup-placement'
 
 /** 地図データの丸（多発地点・事故ヒートマップ）。ここをタップしたときは吹き出しを出すので、地図全体のクリック処理を動かさない。 */
 export const MAP_DATA_POINT_LAYER_IDS = ['accident-hotspot-circle', 'accident-circle-layer'] as const
@@ -25,7 +31,7 @@ function verticalBox(element: Element): VerticalBox {
 
 /**
  * 吹き出しを、上の検索欄・ボタン列や下の報告ボタン（data-map-overlay）の下に潜らせずに開く。
- * 点が上半分なら下向き、下半分なら上向きに開き、それでも重なる分だけ地図をずらす。
+ * 点が上半分なら下向き、下半分なら上向き、左右の端なら内側へ開き、それでも重なる・はみ出す分だけ地図をずらす。
  */
 export function showPopupInView(
   map: mapboxgl.Map,
@@ -39,7 +45,7 @@ export function showPopupInView(
     offset: options.offset ?? 12,
     // スマホでも画面からはみ出さない幅にする
     maxWidth: options.maxWidth ?? 'min(280px, calc(100vw - 32px))',
-    anchor: popupAnchorForPoint(point.y, container.clientHeight),
+    anchor: popupAnchorForPoint(point, { width: container.clientWidth, height: container.clientHeight }),
   })
     .setLngLat(lngLat)
     .setDOMContent(content)
@@ -54,7 +60,13 @@ export function showPopupInView(
       bottom: [...document.querySelectorAll('[data-map-overlay="bottom"]')].map(verticalBox),
     })
     const dy = popupPanOffset(verticalBox(element), mapBox, safe)
-    if (dy !== 0) map.panBy([0, dy], { duration: 300 })
+    const popupRect = element.getBoundingClientRect()
+    const mapRect = container.getBoundingClientRect()
+    const dx = popupHorizontalPanOffset(
+      { left: popupRect.left, right: popupRect.right },
+      { left: mapRect.left, right: mapRect.right },
+    )
+    if (dx !== 0 || dy !== 0) map.panBy([dx, dy], { duration: 300 })
   })
 
   return popup
