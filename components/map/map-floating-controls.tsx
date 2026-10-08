@@ -1,11 +1,13 @@
 "use client"
 
 import type { MapDisplayOption } from "@/lib/map-display-options"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
+import { useState } from "react"
+import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair, Menu } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
 import HelpDialog from "./help-dialog"
 import { useGamification } from "@/hooks/use-gamification"
-import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
+import { getMapDisplayDockBottomOffset, MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
+import { MapMenuSheet } from "./map-menu-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -61,7 +63,9 @@ export default function MapFloatingControls({
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile
-  const mobileBottomNavClearance = "calc(env(safe-area-inset-bottom, 0px) + 5rem)"
+  // 地図では下部タブバーを出さないので、ボタン列は画面の一番下に置く
+  const mobileBottomNavClearance = MOBILE_MAP_DOCK_BOTTOM
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -148,9 +152,19 @@ export default function MapFloatingControls({
           style={{ bottom: mobileBottomNavClearance }}
         >
           <div
-            className="grid grid-cols-3 gap-2 rounded-[22px] border p-2"
+            className="grid grid-cols-4 gap-1.5 rounded-[22px] border p-2"
             style={floatPill}
           >
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              className={`chunky-press flex h-12 items-center justify-center gap-1 rounded-full border-2 bg-white text-[12px] font-black ${tankenTokens.cls.focus}`}
+              style={{ borderColor: "rgba(67,57,43,.12)", color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
+              aria-label="メニューを開く"
+            >
+              <Menu className="h-4 w-4" strokeWidth={2.6} />
+              メニュー
+            </button>
             {onToggleSidebar ? (
               <button
                 type="button"
@@ -324,6 +338,7 @@ export default function MapFloatingControls({
           </div>
         </div>
       )}
+      {isMobile && <MapMenuSheet open={isMenuOpen} onOpenChange={setIsMenuOpen} />}
     </>
   )
 }

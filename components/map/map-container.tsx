@@ -1307,10 +1307,10 @@ export default function MapContainer({
         />
 
         {/* 不審者アラート 専用入力フォーム（モバイル/タブレットはボトムナビの上／デスクトップ右） */}
-        {/* ボトムナビ（navigation.tsx の fixed bottom-0 z-50, h-20, md:hidden）に重ならないよう
-            md 未満では下端をナビ高さ分（約5rem＋safe-area）持ち上げる。md 以上はナビが消えるため右下に配置。 */}
+        {/* 地図画面ではスマホの下部タブバーを出さない（lib/navigation-visibility.ts）ので、md 未満は画面の下端に置く。
+            md 以上は右下に配置。 */}
         {isSuspiciousAlertOpen && (
-          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
+          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
             <div className="max-h-[70dvh] overflow-y-auto overscroll-contain rounded-2xl border border-orange-100 bg-white p-4 shadow-2xl">
               <SuspiciousAlertForm
                 selectedLocation={selectedLocation}

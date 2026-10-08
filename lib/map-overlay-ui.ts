@@ -12,5 +12,8 @@ export function dismissTransientMapUi({
 }
 
 export function getMapDisplayDockBottomOffset(isMobile: boolean) {
-  return isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10.5rem)" : "5.75rem"
+  return isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.25rem)" : "5.75rem"
 }
+
+/** スマホの地図のボタン列の下端。地図では下部タブバーを出さないので画面の一番下に置く（lib/navigation-visibility.ts）。 */
+export const MOBILE_MAP_DOCK_BOTTOM = "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)"
