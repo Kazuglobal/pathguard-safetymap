@@ -15,16 +15,18 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
-      "tosu-nagayoshi-child-followed-20261001",
-      "izumo-oyamacho-voice-call-20260925",
+      "isesaki-hashie-bicycle-commute-collision-20261007",
+      "inzai-kikari-crosswalk-hitandrun-20261001",
+      "ikoma-tawaraguchi-knife-sighting-20261002",
+      "tokushima-kokufu-hiraki-voice-call-20261001",
+      "kumamoto-higashi-nagamineminami-following-20261006",
+    ]))
+    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "setagaya-kinuta-elementary-girl-touched-20260929",
       "joetsu-saijomachi-schoolway-following-20260928",
       "kurume-agetsu-bicycle-commute-collision-20260925",
-    ]))
-    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
-      "tokamachi-kawaharacho-runaway-car-20260918",
-      "kumamoto-city-boys-approach-cluster-20260917",
-      "saitama-minuma-hasunuma-camera-20260917",
+      "kumamoto-late-september-girl-approach-cluster-20260924",
+      "saitama-iwatsuki-kakura-stalking-20260924",
       "fukuoka-late-august-child-approach-cluster-20260828",
       "national-living-road-casualty-analysis-20260910",
       "ichinomiya-fuji-bicycle-collision-20260910",
