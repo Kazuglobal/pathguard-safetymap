@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { Navigation } from "@/components/ui/navigation"
 import type { User } from "@supabase/supabase-js"
 import { cn } from "@/lib/utils"
+import { shouldShowMobileBottomNav } from "@/lib/navigation-visibility"
 
 interface NavigationWrapperProps {
   user: User | null
@@ -42,6 +43,7 @@ export function NavigationWrapper({ user, onLogout, isLoggingOut = false, childr
           isLoggingOut={isLoggingOut}
           hideTopNavMobile={isLandingPage || isMapPage}
           isOverlay={isMapPage}
+          hideBottomNavMobile={!shouldShowMobileBottomNav(pathname)}
         />
       )}
 

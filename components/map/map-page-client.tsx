@@ -49,7 +49,7 @@ export default function MapPageClient() {
         initialReportId={initialReportId}
       />
 
-      <div className="fixed left-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+11rem)] md:left-auto md:bottom-4 md:right-4">
+      <div className="fixed left-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+6.75rem)] md:left-auto md:bottom-4 md:right-4">
         <Button
           type="button"
           variant="outline"

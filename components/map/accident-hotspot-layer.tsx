@@ -5,8 +5,9 @@ import mapboxgl from 'mapbox-gl'
 
 import { useAccidentHotspots } from '@/hooks/use-accident-hotspots'
 import { useEventCallback } from '@/hooks/use-event-callback'
+import { showPopupInView } from '@/components/map/map-popup-in-view'
 import { tankenTokens } from '@/lib/design/tanken'
-import { HOTSPOT_ATTRIBUTION } from '@/lib/traffic-accident/hotspot-config'
+import { HOTSPOT_ATTRIBUTION, HOTSPOT_MIN_COUNT } from '@/lib/traffic-accident/hotspot-config'
 import {
   hotspotBreakdown,
   hotspotHeadline,
@@ -15,6 +16,11 @@ import {
   hotspotYearSeries,
 } from '@/lib/traffic-accident/hotspot-presentation'
 import { dominantAccidentClass, type AccidentHotspotSummary } from '@/lib/traffic-accident/hotspot-types'
+import {
+  HOTSPOT_LABEL_MIN_ZOOM,
+  hotspotMinCountForZoom,
+  hotspotVisibilityFilter,
+} from '@/lib/traffic-accident/hotspot-zoom'
 
 const SOURCE_ID = 'accident-hotspot-source'
 const CIRCLE_LAYER_ID = 'accident-hotspot-circle'
@@ -35,20 +41,28 @@ function sourceExists(m: mapboxgl.Map, id: string): boolean {
   try { return !!m.getSource(id) } catch { return false }
 }
 
-function addSourceAndLayers(m: mapboxgl.Map, data: GeoJSON.FeatureCollection) {
+/** 縮尺に応じた件数の絞り込みを、丸と数字の両方のレイヤーに付ける（hotspot-zoom.ts）。 */
+function applyVisibilityFilter(m: mapboxgl.Map, minCount: number) {
+  for (const id of [CIRCLE_LAYER_ID, LABEL_LAYER_ID]) {
+    if (layerExists(m, id)) m.setFilter(id, hotspotVisibilityFilter(minCount))
+  }
+}
+
+function addSourceAndLayers(m: mapboxgl.Map, data: GeoJSON.FeatureCollection, minCount: number) {
   if (!sourceExists(m, SOURCE_ID)) m.addSource(SOURCE_ID, { type: 'geojson', data })
   if (!layerExists(m, CIRCLE_LAYER_ID)) {
     m.addLayer({
       id: CIRCLE_LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
+      filter: hotspotVisibilityFilter(minCount),
       paint: {
         'circle-color': ['get', 'color'],
-        // 件数が多いほど大きく、寄るほど大きく
+        // 件数が多いほど大きく、寄るほど大きく。取得はズーム10からなので、10の時点で2桁の数字が収まる大きさにする
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
-          8, ['interpolate', ['linear'], ['get', 'accidentCount'], 5, 3, 20, 6, 60, 9],
-          14, ['interpolate', ['linear'], ['get', 'accidentCount'], 5, 9, 20, 15, 60, 22],
+          10, ['interpolate', ['linear'], ['get', 'accidentCount'], 5, 7, 20, 10, 60, 14],
+          14, ['interpolate', ['linear'], ['get', 'accidentCount'], 5, 10, 20, 15, 60, 22],
         ],
         'circle-opacity': 0.85,
         'circle-stroke-width': 2,
@@ -61,10 +75,11 @@ function addSourceAndLayers(m: mapboxgl.Map, data: GeoJSON.FeatureCollection) {
       id: LABEL_LAYER_ID,
       type: 'symbol',
       source: SOURCE_ID,
-      minzoom: 13,
+      minzoom: HOTSPOT_LABEL_MIN_ZOOM,
+      filter: hotspotVisibilityFilter(minCount),
       layout: {
         'text-field': ['to-string', ['get', 'accidentCount']],
-        'text-size': 12,
+        'text-size': 11,
         'text-allow-overlap': true,
       },
       paint: { 'text-color': '#ffffff' },
@@ -149,11 +164,22 @@ export function hotspotLayerMessage(state: {
   isZoomedOut: boolean
   truncated: boolean
   count: number
+  /** 縮尺に応じて表示を絞っている最小件数（絞っていなければ HOTSPOT_MIN_COUNT）。 */
+  minCountShown?: number
+  /** 返ってきた地点のうち最も少ない件数（件数の多い順に返るので、打ち切り時の境目）。 */
+  lowestCount?: number
 }): string | null {
   if (!state.isVisible) return null
   if (state.error) return state.error
   if (state.isZoomedOut) return '地図を拡大すると事故多発地点が表示されます'
-  if (state.truncated) return `件数の多い${state.count}か所を表示しています。拡大するとすべて表示されます`
+  const filtering = state.minCountShown != null && state.minCountShown > HOTSPOT_MIN_COUNT
+  const filterMessage = `件数の多い地点（${state.minCountShown}件以上）だけ表示しています。拡大するとすべて表示されます`
+  if (state.truncated) {
+    // 件数の多い順に打ち切っているので、境目が絞り込みの件数より少なければ、表示対象は全部そろっている
+    const thresholdComplete = filtering && state.lowestCount != null && state.lowestCount < (state.minCountShown as number)
+    return thresholdComplete ? filterMessage : `件数の多い${state.count}か所を表示しています。拡大するとすべて表示されます`
+  }
+  if (filtering) return filterMessage
   return null
 }
 
@@ -161,6 +187,7 @@ export function hotspotLayerMessage(state: {
 export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerProps) {
   const { hotspots, truncated, error, fetchForViewport, clear } = useAccidentHotspots()
   const [isZoomedOut, setIsZoomedOut] = useState(false)
+  const [minCountShown, setMinCountShown] = useState(HOTSPOT_MIN_COUNT)
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const geoJSON = hotspotsToGeoJSON(hotspots)
 
@@ -170,15 +197,25 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
     const spot = hotspots.find((item) => item.id === id)
     if (!spot) return
     popupRef.current?.remove()
-    popupRef.current = new mapboxgl.Popup({ offset: 12, maxWidth: '260px' })
-      .setLngLat([spot.longitude, spot.latitude])
-      .setDOMContent(buildHotspotPopupContent(spot))
-      .addTo(event.target as mapboxgl.Map)
+    // 検索欄・ボタン列や下の報告ボタンの下に潜らないように開く
+    popupRef.current = showPopupInView(
+      event.target as mapboxgl.Map,
+      [spot.longitude, spot.latitude],
+      buildHotspotPopupContent(spot),
+    )
   })
 
   const handleStyleLoad = useEventCallback(() => {
-    if (map) addSourceAndLayers(map, geoJSON)
+    if (map) addSourceAndLayers(map, geoJSON, hotspotMinCountForZoom(map.getZoom()))
   })
+
+  // 拡大・縮小のたびに、出す地点の最小件数を切り替える（取得し直しは moveend 側）
+  const handleZoom = useCallback(() => {
+    if (!map) return
+    const minCount = hotspotMinCountForZoom(map.getZoom())
+    applyVisibilityFilter(map, minCount)
+    setMinCountShown(minCount)
+  }, [map])
 
   const handleMoveEnd = useCallback(() => {
     if (!map) return
@@ -214,12 +251,14 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
       clear()
       return
     }
-    addSourceAndLayers(map, hotspotsToGeoJSON([]))
+    addSourceAndLayers(map, hotspotsToGeoJSON([]), hotspotMinCountForZoom(map.getZoom()))
+    handleZoom()
     map.on('click', CIRCLE_LAYER_ID, handleClick)
     map.on('mouseenter', CIRCLE_LAYER_ID, setPointer)
     map.on('mouseleave', CIRCLE_LAYER_ID, resetPointer)
     map.on('style.load', handleStyleLoad)
     map.on('moveend', handleMoveEnd)
+    map.on('zoom', handleZoom)
     handleMoveEnd()
     return () => {
       map.off('click', CIRCLE_LAYER_ID, handleClick)
@@ -227,8 +266,9 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
       map.off('mouseleave', CIRCLE_LAYER_ID, resetPointer)
       map.off('style.load', handleStyleLoad)
       map.off('moveend', handleMoveEnd)
+      map.off('zoom', handleZoom)
     }
-  }, [map, isVisible, handleClick, handleStyleLoad, handleMoveEnd, setPointer, resetPointer, clear])
+  }, [map, isVisible, handleClick, handleStyleLoad, handleMoveEnd, handleZoom, setPointer, resetPointer, clear])
 
   useEffect(() => {
     if (!map || !isVisible) return
@@ -243,7 +283,8 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
     if (map) removeSourceAndLayers(map)
   }, [map])
 
-  const message = hotspotLayerMessage({ isVisible, error, isZoomedOut, truncated, count: hotspots.length })
+  const lowestCount = hotspots.length > 0 ? Math.min(...hotspots.map((spot) => spot.accidentCount)) : undefined
+  const message = hotspotLayerMessage({ isVisible, error, isZoomedOut, truncated, count: hotspots.length, minCountShown, lowestCount })
   if (!message) return null
   return (
     <div

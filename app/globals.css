@@ -731,3 +731,16 @@
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.5); opacity: 0.5; }
 }
+
+/* 地図の吹き出し(components/map/map-popup-in-view.ts)。右上のポイント・右下の表示ボタン(z-20)より上、検索欄・ボタン列(z-30)より下に出す */
+.mapboxgl-popup.map-popup-in-view {
+  z-index: 25;
+}
+
+/* スマホの地図: 下部のボタン列（components/map/map-floating-controls.tsx）が画面の一番下にあるので、Mapbox のロゴ・現在地ボタンをその上に出す（ロゴは利用規約上、隠してはいけない） */
+@media (max-width: 767px) {
+  .pg-main-map .mapboxgl-ctrl-bottom-left,
+  .pg-main-map .mapboxgl-ctrl-bottom-right {
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
+  }
+}
