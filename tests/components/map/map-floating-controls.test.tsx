@@ -61,7 +61,7 @@ describe('MapFloatingControls mobile layout', () => {
 
     expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
     expect(screen.getByTestId('map-display-dock')).toHaveStyle({
-      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6.25rem)',
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 7.75rem)',
     })
     expect(screen.getByRole('button', { name: '表示' })).toBeInTheDocument()
   })

@@ -1267,7 +1267,7 @@ export default function MapContainer({
         {/* Map Canvas (フルスクリーン) */}
         <div
           ref={mapContainer}
-          className="absolute inset-0 w-full h-full"
+          className="pg-main-map absolute inset-0 w-full h-full"
           style={{ minHeight: mapMinHeight }}
           onPointerDownCapture={() => {
             if (showMobileMapHint) setShowMobileMapHint(false);

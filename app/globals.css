@@ -736,3 +736,11 @@
 .mapboxgl-popup.map-popup-in-view {
   z-index: 25;
 }
+
+/* スマホの地図: 下部のボタン列（components/map/map-floating-controls.tsx）が画面の一番下にあるので、Mapbox のロゴ・現在地ボタンをその上に出す（ロゴは利用規約上、隠してはいけない） */
+@media (max-width: 767px) {
+  .pg-main-map .mapboxgl-ctrl-bottom-left,
+  .pg-main-map .mapboxgl-ctrl-bottom-right {
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
+  }
+}
