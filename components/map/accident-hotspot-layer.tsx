@@ -5,6 +5,7 @@ import mapboxgl from 'mapbox-gl'
 
 import { useAccidentHotspots } from '@/hooks/use-accident-hotspots'
 import { useEventCallback } from '@/hooks/use-event-callback'
+import { showPopupInView } from '@/components/map/map-popup-in-view'
 import { tankenTokens } from '@/lib/design/tanken'
 import { HOTSPOT_ATTRIBUTION, HOTSPOT_MIN_COUNT } from '@/lib/traffic-accident/hotspot-config'
 import {
@@ -196,10 +197,12 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
     const spot = hotspots.find((item) => item.id === id)
     if (!spot) return
     popupRef.current?.remove()
-    popupRef.current = new mapboxgl.Popup({ offset: 12, maxWidth: '260px' })
-      .setLngLat([spot.longitude, spot.latitude])
-      .setDOMContent(buildHotspotPopupContent(spot))
-      .addTo(event.target as mapboxgl.Map)
+    // 検索欄・ボタン列や下の報告ボタンの下に潜らないように開く
+    popupRef.current = showPopupInView(
+      event.target as mapboxgl.Map,
+      [spot.longitude, spot.latitude],
+      buildHotspotPopupContent(spot),
+    )
   })
 
   const handleStyleLoad = useEventCallback(() => {

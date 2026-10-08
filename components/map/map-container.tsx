@@ -46,6 +46,7 @@ import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
 import { AccidentHotspotLayer } from "./accident-hotspot-layer"
+import { hitsMapDataPoint } from "./map-popup-in-view"
 import { RouteAccidentHotspotList } from "./route-accident-hotspot-list"
 import { useRouteAccidentHotspots } from "@/hooks/use-route-accident-hotspots"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
@@ -559,6 +560,10 @@ export default function MapContainer({
         description: "新しい位置に報告地点を変更しました"
       });
     } else {
+      // 多発地点・事故の丸をタップしたときは、その吹き出しを出す。事故統計やサイドバー（スマホ）を
+      // 開くと吹き出しが隠れるので、地図全体のクリック処理は動かさない
+      if (hitsMapDataPoint(e.target, e.point)) return;
+
       // 通常の地図クリック時に事故統計を取得・表示
       console.log("Normal map click: Fetching accident statistics");
       fetchClickedLocationStats({

@@ -142,6 +142,7 @@ export default function MapFloatingControls({
       {showMobileActionDock && (
         <div
           data-testid="mobile-action-dock"
+          data-map-overlay="bottom"
           className="absolute inset-x-3 z-20"
           style={{ bottom: mobileBottomNavClearance }}
         >
@@ -231,6 +232,7 @@ export default function MapFloatingControls({
       {/* 下部中央: 報告ドック（デスクトップ）。主CTAと現在地報告を1列にまとめ、迷いをなくす */}
       {showPrimaryCta && (
         <div
+          data-map-overlay="bottom"
           className="absolute left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2"
           style={ctaBottomStyle}
         >

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { useEventCallback } from '@/hooks/use-event-callback'
+import { showPopupInView } from '@/components/map/map-popup-in-view'
 import mapboxgl from 'mapbox-gl'
 import type { AccidentGeoJSON } from '@/lib/traffic-accident-heatmap'
 import { HEATMAP_MAX_ZOOM, CIRCLE_MIN_ZOOM, getSeverityLabel } from '@/lib/traffic-accident-heatmap'
@@ -351,10 +352,8 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyRepo
       popupRef.current.remove()
     }
 
-    popupRef.current = new mapboxgl.Popup({ offset: 12, maxWidth: '240px' })
-      .setLngLat(coords)
-      .setDOMContent(content)
-      .addTo(mapInstance)
+    // 検索欄・ボタン列や下の報告ボタンの下に潜らないように開く
+    popupRef.current = showPopupInView(mapInstance, coords, content, { maxWidth: 'min(260px, calc(100vw - 32px))' })
   })
 
   const handleMouseEnter = useCallback((e: mapboxgl.MapMouseEvent) => {
