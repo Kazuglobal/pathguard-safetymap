@@ -59,6 +59,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-18-001",
     slug: "tokamachi-kawaharacho-runaway-car-20260918",
+    thumbnailUrl: "/images/school-route-news/thumbnails/tokamachi-kawaharacho-runaway-car-20260918.jpg",
     title: "【新潟県十日町市】無人の軽自動車が動き出し園児の列に 5人が軽いけが",
     excerpt: "9月18日午前10時ごろ、十日町市川原町の県道で、住宅の車庫に止めてあった軽自動車が無人のまま動き出して約6メートル進み、散歩中の園児の列に衝突した。園児5人が手足の擦り傷などの軽いけがで搬送された。警察が車が動き出した原因を調べている。",
     content: `## 事案の概要
@@ -136,6 +137,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-18-002",
     slug: "kumamoto-city-boys-approach-cluster-20260917",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kumamoto-city-boys-approach-cluster-20260917.jpg",
     title: "【熊本県熊本市】男児への声かけが同じ日に2件 「おじさんの家に行こう」",
     excerpt: "熊本市で9月17日午後、中央区帯山と東区戸島西の路上で、歩いていた男児が見知らぬ男から「おじさんの家に行こう」「車に乗らないか」と声をかけられる事案が20分の間に2件発生した。前日16日には北区で登校中の女児が怒鳴られる事案も起きている。",
     content: `## 事案の概要
@@ -226,6 +228,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-18-003",
     slug: "saitama-minuma-hasunuma-camera-20260917",
+    thumbnailUrl: "/images/school-route-news/thumbnails/saitama-minuma-hasunuma-camera-20260917.jpg",
     title: "【埼玉県さいたま市】女子中学生らが車の男にカメラを向けられる 見沼区で複数件",
     excerpt: "埼玉県警察犯罪情報官によると、9月17日午後3時40分ごろから45分ごろにかけて、さいたま市見沼区大字蓮沼の路上で、女子中学生らが自動車に乗った男にカメラを向けられたとの情報が複数寄せられた。15日夕方には丸ケ崎町で男子中学生らが追いかけられる事案も起きている。",
     content: `## 事案の概要
@@ -951,6 +954,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-27-001",
     slug: "matsusaka-tomatoes-traffic-safety-class-20260925",
+    thumbnailUrl: "/images/school-route-news/thumbnails/matsusaka-tomatoes-traffic-safety-class-20260925.jpg",
     title: "【三重県松阪市】ボランティア「とまとーず」が交通安全教室 横断と自転車を実地で",
     excerpt: "松阪市立松江小学校は9月25日、地域の交通安全ボランティア「とまとーず」による交通安全教室を開いたと公表した。低学年は横断歩道の渡り方を、中学年は自転車の安全な乗り方とヘルメットの正しいかぶり方を学んだ。とまとーずは松阪市と多気町・明和町で活動し、教室は6000回を超えている。",
     content: `## 何があったか
@@ -1018,6 +1022,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-10-01-001",
     slug: "chiba-hanamigawa-makuhari-route14-fatal-20260927",
+    thumbnailUrl: "/images/school-route-news/thumbnails/chiba-hanamigawa-makuhari-route14-fatal-20260927.jpg",
     title: "【千葉県千葉市】国道14号の横断歩道で8歳の男の子が車2台にはねられ死亡 花見川区幕張町",
     excerpt: "千葉日報などの報道によると、9月27日午後6時20分ごろ、千葉市花見川区幕張町の国道14号の横断歩道を歩いていた8歳の小学生の男の子が、乗用車とワゴン車に相次いではねられ、搬送先の病院で死亡した。千葉西署が運転していた2人から事情を聴いている（9月28日の報道時点）。",
     content: `## 事案の概要
@@ -1088,6 +1093,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-10-01-002",
     slug: "gifu-nishiuzura-route-bus-contact-20260930",
+    thumbnailUrl: "/images/school-route-news/thumbnails/gifu-nishiuzura-route-bus-contact-20260930.jpg",
     title: "【岐阜県岐阜市】下校中の小学生が路線バスと接触 西鶉4丁目の県道 後ろ向きに歩いていたか",
     excerpt: "東海テレビとNHKの報道によると、9月30日午後3時前、岐阜市西鶉4丁目の県道で、下校中の小学生の男の子（10歳）が背後から来た岐阜バスの路線バスと接触した。男の子は後ろを向いて歩いていたとみられ、右手の甲の痛みを訴えたが救急搬送はされず軽傷とみられる。運転手にけがはなかった。",
     content: `## 事案の概要
@@ -1154,6 +1160,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-10-01-003",
     slug: "hakusan-aigimachi-crosswalk-hitandrun-20260926",
+    thumbnailUrl: "/images/school-route-news/thumbnails/hakusan-aigimachi-crosswalk-hitandrun-20260926.jpg",
     title: "【石川県白山市】横断歩道で8歳の男の子がひき逃げ 79歳の男を逮捕「記憶はない」と否認",
     excerpt: "北國新聞などの報道によると、9月26日午後4時20分ごろ、白山市相木町の信号のない交差点で、横断歩道を渡っていた8歳の男の子が軽自動車に衝突され、右上腕部に打撲の軽傷を負った。車は救護せず逃走。白山署は27日、ひき逃げなどの疑いで白山市の79歳の男を逮捕した。男は容疑を否認している。",
     content: `## 事案の概要
@@ -1225,6 +1232,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-10-01-004",
     slug: "national-traffic-death-zero-day-street-guidance-20260930",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-traffic-death-zero-day-street-guidance-20260930.jpg",
     title: "【全国】「交通事故死ゼロを目指す日」の9月30日 通学路で全国一斉の街頭指導",
     excerpt: "9月30日は交通対策本部が定める「交通事故死ゼロを目指す日」で、秋の全国交通安全運動（9月21日〜30日）の最終日。警察は同日を全国一斉街頭指導日とし、朝夕の通学路での街頭活動を強化した。香川県警は県内105カ所、山形県警は県内49カ所で実施したと各社が報じている。",
     content: `## 何があったか
@@ -1605,6 +1613,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-25-002",
     slug: "suginami-takaidonishi-voice-call-20260922",
+    thumbnailUrl: "/images/school-route-news/thumbnails/suginami-takaidonishi-voice-call-20260922.jpg",
     title: "【東京都杉並区】帰宅途中の女子児童が「一緒に行こう」と自転車の男に声をかけられる",
     excerpt: "警視庁高井戸警察署の発表によると、9月22日午前10時15分ごろ、杉並区高井戸西3丁目の路上で帰宅途中の女子児童が自転車の男から「一緒に行こう」「ちょっと待って」と声をかけられた。男は60歳くらい、黒色の半袖と黒色のキャップ帽を着用。",
     content: `## 事案の概要
@@ -1678,6 +1687,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-25-003",
     slug: "kitakyushu-yahatahigashi-chuo-stalking-20260911",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kitakyushu-yahatahigashi-chuo-stalking-20260911.jpg",
     title: "【福岡県北九州市】「さっきはありがとう」帰宅中の女児が知人を装う男につきまとわれる",
     excerpt: "福岡県警察の防犯メール配信（八幡東警察署）によると、9月11日午後4時20分ごろ、北九州市八幡東区中央3丁目の路上で徒歩で帰宅中の女児が見知らぬ男から「さっきはありがとう」と声をかけられ、その後つきまとわれた。男は50歳くらいで黒色のスリッパを着用。",
     content: `## 事案の概要
@@ -1755,6 +1765,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-09-25-004",
     slug: "mizumaki-eburi-stalking-20260907",
+    thumbnailUrl: "/images/school-route-news/thumbnails/mizumaki-eburi-stalking-20260907.jpg",
     title: "【福岡県水巻町】下校中の小学生男児が50歳位の男につきまとわれる えぶり1丁目付近",
     excerpt: "福岡県警察の防犯メール配信（折尾警察署）によると、9月7日午後2時45分ごろ、遠賀郡水巻町えぶり1丁目付近の路上で下校中の小学生男児が見知らぬ男につきまとわれた。男は50歳くらい、身長170センチくらいで、水色と白色のストライプ柄の長袖上着を着用。",
     content: `## 事案の概要
