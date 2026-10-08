@@ -14,7 +14,8 @@ export const HOTSPOT_LABEL_MIN_ZOOM = 10
 /** この縮尺より引いているときは、minCount 件以上の地点だけを出す（引いた順に並べる）。 */
 const ZOOM_TIERS: ReadonlyArray<{ belowZoom: number; minCount: number }> = [
   { belowZoom: 11, minCount: 20 },
-  { belowZoom: 12, minCount: 10 },
+  // 密集地（東京23区など）はズーム12でも丸で埋まるので、全件はズーム13から（2026-10-08）
+  { belowZoom: 13, minCount: 10 },
 ]
 
 /** 縮尺に応じて、地図に出す多発地点の最小件数を返す。 */

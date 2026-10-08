@@ -78,13 +78,19 @@ describe('AccidentHotspotLayer zoom-based visibility', () => {
       map.setZoom(12.5)
       map.fire('zoom')
     })
+    expect(map.filters.get('accident-hotspot-circle')).toEqual(['>=', ['get', 'accidentCount'], 10])
+
+    act(() => {
+      map.setZoom(13.5)
+      map.fire('zoom')
+    })
     expect(map.filters.get('accident-hotspot-circle')).toEqual(['>=', ['get', 'accidentCount'], 5])
     expect(map.filters.get('accident-hotspot-label')).toEqual(['>=', ['get', 'accidentCount'], 5])
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('stops listening to zoom and removes its layers when hidden', () => {
-    const map = createFakeMap(12.5)
+    const map = createFakeMap(13.5)
     const { rerender } = render(<AccidentHotspotLayer map={map as never} isVisible={true} />)
 
     rerender(<AccidentHotspotLayer map={map as never} isVisible={false} />)

@@ -13,7 +13,10 @@ describe('hotspotMinCountForZoom', () => {
     expect(hotspotMinCountForZoom(10.99)).toBe(20)
     expect(hotspotMinCountForZoom(11)).toBe(10)
     expect(hotspotMinCountForZoom(11.99)).toBe(10)
-    expect(hotspotMinCountForZoom(12)).toBe(HOTSPOT_MIN_COUNT)
+    // 密集地（東京23区など）はズーム12でも丸で埋まるので、全件はズーム13から
+    expect(hotspotMinCountForZoom(12)).toBe(10)
+    expect(hotspotMinCountForZoom(12.99)).toBe(10)
+    expect(hotspotMinCountForZoom(13)).toBe(HOTSPOT_MIN_COUNT)
     expect(hotspotMinCountForZoom(16)).toBe(HOTSPOT_MIN_COUNT)
   })
 
