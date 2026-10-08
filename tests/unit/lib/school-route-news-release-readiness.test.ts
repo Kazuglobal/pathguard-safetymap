@@ -15,11 +15,11 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
-      "matsusaka-tomatoes-traffic-safety-class-20260925",
+      "chiba-hanamigawa-makuhari-route14-fatal-20260927",
+      "gifu-nishiuzura-route-bus-contact-20260930",
+      "hakusan-aigimachi-crosswalk-hitandrun-20260926",
+      "national-traffic-death-zero-day-street-guidance-20260930",
       "kurume-agetsu-bicycle-commute-collision-20260925",
-      "kumamoto-late-september-girl-approach-cluster-20260924",
-      "saitama-iwatsuki-kakura-stalking-20260924",
-      "hiroshima-saiki-ishiuchikita-voice-call-20260916",
     ]))
     expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "tokamachi-kawaharacho-runaway-car-20260918",
@@ -35,7 +35,7 @@ describe("school route news release readiness regressions", () => {
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
-    const now = new Date("2026-09-27T00:00:00+09:00")
+    const now = new Date("2026-10-01T00:00:00+09:00")
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
     for (const item of NEWS_ITEMS) {
       expect(new Date(item.publishedDate).getTime(), `${item.slug} is older than the 90-day retention window`)
