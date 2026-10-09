@@ -1,0 +1,107 @@
+name: Cloudflare Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_MEDIA_BASE_URL: ${{ secrets.NEXT_PUBLIC_MEDIA_BASE_URL }}
+      NEXT_PUBLIC_SITE_URL: https://path-guardian.com
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_VISION_MODEL: ${{ vars.CLAUDE_VISION_MODEL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_IMAGE_MODEL: ${{ vars.GEMINI_IMAGE_MODEL }}
+      GEMINI_VISION_MODEL: ${{ vars.GEMINI_VISION_MODEL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      MAPBOX_SECRET_TOKEN: ${{ secrets.MAPBOX_SECRET_TOKEN }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+      LINE_CHANNEL_ID: ${{ secrets.LINE_CHANNEL_ID }}
+      LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      XROAD_API_KEY: ${{ secrets.XROAD_API_KEY }}
+      ACCIDENT_IMAGE_CONTEXT_ENABLED: ${{ vars.ACCIDENT_IMAGE_CONTEXT_ENABLED }}
+      DANGER_REPORT_AI_MODERATION_MODE: ${{ vars.DANGER_REPORT_AI_MODERATION_MODE }}
+      HAZARD_ZONE_GATE_MODE: ${{ vars.HAZARD_ZONE_GATE_MODE }}
+
+    steps:
+      - name: Check out the exact pushed commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check deployment credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing production secret: CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing production secret: CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Verify this is still the current main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+
+      - name: Validate configuration
+        run: node scripts/validate-env.js
+
+      - name: Run focused deployment checks
+        run: pnpm exec vitest run tests/unit/db/social-repo.test.ts tests/unit/lib/gemini-prompts.test.ts tests/unit/lib/vlm-analysis.test.ts --maxWorkers=1
+
+      - name: Build and deploy all production Workers
+        run: pnpm deploy:cloudflare
+
+      - name: Verify production is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' https://path-guardian.com/)
+            if [ "$status" = "200" ] || [ "$status" = "301" ] || [ "$status" = "302" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Production health check failed with HTTP $status"
+          exit 1
