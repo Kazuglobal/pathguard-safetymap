@@ -5,7 +5,7 @@ import { getActor } from '@/lib/auth/actor'
 import { getDangerReportById } from '@/lib/db/repos/danger-reports.repo'
 import { callGeminiVision } from '@/lib/gemini-hazard'
 import { checkGeminiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
-import { isVlmAnalysisResult } from '@/lib/vlm-analysis'
+import { isVlmAnalysisResult, normalizeVlmAnalysisResult } from '@/lib/vlm-analysis'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -76,8 +76,9 @@ export async function POST(request: Request) {
       PROMPT(context),
       { temperature: 0.1, responseMimeType: 'application/json' },
     )
-    const analysis = parseJson(responseText)
+    const analysis = normalizeVlmAnalysisResult(parseJson(responseText))
     if (!isVlmAnalysisResult(analysis)) {
+      console.error('[api/vlm/analyze-hazard] schema mismatch after normalization')
       return NextResponse.json({ error: 'Invalid AI response schema' }, { status: 502 })
     }
     return NextResponse.json({ success: true, analysis, analysis_id: crypto.randomUUID() })
