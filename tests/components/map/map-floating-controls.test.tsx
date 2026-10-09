@@ -101,7 +101,20 @@ describe('MapFloatingControls mobile layout', () => {
   it('does not render the bottom legend on mobile', () => {
     renderControls()
 
-    expect(screen.queryByTitle('交通危険')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-legend-compact')).not.toBeInTheDocument()
+  })
+
+  it('offers the legend behind a button on mobile', () => {
+    renderControls()
+
+    expect(screen.getByRole('button', { name: 'ピンの見方を表示' })).toBeInTheDocument()
+  })
+
+  it('shows the always-visible legend on desktop instead of the button', () => {
+    renderControls({ isMobile: false })
+
+    expect(screen.getByTestId('map-legend-compact')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ピンの見方を表示' })).not.toBeInTheDocument()
   })
 })
 

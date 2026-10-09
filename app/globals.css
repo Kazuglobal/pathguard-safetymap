@@ -333,185 +333,285 @@
   }
 }
 
-/* 危険報告マーカー: 種類アイコンを内包したピン型 */
+/* ------------------------------------------------------------------
+   地図マーカー共通文法: 色つきの外形 + 白い丸 + 濃い色の絵
+   しずく形=危険報告 / 丸=クラスタ(件数) / 角丸四角=通学路ハザード
+   注意: Mapbox はマーカー要素自身に inline の transform を書くため、
+   hover 等の transform は必ず内側の要素(-visual)に掛けること。
+   ------------------------------------------------------------------ */
+
+/* 危険報告マーカー: 外形の色=危険度、白丸の中の絵=種類 */
 .danger-marker {
-  width: 36px;
-  height: 42px;
+  width: 44px;
+  height: 54px;
   box-sizing: border-box;
   cursor: pointer;
   position: relative;
-  transition: transform 180ms ease, filter 180ms ease;
 }
 
 .danger-pin-visual {
   position: relative;
   display: block;
-  width: 36px;
-  height: 42px;
+  width: 44px;
+  height: 54px;
+  transform-origin: 50% 100%;
+  transition: transform 180ms ease, filter 180ms ease;
 }
 
 .danger-pin-shape {
   display: block;
-  width: 36px;
-  height: 42px;
+  width: 44px;
+  height: 54px;
+  overflow: visible;
   filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.32));
 }
 
 .danger-pin-icon {
   position: absolute;
-  top: 8px;
+  top: 10px;
+  left: 12px;
+  width: 20px;
+  height: 20px;
+  color: #43392b;
+  pointer-events: none;
+}
+
+/* 拡大時だけ出す文字ラベル。箱の外に出してアンカー(ピン先端)と当たり判定を変えない */
+.map-marker-label {
+  position: absolute;
+  top: 100%;
   left: 50%;
-  width: 15px;
-  height: 15px;
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border: 1px solid rgba(67, 57, 43, 0.18);
+  border-radius: 9999px;
+  background: rgba(255, 253, 247, 0.96);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+  color: #43392b;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
   transform: translateX(-50%);
   pointer-events: none;
 }
 
+.danger-pin-label-stars {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+.danger-pin-label-pending {
+  color: #847661;
+  font-size: 10px;
+}
+
 .danger-marker:hover,
-.danger-marker:focus-visible {
+.danger-marker:focus-visible,
+.danger-cluster-marker:hover,
+.danger-cluster-marker:focus-visible,
+.route-hazard-marker:hover,
+.route-hazard-marker:focus-visible {
   z-index: 2;
+}
+
+.danger-marker:hover .danger-pin-visual,
+.danger-marker:focus-visible .danger-pin-visual {
   transform: translateY(-2px) scale(1.08);
   filter: brightness(1.04);
 }
 
 .danger-marker:focus-visible,
-.danger-cluster-marker:focus-visible {
+.danger-cluster-marker:focus-visible,
+.route-hazard-marker:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.7);
   outline-offset: 3px;
 }
 
-.danger-marker:active {
+.danger-marker:active .danger-pin-visual {
   transform: scale(1.02);
 }
 
 /* 確認中でもカテゴリを保ち、点線と呼吸アニメーションで状態を表す */
-.pending-marker {
-  opacity: 0.82;
+/* ラベルは読めなくならないよう薄くしない(ピン本体だけを呼吸させる) */
+.pending-marker .danger-pin-shape,
+.pending-marker .danger-pin-icon {
   animation: pending-pin-pulse 2s ease-in-out infinite;
 }
 
-.pending-marker .danger-pin-shape {
-  stroke-dasharray: 3 2;
+.pending-marker .danger-pin-body {
+  stroke-dasharray: 4 3;
 }
 
 @keyframes pending-pin-pulse {
-  0%, 100% { opacity: 0.76; }
+  0%, 100% { opacity: 0.72; }
   50% { opacity: 1; }
 }
 
-/* クラスタは件数と「複数ピン」を同時に示す */
+/* クラスタ: 丸い件数バッジ。後ろにずらした輪で「複数ある」ことを示す */
 .danger-cluster-marker {
-  width: var(--cluster-size, 40px);
-  height: var(--cluster-size, 40px);
+  width: var(--cluster-size, 44px);
+  height: var(--cluster-size, 44px);
   box-sizing: border-box;
   cursor: pointer;
   position: relative;
-  transition: transform 180ms ease, filter 180ms ease;
 }
 
 .danger-cluster-visual {
   position: relative;
-  display: block;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
   width: 100%;
   height: 100%;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--cluster-color, #f59e0b);
+  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.3);
+  transition: transform 180ms ease, filter 180ms ease;
 }
 
-.danger-cluster-pin {
+/* 後ろの輪はマーカー要素側に置く(-visual が hover で重ね合わせコンテキストになっても前面に出ない) */
+.danger-cluster-marker::before {
+  content: "";
   position: absolute;
-  width: 82%;
-  height: 96%;
-  filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.28));
-}
-
-.danger-cluster-pin-back {
-  top: 0;
-  left: 0;
-  opacity: 0.68;
-}
-
-.danger-cluster-pin-front {
-  right: 0;
-  bottom: 0;
+  inset: 0;
+  box-sizing: border-box;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--cluster-color, #f59e0b);
+  opacity: 0.75;
+  transform: translate(5px, -4px);
 }
 
 .danger-cluster-count {
-  position: absolute;
-  top: 38%;
-  left: 56%;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
+  display: grid;
+  grid-auto-flow: column;
+  align-items: baseline;
+  place-content: center;
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+  background: #fff;
+  color: #43392b;
+  font-size: 14px;
+  font-weight: 900;
   line-height: 1;
-  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.4);
-  transform: translate(-50%, -50%);
 }
 
-.danger-cluster-marker:hover,
-.danger-cluster-marker:focus-visible {
-  z-index: 2;
+.danger-cluster-unit {
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.danger-cluster-marker:hover .danger-cluster-visual,
+.danger-cluster-marker:focus-visible .danger-cluster-visual {
   transform: translateY(-1px) scale(1.07);
   filter: brightness(1.04);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .danger-marker,
-  .pending-marker,
-  .danger-cluster-marker {
-    animation: none;
-    transition: none;
-  }
-}
-
-/* 選択マーカーの改善 */
-.selection-marker {
+/* 通学路ハザード(洪水・津波): 角丸四角。色と絵は route-hazard-presentation.ts */
+/* position は指定しない(.mapboxgl-marker の absolute が子ラベルの基準になる。
+   ここで relative にすると CSS の読み込み順次第で地図上の位置が崩れる) */
+.route-hazard-marker {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
   width: 36px;
   height: 36px;
+  padding: 0;
+  border: 2.5px solid #fff;
+  border-radius: 11px;
+  background: var(--hazard-color, #0284c7);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.3);
+  cursor: pointer;
+}
+
+.route-hazard-marker-disc {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 4px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.2);
-  cursor: crosshair;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: selection-pulse 1.5s infinite;
+  background: #fff;
+  color: #43392b;
+}
+
+.route-hazard-marker-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ラベルはズームのたびに作り直さず、フック側のクラス切り替えで出し分ける */
+.route-hazard-marker .map-marker-label {
+  display: none;
+}
+
+.route-hazard-marker--labeled .map-marker-label {
+  display: inline-flex;
+}
+
+/* 報告地点マーカー: 現在地の青い丸と区別するため、みどりのしずく形にする */
+.selection-marker,
+.submitted-marker {
+  width: 40px;
+  height: 49px;
+}
+
+.selection-marker {
+  cursor: grab;
+}
+
+.submitted-marker {
+  cursor: pointer;
+}
+
+.map-point-pin-shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 3px 5px rgba(15, 23, 42, 0.35));
+}
+
+/* 先端の下で広がる輪(「ここ」を示す) */
+.selection-marker::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  z-index: -1;
+  width: 18px;
+  height: 9px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: rgba(21, 158, 114, 0.45);
+  animation: selection-pulse 1.5s ease-out infinite;
 }
 
 @keyframes selection-pulse {
-  0%, 100% { 
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  0% { transform: scale(0.8); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .danger-pin-visual,
+  .danger-cluster-visual,
+  .pending-marker .danger-pin-shape,
+  .pending-marker .danger-pin-icon,
+  .selection-marker::after {
+    animation: none;
+    transition: none;
   }
-  50% { 
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+
+  /* 呼吸アニメを止めても、確認中が破線だけにならないよう薄さを残す */
+  .pending-marker .danger-pin-shape,
+  .pending-marker .danger-pin-icon {
+    opacity: 0.78;
   }
-}
-
-/* 送信済みマーカーの改善 */
-.submitted-marker {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 3px solid white;
-  background: linear-gradient(135deg, #10b981, #059669);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.submitted-marker::after {
-  content: "✓";
-  color: white;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.submitted-marker:hover {
-  transform: scale(1.15);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
 }
 
 /* アニメーション効果の追加 */
