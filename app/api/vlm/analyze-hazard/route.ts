@@ -2,6 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
+import { callClaudeVision, hasClaudeApiKey } from '@/lib/claude-vision'
 import { getDangerReportById } from '@/lib/db/repos/danger-reports.repo'
 import { callGeminiVision } from '@/lib/gemini-hazard'
 import { checkGeminiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
@@ -71,11 +72,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unsupported image format' }, { status: 400 })
     }
     const base64 = Buffer.from(await object.arrayBuffer()).toString('base64')
-    const responseText = await callGeminiVision(
-      `data:${contentType};base64,${base64}`,
-      PROMPT(context),
-      { temperature: 0.1, responseMimeType: 'application/json' },
-    )
+    // ANTHROPIC_API_KEY があれば Claude Haiku、無ければ従来どおり Gemini を使う。
+    const responseText = hasClaudeApiKey()
+      ? await callClaudeVision({
+        base64,
+        mediaType: contentType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+        prompt: PROMPT(context),
+      })
+      : await callGeminiVision(
+        `data:${contentType};base64,${base64}`,
+        PROMPT(context),
+        { temperature: 0.1, responseMimeType: 'application/json' },
+      )
     const analysis = normalizeVlmAnalysisResult(parseJson(responseText))
     if (!isVlmAnalysisResult(analysis)) {
       console.error('[api/vlm/analyze-hazard] schema mismatch after normalization')
