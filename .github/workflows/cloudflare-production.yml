@@ -98,7 +98,7 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
             status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' https://path-guardian.com/)
-            if [ "$status" = "200" ] || [ "$status" = "301" ] || [ "$status" = "302" ]; then
+            if [ "$status" = "200" ] || [ "$status" = "301" ] || [ "$status" = "302" ] || [ "$status" = "307" ] || [ "$status" = "308" ]; then
               exit 0
             fi
             sleep 10
