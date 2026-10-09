@@ -62,9 +62,9 @@ vi.mock("@/components/ui/popover", () => ({
     open?: boolean
     onOpenChange?: (open: boolean) => void
   }) => <PopoverContext.Provider value={{ open, onOpenChange }}>{children}</PopoverContext.Provider>,
-  PopoverContent: ({ children }: { children: ReactNode }) => {
+  PopoverContent: ({ children, className }: { children: ReactNode; className?: string }) => {
     const context = useContext(PopoverContext)
-    return context?.open ? <div data-testid="display-popover">{children}</div> : null
+    return context?.open ? <div data-testid="display-popover" className={className}>{children}</div> : null
   },
   PopoverTrigger: ({ children }: { children: ReactNode }) => {
     const context = useContext(PopoverContext)
@@ -257,6 +257,28 @@ describe("MapStyleSelector", () => {
     expect(screen.getByTestId("display-popover")).toBeInTheDocument()
     expect(screen.queryByRole("menu")).not.toBeInTheDocument()
     expect(screen.getByText("表示する情報")).toBeInTheDocument()
+  })
+
+  it("keeps every map style reachable on short desktop screens by capping the popover height and scrolling", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MapStyleSelector
+        currentStyle="streets-v12"
+        onChange={() => {}}
+        buttonLabel="表示"
+        compactLabel={false}
+        overlayOptions={[
+          { id: "heatmap", label: "事故ヒートマップ", description: "事故の集中地点を表示", selected: false, onSelect: vi.fn() },
+        ]}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "表示" }))
+
+    const popover = screen.getByTestId("display-popover")
+    expect(popover.className).toContain("overflow-y-auto")
+    expect(popover.className).toContain("--radix-popover-content-available-height")
   })
 
   it("still supports the simple style-only dropdown contract", async () => {
