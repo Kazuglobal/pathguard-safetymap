@@ -93,7 +93,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
 
   return (
     <div className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.75rem)] z-30">
-      <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
+      <div data-map-overlay="top" className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
         <div
           className="overflow-visible rounded-[1.75rem] border shadow-tanken-float"
           style={{

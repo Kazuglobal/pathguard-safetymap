@@ -70,6 +70,8 @@ const routeGroups = {
     'app/api/mapbox/matrix/route',
     'app/api/mapbox/tilequery/route',
     'app/api/traffic-accidents/bbox/route',
+    'app/api/traffic-accidents/hotspots/route',
+    'app/api/traffic-accidents/hotspots/route-risks/route',
     'app/api/traffic-accidents/nearby/route',
     'app/api/xroad-proxy/route',
     'app/api/xroad/route',

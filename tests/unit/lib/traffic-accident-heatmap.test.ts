@@ -25,8 +25,8 @@ function calledUrl(fetchMock: ReturnType<typeof vi.fn>, index = 0): URL {
 }
 
 describe('traffic-accident-heatmap', () => {
-  it('uses 2024 as the default max year for heatmap queries', () => {
-    expect(DEFAULT_HEATMAP_FILTERS.maxYear).toBe(2024)
+  it('uses 2025 (latest NPA open data) as the default max year for heatmap queries', () => {
+    expect(DEFAULT_HEATMAP_FILTERS.maxYear).toBe(2025)
   })
 
   it('returns empty collection and skips API when bounds are invalid', async () => {

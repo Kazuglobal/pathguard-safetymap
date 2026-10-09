@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Flame, Layers, Navigation, Route as RouteIcon } from "lucide-react"
 
 import { HazardReasonList } from "@/components/map/hazard-reason-list"
@@ -38,6 +38,8 @@ interface RouteHazardPanelProps {
   summary?: RouteSafetySummary
   evidenceItems?: RouteSafetyEvidenceItem[]
   hazards?: RouteHazardMarker[]
+  /** 通学路の近くの事故多発地点一覧（RouteAccidentHotspotList）を差し込む */
+  accidentHotspotSlot?: ReactNode
   toggles: Record<HazardType, boolean>
   isLoading: boolean
   onRouteChange: (routeId: string) => void
@@ -143,6 +145,7 @@ export function RouteHazardPanel({
   summary,
   evidenceItems = [],
   hazards = [],
+  accidentHotspotSlot,
   toggles,
   isLoading,
   onRouteChange,
@@ -231,6 +234,7 @@ export function RouteHazardPanel({
       <div className="space-y-4">
         {summary && <RouteSafetySummaryCard summary={summary} />}
         <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+        {accidentHotspotSlot}
         <HazardReasonList items={evidenceItems} />
         <div className="space-y-1">
           <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
@@ -284,6 +288,7 @@ export function RouteHazardPanel({
               <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
                 {summary && <RouteSafetySummaryCard summary={summary} />}
                 <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+                {accidentHotspotSlot}
                 <HazardReasonList items={evidenceItems} />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
@@ -324,6 +329,7 @@ export function RouteHazardPanel({
       <CardContent className="space-y-4">
         {summary && <RouteSafetySummaryCard summary={summary} />}
         <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+        {accidentHotspotSlot}
         <HazardReasonList items={evidenceItems} />
         <HazardPanelContent
           routes={routes}

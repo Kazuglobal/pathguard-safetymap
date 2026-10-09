@@ -38,4 +38,5 @@ export const AUTHZ_MATRIX: Readonly<Record<Table, Readonly<Record<Action, Matrix
   api_usage_logs: { select: 'admin', insert: 'service', update: 'service', delete: 'none' },
   api_budget_settings: { select: 'admin', insert: 'service', update: 'conditional', delete: 'none' },
   traffic_accidents: { select: 'authenticated', insert: 'service', update: 'service', delete: 'service' },
+  accident_hotspots: { select: 'authenticated', insert: 'service', update: 'service', delete: 'service' },
 }

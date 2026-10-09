@@ -242,5 +242,43 @@ describe('AccidentStatsPanel', () => {
     rerender(<AccidentStatsEmpty radius={500} />)
 
     expect(screen.getByText(/半径500m以内に交通事故の記録はありません/)).toBeInTheDocument()
+    expect(screen.getByText(/過去5年間（2021〜2025年）の警察庁オープンデータに基づく/)).toBeInTheDocument()
+  })
+
+  it('lists nearby accident hotspots with distance and attribution', () => {
+    render(
+      <AccidentStatsPanel
+        stats={createStats({
+          search_params: { latitude: 35, longitude: 139, radius_meters: 300, years: 5, min_year: 2021, max_year: 2025 },
+          hotspots: [{
+            id: 1, latitude: 35, longitude: 139, radiusMeters: 30, minYear: 2021, maxYear: 2025,
+            accidentCount: 14, fatalCount: 0, pedestrianCount: 4, youngCount: 0,
+            byYear: {}, byClass: { 人対車両: 4, 車両相互: 10 }, peakHour: 8, nationalRank: 300, distanceMeters: 85,
+          }],
+        })}
+      />
+    )
+
+    const section = screen.getByRole('region', { name: '近くの事故多発地点' })
+    expect(section).toHaveTextContent('近くに事故多発地点があります（1か所）')
+    expect(section).toHaveTextContent('85m先・全国300位・2021〜2025年に半径30m以内で14件（主に車両相互）')
+    expect(section).toHaveTextContent('うち歩行者4件')
+    expect(section).toHaveTextContent('警察庁「交通事故統計情報のオープンデータ」を加工して作成')
+  })
+
+  it('shows the full hotspot count when only the top ones are listed', () => {
+    const spot = {
+      id: 1, latitude: 35, longitude: 139, radiusMeters: 30, minYear: 2021, maxYear: 2025,
+      accidentCount: 14, fatalCount: 0, pedestrianCount: 0, youngCount: 0,
+      byYear: {}, byClass: {}, peakHour: null, nationalRank: 300, distanceMeters: 85,
+    }
+    render(<AccidentStatsPanel stats={createStats({ hotspots: [spot, { ...spot, id: 2 }, { ...spot, id: 3 }], hotspot_count: 7 })} />)
+
+    expect(screen.getByRole('region', { name: '近くの事故多発地点' })).toHaveTextContent('近くに事故多発地点があります（7か所）・件数の多い3か所を表示')
+  })
+
+  it('does not show the hotspot section when there are none', () => {
+    render(<AccidentStatsPanel stats={createStats({ hotspots: [] })} />)
+    expect(screen.queryByRole('region', { name: '近くの事故多発地点' })).not.toBeInTheDocument()
   })
 })

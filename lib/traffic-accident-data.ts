@@ -13,11 +13,10 @@
 
 "use client";
 
+import type { AccidentHotspotSummary } from "@/lib/traffic-accident/hotspot-types";
 import {
   ACCIDENT_IMAGE_CONTEXT_PARAMS,
-  adjustYearsForAccidentDataset,
   DEFAULT_ACCIDENT_YEARS,
-  normalizeSummaryYearText,
 } from "@/lib/accident-stats-year-window";
 
 // ============================================================
@@ -110,7 +109,14 @@ export interface AccidentStats {
     longitude: number;
     radius_meters: number;
     years: number;
+    /** 集計した年の範囲（データの最新年から数える）。古いキャッシュには無い。 */
+    min_year?: number;
+    max_year?: number;
   };
+  /** 半径内の事故多発地点（件数の多い順・最大3件）。古いキャッシュには無い。 */
+  hotspots?: AccidentHotspotSummary[];
+  /** 半径内の事故多発地点の総数（hotspots は上位のみ）。古いキャッシュには無い。 */
+  hotspot_count?: number;
 }
 
 export interface RiskLevelInfo {
@@ -196,15 +202,14 @@ export async function getAccidentStatsRPC(params: {
   radiusMeters?: number;
   years?: number;
 }): Promise<AccidentStats> {
-  const requestedYears = params.years ?? DEFAULT_ACCIDENT_YEARS;
-  const adjustedYears = adjustYearsForAccidentDataset(requestedYears);
+  const years = params.years ?? DEFAULT_ACCIDENT_YEARS;
   const radiusMeters = params.radiusMeters ?? ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters;
 
   const query = new URLSearchParams({
     latitude: String(params.latitude),
     longitude: String(params.longitude),
     radiusMeters: String(radiusMeters),
-    years: String(adjustedYears),
+    years: String(years),
   });
   const response = await fetch(`/api/traffic-accidents/nearby?${query.toString()}`, {
     method: "GET",
@@ -215,20 +220,8 @@ export async function getAccidentStatsRPC(params: {
     const body = await response.json().catch(() => null) as { error?: string } | null;
     throw new Error("事故統計取得エラー: " + (body?.error ?? `HTTP ${response.status}`));
   }
-  const stats = await response.json() as AccidentStats;
-
-  // UI表示はユーザー要求年数を優先（DB年限補正はRPC引数側で吸収）
-  if (stats?.search_params) {
-    stats.search_params.years = requestedYears;
-  }
-  if (stats?.situation_summary?.total_text) {
-    stats.situation_summary.total_text = normalizeSummaryYearText(
-      stats.situation_summary.total_text,
-      requestedYears
-    );
-  }
-
-  return stats;
+  // 年の範囲はサーバ側でデータの最新年から数える（accidentYearWindow）ので、ここで補正しない
+  return await response.json() as AccidentStats;
 }
 /** レポート座標の事故統計をサーバ側で再計算し、D1へ保存する。 */
 export async function enrichReportWithAccidents(reportId: string): Promise<AccidentStats | null> {

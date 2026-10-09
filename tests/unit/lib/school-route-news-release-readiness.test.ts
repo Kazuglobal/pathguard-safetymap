@@ -15,13 +15,18 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
+      "isesaki-hashie-bicycle-commute-collision-20261007",
+      "inzai-kikari-crosswalk-hitandrun-20261001",
+      "ikoma-tawaraguchi-knife-sighting-20261002",
+      "tokushima-kokufu-hiraki-voice-call-20261001",
+      "kumamoto-higashi-nagamineminami-following-20261006",
+    ]))
+    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "setagaya-kinuta-elementary-girl-touched-20260929",
       "joetsu-saijomachi-schoolway-following-20260928",
       "kurume-agetsu-bicycle-commute-collision-20260925",
       "kumamoto-late-september-girl-approach-cluster-20260924",
       "saitama-iwatsuki-kakura-stalking-20260924",
-    ]))
-    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "fukuoka-late-august-child-approach-cluster-20260828",
       "national-living-road-casualty-analysis-20260910",
       "ichinomiya-fuji-bicycle-collision-20260910",
@@ -32,7 +37,7 @@ describe("school route news release readiness regressions", () => {
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
-    const now = new Date("2026-09-30T00:00:00+09:00")
+    const now = new Date("2026-10-02T00:00:00+09:00")
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
     for (const item of NEWS_ITEMS) {
       expect(new Date(item.publishedDate).getTime(), `${item.slug} is older than the 90-day retention window`)
@@ -100,5 +105,24 @@ describe("daily habit v3 data quality gates", () => {
     expect(preview.map((p) => p.slug)).toEqual(top5.map((i) => i.slug))
     expect(preview.map((p) => p.thumbnailUrl)).toEqual(top5.map((i) => i.thumbnailUrl))
     expect(preview.map((p) => p.title)).toEqual(top5.map((i) => i.title))
+  })
+})
+
+describe("thumbnail coverage", () => {
+  it("gives every news item a thumbnailUrl whose file exists", () => {
+    for (const item of NEWS_ITEMS) {
+      expect(item.thumbnailUrl, `${item.slug}: thumbnailUrl is missing`).toBeTruthy()
+      const file = path.join(ROOT, "public", item.thumbnailUrl as string)
+      expect(fs.existsSync(file), `${item.slug}: ${item.thumbnailUrl} does not exist`).toBe(true)
+    }
+  })
+
+  it("keeps every contentImages entry pointing at an existing file", () => {
+    for (const item of NEWS_ITEMS) {
+      for (const image of item.contentImages ?? []) {
+        expect(image.description.length, `${item.slug}/${image.id}: description is empty`).toBeGreaterThan(0)
+        expect(fs.existsSync(path.join(ROOT, "public", image.url)), `${item.slug}/${image.id}: ${image.url} does not exist`).toBe(true)
+      }
+    }
   })
 })

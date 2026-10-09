@@ -46,6 +46,10 @@ import {
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
+import { AccidentHotspotLayer } from "./accident-hotspot-layer"
+import { hitsMapDataPoint } from "./map-popup-in-view"
+import { RouteAccidentHotspotList } from "./route-accident-hotspot-list"
+import { useRouteAccidentHotspots } from "@/hooks/use-route-accident-hotspots"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
 import { useUserRoutes } from "@/hooks/use-user-routes"
@@ -223,6 +227,7 @@ export default function MapContainer({
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
+  const [isHotspotVisible, setIsHotspotVisible] = useState(false)
 
   // --- Accident Statistics for clicked location ---
   const {
@@ -294,6 +299,7 @@ export default function MapContainer({
     setRouteHazardError,
     resetRouteHazards,
   } = useRouteHazards({ selectedUserRoute, hazardLayerVisibility })
+  const routeAccidentHotspots = useRouteAccidentHotspots(selectedUserRoute?.id ?? null, selectedUserRoute?.updated_at ?? null)
   const visibleRouteHazards = useMemo(
     () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
     [hazardLayerVisibility, routeHazards],
@@ -530,6 +536,10 @@ export default function MapContainer({
         description: "新しい位置に報告地点を変更しました"
       });
     } else {
+      // 多発地点・事故の丸をタップしたときは、その吹き出しを出す。事故統計やサイドバー（スマホ）を
+      // 開くと吹き出しが隠れるので、地図全体のクリック処理は動かさない
+      if (hitsMapDataPoint(e.target, e.point)) return;
+
       // 通常の地図クリック時に事故統計を取得・表示
       console.log("Normal map click: Fetching accident statistics");
       fetchClickedLocationStats({
@@ -1040,10 +1050,12 @@ export default function MapContainer({
     () =>
       buildMapDisplayOverlayOptions({
         isHeatmapVisible: accidentHeatmap.isVisible,
+        isHotspotVisible,
         isFloodVisible: hazardLayerVisibility.flood,
         isTsunamiVisible: hazardLayerVisibility.tsunami,
         isSuspiciousVisible: isSuspiciousVisible,
         onToggleHeatmap: accidentHeatmap.toggleVisibility,
+        onToggleHotspot: () => setIsHotspotVisible((visible) => !visible),
         onToggleFlood: () => handleHazardLayerToggle("flood", !hazardLayerVisibility.flood),
         onToggleTsunami: () => handleHazardLayerToggle("tsunami", !hazardLayerVisibility.tsunami),
         onToggleSuspicious: () => setIsSuspiciousVisible((v) => !v),
@@ -1051,6 +1063,7 @@ export default function MapContainer({
     [
       accidentHeatmap.isVisible,
       accidentHeatmap.toggleVisibility,
+      isHotspotVisible,
       handleHazardLayerToggle,
       hazardLayerVisibility.flood,
       hazardLayerVisibility.tsunami,
@@ -1145,6 +1158,16 @@ export default function MapContainer({
                 summary={selectedUserRouteId ? routeSafetySummary : undefined}
                 evidenceItems={selectedUserRouteId ? routeSafetyEvidenceItems : []}
                 hazards={visibleRouteHazards}
+                accidentHotspotSlot={
+                  <RouteAccidentHotspotList
+                    {...routeAccidentHotspots}
+                    onSelect={(hotspot) => {
+                      // 地図上で場所が分かるよう、多発地点レイヤーも表示する
+                      setIsHotspotVisible(true)
+                      flyToLocation(hotspot.longitude, hotspot.latitude, 17)
+                    }}
+                  />
+                }
                 toggles={hazardLayerVisibility}
                 isLoading={isRouteHazardsLoading}
                 onRouteChange={handleRouteSelectionChange}
@@ -1220,7 +1243,7 @@ export default function MapContainer({
         {/* Map Canvas (フルスクリーン) */}
         <div
           ref={mapContainer}
-          className="absolute inset-0 w-full h-full"
+          className="pg-main-map absolute inset-0 w-full h-full"
           style={{ minHeight: mapMinHeight }}
           onPointerDownCapture={() => {
             if (showMobileMapHint) setShowMobileMapHint(false);
@@ -1248,6 +1271,9 @@ export default function MapContainer({
           }}
         />
 
+        {/* 事故多発地点レイヤー（警察庁オープンデータから事前計算） */}
+        <AccidentHotspotLayer map={map.current} isVisible={isHotspotVisible} />
+
         {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
         <SuspiciousAlertLayer
           map={map.current}
@@ -1257,10 +1283,10 @@ export default function MapContainer({
         />
 
         {/* 不審者アラート 専用入力フォーム（モバイル/タブレットはボトムナビの上／デスクトップ右） */}
-        {/* ボトムナビ（navigation.tsx の fixed bottom-0 z-50, h-20, md:hidden）に重ならないよう
-            md 未満では下端をナビ高さ分（約5rem＋safe-area）持ち上げる。md 以上はナビが消えるため右下に配置。 */}
+        {/* 地図画面ではスマホの下部タブバーを出さない（lib/navigation-visibility.ts）ので、md 未満は画面の下端に置く。
+            md 以上は右下に配置。 */}
         {isSuspiciousAlertOpen && (
-          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
+          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
             <div className="max-h-[70dvh] overflow-y-auto overscroll-contain rounded-2xl border border-orange-100 bg-white p-4 shadow-2xl">
               <SuspiciousAlertForm
                 selectedLocation={selectedLocation}
