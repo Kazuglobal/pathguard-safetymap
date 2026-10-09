@@ -59,11 +59,13 @@ export function createSocialRepo(db: AppDb) {
 
     async listComments(actor: Actor, reportId: string) {
       validateReportId(reportId)
-      const [report] = await db.select({ status: dangerReports.status }).from(dangerReports)
-        .where(eq(dangerReports.id, reportId)).limit(1)
+      const [report] = await db.select({ status: dangerReports.status, userId: dangerReports.userId })
+        .from(dangerReports).where(eq(dangerReports.id, reportId)).limit(1)
       if (!report) return null
+      // 投稿者本人は、承認待ちの自分の報告のコメントも見られる。
+      const isOwner = actor.kind === 'user' && report.userId === actor.id
       assertCan(actor, 'select', 'report_comments', {
-        reportPublic: ['approved', 'published', 'resolved'].includes(report.status),
+        reportPublic: isOwner || ['approved', 'published', 'resolved'].includes(report.status),
       })
       return db.select({
         id: reportComments.id, content: reportComments.content, createdAt: reportComments.createdAt,
@@ -79,9 +81,12 @@ export function createSocialRepo(db: AppDb) {
       if (actor.kind !== 'user') throw new Error('A user actor is required')
       const trimmed = content.trim()
       if (!trimmed || trimmed.length > 1_000) throw new RangeError('Invalid comment')
-      const [report] = await db.select({ status: dangerReports.status }).from(dangerReports)
-        .where(eq(dangerReports.id, reportId)).limit(1)
-      if (!report || !['approved', 'published', 'resolved'].includes(report.status)) throw new RangeError('Report not found')
+      const [report] = await db.select({ status: dangerReports.status, userId: dangerReports.userId })
+        .from(dangerReports).where(eq(dangerReports.id, reportId)).limit(1)
+      // 承認待ちの報告にコメントできるのは投稿者本人だけ(承認前は他のユーザーには見えない)。
+      const canComment = report && (report.userId === actor.id
+        || ['approved', 'published', 'resolved'].includes(report.status))
+      if (!canComment) throw new RangeError('Report not found')
       assertCan(actor, 'insert', 'report_comments', { ownerId: actor.id })
       const [created] = await db.insert(reportComments).values({
         id: crypto.randomUUID(), reportId, userId: actor.id, content: trimmed,
