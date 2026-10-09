@@ -1,3 +1,4 @@
+import { callClaudeVision, hasClaudeApiKey } from "./claude-vision"
 import { getSanitizedGeminiApiKey, getSanitizedGeminiVisionModel } from "./gemini-util"
 import {
   FALLBACK_SIMULATION_PROMPTS,
@@ -5,6 +6,7 @@ import {
   UNVERIFIED_SAFE_HOUSE_ADDITION_GUARD,
 } from "./disaster-image-prompt-fallbacks"
 
+const CLAUDE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"])
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 function extractFirstJson(text: string): any {
@@ -217,35 +219,56 @@ Return JSON with this exact structure and this exact key order:
 
 Do not output anything except the JSON object.`
 
-  const parts: any[] = [
-    { inline_data: { mime_type: mimeType, data: dataBase64 } },
-    { text: instruction },
-  ]
-
-  const res = await fetch(
-    `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-          responseSchema: PROMPTS_RESPONSE_SCHEMA,
-        },
-      }),
+  // 写真の危険分析は Claude Haiku 5.5 で行い、その結果のプロンプトで Gemini が画像を生成する。
+  // Claude のキーが無い・対応外の画像形式・Claude の失敗時は、従来どおり Gemini で分析する。
+  let textPart: string | undefined
+  if (hasClaudeApiKey() && CLAUDE_IMAGE_TYPES.has(mimeType)) {
+    try {
+      textPart = await callClaudeVision({
+        base64: dataBase64,
+        mediaType: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+        prompt: instruction,
+        maxTokens: 8000,
+      })
+    } catch (error) {
+      console.warn(
+        "[gemini-prompts] Claude analysis failed; falling back to Gemini:",
+        error instanceof Error ? error.message : "unknown",
+      )
     }
-  )
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Gemini prompts failed: ${res.status} ${res.statusText} - ${text}`)
   }
 
-  const data = await res.json()
-  const textPart = data?.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text
   if (typeof textPart !== "string") {
-    throw new Error("Gemini returned no text for prompts")
+    const parts: any[] = [
+      { inline_data: { mime_type: mimeType, data: dataBase64 } },
+      { text: instruction },
+    ]
+
+    const res = await fetch(
+      `${GEMINI_API_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts }],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+            responseSchema: PROMPTS_RESPONSE_SCHEMA,
+          },
+        }),
+      }
+    )
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Gemini prompts failed: ${res.status} ${res.statusText} - ${text}`)
+    }
+
+    const data = await res.json()
+    textPart = data?.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text
+    if (typeof textPart !== "string") {
+      throw new Error("Gemini returned no text for prompts")
+    }
   }
 
   // responseSchema 強制時は素のJSONが返るため直接パースし、

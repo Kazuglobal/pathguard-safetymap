@@ -18,6 +18,7 @@ export async function callClaudeVision(params: {
   base64: string
   mediaType: ImageMediaType
   prompt: string
+  maxTokens?: number
 }): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim()
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY")
@@ -25,7 +26,7 @@ export async function callClaudeVision(params: {
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: 45_000 })
   const response = await client.messages.create({
     model: process.env.CLAUDE_VISION_MODEL?.trim() || CLAUDE_VISION_DEFAULT_MODEL,
-    max_tokens: 4096,
+    max_tokens: params.maxTokens ?? 4096,
     // SDK の型定義が output_config より古いため、型だけ緩めて送る。
     ...({ output_config: { effort: "low" } } as Record<string, unknown>),
     messages: [
