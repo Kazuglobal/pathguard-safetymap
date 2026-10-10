@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { Map, List, MapPin, SlidersHorizontal, ChevronRight, FileText } from 'lucide-react'
+import { Map, List, MapPin, SlidersHorizontal, ChevronRight, ChevronDown, Bike, PersonStanding, FileText } from 'lucide-react'
 import type { RankedLocation, RankingsResponse } from '@/lib/accidents/query'
 const AccidentMap = dynamic(() => import('./map'), { ssr: false })
 const control = 'min-h-11 rounded-xl border border-border bg-card px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest-strong'
@@ -53,17 +53,18 @@ export default function AccidentExplorer() {
   }
   const select=(item:RankedLocation)=>{setSelected(item);document.getElementById(`location-${item.id}`)?.scrollIntoView({block:'nearest',behavior:'smooth'})}
   const years=response?.metadata?.years??[]
+  const regionLabel=prefecture ? [prefectures.find(a=>a.code===prefecture)?.name??'選択した都道府県',municipality ? cities.find(a=>a.code===municipality)?.name??'選択した市区町村' : 'すべての市区町村'].join(' / ') : '全国'
   return <main className="min-h-screen bg-paper text-ink px-4 py-6 sm:px-8">
     <div className="mx-auto max-w-6xl">
-      <header className="mb-7 flex items-center justify-between"><Link href="/" className="flex min-h-11 items-center gap-2 text-xl font-bold"><MapPin className="text-forest-strong"/>PathGuardian</Link><button className="min-h-11 px-3 text-forest-strong" aria-label="地図へ切り替え" onClick={()=>change({view:'map'})}><Map/></button></header>
+      <header className="mb-2 flex items-center justify-between"><Link href="/" className="flex min-h-11 items-center gap-2 text-xl font-bold"><MapPin className="text-forest-strong"/>PathGuardian</Link><button className="min-h-11 px-3 text-forest-strong" aria-label="地図へ切り替え" onClick={()=>change({view:'map'})}><Map/></button></header>
       <h1 className="text-2xl font-bold sm:text-3xl">あなたの街の事故を調べる</h1>
-      <p className="mt-3 mb-6 leading-7">地域や移動の種類を選んで、<br className="sm:hidden"/>事故の多い場所を確認できます。</p>
+      <p className="mt-2 mb-4 leading-6">地域や移動の種類を選んで、<br className="sm:hidden"/>事故の多い場所を確認できます。</p>
       <section aria-label="検索条件" className="max-w-xl space-y-3">
-        <div className="rounded-xl border border-border bg-card p-4"><p className="mb-2">地域を選ぶ</p><div className="flex gap-2">
+        <details className="rounded-xl border border-border bg-card"><summary className="flex min-h-16 cursor-pointer items-center gap-3 px-4 py-2"><MapPin className="shrink-0"/><span className="flex-1"><span className="block text-sm">地域を選ぶ</span><span className="block font-semibold">{regionLabel}</span></span><ChevronDown className="shrink-0"/></summary><div className="flex gap-2 border-t border-border p-3">
           <label className="flex-1"><span className="sr-only">都道府県</span><select value={prefecture} className={`${control} w-full`} onChange={e=>change({prefecture:e.target.value,municipality:''})}><option value="">全国</option>{prefectures.map(a=><option key={a.code} value={a.code}>{a.name}</option>)}</select></label>
           <label className="flex-1"><span className="sr-only">市区町村</span><select disabled={!prefecture} value={municipality} className={`${control} w-full disabled:opacity-50`} onChange={e=>change({municipality:e.target.value})}><option value="">すべての市区町村</option>{cities.map(a=><option key={a.code} value={a.code}>{a.name}</option>)}</select></label>
-        </div></div>
-        <div className="grid grid-cols-3 rounded-xl border border-border bg-card p-1" aria-label="事故の種類">{[['all','すべて'],['bicycle','自転車'],['pedestrian','歩行者']].map(([v,label])=><button key={v} aria-pressed={participant===v} className={`min-h-11 rounded-xl ${participant===v?'bg-forest-strong text-white':'text-ink'}`} onClick={()=>change({participant:v})}>{label}</button>)}</div>
+        </div></details>
+        <div className="grid grid-cols-3 rounded-xl border border-border bg-card p-1" aria-label="事故の種類">{[['all','すべて'],['bicycle','自転車'],['pedestrian','歩行者']].map(([v,label])=><button key={v} aria-pressed={participant===v} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl ${participant===v?'bg-forest-strong text-white':'text-ink'}`} onClick={()=>change({participant:v})}>{v==='bicycle'?<Bike size={20}/>:v==='pedestrian'?<PersonStanding size={20}/>:null}{label}</button>)}</div>
         <details className="border-y border-border py-2"><summary className="flex min-h-11 cursor-pointer items-center gap-2 font-semibold text-forest-strong"><SlidersHorizontal size={20}/>条件を変える</summary>
           <div className="grid grid-cols-2 gap-3 py-3">
             {['from','to'].map(k=><label key={k}>{k==='from'?'開始年':'終了年'}<select className={`${control} mt-1 w-full`} value={params.get(k)??''} onChange={e=>change({[k]:e.target.value})}><option value="">{k==='from'?'最初の年':'最新の年'}</option>{years.map(y=><option value={y} key={y}>{y}年</option>)}</select></label>)}
