@@ -123,8 +123,19 @@ function toGeocodingResult(feature: GeocodingFeature): SearchResult | null {
   }
 }
 
+import { getMapboxToken } from "@/lib/mapbox-config"
+
+function getAccessToken(): string {
+  return (
+    mapboxgl.accessToken ||
+    getMapboxToken() ||
+    process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ||
+    ""
+  )
+}
+
 async function fetchSearchBoxResults(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {
-  const accessToken = mapboxgl.accessToken || ""
+  const accessToken = getAccessToken()
   const params = new URLSearchParams({
     q: query,
     access_token: accessToken,
@@ -135,9 +146,15 @@ async function fetchSearchBoxResults(query: string, map: mapboxgl.Map | null): P
     types: "address,street,neighborhood,locality,place,district,postcode,region,poi,category",
   })
 
-  if (map) {
-    const center = map.getCenter()
-    params.set("proximity", `${center.lng},${center.lat}`)
+  if (map && typeof map.getCenter === "function") {
+    try {
+      const center = map.getCenter()
+      if (center && Number.isFinite(center.lng) && Number.isFinite(center.lat)) {
+        params.set("proximity", `${center.lng},${center.lat}`)
+      }
+    } catch {
+      // ignore
+    }
   }
 
   const endpoint = `https://api.mapbox.com/search/searchbox/v1/forward?${params.toString()}`
@@ -158,7 +175,7 @@ async function fetchSearchBoxResults(query: string, map: mapboxgl.Map | null): P
 }
 
 async function fetchGeocodingResults(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {
-  const accessToken = mapboxgl.accessToken || ""
+  const accessToken = getAccessToken()
   const params = new URLSearchParams({
     access_token: accessToken,
     country: "JP",
@@ -168,9 +185,15 @@ async function fetchGeocodingResults(query: string, map: mapboxgl.Map | null): P
     types: "address,place,locality,neighborhood,district,region,postcode",
   })
 
-  if (map) {
-    const center = map.getCenter()
-    params.set("proximity", `${center.lng},${center.lat}`)
+  if (map && typeof map.getCenter === "function") {
+    try {
+      const center = map.getCenter()
+      if (center && Number.isFinite(center.lng) && Number.isFinite(center.lat)) {
+        params.set("proximity", `${center.lng},${center.lat}`)
+      }
+    } catch {
+      // ignore
+    }
   }
 
   const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`
@@ -190,6 +213,59 @@ async function fetchGeocodingResults(query: string, map: mapboxgl.Map | null): P
     .filter((result: SearchResult | null): result is SearchResult => result !== null)
 }
 
+async function fetchInternalGeocodingResults(query: string): Promise<SearchResult[]> {
+  try {
+    const res = await fetch(
+      `/api/mapbox/geocode?query=${encodeURIComponent(query)}&language=ja&country=jp&limit=8`,
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!Array.isArray(data)) return []
+    return data
+      .map((item: any): SearchResult | null => {
+        if (!item || !Array.isArray(item.center) || item.center.length < 2) return null
+        return {
+          id: String(item.id ?? `${item.center[0]},${item.center[1]}`),
+          place_name: item.place_name_ja ?? item.place_name ?? item.text ?? "",
+          center: [item.center[0], item.center[1]],
+          feature_type: Array.isArray(item.place_type) ? item.place_type[0] : undefined,
+          poi_category: toStringArray(item.properties?.category),
+        }
+      })
+      .filter((r): r is SearchResult => r !== null)
+  } catch {
+    return []
+  }
+}
+
+async function executeSearch(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {
+  let nextResults: SearchResult[] = []
+
+  try {
+    nextResults = await fetchSearchBoxResults(query, map)
+  } catch (error) {
+    console.warn("Search Box 検索エラー:", error)
+  }
+
+  if (nextResults.length === 0) {
+    try {
+      nextResults = await fetchGeocodingResults(query, map)
+    } catch (error) {
+      console.warn("Geocoding 検索エラー:", error)
+    }
+  }
+
+  if (nextResults.length === 0) {
+    try {
+      nextResults = await fetchInternalGeocodingResults(query)
+    } catch (error) {
+      console.warn("Internal Geocoding 検索エラー:", error)
+    }
+  }
+
+  return nextResults
+}
+
 export default function MapSearch({
   map,
   onSelectLocation,
@@ -202,6 +278,9 @@ export default function MapSearch({
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchRequestIdRef = useRef(0)
+  const skipNextSearchRef = useRef(false)
 
   // 検索結果の外側をクリックしたら結果を閉じる
   useEffect(() => {
@@ -221,37 +300,102 @@ export default function MapSearch({
     setShowResults(false)
   }, [dismissResultsSignal])
 
+  // 入力時の予測検索（デバウンス 300ms）
+  useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false
+      return
+    }
+
+    const trimmed = query.trim()
+    if (trimmed.length < 1) {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      setResults([])
+      setShowResults(false)
+      setIsSearching(false)
+      return
+    }
+
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+
+    const requestId = ++searchRequestIdRef.current
+    debounceTimerRef.current = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const nextResults = await executeSearch(trimmed, map)
+        if (requestId !== searchRequestIdRef.current) return
+        setResults(nextResults)
+        setShowResults(nextResults.length > 0)
+      } catch (error) {
+        console.error("住所予測検索エラー:", error)
+        if (requestId === searchRequestIdRef.current) {
+          setResults([])
+        }
+      } finally {
+        if (requestId === searchRequestIdRef.current) {
+          setIsSearching(false)
+        }
+      }
+    }, 300)
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    }
+  }, [query, map])
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
 
-    if (!query.trim()) return
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
 
+    const trimmed = query.trim()
+    if (!trimmed) return
+
+    // もし既に予測候補が表示されている場合は先頭候補に移動
+    if (results.length > 0) {
+      handleResultClick(results[0])
+      return
+    }
+
+    const requestId = ++searchRequestIdRef.current
     setIsSearching(true)
     setShowResults(true)
 
     try {
-      let nextResults: SearchResult[] = []
-
-      try {
-        nextResults = await fetchSearchBoxResults(query, map)
-      } catch (error) {
-        console.warn("Search Box 検索エラー:", error)
-      }
-
-      if (nextResults.length === 0) {
-        nextResults = await fetchGeocodingResults(query, map)
-      }
+      const nextResults = await executeSearch(trimmed, map)
+      if (requestId !== searchRequestIdRef.current) return
 
       setResults(nextResults)
+      setShowResults(nextResults.length > 0)
+
+      // 検索実行時に候補があれば先頭地点へ移動する
+      if (nextResults.length > 0 && map) {
+        map.flyTo({
+          center: nextResults[0].center,
+          zoom: 15,
+          essential: true,
+        })
+      }
     } catch (error) {
       console.error("住所検索エラー:", error)
-      setResults([])
+      if (requestId === searchRequestIdRef.current) {
+        setResults([])
+      }
     } finally {
-      setIsSearching(false)
+      if (requestId === searchRequestIdRef.current) {
+        setIsSearching(false)
+      }
     }
   }
 
   const handleResultClick = (result: SearchResult) => {
+    skipNextSearchRef.current = true
+    setQuery(result.place_name)
+    setShowResults(false)
+
     if (!map) return
 
     // 地図を選択した場所に移動
@@ -265,8 +409,6 @@ export default function MapSearch({
     if (onSelectLocation) {
       onSelectLocation(result.center)
     }
-
-    setShowResults(false)
   }
 
   return (
