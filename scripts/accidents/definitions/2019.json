@@ -1,5 +1,5 @@
 {
-  "year": 2025,
+  "year": 2019,
   "coordinateFormat": "dms",
   "municipalityFormat": "local3",
   "prefectureMap": {
@@ -74,12 +74,12 @@
     "accident_class": "事故類型"
   },
   "sources": {
-    "definition": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/fileteigisyo_2025.pdf",
-    "codebook": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/codebook_2025.pdf",
-    "retrievedAt": "2026-10-10",
-    "definitionSha256": "a9c45e53f565576d4044e3086ee0785207c9a8cd422b9a439bf33e3d0323de7d",
-    "codebookSha256": "c79c11291d7de5cb73f2bced05470f68a8e509d6390ce9b92500f5dbe7254df7"
+    "definition": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2019/filedefinition_2019.pdf",
+    "codebook": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2019/codebook_2019.pdf",
+    "retrievedAt": "2026-10-11",
+    "definitionSha256": "3480cb5e20a93b3dac17b08ab087e2836f864a48de8424cac0f421583d431312",
+    "codebookSha256": "da66ef6cce8020fab43f4231963730b015148f8460c21c777fe25bb4b5692f29"
   },
-  "originalSha256": "aad9afb4e6f9dac6e503f4c8252c018f5f27ab498024503084b17c07bc2ee730",
+  "originalSha256": "b1a493c268a576faccbdced90ac1762776441f83a3307415bd5b297d45ea32c9",
   "missingDatePolicy": "exclude"
 }

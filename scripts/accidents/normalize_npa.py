@@ -40,7 +40,8 @@ def normalize(args):
                 stamp=None
             else:
                 occurred_year=int(row['year'])
-                if occurred_year<2018 or occurred_year>year:raise ValueError('Occurrence year outside source bounds')
+                # Earlier incidents remain in reconciliation even outside selectable coverage.
+                if occurred_year>year:raise ValueError('Occurrence year outside source bounds')
                 stamp=datetime(occurred_year,int(row['month']),int(row['day']),int(row['hour']),int(row['minute']),tzinfo=timezone(timedelta(hours=9)))
             prefecture=definition['prefectureMap'][row['prefecture']]
             municipality=row['municipality'].zfill(3)

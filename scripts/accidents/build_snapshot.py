@@ -84,7 +84,7 @@ def normalized(row, codebook):
     if row['accident_type_code'].zfill(2) in codebook['pedestrianClasses'] or any(row[p] in codebook['pedestrian'] for p in ('party_a_type_code','party_b_type_code')): mask |= 2
     stamp=datetime.fromisoformat(row['occurred_at'].replace('Z','+00:00')) if row['occurred_at'] else None
     # Input timestamps must explicitly retain Japan's source clock; reject accidental UTC shifts.
-    if stamp and (stamp.utcoffset() is None or stamp.utcoffset().total_seconds()!=32400 or stamp.year<2018 or stamp.year>year): raise ValueError('Invalid occurrence year / timezone')
+    if stamp and (stamp.utcoffset() is None or stamp.utcoffset().total_seconds()!=32400 or stamp.year>year): raise ValueError('Invalid occurrence year / timezone')
     return key,(stamp.year if stamp else -1,stamp.hour if stamp else -1,mask,int(int(row['fatalities'] or 0)>0),codebook['classes'].get(row['accident_type_code'].zfill(2),'不明'))
 
 def build(args):
