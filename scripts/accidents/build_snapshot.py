@@ -74,9 +74,11 @@ def normalized(row, codebook):
     year=int(row['source_year'])
     if year < 2018 or year > 2100: raise ValueError('Invalid source year')
     if not re.fullmatch(r'\d{2}',row['prefecture_code']): raise ValueError('Invalid source prefecture')
+    if not re.fullmatch(r'\d{2}',row['source_prefecture_code']): raise ValueError('Original NPA prefecture required')
     if row['municipality_code'] and not re.fullmatch(r'\d{5}',row['municipality_code']): raise ValueError('Invalid municipality')
     if int(row['fatalities'] or 0)<0:raise ValueError('Invalid fatalities')
-    key=(year,row['prefecture_code'],row['police_station_code'],row['record_number'])
+    # Preserve NPA jurisdiction (Hokkaido has five), even after mapping display areas to JIS.
+    key=(year,row['source_prefecture_code'],row['police_station_code'],row['record_number'])
     if not all(str(v).strip() for v in key): raise ValueError('Missing record identity')
     mask=(1 if any(row[p] in codebook['bicycle'] for p in ('party_a_type_code','party_b_type_code')) else 0)
     if row['accident_type_code'].zfill(2) in codebook['pedestrianClasses'] or any(row[p] in codebook['pedestrian'] for p in ('party_a_type_code','party_b_type_code')): mask |= 2

@@ -20,7 +20,7 @@ def coordinate(value, kind):
 
 def normalize(args):
     definition=json.loads(Path(args.definition).read_text(encoding='utf-8'))
-    fields=['source_year','prefecture_code','police_station_code','record_number','municipality_code','latitude','longitude','occurred_at','party_a_type_code','party_b_type_code','fatalities','accident_type_code']
+    fields=['source_year','source_prefecture_code','prefecture_code','police_station_code','record_number','municipality_code','latitude','longitude','occurred_at','party_a_type_code','party_b_type_code','fatalities','accident_type_code']
     required=['record_type','prefecture','station','number','municipality','latitude','longitude','year','month','day','hour','minute','party_a','party_b','fatalities','accident_class']
     if set(required)-set(definition['columns']):raise ValueError('Incomplete source definition')
     count=ignored=0
@@ -37,7 +37,7 @@ def normalize(args):
             if definition['municipalityFormat']=='local3':municipality=prefecture+municipality
             elif definition['municipalityFormat']!='full5':raise ValueError('Unknown municipality format')
             stamp=datetime(year,int(row['month']),int(row['day']),int(row['hour']),int(row['minute']),tzinfo=timezone(timedelta(hours=9)))
-            result=dict(zip(fields,[year,prefecture,row['station'],row['number'],municipality,coordinate(row['latitude'],definition['coordinateFormat']),coordinate(row['longitude'],definition['coordinateFormat']),stamp.isoformat(),row['party_a'].zfill(2) if row['party_a'] else '',row['party_b'].zfill(2) if row['party_b'] else '',int(row['fatalities']),row['accident_class'].zfill(2)]))
+            result=dict(zip(fields,[year,row['prefecture'],prefecture,row['station'],row['number'],municipality,coordinate(row['latitude'],definition['coordinateFormat']),coordinate(row['longitude'],definition['coordinateFormat']),stamp.isoformat(),row['party_a'].zfill(2) if row['party_a'] else '',row['party_b'].zfill(2) if row['party_b'] else '',int(row['fatalities']),row['accident_class'].zfill(2)]))
             if len(municipality)!=5:raise ValueError('Invalid municipality code')
             writer.writerow(result);count+=1
     print(json.dumps({'normalizedRecords':count,'ignoredNonMainForms':ignored}))

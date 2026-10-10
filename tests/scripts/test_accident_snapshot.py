@@ -25,10 +25,17 @@ class SpatialAssignmentTest(unittest.TestCase):
         f=junction('a');f['properties']['reviewed']=False
         self.assertIsNone(snapshot.assign((139.9,35.8),[f]))
     def test_bicycle_both_parties_is_one_flag(self):
-        row={'source_year':'2024','prefecture_code':'12','police_station_code':'001','record_number':'1','party_a_type_code':'51','party_b_type_code':'52','occurred_at':'2024-10-01T07:00:00+09:00','fatalities':'0','accident_type_code':'21'}
+        row={'source_year':'2024','source_prefecture_code':'44','prefecture_code':'12','police_station_code':'001','record_number':'1','party_a_type_code':'51','party_b_type_code':'52','occurred_at':'2024-10-01T07:00:00+09:00','fatalities':'0','accident_type_code':'21'}
         row['municipality_code']='12217'
         key,dimensions=snapshot.normalized(row,CODEBOOK);self.assertEqual(dimensions[2],1)
         row['source_year']='2023';self.assertRaises(ValueError,snapshot.normalized,row,CODEBOOK)
+    def test_hokkaido_jurisdictions_preserve_record_identity(self):
+        row={'source_year':'2024','source_prefecture_code':'10','prefecture_code':'01','municipality_code':'01101','police_station_code':'001','record_number':'1','party_a_type_code':'51','party_b_type_code':'51','occurred_at':'2024-10-01T07:00:00+09:00','fatalities':'0','accident_type_code':'21'}
+        first,_=snapshot.normalized(row,CODEBOOK)
+        second,_=snapshot.normalized(dict(row,source_prefecture_code='11'),CODEBOOK)
+        self.assertNotEqual(first,second)
+        self.assertEqual(first,snapshot.normalized(row,CODEBOOK)[0])
+        row.pop('source_prefecture_code');self.assertRaises(KeyError,snapshot.normalized,row,CODEBOOK)
     def test_polygon_hole_is_excluded(self):
         shape={'type':'Polygon','coordinates':[[[0,0],[4,0],[4,4],[0,4],[0,0]],[[1,1],[3,1],[3,3],[1,3],[1,1]]]}
         self.assertTrue(snapshot.contains((.5,.5),shape));self.assertFalse(snapshot.contains((2,2),shape))
@@ -38,7 +45,7 @@ class SnapshotBuildTest(unittest.TestCase):
         output_root.mkdir(exist_ok=True)
         temp=tempfile.mkdtemp(prefix='accident-test-',dir=output_root)
         root=Path(temp);records=root/'records.csv';locations=root/'locations.json';areas=root/'areas.json';manifest=root/'manifest.json'
-        row={'source_year':'2024','prefecture_code':'12','police_station_code':'001','record_number':'1','municipality_code':'12217','latitude':'35.8','longitude':'139.9','occurred_at':'2024-10-01T07:00:00+09:00','party_a_type_code':'51','party_b_type_code':'52','fatalities':'0','accident_type_code':'21'}
+        row={'source_year':'2024','source_prefecture_code':'44','prefecture_code':'12','police_station_code':'001','record_number':'1','municipality_code':'12217','latitude':'35.8','longitude':'139.9','occurred_at':'2024-10-01T07:00:00+09:00','party_a_type_code':'51','party_b_type_code':'52','fatalities':'0','accident_type_code':'21'}
         with records.open('w',encoding='utf-8',newline='') as f:
             writer=csv.DictWriter(f,fieldnames=row.keys());writer.writeheader();writer.writerow(row);writer.writerow(row)
             writer.writerow(dict(row,record_number='2',latitude='35.85'))

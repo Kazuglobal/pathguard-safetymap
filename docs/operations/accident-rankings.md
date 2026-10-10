@@ -25,7 +25,7 @@
 5. `build_snapshot.py` は交差点30m、道路20m以内の候補を照合する。複数交差点、複数道路、複数層、橋やトンネルなど高度が確定できないものは未確定。交差点候補が1つなら接続道路より優先する。1事故を1地点にだけ割り当てる。
 6. 10/20/30/50mの比較、年度別件数、重複、異常座標、割り当て済み・未確定・対象外を `quality.json` に保存する。割り当て済み＋未確定＋対象外＝重複除外後の事故数を必須とする。
 
-正規化CSV列：`source_year,prefecture_code,police_station_code,record_number,municipality_code,latitude,longitude,occurred_at,party_a_type_code,party_b_type_code,fatalities,accident_type_code`。地理フィルターに使う地域コードは全国地方公共団体コード。原データの都道府県コードは定義JSONの `prefectureMap` で対応づける。時刻は日本時間 `+09:00` を保持する。小分類のない事故に詳細類型を作らない。
+正規化CSV列：`source_year,source_prefecture_code,prefecture_code,police_station_code,record_number,municipality_code,latitude,longitude,occurred_at,party_a_type_code,party_b_type_code,fatalities,accident_type_code`。地理フィルターに使う地域コードは全国地方公共団体コード。原データの都道府県コードは定義JSONの `prefectureMap` で対応づける。時刻は日本時間 `+09:00` を保持する。小分類のない事故に詳細類型を作らない。
 
 定義JSONは `year,coordinateFormat`（`dms` / `decimal`）、`municipalityFormat`（`local3` / `full5`）、`prefectureMap,columns` を含める。`columns` のキーは `record_type,prefecture,station,number,municipality,latitude,longitude,year,month,day,hour,minute,party_a,party_b,fatalities,accident_class`。値はその年度の原本にある正確な見出し名。度分秒は度×10^7＋分×10^5＋秒×10^3を解釈する。原本の形式が異なる場合はこの変換を使用しない。
 
@@ -69,3 +69,30 @@ python -m unittest discover -s tests/scripts -p test_accident_snapshot.py
 - localhostの未ログイン画面で検索操作、通信失敗、再試行の表示を確認。D1接続・Mapbox認証未設定のため正常データ状態と一連の地域検索は未確認。
 - 全体の型検査は依存ライブラリ・既存ファイルのエラーで不合格。新規集計モジュールのエラーは出ていないが、CIで改めて確認が必要。
 - 見た目の確認は `accident-rankings-design-qa.md` に記録。スマートフォンの同一条件比較は未完了。
+
+事故識別には原本の `source_prefecture_code` を使う。北海道の方面別コードをJISの01へ変換した後のコードでは重複判定しない。
+
+### 本番D1の読み取り確認（2026-10-10）
+
+CLIの認証がない状態でも、ログイン済みCloudflareコンソールからSELECTのみで確認した。対象は `pathguardian-traffic.traffic_accidents`。既存データを変更していない。
+
+|年度|保存件数|A・B両方の種別が欠けている件数|
+|---|---:|---:|
+|2018|10,393|10,393|
+|2019|374,502|374,502|
+|2020|303,102|690|
+|2021|300,316|659|
+|2022|295,996|877|
+|2023|302,347|827|
+|2024|282,376|0|
+|2025|287,020|0|
+
+合計2,156,052件。2025年データは既に保存されているため、再取り込み前に原本と現行取り込みの差分を調べる。2018年は限定収録の可能性があり、年度の選択肢へ無条件で加えない。
+
+年度・現行都道府県コード・警察署・本票番号の重複キーは各年度0件。緯度経度のNULL/日本の概略範囲外、市区町村コードの空値、発生日時の空値も各年度0件。ただし座標変換の正しさ、境界との一致、日時のタイムゾーン、原本識別子を保証する検査ではない。
+
+市区町村コードは全年度3桁。全国地方公共団体コードへ対応づける必要がある。A・B種別のNULLは2018・2019年の全件、2020〜2023年の一部で一致しているため、自転車条件を正しく提供するには原本との補完・照合が必要。
+
+2025年の定義書とコード表の公開を確認したが、現行287,020件と原本との照合は未完了。出典: https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/opendata_2025.html
+
+CIのクリーンなNode22環境では全体の型検査・既存回帰・事故集計テストが成功。ローカル型エラーはCIでは再現しない。
