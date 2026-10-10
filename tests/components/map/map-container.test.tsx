@@ -656,6 +656,20 @@ describe('MapContainer characterization', () => {
       expect(h.fetchStats).toHaveBeenCalledWith({ latitude: 35.8983, longitude: 139.957, radiusMeters: 300, years: 5 })
     })
 
+    it('閉じた後に届いたGPS取得失敗で事故集計を再表示しない', () => {
+      const getCurrentPosition = vi.fn()
+      vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } })
+      renderMapContainer()
+      fireMapLoad()
+      fireMapClick(139.7, 35.68)
+      act(() => h.captured.accidentStatsOverlay.onCurrentLocation())
+      const failure = getCurrentPosition.mock.calls[0][1]
+      act(() => h.captured.accidentStatsOverlay.onReset())
+      act(() => failure({ code: 1 }))
+      expect(h.captured.accidentStatsOverlay.status).not.toBe('error')
+      expect(h.captured.accidentStatsOverlay.error).toBeFalsy()
+    })
+
     it('通常クリック（モバイル）: 事故集計と報告一覧を重ねて開かない', () => {
       h.isMobile = true
       renderMapContainer()

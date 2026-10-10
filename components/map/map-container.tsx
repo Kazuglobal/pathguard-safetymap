@@ -243,6 +243,7 @@ export default function MapContainer({
   const geolocateControlRef = useRef<mapboxgl.GeolocateControl | null>(null)
   const inspectGPSRef = useRef(false)
   const inspectionGPSPositionRef = useRef<GeolocationPosition | null>(null)
+  const inspectionGPSRequestRef = useRef(0)
 
   // 送信された報告の情報を保持する状態 (型を更新)
   const [submittedReport, setSubmittedReport] = useState<SubmittedReportState | null>(null)
@@ -502,6 +503,7 @@ export default function MapContainer({
 
   const inspectAccidents = useEventCallback((center: [number, number], source: 'map' | 'gps') => {
     if (!isValidCoordinates(center[1], center[0])) return
+    inspectionGPSRequestRef.current += 1
     setInspectionLocationError(null)
     setAccidentInspection({ center, source })
     setIsSidebarOpen(false)
@@ -513,6 +515,7 @@ export default function MapContainer({
     inspectAccidents([position.coords.longitude, position.coords.latitude], 'gps')
   })
   const resetAccidentInspection = useCallback(() => {
+    inspectionGPSRequestRef.current += 1
     setInspectionLocationError(null)
     inspectGPSRef.current = false
     setAccidentInspection(null)
@@ -1239,9 +1242,13 @@ export default function MapContainer({
           onCurrentLocation={() => {
             inspectGPSRef.current = true
             setInspectionLocationError(null)
+            const request = ++inspectionGPSRequestRef.current
             const position = inspectionGPSPositionRef.current
             if (position && Date.now() - position.timestamp <= 60_000) handleInspectionGeolocate(position)
-            else if (navigator.geolocation) navigator.geolocation.getCurrentPosition(handleInspectionGeolocate, () => {
+            else if (navigator.geolocation) navigator.geolocation.getCurrentPosition((fix) => {
+              if (request === inspectionGPSRequestRef.current) handleInspectionGeolocate(fix)
+            }, () => {
+              if (request !== inspectionGPSRequestRef.current) return
               inspectGPSRef.current = false
               setInspectionLocationError('現在地を取得できません。位置情報の許可を確認してください。')
             }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 })
