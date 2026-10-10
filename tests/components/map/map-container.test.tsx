@@ -102,6 +102,7 @@ const h = vi.hoisted(() => {
     }
 
     loaded = vi.fn(() => this.isLoaded)
+    isStyleLoaded = vi.fn(() => this.isLoaded)
     remove = vi.fn()
     getCenter = vi.fn(() => ({ lng: 139.6917, lat: 35.6895 }))
     getCanvas = vi.fn(() => ({ style: this.canvasStyle }))
@@ -205,7 +206,12 @@ vi.mock('mapbox-gl', () => ({
     Popup: h.FakePopup,
     LngLatBounds: h.FakeLngLatBounds,
     NavigationControl: class {},
-    GeolocateControl: class {},
+    GeolocateControl: class {
+      handlers: Record<string, (event: unknown) => void> = {}
+      on(event: string, handler: (event: unknown) => void) { this.handlers[event] = handler; return this }
+      trigger = vi.fn()
+      fire(event: string, payload?: unknown) { this.handlers[event]?.(payload) }
+    },
   },
 }))
 
@@ -613,9 +619,44 @@ describe('MapContainer characterization', () => {
         years: 5,
       })
       expect(document.querySelector('.bg-black\\/50')).toBeNull()
+      expect(h.captured.accidentStatsOverlay.center).toEqual([139.7, 35.68])
+      expect(h.captured.accidentStatsOverlay.locationSource).toBe('map')
     })
 
-    it('通常クリック（モバイル）: サイドバーが開く', () => {
+    it('現在地ボタンでGPS取得後は実際のGPS地点を中心に再集計する', () => {
+      renderMapContainer()
+      fireMapLoad()
+      const control = lastMap().controls.find((item: any) => typeof item.fire === 'function') as any
+      act(() => { control.fire('trackuserlocationstart'); control.fire('geolocate', { timestamp: Date.now(), coords: { latitude: 35.8983, longitude: 139.957 } }) })
+      expect(h.fetchStats).toHaveBeenCalledWith({ latitude: 35.8983, longitude: 139.957, radiusMeters: 300, years: 5 })
+      expect(h.captured.accidentStatsOverlay.locationSource).toBe('gps')
+      expect(h.captured.accidentStatsOverlay.center).toEqual([139.957, 35.8983])
+    })
+
+    it('GPS追跡中に開いた報告一覧を位置更新で閉じない', () => {
+      renderMapContainer()
+      fireMapLoad()
+      const control = lastMap().controls.find((item: any) => typeof item.fire === 'function') as any
+      act(() => { control.fire('trackuserlocationstart'); control.fire('geolocate', { timestamp: Date.now(), coords: { latitude: 35.8983, longitude: 139.957 } }) })
+      act(() => h.captured.floatingControls.onToggleSidebar())
+      h.fetchStats.mockClear()
+      act(() => control.fire('geolocate', { timestamp: Date.now(), coords: { latitude: 35.8984, longitude: 139.9571 } }))
+      expect(h.captured.accidentStatsOverlay.isOtherPanelOpen).toBe(true)
+      expect(h.fetchStats).not.toHaveBeenCalled()
+    })
+
+    it('GPS追跡中も現在地の再集計ボタンは地図で選んだ地点からGPS地点へ戻す', () => {
+      renderMapContainer()
+      fireMapLoad()
+      const control = lastMap().controls.find((item: any) => typeof item.fire === 'function') as any
+      act(() => { control.fire('trackuserlocationstart'); control.fire('geolocate', { timestamp: Date.now(), coords: { latitude: 35.8983, longitude: 139.957 } }) })
+      fireMapClick(139.7, 35.68)
+      h.fetchStats.mockClear()
+      act(() => h.captured.accidentStatsOverlay.onCurrentLocation())
+      expect(h.fetchStats).toHaveBeenCalledWith({ latitude: 35.8983, longitude: 139.957, radiusMeters: 300, years: 5 })
+    })
+
+    it('通常クリック（モバイル）: 事故集計と報告一覧を重ねて開かない', () => {
       h.isMobile = true
       renderMapContainer()
       fireMapLoad()
@@ -624,7 +665,7 @@ describe('MapContainer characterization', () => {
 
       expect(h.fetchStats).toHaveBeenCalled()
       // サイドバーオーバーレイが表示される
-      expect(document.querySelector('.bg-black\\/50')).not.toBeNull()
+      expect(document.querySelector('.bg-black\\/50')).toBeNull()
     })
 
     it('地点選択モード中（モバイル）: 位置を設定するがフォームは開かない', () => {

@@ -25,6 +25,7 @@ export function useAccidentStats() {
   const beginRequest = useCallback(() => {
     const requestId = latestRequestIdRef.current + 1;
     latestRequestIdRef.current = requestId;
+    setStats(null);
     setStatus("loading");
     setError(null);
     return requestId;

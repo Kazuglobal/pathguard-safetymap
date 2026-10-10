@@ -27,6 +27,7 @@ import { useDangerReportSubmit, type SubmittedReportState } from "@/hooks/use-da
 import { useMapImageOverlays, type MapImageOverlayEntry } from "@/hooks/use-map-image-overlays"
 import { useDangerMarkers } from "@/hooks/use-danger-markers"
 import { AccidentStatsOverlay } from "@/components/map/accident-stats-overlay"
+import { AccidentInspectionLayer } from "./accident-inspection-layer"
 import { MapReportForms } from "@/components/map/map-report-forms"
 import { MobileLocationSheet } from "@/components/map/mobile-location-sheet"
 import { MapStatusOverlays } from "@/components/map/map-status-overlays"
@@ -235,7 +236,13 @@ export default function MapContainer({
     status: clickedLocationStatsStatus,
     fetchStats: fetchClickedLocationStats,
     reset: resetClickedLocationStats,
+    error: clickedLocationStatsError,
   } = useAccidentStats()
+  const [accidentInspection, setAccidentInspection] = useState<{ center: [number, number]; source: 'map' | 'gps' } | null>(null)
+  const [inspectionLocationError, setInspectionLocationError] = useState<string | null>(null)
+  const geolocateControlRef = useRef<mapboxgl.GeolocateControl | null>(null)
+  const inspectGPSRef = useRef(false)
+  const inspectionGPSPositionRef = useRef<GeolocationPosition | null>(null)
 
   // 送信された報告の情報を保持する状態 (型を更新)
   const [submittedReport, setSubmittedReport] = useState<SubmittedReportState | null>(null)
@@ -493,6 +500,25 @@ export default function MapContainer({
     accidentMarkerTimerRef.current = timerId
   }, []);
 
+  const inspectAccidents = useEventCallback((center: [number, number], source: 'map' | 'gps') => {
+    if (!isValidCoordinates(center[1], center[0])) return
+    setInspectionLocationError(null)
+    setAccidentInspection({ center, source })
+    setIsSidebarOpen(false)
+    void fetchClickedLocationStats({ latitude: center[1], longitude: center[0], radiusMeters: 300, years: 5 })
+  })
+  const handleInspectionGeolocate = useEventCallback((position: GeolocationPosition) => {
+    inspectionGPSPositionRef.current = position
+    if (!inspectGPSRef.current || awaitingLocationSelection || isReportFormOpen || isSuspiciousAlertOpen || isSidebarOpen || isDetailModalOpen || isSubmittedPreviewOpen) return
+    inspectAccidents([position.coords.longitude, position.coords.latitude], 'gps')
+  })
+  const resetAccidentInspection = useCallback(() => {
+    setInspectionLocationError(null)
+    inspectGPSRef.current = false
+    setAccidentInspection(null)
+    resetClickedLocationStats()
+  }, [resetClickedLocationStats])
+
   // --- ▼▼▼ handleMapClick（useEventCallback で常に最新 state を読む） ▼▼▼ ---
   // Mapbox へ一度だけ登録されても stale closure にならないよう useEventCallback 経由にする。
   const handleMapClick = useEventCallback((e: mapboxgl.MapMouseEvent) => {
@@ -542,17 +568,8 @@ export default function MapContainer({
 
       // 通常の地図クリック時に事故統計を取得・表示
       console.log("Normal map click: Fetching accident statistics");
-      fetchClickedLocationStats({
-        latitude: coordinates[1],
-        longitude: coordinates[0],
-        radiusMeters: 300,
-        years: 5,
-      });
-
-      // サイドバーを開く（モバイル時）
-      if (isMobile) {
-        setIsSidebarOpen(true);
-      }
+      inspectGPSRef.current = false
+      inspectAccidents(coordinates, 'map')
     }
   });
   // --- ▲▲▲ ---
@@ -631,7 +648,11 @@ export default function MapContainer({
             shouldShow: shouldRenderNavigationControl,
           })
         }
-        map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
+        const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
+        geolocateControlRef.current = geolocate
+        geolocate.on('trackuserlocationstart', () => { inspectGPSRef.current = true })
+        geolocate.on('geolocate', handleInspectionGeolocate)
+        map.current?.addControl(geolocate, "bottom-right")
 
         // 危険レポートのbbox絞り込み用に、表示範囲を初期化＆パン/ズームのたびに更新する
         const updateMapBounds = () => {
@@ -1205,13 +1226,34 @@ export default function MapContainer({
 
         {/* 事故統計パネル - 地図クリック時に表示 */}
         <AccidentStatsOverlay
-          status={clickedLocationStatsStatus}
+          status={inspectionLocationError ? 'error' : clickedLocationStatsStatus}
           stats={clickedLocationStats}
           isMobile={isMobile}
           awaitingLocationSelection={awaitingLocationSelection}
           isReportFormOpen={isReportFormOpen}
-          onReset={resetClickedLocationStats}
+          onReset={resetAccidentInspection}
+          isOtherPanelOpen={isSidebarOpen || isDetailModalOpen || isSuspiciousAlertOpen || isSubmittedPreviewOpen}
+          locationSource={accidentInspection?.source}
+          center={accidentInspection?.center}
+          error={inspectionLocationError ?? clickedLocationStatsError}
+          onCurrentLocation={() => {
+            inspectGPSRef.current = true
+            setInspectionLocationError(null)
+            const position = inspectionGPSPositionRef.current
+            if (position && Date.now() - position.timestamp <= 60_000) handleInspectionGeolocate(position)
+            else if (navigator.geolocation) navigator.geolocation.getCurrentPosition(handleInspectionGeolocate, () => {
+              inspectGPSRef.current = false
+              setInspectionLocationError('現在地を取得できません。位置情報の許可を確認してください。')
+            }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 })
+            else setInspectionLocationError('この端末では現在地を取得できません。')
+          }}
+          onAccidentNavigate={(coords) => {
+            if (!isValidCoordinates(coords[1], coords[0])) return
+            flyToLocation(coords[0], coords[1], 17)
+            showTemporaryAccidentMarker(coords)
+          }}
         />
+        <AccidentInspectionLayer map={map.current} center={clickedLocationStatsStatus !== 'idle' && !isSidebarOpen && !isReportFormOpen && !awaitingLocationSelection && !isDetailModalOpen && !isSuspiciousAlertOpen ? accidentInspection?.center ?? null : null} />
 
         {/* Sidebar (フローティング) */}
         <div className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ${!isSidebarOpen ? '-translate-x-full' : ''}`}>

@@ -33,10 +33,6 @@ vi.mock("@/lib/supabase-client", () => ({
   },
 }));
 
-vi.mock("@/lib/accident-stats-year-window", () => ({
-  ACCIDENT_IMAGE_CONTEXT_PARAMS: { radiusMeters: 300, years: 5 },
-  DEFAULT_ACCIDENT_YEARS: 5,
-}));
 
 import {
   enrichReportWithAccidents,
@@ -96,7 +92,7 @@ describe("getAccidentStatsRPC", () => {
   });
 
   it("RPCを呼び出して事故統計を返す", async () => {
-    const stats = makeStats();
+    const stats = makeStats({ search_params: { latitude: 35.6585, longitude: 139.7006, radius_meters: 500, years: 3, min_year: 2023, max_year: 2025 } });
     mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify(stats), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -130,6 +126,17 @@ describe("getAccidentStatsRPC", () => {
         longitude: 139.7006,
       })
     ).rejects.toThrow("事故統計取得エラー: timeout");
+  });
+
+  it("死亡事故の明細と集計が矛盾する応答を表示用データとして返さない", async () => {
+    const stats = makeStats({ total_accidents: 0, nearest_accidents: [{ severity: 'fatal', fatalities: 1 }] });
+    mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify(stats), { status: 200 }));
+    await expect(getAccidentStatsRPC({ latitude: 35.6585, longitude: 139.7006 })).rejects.toThrow(/整合性/);
+  });
+
+  it("別の中心地点の応答を表示用データとして返さない", async () => {
+    mocked.mockFetch.mockResolvedValueOnce(new Response(JSON.stringify(makeStats()), { status: 200 }));
+    await expect(getAccidentStatsRPC({ latitude: 35.8983, longitude: 139.957 })).rejects.toThrow(/集計範囲/);
   });
 });
 

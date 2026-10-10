@@ -13,6 +13,8 @@ describe("getAccidentStatsRPC year window", () => {
   it("sends the requested years as-is (the server anchors them to the latest data year)", async () => {
     const stats = {
       total_accidents: 4,
+      fatal_accidents: 0, total_fatalities: 0, total_injuries: 4,
+      child_involved: 0, pedestrian_involved: 0, risk_score: 40, nearest_accidents: [],
       situation_summary: { total_text: "4件の事故が過去5年間（2021〜2025年）に半径300m以内で発生" },
       search_params: { latitude: 35, longitude: 139, radius_meters: 300, years: 5, min_year: 2021, max_year: 2025 },
     };
