@@ -93,6 +93,12 @@ function assertNoEmbeddedSecrets(filePath, secretValues) {
 if (!onlyArg) rmSync(capturedDir, { recursive: true, force: true })
 mkdirSync(capturedDir, { recursive: true })
 
+for (const [key, value] of Object.entries(process.env)) {
+  if (typeof value === 'string' && key.startsWith('NEXT_PUBLIC_')) {
+    process.env[key] = value.trim()
+  }
+}
+
 for (const [index, target] of buildTargets.entries()) {
   const shouldSkipNext = skipNextBuild || index > 0
   const args = [cliPath, 'build', ...(shouldSkipNext ? ['--skipNextBuild'] : [])]

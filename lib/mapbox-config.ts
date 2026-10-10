@@ -14,7 +14,8 @@ let tokenValidationCache: {
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export function getMapboxToken(): string | null {
-  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+  const rawToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+  const token = typeof rawToken === 'string' ? rawToken.trim() : null
   
   if (!token) {
     mapboxLogger.error('Mapbox access token is missing', {

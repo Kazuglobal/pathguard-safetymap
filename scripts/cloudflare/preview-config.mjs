@@ -57,7 +57,7 @@ export function previewSecrets(env) {
   for (const name of allowedNames) {
     if (!env[name]?.trim()) throw new Error(`Preview requires ${name}`)
   }
-  return Object.fromEntries(allowedNames.map((name) => [name, env[name]]))
+  return Object.fromEntries(allowedNames.map((name) => [name, env[name].trim()]))
 }
 
 export const forbiddenBuildFiles = ['.env', '.env.local', '.env.production', '.env.production.local', 'env.defaults.json']
