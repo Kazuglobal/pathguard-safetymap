@@ -16,6 +16,12 @@ describe('AccidentStatsOverlay', () => {
     render(<AccidentStatsOverlay {...props} isOtherPanelOpen />)
     expect(screen.queryByRole('region', { name: '周辺事故の集計' })).not.toBeInTheDocument()
   })
+  it('shows the map and aggregate periods explicitly when older pins are visible', () => {
+    render(<AccidentStatsOverlay {...props} mapYearWindow={{ minYear: 2019, maxYear: 2025 }} />)
+    expect(screen.getByText('集計: 2021〜2025年の全事故')).toBeInTheDocument()
+    expect(screen.getByText(/地図のピン: 2019〜2025年/)).toBeInTheDocument()
+    expect(screen.getByText(/集計期間外のピンは件数に含みません/)).toBeInTheDocument()
+  })
   it('does not present a failed request as zero accidents', () => {
     render(<AccidentStatsOverlay {...props} status="error" />)
     expect(screen.getByText(/ゼロ件という意味ではありません/)).toBeInTheDocument()

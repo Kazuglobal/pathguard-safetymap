@@ -1239,6 +1239,7 @@ export default function MapContainer({
           locationSource={accidentInspection?.source}
           center={accidentInspection?.center}
           error={inspectionLocationError ?? clickedLocationStatsError}
+          mapYearWindow={accidentHeatmap.isVisible ? { minYear: accidentHeatmap.filters.minYear, maxYear: accidentHeatmap.filters.maxYear } : undefined}
           onCurrentLocation={() => {
             inspectGPSRef.current = true
             setInspectionLocationError(null)

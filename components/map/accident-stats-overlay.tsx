@@ -5,6 +5,7 @@ import { X } from "lucide-react"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
+import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
 
 interface AccidentStatsOverlayProps {
   status: AccidentStatsStatus
@@ -19,6 +20,7 @@ interface AccidentStatsOverlayProps {
   error?: string | null
   onCurrentLocation?: () => void
   onAccidentNavigate?: (coordinates: [number, number]) => void
+  mapYearWindow?: AccidentYearWindow
 }
 
 /**
@@ -38,8 +40,11 @@ export function AccidentStatsOverlay({
   error,
   onCurrentLocation,
   onAccidentNavigate,
+  mapYearWindow,
 }: AccidentStatsOverlayProps) {
   if (status === "idle" || awaitingLocationSelection || isReportFormOpen || isOtherPanelOpen) return null
+  const params = stats?.search_params
+  const window = params?.min_year != null && params.max_year != null ? { minYear: params.min_year, maxYear: params.max_year } : accidentYearWindow(params?.years)
 
   return (
     <section aria-label="周辺事故の集計" className={`absolute z-20 rounded-2xl border border-slate-200 bg-white shadow-lg ${
@@ -52,6 +57,8 @@ export function AccidentStatsOverlay({
           <div>
             <h2 className="text-sm font-bold text-slate-900">{locationSource === 'gps' ? '現在地の周辺事故' : '選択地点の周辺事故'}</h2>
             <p className="mt-1 text-xs text-slate-600">青い破線の円内・中心から半径300m</p>
+            <p className="mt-1 text-xs font-medium text-slate-800">集計: {formatAccidentYearWindow(window)}の全事故</p>
+            {mapYearWindow && <p className="mt-1 text-[11px] text-slate-600">地図のピン: {formatAccidentYearWindow(mapYearWindow)}・地図のフィルターを適用。集計期間外のピンは件数に含みません。</p>}
             {locationSource === 'map' && <p className="mt-1 text-xs font-medium text-slate-700">地図で選択した地点の集計です。現在地とは別です。</p>}
             {center && <p className="mt-1 text-[11px] text-slate-500">中心: {center[1].toFixed(5)}, {center[0].toFixed(5)}</p>}
           </div>
