@@ -210,14 +210,17 @@ const routeGroups = {
     'app/api/cron/daily-news-digest/route',
     'app/api/cron/hunter-retention-cleanup/route',
     'app/api/cron/local-alert-fetcher/route',
+    'app/api/cron/local-alert-district-backfill/route',
     'app/api/cron/local-safety-alerts/route',
     'app/api/cron/moderation-sweep/route',
     'app/api/cron/push-danger-reports/route',
     'app/api/cron/r2-orphan-cleanup/route',
     'app/api/local-safety-alerts/route',
+    'app/api/school-districts/route',
   ], [
     'api/cron/*',
     'api/local-safety-alerts*',
+    'api/school-districts*',
   ]),
 } satisfies NonNullable<typeof config.functions>
 

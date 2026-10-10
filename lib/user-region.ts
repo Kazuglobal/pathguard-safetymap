@@ -65,6 +65,26 @@ export function getRegionChipOptions(selected: string): string[] {
 // 保存し、県をまたいだ復元(例: 東京都で保存した千代田区を大阪府で適用)を防ぐ。
 
 export const CITY_STORAGE_KEY = "pathguardian:selected_city"
+export const SCHOOL_DISTRICT_STORAGE_KEY = "pathguardian:selected_school_district"
+
+export function getStoredSchoolDistrict(prefecture: string, city: string | null): string | null {
+  if (typeof window === 'undefined' || !city) return null
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SCHOOL_DISTRICT_STORAGE_KEY) ?? 'null')
+    return saved?.prefecture === prefecture && saved?.city === city && typeof saved?.id === 'string' && saved.id.length <= 160 ? saved.id : null
+  } catch { return null }
+}
+
+export function setStoredSchoolDistrict(prefecture: string, city: string | null, id: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (!city || !id || id.length > 160 || !isKnownRegion(prefecture) || prefecture === NATIONWIDE) {
+      window.localStorage.removeItem(SCHOOL_DISTRICT_STORAGE_KEY)
+    } else {
+      window.localStorage.setItem(SCHOOL_DISTRICT_STORAGE_KEY, JSON.stringify({ prefecture, city, id }))
+    }
+  } catch { /* Keep the current selection in memory when storage is unavailable. */ }
+}
 
 /** 保存済みの市町村を返す。県が一致しない・未保存・SSR時は null */
 export function getStoredCity(prefecture: string): string | null {
