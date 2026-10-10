@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import mapboxgl from "mapbox-gl"
 
 import MapSearch from "@/components/map/map-search"
 
@@ -400,6 +401,49 @@ describe("MapSearch", () => {
       zoom: 15,
       essential: true,
     })
+  })
+
+  it("trims access token with trailing newlines or whitespace before fetching", async () => {
+    const originalToken = mapboxgl.accessToken
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            id: "place.1",
+            geometry: { coordinates: [139.75, 35.68] },
+            properties: {
+              name: "東京都千代田区",
+              full_address: "東京都千代田区",
+            },
+          },
+        ],
+      }),
+    } as Response)
+
+    mapboxgl.accessToken = "pk.test-token-value \n"
+
+    try {
+      render(
+        <MapSearch
+          map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never}
+        />,
+      )
+
+      fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
+        target: { value: "千代田" },
+      })
+
+      expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
+
+      const calledUrl = fetchSpy.mock.calls[0][0] as string
+      expect(calledUrl).toContain("access_token=pk.test-token-value")
+      expect(calledUrl).not.toContain("%0A")
+      expect(calledUrl).not.toContain("\n")
+      expect(calledUrl).not.toContain("pk.test-token-value+")
+    } finally {
+      mapboxgl.accessToken = originalToken
+    }
   })
 })
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import mapboxgl from "mapbox-gl"
 import { matchesSchoolCategory } from "@/lib/school-search"
+import { getMapboxToken } from "@/lib/mapbox-config"
 
 interface MapSearchProps {
   map: mapboxgl.Map | null
@@ -123,15 +124,13 @@ function toGeocodingResult(feature: GeocodingFeature): SearchResult | null {
   }
 }
 
-import { getMapboxToken } from "@/lib/mapbox-config"
-
 function getAccessToken(): string {
-  return (
+  const token =
     mapboxgl.accessToken ||
     getMapboxToken() ||
     process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ||
     ""
-  )
+  return token.trim()
 }
 
 async function fetchSearchBoxResults(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {

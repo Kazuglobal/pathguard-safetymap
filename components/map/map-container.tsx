@@ -76,7 +76,7 @@ if (!tokenValidation.isValid) {
   console.error("Mapbox token validation failed:", tokenValidation.error)
 }
 
-mapboxgl.accessToken = mapboxToken || ""
+mapboxgl.accessToken = (mapboxToken || "").trim()
 
 // --- 型定義 ---
 // SubmittedReportState / MapImageOverlayEntry はそれぞれ hooks/use-danger-report-submit.ts /
