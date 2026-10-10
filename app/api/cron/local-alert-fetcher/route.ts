@@ -11,9 +11,10 @@ import { verifyCronSecret } from '@/lib/cron-auth'
 import { fetchLocalAlertsFromGemini } from '@/lib/local-alert-fetcher'
 import { getServiceActor } from '@/lib/auth/service-actor'
 import { insertLocalAlerts } from '@/lib/db/repos/push.repo'
+import { associateLocalAlertDistricts } from '@/lib/local-alert-district-association'
 
 export const runtime = 'nodejs'
-export const maxDuration = 30
+export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronSecret(req)
@@ -35,10 +36,12 @@ export async function GET(req: NextRequest) {
   })))
   const inserted = data.length
   const skipped = alerts.length - inserted
+  const association = await associateLocalAlertDistricts(data.map(row => row.id))
 
   return NextResponse.json({
     fetched: alerts.length,
     inserted,
     skipped,
+    association,
   })
 }

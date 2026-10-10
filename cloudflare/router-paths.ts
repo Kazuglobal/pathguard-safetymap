@@ -43,7 +43,7 @@ const ROUTE_BINDINGS = [
   },
   { binding: 'COMMUNITY', prefixes: ['/report', '/api/abuse-report', '/api/danger-report', '/api/media', '/api/reactions', '/api/report-interactions', '/api/reports', '/api/suspicious-alert'] },
   { binding: 'USER', prefixes: ['/badges', '/dashboard', '/leaderboard', '/missions', '/mypage', '/api/gamification', '/api/missions', '/api/notifications', '/api/profile', '/api/push', '/api/routes'] },
-  { binding: 'OPERATIONS', prefixes: ['/api/cron', '/api/local-safety-alerts'] },
+  { binding: 'OPERATIONS', prefixes: ['/api/cron', '/api/local-safety-alerts', '/api/school-districts'] },
 ] as const satisfies ReadonlyArray<{
   binding: RouteBinding
   prefixes: readonly string[]

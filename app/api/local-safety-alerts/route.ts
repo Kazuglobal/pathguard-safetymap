@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
 import { listLocalSafetyAlerts } from '@/lib/db/repos/push.repo'
+import { getSchoolDistrict } from '@/lib/db/repos/school-districts.repo'
 
 export const runtime = 'nodejs'
 
@@ -11,9 +12,18 @@ export async function GET(request: Request) {
     const hours = Math.min(24 * 30, Math.max(1, Number(params.get('hours') ?? 24)))
     if (!Number.isFinite(hours)) throw new RangeError('Invalid hours')
     const prefecture = params.get('prefecture')
-    const rows = await listLocalSafetyAlerts(await getActor(), {
+    const actor = await getActor()
+    const schoolDistrictId = params.get('schoolDistrictId')
+    if (schoolDistrictId !== null) {
+      if (!schoolDistrictId || schoolDistrictId.length > 160) throw new RangeError('Invalid school district')
+      const district = await getSchoolDistrict(actor, schoolDistrictId)
+      if (!district) return NextResponse.json({ error: 'School district not found' }, { status: 404 })
+      if (prefecture && district.prefecture !== prefecture) throw new RangeError('Region does not match school district')
+    }
+    const rows = await listLocalSafetyAlerts(actor, {
       since: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString(),
       ...(prefecture && prefecture !== '全国' ? { prefecture } : {}),
+      ...(schoolDistrictId ? { schoolDistrictId } : {}),
       limit: 50,
     })
     return NextResponse.json({ alerts: rows.map((row) => ({
