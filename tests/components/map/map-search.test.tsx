@@ -332,4 +332,74 @@ describe("MapSearch", () => {
     expect(screen.queryByText("東京都千代田区")).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toHaveValue("東京")
   })
+
+  it("displays predictive search suggestions on typing without form submission", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            id: "place.1",
+            geometry: { coordinates: [139.75, 35.68] },
+            properties: {
+              name: "東京都千代田区",
+              feature_type: "place",
+              full_address: "東京都千代田区",
+            },
+          },
+        ],
+      }),
+    } as Response)
+
+    render(
+      <MapSearch
+        map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
+      target: { value: "千代田" },
+    })
+
+    // Debounce triggers search automatically
+    expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
+  })
+
+  it("flies map to top result automatically on form submit", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          {
+            id: "place.1",
+            geometry: { coordinates: [139.75, 35.68] },
+            properties: {
+              name: "東京都千代田区",
+              feature_type: "place",
+              full_address: "東京都千代田区",
+            },
+          },
+        ],
+      }),
+    } as Response)
+
+    render(
+      <MapSearch
+        map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
+      target: { value: "千代田" },
+    })
+    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+
+    expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
+    expect(mockFlyTo).toHaveBeenCalledWith({
+      center: [139.75, 35.68],
+      zoom: 15,
+      essential: true,
+    })
+  })
 })
+
