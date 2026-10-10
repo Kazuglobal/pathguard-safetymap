@@ -1,6 +1,11 @@
 import { spawnSync } from 'node:child_process'
 
-export function assertProductionSource({ cwd, skipBuild = false, git } = {}) {
+const PRODUCTION_WORKFLOW = 'Kazuglobal/pathguard-safetymap/.github/workflows/cloudflare-production.yml@refs/heads/main'
+
+export function assertProductionSource({ cwd, skipBuild = false, git, environment = process.env } = {}) {
+  if (environment.GITHUB_ACTIONS !== 'true' || environment.GITHUB_WORKFLOW_REF !== PRODUCTION_WORKFLOW) {
+    throw new Error('Manual production deployment is disabled. Use the Cloudflare Production GitHub Actions workflow on main.')
+  }
   if (skipBuild) throw new Error('Production deployment requires a fresh build; --skip-build is not allowed.')
   const runGit = git ?? ((args) => {
     const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
