@@ -38,7 +38,7 @@ export default function SubmittedReportPreview({
 }: SubmittedReportPreviewProps) {
   const { toast } = useToast()
   /* --- タブ状態 --- */
-  const [activeTab, setActiveTab] = useState<string>("original")
+  const [activeTab, setActiveTab] = useState<string>(processedImages.length > 0 ? "processed" : "original")
   const [isSharing, setIsSharing] = useState(false)
   const shareCardRef = useRef<HTMLDivElement | null>(null)
 
@@ -65,13 +65,13 @@ export default function SubmittedReportPreview({
     setProcSrcs(processedImages)
     setProcErrors(processedImages.map(() => false))
 
-    if (originalImage) setActiveTab("original")
-    else if (processedImages.length > 0) setActiveTab("processed")
-  }, [originalImage, processedImages])
+    setActiveTab(processedImages.length > 0 ? "processed" : "original")
+  }, [originalImage, processedImages, isOpen])
 
   /* ===== キャッシュバスター ===== */
   const addCacheBuster = (url: string | null) => {
     if (!url) return null
+    if (url.startsWith("blob:") || url.startsWith("data:")) return url
     const sep = url.includes("?") ? "&" : "?"
     return `${url}${sep}t=${Date.now()}`
   }
@@ -98,7 +98,7 @@ export default function SubmittedReportPreview({
 
       toast({
         title: "共有カードを保存しました",
-        description: "画像を保存し、共有文面もコピーしました。",
+        description: "保存した画像をLINEやメッセージに添付できます。",
       })
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -132,7 +132,6 @@ export default function SubmittedReportPreview({
         <div className="mt-4">
           {originalImage || procSrcs.length > 0 ? (
             <Tabs
-              defaultValue={originalImage ? "original" : "processed"}
               value={activeTab}
               onValueChange={setActiveTab}
               className="w-full"
@@ -152,6 +151,7 @@ export default function SubmittedReportPreview({
                   <div className="relative w-full h-80 bg-gray-50 rounded-md overflow-hidden">
                     <Image
                       src={signedOriginalSrc || "/placeholder.svg"}
+                      unoptimized
                       alt="報告の元画像"
                       fill
                       className="object-contain"
@@ -196,6 +196,7 @@ export default function SubmittedReportPreview({
                           <div className="relative h-48 w-full sm:h-64">
                             <Image
                               src={(signedProcSrcs[idx] ?? null) || "/placeholder.svg"}
+                              unoptimized
                               alt={`加工画像 ${idx + 1}`}
                               fill
                               className="object-contain"
@@ -218,13 +219,14 @@ export default function SubmittedReportPreview({
                               variant="outline"
                               size="sm"
                               className="mt-1"
-                              onClick={() =>
+                              onClick={() => {
+                                setProcSrcs((urls) => urls.map((url, index) => index === idx ? addCacheBuster(url) ?? url : url))
                                 setProcErrors((errs) => {
                                   const copy = [...errs]
                                   copy[idx] = false
                                   return copy
                                 })
-                              }
+                              }}
                             >
                               再試行
                             </Button>

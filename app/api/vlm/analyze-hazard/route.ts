@@ -25,7 +25,8 @@ const PROMPT = (context: string) => `あなたは通学路の安全分析の専�
 
 追加情報: ${context || 'なし'}
 
-次のJSONだけを返してください。
+危険要因は重要なものから最大8件に絞り、各説明は簡潔にしてください。
+categoryは例に並べた値のうち1つを選び、severityとoverall_risk_levelは1〜5、overall_safety_scoreは0〜100の整数にしてください。次のJSONだけを返してください。
 {
   "hazards":[{"category":"traffic|visibility|pedestrian_space|barriers|lighting|terrain|infrastructure|crossings|signage|environmental|social|emergency|behavioral|surveillance|maintenance","severity":1,"description_ja":"","description_en":"","child_specific_risk":"","recommendation":""}],
   "overall_safety_score":0,
@@ -91,7 +92,15 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ success: true, analysis, analysis_id: crypto.randomUUID() })
   } catch (error) {
-    console.error('[api/vlm/analyze-hazard] failed', error instanceof Error ? error.message : 'unknown')
-    return NextResponse.json({ error: 'AI analysis failed' }, { status: 502 })
+    // APIエラー本文にはリクエスト情報が含まれ得るため、分類のみ記録する。
+    const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : null
+    const name = error instanceof Error ? error.name : 'UnknownError'
+    console.error('[api/vlm/analyze-hazard] failed', { name, status })
+    const message = name.includes('Timeout') || name === 'AbortError'
+      ? '分析に時間がかかっています。少し時間をおいて再試行してください。'
+      : status === 429
+        ? '分析が混み合っています。少し時間をおいて再試行してください。'
+        : '画像の分析を完了できませんでした。報告は保存されています。再試行してください。'
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 }

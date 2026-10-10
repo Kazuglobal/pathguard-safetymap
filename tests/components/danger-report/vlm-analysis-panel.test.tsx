@@ -73,7 +73,8 @@ describe("VlmAnalysisPanel", () => {
     )
 
     expect(screen.getByText("画像を解析しています...")).toBeInTheDocument()
-    expect(screen.getByText("Claude Haiku Visionで危険要因を検出中")).toBeInTheDocument()
+    expect(screen.getByText("写真から危険要因を確認しています")).toBeInTheDocument()
+    expect(screen.queryByText(/Claude|Haiku|Gemini/)).not.toBeInTheDocument()
     expect(screen.getByText("分析中")).toBeInTheDocument()
   })
 
