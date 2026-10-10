@@ -89,6 +89,9 @@ jobs:
       - name: Run focused deployment checks
         run: pnpm exec vitest run tests/unit/db/social-repo.test.ts tests/unit/lib/gemini-prompts.test.ts tests/unit/lib/vlm-analysis.test.ts --maxWorkers=1
 
+      - name: Test production source guard
+        run: node --test scripts/cloudflare/production-source-guard.test.mjs
+
       - name: Build and deploy all production Workers
         run: pnpm deploy:cloudflare
 
