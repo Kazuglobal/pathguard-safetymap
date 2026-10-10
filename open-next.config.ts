@@ -47,10 +47,13 @@ const routeGroups = {
     '3d-route-poc*',
   ]),
   mapUi: splitFunction([
+    'app/accidents/page',
+    'app/accidents/locations/[id]/page',
     'app/map/page',
     'app/xroad/page',
   ], [
     'map*',
+    'accidents*',
     'xroad*',
   ]),
   routeQuiz: splitFunction([
@@ -64,6 +67,10 @@ const routeGroups = {
     'routes*',
   ]),
   mapData: splitFunction([
+    'app/api/accidents/areas/route',
+    'app/api/accidents/rankings/route',
+    'app/api/accidents/locations/route',
+    'app/api/accidents/locations/[id]/route',
     'app/api/mapbox/directions/route',
     'app/api/mapbox/geocode/route',
     'app/api/mapbox/isochrone/route',
@@ -77,6 +84,7 @@ const routeGroups = {
     'app/api/xroad/route',
   ], [
     'api/mapbox/*',
+    'api/accidents/*',
     'api/traffic-accidents/*',
     'api/xroad*',
   ]),

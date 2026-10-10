@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
 import {
   SupabaseProvider,
@@ -115,6 +115,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
 }
 
 export function LayoutProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  if (pathname === '/accidents' || pathname.startsWith('/accidents/')) return <>{children}</>
   return (
     <SupabaseProvider>
       <LayoutProviderInner>{children}</LayoutProviderInner>

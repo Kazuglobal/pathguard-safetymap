@@ -13,6 +13,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  accident-regressions:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - name: Verify published ranking snapshots
+        run: pnpm exec vitest run tests/unit/lib/accident-rankings.test.ts --maxWorkers=1
+      - name: Verify offline assignment and count reconciliation
+        run: python -m unittest discover -s tests/scripts -p test_accident_snapshot.py
+
   report-image-regressions:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
