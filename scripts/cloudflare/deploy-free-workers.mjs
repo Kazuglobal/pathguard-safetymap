@@ -150,8 +150,8 @@ for (const output of requiredOutputs) {
 
 const secretValues = Object.fromEntries(
   secretNames
-    .map((name) => [name, process.env[name]])
-    .filter((entry) => typeof entry[1] === 'string' && entry[1].trim().length > 0),
+    .map((name) => [name, typeof process.env[name] === 'string' ? process.env[name].trim() : process.env[name]])
+    .filter((entry) => typeof entry[1] === 'string' && entry[1].length > 0),
 )
 const tempSecretPath = path.join(tmpdir(), `pathguardian-worker-secrets-${randomUUID()}.json`)
 const dryRunRoot = path.join(projectRoot, '.codex-artifacts', 'wrangler-free')
