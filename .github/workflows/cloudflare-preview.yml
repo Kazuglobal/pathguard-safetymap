@@ -13,6 +13,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  report-image-regressions:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check application types
+        run: pnpm exec tsc --noEmit --incremental false
+      - name: Verify analysis, uploads, previews and sharing
+        run: pnpm exec vitest run tests/unit/lib/claude-vision.test.ts tests/unit/lib/claude-vision-transport.test.ts tests/unit/app/api/vlm-analyze-hazard.test.ts tests/unit/hooks/use-danger-report-submit-images.test.tsx tests/unit/lib/report-generation/family-share-card.test.ts tests/components/danger-report/submitted-report-preview.test.tsx tests/components/danger-report/vlm-analysis-panel.test.tsx tests/unit/lib/vlm-analysis.test.ts tests/unit/lib/gemini-prompts.test.ts tests/components/report-page.test.tsx tests/components/route-manager-share.test.tsx tests/unit/app/api/image-process-auth-and-type.test.ts --maxWorkers=1
+
   deploy:
     if: >-
       github.event.action != 'closed' &&

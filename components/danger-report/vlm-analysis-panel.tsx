@@ -162,7 +162,7 @@ function AnalyzingView() {
       <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
       <p className="text-sm text-gray-600">画像を解析しています...</p>
       <p className="text-xs text-gray-500 mt-1">
-        Claude Haiku Visionで危険要因を検出中
+        写真から危険要因を確認しています
       </p>
     </div>
   )
