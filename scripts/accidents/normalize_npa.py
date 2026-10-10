@@ -3,6 +3,7 @@ Never guess column indices or repair corrupted headers. Writes a new UTF-8 CSV o
 """
 import argparse
 import csv
+import hashlib
 import json
 import math
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,9 @@ def coordinate(value, kind):
 
 def normalize(args):
     definition=json.loads(Path(args.definition).read_text(encoding='utf-8'))
+    if definition.get('originalSha256'):
+        with open(args.input,'rb') as original:
+            if hashlib.file_digest(original,'sha256').hexdigest()!=definition['originalSha256']:raise ValueError('Original differs from reviewed source hash')
     fields=['source_year','source_prefecture_code','prefecture_code','police_station_code','record_number','municipality_code','latitude','longitude','occurred_at','party_a_type_code','party_b_type_code','fatalities','accident_type_code']
     required=['record_type','prefecture','station','number','municipality','latitude','longitude','year','month','day','hour','minute','party_a','party_b','fatalities','accident_class']
     if set(required)-set(definition['columns']):raise ValueError('Incomplete source definition')
@@ -30,14 +34,19 @@ def normalize(args):
         for raw in reader:
             row={k:raw[v].strip() for k,v in definition['columns'].items()}
             if row['record_type']!='1':ignored+=1;continue
-            year=int(row['year'])
-            if year!=definition['year']:raise ValueError('Source year differs from definition')
+            year=int(definition['year'])
+            if any(not row[k] for k in ('year','month','day','hour','minute')):
+                if definition.get('missingDatePolicy')!='exclude':raise ValueError('Missing source date requires reviewed exclusion policy')
+                stamp=None
+            else:
+                occurred_year=int(row['year'])
+                if occurred_year<2018 or occurred_year>year:raise ValueError('Occurrence year outside source bounds')
+                stamp=datetime(occurred_year,int(row['month']),int(row['day']),int(row['hour']),int(row['minute']),tzinfo=timezone(timedelta(hours=9)))
             prefecture=definition['prefectureMap'][row['prefecture']]
             municipality=row['municipality'].zfill(3)
             if definition['municipalityFormat']=='local3':municipality=prefecture+municipality
             elif definition['municipalityFormat']!='full5':raise ValueError('Unknown municipality format')
-            stamp=datetime(year,int(row['month']),int(row['day']),int(row['hour']),int(row['minute']),tzinfo=timezone(timedelta(hours=9)))
-            result=dict(zip(fields,[year,row['prefecture'],prefecture,row['station'],row['number'],municipality,coordinate(row['latitude'],definition['coordinateFormat']),coordinate(row['longitude'],definition['coordinateFormat']),stamp.isoformat(),row['party_a'].zfill(2) if row['party_a'] else '',row['party_b'].zfill(2) if row['party_b'] else '',int(row['fatalities']),row['accident_class'].zfill(2)]))
+            result=dict(zip(fields,[year,row['prefecture'],prefecture,row['station'],row['number'],municipality,coordinate(row['latitude'],definition['coordinateFormat']),coordinate(row['longitude'],definition['coordinateFormat']),stamp.isoformat() if stamp else '',row['party_a'].zfill(2) if row['party_a'] else '',row['party_b'].zfill(2) if row['party_b'] else '',int(row['fatalities']),row['accident_class'].zfill(2)]))
             if len(municipality)!=5:raise ValueError('Invalid municipality code')
             writer.writerow(result);count+=1
     print(json.dumps({'normalizedRecords':count,'ignoredNonMainForms':ignored}))

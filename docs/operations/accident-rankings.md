@@ -33,7 +33,7 @@
 
 ## 集計版の検証と登録
 
-manifest JSONは `version,updatedAt,years,sources,codebooks,review` を持つ。`sources` の各項目は `name,url,license,retrievedAt`。`codebooks` は年度文字列をキーとして `bicycle,pedestrian,pedestrianClasses,classes` を持ち、各年度の公開コード表で確認した値だけを設定する。
+manifest JSONは `version,updatedAt,sourceYears,years,sources,codebooks,review` を持つ。`sources` の各項目は `name,url,license,retrievedAt`。`codebooks` は年度文字列をキーとして `bicycle,pedestrian,pedestrianClasses,classes` を持ち、各年度の公開コード表で確認した値だけを設定する。
 
 `review` は `inputHashes`（`records,locations,areas` のSHA-256）、`expectedUniqueRecords`（原本との照合件数）、`completeCoverage:true` を必須とする。署名済み承認の代替ではなく、担当者が確認した入力と生成入力が一致するためのチェック。部分抽出を全国データとして承認してはいけない。
 
@@ -96,3 +96,19 @@ CLIの認証がない状態でも、ログイン済みCloudflareコンソール�
 2025年の定義書とコード表の公開を確認したが、現行287,020件と原本との照合は未完了。出典: https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/opendata_2025.html
 
 CIのクリーンなNode22環境では全体の型検査・既存回帰・事故集計テストが成功。ローカル型エラーはCIでは再現しない。
+
+### 2025年原本の再取得・初期照合（2026-10-11）
+
+警察庁の公開CSVをローカルの新規ファイルへ再取得。CP932で読み、ヘッダーの置換文字は0個。SHA-256は `aad9afb4e6f9dac6e503f4c8252c018f5f27ab498024503084b17c07bc2ee730`。
+
+原本287,023件、原本識別子の重複0件。緯度または経度がゼロの行は3件。現行D1の287,020件との差分がゼロ座標除外と整合するが、全識別子・全属性の一致をまだ照合していない。座標不明の3件を消さず、新集計の対象外件数に残す。
+
+原本中の発生年は2025年278,247件、2024年8,714件、2023年52件、2022年8件、2020年2件。公開年度を発生年として扱ってはいけない。`source_year` は原本年度、発生時刻は原本の実際の年を保持する。事故識別とコード表は原本年度、ランキングと年ごとの変化は発生年を使う。
+
+`definitions/2025.json` に原本ヘッダー・DMS・都道府県対応・取得日・出典・原本ハッシュを記録し、287,023件を新しい正規化CSVへ変換できた。取り込み先はローカルのみ。本番データは変更していない。
+
+manifestは `sourceYears`（取得済み原本年度）と `years`（確認した発生期間）を分ける。確認期間外・発生日不明を対象外理由として集計し、原本全件の照合をAPIメタデータと「数え方とデータについて」に返す。公開年度の原本に含まれる事故の集計であり、発生年内のすべての事故を収録した保証ではない。
+
+出典: [2025年ファイル定義書](https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/fileteigisyo_2025.pdf)、[2025年コード表](https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/codebook_2025.pdf)。
+
+追加検証: 原本年度と発生年の区別、北海道の方面別識別、発生日不明・期間外の理由と照合、2025年定義書に基づくCP932/DMS変換を含むPython11件とAPI10件がローカルで成功。

@@ -84,8 +84,8 @@ def normalized(row, codebook):
     if row['accident_type_code'].zfill(2) in codebook['pedestrianClasses'] or any(row[p] in codebook['pedestrian'] for p in ('party_a_type_code','party_b_type_code')): mask |= 2
     stamp=datetime.fromisoformat(row['occurred_at'].replace('Z','+00:00')) if row['occurred_at'] else None
     # Input timestamps must explicitly retain Japan's source clock; reject accidental UTC shifts.
-    if stamp and (stamp.utcoffset() is None or stamp.utcoffset().total_seconds()!=32400 or stamp.year!=year): raise ValueError('Timestamp must be source year / +09:00')
-    return key,(year,stamp.hour if stamp else -1,mask,int(int(row['fatalities'] or 0)>0),codebook['classes'].get(row['accident_type_code'].zfill(2),'不明'))
+    if stamp and (stamp.utcoffset() is None or stamp.utcoffset().total_seconds()!=32400 or stamp.year<2018 or stamp.year>year): raise ValueError('Invalid occurrence year / timezone')
+    return key,(stamp.year if stamp else -1,stamp.hour if stamp else -1,mask,int(int(row['fatalities'] or 0)>0),codebook['classes'].get(row['accident_type_code'].zfill(2),'不明'))
 
 def build(args):
     inputs={'records':digest(args.records),'locations':digest(args.locations),'areas':digest(args.areas)}
@@ -94,6 +94,7 @@ def build(args):
     if manifest['review']['inputHashes']!=inputs: raise ValueError('Review does not match inputs')
     if manifest['review']['completeCoverage'] is not True: raise ValueError('Partial data cannot be published as complete')
     if not manifest['years'] or len(set(manifest['years']))!=len(manifest['years']):raise ValueError('Invalid years')
+    if not manifest['sourceYears'] or any(not isinstance(y,int) or y<2018 or y>2100 for y in manifest['sourceYears']+manifest['years']):raise ValueError('Invalid source/occurrence coverage')
     if not manifest['sources']:raise ValueError('Source attribution required')
     for s in manifest['sources']:
         if not all(s.get(k) for k in ('name','url','license','retrievedAt')) or not s['url'].startswith('https://'): raise ValueError('Source attribution required')
@@ -114,14 +115,14 @@ def build(args):
     for i,f in enumerate(boundaries):
         g=f['geometry']; polys=[g['coordinates']] if g['type']=='Polygon' else g['coordinates'];coords=[p for poly in polys for ring in poly for p in ring]
         db.execute('INSERT INTO boundaries VALUES(?,?,?,?,?)',(i,min(p[0] for p in coords),max(p[0] for p in coords),min(p[1] for p in coords),max(p[1] for p in coords)))
-    report={'inputRows':0,'uniqueRecords':0,'duplicates':0,'invalidCoordinates':0,'assigned':0,'uncertain':0,'excluded':0,'radiusComparison':{r:{'assigned':0,'uncertain':0} for r in RADII},'byYear':{}}
+    report={'inputRows':0,'uniqueRecords':0,'duplicates':0,'invalidCoordinates':0,'missingDate':0,'outsidePeriod':0,'assigned':0,'uncertain':0,'excluded':0,'radiusComparison':{r:{'assigned':0,'uncertain':0} for r in RADII},'byYear':{}}
     years=set();version=manifest['version']
-    for year in manifest['years']:
+    for year in manifest['sourceYears']:
         codebook=manifest['codebooks'][str(year)]
         if not all(k in codebook for k in ('bicycle','pedestrian','classes','pedestrianClasses')):raise ValueError('Incomplete year-specific codebook')
     datetime.fromisoformat(manifest['updatedAt'].replace('Z','+00:00'))
     # Location/area rows exist before count inserts; snapshot remains unpublished.
-    meta={'version':version,'updatedAt':manifest['updatedAt'],'years':manifest['years'],'method':'道路のつながりと立体構造を確認した交差点（30m以内）・道路区間への集計','sources':manifest['sources']}
+    meta={'version':version,'updatedAt':manifest['updatedAt'],'years':manifest['years'],'sourceYears':manifest['sourceYears'],'method':'指定した公開年度の原本に含まれる事故を発生年で集計。道路のつながりと立体構造を確認した交差点（30m以内）・道路区間が対象','sources':manifest['sources']}
     db.execute('INSERT INTO accident_snapshots VALUES(?,?,?,?)',(version,0,manifest['updatedAt'],json.dumps(meta,ensure_ascii=False)))
     areas={}
     for f in boundaries:
@@ -133,17 +134,22 @@ def build(args):
         db.execute('INSERT INTO accident_locations VALUES(?,?,?,?,?,?,?,?,?)',(version,p['id'],p.get('name') or p['address']+'付近',p['kind'],p['prefecture'],p['municipality'],point[1],point[0],json.dumps(scope,ensure_ascii=False)))
     with open(args.records,encoding='utf-8-sig',newline='') as stream:
         for row in csv.DictReader(stream):
+            if int(row['source_year']) not in manifest['sourceYears']:raise ValueError('Unreviewed source year')
             report['inputRows']+=1;key,dim=normalized(row,manifest['codebooks'][row['source_year']])
             fingerprint=hashlib.sha256(json.dumps(row,sort_keys=True).encode()).hexdigest()
             old=db.execute('SELECT fingerprint FROM seen WHERE year=? AND prefecture=? AND station=? AND number=?',key).fetchone()
             if old:
                 if old[0]!=fingerprint: raise ValueError('Conflicting duplicate record; review before proceeding')
                 report['duplicates']+=1;continue
-            db.execute('INSERT INTO seen VALUES(?,?,?,?,?)',(*key,fingerprint));report['uniqueRecords']+=1;years.add(dim[0]);report['byYear'][dim[0]]=report['byYear'].get(dim[0],0)+1
+            db.execute('INSERT INTO seen VALUES(?,?,?,?,?)',(*key,fingerprint));report['uniqueRecords']+=1;years.add(key[0]);report['byYear'][dim[0]]=report['byYear'].get(dim[0],0)+1
             state='uncertain';location_id=None;pref=row['prefecture_code'];municipality=row['municipality_code']
             try: point=(float(row['longitude']),float(row['latitude']))
             except ValueError: point=(0,0)
-            if not all(math.isfinite(p) for p in point) or not (122<=point[0]<=154 and 20<=point[1]<=46):
+            if dim[0]==-1:
+                report['missingDate']+=1;state='excluded'
+            elif dim[0] not in manifest['years']:
+                report['outsidePeriod']+=1;state='excluded'
+            elif not all(math.isfinite(p) for p in point) or not (122<=point[0]<=154 and 20<=point[1]<=46):
                 report['invalidCoordinates']+=1;state='excluded'
             else:
                 x,y=point
@@ -167,8 +173,10 @@ def build(args):
             db.execute('INSERT INTO accident_quality_counts VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(version,prefecture,municipality,year,hour,participants,fatal) DO UPDATE SET assigned=assigned+excluded.assigned,uncertain=uncertain+excluded.uncertain,excluded=excluded+excluded.excluded',(version,pref,municipality,*dim[:4],*quality))
             if location_id:db.execute('INSERT INTO accident_location_counts VALUES(?,?,?,?,?,?,?,1) ON CONFLICT(version,location_id,year,hour,participants,fatal,accident_class) DO UPDATE SET count=count+1',(version,location_id,*dim))
     if report['uniqueRecords'] != manifest['review']['expectedUniqueRecords']:raise ValueError('Source total differs')
-    if sorted(years)!=sorted(manifest['years']):raise ValueError('Year coverage differs')
+    if sorted(years)!=sorted(set(manifest['sourceYears'])):raise ValueError('Source year coverage differs')
     if sum(report[k] for k in ('assigned','uncertain','excluded'))!=report['uniqueRecords']:raise ValueError('Reconciliation failed')
+    meta['reconciliation']={k:report[k] for k in ('uniqueRecords','assigned','uncertain','excluded','missingDate','outsidePeriod','invalidCoordinates')}
+    db.execute('UPDATE accident_snapshots SET metadata_json=? WHERE version=?',(json.dumps(meta,ensure_ascii=False),version))
     db.commit()
     (output/'quality.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     # Version is immutable; no deletes/updates of existing production accident data.
