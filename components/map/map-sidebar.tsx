@@ -53,6 +53,7 @@ export default function MapSidebar({
   onClose,
 }: MapSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [activeTab, setActiveTab] = useState('list')
   const isMobileDevice = useMediaQuery("(max-width: 768px)")
   const isMobileView = isMobile || isMobileDevice
 
@@ -64,7 +65,7 @@ export default function MapSidebar({
     if (filterOptions.dangerType !== "all") count++
     if (filterOptions.dangerLevel !== "all") count++
     if (filterOptions.dateRange !== "all") count++
-    if (filterOptions.showPending) count++
+    if (!filterOptions.showPending) count++
     return count
   }
 
@@ -102,7 +103,7 @@ export default function MapSidebar({
   return (
     <div
       className={`relative bg-white border-r border-gray-200 transition-all duration-300 ${
-        isCollapsed ? "w-12" : isMobileView ? "w-full" : "w-80"
+        isCollapsed ? "w-12" : isMobileView ? "w-screen max-w-md" : "w-80"
       } flex flex-col h-full`}
     >
       {/* 折りたたみボタン（デスクトップのみ） */}
@@ -124,6 +125,7 @@ export default function MapSidebar({
           size="icon"
           className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full border border-gray-200 bg-white shadow-sm"
           onClick={onClose}
+          aria-label="報告一覧を閉じる"
         >
           <X className="h-4 w-4" />
         </Button>
@@ -131,11 +133,12 @@ export default function MapSidebar({
 
       {(!isCollapsed || isMobileView) && (
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-bold text-lg mb-2">危険箇所一覧</h2>
-            <Tabs defaultValue="list">
+          <div className="shrink-0 max-h-full overflow-y-auto p-4 border-b border-gray-200">
+            <h2 className="font-bold text-lg mb-2 pr-10">危険箇所の報告</h2>
+            <p className="mb-3 text-xs leading-relaxed text-slate-600">地図の表示範囲内・{filterOptions.prefecture}の報告です。警察庁の事故ピンはこの一覧には含まれません。</p>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="list">リスト</TabsTrigger>
+                <TabsTrigger value="list">報告一覧</TabsTrigger>
                 <TabsTrigger value="filter" className="relative">
                   フィルター
                   {hasActiveFilters && (
@@ -147,9 +150,7 @@ export default function MapSidebar({
               </TabsList>
               <TabsContent value="list" className="mt-2">
                 <p className="text-sm text-gray-500 mb-2">
-                  {dangerReports.length > 0
-                    ? `${dangerReports.length}件の危険箇所が報告されています`
-                    : "報告された危険箇所はありません"}
+                  {isLoading ? 'この範囲の報告を確認中…' : `公開 ${dangerReports.length}件${filterOptions.showPending ? ` / 自分の審査中 ${pendingReports.length}件` : ''}`}
                 </p>
               </TabsContent>
               <TabsContent value="filter" className="mt-2 space-y-3">
@@ -264,7 +265,7 @@ export default function MapSidebar({
             </Tabs>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2">
+          {activeTab === 'list' && <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {/* 絞り込み変更時の進行・完了を読み上げる。視覚的にはスケルトンが担い、
                 地図側の全画面オーバーレイは初回取得しか出さないため、ここで補う */}
             <p role="status" aria-live="polite" className="sr-only">
@@ -423,13 +424,13 @@ export default function MapSidebar({
               // データがない場合
               <div className="flex flex-col items-center justify-center h-full text-center p-4">
                 <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
-                <p className="text-gray-600">危険箇所の報告がありません</p>
+                <p className="text-gray-700 font-medium">現在の表示範囲・条件に合う報告はありません</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  フィルター条件を変更するか、新しい危険箇所を報告してください
+                  地図を動かすか、フィルターを変更してください。事故の記録がないという意味ではありません。
                 </p>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       )}
     </div>

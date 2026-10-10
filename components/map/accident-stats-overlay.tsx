@@ -5,6 +5,7 @@ import { X } from "lucide-react"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
+import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
 
 interface AccidentStatsOverlayProps {
   status: AccidentStatsStatus
@@ -13,6 +14,13 @@ interface AccidentStatsOverlayProps {
   awaitingLocationSelection: boolean
   isReportFormOpen: boolean
   onReset: () => void
+  isOtherPanelOpen?: boolean
+  locationSource?: 'map' | 'gps'
+  center?: [number, number] | null
+  error?: string | null
+  onCurrentLocation?: () => void
+  onAccidentNavigate?: (coordinates: [number, number]) => void
+  mapYearWindow?: AccidentYearWindow
 }
 
 /**
@@ -26,15 +34,38 @@ export function AccidentStatsOverlay({
   awaitingLocationSelection,
   isReportFormOpen,
   onReset,
+  isOtherPanelOpen = false,
+  locationSource = 'map',
+  center,
+  error,
+  onCurrentLocation,
+  onAccidentNavigate,
+  mapYearWindow,
 }: AccidentStatsOverlayProps) {
-  if (status === "idle" || awaitingLocationSelection || isReportFormOpen) return null
+  if (status === "idle" || awaitingLocationSelection || isReportFormOpen || isOtherPanelOpen) return null
+  const params = stats?.search_params
+  const window = params?.min_year != null && params.max_year != null ? { minYear: params.min_year, maxYear: params.max_year } : accidentYearWindow(params?.years)
 
   return (
-    <div className={`absolute z-40 ${
+    <section aria-label="周辺事故の集計" className={`absolute z-20 rounded-2xl border border-slate-200 bg-white shadow-lg ${
       isMobile
-        ? 'bottom-4 left-4 right-4 max-h-[60vh]'
+        ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] left-3 right-3 max-h-[55dvh]'
         : 'top-24 right-4 w-96 max-h-[calc(100vh-8rem)]'
     } overflow-y-auto`}>
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">{locationSource === 'gps' ? '現在地の周辺事故' : '選択地点の周辺事故'}</h2>
+            <p className="mt-1 text-xs text-slate-600">青い破線の円内・中心から半径300m</p>
+            <p className="mt-1 text-xs font-medium text-slate-800">集計: {formatAccidentYearWindow(window)}の全事故</p>
+            {mapYearWindow && <p className="mt-1 text-[11px] text-slate-600">地図のピン: {formatAccidentYearWindow(mapYearWindow)}・地図のフィルターを適用。集計期間外のピンは件数に含みません。</p>}
+            {locationSource === 'map' && <p className="mt-1 text-xs font-medium text-slate-700">地図で選択した地点の集計です。現在地とは別です。</p>}
+            {center && <p className="mt-1 text-[11px] text-slate-500">中心: {center[1].toFixed(5)}, {center[0].toFixed(5)}</p>}
+          </div>
+          <Button variant="ghost" size="sm" aria-label="事故集計を閉じる" onClick={onReset} className="h-8 w-8 shrink-0 p-0"><X className="h-4 w-4" /></Button>
+        </div>
+        {onCurrentLocation && <button type="button" onClick={onCurrentLocation} className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800">現在地の事故を調べる</button>}
+      </header>
       {status === 'loading' && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-lg">
           <div className="flex items-center justify-center">
@@ -47,31 +78,17 @@ export function AccidentStatsOverlay({
         <div className="bg-white rounded-xl border border-red-200 p-4 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-red-600 font-medium">事故統計の取得に失敗しました</p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onReset}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
+          <p className="text-xs text-red-800">{error?.includes('Unauthorized') ? 'ログイン状態を確認してから、もう一度地点を選んでください。' : '事故件数を確認できません。ゼロ件という意味ではありません。もう一度地点を選んでください。'}</p>
+          {error?.includes('現在地') && <p className="mt-2 text-xs text-red-800">{error}</p>}
         </div>
       )}
       {status === 'loaded' && stats && (
         <div className="relative bg-white rounded-xl shadow-lg border border-gray-200">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onReset}
-            className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-white/90 hover:bg-white"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          <AccidentStatsPanel stats={stats} mode="full" />
+          <AccidentStatsPanel stats={stats} mode="full" onAccidentNavigate={onAccidentNavigate} />
         </div>
       )}
-    </div>
+    </section>
   )
 }
 

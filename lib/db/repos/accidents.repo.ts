@@ -1,8 +1,8 @@
 import * as turf from '@turf/turf'
-import { and, eq, gte, inArray, isNull, lte, notInArray, or, type SQL } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lte, notInArray, or, sql, type SQL } from 'drizzle-orm'
 
 import type { AccidentStats, NearbyAccident } from '@/lib/traffic-accident-data'
-import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
+import { ACCIDENT_DATA_MAX_YEAR, accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
 import { normalizeAccidentRow, PEDESTRIAN_ACCIDENT_CODE } from '@/lib/traffic-accident/codes'
 
 import { assertCan, type Actor } from '../authz'
@@ -37,6 +37,15 @@ function yearsIn(minYear: number, maxYear: number): SQL {
   const years: number[] = []
   for (let year = minYear; year <= maxYear; year += 1) years.push(year)
   return inArray(trafficAccidents.sourceYear, years)
+}
+
+/** 遅れて公表された事故も発生年で絞る。source_year は旧取り込みでは発生年、新取り込みでは公開ファイル年。 */
+function occurrenceYears(minYear: number, maxYear: number): SQL {
+  const year = sql`cast(strftime('%Y', ${trafficAccidents.occurredAt}, '+9 hours') as integer)`
+  return and(
+    yearsIn(minYear - 1, Math.max(maxYear, ACCIDENT_DATA_MAX_YEAR)),
+    or(and(gte(year, minYear), lte(year, maxYear)), and(isNull(trafficAccidents.occurredAt), yearsIn(minYear, maxYear))),
+  )!
 }
 
 /** 人対車両（大分類コード01）も歩行者関与として扱う（取り込みで involves_pedestrian が常に false のため）。 */
@@ -136,12 +145,16 @@ const JST_OFFSET_MS = 9 * 60 * 60 * 1000
  * occurred_at は本当の時刻（既存行は '2024-04-08T23:15:00+00:00' のようなUTC表記、2025年取り込みは '+09:00' 表記）。
  * 以前は UTC の時で数えていたため、時間帯・月の集計が9時間ずれていた（2026-10-07 に本番の行とCSVを突き合わせて確認）。
  */
-function dateParts(value: string | null): { hour: number; month: number } | null {
+function dateParts(value: string | null): { hour: number; month: number; year: number } | null {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.valueOf())) return null
   const tokyo = new Date(date.valueOf() + JST_OFFSET_MS)
-  return { hour: tokyo.getUTCHours(), month: tokyo.getUTCMonth() + 1 }
+  return { hour: tokyo.getUTCHours(), month: tokyo.getUTCMonth() + 1, year: tokyo.getUTCFullYear() }
+}
+
+function occurrenceYear(row: AccidentRow): number {
+  return dateParts(row.occurredAt)?.year ?? row.sourceYear
 }
 
 function timeBucket(hour: number): string {
@@ -187,8 +200,9 @@ function toTokyoMinute(value: string | null): string | null {
 
 function nearbyAccident(row: AccidentRow, distanceMeters: number): NearbyAccident {
   return {
+    id: row.id,
     distance_m: Math.round(distanceMeters * 10) / 10,
-    year: row.sourceYear,
+    year: occurrenceYear(row),
     occurred_at: toTokyoMinute(row.occurredAt),
     type: row.accidentTypeLabel,
     severity: row.severityCode === 1 ? 'fatal' : 'injury',
@@ -257,7 +271,7 @@ function aggregateNearby(
     if (row.involvesPedestrian) pedestrianInvolved += 1
     if (row.severityCode === 1) fatalAccidents += 1
 
-    increment(byYear, row.sourceYear)
+    increment(byYear, occurrenceYear(row))
     increment(byWeather, row.weatherLabel)
     increment(byAccidentType, row.accidentTypeLabel)
     incrementIfPresent(byPartyType, row.partyATypeLabel)
@@ -313,6 +327,7 @@ function aggregateNearby(
     total_fatalities: totalFatalities,
     total_injuries: totalInjuries,
     child_involved: childInvolved,
+    child_data_available: false,
     pedestrian_involved: pedestrianInvolved,
     fatal_accidents: fatalAccidents,
     by_year: byYear,
@@ -369,6 +384,13 @@ function aggregateNearby(
       .sort((left, right) => left.distanceMeters - right.distanceMeters)
       .slice(0, 10)
       .map(({ row, distanceMeters }) => nearbyAccident(row, distanceMeters)),
+    // 件数は全件で集計。明細は死亡事故を優先し、表示上限を超えた場合は明示する。
+    accident_records: rows.slice()
+      .sort((a, b) => Number(b.row.severityCode === 1) - Number(a.row.severityCode === 1) || a.distanceMeters - b.distanceMeters)
+      .slice(0, 100)
+      .map(({ row, distanceMeters }) => nearbyAccident(row, distanceMeters)),
+    records_truncated: rows.length > 100,
+    records_limit: 100,
     risk_score: Math.min(
       100,
       Math.min(60, total * 10)
@@ -420,7 +442,7 @@ export function createAccidentsRepo(db: AppDb) {
         lte(trafficAccidents.longitude, input.maxLng),
         gte(trafficAccidents.latitude, input.minLat),
         lte(trafficAccidents.latitude, input.maxLat),
-        yearsIn(input.minYear, input.maxYear),
+        occurrenceYears(input.minYear, input.maxYear),
       ]
       if (input.severity === 'fatal') predicates.push(eq(trafficAccidents.severityCode, 1))
       if (input.child != null) predicates.push(eq(trafficAccidents.involvesChild, input.child))
@@ -451,7 +473,7 @@ export function createAccidentsRepo(db: AppDb) {
             severity: row.severityCode,
             fatalities: row.fatalities ?? 0,
             injuries: row.injuries ?? 0,
-            year: row.sourceYear,
+            year: occurrenceYear(row),
             type: row.accidentTypeLabel,
             hasChild: row.involvesChild,
             hasYoung: row.partyAAge === 1 || row.partyBAge === 1,
@@ -476,20 +498,32 @@ export function createAccidentsRepo(db: AppDb) {
       // 「過去N年」は今年ではなくデータの最新年から数える（例: 5年 → 2021〜2025）
       const window = accidentYearWindow(years)
 
-      const latitudeDelta = radiusMeters / 111_320
-      const longitudeScale = Math.max(Math.cos((input.latitude * Math.PI) / 180), 0.01)
-      const longitudeDelta = radiusMeters / (111_320 * longitudeScale)
+      // 球面距離(Turf)と同じ半径で候補範囲を計算する。111320m/度では300m境界の事故を落とす。
+      const angularRadius = radiusMeters / turf.earthRadius
+      const latitudeDelta = angularRadius * 180 / Math.PI
+      const crossesPole = Math.abs(input.latitude) + latitudeDelta >= 90
+      const longitudeDelta = crossesPole ? 180 : Math.asin(Math.sin(angularRadius) / Math.cos(input.latitude * Math.PI / 180)) * 180 / Math.PI
+      const minLng = input.longitude - longitudeDelta
+      const maxLng = input.longitude + longitudeDelta
+      const longitudePredicate = crossesPole ? undefined : minLng < -180
+        ? or(gte(trafficAccidents.longitude, minLng + 360), lte(trafficAccidents.longitude, maxLng))
+        : maxLng > 180
+          ? or(gte(trafficAccidents.longitude, minLng), lte(trafficAccidents.longitude, maxLng - 360))
+          : and(gte(trafficAccidents.longitude, minLng), lte(trafficAccidents.longitude, maxLng))
       const candidateRows = await db
         .select()
         .from(trafficAccidents)
         .where(and(
           gte(trafficAccidents.latitude, input.latitude - latitudeDelta),
           lte(trafficAccidents.latitude, input.latitude + latitudeDelta),
-          gte(trafficAccidents.longitude, input.longitude - longitudeDelta),
-          lte(trafficAccidents.longitude, input.longitude + longitudeDelta),
-          yearsIn(window.minYear, window.maxYear),
+          longitudePredicate,
+          occurrenceYears(window.minYear, window.maxYear),
         ))
-        .limit(MAX_NEARBY_CANDIDATES)
+        .limit(MAX_NEARBY_CANDIDATES + 1)
+
+      if (candidateRows.length > MAX_NEARBY_CANDIDATES) {
+        throw new Error('事故データが集計上限を超えたため正確な件数を確認できません。範囲を狭めてください。')
+      }
 
       const center = turfOps.point([input.longitude, input.latitude])
       const nearbyRows = candidateRows

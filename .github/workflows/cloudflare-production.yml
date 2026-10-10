@@ -92,6 +92,12 @@ jobs:
       - name: Test production source guard
         run: node --test scripts/cloudflare/production-source-guard.test.mjs
 
+      - name: Verify accident counts and map inspection
+        run: pnpm exec vitest run tests/unit/db/accidents-repo.test.ts tests/unit/lib/traffic-accident-stats-integrity.test.ts tests/unit/lib/traffic-accident-data.test.ts tests/unit/hooks/use-accident-stats.test.ts tests/components/danger-report/accident-stats-panel.test.tsx tests/components/map/map-container.test.tsx tests/components/map/accident-stats-overlay.test.tsx tests/components/map/accident-inspection-layer.test.tsx tests/components/map/map-sidebar.test.tsx --maxWorkers=1
+
+      - name: Test independent source audit
+        run: python -B scripts/migrate/audit-traffic-source.test.py
+
       - name: Build and deploy all production Workers
         run: pnpm deploy:cloudflare
 
