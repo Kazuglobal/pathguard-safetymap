@@ -38,6 +38,31 @@ describe('danger reports D1 repository', () => {
     })).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 
+  it('includes legacy reports without a prefecture only inside the requested map bounds', async () => {
+    const repo = createDangerReportsRepo(database.db as unknown as AppDb)
+    for (const row of [
+      { id: 'chiba', prefecture: '千葉県', latitude: 35.92 },
+      { id: 'legacy-null', prefecture: null, latitude: 35.92 },
+      { id: 'legacy-empty', prefecture: '', latitude: 35.92 },
+      { id: 'outside', prefecture: null, latitude: 34 },
+      { id: 'other-prefecture', prefecture: '東京都', latitude: 35.92 },
+      { id: 'private', prefecture: null, latitude: 35.92, status: 'pending' },
+    ]) {
+      await database.db.insert(dangerReports).values({
+        userId: owner.id, title: row.id, dangerType: 'traffic', dangerLevel: 3,
+        longitude: 139.96, status: 'approved', ...row,
+      })
+    }
+    const anon: Actor = { kind: 'anon' }
+    const reports = await repo.list(anon, {
+      prefecture: '千葉県',
+      bounds: { minLng: 139.8, minLat: 35.8, maxLng: 140.2, maxLat: 36.2 },
+    })
+    expect(reports.map((report) => report.id).sort()).toEqual(['chiba', 'legacy-empty', 'legacy-null'])
+    const prefectureOnly = await repo.list(anon, { prefecture: '千葉県' })
+    expect(prefectureOnly.map((report) => report.id)).toEqual(['chiba'])
+  })
+
   it('atomically reopens approved moderation when an image key changes', async () => {
     const repo = createDangerReportsRepo(database.db as unknown as AppDb)
     const report = await repo.create(owner, {

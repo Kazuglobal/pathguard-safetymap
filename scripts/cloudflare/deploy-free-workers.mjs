@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import dotenv from 'dotenv'
 import { isSensitiveBuildVariable } from './secret-policy.mjs'
 import { serverWorkerDeployEnv } from './ci-worker-env.mjs'
+import { assertProductionSource } from './production-source-guard.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const wranglerCli = path.join(projectRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
@@ -115,7 +116,9 @@ for (const envFile of ['.env.production.local', '.env.local', '.env.production']
   if (existsSync(envPath)) dotenv.config({ path: envPath, override: false, quiet: true })
 }
 
+if (!dryRun) assertProductionSource({ cwd: projectRoot, skipBuild })
 if (!skipBuild) run([buildScript])
+if (!dryRun) assertProductionSource({ cwd: projectRoot, skipBuild })
 
 const sensitiveBuildTimeValues = secretNames
   .filter(isSensitiveBuildVariable)

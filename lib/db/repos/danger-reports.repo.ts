@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 
 import { assertCan, AuthzError, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -96,7 +96,17 @@ export function createDangerReportsRepo(db: AppDb) {
       const predicates: SQL[] = []
       if (input.statuses) predicates.push(inArray(dangerReports.status, [...input.statuses]))
       if (input.ownerId) predicates.push(eq(dangerReports.userId, input.ownerId))
-      if (input.prefecture) predicates.push(eq(dangerReports.prefecture, input.prefecture))
+      if (input.prefecture) {
+        // Legacy reports can lack geocoded addresses. On the map, bounds still
+        // constrain their location; a prefecture-only list remains strict.
+        predicates.push(input.bounds
+          ? or(
+            eq(dangerReports.prefecture, input.prefecture),
+            isNull(dangerReports.prefecture),
+            eq(dangerReports.prefecture, ''),
+          )!
+          : eq(dangerReports.prefecture, input.prefecture))
+      }
       if (input.city) predicates.push(eq(dangerReports.city, input.city))
       if (input.dangerType) predicates.push(eq(dangerReports.dangerType, input.dangerType))
       if (input.minimumDangerLevel != null) predicates.push(gte(dangerReports.dangerLevel, input.minimumDangerLevel))
