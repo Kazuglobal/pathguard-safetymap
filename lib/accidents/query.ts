@@ -45,7 +45,7 @@ export interface RankedLocation {
 export interface SnapshotMetadata {
   version: string; updatedAt: string; years: number[]; method: string
   sourceYears?: number[]
-  reconciliation?: { uniqueRecords:number; assigned:number; uncertain:number; excluded:number; missingDate:number; outsidePeriod:number; invalidCoordinates:number }
+  reconciliation?: { uniqueRecords:number; assigned:number; uncertain:number; excluded:number; missingDate:number; outsidePeriod:number; invalidCoordinates:number; administrativeCodeMismatch?:number }
   sources: Array<{ name: string; url: string; license: string; retrievedAt: string }>
 }
 export interface RankingsResponse {

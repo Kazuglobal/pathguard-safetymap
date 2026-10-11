@@ -5,6 +5,7 @@ import json
 import sqlite3
 import tempfile
 import sys
+from unittest.mock import MagicMock, patch
 from types import SimpleNamespace
 from pathlib import Path
 MODULE=Path(__file__).resolve().parents[2]/'scripts/accidents/build_snapshot.py'
@@ -48,6 +49,46 @@ class SpatialAssignmentTest(unittest.TestCase):
         shape={'type':'Polygon','coordinates':[[[0,0],[4,0],[4,4],[0,4],[0,0]],[[1,1],[3,1],[3,3],[1,3],[1,1]]]}
         self.assertTrue(snapshot.contains((.5,.5),shape));self.assertFalse(snapshot.contains((2,2),shape))
 class SnapshotBuildTest(unittest.TestCase):
+    def test_road_sections_join_only_shared_same_grade_nodes_and_handle_loops(self):
+        sys.path.insert(0,str(MODULE.parent))
+        import prepare_locations
+        root=Path(tempfile.mkdtemp(prefix='road-sections-',dir=MODULE.parents[2]/'artifacts'))
+        topology=prepare_locations.DiskTopology(root)
+        points={1:[139.9,35.8],2:[139.91,35.8],3:[139.92,35.8],4:[139.91,35.8],5:[139.91,35.81],6:[139.93,35.8],7:[139.95,35.8],8:[139.96,35.81],9:[139.96,35.8],10:[139.97,35.8],11:[139.98,35.8]}
+        try:
+            for identity,refs,extra in [(10,[1,2],{}),(11,[2,3],{}),(12,[4,5],{}),(13,[3,6],{'layer':'1','bridge':'yes'}),(14,[7,8,9],{}),(15,[9,7],{}),(16,[10,11],{}),(17,[10,11],{})]:
+                topology.add_way(identity,refs,[points[node] for node in refs],{'highway':'residential','name':'試験道路',**extra})
+            topology.db.execute('CREATE TABLE junctions(node INTEGER,grade TEXT,PRIMARY KEY(node,grade))')
+            sections=list(topology.road_sections())
+            self.assertEqual(len(sections),6)
+            self.assertTrue(any(refs==[1,2,3] for _,_,_,refs in sections))
+            self.assertTrue(any(refs==[4,5] for _,_,_,refs in sections))
+            self.assertTrue(any(refs==[3,6] for _,_,_,refs in sections))
+            self.assertTrue(any(refs[0]==refs[-1] and set(refs)=={7,8,9} for _,_,_,refs in sections))
+            self.assertEqual(sum(refs==[10,11] for _,_,_,refs in sections),2)
+            self.assertEqual(topology.db.execute('SELECT COUNT(*) FROM pieces WHERE section IS NOT NULL').fetchone()[0],8)
+        finally:topology.close()
+
+    def test_pbf_child_failure_and_space_guard_never_emit_candidates(self):
+        sys.path.insert(0,str(MODULE.parent))
+        import prepare_locations
+        root=Path(tempfile.mkdtemp(prefix='pbf-failures-',dir=MODULE.parents[2]/'artifacts'))
+        source=root/'dummy.pbf';source.write_bytes(b'unread-test-placeholder')
+        for reason in ('failure','space'):
+            child=MagicMock();child.poll.return_value=7 if reason=='failure' else None;child.returncode=7
+            args=SimpleNamespace(osm=source,areas=root/'unused.geojson',work=root/reason,output=root/(reason+'.geojson'),bounds=None)
+            original_guard=prepare_locations.require_space
+            def guard(directory):
+                if reason=='space' and (Path(directory)/'ingest.log').exists():raise RuntimeError('Simulated insufficient disk space')
+                original_guard(directory)
+            with patch.object(prepare_locations.subprocess,'Popen',return_value=child),patch.object(prepare_locations,'require_space',side_effect=guard):
+                self.assertRaises(RuntimeError,prepare_locations.prepare_file,args)
+            self.assertFalse(args.output.exists())
+            self.assertTrue((Path(args.work)/'ingest.log').exists())
+            with sqlite3.connect(Path(args.work)/'topology.sqlite') as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM ways').fetchone()[0],0)
+            if reason=='space':child.terminate.assert_called_once();child.wait.assert_called_once()
+            else:child.terminate.assert_not_called()
+
     def test_streamed_road_topology_preserves_shared_nodes_and_grade(self):
         sys.path.insert(0,str(MODULE.parent))
         import prepare_locations

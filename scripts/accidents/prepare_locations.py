@@ -6,12 +6,41 @@ import json
 import sqlite3
 import hashlib
 import shutil
+import subprocess
+import sys
+import time
+from collections import deque
 from pathlib import Path
 from build_snapshot import SpatialStore
 
 ROADS={'motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link','tertiary','tertiary_link','unclassified','residential','living_street','service'}
 def require_space(directory):
     if shutil.disk_usage(directory).free<5*1024**3:raise RuntimeError('Less than 5 GiB free; preserve working files and use a larger disk')
+
+def ingest_pbf(topology,args):
+    """Supervise the native cache without a costly Python callback for every node."""
+    if shutil.disk_usage(args.work).free<Path(args.osm).stat().st_size*3+5*1024**3:
+        raise RuntimeError('Insufficient free space for the node cache and safety reserve')
+    command=[sys.executable,str(Path(__file__).with_name('ingest_pbf.py')),'--osm',str(Path(args.osm).resolve()),'--work',str(topology.directory.resolve())]
+    if args.bounds:command+=['--bounds',*[str(value) for value in args.bounds]]
+    topology.db.close()
+    try:
+        with (topology.directory/'ingest.log').open('x',encoding='utf-8') as log:
+            child=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT)
+            try:
+                while child.poll() is None:
+                    require_space(topology.directory)
+                    time.sleep(1)
+                if child.returncode:raise RuntimeError('PBF ingestion failed; see the retained ingest.log')
+            finally:
+                if child.poll() is None:
+                    child.terminate()
+                    try:child.wait(timeout=10)
+                    except subprocess.TimeoutExpired:child.kill();child.wait()
+    finally:
+        topology.db=sqlite3.connect(topology.directory/'topology.sqlite')
+        topology.db.execute('PRAGMA cache_size=-8192')
+    topology.ways=topology.db.execute('SELECT COUNT(*) FROM ways').fetchone()[0]
 class DiskTopology:
     """Retain shared-node topology on disk, including ways crossing pilot bounds."""
     def __init__(self, directory):
@@ -44,12 +73,58 @@ class DiskTopology:
             self.db.commit()
             require_space(self.directory)
 
+    def road_sections(self):
+        """Join OSM way seams only at the same shared node/grade with two pieces."""
+        self.db.executescript('''CREATE TABLE pieces(id TEXT PRIMARY KEY,start INTEGER,finish INTEGER,grade TEXT,name TEXT,refs TEXT,section TEXT);
+            CREATE INDEX pieces_start ON pieces(grade,start);
+            CREATE INDEX pieces_finish ON pieces(grade,finish);''')
+        piece_count=0
+        for identity,grade,name,refs in self.db.execute('SELECT id,grade,name,refs FROM ways ORDER BY id'):
+            references=json.loads(refs);segment=[references[0]];piece=0
+            for position,node in enumerate(references[1:],start=1):
+                segment.append(node)
+                if position==len(references)-1 or self.db.execute('SELECT 1 FROM junctions WHERE node=? AND grade=?',(node,grade)).fetchone():
+                    self.db.execute('INSERT INTO pieces VALUES(?,?,?,?,?,?,NULL)',(f'osm-way-{identity}-{piece}',segment[0],segment[-1],grade,name,json.dumps(segment)))
+                    piece+=1;segment=[node]
+                    piece_count+=1
+                    if piece_count%5000==0:self.db.commit();require_space(self.directory)
+        self.db.commit()
+        for seed,grade,name,refs in self.db.execute('SELECT id,grade,name,refs FROM pieces ORDER BY id'):
+            if self.db.execute('SELECT section FROM pieces WHERE id=?',(seed,)).fetchone()[0]:continue
+            section='osm-road-'+hashlib.sha256(seed.encode()).hexdigest()[:24]
+            chunks=deque([json.loads(refs)]);node_count=len(chunks[0]);names={name} if name else set()
+            self.db.execute('UPDATE pieces SET section=? WHERE id=?',(section,seed))
+            for left in (True,False):
+                current=seed
+                while True:
+                    node=chunks[0][0] if left else chunks[-1][-1]
+                    if self.db.execute('SELECT 1 FROM junctions WHERE node=? AND grade=?',(node,grade)).fetchone():break
+                    if len(self.db.execute('SELECT neighbor FROM edges WHERE node=? AND grade=? LIMIT 3',(node,grade)).fetchall())!=2:break
+                    # UNION uses both endpoint indexes and deduplicates closed pieces.
+                    adjacent=self.db.execute('SELECT id,name,refs,section FROM pieces WHERE grade=? AND start=? UNION SELECT id,name,refs,section FROM pieces WHERE grade=? AND finish=?',(grade,node,grade,node)).fetchall()
+                    if len(adjacent)!=2:break
+                    other=next((p for p in adjacent if p[0]!=current),None)
+                    if other is None or other[3]:break
+                    extra=json.loads(other[2])
+                    if left:
+                        if extra[-1]!=node:extra.reverse()
+                        chunks.appendleft(extra[:-1])
+                    else:
+                        if extra[0]!=node:extra.reverse()
+                        chunks.append(extra[1:])
+                    node_count+=len(extra)-1
+                    if node_count>100000:raise ValueError('Road section exceeds bounded geometry budget; review the topology')
+                    if other[1]:names.add(other[1])
+                    self.db.execute('UPDATE pieces SET section=? WHERE id=?',(section,other[0]));current=other[0]
+            yield section,grade,next(iter(names)) if len(names)==1 else '',[node for chunk in chunks for node in chunk]
+        self.db.commit()
+
     def emit(self, areas, output):
         self.db.commit()
         self.db.executescript('''CREATE TABLE junctions(node INTEGER,grade TEXT,PRIMARY KEY(node,grade)) WITHOUT ROWID;
             INSERT INTO junctions SELECT node,grade FROM edges GROUP BY node,grade HAVING COUNT(*)>=3;''')
         spatial=SpatialStore(self.directory/'boundaries.sqlite')
-        report={'ways':self.ways,'intersections':0,'roadPieces':0,'outsideOrAmbiguousBoundary':0,'reviewedLocations':0,'completeCoverageReviewed':False}
+        report={'ways':self.ways,'intersections':0,'roadSections':0,'outsideOrAmbiguousBoundary':0,'reviewedLocations':0,'completeCoverageReviewed':False}
         try:
             spatial.ingest(areas,'boundary')
             require_space(Path(output).resolve().parent)
@@ -65,20 +140,17 @@ class DiskTopology:
                     feature={'type':'Feature','geometry':geometry,'properties':{'id':identity,'kind':kind,'layer':'_'.join(json.loads(grade)),'reviewed':False,'name':name,'address':props['municipalityName'],'prefecture':props['prefecture'],'municipality':props['municipality']}}
                     if not first:stream.write(',')
                     json.dump(feature,stream,ensure_ascii=False);first=False
-                    report['intersections' if kind=='intersection' else 'roadPieces']+=1
-                    if (report['intersections']+report['roadPieces'])%10000==0:
+                    report['intersections' if kind=='intersection' else 'roadSections']+=1
+                    if (report['intersections']+report['roadSections'])%10000==0:
+                        self.db.commit()
                         require_space(self.directory);require_space(Path(output).resolve().parent)
                 for node,grade,x,y in self.db.execute('SELECT j.node,j.grade,n.x,n.y FROM junctions j JOIN nodes n ON n.id=j.node ORDER BY j.node,j.grade'):
                     suffix=hashlib.sha256(grade.encode()).hexdigest()[:12]
                     emit_feature(f'osm-node-{node}-{suffix}','intersection',{'type':'Point','coordinates':[x,y]},grade,'')
-                for identity,grade,name,refs in self.db.execute('SELECT id,grade,name,refs FROM ways ORDER BY id'):
-                    references=json.loads(refs);segment=[references[0]];piece=0
-                    for position,node in enumerate(references[1:],start=1):
-                        segment.append(node)
-                        if position==len(references)-1 or self.db.execute('SELECT 1 FROM junctions WHERE node=? AND grade=?',(node,grade)).fetchone():
-                            coordinates=[list(self.db.execute('SELECT x,y FROM nodes WHERE id=?',(n,)).fetchone()) for n in segment]
-                            emit_feature(f'osm-way-{identity}-{piece}','road',{'type':'LineString','coordinates':coordinates},grade,name)
-                            piece+=1;segment=[node]
+                for identity,grade,name,references in self.road_sections():
+                    coordinates=[list(self.db.execute('SELECT x,y FROM nodes WHERE id=?',(node,)).fetchone()) for node in references]
+                    emit_feature(identity,'road',{'type':'LineString','coordinates':coordinates},grade,name)
+                report['sourceRoadPieces']=self.db.execute('SELECT COUNT(*) FROM pieces').fetchone()[0]
                 stream.write(']}')
             Path(str(output)+'.quality.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
             return report
@@ -93,20 +165,7 @@ def prepare_file(args):
         if args.bounds and (len(args.bounds)!=4 or not (122<=args.bounds[0]<args.bounds[2]<=154 and 20<=args.bounds[1]<args.bounds[3]<=46)):
             raise ValueError('Invalid pilot bounds')
         if Path(args.osm).suffix=='.pbf':
-            import osmium
-            if shutil.disk_usage(args.work).free<Path(args.osm).stat().st_size*3+5*1024**3:
-                raise RuntimeError('Insufficient free space for the nationwide node cache and safety reserve')
-            class Handler(osmium.SimpleHandler):
-                nodes=0
-                def node(self,node):
-                    self.nodes+=1
-                    if self.nodes%1000000==0:require_space(topology.directory)
-                def way(self,way):
-                    tags=dict(way.tags)
-                    if tags.get('highway') not in ROADS:return
-                    topology.add_way(way.id,[node.ref for node in way.nodes],[[node.lon,node.lat] for node in way.nodes],tags,args.bounds)
-            # A file-backed node cache is mandatory for the nationwide PBF.
-            Handler().apply_file(args.osm,locations=True,idx='sparse_file_array,'+str((Path(args.work)/'node-locations.cache').resolve()))
+            ingest_pbf(topology,args)
         else:
             import ijson
             nodes=0
