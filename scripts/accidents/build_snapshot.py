@@ -17,6 +17,19 @@ from pathlib import Path
 
 RADII = (10, 20, 30, 50)
 CLASSES = {'01': '歩行者と車両', '21': '車両どうし', '41': '車両のみ', '61': '列車が関係する事故'}
+REQUIRED_HIGHWAYS = frozenset({'motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link','tertiary','tertiary_link','unclassified','residential','living_street','service','cycleway','pedestrian','footway','path'})
+
+def reviewed_highway_scope(locations, review):
+    """Bind the reviewed extraction scope to the hashed geometry input."""
+    import ijson
+    with open(locations,'rb') as stream:
+        scope=next(ijson.items(stream,'highwayScope'),None)
+    if (not isinstance(scope,list) or not all(isinstance(v,str) for v in scope)
+        or len(scope)!=len(set(scope)) or not REQUIRED_HIGHWAYS.issubset(scope)):
+        raise ValueError('Road geometry lacks required bicycle/pedestrian highway coverage')
+    if review.get('highwayScopeReviewed') is not True or review.get('highwayScope')!=scope:
+        raise ValueError('Road highway scope has not been reviewed against geometry')
+    return scope
 
 def stream_features(path):
     """Large GeoJSON requires the streaming reader; fixtures may use the stdlib."""
@@ -191,6 +204,7 @@ def _build(args, resources):
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}',manifest['version']): raise ValueError('Invalid version')
     if manifest['review']['inputHashes']!=inputs: raise ValueError('Review does not match inputs')
     if manifest['review']['completeCoverage'] is not True: raise ValueError('Partial data cannot be published as complete')
+    highway_scope=reviewed_highway_scope(args.locations,manifest['review'])
     if not manifest['years'] or len(set(manifest['years']))!=len(manifest['years']):raise ValueError('Invalid years')
     if not manifest['sourceYears'] or any(not isinstance(y,int) or y<2018 or y>2100 for y in manifest['sourceYears']+manifest['years']):raise ValueError('Invalid source/occurrence coverage')
     if not manifest['sources']:raise ValueError('Source attribution required')
@@ -215,6 +229,7 @@ def _build(args, resources):
     datetime.fromisoformat(manifest['updatedAt'].replace('Z','+00:00'))
     # Location/area rows exist before count inserts; snapshot remains unpublished.
     meta={'version':version,'updatedAt':manifest['updatedAt'],'years':manifest['years'],'sourceYears':manifest['sourceYears'],'method':'指定した公開年度の原本に含まれる事故を発生年で集計。道路のつながりと立体構造を確認した交差点（30m以内）・道路区間が対象','sources':manifest['sources']}
+    meta['highwayScope']=highway_scope
     db.execute('INSERT INTO accident_snapshots VALUES(?,?,?,?)',(version,0,manifest['updatedAt'],json.dumps(meta,ensure_ascii=False)))
     areas={}
     for (body,) in spatial.db.execute("SELECT body FROM features WHERE kind='boundary'"):

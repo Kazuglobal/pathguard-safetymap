@@ -11,9 +11,10 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
-from build_snapshot import SpatialStore
+from build_snapshot import SpatialStore, REQUIRED_HIGHWAYS
 
-ROADS={'motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link','tertiary','tertiary_link','unclassified','residential','living_street','service'}
+ROADS=REQUIRED_HIGHWAYS
+VEHICLE_BASELINE=ROADS-{'cycleway','pedestrian','footway','path'}
 def require_space(directory):
     if shutil.disk_usage(directory).free<5*1024**3:raise RuntimeError('Less than 5 GiB free; preserve working files and use a larger disk')
 
@@ -23,6 +24,7 @@ def ingest_pbf(topology,args):
         raise RuntimeError('Insufficient free space for the node cache and safety reserve')
     command=[sys.executable,str(Path(__file__).with_name('ingest_pbf.py')),'--osm',str(Path(args.osm).resolve()),'--work',str(topology.directory.resolve())]
     if args.bounds:command+=['--bounds',*[str(value) for value in args.bounds]]
+    if topology.road_scope==VEHICLE_BASELINE:command+=['--vehicle-road-baseline']
     topology.db.close()
     try:
         with (topology.directory/'ingest.log').open('x',encoding='utf-8') as log:
@@ -43,20 +45,25 @@ def ingest_pbf(topology,args):
     topology.ways=topology.db.execute('SELECT COUNT(*) FROM ways').fetchone()[0]
 class DiskTopology:
     """Retain shared-node topology on disk, including ways crossing pilot bounds."""
-    def __init__(self, directory):
+    def __init__(self, directory, road_scope=ROADS):
         self.directory=Path(directory)
         self.directory.mkdir(parents=True,exist_ok=True)
         require_space(self.directory)
         if (self.directory/'topology.sqlite').exists():raise ValueError('Use a new working directory')
         self.db=sqlite3.connect(self.directory/'topology.sqlite')
+        if road_scope not in (ROADS,VEHICLE_BASELINE):raise ValueError('Invalid extraction scope')
+        self.road_scope=road_scope
         self.db.execute('PRAGMA cache_size=-8192')
         self.db.executescript('''CREATE TABLE nodes(id INTEGER PRIMARY KEY,x REAL,y REAL);
             CREATE TABLE ways(id INTEGER PRIMARY KEY,grade TEXT,name TEXT,refs TEXT);
             CREATE TABLE edges(node INTEGER,grade TEXT,neighbor INTEGER,PRIMARY KEY(node,grade,neighbor)) WITHOUT ROWID;''')
+        self.db.execute('CREATE TABLE extraction_metadata(key TEXT PRIMARY KEY,value TEXT)')
+        self.db.execute('INSERT INTO extraction_metadata VALUES(?,?)',('highwayScope',json.dumps(sorted(self.road_scope))))
+        self.db.commit()
         self.ways=0
 
     def add_way(self, identity, references, coordinates, tags, bounds=None):
-        if tags.get('highway') not in ROADS:return
+        if tags.get('highway') not in self.road_scope:return
         if len(references)<2 or len(references)!=len(coordinates):raise ValueError('Incomplete OSM way')
         if bounds:
             west,south,east,north=bounds
@@ -124,12 +131,13 @@ class DiskTopology:
         self.db.executescript('''CREATE TABLE junctions(node INTEGER,grade TEXT,PRIMARY KEY(node,grade)) WITHOUT ROWID;
             INSERT INTO junctions SELECT node,grade FROM edges GROUP BY node,grade HAVING COUNT(*)>=3;''')
         spatial=SpatialStore(self.directory/'boundaries.sqlite')
-        report={'ways':self.ways,'intersections':0,'roadSections':0,'outsideOrAmbiguousBoundary':0,'reviewedLocations':0,'completeCoverageReviewed':False}
+        scope=json.loads(self.db.execute('SELECT value FROM extraction_metadata WHERE key=\'highwayScope\'').fetchone()[0])
+        report={'ways':self.ways,'highwayScope':scope,'intersections':0,'roadSections':0,'outsideOrAmbiguousBoundary':0,'reviewedLocations':0,'completeCoverageReviewed':False}
         try:
             spatial.ingest(areas,'boundary')
             require_space(Path(output).resolve().parent)
             with open(output,'x',encoding='utf-8') as stream:
-                stream.write('{"type":"FeatureCollection","features":[');first=True
+                stream.write('{"type":"FeatureCollection","highwayScope":'+json.dumps(scope)+',"features":[');first=True
                 def emit_feature(identity,kind,geometry,grade,name):
                     nonlocal first
                     center=geometry['coordinates'] if kind=='intersection' else geometry['coordinates'][len(geometry['coordinates'])//2]
@@ -160,7 +168,7 @@ class DiskTopology:
 
 def prepare_file(args):
     """The CLI never materializes national nodes, ways, adjacency sets or outputs."""
-    topology=DiskTopology(args.work)
+    topology=DiskTopology(args.work,VEHICLE_BASELINE if getattr(args,'vehicle_road_baseline',False) else ROADS)
     try:
         if args.bounds and (len(args.bounds)!=4 or not (122<=args.bounds[0]<args.bounds[2]<=154 and 20<=args.bounds[1]<args.bounds[3]<=46)):
             raise ValueError('Invalid pilot bounds')
@@ -179,7 +187,7 @@ def prepare_file(args):
             topology.db.commit()
             with open(args.osm,'rb') as stream:
                 for element in ijson.items(stream,'elements.item',use_float=True):
-                    if element['type']!='way' or element.get('tags',{}).get('highway') not in ROADS:continue
+                    if element['type']!='way' or element.get('tags',{}).get('highway') not in topology.road_scope:continue
                     coordinates=[]
                     for node in element['nodes']:
                         point=topology.db.execute('SELECT x,y FROM nodes WHERE id=?',(node,)).fetchone()
@@ -193,4 +201,5 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser()
     for name in ('osm','areas','output','work'):parser.add_argument('--'+name,required=True)
     parser.add_argument('--bounds',type=float,nargs=4,metavar=('WEST','SOUTH','EAST','NORTH'),help='Pilot extraction only; never considered complete national coverage')
+    parser.add_argument('--vehicle-road-baseline',action='store_true',help='Vehicle-only comparison; cannot pass the publication scope gate')
     print(json.dumps(prepare_file(parser.parse_args())))

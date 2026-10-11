@@ -37,6 +37,8 @@ manifest JSONは `version,updatedAt,sourceYears,years,sources,codebooks,review` 
 
 `review` は `inputHashes`（`records,locations,areas` のSHA-256）、`expectedUniqueRecords`（原本との照合件数）、`completeCoverage:true` を必須とする。署名済み承認の代替ではなく、担当者が確認した入力と生成入力が一致するためのチェック。部分抽出を全国データとして承認してはいけない。
 
+さらに `highwayScopeReviewed:true` と `highwayScope` の配列を必須とする。道路抽出時にSQLiteへ固定し、候補GeoJSONのトップレベルにも保存した `highwayScope` と一致することを検証する。車道の対象種類に加え `cycleway,pedestrian,footway,path` がすべて必要。これらを同じ共有ノード・立体区分の道路網へ取り込み、交差点・区間を作り直す。別に作った候補を後から足すだけでは接続数が変わるため不十分。道路種類の存在確認だけで品質承認は完了せず、実事故との照合と未確定候補の検証も必要。
+
 ```powershell
 python -m pip install -r scripts/accidents/requirements.txt
 python scripts/accidents/normalize_npa.py --input original.csv --definition reviewed-2025.json --output normalized-2025.csv
@@ -197,3 +199,15 @@ manifestは `sourceYears`（取得済み原本年度）と `years`（確認し�
 座標の初期確認171件の内訳はゼロ座標151件、日本の概略範囲外20件（2020年原本）だった。`data/national-coordinate-screening.json` に年度別理由を記録。原本から削除せず、原因を断定しない。集計時には期間外・座標不明などの理由を決められた順序で判定するため、この171件を最終的な対象外件数として断定しない。
 
 最新コード9baf3d541のCIは全体型検査・既存回帰・API10件・Python16件・隔離プレビュー配置まで成功。390×844の実ブラウザーで地図の日本語操作名と44×44pxのボタン4つを確認した。全国集計と実ランキングの正常状態のQAは引き続き未完了。
+
+### 自転車・歩行者専用の道を含める修正（2026-10-11）
+
+追加レビューで、従来の車道抽出は `cycleway,pedestrian,footway,path` を除外していたことが判明した。自転車・歩行者事故の別候補を見落とし、近くの車道へ割り当てる可能性がある。既存の柏市距離比較と進行中の全国処理は車道の比較用データであり、全対象の品質を証明しない。いずれも未確認・未公開のまま保持する。
+
+4種類を車道と同じ共有ノード・立体区分の道路網に取り込むよう修正した。抽出時の道路種類をSQLiteへ保存し、子プロセスとの一致を確認し、候補GeoJSONと公開APIの集計版メタデータにも記録する。対象種類が欠ける候補や、道路種類が明示的に確認されていないmanifestからは公開用SQLを作れない。旧車道抽出はこの条件を通らない。
+
+実依存のPython18件が成功。4種類すべてのJSON/PBF抽出、車道と共有する交差点、立体道路の分離、対象種類の欠落・レビュー不一致を検証した。API10件も成功。再レビューでコードの問題は見つからなかった。cc46de329のCIは型検査・既存回帰・API10件・Python16件・隔離プレビュー配置まで成功。
+
+柏市境界を囲む範囲 `[139.85,35.75,140.15,36.0]` で関東固定版PBFを再抽出中。新しい作業先は `artifacts/kashiwa-all-roads-20261011`。専用道を含む候補と車道の候補について、自転車・歩行者別に候補の重なりを比較する。全国の対象種類別原本照合、地点の確認、事故の分類照合、D1容量、実ランキングQAは引き続き未完了。
+
+比較に範囲差が混ざらないよう、同じ関東原本・範囲・区間作成処理で車道側も新規抽出する。`--vehicle-road-baseline` は比較専用であり、公開前の道路種類チェックを通らない。車道側の作業先は `artifacts/kashiwa-vehicle-control-20261011`。実PBFの回帰で、専用道を含む8本に対して比較用は車道4本だけとなり、比較用候補から公開用データを作れないことを確認した。両者の比較は候補の診断であり、確認済み事故への割り当てではない。

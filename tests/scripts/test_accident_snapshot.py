@@ -94,13 +94,17 @@ class SnapshotBuildTest(unittest.TestCase):
         import prepare_locations
         root=Path(tempfile.mkdtemp(prefix='road-topology-',dir=MODULE.parents[2]/'artifacts'))
         points={1:[139.9,35.8],2:[139.89,35.8],3:[139.91,35.8],4:[139.9,35.81],5:[139.9,35.8],6:[139.9,35.79],7:[139.9,35.82]}
+        points.update({node:[139.9+node*.0001,35.805] for node in range(8,12)})
         elements=[{'type':'node','id':identity,'lon':point[0],'lat':point[1]} for identity,point in points.items()]
         elements += [{'type':'way','id':identity,'nodes':refs,'tags':{'highway':'residential',**tags}} for identity,refs,tags in [(10,[2,1,3],{}),(11,[1,4],{}),(12,[6,5,7],{}),(13,[1,7],{'bridge':'yes','layer':'1'})]]
+        elements += [{'type':'way','id':20+node,'nodes':[1,node],'tags':{'highway':kind}} for node,kind in zip(range(8,12),('cycleway','pedestrian','footway','path'))]
         osm=root/'osm.json';osm.write_text(json.dumps({'elements':elements}),encoding='utf-8')
         area=root/'area.json';area.write_text(json.dumps({'features':[{'properties':{'prefecture':'12','prefectureName':'千葉県','municipality':'12217','municipalityName':'柏市'},'geometry':{'type':'Polygon','coordinates':[[[139.8,35.7],[140,35.7],[140,35.9],[139.8,35.9],[139.8,35.7]]]}}]}),encoding='utf-8')
         output=root/'locations.json'
         report=prepare_locations.prepare_file(SimpleNamespace(osm=osm,areas=area,work=root/'work',output=output,bounds=None))
         self.assertEqual(report['intersections'],1)
+        self.assertEqual(report['ways'],8)
+        self.assertEqual(report['highwayScope'],sorted(snapshot.REQUIRED_HIGHWAYS))
         features=json.loads(output.read_text(encoding='utf-8'))['features']
         self.assertTrue(all(f['properties']['reviewed'] is False for f in features))
         self.assertEqual(len({f['properties']['id'] for f in features}),len(features))
@@ -116,6 +120,12 @@ class SnapshotBuildTest(unittest.TestCase):
         bounded=root/'bounded.json'
         prepare_locations.prepare_file(SimpleNamespace(osm=pbf,areas=area,work=root/'pbf-work',output=bounded,bounds=[139.899,35.799,139.901,35.801]))
         self.assertEqual(features,json.loads(bounded.read_text(encoding='utf-8'))['features'])
+        baseline=root/'baseline.json'
+        prepare_locations.prepare_file(SimpleNamespace(osm=pbf,areas=area,work=root/'baseline-work',output=baseline,bounds=[139.899,35.799,139.901,35.801],vehicle_road_baseline=True))
+        baseline_quality=json.loads(Path(str(baseline)+'.quality.json').read_text())
+        self.assertEqual(baseline_quality['ways'],4)
+        self.assertEqual(baseline_quality['highwayScope'],sorted(prepare_locations.VEHICLE_BASELINE))
+        self.assertRaises(ValueError,snapshot.reviewed_highway_scope,baseline,{'highwayScope':baseline_quality['highwayScope'],'highwayScopeReviewed':True})
 
     def test_disk_boundary_index_holes_cache_and_duplicate_identity(self):
         output_root=MODULE.parents[2]/'artifacts';output_root.mkdir(exist_ok=True)
@@ -156,9 +166,11 @@ class SnapshotBuildTest(unittest.TestCase):
             writer.writerow(dict(row,record_number='6',municipality_code='12218'))
         f=junction('a');f['properties'].update(prefecture='12',municipality='12217',name='試験地点',address='柏市')
         unused=junction('unused',140.5);unused['properties'].update(prefecture='12',municipality='12217',name='未使用地点',address='柏市')
-        locations.write_text(json.dumps({'features':[f,unused]}),encoding='utf-8')
+        scope=sorted(snapshot.REQUIRED_HIGHWAYS)
+        locations.write_text(json.dumps({'highwayScope':scope,'features':[f,unused]}),encoding='utf-8')
         areas.write_text(json.dumps({'features':[{'geometry':{'type':'Polygon','coordinates':[[[139.8,35.7],[140,35.7],[140,35.9],[139.8,35.9],[139.8,35.7]]]},'properties':{'prefecture':'12','prefectureName':'千葉県','municipality':'12217','municipalityName':'柏市'}}]}),encoding='utf-8')
         data={'version':'fixture-only','updatedAt':'2026-10-10','years':[2024],'sourceYears':[2025],'sources':[{'name':'試験用','url':'https://example.com','license':'test','retrievedAt':'2026-10-10'}],'codebooks':{'2025':CODEBOOK},'review':{'completeCoverage':True,'expectedUniqueRecords':6,'inputHashes':{k:snapshot.digest(p) for k,p in [('records',records),('locations',locations),('areas',areas)]}}}
+        data['review'].update(highwayScope=scope,highwayScopeReviewed=True)
         manifest.write_text(json.dumps(data),encoding='utf-8')
         args=SimpleNamespace(records=records,locations=locations,areas=areas,manifest=manifest,output=root/'result')
         snapshot.build(args)
@@ -174,8 +186,35 @@ class SnapshotBuildTest(unittest.TestCase):
             meta=json.loads(db.execute('SELECT metadata_json FROM accident_snapshots').fetchone()[0])
             self.assertEqual(meta['reconciliation']['outsidePeriod'],1)
             self.assertEqual(meta['reconciliation']['missingDate'],1)
+            self.assertEqual(meta['highwayScope'],scope)
         data['review']['completeCoverage']='true';manifest.write_text(json.dumps(data),encoding='utf-8')
         args.output=root/'invalid';self.assertRaises(ValueError,snapshot.build,args)
+    def test_highway_scope_rejects_omissions_and_unreviewed_or_mismatched_scope(self):
+        root=Path(tempfile.mkdtemp(prefix='highway-scope-',dir=MODULE.parents[2]/'artifacts'))
+        locations=root/'locations.json';scope=sorted(snapshot.REQUIRED_HIGHWAYS)
+        review={'highwayScope':scope,'highwayScopeReviewed':True}
+        for omitted in ('cycleway','pedestrian','footway','path'):
+            locations.write_text(json.dumps({'highwayScope':[v for v in scope if v!=omitted]}),encoding='utf-8')
+            self.assertRaises(ValueError,snapshot.reviewed_highway_scope,locations,review)
+        locations.write_text(json.dumps({'highwayScope':scope}),encoding='utf-8')
+        for invalid in ({},dict(review,highwayScopeReviewed='true'),dict(review,highwayScope=scope[:-1])):
+            self.assertRaises(ValueError,snapshot.reviewed_highway_scope,locations,invalid)
+        self.assertEqual(snapshot.reviewed_highway_scope(locations,review),scope)
+
+    def test_dedicated_paths_share_junction_topology_without_connecting_bridges(self):
+        sys.path.insert(0,str(MODULE.parent))
+        import prepare_locations
+        root=Path(tempfile.mkdtemp(prefix='dedicated-paths-',dir=MODULE.parents[2]/'artifacts'))
+        topology=prepare_locations.DiskTopology(root)
+        try:
+            topology.add_way(1,[1,2,3],[[139.89,35.8],[139.9,35.8],[139.91,35.8]],{'highway':'residential'})
+            for identity,kind in enumerate(('cycleway','pedestrian','footway','path'),4):
+                topology.add_way(identity,[2,identity],[[139.9,35.8],[139.9,35.8+identity*.001]],{'highway':kind})
+            topology.add_way(8,[2,8],[[139.9,35.8],[139.9,35.81]],{'highway':'footway','bridge':'yes','layer':'1'})
+            degree=topology.db.execute('SELECT grade,COUNT(*) FROM edges WHERE node=2 GROUP BY grade').fetchall()
+            self.assertEqual(sorted(n for _,n in degree),[1,6])
+            self.assertEqual(topology.ways,6)
+        finally:topology.close()
 class SourceNormalizationTest(unittest.TestCase):
     def test_administrative_transform_preserves_hole_and_input_hash(self):
         sys.path.insert(0,str(MODULE.parent))
