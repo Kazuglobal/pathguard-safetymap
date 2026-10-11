@@ -1,0 +1,12 @@
+{
+  "largestMunicipalityCode": "04202",
+  "firstQuerySeconds": 0.759,
+  "repeatedQueries": 1000,
+  "repeatedQuerySeconds": 3.007,
+  "cacheEstimateBytes": 16008336,
+  "cacheEntries": 1,
+  "matchedCodes": [
+    "04202"
+  ],
+  "nationalThroughputVerified": false
+}

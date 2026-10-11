@@ -10,11 +10,109 @@ import json
 import math
 import re
 import sqlite3
+from collections import OrderedDict
+from contextlib import ExitStack, closing
 from datetime import datetime
 from pathlib import Path
 
 RADII = (10, 20, 30, 50)
 CLASSES = {'01': '歩行者と車両', '21': '車両どうし', '41': '車両のみ', '61': '列車が関係する事故'}
+
+def stream_features(path):
+    """Large GeoJSON requires the streaming reader; fixtures may use the stdlib."""
+    try:
+        import ijson
+    except ImportError:
+        if Path(path).stat().st_size > 10 * 1024 * 1024:
+            raise RuntimeError('Install scripts/accidents/requirements.txt for large GeoJSON inputs')
+        yield from json.loads(Path(path).read_text(encoding='utf-8'))['features']
+        return
+    with open(path, 'rb') as stream:
+        yield from ijson.items(stream, 'features.item', use_float=True)
+
+class SpatialStore:
+    """Offline disk index. Only nearby candidates and a bounded boundary cache live in RAM."""
+    def __init__(self, path):
+        self.db = sqlite3.connect(path)
+        self.db.execute('PRAGMA cache_size=-8192')
+        self.db.execute('CREATE TABLE features(idx INTEGER PRIMARY KEY, kind TEXT, identity TEXT, body TEXT, UNIQUE(kind,identity))')
+        self.db.execute('CREATE VIRTUAL TABLE boxes USING rtree(idx,minx,maxx,miny,maxy)')
+        self.cache = OrderedDict()
+        self.cache_bytes = 0
+
+    def ingest(self, path, kind):
+        count = 0
+        for feature in stream_features(path):
+            if kind == 'candidate': validate_feature(feature)
+            geometry = feature['geometry']; props = feature['properties']
+            if kind == 'boundary' and geometry['type'] not in ('Polygon', 'MultiPolygon'):
+                raise ValueError('Invalid boundary geometry')
+            if kind == 'boundary':
+                polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
+                coordinates = (p for polygon in polygons for ring in polygon for p in ring)
+            else:
+                coordinates = iter([geometry['coordinates']] if geometry['type'] == 'Point' else geometry['coordinates'])
+            minx = miny = float('inf'); maxx = maxy = -float('inf')
+            for x,y in coordinates:
+                if not math.isfinite(x) or not math.isfinite(y): raise ValueError('Invalid spatial bounds')
+                minx = min(minx,x); maxx = max(maxx,x); miny = min(miny,y); maxy = max(maxy,y)
+            if not math.isfinite(minx): raise ValueError('Empty geometry')
+            # Normalized boundaries must have one feature per municipality.
+            identity = props['id'] if kind == 'candidate' else props['municipality']
+            try:
+                cursor = self.db.execute('INSERT INTO features(kind,identity,body) VALUES(?,?,?)', (kind,identity,json.dumps(feature,ensure_ascii=False)))
+            except sqlite3.IntegrityError as error:
+                raise ValueError('Duplicate spatial identity') from error
+            self.db.execute('INSERT INTO boxes VALUES(?,?,?,?,?)', (cursor.lastrowid,minx,maxx,miny,maxy))
+            count += 1
+            if count % 5000 == 0: self.db.commit()
+        self.db.commit()
+        if not count: raise ValueError('No spatial features supplied')
+        return count
+
+    def nearby(self, point, kind, margin=0, identities_only=False):
+        x,y = point
+        columns='f.idx' if identities_only else 'f.idx,f.body'
+        # Pin RTree first: the kind/identity index must not scan all national roads.
+        return self.db.execute('SELECT '+columns+' FROM boxes b CROSS JOIN features f WHERE f.idx=b.idx AND f.kind=? AND b.minx<=? AND b.maxx>=? AND b.miny<=? AND b.maxy>=?', (kind,x+margin,x-margin,y+margin,y-margin))
+
+    def matching_boundaries(self, point):
+        for (idx,) in self.nearby(point, 'boundary', identities_only=True):
+            cached = self.cache.pop(idx, None)
+            if cached is not None: self.cache_bytes -= cached[2]
+            if cached is None:
+                body=self.db.execute('SELECT body FROM features WHERE idx=?',(idx,)).fetchone()[0]
+                feature = json.loads(body)
+                try:
+                    from shapely.geometry import shape
+                    from shapely.prepared import prep
+                    geometry = shape(feature['geometry'])
+                    if not geometry.is_valid: raise ValueError('Invalid administrative polygon')
+                    prepared = prep(geometry)
+                    estimated_bytes=len(geometry.wkb)*4+len(json.dumps(feature['properties']).encode('utf-8'))*8
+                except ImportError:
+                    if len(body) > 1024 * 1024:
+                        raise RuntimeError('Install scripts/accidents/requirements.txt for large boundaries')
+                    prepared = None
+                    estimated_bytes=len(body.encode('utf-8'))*8
+                if prepared is not None: feature={'properties':feature['properties']}
+                # Native cache retains properties + GEOS geometry, not the parsed JSON rings.
+                if estimated_bytes>32*1024*1024:
+                    raise RuntimeError('Boundary exceeds geometry cache budget; subdivide and review before processing')
+                cached = (feature, prepared, estimated_bytes)
+            self.cache[idx] = cached; self.cache_bytes += cached[2]
+            while self.cache and (len(self.cache) > 16 or self.cache_bytes > 32 * 1024 * 1024):
+                _, evicted = self.cache.popitem(last=False); self.cache_bytes -= evicted[2]
+            feature,prepared,_ = cached
+            if prepared is not None:
+                from shapely.geometry import Point
+                inside = prepared.contains(Point(*point))
+            else: inside = contains(point,feature['geometry'])
+            if inside: yield feature
+
+    def close(self):
+        self.cache.clear()
+        self.db.close()
 
 def digest(path):
     h = hashlib.sha256()
@@ -87,7 +185,7 @@ def normalized(row, codebook):
     if stamp and (stamp.utcoffset() is None or stamp.utcoffset().total_seconds()!=32400 or stamp.year>year): raise ValueError('Invalid occurrence year / timezone')
     return key,(stamp.year if stamp else -1,stamp.hour if stamp else -1,mask,int(int(row['fatalities'] or 0)>0),codebook['classes'].get(row['accident_type_code'].zfill(2),'不明'))
 
-def build(args):
+def _build(args, resources):
     inputs={'records':digest(args.records),'locations':digest(args.locations),'areas':digest(args.areas)}
     manifest=json.loads(Path(args.manifest).read_text(encoding='utf-8'))
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}',manifest['version']): raise ValueError('Invalid version')
@@ -98,24 +196,18 @@ def build(args):
     if not manifest['sources']:raise ValueError('Source attribution required')
     for s in manifest['sources']:
         if not all(s.get(k) for k in ('name','url','license','retrievedAt')) or not s['url'].startswith('https://'): raise ValueError('Source attribution required')
-    features=[validate_feature(f) for f in json.loads(Path(args.locations).read_text(encoding='utf-8'))['features']]
-    if len({f['properties']['id'] for f in features}) != len(features):raise ValueError('Duplicate location identity')
-    boundaries=json.loads(Path(args.areas).read_text(encoding='utf-8'))['features']
     output=Path(args.output); output.mkdir(parents=True,exist_ok=True)
     if (output/'snapshot.sqlite').exists(): raise ValueError('Use a new output directory')
-    db=sqlite3.connect(output/'snapshot.sqlite')
+    db=resources.enter_context(closing(sqlite3.connect(output/'snapshot.sqlite')))
+    db.execute('PRAGMA temp_store=FILE')
+    db.execute('PRAGMA cache_size=-8192')
+    spatial=resources.enter_context(closing(SpatialStore(output/'offline-spatial.sqlite')))
+    spatial.ingest(args.locations,'candidate')
+    spatial.ingest(args.areas,'boundary')
     migration=Path(__file__).resolve().parents[2]/'lib/db/traffic-migrations/0002_accident_rankings.sql'
     db.executescript(migration.read_text(encoding='utf-8'))
     db.execute('CREATE TEMP TABLE seen(year INTEGER,prefecture TEXT,station TEXT,number TEXT, fingerprint TEXT,PRIMARY KEY(year,prefecture,station,number))')
-    db.execute('CREATE VIRTUAL TABLE temp.candidates USING rtree(idx,minx,maxx,miny,maxy)')
-    for i,f in enumerate(features):
-        g=f['geometry'];coords=[g['coordinates']] if g['type']=='Point' else g['coordinates']
-        db.execute('INSERT INTO candidates VALUES(?,?,?,?,?)',(i,min(p[0] for p in coords),max(p[0] for p in coords),min(p[1] for p in coords),max(p[1] for p in coords)))
-    db.execute('CREATE VIRTUAL TABLE temp.boundaries USING rtree(idx,minx,maxx,miny,maxy)')
-    for i,f in enumerate(boundaries):
-        g=f['geometry']; polys=[g['coordinates']] if g['type']=='Polygon' else g['coordinates'];coords=[p for poly in polys for ring in poly for p in ring]
-        db.execute('INSERT INTO boundaries VALUES(?,?,?,?,?)',(i,min(p[0] for p in coords),max(p[0] for p in coords),min(p[1] for p in coords),max(p[1] for p in coords)))
-    report={'inputRows':0,'uniqueRecords':0,'duplicates':0,'invalidCoordinates':0,'missingDate':0,'outsidePeriod':0,'assigned':0,'uncertain':0,'excluded':0,'radiusComparison':{r:{'assigned':0,'uncertain':0} for r in RADII},'byYear':{}}
+    report={'inputRows':0,'uniqueRecords':0,'duplicates':0,'invalidCoordinates':0,'missingDate':0,'outsidePeriod':0,'administrativeCodeMismatch':0,'assigned':0,'uncertain':0,'excluded':0,'radiusComparison':{r:{'assigned':0,'uncertain':0} for r in RADII},'byYear':{}}
     years=set();version=manifest['version']
     for year in manifest['sourceYears']:
         codebook=manifest['codebooks'][str(year)]
@@ -125,13 +217,10 @@ def build(args):
     meta={'version':version,'updatedAt':manifest['updatedAt'],'years':manifest['years'],'sourceYears':manifest['sourceYears'],'method':'指定した公開年度の原本に含まれる事故を発生年で集計。道路のつながりと立体構造を確認した交差点（30m以内）・道路区間が対象','sources':manifest['sources']}
     db.execute('INSERT INTO accident_snapshots VALUES(?,?,?,?)',(version,0,manifest['updatedAt'],json.dumps(meta,ensure_ascii=False)))
     areas={}
-    for f in boundaries:
+    for (body,) in spatial.db.execute("SELECT body FROM features WHERE kind='boundary'"):
+        f=json.loads(body)
         p=f['properties'];areas[p['prefecture']]=('',p['prefectureName']);areas[p['municipality']]=(p['prefecture'],p['municipalityName'])
     for code,(parent,name) in areas.items(): db.execute('INSERT INTO accident_areas VALUES(?,?,?,?)',(version,code,parent,name))
-    for f in features:
-        p=f['properties'];g=f['geometry'];point=g['coordinates'] if g['type']=='Point' else g['coordinates'][len(g['coordinates'])//2]
-        scope={'description':'道路との対応が確認できた事故だけを数えています。','radiusMeters':30 if p['kind']=='intersection' else None}
-        db.execute('INSERT INTO accident_locations VALUES(?,?,?,?,?,?,?,?,?)',(version,p['id'],p.get('name') or p['address']+'付近',p['kind'],p['prefecture'],p['municipality'],point[1],point[0],json.dumps(scope,ensure_ascii=False)))
     with open(args.records,encoding='utf-8-sig',newline='') as stream:
         for row in csv.DictReader(stream):
             if int(row['source_year']) not in manifest['sourceYears']:raise ValueError('Unreviewed source year')
@@ -153,11 +242,14 @@ def build(args):
                 report['invalidCoordinates']+=1;state='excluded'
             else:
                 x,y=point
-                matched=[boundaries[i] for (i,) in db.execute('SELECT idx FROM boundaries WHERE minx<=? AND maxx>=? AND miny<=? AND maxy>=?',(x,x,y,y)) if contains(point,boundaries[i]['geometry'])]
+                matched=list(spatial.matching_boundaries(point))
                 if len(matched)!=1: state='excluded'
+                elif (matched[0]['properties']['prefecture'],matched[0]['properties']['municipality'])!=(pref,municipality):
+                    # A current boundary cannot silently override the source jurisdiction.
+                    report['administrativeCodeMismatch']+=1
                 else:
                     region=matched[0]['properties'];pref=region['prefecture'];municipality=region['municipality']
-                    possible=[features[i] for (i,) in db.execute('SELECT idx FROM candidates WHERE minx<=? AND maxx>=? AND miny<=? AND maxy>=?',(x+.001,x-.001,y+.001,y-.001))]
+                    possible=[json.loads(body) for _,body in spatial.nearby(point,'candidate',.001)]
                     for radius in RADII:
                         candidate_id=assign(point,possible,radius)
                         candidate=next((f for f in possible if f['properties']['id']==candidate_id),None)
@@ -167,7 +259,13 @@ def build(args):
                     if location_id:
                         p=next(f['properties'] for f in possible if f['properties']['id']==location_id)
                         if (p['prefecture'],p['municipality'])!=(pref,municipality):location_id=None
-                    if location_id:state='assigned'
+                    if location_id:
+                        state='assigned'
+                        feature=next(f for f in possible if f['properties']['id']==location_id)
+                        p=feature['properties'];g=feature['geometry']
+                        center=g['coordinates'] if g['type']=='Point' else g['coordinates'][len(g['coordinates'])//2]
+                        scope={'description':'道路との対応が確認できた事故だけを数えています。','radiusMeters':30 if p['kind']=='intersection' else None}
+                        db.execute('INSERT OR IGNORE INTO accident_locations VALUES(?,?,?,?,?,?,?,?,?)',(version,p['id'],p.get('name') or p['address']+'付近',p['kind'],pref,municipality,center[1],center[0],json.dumps(scope,ensure_ascii=False)))
             report[state]+=1
             quality=[int(state==s) for s in ('assigned','uncertain','excluded')]
             db.execute('INSERT INTO accident_quality_counts VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(version,prefecture,municipality,year,hour,participants,fatal) DO UPDATE SET assigned=assigned+excluded.assigned,uncertain=uncertain+excluded.uncertain,excluded=excluded+excluded.excluded',(version,pref,municipality,*dim[:4],*quality))
@@ -175,7 +273,7 @@ def build(args):
     if report['uniqueRecords'] != manifest['review']['expectedUniqueRecords']:raise ValueError('Source total differs')
     if sorted(years)!=sorted(set(manifest['sourceYears'])):raise ValueError('Source year coverage differs')
     if sum(report[k] for k in ('assigned','uncertain','excluded'))!=report['uniqueRecords']:raise ValueError('Reconciliation failed')
-    meta['reconciliation']={k:report[k] for k in ('uniqueRecords','assigned','uncertain','excluded','missingDate','outsidePeriod','invalidCoordinates')}
+    meta['reconciliation']={k:report[k] for k in ('uniqueRecords','assigned','uncertain','excluded','missingDate','outsidePeriod','invalidCoordinates','administrativeCodeMismatch')}
     db.execute('UPDATE accident_snapshots SET metadata_json=? WHERE version=?',(json.dumps(meta,ensure_ascii=False),version))
     db.commit()
     (output/'quality.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
@@ -186,7 +284,11 @@ def build(args):
                 values=','.join('NULL' if v is None else str(v) if isinstance(v,(int,float)) else "'"+v.replace("'","''")+"'" for v in row)
                 stream.write('INSERT INTO '+table+' VALUES('+values+');\n')
     (output/'publish.sql').write_text("UPDATE accident_snapshots SET published=1 WHERE version='"+version+"';\n",encoding='utf-8')
-    db.close();print(json.dumps(report,ensure_ascii=False))
+    print(json.dumps(report,ensure_ascii=False))
+
+def build(args):
+    with ExitStack() as resources:
+        return _build(args, resources)
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()

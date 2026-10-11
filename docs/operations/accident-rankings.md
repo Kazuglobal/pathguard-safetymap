@@ -20,7 +20,7 @@
 
 1. 警察庁の原本を `normalize_npa.py` でUTF-8 CSVへ変換する。対象年ごとに原本の定義書を確認し、列名を対応づけたJSONを指定する。文字化けした見出しや列位置の推測は許可しない。
 2. 行の識別は年度・都道府県・警察署・本票番号。同じキーの同一行だけ重複除外し、内容の異なる同一キーは処理を停止する。別年度の事故を削除しない。
-3. OSMのノード・ウェイJSONと行政区域GeoJSONから `prepare_locations.py` で候補地点を生成する。共有ノードと道路接続数で交差点を判定し、道路は交差点/ウェイ端点で区切る。単なる座標交差は接続扱いにしない。
+3. OSM PBF（またはノード・ウェイJSON）と行政区域GeoJSONから `prepare_locations.py` で候補地点を生成する。共有ノードと道路接続数で交差点を判定し、道路は交差点/ウェイ端点で区切る。単なる座標交差は接続扱いにしない。ノード・隣接関係はローカルSQLite、PBF座標はファイル索引へ保存し、候補は逐次出力する。ウェイ端点による分割は中間候補であり、交差点間区間への統合・検証が済むまで道路ランキングを公開しない。
 4. 候補はすべて `reviewed:false`。近接する別交差点、分割されすぎた交差点、行政境界、立体構造、道路名を重点確認し、確認済み候補だけ `reviewed:true` にする。自動生成だけで「正確な交差点」を主張しない。
 5. `build_snapshot.py` は交差点30m、道路20m以内の候補を照合する。複数交差点、複数道路、複数層、橋やトンネルなど高度が確定できないものは未確定。交差点候補が1つなら接続道路より優先する。1事故を1地点にだけ割り当てる。
 6. 10/20/30/50mの比較、年度別件数、重複、異常座標、割り当て済み・未確定・対象外を `quality.json` に保存する。割り当て済み＋未確定＋対象外＝重複除外後の事故数を必須とする。
@@ -38,8 +38,9 @@ manifest JSONは `version,updatedAt,sourceYears,years,sources,codebooks,review` 
 `review` は `inputHashes`（`records,locations,areas` のSHA-256）、`expectedUniqueRecords`（原本との照合件数）、`completeCoverage:true` を必須とする。署名済み承認の代替ではなく、担当者が確認した入力と生成入力が一致するためのチェック。部分抽出を全国データとして承認してはいけない。
 
 ```powershell
+python -m pip install -r scripts/accidents/requirements.txt
 python scripts/accidents/normalize_npa.py --input original.csv --definition reviewed-2025.json --output normalized-2025.csv
-python scripts/accidents/prepare_locations.py --osm osm-nodes-ways.json --areas municipalities.geojson --output candidates.geojson
+python scripts/accidents/prepare_locations.py --osm japan.osm.pbf --areas municipalities.geojson --output candidates.geojson --work artifacts/roads-new-version
 python scripts/accidents/build_snapshot.py --records normalized.csv --locations reviewed-locations.geojson --areas municipalities.geojson --manifest reviewed-manifest.json --output artifacts/accidents/new-version
 ```
 
@@ -51,7 +52,7 @@ python scripts/accidents/build_snapshot.py --records normalized.csv --locations 
 
 コードの本番公開は最新mainへのPR・CI・Cloudflare Production GitHub Actionsのみ。ローカルWranglerで本番Workerやsecretを変更しない。
 
-本番データの読み取り認証、原本の再取得、2025年の列/コード定義確認、全国OSM・行政区域の取得と正規化、千葉県/柏市を含む候補のレビュー、全国品質照合、D1への検証済み集計版登録が完了するまで、実ランキングの公開は保留する。未登録時は「集計準備中」であり、架空の数字を表示しない。
+本番D1の読み取り調査・2019–2025原本の再取得と定義確認・全国OSMと行政区域の取得は完了した。千葉県/柏市を含む候補のレビュー、交差点間の道路区間、全国品質照合と処理容量の検証、D1への検証済み集計版登録が完了するまで、実ランキングの公開は保留する。未登録時は「集計準備中」であり、架空の数字を表示しない。
 
 ## 検証
 
@@ -137,4 +138,16 @@ manifestは `sourceYears`（取得済み原本年度）と `years`（確認し�
 
 出典: [警察庁公開一覧](https://www.npa.go.jp/publications/statistics/koutsuu/opendata/index_opendata.html)。各原本・コード表の個別URLは上記JSONに記録。
 
-2017年発生分を保持し、検証期間外として集計する回帰検証を追加した。Python11件成功。最新UIコミットのCIでは全体型検査・既存回帰・API10件・Python11件が成功し、隔離プレビューのビルドが進行中。本番D1、Worker、公開集計版は変更していない。
+2017年発生分を保持し、検証期間外として集計する回帰検証を追加した。Python11件成功。コミットaf28c4c30のCIは全体型検査・既存回帰・API10件・Python11件・隔離プレビューのビルド/配置まで成功。本番D1、Worker、公開集計版は変更していない。
+
+### 地理入力と全国処理の改善（2026-10-11）
+
+- 国土数値情報2025-01-01版を取得。124,094ポリゴン、1,905市区町村コード、47都道府県、189個の穴を確認。JGD2011（EPSG:6668）からWGS84（EPSG:4326）へ変換し、市区町村ごとに統合。取得日・SHA-256・CC BY 4.0・変換精度は `data/mlit-boundary-audit-2025.json` に記録した。再現用 `normalize_areas.py` は入力SHA-256と地域数を必須とする。
+- Geofabrikの日本2026-10-09固定版PBFを取得。2,548,205,170バイト、公開MD5との一致を確認し、SHA-256、ODbL 1.0、OSM帰属を保存した。自動車が通れる区分のウェイは7,646,101本であり、事故地点数や交差点数ではない。`data/osm-road-audit-2026-10-09.json` 参照。現在の道路を過去年の事故へ照合するため、過去の道路状態を再現した集計とは説明しない。
+- 柏市コード12217の原本6,950件を確認。2019年より前の発生15件も含む。自転車が関係する2,073件には当事者A・Bがともに自転車の60件を1事故ずつ含める。地点ランキングではない。`data/kashiwa-input-audit.json` 参照。
+- このうち68件は2025年行政区域の外側。境界までの最大距離74.6m、中央値10.5mであり、原因は未確定。元の地域コードを座標から無断で書き換えず、地域不一致は未確定件数 `administrativeCodeMismatch` に残す。`data/kashiwa-boundary-mismatches.json` 参照。
+- `build_snapshot.py` はGeoJSONを逐次読み込み、候補と行政区域のRTreeを `offline-spatial.sqlite` に保存。近くの候補のみ読み、行政区域はGEOSの準備済み形状を最大16件・見積り32MiB以内で保持する。キャッシュに収まらない形状は停止して再検討する。割り当て済み事故のある地点だけ公開用テーブルへ保存する。
+- 全国1,905地域の索引作成は49.71秒、柏市2025年原本1,046件の地域照合は6.62秒、最大ワーキングセット約110MiB。これは地域照合の試験であり、すべてが柏市境界と一致した意味ではない。全国の道路照合性能を証明していない。`data/boundary-benchmark.json` 参照。
+- 最大の境界JSON（宮城県石巻市04202、約7.6MB）も準備済み形状の見積り約16MBで保持できた。初回照合0.759秒、同じ場所1,000回の照合3.007秒。`data/largest-boundary-benchmark.json` 参照。空間検索はRTreeを先に検索し、道路種別の索引から全国候補を走査しない実行計画をテストする。
+- 道路CLIは入力初期・ノードキャッシュ作成中・道路保存中・候補出力中に空き容量を確認する。5GiBを下回ったら停止して作業ファイルを保持する。途中ファイルから公開SQLを作らず、新しい作業先で再実行する。完全な途中再開機能はまだない。
+- ローカルの実際のijson/Shapely/pyproj/osmiumを使用した回帰14件が成功。PBFとJSONの候補の一致、共有ノードの立体道路分離、範囲を横切るウェイ全体の保持、変換時の穴と原本SHA-256、地域不一致の未確定処理を含む。CIも固定したオフライン依存を導入し、単純な代替実装だけを検証しない。道路区間の統合・全国D1保存容量・全国品質照合は引き続き必要。

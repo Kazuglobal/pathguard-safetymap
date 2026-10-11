@@ -1,0 +1,5 @@
+# Offline geometry processing only; not application dependencies.
+ijson==3.5.1
+shapely==2.2.0
+pyproj==3.8.0
+osmium==4.3.1
