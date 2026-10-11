@@ -1,0 +1,56 @@
+{
+  "scope": "Kashiwa original municipality 12217, 2019..2025 occurrences; candidate geometry diagnostics only",
+  "published": false,
+  "reviewedLocations": 0,
+  "completeLocationAssignmentReviewed": false,
+  "records": 6950,
+  "duplicates": 0,
+  "outsidePeriod": 15,
+  "invalidCoordinates": 0,
+  "administrativeCodeMismatch": 68,
+  "ambiguousOrMissingBoundary": 0,
+  "eligibleRecords": 6867,
+  "radiusComparison": {
+    "10": {
+      "noNearbyCandidate": 118,
+      "unresolvedLevel": 368,
+      "multipleCandidates": 2291,
+      "candidateRegionMismatch": 4,
+      "singleUnreviewedIntersection": 2917,
+      "singleUnreviewedRoad": 1169
+    },
+    "20": {
+      "noNearbyCandidate": 118,
+      "unresolvedLevel": 368,
+      "multipleCandidates": 2216,
+      "candidateRegionMismatch": 7,
+      "singleUnreviewedIntersection": 2989,
+      "singleUnreviewedRoad": 1169
+    },
+    "30": {
+      "noNearbyCandidate": 108,
+      "unresolvedLevel": 368,
+      "multipleCandidates": 3163,
+      "candidateRegionMismatch": 7,
+      "singleUnreviewedIntersection": 2447,
+      "singleUnreviewedRoad": 774
+    },
+    "50": {
+      "noNearbyCandidate": 51,
+      "unresolvedLevel": 369,
+      "multipleCandidates": 4895,
+      "candidateRegionMismatch": 3,
+      "singleUnreviewedIntersection": 1221,
+      "singleUnreviewedRoad": 328
+    }
+  },
+  "geometryQuality": {
+    "ways": 43617,
+    "intersections": 53205,
+    "roadSections": 91991,
+    "outsideOrAmbiguousBoundary": 0,
+    "reviewedLocations": 0,
+    "completeCoverageReviewed": false,
+    "sourceRoadPieces": 95597
+  }
+}
