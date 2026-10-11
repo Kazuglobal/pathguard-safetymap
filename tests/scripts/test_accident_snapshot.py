@@ -49,6 +49,10 @@ class SpatialAssignmentTest(unittest.TestCase):
         shape={'type':'Polygon','coordinates':[[[0,0],[4,0],[4,4],[0,4],[0,0]],[[1,1],[3,1],[3,3],[1,3],[1,1]]]}
         self.assertTrue(snapshot.contains((.5,.5),shape));self.assertFalse(snapshot.contains((2,2),shape))
 class SnapshotBuildTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        (MODULE.parents[2]/'artifacts').mkdir(exist_ok=True)
+
     def test_road_sections_join_only_shared_same_grade_nodes_and_handle_loops(self):
         sys.path.insert(0,str(MODULE.parent))
         import prepare_locations
