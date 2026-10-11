@@ -248,7 +248,7 @@ def _build(args, resources):
     db.executescript(migration.read_text(encoding='utf-8'))
     db.execute('CREATE TEMP TABLE seen(year INTEGER,prefecture TEXT,station TEXT,number TEXT, fingerprint TEXT,PRIMARY KEY(year,prefecture,station,number))')
     report={'inputRows':0,'uniqueRecords':0,'duplicates':0,'invalidCoordinates':0,'missingDate':0,'outsidePeriod':0,'administrativeCodeMismatch':0,'assigned':0,'uncertain':0,'excluded':0,'radiusComparison':{r:{'assigned':0,'uncertain':0} for r in RADII},'byYear':{}}
-    years=set();version=manifest['version']
+    years=set();version=manifest['version'];regional_exceptions=set()
     for year in manifest['sourceYears']:
         codebook=manifest['codebooks'][str(year)]
         if not all(k in codebook for k in ('bicycle','pedestrian','classes','pedestrianClasses')):raise ValueError('Incomplete year-specific codebook')
@@ -283,12 +283,19 @@ def _build(args, resources):
             elif not all(math.isfinite(p) for p in point) or not (122<=point[0]<=154 and 20<=point[1]<=46):
                 report['invalidCoordinates']+=1;state='excluded'
             else:
+                # Missing historical codes cannot become an apparent zero under current city filters.
+                # Keep source codes; conservatively gate every municipality in that prefecture/year.
+                if municipality not in areas:regional_exceptions.add((pref,'',dim[0]))
                 x,y=point
                 matched=list(spatial.matching_boundaries(point))
                 if len(matched)!=1: state='excluded'
                 elif (matched[0]['properties']['prefecture'],matched[0]['properties']['municipality'])!=(pref,municipality):
                     # A current boundary cannot silently override the source jurisdiction.
                     report['administrativeCodeMismatch']+=1
+                    # Even unchanged codes can straddle a changed boundary. Gate both possible cities.
+                    if municipality in areas:regional_exceptions.add((pref,municipality,dim[0]))
+                    p=matched[0]['properties']
+                    regional_exceptions.add((p['prefecture'],p['municipality'],dim[0]))
                 else:
                     region=matched[0]['properties'];pref=region['prefecture'];municipality=region['municipality']
                     possible=[json.loads(body) for _,body in spatial.nearby(point,'candidate',.001)]
@@ -316,6 +323,7 @@ def _build(args, resources):
     if sorted(years)!=sorted(set(manifest['sourceYears'])):raise ValueError('Source year coverage differs')
     if sum(report[k] for k in ('assigned','uncertain','excluded'))!=report['uniqueRecords']:raise ValueError('Reconciliation failed')
     meta['reconciliation']={k:report[k] for k in ('uniqueRecords','assigned','uncertain','excluded','missingDate','outsidePeriod','invalidCoordinates','administrativeCodeMismatch')}
+    meta['regionalCoverageExceptions']=[{'prefecture':pref,**({'municipality':municipality} if municipality else {}),'year':year,'reason':'historical_region_check'} for pref,municipality,year in sorted(regional_exceptions)]
     db.execute('UPDATE accident_snapshots SET metadata_json=? WHERE version=?',(json.dumps(meta,ensure_ascii=False),version))
     db.commit()
     (output/'quality.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')

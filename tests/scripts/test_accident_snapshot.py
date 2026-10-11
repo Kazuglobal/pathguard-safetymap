@@ -228,6 +228,19 @@ class SnapshotBuildTest(unittest.TestCase):
             self.assertEqual(meta['reconciliation']['outsidePeriod'],1)
             self.assertEqual(meta['reconciliation']['missingDate'],1)
             self.assertEqual(meta['highwayScope'],scope)
+            self.assertEqual(meta['regionalCoverageExceptions'],[{'prefecture':'12','year':2024,'reason':'historical_region_check'},{'prefecture':'12','municipality':'12217','year':2024,'reason':'historical_region_check'}])
+            # Quality stays under the original code; no silent administrative remapping.
+            self.assertEqual(db.execute("SELECT uncertain FROM accident_quality_counts WHERE municipality='12218'").fetchone()[0],1)
+        # Both codes can still exist while current geometry disagrees with source jurisdiction.
+        area_data=json.loads(areas.read_text())
+        other=json.loads(json.dumps(area_data['features'][0]));other['properties'].update(municipality='12218',municipalityName='別の市')
+        other['geometry']['coordinates']=[[[140.1,35.7],[140.3,35.7],[140.3,35.9],[140.1,35.9],[140.1,35.7]]]
+        area_data['features'].append(other);areas.write_text(json.dumps(area_data),encoding='utf-8')
+        data['review']['inputHashes']['areas']=snapshot.digest(areas);manifest.write_text(json.dumps(data),encoding='utf-8')
+        args.output=root/'existing-codes';snapshot.build(args)
+        with sqlite3.connect(args.output/'snapshot.sqlite') as db:
+            meta=json.loads(db.execute('SELECT metadata_json FROM accident_snapshots').fetchone()[0])
+            self.assertEqual({e['municipality'] for e in meta['regionalCoverageExceptions']},{'12217','12218'})
         data['review']['completeCoverage']='true';manifest.write_text(json.dumps(data),encoding='utf-8')
         args.output=root/'invalid';self.assertRaises(ValueError,snapshot.build,args)
     def test_highway_scope_rejects_omissions_and_unreviewed_or_mismatched_scope(self):

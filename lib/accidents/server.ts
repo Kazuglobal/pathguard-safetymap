@@ -23,6 +23,7 @@ export async function snapshot(db: RankingDatabase, version = ''): Promise<Snaps
   if (!row) return null
   const metadata = JSON.parse(row.metadata_json) as SnapshotMetadata
   if (!metadata.years?.length || metadata.years.some(y=>!Number.isInteger(y)||y<2018||y>2100) || !/^[a-zA-Z0-9_-]{1,64}$/.test(metadata.version) || (version && metadata.version!==version)) throw new Error('Invalid snapshot metadata')
+  if (metadata.regionalCoverageExceptions !== undefined && (!Array.isArray(metadata.regionalCoverageExceptions) || metadata.regionalCoverageExceptions.some(e=>!e || typeof e.prefecture!=='string' || !/^\d{2}$/.test(e.prefecture) || (e.municipality!==undefined && (typeof e.municipality!=='string' || !/^\d{5}$/.test(e.municipality) || !e.municipality.startsWith(e.prefecture))) || !metadata.years.includes(e.year) || e.reason!=='historical_region_check'))) throw new Error('Invalid regional coverage metadata')
   return metadata
 }
 function dimensions(q: AccidentQuery, m: SnapshotMetadata, alias: string) {
@@ -42,6 +43,10 @@ function area(q: AccidentQuery, alias: string, values: (string | number)[]) {
   for (const field of ['prefecture','municipality'] as const) if (q[field]) { where += ` AND ${alias}.${field}=?`; values.push(q[field]) }
   return where
 }
+function regionalCoveragePending(q: AccidentQuery, m: SnapshotMetadata) {
+  const from=q.from??Math.min(...m.years),to=q.to??Math.max(...m.years)
+  return !!q.municipality && !!m.regionalCoverageExceptions?.some(e=>e.prefecture===q.prefecture&&(!e.municipality||e.municipality===q.municipality)&&e.year>=from&&e.year<=to)
+}
 export async function rankings(db: RankingDatabase, q: AccidentQuery): Promise<RankingsResponse> {
   const m = await snapshot(db,q.version)
   if (!m) return { status: q.version ? 'unavailable' : 'preparing', metadata: null, items: [], nextOffset: null, quality: { assigned: 0, uncertain: 0, excluded: 0 } }
@@ -50,6 +55,7 @@ export async function rankings(db: RankingDatabase, q: AccidentQuery): Promise<R
     if (!covered) return {status:'unavailable',metadata:m,items:[],nextOffset:null,quality:{assigned:0,uncertain:0,excluded:0}}
   }
   const d = dimensions(q,m,'c')
+  if (regionalCoveragePending(q,m)) return {status:'preparing',preparingReason:'regional_correspondence',metadata:m,items:[],nextOffset:null,quality:{assigned:0,uncertain:0,excluded:0}}
   let where = d.where + area(q,'l',d.values)
   if (q.kind !== 'all') { where += ' AND l.kind=?'; d.values.push(q.kind) }
   const { results } = await db.prepare(`WITH totals AS (
@@ -72,9 +78,10 @@ export async function areas(db: RankingDatabase, version: string, prefecture: st
 export async function location(db: RankingDatabase, id: string, q: AccidentQuery) {
   const metadata = await snapshot(db,q.version)
   if (!metadata) return { status: q.version ? 'unavailable' : 'preparing', metadata: null }
-  const item = await db.prepare('SELECT id,name,kind,latitude,longitude,scope_json AS scope FROM accident_locations WHERE version=? AND id=?').bind(metadata.version,id).first<{id:string;name:string;kind:string;latitude:number;longitude:number;scope:string}>()
+  const item = await db.prepare('SELECT id,name,kind,latitude,longitude,prefecture,municipality,scope_json AS scope FROM accident_locations WHERE version=? AND id=?').bind(metadata.version,id).first<{id:string;name:string;kind:string;latitude:number;longitude:number;prefecture:string;municipality:string;scope:string}>()
   if (!item) return null
   const d = dimensions(q,metadata,'c')
+  if (regionalCoveragePending({...q,prefecture:item.prefecture,municipality:item.municipality},metadata)) return {status:'preparing',preparingReason:'regional_correspondence',metadata}
   const { results: counts } = await db.prepare(`SELECT year,hour,accident_class AS accidentClass,SUM(count) AS count FROM accident_location_counts c WHERE ${d.where} AND location_id=? GROUP BY year,hour,accident_class ORDER BY year,hour`).bind(...d.values,id).all<{year:number;hour:number;accidentClass:string;count:number}>()
   return { status: 'ready', metadata, item: {...item,scope:JSON.parse(item.scope)}, counts }
 }

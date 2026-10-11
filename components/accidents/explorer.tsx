@@ -82,7 +82,7 @@ export default function AccidentExplorer() {
           {response?.metadata&&<p className="mt-2">{params.get('from')??Math.min(...years)}〜{params.get('to')??Math.max(...years)}年</p>}
           {loading&&<p role="status" className="py-8">読み込み中…</p>}
           {error&&<div role="alert" className="py-6"><p>読み込めませんでした</p><button className={`${control} mt-2`} onClick={()=>setReload(n=>n+1)}>もう一度読み込む</button></div>}
-          {!loading&&!error&&response?.status==='preparing'&&<div className="py-8"><h3 className="text-lg font-semibold">集計準備中です</h3><p className="mt-2 leading-7">事故データと道路の情報を確認しています。<br/>確認が終わり次第、表示します。</p></div>}
+          {!loading&&!error&&response?.status==='preparing'&&<div className="py-8"><h3 className="text-lg font-semibold">集計準備中です</h3><p className="mt-2 leading-7">{response.preparingReason==='regional_correspondence'?'この期間の記録と、現在の市区町村との対応を確認しています。':'事故データと道路の情報を確認しています。'}<br/>確認が終わり次第、表示します。</p></div>}
           {!loading&&!error&&response?.status==='unavailable'&&<p className="py-8">この地域または集計の版は未収録です。条件を選び直してください。</p>}
           {!loading&&!error&&response?.status==='ready'&&!response.items.length&&<p className="py-8">この条件で集計できた事故は0件です。未確定の事故は下の「数え方とデータについて」で確認できます。</p>}
           <ol className="mt-5 divide-y divide-border bg-card">{response?.items.map(item=><li id={`location-${item.id}`} key={item.id} className={`p-4 ${selected?.id===item.id?'bg-forest-soft':''}`}>
@@ -96,7 +96,7 @@ export default function AccidentExplorer() {
         <p>同じ交差点・道路に割り当てられた事故を1件ずつ数えています。場所を決められない事故は順位に含めません。地図を動かしても順位は変わりません。</p>
         {response?.metadata?.reconciliation&&<p>原本全体の照合：{response.metadata.reconciliation.uniqueRecords.toLocaleString()}件＝場所を確認できた {response.metadata.reconciliation.assigned.toLocaleString()}件＋場所が未確定 {response.metadata.reconciliation.uncertain.toLocaleString()}件＋対象外 {response.metadata.reconciliation.excluded.toLocaleString()}件。対象外には、確認した期間の外 {response.metadata.reconciliation.outsidePeriod.toLocaleString()}件、発生日不明 {response.metadata.reconciliation.missingDate.toLocaleString()}件を含みます。</p>}
         {typeof response?.metadata?.reconciliation?.administrativeCodeMismatch==='number'&&<p>記録の地域と地図上の地域が違うため、場所を確認中の事故は{response.metadata.reconciliation.administrativeCodeMismatch.toLocaleString()}件です。</p>}
-        {response?.metadata ? <><p>集計方法：{response.metadata.method}<br/>更新日：{response.metadata.updatedAt}<br/>集計の版：{response.metadata.version}</p><p>選んだ地域・期間・事故条件の全地点：集計済み {response.quality.assigned.toLocaleString()}件／場所が未確定 {response.quality.uncertain.toLocaleString()}件／集計対象外 {response.quality.excluded.toLocaleString()}件</p>{response.metadata.sources.map(s=><p key={s.url}><a className="underline" href={s.url} rel="noreferrer">{s.name}</a>（{s.license}、取得日 {s.retrievedAt}）</p>)}</> : <p>事故件数と出典は、集計の確認が終わり次第掲載します。</p>}
+        {response?.metadata ? <><p>集計方法：{response.metadata.method}<br/>更新日：{response.metadata.updatedAt}<br/>集計の版：{response.metadata.version}</p>{response.status==='ready'&&<p>選んだ地域・期間・事故条件の全地点：集計済み {response.quality.assigned.toLocaleString()}件／場所が未確定 {response.quality.uncertain.toLocaleString()}件／集計対象外 {response.quality.excluded.toLocaleString()}件</p>}{response.metadata.sources.map(s=><p key={s.url}><a className="underline" href={s.url} rel="noreferrer">{s.name}</a>（{s.license}、取得日 {s.retrievedAt}）</p>)}</> : <p>事故件数と出典は、集計の確認が終わり次第掲載します。</p>}
       </div></details>
     </div>
   </main>

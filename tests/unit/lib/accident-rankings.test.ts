@@ -2,23 +2,46 @@
 import { describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { readFileSync } from 'node:fs'
-import { parseAccidentQuery } from '@/lib/accidents/query'
+import { parseAccidentQuery, type SnapshotMetadata } from '@/lib/accidents/query'
 vi.mock('@opennextjs/cloudflare',()=>({getCloudflareContext:()=>({env:{}})}))
 import { rankings, location, type RankingDatabase } from '@/lib/accidents/server'
-function fixture(): RankingDatabase {
+function fixture(exceptions: SnapshotMetadata['regionalCoverageExceptions'] = [], municipality = '12217'): RankingDatabase {
   const db=new Database(':memory:');db.exec(readFileSync('lib/db/traffic-migrations/0002_accident_rankings.sql','utf8'))
-  const metadata={version:'test-only',updatedAt:'2026-10-10',years:[2024],method:'test fixture',sources:[]}
+  const metadata={version:'test-only',updatedAt:'2026-10-10',years:[2023,2024],method:'test fixture',sources:[],regionalCoverageExceptions:exceptions}
   db.prepare('INSERT INTO accident_snapshots VALUES(?,?,?,?)').run('test-only',1,metadata.updatedAt,JSON.stringify(metadata))
-  db.exec("INSERT INTO accident_areas VALUES('test-only','12','','千葉県'),('test-only','12217','12','柏市')")
+  db.exec("INSERT INTO accident_areas VALUES('test-only','12','','千葉県'),('test-only','12217','12','柏市'),('test-only','22','','静岡県'),('test-only','22138','22','中央区')")
   for(const [id,count,mask] of [['a',12,1],['b',12,3],['c',9,2]] as const){
-    db.prepare('INSERT INTO accident_locations VALUES(?,?,?,?,?,?,?,?,?)').run('test-only',id,`試験地点${id}`,'intersection','12','12217',35.8,139.9,'{}')
+    db.prepare('INSERT INTO accident_locations VALUES(?,?,?,?,?,?,?,?,?)').run('test-only',id,`試験地点${id}`,'intersection',municipality.slice(0,2),municipality,35.8,139.9,'{}')
     db.prepare('INSERT INTO accident_location_counts VALUES(?,?,?,?,?,?,?,?)').run('test-only',id,2024,7,mask,0,'車両どうし',count)
   }
   db.exec("INSERT INTO accident_quality_counts VALUES('test-only','12','12217',2024,7,1,0,12,2,1),('test-only','12','12217',2024,7,3,0,12,0,0),('test-only','12','12217',2024,7,2,0,9,0,0)")
+  db.exec("INSERT INTO accident_quality_counts VALUES('test-only','22','22131',2023,7,0,0,0,5,0)")
   return {prepare(sql){const statement=db.prepare(sql);let values:(string|number)[]=[];return {bind(...v){values=v;return this},async first<T>(){return (statement.get(...values)??null) as T|null},async all<T>(){return {results:statement.all(...values) as T[]}}}}}
 }
 const query=(value='')=>parseAccidentQuery(new URLSearchParams(value))
 describe('public aggregate rankings',()=>{
+  const historicalExceptions = [{prefecture:'22',year:2023,reason:'historical_region_check' as const}]
+  it('does not turn unresolved old-code records into a current-city zero',async()=>{
+    const db=fixture(historicalExceptions)
+    const r=await rankings(db,query('prefecture=22&municipality=22138&from=2023&to=2023'))
+    expect(r.status).toBe('preparing');expect(r.preparingReason).toBe('regional_correspondence');expect(r.items).toEqual([])
+    expect((await rankings(db,query('prefecture=22&municipality=22138'))).status).toBe('preparing')
+    expect((await rankings(db,query('prefecture=22&municipality=22138&from=2024&to=2024'))).status).toBe('ready')
+    expect((await rankings(db,query('prefecture=12&municipality=12217&from=2023&to=2023'))).status).toBe('ready')
+    const pref=await rankings(db,query('prefecture=22&from=2023&to=2023'))
+    expect(pref.status).toBe('ready');expect(pref.quality.uncertain).toBe(5)
+  })
+  it('gates direct detail links using the location region and requested years',async()=>{
+    const db=fixture(historicalExceptions,'22138')
+    expect((await location(db,'a',query('from=2023&to=2023')))?.status).toBe('preparing')
+    expect((await location(db,'a',query('from=2024&to=2024')))?.status).toBe('ready')
+  })
+  it('limits known-code correspondence exceptions to affected cities',async()=>{
+    const db=fixture([{prefecture:'12',municipality:'12217',year:2023,reason:'historical_region_check'}])
+    expect((await rankings(db,query('prefecture=12&municipality=12217&from=2023&to=2023'))).status).toBe('preparing')
+    expect((await rankings(db,query('prefecture=22&municipality=22138&from=2023&to=2023'))).status).toBe('ready')
+    expect((await rankings(db,query('prefecture=12&municipality=12217&from=2024&to=2024'))).status).toBe('ready')
+  })
   it('uses competition ranks and deterministic tie ordering',async()=>{const r=await rankings(fixture(),query());expect(r.items.map(i=>[i.id,i.rank])).toEqual([['a',1],['b',1],['c',3]])})
   it('pins later pages and ranks before pagination',async()=>{const db=fixture();const first=await rankings(db,query('limit=1'));expect(first.nextOffset).toBe(1);const second=await rankings(db,query('limit=1&offset=1&version=test-only'));expect(second.items[0].rank).toBe(1);expect(second.items[0].id).toBe('b')})
   it('counts one accident even if both categories apply',async()=>{const r=await rankings(fixture(),query('participant=bicycle'));expect(r.items.map(i=>i.id)).toEqual(['a','b']);expect(r.quality).toEqual({assigned:24,uncertain:2,excluded:1})})

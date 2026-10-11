@@ -48,6 +48,7 @@ export interface SnapshotMetadata {
   highwayScope?: string[]
   roadClassification?: { rankedHighways:string[]; ambiguityPolicy:string; excludedHighways:Record<string,string> }
   roadSourceSha256?: string
+  regionalCoverageExceptions?: Array<{prefecture:string;municipality?:string;year:number;reason:'historical_region_check'}>
   reconciliation?: { uniqueRecords:number; assigned:number; uncertain:number; excluded:number; missingDate:number; outsidePeriod:number; invalidCoordinates:number; administrativeCodeMismatch?:number }
   sources: Array<{ name: string; url: string; license: string; retrievedAt: string }>
 }
@@ -55,4 +56,5 @@ export interface RankingsResponse {
   status: 'ready' | 'preparing' | 'unavailable'
   metadata: SnapshotMetadata | null; items: RankedLocation[]; nextOffset: number | null
   quality: { assigned: number; uncertain: number; excluded: number }
+  preparingReason?: 'regional_correspondence'
 }
