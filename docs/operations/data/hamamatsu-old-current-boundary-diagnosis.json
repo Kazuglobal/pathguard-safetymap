@@ -1,0 +1,170 @@
+{
+  "sourceRows": 27753,
+  "counts": {
+    "both_reference_boundaries_and_reorganization_agree": 27363,
+    "outside_selected_period": 44,
+    "original_code_differs_from_2023_boundary": 341,
+    "current_reorganization_mismatch": 5
+  },
+  "byOriginalCode": {
+    "22132": {
+      "both_reference_boundaries_and_reorganization_agree": 5861,
+      "outside_selected_period": 13,
+      "original_code_differs_from_2023_boundary": 31,
+      "current_reorganization_mismatch": 3
+    },
+    "22137": {
+      "both_reference_boundaries_and_reorganization_agree": 447,
+      "current_reorganization_mismatch": 1
+    },
+    "22131": {
+      "both_reference_boundaries_and_reorganization_agree": 9006,
+      "outside_selected_period": 13,
+      "original_code_differs_from_2023_boundary": 166
+    },
+    "22133": {
+      "both_reference_boundaries_and_reorganization_agree": 3250,
+      "outside_selected_period": 9,
+      "original_code_differs_from_2023_boundary": 25
+    },
+    "22134": {
+      "both_reference_boundaries_and_reorganization_agree": 3269,
+      "original_code_differs_from_2023_boundary": 21,
+      "outside_selected_period": 4
+    },
+    "22135": {
+      "both_reference_boundaries_and_reorganization_agree": 2869,
+      "outside_selected_period": 3,
+      "original_code_differs_from_2023_boundary": 87
+    },
+    "22136": {
+      "both_reference_boundaries_and_reorganization_agree": 2661,
+      "original_code_differs_from_2023_boundary": 11,
+      "outside_selected_period": 2,
+      "current_reorganization_mismatch": 1
+    }
+  },
+  "byOccurrenceYear": {
+    "2019": {
+      "both_reference_boundaries_and_reorganization_agree": 6526,
+      "original_code_differs_from_2023_boundary": 82,
+      "current_reorganization_mismatch": 3
+    },
+    "2018": {
+      "outside_selected_period": 44
+    },
+    "2020": {
+      "both_reference_boundaries_and_reorganization_agree": 5526,
+      "original_code_differs_from_2023_boundary": 75
+    },
+    "2021": {
+      "both_reference_boundaries_and_reorganization_agree": 5329,
+      "original_code_differs_from_2023_boundary": 71
+    },
+    "2022": {
+      "both_reference_boundaries_and_reorganization_agree": 5051,
+      "original_code_differs_from_2023_boundary": 60
+    },
+    "2023": {
+      "both_reference_boundaries_and_reorganization_agree": 4931,
+      "original_code_differs_from_2023_boundary": 53,
+      "current_reorganization_mismatch": 2
+    }
+  },
+  "observedCodeTriples": {
+    "22132->22132->22138": 5861,
+    "22137->22137->22140": 447,
+    "22131->22131->22138": 9006,
+    "22133->22133->22138": 3250,
+    "22131->22135->22138": 116,
+    "22134->22134->22138": 3269,
+    "22134->22131->22138": 13,
+    "22135->22135->22139": 1258,
+    "22135->22135->22138": 1611,
+    "22135->22131->22138": 17,
+    "22136->22136->22139": 2661,
+    "22131->22133->22138": 24,
+    "22133->22131->22138": 22,
+    "22132->22135->22138": 18,
+    "22136->22132->22138": 7,
+    "22131->22132->22138": 10,
+    "22131->22134->22138": 16,
+    "22135->22136->22138": 4,
+    "22135->22133->22138": 29,
+    "22135->22132->22138": 29,
+    "22132->22132->22139": 3,
+    "22136->22132->22139": 3,
+    "22134->22132->22138": 1,
+    "22135->22136->22139": 4,
+    "22137->22137->22139": 1,
+    "22133->22134->22138": 2,
+    "22132->22134->22138": 5,
+    "22134->22133->22138": 7,
+    "22135->22221->22221": 2,
+    "22132->22136->22138": 2,
+    "22133->22135->22139": 1,
+    "22132->22211->22211": 5,
+    "22136->22135->22139": 1,
+    "22135->22133->22139": 2,
+    "22136->22136->22138": 1,
+    "22132->22131->22138": 1
+  },
+  "originalCodeToAllowedCurrentCodes": {
+    "22131": [
+      "22138"
+    ],
+    "22132": [
+      "22138"
+    ],
+    "22133": [
+      "22138"
+    ],
+    "22134": [
+      "22138"
+    ],
+    "22135": [
+      "22138",
+      "22139"
+    ],
+    "22136": [
+      "22139"
+    ],
+    "22137": [
+      "22140"
+    ]
+  },
+  "inputs": {
+    "recordsSha256": "bb880611db2f288acd78bf9159397a75ed79a3b96646307c57fcdda52933c2ec",
+    "historicalAreasSha256": "9bf43e7917917d11435948da3deda2aaaac372355428ea12c5f2ce430261be68",
+    "currentAreasSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6"
+  },
+  "historicalBoundaryAsOf": "2023-01-01",
+  "currentBoundaryAsOf": "2025-01-01",
+  "sources": [
+    "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2023.html",
+    "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2025.html",
+    "https://www.city.hamamatsu.shizuoka.jp/kikaku/kuseido/index.html"
+  ],
+  "method": "Strict point containment in both reference datasets, retaining original codes and checking the official reorganization allowlist. No closest-boundary repair.",
+  "limitations": [
+    "2023 boundary is one diagnostic reference, not verified boundary coverage for every occurrence year",
+    "Agreement alone is not remapping approval or road assignment",
+    "Boundary source precision and historical changes still require review"
+  ],
+  "reviewed": false,
+  "automaticRemappingApproved": false,
+  "published": false,
+  "classificationPrecedence": [
+    "missing date",
+    "outside selected period",
+    "invalid coordinate",
+    "historical containment unavailable or ambiguous",
+    "current containment unavailable or ambiguous",
+    "original code differs from 2023 boundary",
+    "current reorganization mismatch",
+    "both reference boundaries and reorganization agree"
+  ],
+  "currentAllowlistMismatchAcrossObservedTriples": 20,
+  "currentAllowlistMismatchAlreadyClassifiedAsHistoricalMismatch": 15,
+  "classificationNote": "The five current_reorganization_mismatch records exclude the fifteen current allowlist mismatches already classified among the 341 historical-reference mismatches. These are diagnostic categories, not approved corrections."
+}
