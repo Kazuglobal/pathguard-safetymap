@@ -12,7 +12,16 @@ export default function AccidentMap({items,selected,onSelect}: {items:RankedLoca
     const token=process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
     if(!token||!container.current){setError(true);return}
     setError(false);setReady(false)
-    const instance=new mapboxgl.Map({container:container.current,accessToken:token,style:'mapbox://styles/mapbox/streets-v12',center:[138,37],zoom:4})
+    const instance=new mapboxgl.Map({container:container.current,accessToken:token,style:'mapbox://styles/mapbox/streets-v12',center:[138,37],zoom:4,locale:{
+      'Map.Title':'事故が多い場所の地図',
+      'NavigationControl.ZoomIn':'拡大',
+      'NavigationControl.ZoomOut':'縮小',
+      'NavigationControl.ResetBearing':'北向きに戻す',
+      'AttributionControl.ToggleAttribution':'地図の出典を表示',
+      'ScrollZoomBlocker.CtrlMessage':'Ctrlキーを押しながらスクロールすると、地図を拡大・縮小できます',
+      'ScrollZoomBlocker.CmdMessage':'⌘キーを押しながらスクロールすると、地図を拡大・縮小できます',
+      'TouchPanBlocker.Message':'2本の指で地図を動かせます'
+    }})
     map.current=instance;instance.addControl(new mapboxgl.NavigationControl(),'bottom-right')
     const resize=new ResizeObserver(()=>instance.resize())
     resize.observe(container.current)
@@ -31,10 +40,10 @@ export default function AccidentMap({items,selected,onSelect}: {items:RankedLoca
     if(items.length&&!selected){const bounds=new mapboxgl.LngLatBounds();items.forEach(i=>bounds.extend([i.longitude,i.latitude]));map.current.fitBounds(bounds,{padding:55,maxZoom:15,duration:0})}
   },[items,ready,selected])
   useEffect(()=>{if(selected&&map.current&&ready)map.current.flyTo({center:[selected.longitude,selected.latitude],zoom:16})},[selected,ready])
-  return <div className="relative overflow-hidden rounded-xl border border-border bg-card">
+  return <div className="pg-accident-map relative overflow-hidden rounded-xl border border-border bg-card">
     <div ref={container} className="h-[480px] w-full"/>
     {error&&<div role="alert" className="absolute inset-0 flex flex-col items-center justify-center bg-card p-6"><p>地図を読み込めませんでした</p><button className="mt-3 min-h-11 rounded-xl border px-4" onClick={()=>setAttempt(n=>n+1)}>もう一度読み込む</button></div>}
     {selected&&<p className="absolute left-3 right-3 top-3 rounded-xl bg-card p-3">{selected.name}・{selected.count.toLocaleString()}件</p>}
-    <p className="px-4 py-3 text-sm">一覧と同じ順位を表示しています。<a className="underline" href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></p>
+    <p className="px-4 py-3 text-base">一覧と同じ順位を表示しています。<a className="underline" href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></p>
   </div>
 }
