@@ -11,10 +11,10 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
-from build_snapshot import SpatialStore, REQUIRED_HIGHWAYS
+from build_snapshot import SpatialStore, REQUIRED_HIGHWAYS, ROAD_EXCLUSIONS, AMBIGUITY_POLICY, digest, validate_feature
 
 ROADS=REQUIRED_HIGHWAYS
-VEHICLE_BASELINE=ROADS-{'cycleway','pedestrian','footway','path'}
+VEHICLE_BASELINE=ROADS-{'cycleway','pedestrian','footway','path','track','road','busway','bridleway','bus_guideway','escape'}
 def require_space(directory):
     if shutil.disk_usage(directory).free<5*1024**3:raise RuntimeError('Less than 5 GiB free; preserve working files and use a larger disk')
 
@@ -45,7 +45,7 @@ def ingest_pbf(topology,args):
     topology.ways=topology.db.execute('SELECT COUNT(*) FROM ways').fetchone()[0]
 class DiskTopology:
     """Retain shared-node topology on disk, including ways crossing pilot bounds."""
-    def __init__(self, directory, road_scope=ROADS):
+    def __init__(self, directory, road_scope=ROADS, source_hash=None):
         self.directory=Path(directory)
         self.directory.mkdir(parents=True,exist_ok=True)
         require_space(self.directory)
@@ -56,19 +56,31 @@ class DiskTopology:
         self.db.execute('PRAGMA cache_size=-8192')
         self.db.executescript('''CREATE TABLE nodes(id INTEGER PRIMARY KEY,x REAL,y REAL);
             CREATE TABLE ways(id INTEGER PRIMARY KEY,grade TEXT,name TEXT,refs TEXT);
+            CREATE TABLE ambiguity_ways(id INTEGER PRIMARY KEY,grade TEXT,geometry TEXT);
             CREATE TABLE edges(node INTEGER,grade TEXT,neighbor INTEGER,PRIMARY KEY(node,grade,neighbor)) WITHOUT ROWID;''')
         self.db.execute('CREATE TABLE extraction_metadata(key TEXT PRIMARY KEY,value TEXT)')
         self.db.execute('INSERT INTO extraction_metadata VALUES(?,?)',('highwayScope',json.dumps(sorted(self.road_scope))))
+        classification={'rankedHighways':sorted(self.road_scope),'ambiguityPolicy':AMBIGUITY_POLICY if self.road_scope==ROADS else 'omitted-baseline-only','excludedHighways':ROAD_EXCLUSIONS}
+        self.db.executemany('INSERT INTO extraction_metadata VALUES(?,?)',[('roadClassification',json.dumps(classification)),('roadSourceSha256',json.dumps(source_hash))])
         self.db.commit()
         self.ways=0
 
     def add_way(self, identity, references, coordinates, tags, bounds=None):
-        if tags.get('highway') not in self.road_scope:return
+        highway=tags.get('highway')
+        if not highway or highway in ROAD_EXCLUSIONS:return
+        if self.road_scope==VEHICLE_BASELINE and highway not in self.road_scope:return
         if len(references)<2 or len(references)!=len(coordinates):raise ValueError('Incomplete OSM way')
         if bounds:
             west,south,east,north=bounds
             if max(p[0] for p in coordinates)<west or min(p[0] for p in coordinates)>east or max(p[1] for p in coordinates)<south or min(p[1] for p in coordinates)>north:return
+        self.processed=getattr(self,'processed',0)+1
         grade=json.dumps([str(tags.get('layer','0')),tags.get('bridge','no'),tags.get('tunnel','no')],separators=(',',':'))
+        if highway not in self.road_scope or tags.get('area')=='yes':
+            if tags.get('area')=='yes' and (len(coordinates)<4 or references[0]!=references[-1]):raise ValueError('Incomplete road area; review source geometry')
+            geometry={'type':'Polygon','coordinates':[coordinates]} if tags.get('area')=='yes' and len(coordinates)>=4 and references[0]==references[-1] else {'type':'LineString','coordinates':coordinates}
+            self.db.execute('INSERT INTO ambiguity_ways VALUES(?,?,?)',(identity,grade,json.dumps(geometry)))
+            if self.processed%5000==0:self.db.commit();require_space(self.directory)
+            return
         for node,(x,y) in zip(references,coordinates):
             self.db.execute('INSERT OR IGNORE INTO nodes VALUES(?,?,?)',(node,x,y))
         self.db.execute('INSERT INTO ways VALUES(?,?,?,?)',(identity,grade,tags.get('name',''),json.dumps(references)))
@@ -76,7 +88,7 @@ class DiskTopology:
             if a==b:continue
             self.db.executemany('INSERT OR IGNORE INTO edges VALUES(?,?,?)',[(a,grade,b),(b,grade,a)])
         self.ways+=1
-        if self.ways%5000==0:
+        if self.processed%5000==0:
             self.db.commit()
             require_space(self.directory)
 
@@ -132,24 +144,30 @@ class DiskTopology:
             INSERT INTO junctions SELECT node,grade FROM edges GROUP BY node,grade HAVING COUNT(*)>=3;''')
         spatial=SpatialStore(self.directory/'boundaries.sqlite')
         scope=json.loads(self.db.execute('SELECT value FROM extraction_metadata WHERE key=\'highwayScope\'').fetchone()[0])
-        report={'ways':self.ways,'highwayScope':scope,'intersections':0,'roadSections':0,'outsideOrAmbiguousBoundary':0,'reviewedLocations':0,'completeCoverageReviewed':False}
+        classification=json.loads(self.db.execute("SELECT value FROM extraction_metadata WHERE key='roadClassification'").fetchone()[0])
+        source_hash=json.loads(self.db.execute("SELECT value FROM extraction_metadata WHERE key='roadSourceSha256'").fetchone()[0])
+        report={'ways':self.ways,'ambiguityWays':self.db.execute('SELECT COUNT(*) FROM ambiguity_ways').fetchone()[0],'ambiguityFeatures':0,'highwayScope':scope,'roadClassification':classification,'roadSourceSha256':source_hash,'intersections':0,'roadSections':0,'outsideOrAmbiguousBoundary':0,'reviewedLocations':0,'completeCoverageReviewed':False}
         try:
             spatial.ingest(areas,'boundary')
             require_space(Path(output).resolve().parent)
             with open(output,'x',encoding='utf-8') as stream:
-                stream.write('{"type":"FeatureCollection","highwayScope":'+json.dumps(scope)+',"features":[');first=True
-                def emit_feature(identity,kind,geometry,grade,name):
+                header={'type':'FeatureCollection','highwayScope':scope,'roadClassification':classification,'roadSourceSha256':source_hash}
+                stream.write(json.dumps(header)[:-1]+',"features":[');first=True
+                def emit_feature(identity,kind,geometry,grade,name,ambiguity=False):
                     nonlocal first
-                    center=geometry['coordinates'] if kind=='intersection' else geometry['coordinates'][len(geometry['coordinates'])//2]
+                    center=geometry['coordinates'] if kind=='intersection' else geometry['coordinates'][0][0] if geometry['type']=='Polygon' else geometry['coordinates'][len(geometry['coordinates'])//2]
                     matches=list(spatial.matching_boundaries(center))
                     if len(matches)!=1:
-                        report['outsideOrAmbiguousBoundary']+=1;return
-                    props=matches[0]['properties']
+                        report['outsideOrAmbiguousBoundary']+=1
+                        ambiguity=True
+                    props=matches[0]['properties'] if len(matches)==1 else {'municipalityName':'','prefecture':'','municipality':''}
                     feature={'type':'Feature','geometry':geometry,'properties':{'id':identity,'kind':kind,'layer':'_'.join(json.loads(grade)),'reviewed':False,'name':name,'address':props['municipalityName'],'prefecture':props['prefecture'],'municipality':props['municipality']}}
+                    if ambiguity:feature['properties']['ambiguityOnly']=True
+                    validate_feature(feature)
                     if not first:stream.write(',')
                     json.dump(feature,stream,ensure_ascii=False);first=False
-                    report['intersections' if kind=='intersection' else 'roadSections']+=1
-                    if (report['intersections']+report['roadSections'])%10000==0:
+                    report['ambiguityFeatures' if ambiguity else 'intersections' if kind=='intersection' else 'roadSections']+=1
+                    if (report['intersections']+report['roadSections']+report['ambiguityFeatures'])%10000==0:
                         self.db.commit()
                         require_space(self.directory);require_space(Path(output).resolve().parent)
                 for node,grade,x,y in self.db.execute('SELECT j.node,j.grade,n.x,n.y FROM junctions j JOIN nodes n ON n.id=j.node ORDER BY j.node,j.grade'):
@@ -158,6 +176,8 @@ class DiskTopology:
                 for identity,grade,name,references in self.road_sections():
                     coordinates=[list(self.db.execute('SELECT x,y FROM nodes WHERE id=?',(node,)).fetchone()) for node in references]
                     emit_feature(identity,'road',{'type':'LineString','coordinates':coordinates},grade,name)
+                for identity,grade,geometry in self.db.execute('SELECT id,grade,geometry FROM ambiguity_ways ORDER BY id'):
+                    emit_feature(f'osm-ambiguity-{identity}','road',json.loads(geometry),grade,'',True)
                 report['sourceRoadPieces']=self.db.execute('SELECT COUNT(*) FROM pieces').fetchone()[0]
                 stream.write(']}')
             Path(str(output)+'.quality.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
@@ -168,7 +188,7 @@ class DiskTopology:
 
 def prepare_file(args):
     """The CLI never materializes national nodes, ways, adjacency sets or outputs."""
-    topology=DiskTopology(args.work,VEHICLE_BASELINE if getattr(args,'vehicle_road_baseline',False) else ROADS)
+    topology=DiskTopology(args.work,VEHICLE_BASELINE if getattr(args,'vehicle_road_baseline',False) else ROADS,digest(args.osm))
     try:
         if args.bounds and (len(args.bounds)!=4 or not (122<=args.bounds[0]<args.bounds[2]<=154 and 20<=args.bounds[1]<args.bounds[3]<=46)):
             raise ValueError('Invalid pilot bounds')
@@ -187,7 +207,7 @@ def prepare_file(args):
             topology.db.commit()
             with open(args.osm,'rb') as stream:
                 for element in ijson.items(stream,'elements.item',use_float=True):
-                    if element['type']!='way' or element.get('tags',{}).get('highway') not in topology.road_scope:continue
+                    if element['type']!='way' or not element.get('tags',{}).get('highway'):continue
                     coordinates=[]
                     for node in element['nodes']:
                         point=topology.db.execute('SELECT x,y FROM nodes WHERE id=?',(node,)).fetchone()

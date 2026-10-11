@@ -14,6 +14,34 @@ CODEBOOK={'bicycle':['51','52'],'pedestrian':['61'],'classes':snapshot.CLASSES,'
 def junction(id,x=139.9,layer=0):
     return {'geometry':{'type':'Point','coordinates':[x,35.8]},'properties':{'id':id,'kind':'intersection','reviewed':True,'layer':layer}}
 class SpatialAssignmentTest(unittest.TestCase):
+    def test_unresolved_passage_blocks_road_and_intersection_assignment(self):
+        passage={'geometry':{'type':'LineString','coordinates':[[139.9,35.7999],[139.9,35.8001]]},'properties':{'id':'steps','kind':'road','reviewed':False,'ambiguityOnly':True,'layer':0,'prefecture':'','municipality':''}}
+        snapshot.validate_feature(passage)
+        self.assertIsNone(snapshot.assign((139.9,35.8),[junction('a'),passage]))
+        road=junction('road');road['properties']['kind']='road';road['geometry']=passage['geometry']
+        self.assertIsNone(snapshot.assign((139.9,35.8),[road,passage]))
+        passage['properties']['layer']=1
+        self.assertIsNone(snapshot.assign((139.9,35.8),[junction('a'),passage]))
+        passage['properties']['reviewed']=True
+        self.assertRaises(ValueError,snapshot.validate_feature,passage)
+
+    def test_road_area_blocks_inside_even_when_its_edges_are_far_away(self):
+        area={'geometry':{'type':'Polygon','coordinates':[[[139.89,35.79],[139.91,35.79],[139.91,35.81],[139.89,35.81],[139.89,35.79]]]},'properties':{'id':'plaza','kind':'road','reviewed':False,'ambiguityOnly':True,'layer':0,'prefecture':'','municipality':''}}
+        snapshot.validate_feature(area)
+        self.assertEqual(snapshot.distance((139.9,35.8),area['geometry']),0)
+        self.assertIsNone(snapshot.assign((139.9,35.8),[junction('a'),area]))
+        artifact_root=MODULE.parents[2]/'artifacts';artifact_root.mkdir(exist_ok=True)
+        root=Path(tempfile.mkdtemp(prefix='ambiguity-area-',dir=artifact_root))
+        path=root/'area.json';path.write_text(json.dumps({'features':[area]}),encoding='utf-8')
+        store=snapshot.SpatialStore(root/'index.sqlite')
+        try:
+            self.assertEqual(store.ingest(path,'candidate'),1)
+            self.assertEqual(len(list(store.nearby((139.9,35.8),'candidate',.001))),1)
+        finally:store.close()
+    def test_malformed_ambiguity_areas_are_rejected(self):
+        for ring in ([[139.89,35.79],[139.91,35.79],[139.91,35.81],[139.89,35.81]],[[139.89,35.79],[139.91,35.81],[139.91,35.79],[139.89,35.81],[139.89,35.79]]):
+            area={'geometry':{'type':'Polygon','coordinates':[ring]},'properties':{'id':'bad-area','kind':'road','reviewed':False,'ambiguityOnly':True,'layer':0,'prefecture':'','municipality':''}}
+            self.assertRaises(ValueError,snapshot.validate_feature,area)
     def test_nearby_intersections_are_not_merged(self):
         self.assertIsNone(snapshot.assign((139.9,35.8),[junction('a'),junction('b',139.9001)]))
     def test_grade_separation_is_uncertain(self):
@@ -99,15 +127,18 @@ class SnapshotBuildTest(unittest.TestCase):
         root=Path(tempfile.mkdtemp(prefix='road-topology-',dir=MODULE.parents[2]/'artifacts'))
         points={1:[139.9,35.8],2:[139.89,35.8],3:[139.91,35.8],4:[139.9,35.81],5:[139.9,35.8],6:[139.9,35.79],7:[139.9,35.82]}
         points.update({node:[139.9+node*.0001,35.805] for node in range(8,12)})
+        points[12]=[139.9,35.815]
         elements=[{'type':'node','id':identity,'lon':point[0],'lat':point[1]} for identity,point in points.items()]
         elements += [{'type':'way','id':identity,'nodes':refs,'tags':{'highway':'residential',**tags}} for identity,refs,tags in [(10,[2,1,3],{}),(11,[1,4],{}),(12,[6,5,7],{}),(13,[1,7],{'bridge':'yes','layer':'1'})]]
         elements += [{'type':'way','id':20+node,'nodes':[1,node],'tags':{'highway':kind}} for node,kind in zip(range(8,12),('cycleway','pedestrian','footway','path'))]
+        elements += [{'type':'way','id':identity,'nodes':refs,'tags':tags} for identity,refs,tags in [(40,[1,12],{'highway':'track'}),(41,[1,7],{'highway':'steps'}),(42,[1,4],{'highway':'experimental_path'}),(43,[1,2],{'highway':'construction'}),(44,[2,1,4,2],{'highway':'footway','area':'yes'})]]
         osm=root/'osm.json';osm.write_text(json.dumps({'elements':elements}),encoding='utf-8')
         area=root/'area.json';area.write_text(json.dumps({'features':[{'properties':{'prefecture':'12','prefectureName':'千葉県','municipality':'12217','municipalityName':'柏市'},'geometry':{'type':'Polygon','coordinates':[[[139.8,35.7],[140,35.7],[140,35.9],[139.8,35.9],[139.8,35.7]]]}}]}),encoding='utf-8')
         output=root/'locations.json'
         report=prepare_locations.prepare_file(SimpleNamespace(osm=osm,areas=area,work=root/'work',output=output,bounds=None))
         self.assertEqual(report['intersections'],1)
-        self.assertEqual(report['ways'],8)
+        self.assertEqual(report['ways'],9)
+        self.assertEqual(report['ambiguityFeatures'],3)
         self.assertEqual(report['highwayScope'],sorted(snapshot.REQUIRED_HIGHWAYS))
         features=json.loads(output.read_text(encoding='utf-8'))['features']
         self.assertTrue(all(f['properties']['reviewed'] is False for f in features))
@@ -124,6 +155,10 @@ class SnapshotBuildTest(unittest.TestCase):
         bounded=root/'bounded.json'
         prepare_locations.prepare_file(SimpleNamespace(osm=pbf,areas=area,work=root/'pbf-work',output=bounded,bounds=[139.899,35.799,139.901,35.801]))
         self.assertEqual(features,json.loads(bounded.read_text(encoding='utf-8'))['features'])
+        ambiguity=[f for f in features if f['properties'].get('ambiguityOnly')]
+        self.assertEqual(len(ambiguity),3)
+        self.assertTrue(any(f['geometry']['type']=='Polygon' for f in ambiguity))
+        self.assertTrue(all(snapshot.validate_feature(f) for f in ambiguity))
         baseline=root/'baseline.json'
         prepare_locations.prepare_file(SimpleNamespace(osm=pbf,areas=area,work=root/'baseline-work',output=baseline,bounds=[139.899,35.799,139.901,35.801],vehicle_road_baseline=True))
         baseline_quality=json.loads(Path(str(baseline)+'.quality.json').read_text())
@@ -171,10 +206,12 @@ class SnapshotBuildTest(unittest.TestCase):
         f=junction('a');f['properties'].update(prefecture='12',municipality='12217',name='試験地点',address='柏市')
         unused=junction('unused',140.5);unused['properties'].update(prefecture='12',municipality='12217',name='未使用地点',address='柏市')
         scope=sorted(snapshot.REQUIRED_HIGHWAYS)
-        locations.write_text(json.dumps({'highwayScope':scope,'features':[f,unused]}),encoding='utf-8')
+        classification={'rankedHighways':scope,'ambiguityPolicy':snapshot.AMBIGUITY_POLICY,'excludedHighways':snapshot.ROAD_EXCLUSIONS}
+        locations.write_text(json.dumps({'highwayScope':scope,'roadClassification':classification,'roadSourceSha256':'0'*64,'features':[f,unused]}),encoding='utf-8')
         areas.write_text(json.dumps({'features':[{'geometry':{'type':'Polygon','coordinates':[[[139.8,35.7],[140,35.7],[140,35.9],[139.8,35.9],[139.8,35.7]]]},'properties':{'prefecture':'12','prefectureName':'千葉県','municipality':'12217','municipalityName':'柏市'}}]}),encoding='utf-8')
         data={'version':'fixture-only','updatedAt':'2026-10-10','years':[2024],'sourceYears':[2025],'sources':[{'name':'試験用','url':'https://example.com','license':'test','retrievedAt':'2026-10-10'}],'codebooks':{'2025':CODEBOOK},'review':{'completeCoverage':True,'expectedUniqueRecords':6,'inputHashes':{k:snapshot.digest(p) for k,p in [('records',records),('locations',locations),('areas',areas)]}}}
         data['review'].update(highwayScope=scope,highwayScopeReviewed=True)
+        data['review'].update(roadClassification=classification,roadClassificationReviewed=True,roadSourceSha256='0'*64)
         manifest.write_text(json.dumps(data),encoding='utf-8')
         args=SimpleNamespace(records=records,locations=locations,areas=areas,manifest=manifest,output=root/'result')
         snapshot.build(args)
@@ -197,13 +234,22 @@ class SnapshotBuildTest(unittest.TestCase):
         root=Path(tempfile.mkdtemp(prefix='highway-scope-',dir=MODULE.parents[2]/'artifacts'))
         locations=root/'locations.json';scope=sorted(snapshot.REQUIRED_HIGHWAYS)
         review={'highwayScope':scope,'highwayScopeReviewed':True}
-        for omitted in ('cycleway','pedestrian','footway','path'):
+        for omitted in scope:
             locations.write_text(json.dumps({'highwayScope':[v for v in scope if v!=omitted]}),encoding='utf-8')
             self.assertRaises(ValueError,snapshot.reviewed_highway_scope,locations,review)
         locations.write_text(json.dumps({'highwayScope':scope}),encoding='utf-8')
         for invalid in ({},dict(review,highwayScopeReviewed='true'),dict(review,highwayScope=scope[:-1])):
             self.assertRaises(ValueError,snapshot.reviewed_highway_scope,locations,invalid)
         self.assertEqual(snapshot.reviewed_highway_scope(locations,review),scope)
+        classification={'rankedHighways':scope,'ambiguityPolicy':snapshot.AMBIGUITY_POLICY,'excludedHighways':snapshot.ROAD_EXCLUSIONS}
+        source_hash='1'*64
+        locations.write_text(json.dumps({'roadClassification':classification,'roadSourceSha256':source_hash}),encoding='utf-8')
+        review={'roadClassification':classification,'roadSourceSha256':source_hash,'roadClassificationReviewed':True}
+        self.assertEqual(snapshot.reviewed_road_classification(locations,review,scope),(classification,source_hash))
+        for bad in ({},dict(review,roadSourceSha256='2'*64),dict(review,roadClassificationReviewed='true')):
+            self.assertRaises(ValueError,snapshot.reviewed_road_classification,locations,bad,scope)
+        locations.write_text(json.dumps({'roadClassification':dict(classification,ambiguityPolicy='omit_unknown'),'roadSourceSha256':source_hash}),encoding='utf-8')
+        self.assertRaises(ValueError,snapshot.reviewed_road_classification,locations,review,scope)
 
     def test_dedicated_paths_share_junction_topology_without_connecting_bridges(self):
         sys.path.insert(0,str(MODULE.parent))

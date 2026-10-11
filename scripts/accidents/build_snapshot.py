@@ -17,7 +17,9 @@ from pathlib import Path
 
 RADII = (10, 20, 30, 50)
 CLASSES = {'01': '歩行者と車両', '21': '車両どうし', '41': '車両のみ', '61': '列車が関係する事故'}
-REQUIRED_HIGHWAYS = frozenset({'motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link','tertiary','tertiary_link','unclassified','residential','living_street','service','cycleway','pedestrian','footway','path'})
+REQUIRED_HIGHWAYS = frozenset({'motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link','tertiary','tertiary_link','unclassified','residential','living_street','service','cycleway','pedestrian','footway','path','track','road','busway','bridleway','bus_guideway','escape'})
+ROAD_EXCLUSIONS = {'construction':'current road not established','proposed':'future proposal','planned':'future plan','disused':'not current','abandoned:path':'not current','no':'explicitly not a highway','bus_stop':'facility rather than road','street_lamp':'facility rather than road','emergency_access_point':'facility rather than road'}
+AMBIGUITY_POLICY = 'other_highways_and_road_areas'
 
 def reviewed_highway_scope(locations, review):
     """Bind the reviewed extraction scope to the hashed geometry input."""
@@ -30,6 +32,17 @@ def reviewed_highway_scope(locations, review):
     if review.get('highwayScopeReviewed') is not True or review.get('highwayScope')!=scope:
         raise ValueError('Road highway scope has not been reviewed against geometry')
     return scope
+
+def reviewed_road_classification(locations,review,scope):
+    import ijson
+    with open(locations,'rb') as stream:classification=next(ijson.items(stream,'roadClassification'),None)
+    with open(locations,'rb') as stream:source_hash=next(ijson.items(stream,'roadSourceSha256'),None)
+    expected={'rankedHighways':scope,'ambiguityPolicy':AMBIGUITY_POLICY,'excludedHighways':ROAD_EXCLUSIONS}
+    if classification!=expected:raise ValueError('Physical alternatives must remain ambiguity geometry')
+    if not isinstance(source_hash,str) or not re.fullmatch(r'[a-f0-9]{64}',source_hash):raise ValueError('Road source hash required')
+    if (review.get('roadClassificationReviewed') is not True or review.get('roadClassification')!=classification
+        or review.get('roadSourceSha256')!=source_hash):raise ValueError('Road classification/source not reviewed')
+    return classification,source_hash
 
 def stream_features(path):
     """Large GeoJSON requires the streaming reader; fixtures may use the stdlib."""
@@ -60,7 +73,7 @@ class SpatialStore:
             geometry = feature['geometry']; props = feature['properties']
             if kind == 'boundary' and geometry['type'] not in ('Polygon', 'MultiPolygon'):
                 raise ValueError('Invalid boundary geometry')
-            if kind == 'boundary':
+            if kind == 'boundary' or geometry['type']=='Polygon':
                 polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
                 coordinates = (p for polygon in polygons for ring in polygon for p in ring)
             else:
@@ -136,6 +149,9 @@ def digest(path):
 def distance(point, geometry):
     """Local metric projection about query point, for short candidate distances only."""
     x, y = point
+    if geometry['type']=='Polygon':
+        if contains(point,geometry):return 0
+        return min(distance(point,{'type':'LineString','coordinates':ring}) for ring in geometry['coordinates'])
     def project(p):
         return ((p[0]-x)*111195*math.cos(math.radians(y)), (p[1]-y)*111195)
     coords = [geometry['coordinates']] if geometry['type'] == 'Point' else geometry['coordinates']
@@ -162,6 +178,8 @@ def assign(point, candidates, radius=30):
     nearby = [(c,distance(point,c['geometry'])) for c in candidates]
     nearby = [(c,d) for c,d in nearby if d <= (radius if c['properties']['kind']=='intersection' else 20)]
     if not nearby: return None
+    # A plausible alternative cannot disappear behind an intersection preference.
+    if any(c['properties'].get('ambiguityOnly') is True for c,d in nearby):return None
     # Coordinates cannot resolve elevation. Never prefer an arbitrary upper/lower road.
     if len({str(c['properties']['layer']) for c,d in nearby}) > 1: return None
     if any(str(c['properties']['layer']) not in ('0','0_no_no') for c,d in nearby): return None
@@ -174,11 +192,18 @@ def validate_feature(f):
     p=f['properties'];g=f['geometry']
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,100}',p['id']): raise ValueError('Invalid location ID')
     if p['kind'] not in ('intersection','road'): raise ValueError('Invalid location kind')
-    if g['type'] != ('Point' if p['kind']=='intersection' else 'LineString'): raise ValueError('Invalid geometry')
+    ambiguity=p.get('ambiguityOnly',False)
+    if not isinstance(ambiguity,bool) or (ambiguity and p['reviewed'] is not False):raise ValueError('Ambiguity geometry cannot be reviewed as a location')
+    if g['type'] != ('Point' if p['kind']=='intersection' else 'LineString') and not (ambiguity and p['kind']=='road' and g['type']=='Polygon'): raise ValueError('Invalid geometry')
     if not isinstance(p['reviewed'],bool) or 'layer' not in p: raise ValueError('Review/layer required')
-    coordinates=[g['coordinates']] if g['type']=='Point' else g['coordinates']
+    coordinates=[g['coordinates']] if g['type']=='Point' else [c for ring in g['coordinates'] for c in ring] if g['type']=='Polygon' else g['coordinates']
     if not coordinates or any(len(c)!=2 or not all(isinstance(v,(int,float)) and math.isfinite(v) for v in c) or not (122<=c[0]<=154 and 20<=c[1]<=46) for c in coordinates):raise ValueError('Invalid location coordinates')
-    if not re.fullmatch(r'\d{2}',p['prefecture']) or not re.fullmatch(r'\d{5}',p['municipality']): raise ValueError('Invalid area')
+    if g['type']=='Polygon':
+        if any(len(ring)<4 or ring[0]!=ring[-1] for ring in g['coordinates']):raise ValueError('Ambiguity area rings must be closed')
+        from shapely.geometry import shape
+        polygon=shape(g)
+        if polygon.is_empty or not polygon.is_valid:raise ValueError('Invalid ambiguity area topology')
+    if not (ambiguity and p['prefecture']==p['municipality']=='') and (not re.fullmatch(r'\d{2}',p['prefecture']) or not re.fullmatch(r'\d{5}',p['municipality'])): raise ValueError('Invalid area')
     return f
 
 def normalized(row, codebook):
@@ -205,6 +230,7 @@ def _build(args, resources):
     if manifest['review']['inputHashes']!=inputs: raise ValueError('Review does not match inputs')
     if manifest['review']['completeCoverage'] is not True: raise ValueError('Partial data cannot be published as complete')
     highway_scope=reviewed_highway_scope(args.locations,manifest['review'])
+    road_classification,road_source_hash=reviewed_road_classification(args.locations,manifest['review'],highway_scope)
     if not manifest['years'] or len(set(manifest['years']))!=len(manifest['years']):raise ValueError('Invalid years')
     if not manifest['sourceYears'] or any(not isinstance(y,int) or y<2018 or y>2100 for y in manifest['sourceYears']+manifest['years']):raise ValueError('Invalid source/occurrence coverage')
     if not manifest['sources']:raise ValueError('Source attribution required')
@@ -230,6 +256,7 @@ def _build(args, resources):
     # Location/area rows exist before count inserts; snapshot remains unpublished.
     meta={'version':version,'updatedAt':manifest['updatedAt'],'years':manifest['years'],'sourceYears':manifest['sourceYears'],'method':'指定した公開年度の原本に含まれる事故を発生年で集計。道路のつながりと立体構造を確認した交差点（30m以内）・道路区間が対象','sources':manifest['sources']}
     meta['highwayScope']=highway_scope
+    meta.update(roadClassification=road_classification,roadSourceSha256=road_source_hash)
     db.execute('INSERT INTO accident_snapshots VALUES(?,?,?,?)',(version,0,manifest['updatedAt'],json.dumps(meta,ensure_ascii=False)))
     areas={}
     for (body,) in spatial.db.execute("SELECT body FROM features WHERE kind='boundary'"):
