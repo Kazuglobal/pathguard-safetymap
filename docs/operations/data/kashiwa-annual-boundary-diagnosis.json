@@ -1,0 +1,2766 @@
+{
+  "rows": 96,
+  "counts": {
+    "annual_reference_differs_original": 82,
+    "no_or_multiple_annual_reference": 14
+  },
+  "results": [
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0085"
+      ],
+      "occurrenceDate": "2019-01-26T14:14:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "137",
+        "0018"
+      ],
+      "occurrenceDate": "2019-01-24T12:10:00+09:00",
+      "originalMunicipality": "12222",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "139",
+        "0002"
+      ],
+      "occurrenceDate": "2019-01-05T09:05:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0180"
+      ],
+      "occurrenceDate": "2019-02-21T15:12:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0242"
+      ],
+      "occurrenceDate": "2019-03-11T16:00:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "139",
+        "0108"
+      ],
+      "occurrenceDate": "2019-03-09T18:20:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "139",
+        "0235"
+      ],
+      "occurrenceDate": "2019-06-17T16:05:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0714"
+      ],
+      "occurrenceDate": "2019-07-23T18:00:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0790"
+      ],
+      "occurrenceDate": "2019-08-23T12:44:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0875"
+      ],
+      "occurrenceDate": "2019-09-18T20:05:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "137",
+        "0204"
+      ],
+      "occurrenceDate": "2019-09-10T21:06:00+09:00",
+      "originalMunicipality": "12222",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0949"
+      ],
+      "occurrenceDate": "2019-10-19T14:25:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "0959"
+      ],
+      "occurrenceDate": "2019-10-23T07:46:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "139",
+        "0370"
+      ],
+      "occurrenceDate": "2019-10-01T19:38:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "1156"
+      ],
+      "occurrenceDate": "2019-12-23T21:17:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "109",
+        "1169"
+      ],
+      "occurrenceDate": "2019-12-27T12:40:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2019",
+        "44",
+        "139",
+        "0461"
+      ],
+      "occurrenceDate": "2019-12-07T09:25:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2019,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "109",
+        "0192"
+      ],
+      "occurrenceDate": "2020-03-17T23:16:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12222"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12222"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "109",
+        "0247"
+      ],
+      "occurrenceDate": "2020-04-12T14:36:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "109",
+        "0306"
+      ],
+      "occurrenceDate": "2020-05-19T18:13:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "109",
+        "0521"
+      ],
+      "occurrenceDate": "2020-08-28T18:38:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12222"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12222"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "138",
+        "0196"
+      ],
+      "occurrenceDate": "2020-08-13T17:15:00+09:00",
+      "originalMunicipality": "12207",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "109",
+        "0670"
+      ],
+      "occurrenceDate": "2020-10-25T14:16:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "139",
+        "0292"
+      ],
+      "occurrenceDate": "2020-10-31T09:15:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "109",
+        "0780"
+      ],
+      "occurrenceDate": "2020-11-24T18:37:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2020",
+        "44",
+        "139",
+        "0358"
+      ],
+      "occurrenceDate": "2020-12-17T09:44:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2020,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0122"
+      ],
+      "occurrenceDate": "2021-02-22T13:33:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "139",
+        "0087"
+      ],
+      "occurrenceDate": "2021-03-27T12:00:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0274"
+      ],
+      "occurrenceDate": "2021-04-11T10:22:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "139",
+        "0156"
+      ],
+      "occurrenceDate": "2021-05-28T16:10:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0404"
+      ],
+      "occurrenceDate": "2021-06-19T16:50:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0532"
+      ],
+      "occurrenceDate": "2021-08-12T07:05:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0550"
+      ],
+      "occurrenceDate": "2021-07-14T17:08:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0554"
+      ],
+      "occurrenceDate": "2021-08-20T12:30:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "139",
+        "0355"
+      ],
+      "occurrenceDate": "2021-11-17T20:20:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "139",
+        "0365"
+      ],
+      "occurrenceDate": "2021-11-25T17:19:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2021",
+        "44",
+        "109",
+        "0888"
+      ],
+      "occurrenceDate": "2021-12-20T15:54:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2021,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "139",
+        "0017"
+      ],
+      "occurrenceDate": "2022-01-15T18:55:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0112"
+      ],
+      "occurrenceDate": "2022-02-23T10:16:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12222"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12222"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0126"
+      ],
+      "occurrenceDate": "2022-02-28T08:57:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0158"
+      ],
+      "occurrenceDate": "2022-03-09T18:10:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0268"
+      ],
+      "occurrenceDate": "2022-04-08T16:08:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0313"
+      ],
+      "occurrenceDate": "2022-05-06T09:50:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0416"
+      ],
+      "occurrenceDate": "2022-06-16T16:01:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "139",
+        "0177"
+      ],
+      "occurrenceDate": "2022-07-08T19:54:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0549"
+      ],
+      "occurrenceDate": "2022-08-13T09:30:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0606"
+      ],
+      "occurrenceDate": "2022-09-09T20:08:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0611"
+      ],
+      "occurrenceDate": "2022-09-08T18:08:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "139",
+        "0247"
+      ],
+      "occurrenceDate": "2022-09-26T16:32:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "109",
+        "0695"
+      ],
+      "occurrenceDate": "2022-10-18T17:25:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2022",
+        "44",
+        "139",
+        "0353"
+      ],
+      "occurrenceDate": "2022-12-13T19:40:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2022,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "no_or_multiple_annual_reference",
+      "uncodedAnnualGeometryMatches": 1,
+      "annualReferenceSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0059"
+      ],
+      "occurrenceDate": "2023-01-21T13:47:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0130"
+      ],
+      "occurrenceDate": "2023-02-18T07:20:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0156"
+      ],
+      "occurrenceDate": "2023-02-14T16:27:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "139",
+        "0074"
+      ],
+      "occurrenceDate": "2023-03-20T12:15:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "139",
+        "0116"
+      ],
+      "occurrenceDate": "2023-04-24T19:27:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0377"
+      ],
+      "occurrenceDate": "2023-05-10T19:03:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0396"
+      ],
+      "occurrenceDate": "2023-03-08T08:25:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0506"
+      ],
+      "occurrenceDate": "2023-06-19T19:13:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0763"
+      ],
+      "occurrenceDate": "2023-09-11T08:42:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2023",
+        "44",
+        "109",
+        "0898"
+      ],
+      "occurrenceDate": "2023-10-30T22:28:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2023,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0066"
+      ],
+      "occurrenceDate": "2024-01-25T08:15:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0244"
+      ],
+      "occurrenceDate": "2024-03-25T08:33:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0311"
+      ],
+      "occurrenceDate": "2024-04-27T11:00:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0316"
+      ],
+      "occurrenceDate": "2024-04-25T17:13:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "138",
+        "0073"
+      ],
+      "occurrenceDate": "2024-04-11T10:31:00+09:00",
+      "originalMunicipality": "12207",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0326"
+      ],
+      "occurrenceDate": "2024-05-04T17:31:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0335"
+      ],
+      "occurrenceDate": "2024-05-10T08:32:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "139",
+        "0160"
+      ],
+      "occurrenceDate": "2024-06-07T13:01:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0498"
+      ],
+      "occurrenceDate": "2024-07-18T18:06:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0530"
+      ],
+      "occurrenceDate": "2024-07-29T08:52:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0615"
+      ],
+      "occurrenceDate": "2024-09-04T19:11:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0772"
+      ],
+      "occurrenceDate": "2024-10-30T18:03:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0783"
+      ],
+      "occurrenceDate": "2024-11-04T09:48:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "109",
+        "0803"
+      ],
+      "occurrenceDate": "2024-11-12T01:25:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "137",
+        "0142"
+      ],
+      "occurrenceDate": "2024-12-18T20:50:00+09:00",
+      "originalMunicipality": "12222",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2024",
+        "44",
+        "139",
+        "0368"
+      ],
+      "occurrenceDate": "2024-12-15T18:49:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2024,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0042"
+      ],
+      "occurrenceDate": "2025-01-21T05:35:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0132"
+      ],
+      "occurrenceDate": "2025-02-21T09:51:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0150"
+      ],
+      "occurrenceDate": "2025-03-01T10:20:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "139",
+        "0079"
+      ],
+      "occurrenceDate": "2025-03-11T18:40:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0248"
+      ],
+      "occurrenceDate": "2025-04-02T08:40:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0268"
+      ],
+      "occurrenceDate": "2025-04-07T12:45:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0274"
+      ],
+      "occurrenceDate": "2025-04-09T08:27:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0346"
+      ],
+      "occurrenceDate": "2025-05-03T16:15:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0351"
+      ],
+      "occurrenceDate": "2025-05-06T13:50:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "059",
+        "2010"
+      ],
+      "occurrenceDate": "2025-06-22T10:40:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0505"
+      ],
+      "occurrenceDate": "2025-07-07T07:25:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12222"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12222"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0515"
+      ],
+      "occurrenceDate": "2025-07-10T15:40:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0565"
+      ],
+      "occurrenceDate": "2025-07-27T18:08:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0568"
+      ],
+      "occurrenceDate": "2025-07-28T14:10:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "139",
+        "0161"
+      ],
+      "occurrenceDate": "2025-05-01T10:10:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "139",
+        "0187"
+      ],
+      "occurrenceDate": "2025-08-09T07:43:00+09:00",
+      "originalMunicipality": "12220",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12217"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12217"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0668"
+      ],
+      "occurrenceDate": "2025-09-01T17:20:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12207"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12207"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "0679"
+      ],
+      "occurrenceDate": "2025-09-04T11:46:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12220"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12220"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "identity": [
+        "2025",
+        "44",
+        "109",
+        "1017"
+      ],
+      "occurrenceDate": "2025-12-17T10:35:00+09:00",
+      "originalMunicipality": "12217",
+      "currentBoundaryCandidates": [
+        {
+          "prefecture": "12",
+          "municipality": "12222"
+        }
+      ],
+      "annualReferenceYear": 2025,
+      "annualBoundaryCandidates": [
+        "12222"
+      ],
+      "diagnosticCategory": "annual_reference_differs_original",
+      "uncodedAnnualGeometryMatches": 0,
+      "annualReferenceSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+      "reviewDecision": "unresolved",
+      "reviewed": false,
+      "published": false
+    }
+  ],
+  "sources": [
+    {
+      "year": 2019,
+      "source": {
+        "year": 2019,
+        "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2019/N03-190101_12_GML.zip",
+        "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2019.html",
+        "path": "artifacts\\chiba-historical-boundaries-20261012\\N03-190101_12_GML.zip",
+        "bytes": 6465144,
+        "sha256": "faefb99a321f21e6cef51584e9762b0ab2535a9576313f3a269621900e53ecec",
+        "members": [
+          "KS-META-N03-19_12_190101.xml",
+          "N03-19_12_190101.dbf",
+          "N03-19_12_190101.geojson",
+          "N03-19_12_190101.prj",
+          "N03-19_12_190101.shp",
+          "N03-19_12_190101.shx",
+          "N03-19_12_190101.xml"
+        ]
+      },
+      "projection": "GEOGCS[\"GCS_JGD_2011\",DATUM[\"D_JGD_2011\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]]",
+      "quality": {
+        "inputPieces": 1524,
+        "regions": 59,
+        "outputHoles": 28,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "24edb68d06fa31fb2b182242c2678eed317afb9281cf7f0bedfd5c0c93db80e7",
+        "outputSha256": "aa7dde2ad7dd3d3ce0c36b57d9fda56da141c86ba37bd44e26beee6796a9db25",
+        "completeCoverageReviewed": false
+      },
+      "referenceDate": "2019-01-01",
+      "rawPieces": 1525,
+      "codedPieces": 1524,
+      "uncodedPieces": 1,
+      "uncodedGeometrySha256": "3b9606f233a84d18cb70977ef298d2eacd391bc5ddbc120d317afa88e2f75773",
+      "rawGeojsonSha256": "6c1caac6d4aa1dfa49487190fc33a166df7209c14d0526a4abf25cc7f3ce0221",
+      "codedGeojsonSha256": "24edb68d06fa31fb2b182242c2678eed317afb9281cf7f0bedfd5c0c93db80e7",
+      "termsUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+      "termsLabel": "Applicable MLIT open-data terms; consult the recorded source page."
+    },
+    {
+      "year": 2020,
+      "source": {
+        "year": 2020,
+        "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2020/N03-20200101_12_GML.zip",
+        "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2020.html",
+        "path": "artifacts\\chiba-historical-boundaries-20261012\\N03-20200101_12_GML.zip",
+        "bytes": 6234253,
+        "sha256": "c9e55ebc392fdf7611ea1abbf9fc325750f2265f16c35b11e71b9b583e24f330",
+        "members": [
+          "KS-META-N03-20_12_200101.xml",
+          "N03-20_12_200101.dbf",
+          "N03-20_12_200101.geojson",
+          "N03-20_12_200101.prj",
+          "N03-20_12_200101.shp",
+          "N03-20_12_200101.shx",
+          "N03-20_12_200101.xml"
+        ]
+      },
+      "projection": "GEOGCS[\"GCS_JGD_2011\",DATUM[\"D_JGD_2011\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]]",
+      "quality": {
+        "inputPieces": 1524,
+        "regions": 59,
+        "outputHoles": 28,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "70d686824aae07f0f138b329680a44ea054784a4a9956d63273f89fb90762bc1",
+        "outputSha256": "ed3812922613ef886dc2ae96c503ebf191e022993533d66f0adc4408434802a8",
+        "completeCoverageReviewed": false
+      },
+      "referenceDate": "2020-01-01",
+      "rawPieces": 1525,
+      "codedPieces": 1524,
+      "uncodedPieces": 1,
+      "uncodedGeometrySha256": "c4e75ed99792f03f152203185d5b568c98c89880681b97768074b87093b6d291",
+      "rawGeojsonSha256": "96e46d5fc1373e225388077922f9ee5bfaf75a3f17c2c804e04ec2431a25f5d8",
+      "codedGeojsonSha256": "70d686824aae07f0f138b329680a44ea054784a4a9956d63273f89fb90762bc1",
+      "termsUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+      "termsLabel": "Applicable MLIT open-data terms; consult the recorded source page."
+    },
+    {
+      "year": 2021,
+      "source": {
+        "year": 2021,
+        "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2021/N03-20210101_12_GML.zip",
+        "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2021.html",
+        "path": "artifacts\\chiba-historical-boundaries-20261012\\N03-20210101_12_GML.zip",
+        "bytes": 7554432,
+        "sha256": "51c521d8b92921b4c818e6253868825caa10f24d6a309f0678e584b6648b1f38",
+        "members": [
+          "N03-20210101_12_GML/KS-META-N03-21_12_210101.xml",
+          "N03-20210101_12_GML/N03-21_12_210101.dbf",
+          "N03-20210101_12_GML/N03-21_12_210101.geojson",
+          "N03-20210101_12_GML/N03-21_12_210101.prj",
+          "N03-20210101_12_GML/N03-21_12_210101.shp",
+          "N03-20210101_12_GML/N03-21_12_210101.shx",
+          "N03-20210101_12_GML/N03-21_12_210101.xml"
+        ]
+      },
+      "projection": "GEOGCS[\"GCS_JGD_2011\",DATUM[\"D_JGD_2011\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]]",
+      "quality": {
+        "inputPieces": 1527,
+        "regions": 59,
+        "outputHoles": 29,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "f7457fcc62388b2d66e11e439da749d201ec3d05101d29288279529df8e6dcc8",
+        "outputSha256": "793d2d5f9742268c150fb7e9dd0effdca28f2ef036b2b748d3e1c325be00fe20",
+        "completeCoverageReviewed": false
+      },
+      "referenceDate": "2021-01-01",
+      "rawPieces": 1528,
+      "codedPieces": 1527,
+      "uncodedPieces": 1,
+      "uncodedGeometrySha256": "3447f6a1b15c86432603686a4b17d96086a27bc779638d946f170047bbc92bf5",
+      "rawGeojsonSha256": "24f9a49688d6f3f2a178cb07fc6e1383c2162f161c19310e4618432129f63d19",
+      "codedGeojsonSha256": "f7457fcc62388b2d66e11e439da749d201ec3d05101d29288279529df8e6dcc8",
+      "termsUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+      "termsLabel": "Applicable MLIT open-data terms; consult the recorded source page."
+    },
+    {
+      "year": 2022,
+      "source": {
+        "year": 2022,
+        "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2022/N03-20220101_12_GML.zip",
+        "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2022.html",
+        "path": "artifacts\\chiba-historical-boundaries-20261012\\N03-20220101_12_GML.zip",
+        "bytes": 13395581,
+        "sha256": "5e7f1c256f73d0216d95051efcd582eca8c954a24e4f2d11d275963354e78d11",
+        "members": [
+          "KS-META-N03-22_12_220101.xml",
+          "N03-22_12_220101.dbf",
+          "N03-22_12_220101.geojson",
+          "N03-22_12_220101.prj",
+          "N03-22_12_220101.shp",
+          "N03-22_12_220101.shx",
+          "N03-22_12_220101.xml"
+        ]
+      },
+      "projection": "GEOGCS[\"GCS_JGD_2011\",DATUM[\"D_JGD_2011\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]]",
+      "quality": {
+        "inputPieces": 2267,
+        "regions": 59,
+        "outputHoles": 28,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "e4edc69e2b5aa8d1405b1f9acbbd7c20c38e53cf101ced4e8da3232c48c37f6f",
+        "outputSha256": "754460bf2c1353a85d52f9ff4c6d4d88efd37ee1a54119439d501d78b156ca85",
+        "completeCoverageReviewed": false
+      },
+      "referenceDate": "2022-01-01",
+      "rawPieces": 2269,
+      "codedPieces": 2267,
+      "uncodedPieces": 2,
+      "uncodedGeometrySha256": "284156e80f711507a7de8bbca101953ec31956905151d333a40aeda5b643469a",
+      "rawGeojsonSha256": "445362ce9c896b27bc0e24e68723c70bafd4efbddb37d51c961a62745f59abcb",
+      "codedGeojsonSha256": "e4edc69e2b5aa8d1405b1f9acbbd7c20c38e53cf101ced4e8da3232c48c37f6f",
+      "termsUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+      "termsLabel": "Applicable MLIT open-data terms; consult the recorded source page."
+    },
+    {
+      "year": 2023,
+      "source": {
+        "year": 2023,
+        "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2023/N03-20230101_12_GML.zip",
+        "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2023.html",
+        "path": "artifacts\\chiba-historical-boundaries-20261012\\N03-20230101_12_GML.zip",
+        "bytes": 8450027,
+        "sha256": "6e41e0b9ce9c95b3b719575066822596a34a1792b85bbb5c05d30ddeb1d38766",
+        "members": [
+          "KS-META-N03-23_12_230101.xml",
+          "N03-23_12_230101.dbf",
+          "N03-23_12_230101.geojson",
+          "N03-23_12_230101.prj",
+          "N03-23_12_230101.shp",
+          "N03-23_12_230101.shx",
+          "N03-23_12_230101.xml"
+        ]
+      },
+      "projection": "GEOGCS[\"GCS_JGD_2011\",DATUM[\"D_JGD_2011\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]]",
+      "quality": {
+        "inputPieces": 2265,
+        "regions": 60,
+        "outputHoles": 28,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "368bfda53c9b6998fad3f5b27c2008093faf1cb44d68d30afc2eca197b834667",
+        "outputSha256": "fafbbda79abdc887d5c27787df473c3e6af9d4a7657b0b5525852d2d9cd31f0b",
+        "completeCoverageReviewed": false
+      },
+      "referenceDate": "2023-01-01",
+      "rawPieces": 2265,
+      "codedPieces": 2265,
+      "uncodedPieces": 0,
+      "uncodedGeometrySha256": "7d09e532fc380630caac6b4b1b5174a7a9f7a308f6544bcb79eefb97b1e12306",
+      "rawGeojsonSha256": "ceaa1587c0681689244f5e5e59a9d2349c00b71e008a1e8d2a239729b51bbbde",
+      "codedGeojsonSha256": "368bfda53c9b6998fad3f5b27c2008093faf1cb44d68d30afc2eca197b834667",
+      "termsUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+      "termsLabel": "Applicable MLIT open-data terms; consult the recorded source page."
+    },
+    {
+      "year": 2024,
+      "source": {
+        "year": 2024,
+        "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2024/N03-20240101_12_GML.zip",
+        "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2024.html",
+        "path": "artifacts\\chiba-historical-boundaries-20261012\\N03-20240101_12_GML.zip",
+        "bytes": 6902616,
+        "sha256": "9f32703f2ed364617ad359de8b6c0d7545f1ad20cea70c36e460fc71b10f2046",
+        "members": [
+          "KS-META-N03-20240101_12.xml",
+          "N03-20240101_12.cpg",
+          "N03-20240101_12.dbf",
+          "N03-20240101_12.geojson",
+          "N03-20240101_12.prj",
+          "N03-20240101_12.shp",
+          "N03-20240101_12.shx",
+          "N03-20240101_12.xml"
+        ]
+      },
+      "projection": "GEOGCS[\"GCS_JGD_2011\",DATUM[\"D_JGD_2011\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]]",
+      "quality": {
+        "inputPieces": 2310,
+        "regions": 60,
+        "outputHoles": 34,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "daf48ed09b25df623935d29d12cffa1826040ebf225b3f07daa53bb32966d8ae",
+        "outputSha256": "c8bdcc9a8497d195145d1ce2011d5712eaf8f84cfa252718e3e7150ce8cfd236",
+        "completeCoverageReviewed": false
+      },
+      "referenceDate": "2024-01-01",
+      "rawPieces": 2310,
+      "codedPieces": 2310,
+      "uncodedPieces": 0,
+      "uncodedGeometrySha256": "7d09e532fc380630caac6b4b1b5174a7a9f7a308f6544bcb79eefb97b1e12306",
+      "rawGeojsonSha256": "65a615982fad2e4388c97c9ad4320cc5ab8fad1519147ffab47239dde4515697",
+      "codedGeojsonSha256": "daf48ed09b25df623935d29d12cffa1826040ebf225b3f07daa53bb32966d8ae",
+      "termsUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+      "termsLabel": "Applicable MLIT open-data terms; consult the recorded source page."
+    }
+  ],
+  "ledgerSha256": "e1a31cc9389443fffc03bf2adc6108ac7dd6a5fca519b5469b7493cba89e3b07",
+  "scriptSha256": "2f6816c4bba411f562ab3a43dbdcfc189c924a0aad183a656dc1e56cf1226b3b",
+  "method": "Strict containment in the occurrence-year January 1 official reference; preserve original codes and unresolved decisions.",
+  "limitations": [
+    "An annual January 1 reference does not establish every later boundary change in that year.",
+    "Uncoded source polygons are retained separately and checked for containment; no municipal code is invented.",
+    "A boundary mismatch can reflect source coordinates or boundary precision; no nearest-region correction.",
+    "This pilot supports nationwide methodology; it does not certify nationwide historical jurisdictions or road assignment."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false
+}
