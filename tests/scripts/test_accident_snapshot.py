@@ -128,6 +128,11 @@ class SnapshotBuildTest(unittest.TestCase):
             self.assertTrue(any(refs[0]==refs[-1] and set(refs)=={7,8,9} for _,_,_,refs in sections))
             self.assertEqual(sum(refs==[10,11] for _,_,_,refs in sections),2)
             self.assertEqual(topology.db.execute('SELECT COUNT(*) FROM pieces WHERE section IS NOT NULL').fetchone()[0],8)
+            import recover_connections
+            topology.db.execute('PRAGMA query_only=ON')
+            for section,grade,_,refs in sections:
+                seed,count=topology.db.execute('SELECT MIN(id),COUNT(*) FROM pieces WHERE section=?',(section,)).fetchone()
+                self.assertEqual(recover_connections.section_references(topology.db,seed,section,count),(grade,refs))
         finally:topology.close()
 
     def test_pbf_child_failure_and_space_guard_never_emit_candidates(self):
@@ -170,6 +175,20 @@ class SnapshotBuildTest(unittest.TestCase):
         self.assertEqual(report['ambiguityFeatures'],3)
         self.assertEqual(report['highwayScope'],sorted(snapshot.REQUIRED_HIGHWAYS))
         features=json.loads(output.read_text(encoding='utf-8'))['features']
+        import recover_connections
+        topology_path=(root/'work'/'topology.sqlite').resolve()
+        with closing(sqlite3.connect(topology_path.as_uri()+'?mode=ro',uri=True)) as source_db:
+            source_db.execute('PRAGMA query_only=ON')
+            source_seeds={section:(seed,count) for section,seed,count in source_db.execute('SELECT section,MIN(id),COUNT(*) FROM pieces GROUP BY section')}
+            for feature in features:
+                props=feature['properties']
+                if props['kind']=='road' and not props.get('ambiguityOnly'):
+                    seed,count=source_seeds[props['id']]
+                    grade,refs=recover_connections.section_references(source_db,seed,props['id'],count)
+                    self.assertEqual(props['endpointNodeIds'],[str(refs[0]),str(refs[-1])])
+                    self.assertEqual(feature['geometry']['coordinates'],[list(points[node]) for node in refs])
+                    self.assertEqual(props['layer'],'_'.join(json.loads(grade)))
+                    self.assertRaises(ValueError,recover_connections.section_references,source_db,seed,props['id'],count+1)
         self.assertTrue(all(f['properties']['reviewed'] is False for f in features))
         self.assertEqual(len({f['properties']['id'] for f in features}),len(features))
         junctions=[f for f in features if f['properties']['kind']=='intersection']
