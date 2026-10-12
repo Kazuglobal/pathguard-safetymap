@@ -32,6 +32,7 @@ def audit(args):
         boundaries.execute('PRAGMA cache_size=-8192')
         ids.execute('PRAGMA cache_size=-8192')
         ids.execute('CREATE TABLE identities(id TEXT PRIMARY KEY) WITHOUT ROWID')
+        ids.execute('CREATE TABLE findings(feature_number INTEGER, identity TEXT, reason TEXT, PRIMARY KEY(feature_number,reason)) WITHOUT ROWID')
 
         cache = OrderedDict()
         cache_bytes = 0
@@ -57,11 +58,13 @@ def audit(args):
             return geometry
 
         def note(reason, identity):
+            ids.execute('INSERT INTO findings VALUES(?,?,?)', (feature_number, identity, reason))
             findings[reason] += 1
             if len(samples[reason]) < 10:
                 samples[reason].append(identity)
 
         for feature in stream_features(source):
+            feature_number = counts['features'] + 1
             validate_feature(feature)
             props = feature['properties']
             identity = props['id']
@@ -95,12 +98,18 @@ def audit(args):
                 if shutil.disk_usage(output.parent).free < 5 * 1024**3:
                     raise RuntimeError('Less than 5 GiB free; preserve work')
         ids.commit()
+        persisted_findings = dict(ids.execute('SELECT reason,COUNT(*) FROM findings GROUP BY reason'))
+        if persisted_findings != dict(findings):
+            raise ValueError('Persisted finding count differs from diagnosis')
     for category in ('intersections', 'roadSections', 'ambiguityFeatures'):
         if counts[category] != quality[category]:
             raise ValueError('Extraction category count differs: ' + category)
     if counts['reviewed'] != quality['reviewedLocations'] or counts['reviewed'] != 0:
         raise ValueError('Diagnostic expects unreviewed extraction')
     report = {'counts': dict(counts), 'findings': dict(findings), 'samples': dict(samples),
+              'findingsIndex': {'path': str(index_path), 'sha256': digest(index_path),
+                                'rows': sum(findings.values()), 'containsAllFindings': True,
+                                'identityReference': 'feature_number is the one-based input feature position; identity is the unchanged source ID'},
               'inputs': {'candidatesSha256': digest(source), 'qualitySha256': digest(quality_path), 'boundaryIndexSha256': digest(boundary_path), 'auditScriptSha256': digest(__file__)},
               'method': 'Streaming structural/geometry diagnostic and full-geometry containment in the declared current municipality. Input and review flags unchanged.',
               'limitations': ['Structural validity does not prove a physical intersection or correct assignment.',

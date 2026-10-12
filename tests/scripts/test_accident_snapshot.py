@@ -5,6 +5,7 @@ import json
 import sqlite3
 import tempfile
 import sys
+from contextlib import closing
 from unittest.mock import MagicMock, patch
 from types import SimpleNamespace
 from pathlib import Path
@@ -278,6 +279,39 @@ class SnapshotBuildTest(unittest.TestCase):
             self.assertEqual(sorted(n for _,n in degree),[1,6])
             self.assertEqual(topology.ways,6)
         finally:topology.close()
+class GeometryDiagnosticTest(unittest.TestCase):
+    def test_all_findings_remain_traceable_beyond_samples_and_duplicate_ids(self):
+        sys.path.insert(0,str(MODULE.parent))
+        import diagnose_geometry
+        artifact_root=MODULE.parents[2]/'artifacts'
+        artifact_root.mkdir(exist_ok=True)
+        root=Path(tempfile.mkdtemp(prefix='geometry-findings-',dir=artifact_root))
+        boundary={'type':'Feature','geometry':{'type':'Polygon','coordinates':[[[139.8,35.7],[139.9,35.7],[139.9,35.8],[139.8,35.8],[139.8,35.7]]]},'properties':{'prefecture':'12','municipality':'12217'}}
+        boundary_source=root/'boundary.json';boundary_source.write_text(json.dumps({'features':[boundary]}),encoding='utf-8')
+        index=root/'boundaries.sqlite'
+        store=snapshot.SpatialStore(index)
+        try:store.ingest(boundary_source,'boundary')
+        finally:store.close()
+        features=[{'type':'Feature','geometry':{'type':'LineString','coordinates':[[139.89,35.75],[140.0,35.75]]},'properties':{'id':f'road-{n}','kind':'road','reviewed':False,'layer':'0_no_no','prefecture':'12','municipality':'12217'}} for n in range(14)]
+        features.append(features[0])
+        source=root/'candidates.json';source.write_text(json.dumps({'features':features}),encoding='utf-8')
+        Path(str(source)+'.quality.json').write_text(json.dumps({'intersections':0,'roadSections':15,'ambiguityFeatures':0,'reviewedLocations':0}),encoding='utf-8')
+        source_hash=snapshot.digest(source)
+        result=root/'diagnosis.json'
+        with patch('builtins.print'):
+            diagnose_geometry.audit(SimpleNamespace(candidates=str(source),boundaries=str(index),output=str(result)))
+        report=json.loads(result.read_text(encoding='utf-8'))
+        self.assertEqual(len(report['samples']['extends_beyond_declared_current_boundary']),10)
+        with closing(sqlite3.connect(result.with_suffix('.identities.sqlite'))) as db:
+            rows=db.execute('SELECT feature_number,identity FROM findings WHERE reason=? ORDER BY feature_number',('extends_beyond_declared_current_boundary',)).fetchall()
+            duplicate=db.execute('SELECT feature_number,identity FROM findings WHERE reason=?',('duplicate_identity',)).fetchall()
+        self.assertEqual(rows,[(n+1,f'road-{n}') for n in range(14)]+[(15,'road-0')])
+        self.assertEqual(duplicate,[(15,'road-0')])
+        self.assertEqual(report['findingsIndex']['rows'],16)
+        self.assertEqual(report['findingsIndex']['sha256'],snapshot.digest(result.with_suffix('.identities.sqlite')))
+        self.assertEqual(snapshot.digest(source),source_hash)
+        self.assertFalse(report['reviewed']);self.assertFalse(report['published'])
+
 class SourceNormalizationTest(unittest.TestCase):
     def test_administrative_transform_preserves_hole_and_input_hash(self):
         sys.path.insert(0,str(MODULE.parent))
