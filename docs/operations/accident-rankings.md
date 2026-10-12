@@ -343,3 +343,21 @@ JSON再構成回帰で区間の全座標・元端点・gradeを確認し、別�
 ### 全国出力の容量保護停止（2026-10-12）
 
 全国出力は空き5GiBの保護基準に達して停止した。候補GeoJSON5,834,099,318バイト、回復索引5,224,284,160バイトと境界索引、元取り込み索引を保持している。完了qualityはなく、候補出力を完成済みとして使わない。後続の全形状診断待機も容量保護で停止し、診断成功記録は作成していない。停止後の確認時の空きは約2GiB。元ファイルと途中出力を削除せず、より容量のある作業先を指定してから再開方法を確認する。全国集計・全件形状確認・接続根拠の再構成は未完了、本番は変更していない。
+
+### 容量確保後の再開と接続診断（2026-10-12）
+
+Cドライブの空きが約67.5GiBへ増えたことを確認し、元索引SHAの一致と40GiBの開始条件を満たす新規v3出力を開始した。以前の途中出力とログは保持する。現在の抽出コードは交差点の `osmNodeId` と非未確定区間の `endpointNodeIds` を保存する。全形状診断はproducerの完了stdoutとqualityが一致した後だけ実行し、継続容量とコードのハッシュを確認する。起動を完成や公開承認として扱わない。
+
+`scripts/accidents/diagnose_connections.py` は完成済み候補と元索引を読み取り、交差点ノード・grade・座標、区間の全piece・ノード参照列・端点・全座標、未確定用形状を照合する。回復索引が元ノード・辺を持たない場合は、`--source-topology` で元索引を読み取り専用で接続する。全交差点・未確定用原本道路・区間pieceの消費件数を照合し、別の根拠索引へ全地点IDと形状ハッシュを保存する。元入力の前後ハッシュが変わった場合や、重複・欠落・端点違いがある場合は成功記録を作らない。
+
+実行例（出力先は未使用のパスにする）:
+
+```sh
+python scripts/accidents/diagnose_connections.py \
+  --topology artifacts/national-emission-recovery-v3-20261012/topology.sqlite \
+  --source-topology artifacts/national-physical-alternatives-20261012/topology.sqlite \
+  --candidates artifacts/national-emission-recovery-v3-20261012.geojson \
+  --output artifacts/national-source-connections-v3-20261012.json
+```
+
+この診断は候補や確認フラグを変更せず、実交差点・当時の道路供用・地域対応の承認を代行しない。全国の実行結果は完成後に保存し、事故割り当て・全国ランキングの公開は別の品質確認を経て行う。

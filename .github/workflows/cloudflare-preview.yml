@@ -35,7 +35,7 @@ jobs:
       - name: Verify published ranking snapshots
         run: pnpm exec vitest run tests/unit/lib/accident-rankings.test.ts --maxWorkers=1
       - name: Verify offline assignment and count reconciliation
-        run: python -m unittest discover -s tests/scripts -p test_accident_snapshot.py
+        run: python -m unittest discover -s tests/scripts -p 'test_accident*.py'
 
   report-image-regressions:
     if: github.event.action != 'closed'
