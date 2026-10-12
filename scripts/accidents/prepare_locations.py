@@ -153,7 +153,7 @@ class DiskTopology:
             with open(output,'x',encoding='utf-8') as stream:
                 header={'type':'FeatureCollection','highwayScope':scope,'roadClassification':classification,'roadSourceSha256':source_hash}
                 stream.write(json.dumps(header)[:-1]+',"features":[');first=True
-                def emit_feature(identity,kind,geometry,grade,name,ambiguity=False):
+                def emit_feature(identity,kind,geometry,grade,name,ambiguity=False,source_nodes=None):
                     nonlocal first
                     center=geometry['coordinates'] if kind=='intersection' else geometry['coordinates'][0][0] if geometry['type']=='Polygon' else geometry['coordinates'][len(geometry['coordinates'])//2]
                     matches=list(spatial.matching_boundaries(center))
@@ -162,6 +162,8 @@ class DiskTopology:
                         ambiguity=True
                     props=matches[0]['properties'] if len(matches)==1 else {'municipalityName':'','prefecture':'','municipality':''}
                     feature={'type':'Feature','geometry':geometry,'properties':{'id':identity,'kind':kind,'layer':'_'.join(json.loads(grade)),'reviewed':False,'name':name,'address':props['municipalityName'],'prefecture':props['prefecture'],'municipality':props['municipality']}}
+                    if kind=='intersection':feature['properties']['osmNodeId']=str(source_nodes[0])
+                    elif not ambiguity:feature['properties']['endpointNodeIds']=[str(node) for node in source_nodes]
                     if ambiguity:feature['properties']['ambiguityOnly']=True
                     validate_feature(feature)
                     if not first:stream.write(',')
@@ -172,10 +174,10 @@ class DiskTopology:
                         require_space(self.directory);require_space(Path(output).resolve().parent)
                 for node,grade,x,y in self.db.execute('SELECT j.node,j.grade,n.x,n.y FROM junctions j JOIN nodes n ON n.id=j.node ORDER BY j.node,j.grade'):
                     suffix=hashlib.sha256(grade.encode()).hexdigest()[:12]
-                    emit_feature(f'osm-node-{node}-{suffix}','intersection',{'type':'Point','coordinates':[x,y]},grade,'')
+                    emit_feature(f'osm-node-{node}-{suffix}','intersection',{'type':'Point','coordinates':[x,y]},grade,'',source_nodes=[node])
                 for identity,grade,name,references in self.road_sections():
                     coordinates=[list(self.db.execute('SELECT x,y FROM nodes WHERE id=?',(node,)).fetchone()) for node in references]
-                    emit_feature(identity,'road',{'type':'LineString','coordinates':coordinates},grade,name)
+                    emit_feature(identity,'road',{'type':'LineString','coordinates':coordinates},grade,name,source_nodes=[references[0],references[-1]])
                 for identity,grade,geometry in self.db.execute('SELECT id,grade,geometry FROM ambiguity_ways ORDER BY id'):
                     emit_feature(f'osm-ambiguity-{identity}','road',json.loads(geometry),grade,'',True)
                 report['sourceRoadPieces']=self.db.execute('SELECT COUNT(*) FROM pieces').fetchone()[0]

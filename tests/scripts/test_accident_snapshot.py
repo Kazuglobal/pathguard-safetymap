@@ -15,6 +15,34 @@ CODEBOOK={'bicycle':['51','52'],'pedestrian':['61'],'classes':snapshot.CLASSES,'
 def junction(id,x=139.9,layer=0):
     return {'geometry':{'type':'Point','coordinates':[x,35.8]},'properties':{'id':id,'kind':'intersection','reviewed':True,'layer':layer}}
 class SpatialAssignmentTest(unittest.TestCase):
+    def test_intersection_requires_shared_source_node_for_every_nearby_road(self):
+        center=junction('a');center['properties']['osmNodeId']='100'
+        def arm(identity,endpoints,coordinates):
+            return {'geometry':{'type':'LineString','coordinates':coordinates},'properties':{'id':identity,'kind':'road','reviewed':True,'layer':0,'endpointNodeIds':endpoints}}
+        connected=[arm('west',['200','100'],[[139.899,35.8],[139.9,35.8]]),arm('north',['100','300'],[[139.9,35.8],[139.9,35.801]])]
+        parallel=arm('parallel',['400','500'],[[139.899,35.8001],[139.901,35.8001]])
+        coincident=arm('different-node',['600','700'],[[139.9,35.8],[139.901,35.8]])
+        missing=arm('missing',['100','800'],[[139.9,35.8],[139.901,35.8]])
+        del missing['properties']['endpointNodeIds']
+        for radius in snapshot.RADII:
+            self.assertEqual(snapshot.assign((139.9,35.8),[center,*connected],radius),'a')
+            for other in (parallel,coincident,missing):
+                self.assertIsNone(snapshot.assign((139.9,35.8),[center,*connected,other],radius))
+            no_node=junction('missing-junction-node')
+            self.assertIsNone(snapshot.assign((139.9,35.8),[no_node,*connected],radius))
+
+    def test_source_node_metadata_rejects_malformed_ids(self):
+        feature=junction('a');feature['properties'].update(prefecture='12',municipality='12217',osmNodeId='100')
+        snapshot.validate_feature(feature)
+        for value in (100,'0','-1','100x','1'*21,None):
+            feature['properties']['osmNodeId']=value
+            self.assertRaises(ValueError,snapshot.validate_feature,feature)
+        road={'geometry':{'type':'LineString','coordinates':[[139.9,35.8],[139.901,35.8]]},'properties':{'id':'road','kind':'road','reviewed':False,'layer':0,'prefecture':'12','municipality':'12217','endpointNodeIds':['100','200']}}
+        snapshot.validate_feature(road)
+        for value in (['100'],['100',200],['100','0'],'100,200',None):
+            road['properties']['endpointNodeIds']=value
+            self.assertRaises(ValueError,snapshot.validate_feature,road)
+
     def test_unresolved_passage_blocks_road_and_intersection_assignment(self):
         passage={'geometry':{'type':'LineString','coordinates':[[139.9,35.7999],[139.9,35.8001]]},'properties':{'id':'steps','kind':'road','reviewed':False,'ambiguityOnly':True,'layer':0,'prefecture':'','municipality':''}}
         snapshot.validate_feature(passage)
@@ -146,6 +174,15 @@ class SnapshotBuildTest(unittest.TestCase):
         self.assertEqual(len({f['properties']['id'] for f in features}),len(features))
         junctions=[f for f in features if f['properties']['kind']=='intersection']
         self.assertTrue(junctions[0]['properties']['id'].startswith('osm-node-1-'))
+        self.assertEqual(junctions[0]['properties']['osmNodeId'],'1')
+        for feature in features:
+            props=feature['properties']
+            if props['kind']=='road' and not props.get('ambiguityOnly'):
+                endpoints=props['endpointNodeIds']
+                self.assertEqual(feature['geometry']['coordinates'][0],list(points[int(endpoints[0])]))
+                self.assertEqual(feature['geometry']['coordinates'][-1],list(points[int(endpoints[-1])]))
+            if props.get('ambiguityOnly'):
+                self.assertNotIn('endpointNodeIds',props)
         self.assertFalse(report['completeCoverageReviewed'])
         # Native PBF and bounded extraction retain whole ways and the same shared-node graph.
         import osmium

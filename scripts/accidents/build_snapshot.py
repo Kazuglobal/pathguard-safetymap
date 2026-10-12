@@ -186,6 +186,11 @@ def assign(point, candidates, radius=30):
     junctions = [c for c,d in nearby if c['properties']['kind']=='intersection']
     chosen = junctions if junctions else [c for c,d in nearby]
     if len(chosen) != 1 or not chosen[0]['properties']['reviewed']: return None
+    if junctions:
+        roads = [c for c,d in nearby if c['properties']['kind']=='road']
+        node = chosen[0]['properties'].get('osmNodeId')
+        if roads and (not node or any(node not in c['properties'].get('endpointNodeIds', []) for c in roads)):
+            return None
     return chosen[0]['properties']['id']
 
 def validate_feature(f):
@@ -196,6 +201,13 @@ def validate_feature(f):
     if not isinstance(ambiguity,bool) or (ambiguity and p['reviewed'] is not False):raise ValueError('Ambiguity geometry cannot be reviewed as a location')
     if g['type'] != ('Point' if p['kind']=='intersection' else 'LineString') and not (ambiguity and p['kind']=='road' and g['type']=='Polygon'): raise ValueError('Invalid geometry')
     if not isinstance(p['reviewed'],bool) or 'layer' not in p: raise ValueError('Review/layer required')
+    def valid_node(value):
+        return isinstance(value,str) and re.fullmatch(r'[1-9][0-9]{0,19}',value) is not None
+    if 'osmNodeId' in p and (p['kind']!='intersection' or not valid_node(p['osmNodeId'])):
+        raise ValueError('Invalid intersection source node')
+    if 'endpointNodeIds' in p and (p['kind']!='road' or ambiguity or not isinstance(p['endpointNodeIds'],list)
+        or len(p['endpointNodeIds'])!=2 or not all(valid_node(value) for value in p['endpointNodeIds'])):
+        raise ValueError('Invalid road endpoint source nodes')
     coordinates=[g['coordinates']] if g['type']=='Point' else [c for ring in g['coordinates'] for c in ring] if g['type']=='Polygon' else g['coordinates']
     if not coordinates or any(len(c)!=2 or not all(isinstance(v,(int,float)) and math.isfinite(v) for v in c) or not (122<=c[0]<=154 and 20<=c[1]<=46) for c in coordinates):raise ValueError('Invalid location coordinates')
     if g['type']=='Polygon':
