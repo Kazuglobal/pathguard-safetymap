@@ -25,3 +25,6 @@ docs/operations/data/national-partial-annual-region-ledger-diagnosis.json -text 
 docs/operations/data/national-partial-annual-region-ledger-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-2022-boundary-hierarchy-inference.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-2022-uncoded-overlap-levels.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-source-connections.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-connection-pipeline.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-connection-evidence-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
