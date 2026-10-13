@@ -14,3 +14,6 @@ docs/operations/data/national-historical-boundary-conversion-2022.json -text whi
 docs/operations/data/national-historical-boundary-conversion-2023.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-historical-boundary-conversion-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-historical-boundary-errors-2024.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+docs/operations/data/national-annual-region-ledger-diagnosis.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-annual-region-ledger-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
