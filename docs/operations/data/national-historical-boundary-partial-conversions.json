@@ -1,0 +1,100 @@
+{
+  "years": [
+    {
+      "year": 2020,
+      "referenceDate": "2020-01-01",
+      "archiveSha256": "f6c5c689e774003a16e6d132d80c5989d2afe1f2311e8bd90895d77339b4a22a",
+      "geojsonMember": "N03-20_200101.geojson",
+      "counts": {
+        "pieces": 118900,
+        "codedPieces": 118760,
+        "uncodedPieces": 140
+      },
+      "keptCodedPieces": 118233,
+      "quarantinedCodedPieces": 527,
+      "quarantinedMunicipalities": [
+        "40214",
+        "42209"
+      ],
+      "quarantinedSourceSha256": "1cac150ccb970a703c190d1c5971e4326ada73476685aebabfb4134faf32b962",
+      "quarantinedPositionsSha256": "05c55dfb3af63b728393964a53b2e7a716eb3bfe47146a6fbb7b893519ed3eac",
+      "sourceDiagnosisSha256": "b42d1b17ed31ea28dc406e215c98ff415b4d00f67469e5be1b0338cb0e80250d",
+      "completeMunicipalCoverage": false,
+      "quality": {
+        "inputPieces": 118233,
+        "regions": 1900,
+        "outputHoles": 190,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "e9068e4f4b6abc8c0b1d177b86c249826940f628b8ccfb0051a119c815209db5",
+        "outputSha256": "6d9b0ebb622ceb9ac5ea76ace83ba2e4fd0cac7f02760fcf744183b6f493fd3b",
+        "completeCoverageReviewed": false
+      },
+      "uncodedWgs84Sha256": "96270e7b3219a30e044c09a89161038c2d3b70cdbb2814de78b3ee4d3f4fef5c",
+      "uncodedPropertiesPreserved": true,
+      "transformAccuracyMeters": 1.0,
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "year": 2024,
+      "referenceDate": "2024-01-01",
+      "archiveSha256": "a03111be0fe726ff270cbc1dd16f38bc926cf814e67c8cd2e52157629d138b98",
+      "geojsonMember": "N03-20240101.geojson",
+      "counts": {
+        "pieces": 124133,
+        "codedPieces": 124133,
+        "uncodedPieces": 0
+      },
+      "keptCodedPieces": 121463,
+      "quarantinedCodedPieces": 2670,
+      "quarantinedMunicipalities": [
+        "38203"
+      ],
+      "quarantinedSourceSha256": "499a454c355c87b0566ab734d112691ebe5c3cfa9aaad1536951c018d5ac93df",
+      "quarantinedPositionsSha256": "d304ce7cd4814612a0169ef4abfecc3b268ff589e29483d265f6bcb2ef1fbaee",
+      "sourceDiagnosisSha256": "fd34654c50211bdfb1ed90b29c4f69660ab9fbbfa8a0c94e28cd390bdd14f0f4",
+      "completeMunicipalCoverage": false,
+      "quality": {
+        "inputPieces": 121463,
+        "regions": 1904,
+        "outputHoles": 192,
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "transformAccuracyMeters": 1.0,
+        "inputSha256": "4bfa5f849170ddf5350d09fd3291ace40f06d2608756187d4eb14fad4a5b5677",
+        "outputSha256": "5e4a3b6fe813d578f0cd9a2e97d834f6e6e62399586d047ba86f20726430cfc5",
+        "completeCoverageReviewed": false
+      },
+      "uncodedWgs84Sha256": "ed778c73ea51338d6576fb5992b189f2b94d9f3d5e199f46c1af520d6b0b3e6c",
+      "uncodedPropertiesPreserved": true,
+      "transformAccuracyMeters": 1.0,
+      "reviewed": false,
+      "published": false
+    }
+  ],
+  "full2019To2024Coverage": false,
+  "unresolvedMunicipalities": {
+    "2020": [
+      "40214",
+      "42209"
+    ],
+    "2024": [
+      "38203"
+    ]
+  },
+  "codeHashes": {
+    "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\artifacts\\normalize-quarantined-annual-boundaries-20261013.py": "7935067da455361159a0f9d5c4b7cb2155cd5a3cae44435ad4ced396335d0c04",
+    "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\scripts\\accidents\\normalize_areas.py": "d01c82e39618609185be692a3fa66b2ef66156a52fa542df0f192aefa93ae04b",
+    "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\scripts\\accidents\\build_snapshot.py": "16e58348cee2002fdaa4c41c70fabd196fd8f8e228ae57ad69aa5a46ac7a53dd"
+  },
+  "sourceReceiptSha256": "ab8e0ccb6435b448b59864bd5664eff37cf1ae76df3d8807a292f4ab4562441a",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Incomplete municipal reference: quarantined municipalities remain unavailable; no source repair, region approval or accident assignment."
+  ]
+}
