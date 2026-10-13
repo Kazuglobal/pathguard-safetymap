@@ -1,0 +1,88 @@
+{
+  "counts": {
+    "ambiguityFeatures": 160947,
+    "features": 28969266,
+    "intersections": 10211690,
+    "roadSections": 18596629
+  },
+  "findings": {
+    "extends_beyond_declared_current_boundary": 140099,
+    "closed_line_requires_review": 26713,
+    "empty_or_invalid_geometry": 4,
+    "zero_length_line": 4,
+    "non_simple_line_requires_review": 81
+  },
+  "samples": {
+    "extends_beyond_declared_current_boundary": [
+      "osm-road-b1243b55b25c863d67429656",
+      "osm-road-5fb81e6aeb850371660b3513",
+      "osm-road-fda3fbc6f02a4fffff5e84b7",
+      "osm-road-1218426fe2fa8a3975f281b6",
+      "osm-road-129561a56b6370488255cc29",
+      "osm-road-cf427a658dcb67682903ff85",
+      "osm-road-191a86ebfbb3eaf35b043197",
+      "osm-road-2797e84e3f01cdc7a682e3d3",
+      "osm-road-dedff4a03252c2e66fd55f55",
+      "osm-road-aaf9c611811f0367797010d4"
+    ],
+    "closed_line_requires_review": [
+      "osm-road-13dfd72e1b00177c99651245",
+      "osm-road-4a961ffeb9d5ea45bf7ca6f1",
+      "osm-road-45d2f89c32330ea45461f1c0",
+      "osm-road-594f14fd1c1e922a0e94e710",
+      "osm-road-7cf75a819491c39a4fb20c54",
+      "osm-road-34ed6f14e0606c82211e2fdd",
+      "osm-road-5a29f750b960fe83f3b084f6",
+      "osm-road-a1e58061879b79591bee2333",
+      "osm-road-b9dba447ff9b23dec5472d6c",
+      "osm-road-fe7a1ae317ee0d8a02ffdd3a"
+    ],
+    "empty_or_invalid_geometry": [
+      "osm-road-374a8bf7b78d570925865273",
+      "osm-road-42ab9f5b883a0ebf123b786c",
+      "osm-road-3329018d0fd5fdb30d8e4a97",
+      "osm-road-2b65b976b9029b1f0bcc8c83"
+    ],
+    "zero_length_line": [
+      "osm-road-374a8bf7b78d570925865273",
+      "osm-road-42ab9f5b883a0ebf123b786c",
+      "osm-road-3329018d0fd5fdb30d8e4a97",
+      "osm-road-2b65b976b9029b1f0bcc8c83"
+    ],
+    "non_simple_line_requires_review": [
+      "osm-road-11b7b77d54663dea726f2da3",
+      "osm-road-028df6e1634da4658235df11",
+      "osm-road-042c374e03bd1f03ef06c620",
+      "osm-road-4dd2f64d17dc5dad80f06bf8",
+      "osm-road-db201de6a90468a5f702e9d7",
+      "osm-road-a6b7eb36dd3e04e34e22d1e0",
+      "osm-road-cb7ed224762addf484ac64b3",
+      "osm-road-151cb23bf5b7ff9b5fd51622",
+      "osm-road-498cf881a229529ec5dc2192",
+      "osm-road-d6983d3dfdc1258e871f5a1b"
+    ]
+  },
+  "findingsIndex": {
+    "path": "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\artifacts\\national-full-geometry-diagnosis-v3-20261012.identities.sqlite",
+    "sha256": "85ae8c2c9584f8ab50791704041ed17cdde23495ef0d3e1fee5d43b583d611e3",
+    "rows": 166901,
+    "containsAllFindings": true,
+    "identityReference": "feature_number is the one-based input feature position; identity is the unchanged source ID"
+  },
+  "inputs": {
+    "candidatesSha256": "3a6841c2b98a8923bd92ef1db9d05b5ba0d3306d6e518b6f26d538eff71b3761",
+    "qualitySha256": "c885f6c0b45f4c5cce52be18e6b54d99242f5f7d1d520a47eb959724639f50e2",
+    "boundaryIndexSha256": "3183e36466e7c2f8b7a7ae248ae6c119165444979e5f2f1185823b5991e18844",
+    "auditScriptSha256": "b3eb219ed11c8b6e7bc059b324dd11e568f44d2bb4f8b0fc039eb29cb404b839"
+  },
+  "method": "Streaming structural/geometry diagnostic and full-geometry containment in the declared current municipality. Input and review flags unchanged.",
+  "limitations": [
+    "Structural validity does not prove a physical intersection or correct assignment.",
+    "Closed or non-simple lines can be legitimate; inspect rather than delete.",
+    "Cross-boundary sections require scope review, not nearest-boundary correction.",
+    "A structural diagnostic does not certify nationwide coverage or historical jurisdiction."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false
+}
