@@ -1,0 +1,50 @@
+{
+  "originalRows": 2182298,
+  "uniqueOriginalRows": 2182298,
+  "identicalDuplicates": 0,
+  "originalClassifications": {
+    "outside_selected_period": 10462,
+    "candidate_query": 2171667,
+    "invalid_coordinate": 169
+  },
+  "scannedCandidates": 28969266,
+  "sourceCandidateClassifications": {
+    "ambiguityFeatures": 160947,
+    "intersections": 10211690,
+    "roadSections": 18596629
+  },
+  "retainedBoundingCandidates": 10657502,
+  "retainedClassifications": {
+    "ambiguityFeatures": 76195,
+    "intersections": 3231187,
+    "roadSections": 7350120
+  },
+  "regionUnresolvedRows": 48251,
+  "inputHashes": {
+    "records": "bb880611db2f288acd78bf9159397a75ed79a3b96646307c57fcdda52933c2ec",
+    "candidates": "3a6841c2b98a8923bd92ef1db9d05b5ba0d3306d6e518b6f26d538eff71b3761",
+    "verification": "fa7f921957d0e59eefabf90c41edf9bf63af3b70d05b5ad5f15e4a96e3d49123",
+    "connectionReport": "fa66268a2bf9f5f0b3058abf20e27743565358646d98e7a6a48c51072d416656",
+    "geometryReport": "4e9b94193fee34eabc5757c21bc0510578b99967bb0d724089984d1d496c5483",
+    "geometryIndex": "85ae8c2c9584f8ab50791704041ed17cdde23495ef0d3e1fee5d43b583d611e3",
+    "connections": "6f363804e314b3201cc737cc59b8a6a62bde9668ff22af7b5b32de388a060376",
+    "regionLedger": "e1a31cc9389443fffc03bf2adc6108ac7dd6a5fca519b5469b7493cba89e3b07",
+    "regionSummary": "c77c77ca46e614bd42fa7effec9a28af348c8751d95b2452f9a1645d3eb6576f",
+    "script": "67eb1529f0cb3b50c94f9b8b6ac011ab76c194ac0c370755599fbf12c183f3e2",
+    "geometryHelper": "16e58348cee2002fdaa4c41c70fabd196fd8f8e228ae57ad69aa5a46ac7a53dd"
+  },
+  "indexSha256": "ac15df59243d5288586a67678ba415fe9c6a9ed4738b7648b14fdaa39c1deb3f",
+  "indexBytes": 8220135424,
+  "searchRadiusMeters": 50,
+  "longitudeMarginDegrees": 0.0006473117224811036,
+  "latitudeMarginDegrees": 0.0004496605063177301,
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Bounding-box filtering is conservative and includes false positives; exact radius distances remain to be diagnosed.",
+    "Retains roads, intersections, ambiguity shapes, elevation and all structural findings. No review flag changed or assignment made.",
+    "This diagnostic subset is not a nationwide public snapshot or completeCoverage approval."
+  ]
+}

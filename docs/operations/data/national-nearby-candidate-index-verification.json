@@ -1,0 +1,29 @@
+{
+  "originalRows": 2182298,
+  "originalClassifications": {
+    "outside_selected_period": 10462,
+    "candidate_query": 2171667,
+    "invalid_coordinate": 169
+  },
+  "regionUnresolvedRows": 48251,
+  "retainedBoundingCandidates": 10657502,
+  "retainedClassifications": {
+    "ambiguityFeatures": 76195,
+    "intersections": 3231187,
+    "roadSections": 7350120
+  },
+  "indexSha256": "ac15df59243d5288586a67678ba415fe9c6a9ed4738b7648b14fdaa39c1deb3f",
+  "summarySha256": "a3546624beabb1b3e9143f1eccd13d5d1950981cd0ceab488f44c12cf315a388",
+  "allOriginalFieldsEqual": true,
+  "allRetainedSourceConnectionHashesEqual": true,
+  "normalStdoutConfirmed": true,
+  "auditScriptSha256": "daa65e88b0e8ba6b6991d4ba13dd362fc6e0c450c4a0b84bfdcc7c0d6df919b5",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Checks every retained record and candidate; relies on reviewed complete producer scan for omitted-candidate coverage, not a second full GeoJSON scan.",
+    "No physical, historical or publication approval. Exact radius diagnostics remain pending."
+  ]
+}
