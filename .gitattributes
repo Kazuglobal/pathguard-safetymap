@@ -2,3 +2,9 @@
 docs/operations/data/national-full-geometry-diagnosis.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-geometry-evidence-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-geometry-review-ledger.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+docs/operations/data/national-historical-boundary-sources.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-historical-boundary-inventory.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-historical-boundary-conversion-2019.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-historical-boundary-errors-2020.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-historical-boundary-format-comparison-2020.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
