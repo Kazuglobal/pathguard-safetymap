@@ -35,3 +35,4 @@ docs/operations/data/national-radius-record-verification.json -text whitespace=b
 docs/operations/data/national-location-review-set-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-external-cartographic-observations.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/current-location-policy-trial.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/verified-road-unit-trial.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

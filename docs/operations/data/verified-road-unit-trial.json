@@ -1,0 +1,163 @@
+{
+  "verified-road-unit-trial-20261014/summary.json": {
+    "completed": true,
+    "policyVersion": "current-road-unit-trial-v1",
+    "roadId": "osm-road-bc949052aeb921d1e02980a3",
+    "endpointChecks": [
+      {
+        "node": "1682723882",
+        "coordinates": [
+          139.9552808,
+          35.7366989
+        ],
+        "edges": [
+          [
+            "[\"0\",\"no\",\"no\"]",
+            1419332601
+          ],
+          [
+            "[\"0\",\"no\",\"no\"]",
+            1682723848
+          ],
+          [
+            "[\"0\",\"no\",\"no\"]",
+            6041084802
+          ]
+        ]
+      },
+      {
+        "node": "3817621913",
+        "coordinates": [
+          139.9531778,
+          35.7380631
+        ],
+        "edges": [
+          [
+            "[\"0\",\"no\",\"no\"]",
+            3817621915
+          ],
+          [
+            "[\"0\",\"no\",\"no\"]",
+            6038745861
+          ],
+          [
+            "[\"0\",\"no\",\"no\"]",
+            6041084801
+          ]
+        ]
+      }
+    ],
+    "evidenceHashes": {
+      "artifacts\\national-location-review-set-20261014\\candidates.geojson": "5a0c20ffd30138c22073aabb297b51af63e6ff180104b8acab901ac652173c8d",
+      "artifacts\\national-location-review-set-20261014\\candidate-review-ledger.jsonl": "40a09c1c9d2559fcc5ad5deccad642b6a7f5b80d5d9a41ec604dc82db00df779",
+      "artifacts\\ichikawa-road-endpoint-evidence-20261014.json": "eb2583947bd2b6c4769c04ae0d58d285e24cbaf398b6bc77550847ede7ea46a3",
+      "artifacts\\national-location-review-set-verification-20261014.json": "33d280e686ada3350d0dcac0da439e61baecd3b9d5a4d3322b19ef741c12de22"
+    },
+    "topologySha256": "79449e038fcc765e2423061a85468fa0af19529f604df61d36f14458af576377",
+    "diagnosisSha256": "39156e419281c8c81761dbbce5c44232f2ca26135f2fa130c1422dc8022d4279",
+    "scriptSha256": "50d63071e2f99f565571283b5969abd7267e5634dc99907fc6ee6fc1132a4d6d",
+    "trialAssigned": 15,
+    "remainingUncertain": 2171652,
+    "outside": 10631,
+    "originalRows": 2182298,
+    "queriedNearbyRecords": 17,
+    "rejectedNearbyRecords": 2,
+    "outputHashes": {
+      "trial-assignments.jsonl": "1486621ea7ad8c4821c6f491d86706b812e685e18d75b6b73097d7681cf90372"
+    },
+    "publicAssigned": 0,
+    "published": false,
+    "productionChanged": false,
+    "limitations": [
+      "One evidenced current-road unit only; no national rule approval.",
+      "Endpoint observations do not independently prove absence of intermediate physical junctions; interior topology relies on the completed reconstruction audit.",
+      "No original flags or assignedLocationId values modified.",
+      "Historical road reconstruction and regional mismatches are not automatically approved."
+    ]
+  },
+  "verified-road-unit-trial-verification-20261014.json": {
+    "completed": true,
+    "normalExitCode": 0,
+    "verifiedRoadTrialRows": 15,
+    "combinedTrialRows": 51,
+    "combinedTrialUniqueOriginalIds": 51,
+    "combinedRemainingUncertain": 2171616,
+    "outside": 10631,
+    "originalRows": 2182298,
+    "publicAssigned": 0,
+    "stdoutMatchesSummary": true,
+    "sourceRoadTrialSummarySha256": "f85c4dcab2b52e0dde536e2c094eb6fa8b00a02346fc73691e72d8bdced7f615",
+    "published": false,
+    "productionChanged": false,
+    "limitation": "Emitted records checked against verified diagnosis; does not prove nationwide eligibility or regenerate missing-neighbor searches."
+  },
+  "ichikawa-road-endpoint-evidence-20261014.json": {
+    "id": "osm-road-bc949052aeb921d1e02980a3",
+    "municipality": "12203",
+    "kind": "road",
+    "accessedAt": "2026-10-13T22:38:39.676442+00:00",
+    "source": "GSI Maps / standard map",
+    "sourceTargetPeriod": "Current map; accident-year configuration not established",
+    "endpointObservations": [
+      {
+        "nodeId": "1682723882",
+        "coordinates": [
+          139.9552808,
+          35.7366989
+        ],
+        "sourceUrl": "https://maps.gsi.go.jp/#19/35.7366989/139.9552808/&base=std&ls=std&disp=1",
+        "screenshot": "artifacts/gsi-endpoint-1682723882-20261014.png",
+        "screenshotSha256": "462e87cf7d0419e9ad12d80ee52b499bdf7cb0854253c9cc492d598e1296d675",
+        "observation": "Roadside T junction at southeastern segment endpoint; southern arm meets diagonal main road.",
+        "cartographicDecision": "current_junction_endpoint_confirmed"
+      },
+      {
+        "nodeId": "3817621913",
+        "coordinates": [
+          139.9531778,
+          35.7380631
+        ],
+        "sourceUrl": "https://maps.gsi.go.jp/#19/35.7380631/139.9531778/&base=std&ls=std&disp=1",
+        "screenshot": "artifacts/gsi-endpoint-3817621913-20261014.png",
+        "screenshotSha256": "f4e397b48f207d4dd585d33cec7740bc310fa8f1906117593a91c5a8dd4d85b7",
+        "observation": "Roadside T junction at northwestern segment endpoint; southern side road meets diagonal main road.",
+        "cartographicDecision": "current_junction_endpoint_confirmed"
+      }
+    ],
+    "endpointSourceChecks": [
+      {
+        "node": "1682723882",
+        "coordinates": [
+          139.9552808,
+          35.7366989
+        ],
+        "gradeEdgeCounts": [
+          [
+            "[\"0\",\"no\",\"no\"]",
+            3
+          ]
+        ]
+      },
+      {
+        "node": "3817621913",
+        "coordinates": [
+          139.9531778,
+          35.7380631
+        ],
+        "gradeEdgeCounts": [
+          [
+            "[\"0\",\"no\",\"no\"]",
+            3
+          ]
+        ]
+      }
+    ],
+    "decision": "eligible_for_isolated_current_road_trial",
+    "reviewed": false,
+    "published": false,
+    "limitations": [
+      "Does not confirm accident-year layout or national road eligibility.",
+      "Road centerline segment between observed endpoint junctions only; distance-only joining is not allowed."
+    ]
+  }
+}
