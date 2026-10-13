@@ -1,0 +1,67 @@
+{
+  "rows": 11070,
+  "counts": {
+    "annual_reference_differs_original": 5127,
+    "no_or_multiple_annual_reference": 268,
+    "annual_reference_agrees_original": 5530,
+    "quarantined_prefecture_reference_unavailable": 133,
+    "uncoded_annual_overlap": 12
+  },
+  "byOccurrenceYear": {
+    "2020": {
+      "annual_reference_differs_original": 2560,
+      "no_or_multiple_annual_reference": 116,
+      "annual_reference_agrees_original": 5530,
+      "quarantined_prefecture_reference_unavailable": 126,
+      "uncoded_annual_overlap": 12
+    },
+    "2024": {
+      "annual_reference_differs_original": 2567,
+      "no_or_multiple_annual_reference": 152,
+      "quarantined_prefecture_reference_unavailable": 7
+    }
+  },
+  "referenceCounts": {
+    "2020-coded": 1900,
+    "2020-uncoded": 140,
+    "2024-coded": 1904,
+    "2024-uncoded": 0
+  },
+  "inputHashes": {
+    "ledger": "e1a31cc9389443fffc03bf2adc6108ac7dd6a5fca519b5469b7493cba89e3b07",
+    "verification": "9ac8d4f8013a54a7080a112d0b58314ee47c84124fdeb6783429428a4b4586e3",
+    "script": "875c68be9b607590ab23af9b30b4c60a4258f450fc0f587e556b68876a131821",
+    "previousResults": "4eeffb8088e48776eee279bff2a736dafcd9704ceb39792c00105fbe6a7306a8",
+    "previousVerification": "c6a235048919277b62c85701294f3ebb2295821fdccb6cc1dded27c633f7288e",
+    "2020-coded": "6d9b0ebb622ceb9ac5ea76ace83ba2e4fd0cac7f02760fcf744183b6f493fd3b",
+    "2020-uncoded": "96270e7b3219a30e044c09a89161038c2d3b70cdbb2814de78b3ee4d3f4fef5c",
+    "2024-coded": "5e4a3b6fe813d578f0cd9a2e97d834f6e6e62399586d047ba86f20726430cfc5",
+    "2024-uncoded": "ed778c73ea51338d6576fb5992b189f2b94d9f3d5e199f46c1af520d6b0b3e6c"
+  },
+  "resultsSha256": "655c3c5e3c4f2eaad753e5ad9375ceb4a295f7db6ffd7cfeae02b45815153c30",
+  "availableReferenceYears": [
+    2020,
+    2024
+  ],
+  "quarantinedPrefectures": {
+    "2020": [
+      "40",
+      "42"
+    ],
+    "2024": [
+      "38"
+    ]
+  },
+  "completeMunicipalCoverage": false,
+  "limitations": [
+    "Only 11070 originally unavailable 2020/2024 ledger rows are compared; original ledger is unchanged.",
+    "Whole prefectures containing quarantined municipalities are conservatively unavailable if present in original code or current boundary candidates. This is a diagnostic gate, not a municipality mapping.",
+    "Occurrence-year January1 boundaries do not prove jurisdiction on accident date or source-year code rules.",
+    "Uncoded feature ordinals refer to retained normalized uncoded files; no code invented.",
+    "All historical decisions remain unresolved; no source correction or publication."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}
