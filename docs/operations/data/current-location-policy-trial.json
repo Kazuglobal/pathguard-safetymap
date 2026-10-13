@@ -1,0 +1,106 @@
+{
+  "trial": {
+    "policyVersion": "current-geometry-trial-v1",
+    "completed": true,
+    "acceptedPhysicalUnitsForTrial": 3,
+    "isolatedTrialAssignedAccidents": 36,
+    "remainingUncertain": 2171631,
+    "outside": 10631,
+    "originalRows": 2182298,
+    "publicAssignedAccidents": 0,
+    "rejectedNearbyRecords": {
+      "different_or_uncertain_candidate": 6
+    },
+    "countsByTrialLocation": {
+      "osm-node-322038916-c9ecd20bb0e6": 9,
+      "osm-node-938136689-c9ecd20bb0e6": 20,
+      "osm-node-1388538218-c9ecd20bb0e6": 7
+    },
+    "diagnosisSha256": "39156e419281c8c81761dbbce5c44232f2ca26135f2fa130c1422dc8022d4279",
+    "evidenceHashes": {
+      "artifacts\\national-location-review-set-verification-20261014.json": "33d280e686ada3350d0dcac0da439e61baecd3b9d5a4d3322b19ef741c12de22",
+      "artifacts\\national-external-cartographic-observations-20261014.json": "9c1b0931095f5c3c018d9d42ceb3f21faf9406daf18179ac374389f8c5bab6c4",
+      "artifacts\\national-location-review-set-20261014\\candidates.geojson": "5a0c20ffd30138c22073aabb297b51af63e6ff180104b8acab901ac652173c8d",
+      "artifacts\\national-location-review-set-20261014\\candidate-review-ledger.jsonl": "40a09c1c9d2559fcc5ad5deccad642b6a7f5b80d5d9a41ec604dc82db00df779"
+    },
+    "topologySha256": "79449e038fcc765e2423061a85468fa0af19529f604df61d36f14458af576377",
+    "scriptSha256": "073b10758163d18e8b315cecaee719712c69d138b1a4541bc295877f73ed065e",
+    "outputHashes": {
+      "location-decisions.jsonl": "d660b113e414510b58290a368f004a5b282d304cd43865265afffb93fcb35d50",
+      "trial-assignments.jsonl": "66a8003ad1426dfb76a1bd1e0c9f52b6a646ee5f4dc99f716ec17659c2e582d7"
+    },
+    "published": false,
+    "productionChanged": false,
+    "limitations": [
+      "Three explicitly observed current-map four-arm intersections only, not a national acceptance rule or public ranking.",
+      "Historical road network reconstruction is outside this method; suspected changes must remain exceptions.",
+      "All original candidates and diagnostic assignedLocationId fields remain unchanged.",
+      "Akashi five-edge topology and four road endpoint units require further review; complex diagnostic cases remain uncertain."
+    ]
+  },
+  "verification": {
+    "completed": true,
+    "verifiedTrialAssignmentRows": 36,
+    "verifiedTrialUnits": 3,
+    "normalExitCode": 0,
+    "stdoutMatchesSummary": true,
+    "allAssignedOriginalIdsRemainNull": true,
+    "reconciledOriginalRows": 2182298,
+    "publicAssignedAccidents": 0,
+    "sourceTrialSummarySha256": "a63d26eda246413c8b976764c9b85d99ea9c4c12414f52f6679611cbcaae856a",
+    "verifiedOutputHashes": {
+      "location-decisions.jsonl": "d660b113e414510b58290a368f004a5b282d304cd43865265afffb93fcb35d50",
+      "trial-assignments.jsonl": "66a8003ad1426dfb76a1bd1e0c9f52b6a646ee5f4dc99f716ec17659c2e582d7"
+    },
+    "published": false,
+    "productionChanged": false,
+    "limitation": "Independently checks every emitted trial assignment against the previously verified diagnosis; does not regenerate omitted-neighbor coverage or establish national adoption."
+  },
+  "roadGradeTransitionException": {
+    "id": "osm-road-a935f2ccb4f6346cca61dc8a",
+    "finding": "Both endpoints are degree-two source grade transitions, not source junctions. North joins tunnel -1; south joins bridge +1.",
+    "sourceChecks": [
+      {
+        "node": "615142261",
+        "coordinates": [
+          135.1642213,
+          34.6981106
+        ],
+        "gradeEdgeCounts": [
+          [
+            "[\"-1\",\"no\",\"yes\"]",
+            1
+          ],
+          [
+            "[\"0\",\"no\",\"no\"]",
+            1
+          ]
+        ]
+      },
+      {
+        "node": "615142336",
+        "coordinates": [
+          135.166519,
+          34.6930354
+        ],
+        "gradeEdgeCounts": [
+          [
+            "[\"0\",\"no\",\"no\"]",
+            1
+          ],
+          [
+            "[\"1\",\"yes\",\"no\"]",
+            1
+          ]
+        ]
+      }
+    ],
+    "decision": "hold_from_intersection_to_intersection_road_adoption",
+    "requiredPolicy": "Classify endpoint as physical junction, terminal, grade transition or unresolved. Do not present grade-transition-only fragments as verified intersection-to-intersection units.",
+    "originalGeometryChanged": false,
+    "published": false,
+    "productionChanged": false
+  },
+  "additionalEvidence": "artifacts/location-policy-road-and-stress-evidence-20261014.json",
+  "additionalEndpointChecks": "artifacts/location-policy-road-endpoint-source-checks-20261014.json"
+}
