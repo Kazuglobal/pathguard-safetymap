@@ -1,0 +1,27 @@
+{
+  "year": 2021,
+  "referenceDate": "2021-01-01",
+  "archiveSha256": "73030abaf6293dd764306473723344b8b8e7f0537b3489c50654d0c2e1af41f6",
+  "geojsonMember": "N03-20210101_GML/N03-21_210101.geojson",
+  "counts": {
+    "pieces": 121158,
+    "codedPieces": 121017,
+    "uncodedPieces": 141
+  },
+  "quality": {
+    "inputPieces": 121017,
+    "regions": 1902,
+    "outputHoles": 190,
+    "sourceCrs": "EPSG:6668",
+    "outputCrs": "EPSG:4326",
+    "transformAccuracyMeters": 1.0,
+    "inputSha256": "0cdef7dbfcfca46b5b559cf3cd90163f9fced0ae22d58572ccdc64689183df90",
+    "outputSha256": "e28c486c72d50757fc500ad9fecb0df6ce79cba685de6e32a5e2d2260cf80914",
+    "completeCoverageReviewed": false
+  },
+  "uncodedWgs84Sha256": "c3a12217629dfc960cc8b9edef6d812bd2aa065854805d026fce5aa378a0fc89",
+  "uncodedPropertiesPreserved": true,
+  "transformAccuracyMeters": 1.0,
+  "reviewed": false,
+  "published": false
+}
