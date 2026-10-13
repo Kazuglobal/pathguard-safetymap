@@ -30,3 +30,5 @@ docs/operations/data/national-connection-pipeline.json -text whitespace=blank-at
 docs/operations/data/national-connection-evidence-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-nearby-candidate-index.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-nearby-candidate-index-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-radius-diagnosis.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/operations/data/national-radius-record-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
