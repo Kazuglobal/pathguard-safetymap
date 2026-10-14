@@ -1,0 +1,43 @@
+{
+  "completed": true,
+  "candidateRowsVerified": 2475,
+  "exampleRowsVerified": 329,
+  "candidatePrefectures": 47,
+  "actualOutputHashes": {
+    "candidates.geojson": "5a0c20ffd30138c22073aabb297b51af63e6ff180104b8acab901ac652173c8d",
+    "summary.json": "ebf8aa1425b0108d88fcecea2110bbc8fecfa9d652bb9dedd92c6a895b83be02",
+    "candidate-review-ledger.jsonl": "40a09c1c9d2559fcc5ad5deccad642b6a7f5b80d5d9a41ec604dc82db00df779",
+    "structural-examples.jsonl": "83fb5b9d3151090b6e222e311d2dff16ec580b1eae2e982ab1c5cdff54da644e"
+  },
+  "originalSummarySelfHashDefect": {
+    "recorded": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "actual": "ebf8aa1425b0108d88fcecea2110bbc8fecfa9d652bb9dedd92c6a895b83be02",
+    "cause": "Summary included its own newly opened empty file. Original retained; payload files match recorded hashes."
+  },
+  "executedProducerSha256": "370cdc51bf3a33543d0e7109a0e621be6617443a1a741871ad7f10d23bdcb243",
+  "futureProducerSha256": "7c6e0d4eb9b840d0b6360ad8448dddce60ee101655bdcd6d56a8bc3413feab8e",
+  "verifierSha256": "4e33da84b1b912a3ccea22d16f32951f4e4a3987092ccdbabd6d0bdf8b49bb8f",
+  "actualLocationsValidated": 0,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Confirms selected payloads against verified indexes; does not independently recompute selection priority or approve physical locations."
+  ],
+  "sourceVerificationSha256": "33d280e686ada3350d0dcac0da439e61baecd3b9d5a4d3322b19ef741c12de22",
+  "sourceInputHashes": {
+    "verification": "160ebad3b4ddfdd9df9125a1d8afcefeedf98e753e341953f307c651e3b9ab14",
+    "diagnosis": "39156e419281c8c81761dbbce5c44232f2ca26135f2fa130c1422dc8022d4279",
+    "quality": "ea95a5834baaf0833b633d90cface4b92a3bb4a7b0b31438526ca397329aa4cc",
+    "compact": "ac15df59243d5288586a67678ba415fe9c6a9ed4738b7648b14fdaa39c1deb3f",
+    "sources": "4bae44c303e06206d02adbe10db23524b8fe36334e57e2f2299ccc2385fb557e",
+    "script": "370cdc51bf3a33543d0e7109a0e621be6617443a1a741871ad7f10d23bdcb243"
+  },
+  "candidateKinds": {
+    "road": 1403,
+    "intersection": 1072
+  },
+  "unresolvedAreaCandidates": 3,
+  "allDiagnosticOriginalRowsScanned": 2182298,
+  "selection": "Purposive 30m high-focus candidates by prefecture/kind plus Chiba/Kashiwa and first-original-order structural examples. Selection priority not independently recalculated."
+}

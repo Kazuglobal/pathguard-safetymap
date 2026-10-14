@@ -1,0 +1,379 @@
+{
+  "published": false,
+  "roadClassificationReviewed": false,
+  "completeCoverageReviewed": false,
+  "scope": "highway-tagged ways only; areas within ranked tags become ambiguity geometry; counts are not road features or accidents",
+  "auditSha256": "b63f70687d795b5dfa2a3249cf5d92a3792e2ba69e1d6862f5eb5c30d9150c6a",
+  "roadSourceSha256": "44cd945e8290c901e9f68390676ad0f5cff64dfa12845fa3e03b29632a674139",
+  "roadClassification": {
+    "rankedHighways": [
+      "bridleway",
+      "bus_guideway",
+      "busway",
+      "cycleway",
+      "escape",
+      "footway",
+      "living_street",
+      "motorway",
+      "motorway_link",
+      "path",
+      "pedestrian",
+      "primary",
+      "primary_link",
+      "residential",
+      "road",
+      "secondary",
+      "secondary_link",
+      "service",
+      "tertiary",
+      "tertiary_link",
+      "track",
+      "trunk",
+      "trunk_link",
+      "unclassified"
+    ],
+    "ambiguityPolicy": "other_highways_and_road_areas",
+    "excludedHighways": {
+      "construction": "current road not established",
+      "proposed": "future proposal",
+      "planned": "future plan",
+      "disused": "not current",
+      "abandoned:path": "not current",
+      "no": "explicitly not a highway",
+      "bus_stop": "facility rather than road",
+      "street_lamp": "facility rather than road",
+      "emergency_access_point": "facility rather than road"
+    }
+  },
+  "sourceWayCounts": {
+    "rankedHighwayTag": 10511301,
+    "ambiguityHighwayTag": 136523,
+    "excludedHighwayTag": 8446
+  },
+  "byHighway": [
+    {
+      "highway": "T",
+      "ways": 5,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "abandoned:path",
+      "ways": 8,
+      "classification": "excludedHighwayTag",
+      "reason": "not current"
+    },
+    {
+      "highway": "bridleway",
+      "ways": 401,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "bus_guideway",
+      "ways": 10,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "bus_stop",
+      "ways": 145,
+      "classification": "excludedHighwayTag",
+      "reason": "facility rather than road"
+    },
+    {
+      "highway": "busway",
+      "ways": 316,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "byway",
+      "ways": 1,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "colonnade",
+      "ways": 5,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "construction",
+      "ways": 7226,
+      "classification": "excludedHighwayTag",
+      "reason": "current road not established"
+    },
+    {
+      "highway": "corridor",
+      "ways": 2018,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "crossing",
+      "ways": 30,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "cycleway",
+      "ways": 25274,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "disused",
+      "ways": 2,
+      "classification": "excludedHighwayTag",
+      "reason": "not current"
+    },
+    {
+      "highway": "elevator",
+      "ways": 318,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "emergency",
+      "ways": 1,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "emergency_access_point",
+      "ways": 2,
+      "classification": "excludedHighwayTag",
+      "reason": "facility rather than road"
+    },
+    {
+      "highway": "emergency_bay",
+      "ways": 86,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "escape",
+      "ways": 34,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "footway",
+      "ways": 1156027,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "footways-ishiduka@3sss.co.jp",
+      "ways": 1,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "ladder",
+      "ways": 3,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "living_street",
+      "ways": 2880,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "motorway",
+      "ways": 52177,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "motorway_link",
+      "ways": 34011,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "no",
+      "ways": 1,
+      "classification": "excludedHighwayTag",
+      "reason": "explicitly not a highway"
+    },
+    {
+      "highway": "passing_place",
+      "ways": 10,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "path",
+      "ways": 735071,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "pedestrian",
+      "ways": 40891,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "planned",
+      "ways": 74,
+      "classification": "excludedHighwayTag",
+      "reason": "future plan"
+    },
+    {
+      "highway": "platform",
+      "ways": 204,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "primary",
+      "ways": 128921,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "primary_link",
+      "ways": 4444,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "proposed",
+      "ways": 987,
+      "classification": "excludedHighwayTag",
+      "reason": "future proposal"
+    },
+    {
+      "highway": "raceway",
+      "ways": 1025,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "residential",
+      "ways": 2888960,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "rest_area",
+      "ways": 552,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "road",
+      "ways": 398,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "secondary",
+      "ways": 152025,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "secondary_link",
+      "ways": 2172,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "service",
+      "ways": 1415627,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "services",
+      "ways": 1685,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "sidewalk",
+      "ways": 8,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "steps",
+      "ways": 130535,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "street_lamp",
+      "ways": 1,
+      "classification": "excludedHighwayTag",
+      "reason": "facility rather than road"
+    },
+    {
+      "highway": "tertiary",
+      "ways": 489782,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "tertiary_link",
+      "ways": 4370,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "track",
+      "ways": 906778,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "traffic_island",
+      "ways": 32,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "trunk",
+      "ways": 127980,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "trunk_link",
+      "ways": 11984,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "unclassified",
+      "ways": 2330768,
+      "classification": "rankedHighwayTag",
+      "reason": "Candidate road subject to area/geometry review"
+    },
+    {
+      "highway": "yes",
+      "ways": 2,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "京橋",
+      "ways": 1,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    },
+    {
+      "highway": "甲島アパート",
+      "ways": 1,
+      "classification": "ambiguityHighwayTag",
+      "reason": "Plausible physical alternative; keep unresolved geometry"
+    }
+  ]
+}

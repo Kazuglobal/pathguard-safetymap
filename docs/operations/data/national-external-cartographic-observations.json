@@ -1,0 +1,103 @@
+{
+  "observations": [
+    {
+      "id": "osm-node-322038916-c9ecd20bb0e6",
+      "municipality": "12217",
+      "area": "柏市",
+      "candidateCoordinates": [
+        139.9789207,
+        35.8446961
+      ],
+      "sourceUrl": "https://maps.gsi.go.jp/#18/35.8446961/139.9789207/&base=std&ls=std&disp=1",
+      "source": "Geospatial Information Authority of Japan / standard map",
+      "sourceTargetPeriod": "Current map viewed on access date; historical road date not established",
+      "accessedAt": "2026-10-13T22:22:49.556303+00:00",
+      "screenshot": "artifacts/gsi-review-osm-node-322038916-20261014.png",
+      "screenshotSha256": "68e6109c8ff0f0594326b47356788a14faafced9e6b058d3b518fee5a2b9dbce",
+      "observation": "Four road arms meet at the candidate coordinate; adjacent local junctions remain separate.",
+      "cartographicIntersectionPresence": "confirmed",
+      "gradeAndSourceNodePolicy": "pending",
+      "historicalRegionCorrespondence": "pending",
+      "reviewDecision": "partial_external_evidence_only",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "id": "osm-node-938136689-c9ecd20bb0e6",
+      "municipality": "01102",
+      "area": "札幌市北区",
+      "candidateCoordinates": [
+        141.3372402,
+        43.1397471
+      ],
+      "sourceUrl": "https://maps.gsi.go.jp/#18/43.1397471/141.3372402/&base=std&ls=std&disp=1",
+      "source": "Geospatial Information Authority of Japan / standard map",
+      "sourceTargetPeriod": "Current map viewed on access date; historical road date not established",
+      "accessedAt": "2026-10-13T22:22:49.558351+00:00",
+      "screenshot": "artifacts/gsi-review-osm-node-938136689-20261014.png",
+      "screenshotSha256": "feba5772561c5576759d7980124889fdca5c09f2f817dbb98770aafb9910e0af",
+      "observation": "Four road arms meet at the candidate coordinate; another junction to the south and canal crossing to the west are separate.",
+      "cartographicIntersectionPresence": "confirmed",
+      "gradeAndSourceNodePolicy": "pending",
+      "historicalRegionCorrespondence": "pending",
+      "reviewDecision": "partial_external_evidence_only",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "id": "osm-node-951530284-c9ecd20bb0e6",
+      "municipality": "28203",
+      "area": "明石市",
+      "candidateCoordinates": [
+        134.9613864,
+        34.6675598
+      ],
+      "sourceUrl": "https://maps.gsi.go.jp/#18/34.6675598/134.9613864/&base=std&ls=std&disp=1",
+      "source": "Geospatial Information Authority of Japan / standard map",
+      "sourceTargetPeriod": "Current map viewed on access date; historical road date not established",
+      "accessedAt": "2026-10-13T22:22:49.559395+00:00",
+      "screenshot": "artifacts/gsi-review-osm-node-951530284-20261014.png",
+      "screenshotSha256": "bae7808e32a52b46c7b7230a1dd456ab515fb39e5eb3a977622836f76f0dff3f",
+      "observation": "Four road arms meet at the candidate coordinate; railway lies to the south and is not the center junction. Grade near the railway requires separate source-node handling.",
+      "cartographicIntersectionPresence": "confirmed",
+      "gradeAndSourceNodePolicy": "pending",
+      "historicalRegionCorrespondence": "pending",
+      "reviewDecision": "partial_external_evidence_only",
+      "reviewed": false,
+      "published": false
+    },
+    {
+      "id": "osm-node-1388538218-c9ecd20bb0e6",
+      "municipality": "47210",
+      "area": "糸満市",
+      "candidateCoordinates": [
+        127.6836233,
+        26.1430283
+      ],
+      "sourceUrl": "https://maps.gsi.go.jp/#18/26.1430283/127.6836233/&base=std&ls=std&disp=1",
+      "source": "Geospatial Information Authority of Japan / standard map",
+      "sourceTargetPeriod": "Current map viewed on access date; historical road date not established",
+      "accessedAt": "2026-10-13T22:22:49.560427+00:00",
+      "screenshot": "artifacts/gsi-review-osm-node-1388538218-20261014.png",
+      "screenshotSha256": "81ac4dcb4f6d472b05283c2a0db7a0ba8396a0dde8bb7ec0d6e4e72d9315cdce",
+      "observation": "Four road arms meet at the candidate coordinate. Curved western approach and separate northeastern junction must not be merged by distance.",
+      "cartographicIntersectionPresence": "confirmed",
+      "gradeAndSourceNodePolicy": "pending",
+      "historicalRegionCorrespondence": "pending",
+      "reviewDecision": "partial_external_evidence_only",
+      "reviewed": false,
+      "published": false
+    }
+  ],
+  "cartographicallyObservedCandidates": 4,
+  "fullyApprovedLocations": 0,
+  "actualLocationsValidated": 0,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Independent cartographic presence check only. Four purposive examples do not establish national eligibility or accident-year road configuration.",
+    "Source screenshot is retained for evidence; GSI map remains attributed.",
+    "Physical eligibility must additionally bind each candidate to verified topology, grade, region policy, and exceptions."
+  ]
+}

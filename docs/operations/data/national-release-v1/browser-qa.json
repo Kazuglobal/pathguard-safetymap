@@ -1,0 +1,89 @@
+{
+  "detailCount": 5,
+  "nationalTop10": true,
+  "viewport": {
+    "height": 844,
+    "width": 390
+  },
+  "productionChanged": false,
+  "listCount": 5,
+  "mapHorizontalOverflow": false,
+  "listToMapSelectionCount": 5,
+  "detailId": "osm-node-1437211284-c9ecd20bb0e6",
+  "kashiwaBicycleDisplayed": true,
+  "chibaDisplayed": true,
+  "detailSections": [
+    "year",
+    "hour",
+    "type",
+    "scope30m"
+  ],
+  "checkedAt": "2026-10-14T10:30:20.8155974Z",
+  "backRestoredConditions": true,
+  "tiesObserved": "rank9 count28 twice",
+  "annualTotal": 5,
+  "completed": true,
+  "version": "national-current-rule-v1-20261014",
+  "preview": "https://pathguardian-pr-250.globalbunny.workers.dev",
+  "rapidFilterRace": {
+    "fixReviewed": true,
+    "liveRetestPending": false,
+    "reproduced": true,
+    "fixCommit": "6e39e1f8dd85ae3eb106bfd0b0f0769abaa21574"
+  },
+  "additionalPage": {
+    "total": 30,
+    "added": 20,
+    "initial": 10,
+    "unique": 30
+  },
+  "retry": {
+    "browserOnly503Injected": true,
+    "failureTextObserved": true,
+    "realDataRecovered10": true
+  },
+  "emptyStates": {
+    "realZero": "prefecture47,bicycle,fatal,2025",
+    "unrecorded": "version unrecorded-test",
+    "allObserved": true,
+    "regionalPreparing": "Kashiwa bicycle fatal2025 uncertain1"
+  },
+  "national47Http": "artifacts/nationwide47-live-http-qa-20261014.json",
+  "mapTouchTargets": {
+    "height": 44,
+    "horizontalOverflow": false,
+    "labels": [
+      "拡大",
+      "縮小",
+      "北向きに戻す",
+      "地図の出典を表示"
+    ],
+    "width": 44,
+    "bodyFont": "16px"
+  },
+  "rapidFilterRetest": {
+    "cityRetained": true,
+    "ciConclusion": "success",
+    "head": "6e39e1f8dd85ae3eb106bfd0b0f0769abaa21574",
+    "sharedReload": true,
+    "ciRun": 38548366929,
+    "backForward": true
+  },
+  "mapToListSelection": {
+    "count": 3,
+    "rank": 8,
+    "highlightObserved": true
+  },
+  "desktop": {
+    "mapX": 652,
+    "horizontalOverflow": false,
+    "sideBySide": true,
+    "columnWidth": 564,
+    "viewport": [
+      1280,
+      900
+    ],
+    "listX": 64,
+    "zoomKeepsRanking": true
+  }
+}

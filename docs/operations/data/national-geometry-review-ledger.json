@@ -1,0 +1,25 @@
+{
+  "ledgerRows": 166701,
+  "findingReasonRows": 166901,
+  "countsByReason": {
+    "extends_beyond_declared_current_boundary": 140099,
+    "closed_line_requires_review": 26713,
+    "empty_or_invalid_geometry": 4,
+    "zero_length_line": 4,
+    "non_simple_line_requires_review": 81
+  },
+  "ledgerSha256": "c2cf97bdd3073c29e0520071e9aee3e77e67a885eb914b6a43ddfc0dce3e4202",
+  "geometryReportSha256": "4e9b94193fee34eabc5757c21bc0510578b99967bb0d724089984d1d496c5483",
+  "findingsIndexSha256": "85ae8c2c9584f8ab50791704041ed17cdde23495ef0d3e1fee5d43b583d611e3",
+  "candidateSha256": "3a6841c2b98a8923bd92ef1db9d05b5ba0d3306d6e518b6f26d538eff71b3761",
+  "qualitySha256": "c885f6c0b45f4c5cce52be18e6b54d99242f5f7d1d520a47eb959724639f50e2",
+  "auditScriptSha256": "38f0a262a38ddd0c25056902ee2384a804d03761d4e9182f5c495aa8f06afe54",
+  "method": "Group every persisted finding by one-based feature position; preserve original IDs and all reasons; all decisions unresolved.",
+  "limitations": [
+    "Reasons can overlap for one location; reason row count is not unique location count.",
+    "No correction, deletion, physical/historical approval, accident assignment or publication."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false
+}

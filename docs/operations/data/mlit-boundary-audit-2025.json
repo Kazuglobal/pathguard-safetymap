@@ -1,0 +1,20 @@
+{
+  "source": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2025/N03-20250101_GML.zip",
+  "sourceDate": "2025-01-01",
+  "retrievedAt": "2026-10-11",
+  "license": "CC BY 4.0",
+  "originalSha256": "df20ebf7193e445ef3846b41578068848bb1a79836151cc8c1ec6275cca984a5",
+  "features": 124094,
+  "municipalities": 1905,
+  "prefectures": 47,
+  "invalidGeometry": 0,
+  "uncodedFeatures": 0,
+  "polygonHoles": 189,
+  "chibaMunicipalities": 60,
+  "kashiwa": [
+    "千葉県",
+    "柏市"
+  ],
+  "transformAccuracy": 1.0,
+  "completeCoverageReviewed": false
+}

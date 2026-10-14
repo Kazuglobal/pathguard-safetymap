@@ -1,0 +1,37 @@
+{
+  "year": 2020,
+  "referenceDate": "2020-01-01",
+  "archiveSha256": "f6c5c689e774003a16e6d132d80c5989d2afe1f2311e8bd90895d77339b4a22a",
+  "geojsonMember": "N03-20_200101.geojson",
+  "counts": {
+    "pieces": 118900,
+    "codedPieces": 118760,
+    "uncodedPieces": 140
+  },
+  "keptCodedPieces": 118233,
+  "quarantinedCodedPieces": 527,
+  "quarantinedMunicipalities": [
+    "40214",
+    "42209"
+  ],
+  "quarantinedSourceSha256": "1cac150ccb970a703c190d1c5971e4326ada73476685aebabfb4134faf32b962",
+  "quarantinedPositionsSha256": "05c55dfb3af63b728393964a53b2e7a716eb3bfe47146a6fbb7b893519ed3eac",
+  "sourceDiagnosisSha256": "b42d1b17ed31ea28dc406e215c98ff415b4d00f67469e5be1b0338cb0e80250d",
+  "completeMunicipalCoverage": false,
+  "quality": {
+    "inputPieces": 118233,
+    "regions": 1900,
+    "outputHoles": 190,
+    "sourceCrs": "EPSG:6668",
+    "outputCrs": "EPSG:4326",
+    "transformAccuracyMeters": 1.0,
+    "inputSha256": "e9068e4f4b6abc8c0b1d177b86c249826940f628b8ccfb0051a119c815209db5",
+    "outputSha256": "6d9b0ebb622ceb9ac5ea76ace83ba2e4fd0cac7f02760fcf744183b6f493fd3b",
+    "completeCoverageReviewed": false
+  },
+  "uncodedWgs84Sha256": "96270e7b3219a30e044c09a89161038c2d3b70cdbb2814de78b3ee4d3f4fef5c",
+  "uncodedPropertiesPreserved": true,
+  "transformAccuracyMeters": 1.0,
+  "reviewed": false,
+  "published": false
+}

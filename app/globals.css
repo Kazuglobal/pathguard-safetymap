@@ -837,7 +837,23 @@
   z-index: 25;
 }
 
-/* スマホの地図: 下部のボタン列（components/map/map-floating-controls.tsx）が画面の一番下にあるので、Mapbox のロゴ・現在地ボタンをその上に出す（ロゴは利用規約上、隠してはいけない） */
+/* 公開事故検索の地図操作は、指で押しやすい44px以上にする。 */
+.pg-accident-map .mapboxgl-ctrl-group button,
+.pg-accident-map .mapboxgl-ctrl-attrib-button {
+  width: 44px;
+  height: 44px;
+}
+
+.pg-accident-map .mapboxgl-ctrl-attrib-button {
+  background-position: center;
+}
+
+.pg-accident-map .mapboxgl-ctrl-attrib.mapboxgl-compact {
+  min-height: 44px;
+  padding-right: 44px;
+}
+
+/* メイン地図では下部のボタン列を避けてMapboxのロゴ・操作を表示する。 */
 @media (max-width: 767px) {
   .pg-main-map .mapboxgl-ctrl-bottom-left,
   .pg-main-map .mapboxgl-ctrl-bottom-right {

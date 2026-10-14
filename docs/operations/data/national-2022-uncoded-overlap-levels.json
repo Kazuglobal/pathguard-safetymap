@@ -1,0 +1,32 @@
+{
+  "rows": 7808,
+  "overlapLevels": {
+    "only_inferred_higher_level_overlap": 7801,
+    "mixed_inferred_and_other_overlap": 7
+  },
+  "codedReferenceComparison": {
+    "coded_reference_differs_original": 2748,
+    "no_or_multiple_coded_reference": 7,
+    "coded_reference_agrees_original": 5053
+  },
+  "kashiwaRelatedOverlapLevels": {
+    "only_inferred_higher_level_overlap": 14
+  },
+  "inputHashes": {
+    "hierarchy": "d160fa7f8c1ee36b187ba177d465f63fa0bacb5ff6c46082622ea38c67dd55dd",
+    "results": "4eeffb8088e48776eee279bff2a736dafcd9704ceb39792c00105fbe6a7306a8",
+    "verification": "c6a235048919277b62c85701294f3ebb2295821fdccb6cc1dded27c633f7288e",
+    "uncoded": "22b9fd7806b960397f90116e942e6ce97a205acd967e939b5fbd6a89072b0579",
+    "script": "44e5ad43ef3d0f8f40646356018dcfc6bc0041a0dcd57ba2476096ab5256991e"
+  },
+  "detailsSha256": "065a9ee34110921361ba1bb4719b0b254a1a1cac4dedf111dc9e950060997adb",
+  "sourceDefinitionUrl": "https://nlftp.mlit.go.jp/ksj/gml/product_spec/KS-PS-N03-v3_1.pdf",
+  "limitations": [
+    "Levels are inferred from prior geometry and source attributes; official specification allows absent municipal name/code and does not certify these61 shapes as higher-level.",
+    "No shapes excluded, regional flags cleared, historical decisions approved or accident records changed."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

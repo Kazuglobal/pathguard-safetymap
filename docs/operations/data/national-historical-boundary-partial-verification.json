@@ -1,0 +1,61 @@
+{
+  "years": [
+    {
+      "year": 2020,
+      "counts": {
+        "pieces": 118900,
+        "codedPieces": 118760,
+        "kept": 118233,
+        "uncodedPieces": 140,
+        "quarantined": 527
+      },
+      "regions": 1900,
+      "prefectures": 47,
+      "holes": 190,
+      "quarantinedMunicipalities": [
+        "40214",
+        "42209"
+      ],
+      "hashes": {
+        "codedSource": "e9068e4f4b6abc8c0b1d177b86c249826940f628b8ccfb0051a119c815209db5",
+        "codedWgs84": "6d9b0ebb622ceb9ac5ea76ace83ba2e4fd0cac7f02760fcf744183b6f493fd3b",
+        "quarantine": "1cac150ccb970a703c190d1c5971e4326ada73476685aebabfb4134faf32b962",
+        "positions": "05c55dfb3af63b728393964a53b2e7a716eb3bfe47146a6fbb7b893519ed3eac",
+        "uncoded": "96270e7b3219a30e044c09a89161038c2d3b70cdbb2814de78b3ee4d3f4fef5c"
+      }
+    },
+    {
+      "year": 2024,
+      "counts": {
+        "pieces": 124133,
+        "codedPieces": 124133,
+        "kept": 121463,
+        "quarantined": 2670
+      },
+      "regions": 1904,
+      "prefectures": 47,
+      "holes": 192,
+      "quarantinedMunicipalities": [
+        "38203"
+      ],
+      "hashes": {
+        "codedSource": "4bfa5f849170ddf5350d09fd3291ace40f06d2608756187d4eb14fad4a5b5677",
+        "codedWgs84": "5e4a3b6fe813d578f0cd9a2e97d834f6e6e62399586d047ba86f20726430cfc5",
+        "quarantine": "499a454c355c87b0566ab734d112691ebe5c3cfa9aaad1536951c018d5ac93df",
+        "positions": "d304ce7cd4814612a0169ef4abfecc3b268ff589e29483d265f6bcb2ef1fbaee",
+        "uncoded": "ed778c73ea51338d6576fb5992b189f2b94d9f3d5e199f46c1af520d6b0b3e6c"
+      }
+    }
+  ],
+  "summarySha256": "5c5d78f4f99fd32574d740be796d9227e088070a31899a11137e9d4c728819ab",
+  "auditScriptSha256": "ef540acfacfeb579f13c1868aa7a5fe1feeb3fc13345250cedebd569bfe7606e",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "completeMunicipalCoverage": false,
+  "productionChanged": false,
+  "limitations": [
+    "Original quarantined geometry/properties preserved semantically; serialization bytes may differ.",
+    "January 1 partial references do not approve year-round jurisdiction or accident assignment."
+  ]
+}

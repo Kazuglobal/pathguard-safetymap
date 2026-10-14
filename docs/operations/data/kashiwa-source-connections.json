@@ -1,0 +1,27 @@
+{
+  "counts": {
+    "features": 397555,
+    "intersections": 143025,
+    "roadSections": 252520,
+    "ambiguityFeatures": 2010
+  },
+  "connections": 395545,
+  "sourceRoadPieces": 270479,
+  "inputHashes": {
+    "topology": "eb38a158536c5ceebed674e00e60de5c6bdcaaa73cedc476d4c56d42414465d4",
+    "candidates": "4b77149d5519bc791da12bdd17d4c60cd0cd3bafb6f00a38aaabbed17f20f527",
+    "quality": "32e9bfb9ed4952e5d76a2b2c915839ff2e3d23a9050eb4e5cf8b6db7abf0aa94"
+  },
+  "connectionIndexSha256": "f9c738263816f8d970fb7f7856305c6c986cb4fe826b60c06c76f05ab7eef1e0",
+  "connectionCodeSha256": "77aa758a73848f02ba20650c075ead928cfde50f66a3b6ffd5bde70c911d9e24",
+  "auditScriptSha256": "0eac9a2ff304784753a11c85da6262875ebf4492d11af70ab3bdb54daec89065",
+  "method": "Reconstruct exact saved references; compare every coordinate and grade; retain original node IDs in a separate evidence index.",
+  "limitations": [
+    "No coordinate/proximity-based node merging or candidate flag changes.",
+    "Source-node agreement is not physical intersection, historical road availability or publication approval.",
+    "Completed pilot only; nationwide connection reconstruction is still required."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false
+}

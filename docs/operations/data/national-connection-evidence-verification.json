@@ -1,0 +1,30 @@
+{
+  "identities": 28969266,
+  "canonicalIdentitySha256": "f041899f3ee8c93fd5bbebd4750749c8410543f692f26b817958132b7ecdeaf0",
+  "sourceSections": 18599441,
+  "sourceRoadPieces": 19846221,
+  "unusedSections": 0,
+  "inputHashes": {
+    "topology": "4a8f760cd1baa4262ec794827e36fdcae0fb5dc6a697f6cad4bd97cc93252bb0",
+    "sourceTopology": "79449e038fcc765e2423061a85468fa0af19529f604df61d36f14458af576377",
+    "candidates": "3a6841c2b98a8923bd92ef1db9d05b5ba0d3306d6e518b6f26d538eff71b3761",
+    "quality": "c885f6c0b45f4c5cce52be18e6b54d99242f5f7d1d520a47eb959724639f50e2",
+    "connections": "6f363804e314b3201cc737cc59b8a6a62bde9668ff22af7b5b32de388a060376",
+    "identities": "85ae8c2c9584f8ab50791704041ed17cdde23495ef0d3e1fee5d43b583d611e3",
+    "report": "fa66268a2bf9f5f0b3058abf20e27743565358646d98e7a6a48c51072d416656",
+    "pipeline": "f17743f99c5c44f92abe9df8de2a5c908e8c1fa4faf686b7b0d798b6603a11f0",
+    "producerStdout": "3918fb157219c54adc85ed95b1dc06a39b6f5e61f760e3723b14f49ceec2b202",
+    "parentStdout": "a9d71a587ab3bf198e0b98b39e15fba61d09448e00379b86bfaea1b878c5e3ae"
+  },
+  "producerReportEqual": true,
+  "normalParentCompletionConfirmed": true,
+  "allIdentitySetsEqual": true,
+  "auditScriptSha256": "ed35a210b45bd7d1225a6724a481c1d503b2b2f2a98698cc3455cbd88f3c6925",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Source agreement does not approve physical locations, historical regions, accident assignment or publication."
+  ]
+}

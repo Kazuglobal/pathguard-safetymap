@@ -1,0 +1,26 @@
+{
+  "scope": "National normalized input coordinate screening only; no record deletion",
+  "invalidCoordinates": 171,
+  "reasons": {
+    "zeroCoordinate": 151,
+    "outsideJapanBounds": 20
+  },
+  "bySourceYear": {
+    "2019": {
+      "zeroCoordinate": 74
+    },
+    "2020": {
+      "zeroCoordinate": 21,
+      "outsideJapanBounds": 20
+    },
+    "2021": {
+      "zeroCoordinate": 33
+    },
+    "2022": {
+      "zeroCoordinate": 20
+    },
+    "2025": {
+      "zeroCoordinate": 3
+    }
+  }
+}

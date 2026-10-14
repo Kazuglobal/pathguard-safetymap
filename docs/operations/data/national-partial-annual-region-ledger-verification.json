@@ -1,0 +1,23 @@
+{
+  "rows": 11070,
+  "counts": {
+    "annual_reference_differs_original": 5127,
+    "no_or_multiple_annual_reference": 268,
+    "annual_reference_agrees_original": 5530,
+    "quarantined_prefecture_reference_unavailable": 133,
+    "uncoded_annual_overlap": 12
+  },
+  "allOriginalIdentityFieldsEqual": true,
+  "allDecisionsUnresolved": true,
+  "normalStdoutConfirmed": true,
+  "summarySha256": "98e54dd267efca538af1fe6afbe67627916aa2ea1e4cc1cd76e45863815d4784",
+  "resultsSha256": "655c3c5e3c4f2eaad753e5ad9375ceb4a295f7db6ffd7cfeae02b45815153c30",
+  "auditScriptSha256": "d798898755e8aed6ce197ba5164e2154dff81deec4fbf3bc476c573f5ed03cef",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "This verifies recorded candidates and their classification, not independently recomputed spatial containment or accident-date jurisdiction."
+  ]
+}

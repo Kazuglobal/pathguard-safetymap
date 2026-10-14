@@ -1,0 +1,293 @@
+{
+  "count": 47,
+  "allReady": true,
+  "results": [
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "01"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "02"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "03"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "04"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "05"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "06"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "07"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "08"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "09"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "10"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "11"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "12"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "13"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "14"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "15"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "16"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "17"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "18"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "19"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "20"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "21"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "22"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "23"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "24"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "25"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "26"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "27"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "28"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "29"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "30"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "31"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "32"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "33"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "34"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "35"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "36"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "37"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "38"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "39"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "40"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "41"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "42"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "43"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "44"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "45"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "46"
+    },
+    {
+      "status": "ready",
+      "items": 10,
+      "http": 200,
+      "code": "47"
+    }
+  ],
+  "checkedAt": "2026-10-14T10:20:16.5625050Z",
+  "preview": "https://pathguardian-pr-250.globalbunny.workers.dev",
+  "unauthenticated": true,
+  "productionChanged": false,
+  "version": "national-current-rule-v1-20261014"
+}

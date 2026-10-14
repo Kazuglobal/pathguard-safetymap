@@ -1,0 +1,112 @@
+{
+  "sources": [
+    {
+      "name": "警察庁 交通事故統計情報 2019年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2019/honhyo_2019.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2019,
+      "sha256": "b1a493c268a576faccbdced90ac1762776441f83a3307415bd5b297d45ea32c9",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "警察庁 交通事故統計情報 2020年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2020/honhyo_2020.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2020,
+      "sha256": "cdf3f78e9965b9739f280c77510b3223bccb9751545249cb2638bcbc458146ef",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "警察庁 交通事故統計情報 2021年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2021/honhyo_2021.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2021,
+      "sha256": "c545a277190b323e7de17f14b6258708f7d5beb06ded98960efd81dacd518f17",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "警察庁 交通事故統計情報 2022年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2022/honhyo_2022.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2022,
+      "sha256": "b0339cfba349be795ecd709ebbbf686b398aeb47542a8a9bd86e1ab4d27bc8f7",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "警察庁 交通事故統計情報 2023年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2023/honhyo_2023.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2023,
+      "sha256": "786f33a65e38b44cd63638ce7853eb8c448898b7e765c7002e300d07d429d672",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "警察庁 交通事故統計情報 2024年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2024/honhyo_2024.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2024,
+      "sha256": "b1d91bb65daaa3554026fcdc6426f7440356018fc0e6e18042c40ff9f54ac2f5",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "警察庁 交通事故統計情報 2025年",
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/honhyo_2025.csv",
+      "license": "公共データ利用規約 第1.0版（PDL1.0）",
+      "licenseUrl": "https://www.npa.go.jp/rules/index.html",
+      "retrievedAt": "2026-10-10",
+      "targetYear": 2025,
+      "sha256": "aad9afb4e6f9dac6e503f4c8252c018f5f27ab498024503084b17c07bc2ee730",
+      "attribution": "警察庁の交通事故統計情報を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "OpenStreetMap 道路・交差点",
+      "url": "https://download.geofabrik.de/asia/japan-261009.osm.pbf",
+      "license": "ODbL 1.0",
+      "licenseUrl": "https://www.openstreetmap.org/copyright",
+      "retrievedAt": "2026-10-11",
+      "dataAsOf": "2026-10-09T20:21:04Z",
+      "sha256": "44cd945e8290c901e9f68390676ad0f5cff64dfa12845fa3e03b29632a674139",
+      "attribution": "© OpenStreetMap contributors",
+      "termsCheckedAt": "2026-10-14"
+    },
+    {
+      "name": "国土交通省 国土数値情報 行政区域2025年",
+      "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2025/N03-20250101_GML.zip",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2025.html",
+      "retrievedAt": "2026-10-11",
+      "targetYear": 2025,
+      "dataAsOf": "2025-01-01",
+      "sha256": "df20ebf7193e445ef3846b41578068848bb1a79836151cc8c1ec6275cca984a5",
+      "attribution": "国土数値情報（行政区域データ）（国土交通省）を加工してPathGuardian作成",
+      "termsCheckedAt": "2026-10-14"
+    }
+  ],
+  "termsReferences": [
+    "https://www.npa.go.jp/rules/index.html",
+    "https://osmfoundation.org/wiki/Licence/Attribution_Guidelines",
+    "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2025.html"
+  ],
+  "scope": "Public snapshot notices; not an adoption or deployment approval.",
+  "osmDerivedDatabaseNoticeRequired": true,
+  "published": false
+}

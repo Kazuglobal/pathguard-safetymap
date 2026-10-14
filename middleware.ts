@@ -30,6 +30,10 @@ function isProtectedPath(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+  // This family exposes only verified public aggregates, independent of auth refresh.
+  if (pathname === '/accidents' || pathname.startsWith('/accidents/') || pathname.startsWith('/api/accidents/')) {
+    return NextResponse.next()
+  }
 
   // 静的ファイル・Next.js内部パスはスキップ
   if (

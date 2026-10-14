@@ -1,0 +1,550 @@
+{
+  "published": false,
+  "completeCoverageReviewed": false,
+  "reviewedLocations": 0,
+  "scope": "Kashiwa original municipality 12217; occurrence years 2019..2025; unreviewed candidate diagnostics",
+  "expandedBounds": [
+    139.85,
+    35.75,
+    140.15,
+    36.0
+  ],
+  "records": 6950,
+  "eligibleRecords": 6867,
+  "excludedOrUncertainBeforeCandidateSearch": {
+    "outsidePeriod": 15,
+    "administrativeCodeMismatch": 68
+  },
+  "inputs": {
+    "records": {
+      "sha256": "bb880611db2f288acd78bf9159397a75ed79a3b96646307c57fcdda52933c2ec"
+    },
+    "boundaries": {
+      "sha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6"
+    },
+    "vehicleBaseline": {
+      "sha256": "939719ba6c255669201e076267eb32bd597797c0fb72ba30314869f7a16bdc50",
+      "quality": {
+        "ways": 79311,
+        "highwayScope": [
+          "living_street",
+          "motorway",
+          "motorway_link",
+          "primary",
+          "primary_link",
+          "residential",
+          "secondary",
+          "secondary_link",
+          "service",
+          "tertiary",
+          "tertiary_link",
+          "trunk",
+          "trunk_link",
+          "unclassified"
+        ],
+        "intersections": 93920,
+        "roadSections": 163478,
+        "outsideOrAmbiguousBoundary": 0,
+        "reviewedLocations": 0,
+        "completeCoverageReviewed": false,
+        "sourceRoadPieces": 170183
+      }
+    },
+    "expanded": {
+      "sha256": "2ef1ab4cdb58419b620902eecd0d5097fea793cc5c50761ecd12f9befbee7d9c",
+      "quality": {
+        "ways": 108369,
+        "highwayScope": [
+          "cycleway",
+          "footway",
+          "living_street",
+          "motorway",
+          "motorway_link",
+          "path",
+          "pedestrian",
+          "primary",
+          "primary_link",
+          "residential",
+          "secondary",
+          "secondary_link",
+          "service",
+          "tertiary",
+          "tertiary_link",
+          "trunk",
+          "trunk_link",
+          "unclassified"
+        ],
+        "intersections": 132694,
+        "roadSections": 235249,
+        "outsideOrAmbiguousBoundary": 0,
+        "reviewedLocations": 0,
+        "completeCoverageReviewed": false,
+        "sourceRoadPieces": 253331
+      }
+    }
+  },
+  "comparisons": {
+    "all": {
+      "10": {
+        "records": 6867,
+        "baseline": {
+          "singleUnreviewedIntersection": 2917,
+          "singleUnreviewedRoad": 1169,
+          "multipleCandidates": 2291,
+          "unresolvedLevel": 368,
+          "noNearbyCandidate": 118,
+          "candidateRegionMismatch": 4
+        },
+        "expanded": {
+          "singleUnreviewedIntersection": 2397,
+          "singleUnreviewedRoad": 863,
+          "multipleCandidates": 2914,
+          "unresolvedLevel": 602,
+          "noNearbyCandidate": 88,
+          "candidateRegionMismatch": 3
+        },
+        "transitions": {
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 2253,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 846,
+          "multipleCandidates -> multipleCandidates": 2054,
+          "unresolvedLevel -> unresolvedLevel": 368,
+          "singleUnreviewedIntersection -> multipleCandidates": 583,
+          "singleUnreviewedIntersection -> unresolvedLevel": 81,
+          "singleUnreviewedRoad -> multipleCandidates": 268,
+          "multipleCandidates -> unresolvedLevel": 131,
+          "noNearbyCandidate -> singleUnreviewedRoad": 17,
+          "singleUnreviewedRoad -> unresolvedLevel": 17,
+          "multipleCandidates -> singleUnreviewedIntersection": 106,
+          "noNearbyCandidate -> multipleCandidates": 8,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 38,
+          "noNearbyCandidate -> noNearbyCandidate": 88,
+          "noNearbyCandidate -> unresolvedLevel": 5,
+          "candidateRegionMismatch -> multipleCandidates": 1,
+          "candidateRegionMismatch -> candidateRegionMismatch": 3
+        }
+      },
+      "20": {
+        "records": 6867,
+        "baseline": {
+          "singleUnreviewedIntersection": 2989,
+          "multipleCandidates": 2216,
+          "singleUnreviewedRoad": 1169,
+          "unresolvedLevel": 368,
+          "noNearbyCandidate": 118,
+          "candidateRegionMismatch": 7
+        },
+        "expanded": {
+          "singleUnreviewedIntersection": 2210,
+          "multipleCandidates": 3098,
+          "singleUnreviewedRoad": 863,
+          "unresolvedLevel": 602,
+          "noNearbyCandidate": 88,
+          "candidateRegionMismatch": 6
+        },
+        "transitions": {
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 2114,
+          "multipleCandidates -> multipleCandidates": 2066,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 846,
+          "unresolvedLevel -> unresolvedLevel": 368,
+          "singleUnreviewedIntersection -> multipleCandidates": 785,
+          "singleUnreviewedIntersection -> unresolvedLevel": 90,
+          "singleUnreviewedRoad -> multipleCandidates": 242,
+          "multipleCandidates -> singleUnreviewedIntersection": 28,
+          "multipleCandidates -> unresolvedLevel": 122,
+          "noNearbyCandidate -> singleUnreviewedRoad": 17,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 64,
+          "singleUnreviewedRoad -> unresolvedLevel": 17,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 4,
+          "noNearbyCandidate -> noNearbyCandidate": 88,
+          "noNearbyCandidate -> multipleCandidates": 4,
+          "noNearbyCandidate -> unresolvedLevel": 5,
+          "candidateRegionMismatch -> candidateRegionMismatch": 6,
+          "candidateRegionMismatch -> multipleCandidates": 1
+        }
+      },
+      "30": {
+        "records": 6867,
+        "baseline": {
+          "multipleCandidates": 3163,
+          "singleUnreviewedRoad": 774,
+          "singleUnreviewedIntersection": 2447,
+          "unresolvedLevel": 368,
+          "noNearbyCandidate": 108,
+          "candidateRegionMismatch": 7
+        },
+        "expanded": {
+          "multipleCandidates": 3825,
+          "singleUnreviewedRoad": 574,
+          "singleUnreviewedIntersection": 1783,
+          "unresolvedLevel": 603,
+          "noNearbyCandidate": 78,
+          "candidateRegionMismatch": 4
+        },
+        "transitions": {
+          "multipleCandidates -> multipleCandidates": 2969,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 562,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 1714,
+          "unresolvedLevel -> unresolvedLevel": 368,
+          "singleUnreviewedIntersection -> multipleCandidates": 694,
+          "multipleCandidates -> unresolvedLevel": 180,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 47,
+          "noNearbyCandidate -> singleUnreviewedRoad": 12,
+          "singleUnreviewedIntersection -> unresolvedLevel": 39,
+          "singleUnreviewedRoad -> multipleCandidates": 154,
+          "noNearbyCandidate -> multipleCandidates": 5,
+          "noNearbyCandidate -> noNearbyCandidate": 78,
+          "singleUnreviewedRoad -> unresolvedLevel": 11,
+          "multipleCandidates -> singleUnreviewedIntersection": 14,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 8,
+          "noNearbyCandidate -> unresolvedLevel": 5,
+          "candidateRegionMismatch -> candidateRegionMismatch": 4,
+          "candidateRegionMismatch -> multipleCandidates": 3
+        }
+      },
+      "50": {
+        "records": 6867,
+        "baseline": {
+          "multipleCandidates": 4895,
+          "singleUnreviewedIntersection": 1221,
+          "unresolvedLevel": 369,
+          "singleUnreviewedRoad": 328,
+          "noNearbyCandidate": 51,
+          "candidateRegionMismatch": 3
+        },
+        "expanded": {
+          "multipleCandidates": 5097,
+          "singleUnreviewedIntersection": 867,
+          "unresolvedLevel": 611,
+          "singleUnreviewedRoad": 256,
+          "noNearbyCandidate": 33,
+          "candidateRegionMismatch": 3
+        },
+        "transitions": {
+          "multipleCandidates -> multipleCandidates": 4667,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 838,
+          "unresolvedLevel -> unresolvedLevel": 369,
+          "singleUnreviewedIntersection -> multipleCandidates": 374,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 252,
+          "multipleCandidates -> unresolvedLevel": 225,
+          "singleUnreviewedIntersection -> unresolvedLevel": 9,
+          "singleUnreviewedRoad -> multipleCandidates": 52,
+          "noNearbyCandidate -> multipleCandidates": 4,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 20,
+          "noNearbyCandidate -> singleUnreviewedRoad": 4,
+          "noNearbyCandidate -> noNearbyCandidate": 33,
+          "singleUnreviewedRoad -> unresolvedLevel": 4,
+          "noNearbyCandidate -> unresolvedLevel": 4,
+          "candidateRegionMismatch -> candidateRegionMismatch": 3,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 6,
+          "multipleCandidates -> singleUnreviewedIntersection": 3
+        }
+      }
+    },
+    "bicycle": {
+      "10": {
+        "records": 2049,
+        "baseline": {
+          "singleUnreviewedIntersection": 1072,
+          "unresolvedLevel": 101,
+          "singleUnreviewedRoad": 266,
+          "multipleCandidates": 591,
+          "noNearbyCandidate": 19
+        },
+        "expanded": {
+          "singleUnreviewedIntersection": 885,
+          "unresolvedLevel": 157,
+          "singleUnreviewedRoad": 199,
+          "multipleCandidates": 802,
+          "noNearbyCandidate": 6
+        },
+        "transitions": {
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 831,
+          "unresolvedLevel -> unresolvedLevel": 101,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 191,
+          "singleUnreviewedIntersection -> multipleCandidates": 222,
+          "multipleCandidates -> multipleCandidates": 517,
+          "singleUnreviewedRoad -> multipleCandidates": 60,
+          "noNearbyCandidate -> singleUnreviewedRoad": 8,
+          "multipleCandidates -> singleUnreviewedIntersection": 41,
+          "multipleCandidates -> unresolvedLevel": 33,
+          "singleUnreviewedIntersection -> unresolvedLevel": 19,
+          "noNearbyCandidate -> multipleCandidates": 3,
+          "noNearbyCandidate -> noNearbyCandidate": 6,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 13,
+          "noNearbyCandidate -> unresolvedLevel": 2,
+          "singleUnreviewedRoad -> unresolvedLevel": 2
+        }
+      },
+      "20": {
+        "records": 2049,
+        "baseline": {
+          "singleUnreviewedIntersection": 1024,
+          "unresolvedLevel": 101,
+          "singleUnreviewedRoad": 266,
+          "multipleCandidates": 639,
+          "noNearbyCandidate": 19
+        },
+        "expanded": {
+          "singleUnreviewedIntersection": 737,
+          "unresolvedLevel": 157,
+          "singleUnreviewedRoad": 199,
+          "multipleCandidates": 950,
+          "noNearbyCandidate": 6
+        },
+        "transitions": {
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 712,
+          "unresolvedLevel -> unresolvedLevel": 101,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 191,
+          "singleUnreviewedIntersection -> multipleCandidates": 279,
+          "multipleCandidates -> multipleCandidates": 613,
+          "singleUnreviewedRoad -> multipleCandidates": 57,
+          "noNearbyCandidate -> singleUnreviewedRoad": 8,
+          "singleUnreviewedIntersection -> unresolvedLevel": 33,
+          "noNearbyCandidate -> multipleCandidates": 1,
+          "noNearbyCandidate -> noNearbyCandidate": 6,
+          "multipleCandidates -> unresolvedLevel": 19,
+          "multipleCandidates -> singleUnreviewedIntersection": 7,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 16,
+          "noNearbyCandidate -> unresolvedLevel": 2,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 2,
+          "singleUnreviewedRoad -> unresolvedLevel": 2
+        }
+      },
+      "30": {
+        "records": 2049,
+        "baseline": {
+          "singleUnreviewedIntersection": 755,
+          "unresolvedLevel": 101,
+          "multipleCandidates": 999,
+          "singleUnreviewedRoad": 175,
+          "noNearbyCandidate": 19
+        },
+        "expanded": {
+          "singleUnreviewedIntersection": 544,
+          "unresolvedLevel": 157,
+          "multipleCandidates": 1210,
+          "singleUnreviewedRoad": 132,
+          "noNearbyCandidate": 6
+        },
+        "transitions": {
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 527,
+          "unresolvedLevel -> unresolvedLevel": 101,
+          "multipleCandidates -> multipleCandidates": 954,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 125,
+          "singleUnreviewedIntersection -> multipleCandidates": 217,
+          "singleUnreviewedRoad -> multipleCandidates": 38,
+          "noNearbyCandidate -> singleUnreviewedRoad": 7,
+          "multipleCandidates -> unresolvedLevel": 43,
+          "singleUnreviewedIntersection -> unresolvedLevel": 11,
+          "noNearbyCandidate -> multipleCandidates": 1,
+          "noNearbyCandidate -> noNearbyCandidate": 6,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 12,
+          "noNearbyCandidate -> unresolvedLevel": 2,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 3,
+          "multipleCandidates -> singleUnreviewedIntersection": 2
+        }
+      },
+      "50": {
+        "records": 2049,
+        "baseline": {
+          "multipleCandidates": 1570,
+          "unresolvedLevel": 101,
+          "singleUnreviewedIntersection": 302,
+          "singleUnreviewedRoad": 63,
+          "noNearbyCandidate": 13
+        },
+        "expanded": {
+          "multipleCandidates": 1617,
+          "unresolvedLevel": 158,
+          "singleUnreviewedIntersection": 221,
+          "singleUnreviewedRoad": 51,
+          "noNearbyCandidate": 2
+        },
+        "transitions": {
+          "multipleCandidates -> multipleCandidates": 1515,
+          "unresolvedLevel -> unresolvedLevel": 101,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 213,
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 48,
+          "singleUnreviewedIntersection -> multipleCandidates": 89,
+          "singleUnreviewedRoad -> multipleCandidates": 11,
+          "noNearbyCandidate -> multipleCandidates": 2,
+          "multipleCandidates -> unresolvedLevel": 55,
+          "noNearbyCandidate -> singleUnreviewedRoad": 3,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 4,
+          "noNearbyCandidate -> unresolvedLevel": 2,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 4,
+          "noNearbyCandidate -> noNearbyCandidate": 2
+        }
+      }
+    },
+    "pedestrian": {
+      "10": {
+        "records": 1275,
+        "baseline": {
+          "singleUnreviewedRoad": 236,
+          "multipleCandidates": 372,
+          "singleUnreviewedIntersection": 593,
+          "noNearbyCandidate": 46,
+          "unresolvedLevel": 27,
+          "candidateRegionMismatch": 1
+        },
+        "expanded": {
+          "singleUnreviewedRoad": 190,
+          "multipleCandidates": 493,
+          "singleUnreviewedIntersection": 485,
+          "unresolvedLevel": 74,
+          "noNearbyCandidate": 32,
+          "candidateRegionMismatch": 1
+        },
+        "transitions": {
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 183,
+          "multipleCandidates -> multipleCandidates": 329,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 457,
+          "singleUnreviewedIntersection -> multipleCandidates": 120,
+          "multipleCandidates -> singleUnreviewedIntersection": 22,
+          "multipleCandidates -> unresolvedLevel": 21,
+          "noNearbyCandidate -> multipleCandidates": 4,
+          "noNearbyCandidate -> noNearbyCandidate": 32,
+          "singleUnreviewedRoad -> multipleCandidates": 40,
+          "noNearbyCandidate -> singleUnreviewedRoad": 7,
+          "singleUnreviewedRoad -> unresolvedLevel": 7,
+          "unresolvedLevel -> unresolvedLevel": 27,
+          "singleUnreviewedIntersection -> unresolvedLevel": 16,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 6,
+          "noNearbyCandidate -> unresolvedLevel": 3,
+          "candidateRegionMismatch -> candidateRegionMismatch": 1
+        }
+      },
+      "20": {
+        "records": 1275,
+        "baseline": {
+          "singleUnreviewedRoad": 236,
+          "multipleCandidates": 356,
+          "singleUnreviewedIntersection": 609,
+          "noNearbyCandidate": 46,
+          "unresolvedLevel": 27,
+          "candidateRegionMismatch": 1
+        },
+        "expanded": {
+          "singleUnreviewedRoad": 190,
+          "multipleCandidates": 518,
+          "singleUnreviewedIntersection": 460,
+          "unresolvedLevel": 74,
+          "noNearbyCandidate": 32,
+          "candidateRegionMismatch": 1
+        },
+        "transitions": {
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 183,
+          "multipleCandidates -> multipleCandidates": 334,
+          "singleUnreviewedIntersection -> multipleCandidates": 148,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 443,
+          "multipleCandidates -> unresolvedLevel": 19,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 1,
+          "singleUnreviewedIntersection -> unresolvedLevel": 18,
+          "noNearbyCandidate -> noNearbyCandidate": 32,
+          "singleUnreviewedRoad -> multipleCandidates": 33,
+          "noNearbyCandidate -> singleUnreviewedRoad": 7,
+          "singleUnreviewedRoad -> unresolvedLevel": 7,
+          "noNearbyCandidate -> multipleCandidates": 3,
+          "unresolvedLevel -> unresolvedLevel": 27,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 13,
+          "noNearbyCandidate -> unresolvedLevel": 3,
+          "multipleCandidates -> singleUnreviewedIntersection": 3,
+          "candidateRegionMismatch -> candidateRegionMismatch": 1
+        }
+      },
+      "30": {
+        "records": 1275,
+        "baseline": {
+          "singleUnreviewedRoad": 154,
+          "singleUnreviewedIntersection": 469,
+          "multipleCandidates": 579,
+          "noNearbyCandidate": 43,
+          "unresolvedLevel": 27,
+          "candidateRegionMismatch": 3
+        },
+        "expanded": {
+          "singleUnreviewedRoad": 125,
+          "singleUnreviewedIntersection": 342,
+          "multipleCandidates": 702,
+          "unresolvedLevel": 75,
+          "noNearbyCandidate": 29,
+          "candidateRegionMismatch": 2
+        },
+        "transitions": {
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 120,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 329,
+          "singleUnreviewedIntersection -> multipleCandidates": 130,
+          "multipleCandidates -> multipleCandidates": 550,
+          "multipleCandidates -> unresolvedLevel": 29,
+          "noNearbyCandidate -> multipleCandidates": 3,
+          "singleUnreviewedIntersection -> unresolvedLevel": 10,
+          "noNearbyCandidate -> noNearbyCandidate": 29,
+          "singleUnreviewedRoad -> multipleCandidates": 18,
+          "noNearbyCandidate -> singleUnreviewedRoad": 5,
+          "singleUnreviewedRoad -> unresolvedLevel": 6,
+          "unresolvedLevel -> unresolvedLevel": 27,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 10,
+          "noNearbyCandidate -> unresolvedLevel": 3,
+          "candidateRegionMismatch -> candidateRegionMismatch": 2,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 3,
+          "candidateRegionMismatch -> multipleCandidates": 1
+        }
+      },
+      "50": {
+        "records": 1275,
+        "baseline": {
+          "singleUnreviewedRoad": 67,
+          "singleUnreviewedIntersection": 212,
+          "multipleCandidates": 944,
+          "noNearbyCandidate": 24,
+          "unresolvedLevel": 27,
+          "candidateRegionMismatch": 1
+        },
+        "expanded": {
+          "singleUnreviewedRoad": 54,
+          "singleUnreviewedIntersection": 152,
+          "multipleCandidates": 976,
+          "unresolvedLevel": 79,
+          "noNearbyCandidate": 13,
+          "candidateRegionMismatch": 1
+        },
+        "transitions": {
+          "singleUnreviewedRoad -> singleUnreviewedRoad": 52,
+          "singleUnreviewedIntersection -> singleUnreviewedIntersection": 143,
+          "multipleCandidates -> multipleCandidates": 899,
+          "singleUnreviewedIntersection -> multipleCandidates": 66,
+          "multipleCandidates -> unresolvedLevel": 45,
+          "singleUnreviewedRoad -> multipleCandidates": 8,
+          "noNearbyCandidate -> singleUnreviewedRoad": 2,
+          "singleUnreviewedIntersection -> unresolvedLevel": 3,
+          "noNearbyCandidate -> noNearbyCandidate": 13,
+          "noNearbyCandidate -> multipleCandidates": 3,
+          "singleUnreviewedRoad -> singleUnreviewedIntersection": 5,
+          "unresolvedLevel -> unresolvedLevel": 27,
+          "singleUnreviewedRoad -> unresolvedLevel": 2,
+          "noNearbyCandidate -> unresolvedLevel": 2,
+          "candidateRegionMismatch -> candidateRegionMismatch": 1,
+          "noNearbyCandidate -> singleUnreviewedIntersection": 4
+        }
+      }
+    }
+  },
+  "controlledExtraction": {
+    "bothBounds": [
+      139.85,
+      35.75,
+      140.15,
+      36.0
+    ],
+    "bothSourcePbf": "artifacts/kanto-261009.osm.pbf",
+    "sourceSha256": "11c72483ff81ab7a61f0581278310e7e3357a6a6006ef0a6f1bfddbaea3bd499",
+    "algorithm": "same prepare_locations.py shared-node / grade / merged-section algorithm; only highway allowlist differs",
+    "scriptHashes": {
+      "prepare_locations.py": "415e5d4ebd2d04c87001dfe707ea7795fd154dbe3c2b15d7c92df5729d7487a1",
+      "ingest_pbf.py": "9e7b5438d6ac321c5edcc9d678df761e89f6aae2f61aa219f56bb63bb9357056",
+      "build_snapshot.py": "35763bbbd5c97ead01c97c276e88c26ce129f58b3eb031edaafed7f364f84b7b"
+    },
+    "scriptHashScope": "Current implementation hashes; expanded extraction began before comparison CLI flag was added. Shared-node, grade and road-section algorithms were unchanged."
+  }
+}

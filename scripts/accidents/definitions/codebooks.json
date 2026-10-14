@@ -1,0 +1,177 @@
+{
+  "2019": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2019/codebook_2019.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "da66ef6cce8020fab43f4231963730b015148f8460c21c777fe25bb4b5692f29",
+      "partyPage": 59,
+      "classPage": 57
+    }
+  },
+  "2020": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2020/codebook_2020.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "6cc537354e361a98635b9c48748dae3969b99ffac7969a9e5f81ddb91cc2fd0f",
+      "partyPage": 60,
+      "classPage": 58
+    }
+  },
+  "2021": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2021/codebook_2021.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "493eea2d7bd8085a19fc7387faec71cc02ce048d6d0ab38d52765b0961c32f2a",
+      "partyPage": 60,
+      "classPage": 58
+    }
+  },
+  "2022": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2022/codebook_2022.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "cfae236b1ce6f13332a2ae8dfe9d50929ad324af5ea1565269d4ca7cf13742af",
+      "partyPage": 60,
+      "classPage": 58
+    }
+  },
+  "2023": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2023/codebook_2023.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "7f89a0925c6ad869ffa70f4d4d6a4e1f661448401c0676c8831d989f62c2045a",
+      "partyPage": 60,
+      "classPage": 58
+    }
+  },
+  "2024": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2024/codebook_2024.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "24c1d76be491aa1b548fa44d3d1125fbf36dec4db3b0a48803303e8c72c403dd",
+      "partyPage": 60,
+      "classPage": 58
+    }
+  },
+  "2025": {
+    "bicycle": [
+      "51",
+      "52"
+    ],
+    "pedestrian": [
+      "61"
+    ],
+    "pedestrianClasses": [
+      "01"
+    ],
+    "classes": {
+      "01": "歩行者と車など",
+      "21": "車や自転車同士",
+      "41": "車などの単独事故",
+      "61": "列車との事故"
+    },
+    "source": {
+      "url": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/codebook_2025.pdf",
+      "retrievedAt": "2026-10-11",
+      "sha256": "c79c11291d7de5cb73f2bced05470f68a8e509d6390ce9b92500f5dbe7254df7",
+      "partyPage": 60,
+      "classPage": 58
+    }
+  }
+}

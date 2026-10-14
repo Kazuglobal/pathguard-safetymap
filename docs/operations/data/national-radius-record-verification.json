@@ -1,0 +1,74 @@
+{
+  "originalRows": 2182298,
+  "radii": [
+    10,
+    20,
+    30,
+    50
+  ],
+  "counts": {
+    "10": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98067,
+      "multiple_locations": 892261,
+      "structural_single_candidate_unreviewed": 643250,
+      "nonconnecting_road_competition": 235562,
+      "multiple_elevation_levels": 235080,
+      "no_candidate": 37297,
+      "elevation_unresolved": 15229,
+      "geometry_requires_review": 14921,
+      "invalid_coordinate": 169
+    },
+    "20": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98068,
+      "multiple_locations": 880974,
+      "structural_single_candidate_unreviewed": 777422,
+      "multiple_elevation_levels": 235079,
+      "no_candidate": 37297,
+      "nonconnecting_road_competition": 109186,
+      "elevation_unresolved": 15229,
+      "geometry_requires_review": 18412,
+      "invalid_coordinate": 169
+    },
+    "30": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98077,
+      "multiple_locations": 1035901,
+      "structural_single_candidate_unreviewed": 653588,
+      "multiple_elevation_levels": 236787,
+      "no_candidate": 33934,
+      "nonconnecting_road_competition": 83293,
+      "elevation_unresolved": 14468,
+      "geometry_requires_review": 15619,
+      "invalid_coordinate": 169
+    },
+    "50": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98096,
+      "multiple_locations": 1377122,
+      "multiple_elevation_levels": 245041,
+      "structural_single_candidate_unreviewed": 360648,
+      "elevation_unresolved": 11698,
+      "nonconnecting_road_competition": 50106,
+      "no_candidate": 19349,
+      "geometry_requires_review": 9607,
+      "invalid_coordinate": 169
+    }
+  },
+  "focusFrequencyRows": 1611293,
+  "allAssignedIdsNull": true,
+  "allOriginalFieldsEqual": true,
+  "allReviewRequirementsPreserved": true,
+  "recordedDistancesRecomputed": true,
+  "qualitySha256": "ea95a5834baaf0833b633d90cface4b92a3bb4a7b0b31438526ca397329aa4cc",
+  "diagnosisSha256": "39156e419281c8c81761dbbce5c44232f2ca26135f2fa130c1422dc8022d4279",
+  "auditScriptSha256": "39a4d29b2deadeceb0aa6fdafcaa0f49c689042ae1a2172d1e9de5ce73f65aa4",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Uses the pinned reviewed structural policy and distance helper for recomputation. Does not independently regenerate omitted-neighbor coverage or approve physical/historical assignments."
+  ]
+}
