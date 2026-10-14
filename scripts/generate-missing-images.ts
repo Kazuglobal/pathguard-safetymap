@@ -22,11 +22,14 @@
 import fs from "fs"
 import path from "path"
 import dotenv from "dotenv"
+import { drawPlaceholder, hasImageMagick, type PlaceholderVariant } from "./school-route-placeholder-art"
 
 dotenv.config({ path: ".env.local" })
 
 const ROOT = process.cwd()
 const PUBLIC_DIR = path.join(ROOT, "public")
+/** 暫定画像として書き出したファイルの一覧。ここに載っている間は「未生成」として扱う */
+const PLACEHOLDER_MANIFEST = path.join(ROOT, "scripts", "image-placeholders.json")
 const API_KEY = process.env.GEMINI_API_KEY
 const MODELS = [
   ...new Set([process.env.GEMINI_IMAGE_MODEL, "gemini-3.1-flash-image-preview", "gemini-3.1-flash-lite-image"].filter(Boolean)),
@@ -49,6 +52,21 @@ interface ImageJob {
   slug: string
   url: string
   prompt: string
+  /** AI生成できない環境で代わりに作図するための情報（news のみ） */
+  placeholder?: { category: string; variant: PlaceholderVariant }
+}
+
+function loadPlaceholderManifest(): Set<string> {
+  return new Set(readJson<string[]>(PLACEHOLDER_MANIFEST) ?? [])
+}
+
+function savePlaceholderManifest(urls: Set<string>): void {
+  const sorted = [...urls].sort()
+  if (sorted.length === 0) {
+    if (fs.existsSync(PLACEHOLDER_MANIFEST)) fs.rmSync(PLACEHOLDER_MANIFEST)
+    return
+  }
+  fs.writeFileSync(PLACEHOLDER_MANIFEST, `${JSON.stringify(sorted, null, 2)}\n`)
 }
 
 const CATEGORY_TONE: Record<string, string> = {
@@ -113,11 +131,23 @@ async function collectNewsJobs(): Promise<ImageJob[]> {
   const jobs: ImageJob[] = []
   for (const item of NEWS_ITEMS) {
     if (item.thumbnailUrl) {
-      jobs.push({ kind: "news", slug: item.slug, url: item.thumbnailUrl, prompt: overrides[item.slug] ?? buildNewsPrompt(item) })
+      jobs.push({
+        kind: "news",
+        slug: item.slug,
+        url: item.thumbnailUrl,
+        prompt: overrides[item.slug] ?? buildNewsPrompt(item),
+        placeholder: { category: item.category, variant: "thumbnail" },
+      })
     }
     for (const image of item.contentImages ?? []) {
       const key = `${item.slug}/${image.id}`
-      jobs.push({ kind: "news", slug: key, url: image.url, prompt: overrides[key] ?? buildNewsFigurePrompt(item, image.description) })
+      jobs.push({
+        kind: "news",
+        slug: key,
+        url: image.url,
+        prompt: overrides[key] ?? buildNewsFigurePrompt(item, image.description),
+        placeholder: { category: item.category, variant: "figure" },
+      })
     }
   }
   return jobs
@@ -218,6 +248,8 @@ async function generateWithFallback(prompt: string): Promise<{ buffer: Buffer; m
 async function main() {
   const args = process.argv.slice(2)
   const dryRun = args.includes("--dry-run")
+  /** AI生成できない環境で、作図したプレースホルダーを許可する（スケジュール実行向け） */
+  const allowPlaceholder = args.includes("--placeholder-fallback")
   const onlyIndex = args.indexOf("--only")
   const only = onlyIndex >= 0 ? args[onlyIndex + 1] : undefined
   const scope = args.find((a) => a === "news" || a === "magazine") ?? "all"
@@ -227,26 +259,58 @@ async function main() {
     ...(scope !== "news" ? await collectMagazineJobs() : []),
   ].filter((job) => !only || job.slug === only || job.slug.startsWith(`${only}/`))
 
-  const missing = jobs.filter((job) => !fs.existsSync(toPublicPath(job.url)))
-  console.log(`参照画像 ${jobs.length} 件 / 欠落 ${missing.length} 件（モデル候補: ${MODELS.length} 種）`)
-  for (const job of missing) console.log(`  - [${job.kind}] ${job.url}`)
-  if (dryRun || missing.length === 0) return
-  if (!API_KEY) throw new Error("GEMINI_API_KEY が未設定です（.env.local に設定してください）")
+  const placeholders = loadPlaceholderManifest()
+  // 「ファイルが無い」だけでなく「暫定画像のまま」も生成対象に含める
+  const pending = jobs.filter((job) => !fs.existsSync(toPublicPath(job.url)) || placeholders.has(job.url))
+  const provisional = pending.filter((job) => placeholders.has(job.url)).length
+  console.log(
+    `参照画像 ${jobs.length} 件 / 要生成 ${pending.length} 件（うち暫定画像の差し替え ${provisional} 件、モデル候補: ${MODELS.length} 種）`
+  )
+  for (const job of pending) {
+    console.log(`  - [${job.kind}] ${job.url}${placeholders.has(job.url) ? "（暫定画像）" : ""}`)
+  }
+  if (dryRun || pending.length === 0) return
+  if (!API_KEY && !allowPlaceholder) {
+    throw new Error("GEMINI_API_KEY が未設定です（.env.local に設定するか、--placeholder-fallback を付けてください）")
+  }
+  if (!API_KEY) {
+    console.warn("GEMINI_API_KEY が未設定のため、作図したプレースホルダーで代替します（本生成ではありません）")
+  }
 
   const failures: string[] = []
-  for (const job of missing) {
+  let drawn = 0
+  for (const job of pending) {
     const target = toPublicPath(job.url)
     try {
+      if (!API_KEY) throw new Error("GEMINI_API_KEY 未設定")
       const { buffer, model } = await generateWithFallback(job.prompt)
       fs.mkdirSync(path.dirname(target), { recursive: true })
       const tmp = `${target}.tmp`
       fs.writeFileSync(tmp, buffer)
       fs.renameSync(tmp, target)
+      placeholders.delete(job.url)
       console.log(`  ✓ ${job.url} (${Math.round(buffer.length / 1024)}KB, ${model})`)
     } catch (error) {
+      const reason = sanitize(error instanceof Error ? error.message : String(error))
+      if (allowPlaceholder && job.placeholder && hasImageMagick()) {
+        try {
+          drawPlaceholder({ targetPath: target, category: job.placeholder.category, seed: job.slug, variant: job.placeholder.variant })
+          placeholders.add(job.url)
+          drawn += 1
+          console.warn(`  △ ${job.url}: 暫定画像を作図（本生成は未実施: ${reason}）`)
+          continue
+        } catch (drawError) {
+          console.error(`  ✗ ${job.url}: 作図にも失敗 ${drawError instanceof Error ? drawError.message : String(drawError)}`)
+        }
+      }
       failures.push(job.url)
-      console.error(`  ✗ ${job.url}: ${sanitize(error instanceof Error ? error.message : String(error))}`)
+      console.error(`  ✗ ${job.url}: ${reason}`)
     }
+  }
+  savePlaceholderManifest(placeholders)
+
+  if (drawn > 0) {
+    console.warn(`暫定画像 ${drawn} 件。${PLACEHOLDER_MANIFEST} に登録済みで、鍵のある環境で再実行すると差し替わります。`)
   }
   if (failures.length > 0) {
     console.error(`失敗 ${failures.length} 件。記事が参照する画像が欠落したままです。`)

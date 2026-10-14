@@ -73,7 +73,7 @@
   tags: ["タグ1", "タグ2"],
   sources: ["ソース1", "ソース2"],
   keyPoints: ["最重要ファクト", "そなえの一言"],
-  thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.png",
+  thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.jpg",   // 拡張子は .jpg 固定
   isBreaking: true/false,
   verifiedAt: "ISO8601形式",
 
@@ -155,12 +155,47 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 - メタタイトル（60字以内）・メタディスクリプション（160字以内）
 - 地域名＋日付のキーワード最適化、JSON-LD構造化データ
 
-### Step 5: 画像生成（image-generator）
-- 事故現場・不審者本人を直接描かない。抽象的・注意喚起的な表現
-- 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）
-- カテゴリカラーに合わせたトーン（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ）
-- 出力先: `public/images/school-route-news/thumbnails/{slug}.png`
-- **サムネイルの使い回し禁止**。必ず当該記事のslugで新規生成する
+### Step 5: 画像生成（image-generator・コマンド1本で完結する）
+
+**記事データを書いたら、次のコマンドを実行するだけでよい。** スクリプトが `NEWS_ITEMS` を読み、`thumbnailUrl` と `contentImages[].url` のうち**実在しないもの・暫定画像のまま登録されているもの**だけを生成する。slug ごとの設定をスクリプトに手書きする必要はない。
+
+```bash
+# 本生成（GEMINI_API_KEY が必要）
+npx tsx scripts/generate-missing-images.ts news
+
+# 生成対象の確認だけ（APIを呼ばない）
+npx tsx scripts/generate-missing-images.ts news --dry-run
+
+# 鍵が無い環境（スケジュール実行のクラウドセッション等）
+npx tsx scripts/generate-missing-images.ts news --placeholder-fallback
+```
+
+**参照パスの規約**:
+- サムネイル: `public/images/school-route-news/thumbnails/{slug}.jpg`
+- 記事内の図版: `public/images/school-route-news/articles/{slug}/{id}.jpg`
+- **拡張子は `.jpg` に統一する**（生成器は JPEG しか受け付けない。`.png` で書くと参照切れになる）
+
+**記事内の図版（`contentImages`）について**:
+- `accident` / `suspicious` の記事には、**`actionAdvice` の手順を図解する図版を1枚**付ける。`description` にその手順を「①→②→③」の形で書くと、それがそのまま生成プロンプトと alt テキストになる
+- `infrastructure` / `policy` / `community` でも、手順や仕組みを図にできるなら1枚付けてよい
+
+**作画の要件**（プロンプトはスクリプトが組み立てるが、上書きしたい場合は `scripts/image-prompts/school-route-news.json` に slug または `slug/図版id` をキーにして書く）:
+- 事故現場・不審者本人・負傷は直接描かない。抽象的・注意喚起的な表現
+- 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）。児童は**後ろ姿か小さく**描く
+- カテゴリカラーに合わせたトーン（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / policy=紫 / community=緑の温かみ）
+- **画像内に文字・数字を入れない**
+- **画像の使い回し禁止**。必ず当該記事のslugで新規生成する
+
+#### Step 5-a: 鍵が無い環境でのフォールバック（スケジュール実行）
+
+`GEMINI_API_KEY` が無い環境では `--placeholder-fallback` を付ける。ImageMagick で**カテゴリ別の抽象イラストを slug ごとに作図**し（上記の作画要件を満たす。AI生成ではない）、`scripts/image-placeholders.json` に登録する。
+
+- **`thumbnailUrl` を省略してはいけない。** `thumbnail coverage` テストが全記事に必須と課しているため、省略すると検証ゲートが赤になる
+- **他記事の画像を流用してはいけない**
+- 登録された画像は、**鍵のある環境で `npx tsx scripts/generate-missing-images.ts news` を実行すると本生成の画像に差し替わり**、登録も自動で外れる
+- 暫定画像を使った回は、**PR本文の冒頭にその旨と対象ファイル一覧を書く**
+
+> `GEMINI_API_KEY` をクラウド実行環境の環境変数に設定すれば、スケジュール実行でも本生成が走る（`generativelanguage.googleapis.com` への到達は確認済み）。フォールバックはあくまで保険である。
 
 ### Step 6: 公開前監査（regional-coverage-auditor・必須ゲート）
 以下をすべて確認し、1つでも不合格なら該当Stepへ差し戻す:
@@ -168,14 +203,22 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 - [ ] `accident` / `suspicious` 記事に `actionAdvice` がある
 - [ ] 本文が恐怖・不安の記述で終わっていない
 - [ ] 個人特定情報が含まれていない
-- [ ] `thumbnailUrl` のファイルが実在し、他記事の画像を参照していない
+- [ ] `thumbnailUrl` が設定されていて、ファイルが実在し、他記事の画像を参照していない（拡張子は `.jpg`）
+- [ ] `contentImages` の各 `url` のファイルが実在し、`description` が「①→②→③」の手順になっている
+- [ ] 暫定画像を使った場合、`scripts/image-placeholders.json` に過不足なく登録されている（本生成できた分は登録が外れている）
 - [ ] `NEWS_ITEMS` 内でslug・idが一意
 - [ ] 1日の新規公開が5本以内
 
 ### Step 7: 検証ゲート（緑になるまで完了と言わない）
 ```bash
+# 記事が参照する画像に欠落が無いことを先に確かめる（0件になるまでStep 5へ戻る）
+npx tsx scripts/generate-missing-images.ts news --dry-run
+
 npx tsc --noEmit
 npx vitest run tests/unit/lib/school-route-news-release-readiness.test.ts tests/unit/lib/school-route-news-format.test.ts
+
+# NEWS_ITEMS を変更したら、この2つも必ず回す
+npx vitest run tests/unit/lib/school-route-news-digest.test.ts tests/components/school-route-news-markdown.test.tsx
 ```
 その後、`/school-route-news` と `/landing` をブラウザで確認（ランディングは自動導出なので、一覧に新記事が出ていれば導出が機能している）。
 
@@ -185,6 +228,7 @@ npx vitest run tests/unit/lib/school-route-news-release-readiness.test.ts tests/
 - **「検索したが該当なし」だった地域・クエリのリスト**（Step 1-b の検索ログ）
 - 除外した候補と除外理由（ファクトチェック落ち・重複・単一ソース未確認等）
 - Layer 2クラスタの検知状況（傾向記事化した/しなかったの判断込み）
+- **画像の生成状況**（本生成か暫定画像か。暫定画像なら対象ファイル一覧と、差し替えに必要な手順）
 - **要追跡リスト**（容体続報待ち・検挙発表待ち・単一ソース保留の事案。次回実行のStep 0で必ず引き継ぐ）
 
 ---

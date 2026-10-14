@@ -118,6 +118,28 @@ describe("daily habit v3 data quality gates", () => {
   })
 })
 
+describe("placeholder image manifest", () => {
+  const MANIFEST = path.join(ROOT, "scripts", "image-placeholders.json")
+
+  it("only lists images that current articles still reference, and that exist on disk", () => {
+    if (!fs.existsSync(MANIFEST)) return // 暫定画像が1件も無い（本生成済み）状態
+
+    const listed: string[] = JSON.parse(fs.readFileSync(MANIFEST, "utf8"))
+    const referenced = new Set(
+      NEWS_ITEMS.flatMap((item) => [
+        ...(item.thumbnailUrl ? [item.thumbnailUrl] : []),
+        ...(item.contentImages ?? []).map((image) => image.url),
+      ])
+    )
+
+    for (const url of listed) {
+      // 記事から参照が消えたのに登録が残ると、鍵のある環境での差し替え対象が迷子になる
+      expect(referenced.has(url), `${url} is listed as a placeholder but no article references it`).toBe(true)
+      expect(fs.existsSync(path.join(ROOT, "public", url)), `${url} is listed as a placeholder but the file is missing`).toBe(true)
+    }
+  })
+})
+
 describe("thumbnail coverage", () => {
   it("gives every news item a thumbnailUrl whose file exists", () => {
     for (const item of NEWS_ITEMS) {
