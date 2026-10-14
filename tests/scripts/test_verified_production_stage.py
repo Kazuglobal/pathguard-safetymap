@@ -16,6 +16,18 @@ SPEC.loader.exec_module(publish)
 
 
 class VerifiedProductionStageTests(unittest.TestCase):
+    def test_direct_real_values_must_match_exactly(self):
+        expected = [(publish.pack.VERSION, 'one', 35.0, 139.0)]
+        actual = [{'version': publish.pack.VERSION, 'id': 'one', 'latitude': 35.0, 'longitude': 139.00000000000003}]
+        with patch.object(pathlib.Path, 'open', return_value=io.StringIO()):
+            with self.assertRaisesRegex(ValueError, 'Direct D1 coordinate'):
+                publish.confirm_direct_reals(expected, ['version', 'id', 'latitude', 'longitude'], lambda sql: actual, pathlib.Path('.'))
+
+    def test_direct_real_exact_values_confirm_export_precision_difference(self):
+        expected = [(publish.pack.VERSION, 'one', 35.0, 139.0)]
+        actual = [{'version': publish.pack.VERSION, 'id': 'one', 'latitude': 35.0, 'longitude': 139.0}]
+        with patch.object(pathlib.Path, 'open', return_value=io.StringIO()):
+            self.assertEqual(publish.confirm_direct_reals(expected, ['version', 'id', 'latitude', 'longitude'], lambda sql: actual, pathlib.Path('.')), 1)
     def test_insufficient_capacity_stops_without_writing(self):
         info = {'uuid': publish.PRODUCTION_ID, 'name': 'pathguardian-traffic', 'database_size': 9_000_000_000}
         with patch.object(publish.pack, 'command_json', return_value=info):

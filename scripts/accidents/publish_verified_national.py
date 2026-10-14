@@ -100,22 +100,45 @@ def verify_public_offering(output):
     return release
 
 
-def compare_table(original, remote, table, expected_rows):
+def compare_table(original, remote, table, expected_rows, confirm_reals=None):
     columns = original.execute(f'PRAGMA table_info({table})').fetchall()
     pack.require(columns == remote.execute(f'PRAGMA table_info({table})').fetchall(), 'Export schema mismatch')
     keys = [row[1] for row in sorted((row for row in columns if row[5]), key=lambda row: row[5])]
     sql = f"SELECT * FROM {table} WHERE version=? ORDER BY {','.join(keys)}"
-    seen = 0
+    real_columns = {index for index, row in enumerate(columns) if row[2].upper() == 'REAL'}
+    seen, differing_reals = 0, []
     for left, right in zip_longest(original.execute(sql, (pack.VERSION,)), remote.execute(sql, (pack.VERSION,))):
         pack.require(left is not None and right is not None, f'Export row count differs in {table}')
         if table == 'accident_snapshots':
             # The only allowed difference is activation of this exact immutable snapshot.
             pack.require(left[1] == 0 and right[1] in (0, 1), 'Invalid publication state')
             right = (right[0], 0, *right[2:])
-        pack.require(left == right, f'Export row contents differ in {table}')
+        if left != right:
+            different = {i for i, (a, b) in enumerate(zip(left, right)) if a != b}
+            pack.require(confirm_reals is not None and different <= real_columns,
+                f'Export row contents differ in {table}')
+            differing_reals.append(left)
         seen += 1
     pack.require(seen == expected_rows, f'Export row count differs in {table}')
+    if differing_reals:
+        pack.require(table == 'accident_locations', 'Unsupported direct REAL verification table')
+        confirm_reals(differing_reals, [row[1] for row in columns])
     return seen
+
+
+def confirm_direct_reals(rows, columns, run_query, output):
+    fields = ['version', 'id', 'latitude', 'longitude']
+    positions = [columns.index(field) for field in fields]
+    for offset in range(0, len(rows), 64):
+        batch = rows[offset:offset + 64]
+        ids = ','.join("'" + row[columns.index('id')].replace("'", "''") + "'" for row in batch)
+        actual = run_query(f"SELECT version,id,latitude,longitude FROM accident_locations WHERE version='{pack.VERSION}' AND id IN ({ids}) ORDER BY id")
+        with (output / f'direct-real-page-{offset // 64:04d}.json').open('x', encoding='utf8') as stream:
+            stream.write(json.dumps(actual, indent=2) + '\n')
+        expected = [tuple(row[index] for index in positions) for row in batch]
+        pack.require([tuple(row[field] for field in fields) for row in actual] == expected,
+            'Direct D1 coordinate values differ from immutable database')
+    return len(rows)
 
 
 def without_leading_comments(statement):
@@ -185,8 +208,14 @@ def verify_all_export_rows(output, *, preview_check=False):
         with exported.open('r', encoding='utf8') as stream:
             load_export(remote, stream)
         remote.set_authorizer(None)
-        rows = {table: compare_table(original, remote, table, count) for table, count in pack.TABLE_ROWS.items()}
-    receipt = {'completed': True, 'version': pack.VERSION, 'allColumnsCompared': True, 'rows': rows}
+        typed_query = pack.query if preview_check else query
+        direct = {'rows': 0}
+        def confirm(differing, columns):
+            direct['rows'] += confirm_direct_reals(differing, columns, typed_query, output)
+        rows = {table: compare_table(original, remote, table, count, confirm) for table, count in pack.TABLE_ROWS.items()}
+    receipt = {'completed': True, 'version': pack.VERSION, 'allColumnsCompared': True, 'rows': rows,
+        'directCoordinateRowsConfirmed': direct['rows'],
+        'verificationMethod': 'Exact export row comparison; REAL-only export differences require exact direct D1 values. No tolerance.'}
     (output / 'full-row-verification.json').write_text(json.dumps(receipt, indent=2) + '\n', 'utf8')
     return receipt
 
