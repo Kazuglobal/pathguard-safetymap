@@ -51,7 +51,7 @@ export interface SnapshotMetadata {
   regionalUncertaintyMethod?: 'distinct-original-municipality-v1'
   regionalCoverageExceptions?: Array<{prefecture:string;municipality?:string;year:number;reason:'historical_region_check'}>
   reconciliation?: { uniqueRecords:number; assigned:number; uncertain:number; excluded:number; missingDate:number; outsidePeriod:number; invalidCoordinates:number; administrativeCodeMismatch?:number }
-  sources: Array<{ name: string; url: string; license: string; retrievedAt: string }>
+  sources: Array<{ name: string; url: string; license: string; retrievedAt: string; licenseUrl?:string; attribution?:string }>
 }
 export interface RegionalCoverage {
   status: 'partial'

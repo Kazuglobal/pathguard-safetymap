@@ -5,6 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { Map, List, MapPin, SlidersHorizontal, ChevronRight, ChevronDown, Bike, PersonStanding, FileText } from 'lucide-react'
 import type { RankedLocation, RankingsResponse } from '@/lib/accidents/query'
+import SourceNotices from './source-notices'
 const AccidentMap = dynamic(() => import('./map'), { ssr: false })
 const control = 'min-h-11 rounded-xl border border-border bg-card px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest-strong'
 interface Area { code: string; name: string }
@@ -79,7 +80,7 @@ export default function AccidentExplorer() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className={`${view==='map'?'hidden lg:block':''}`} aria-label="事故件数ランキング">
           <h2 className="text-2xl font-bold">事故が多い場所</h2>
-          <p className="mt-3 leading-7">確認できた事故件数の多い順です。<br/>事故に遭う確率を示すものではありません。</p>
+          <p className="mt-3 leading-7">場所を確認できた事故件数の多い順です。場所を決められない事故は含みません。<br/>事故に遭う確率を示すものではありません。</p>
           {response?.metadata&&<p className="mt-2">{params.get('from')??Math.min(...years)}〜{params.get('to')??Math.max(...years)}年</p>}
           {loading&&<p role="status" className="py-8">読み込み中…</p>}
           {error&&<div role="alert" className="py-6"><p>読み込めませんでした</p><button className={`${control} mt-2`} onClick={()=>setReload(n=>n+1)}>もう一度読み込む</button></div>}
@@ -97,7 +98,7 @@ export default function AccidentExplorer() {
         <p>同じ交差点・道路に割り当てられた事故を1件ずつ数えています。場所を決められない事故は順位に含めません。地図を動かしても順位は変わりません。</p>
         {response?.metadata?.reconciliation&&<p>原本全体の照合：{response.metadata.reconciliation.uniqueRecords.toLocaleString()}件＝場所を確認できた {response.metadata.reconciliation.assigned.toLocaleString()}件＋場所が未確定 {response.metadata.reconciliation.uncertain.toLocaleString()}件＋対象外 {response.metadata.reconciliation.excluded.toLocaleString()}件。対象外には、確認した期間の外 {response.metadata.reconciliation.outsidePeriod.toLocaleString()}件、発生日不明 {response.metadata.reconciliation.missingDate.toLocaleString()}件を含みます。</p>}
         {typeof response?.metadata?.reconciliation?.administrativeCodeMismatch==='number'&&<p>記録の地域と地図上の地域が違うため、場所を確認中の事故は{response.metadata.reconciliation.administrativeCodeMismatch.toLocaleString()}件です。</p>}
-        {response?.metadata ? <><p>集計方法：{response.metadata.method}<br/>更新日：{response.metadata.updatedAt}<br/>集計の版：{response.metadata.version}</p>{response.status==='ready'&&<p>確認できた事故 {response.quality.assigned.toLocaleString()}件／{response.coverage?"この地域に関係する可能性がある未確定記録":"場所が未確定"} {response.quality.uncertain.toLocaleString()}件／{response.coverage?"この地域に関係する可能性がある対象外記録":"集計対象外"} {response.quality.excluded.toLocaleString()}件</p>}{response.metadata.sources.map(s=><p key={s.url}><a className="underline" href={s.url} rel="noreferrer">{s.name}</a>（{s.license}、取得日 {s.retrievedAt}）</p>)}</> : <p>事故件数と出典は、集計の確認が終わり次第掲載します。</p>}
+        {response?.metadata ? <><p>集計方法：{response.metadata.method}<br/>更新日：{response.metadata.updatedAt}<br/>集計の版：{response.metadata.version}</p>{response.status==='ready'&&<p>確認できた事故 {response.quality.assigned.toLocaleString()}件／{response.coverage?"この地域に関係する可能性がある未確定記録":"場所が未確定"} {response.quality.uncertain.toLocaleString()}件／{response.coverage?"この地域に関係する可能性がある対象外記録":"集計対象外"} {response.quality.excluded.toLocaleString()}件</p>}<SourceNotices sources={response.metadata.sources}/></> : <p>事故件数と出典は、集計の確認が終わり次第掲載します。</p>}
       </div></details>
     </div>
   </main>
