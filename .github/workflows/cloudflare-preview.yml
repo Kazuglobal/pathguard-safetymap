@@ -95,6 +95,18 @@ jobs:
       - name: Build and deploy isolated preview Workers
         id: deploy
         run: pnpm deploy:cloudflare-preview -- --preview=pr-${{ github.event.pull_request.number }}
+      - name: Inspect traffic database capacity without modifying data
+        run: |
+          mkdir -p artifacts/d1-capacity
+          pnpm exec wrangler d1 info pathguardian-traffic --config wrangler.server.jsonc --json > artifacts/d1-capacity/production.json
+          pnpm exec wrangler d1 info pathguardian-traffic-preview --config wrangler.preview-resources.json --json > artifacts/d1-capacity/preview.json
+      - name: Preserve read-only D1 capacity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: accident-d1-capacity-${{ github.run_id }}
+          path: artifacts/d1-capacity/*.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Add preview link to pull request
         uses: actions/github-script@v7
         env:
