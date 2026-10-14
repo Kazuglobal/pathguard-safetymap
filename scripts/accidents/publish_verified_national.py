@@ -27,7 +27,15 @@ def assert_main_source():
     result = subprocess.run(['node', '--input-type=module', '-e',
         "import {assertProductionSource} from './scripts/cloudflare/production-source-guard.mjs'; assertProductionSource({cwd:process.cwd()});"],
         cwd=pack.ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    pack.require(result.returncode == 0, 'Production workflow/latest-main source guard failed')
+    if result.returncode != 0:
+        categories = {
+            'Manual production deployment is disabled.': 'workflow identity',
+            'Production deployment requires a clean checkout.': 'clean checkout',
+            'Production source verification failed.': 'Git access',
+            'this checkout is not the latest origin/main.': 'latest main',
+        }
+        category = next((label for phrase, label in categories.items() if phrase.encode() in result.stderr), 'unknown')
+        raise ValueError(f'Production source guard failed: {category}')
 
 
 def validate_target(config):
@@ -257,7 +265,7 @@ def main():
     assert_main_source()
     validate_target(json.loads((pack.ROOT / 'wrangler.server.jsonc').read_text('utf8')))
     verify_evidence()
-    output = pack.ROOT / 'artifacts/verified-production-stage'
+    output = pack.ROOT / '.codex-artifacts/verified-production-stage'
     manifest, metadata = pack.prepare_verified_pack(output)
     release = verify_public_offering(output)
     assert_main_source()
