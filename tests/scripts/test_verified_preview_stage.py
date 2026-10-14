@@ -11,6 +11,21 @@ SPEC.loader.exec_module(stage)
 
 
 class VerifiedPreviewStageTests(unittest.TestCase):
+    def test_json_startup_notice_is_separated_from_result(self):
+        self.assertEqual(stage.parse_json_output(b'CLI startup notice\n[{"success":true}]\n'), [{'success': True}])
+
+    def test_empty_or_non_json_output_is_rejected(self):
+        for output in [b'', b'Operation cancelled\n', b'{"success":true}\nunknown trailing text']:
+            with self.assertRaises(ValueError):
+                stage.parse_json_output(output)
+
+    def test_previous_failure_document_cannot_be_hidden(self):
+        with self.assertRaisesRegex(ValueError, 'multiple JSON'):
+            stage.parse_json_output(b'{"success":false}\n[{"success":true}]\n')
+
+    def test_pretty_json_after_notice_remains_valid(self):
+        self.assertEqual(stage.parse_json_output(b'Notice\n[\n  {"success":true}\n]\n'), [{'success': True}])
+
     def test_production_uuid_rejected(self):
         config = {'account_id': '64a7afb6120cc316b618480f4a17cc21', 'd1_databases': [
             {'binding': 'TRAFFIC_DB', 'database_id': '84db49b6-e9f4-4886-8319-2b7d32d59438',

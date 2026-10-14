@@ -2,6 +2,7 @@
 import hashlib
 import json
 import pathlib
+import re
 import sqlite3
 import subprocess
 import tarfile
@@ -72,10 +73,39 @@ def unpack_verified(manifest_bytes, archive_path, destination):
     return manifest
 
 
+def parse_json_output(output):
+    text = output.decode('utf-8-sig')
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Some CLI startup notices precede --json output. Only accept one complete
+        # top-level JSON document at a line boundary and at the end of stdout.
+        decoder = json.JSONDecoder()
+        documents = []
+        for match in re.finditer(r'(?m)^[ \t]*[\[{]', text):
+            start = match.end() - 1
+            try:
+                document, end = decoder.raw_decode(text, start)
+                if not text[end:].strip():
+                    documents.append((document, start))
+            except json.JSONDecodeError:
+                continue
+        require(len(documents) == 1, f'CLI returned no unambiguous final JSON response ({len(output)} bytes)')
+        document, start = documents[0]
+        prefix = text[:start]
+        for match in re.finditer(r'(?m)^[ \t]*[\[{]', prefix):
+            try:
+                decoder.raw_decode(prefix, match.end() - 1)
+            except json.JSONDecodeError:
+                continue
+            raise ValueError('CLI returned multiple JSON documents')
+        return document
+
+
 def command_json(arguments):
     result = subprocess.run(arguments, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     require(result.returncode == 0, 'Command failed; no database activation performed')
-    return json.loads(result.stdout)
+    return parse_json_output(result.stdout)
 
 
 def d1(*arguments):
