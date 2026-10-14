@@ -18,6 +18,11 @@
 登録先は `pathguardian-traffic` (`84db49b6-e9f4-4886-8319-2b7d32d59438`) に固定する。
 
 新しいWorkerのビルド・公開が成功した後、GitHubの固定release412514430から
+取得する処理は、同じワークフローの `needs: deploy` を持つ別ジョブで実行する。
+成功した公開と同じ `github.sha` を新しくチェックアウトし、ビルド後の作業ファイルを
+引き継がない。検証出力は既存の除外ディレクトリ `.codex-artifacts/verified-production-stage/`
+に保存する。ソースガードの条件は緩めず、失敗時は固定の分類名だけを表示する。
+このジョブでGitHubの固定release412514430から
 固定asset IDを取得し、manifest・84SQL・gzip・ライセンスの全SHA256を照合する。
 圧縮DBは解凍ストリームのSHA256と335,863,808bytesも確認する。
 原事故IDを含む監査テーブルは登録しない。約336MBの6集計表のみを使用する。

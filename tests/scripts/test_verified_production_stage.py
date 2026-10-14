@@ -16,6 +16,22 @@ SPEC.loader.exec_module(publish)
 
 
 class VerifiedProductionStageTests(unittest.TestCase):
+    def test_source_guard_reports_only_known_categories(self):
+        cases = [
+            (b'Production deployment requires a clean checkout. confidential detail', 'clean checkout'),
+            (b'Production source verification failed. confidential detail', 'Git access'),
+            (b'this checkout is not the latest origin/main. confidential detail', 'latest main'),
+            (b'Manual production deployment is disabled. confidential detail', 'workflow identity'),
+            (b'confidential unknown error', 'unknown'),
+        ]
+        for stderr, category in cases:
+            with self.subTest(category=category), patch.object(publish.subprocess, 'run') as run:
+                run.return_value.returncode = 1
+                run.return_value.stderr = stderr
+                with self.assertRaises(ValueError) as error:
+                    publish.assert_main_source()
+                self.assertEqual(str(error.exception), f'Production source guard failed: {category}')
+
     def test_direct_real_values_must_match_exactly(self):
         expected = [(publish.pack.VERSION, 'one', 35.0, 139.0)]
         actual = [{'version': publish.pack.VERSION, 'id': 'one', 'latitude': 35.0, 'longitude': 139.00000000000003}]
