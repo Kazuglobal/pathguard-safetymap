@@ -67,12 +67,21 @@ export async function rankings(db: RankingDatabase, q: AccidentQuery): Promise<R
   if (regionalCoveragePending(q,m) && m.regionalUncertaintyMethod!=='distinct-original-municipality-v1') return {status:'preparing',preparingReason:'regional_correspondence',metadata:m,items:[],nextOffset:null,quality:{assigned:0,uncertain:0,excluded:0}}
   let where = d.where + area(q,'l',d.values)
   if (q.kind !== 'all') { where += ' AND l.kind=?'; d.values.push(q.kind) }
-  const { results } = await db.prepare(`WITH totals AS (
+  const national = !q.prefecture && q.kind==='all'
+  const rankingSql=national ? `WITH totals AS (
+    SELECT c.location_id AS id,SUM(c.count) AS count
+    FROM accident_location_counts c WHERE ${d.where} GROUP BY c.location_id
+  ), ranked AS (SELECT *, RANK() OVER (ORDER BY count DESC) AS rank FROM totals),
+  page AS (SELECT * FROM ranked ORDER BY count DESC,id LIMIT ? OFFSET ?)
+  SELECT p.id,l.name,l.kind,l.latitude,l.longitude,l.prefecture,l.municipality,p.count,p.rank
+  FROM page p JOIN accident_locations l ON l.version=? AND l.id=p.id
+  ORDER BY p.count DESC,p.id` : `WITH totals AS (
     SELECT l.id,l.name,l.kind,l.latitude,l.longitude,l.prefecture,l.municipality,SUM(c.count) AS count
-    FROM accident_location_counts c JOIN accident_locations l ON l.version=c.version AND l.id=c.location_id
-    WHERE ${where} GROUP BY l.id
+    FROM accident_locations l${q.prefecture?' INDEXED BY accident_locations_area':''} CROSS JOIN accident_location_counts c
+    WHERE l.version=c.version AND l.id=c.location_id AND ${where} GROUP BY l.id
   ), ranked AS (SELECT *, RANK() OVER (ORDER BY count DESC) AS rank FROM totals)
-  SELECT * FROM ranked ORDER BY count DESC,id LIMIT ? OFFSET ?`).bind(...d.values,q.limit+1,q.offset).all<RankedLocation>()
+  SELECT * FROM ranked ORDER BY count DESC,id LIMIT ? OFFSET ?`
+  const { results } = await db.prepare(rankingSql).bind(...d.values,q.limit+1,q.offset,...(national?[m.version]:[])).all<RankedLocation>()
   const qualityDimensions = dimensions(q,m,'c')
   const qualityWhere = qualityDimensions.where + area(q,'c',qualityDimensions.values)
   const quality = await db.prepare(`SELECT COALESCE(SUM(assigned),0) AS assigned,COALESCE(SUM(uncertain),0) AS uncertain,COALESCE(SUM(excluded),0) AS excluded FROM accident_quality_counts c WHERE ${qualityWhere}`).bind(...qualityDimensions.values).first<RankingsResponse['quality']>()
