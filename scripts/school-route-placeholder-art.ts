@@ -45,23 +45,23 @@ interface Palette {
 /** accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ */
 const PALETTES: Record<string, Palette> = {
   accident: {
-    skyTop: "#6B1620", skyBottom: "#E7A79B", walk: "#8E4038", road: "#55606E",
+    skyTop: "#8E2230", skyBottom: "#E7A79B", walk: "#8E4038", road: "#55606E",
     roadEdge: "#6B7684", accent: "#EF4444", pack: "#B4472F", packAlt: "#8C3421",
   },
   suspicious: {
-    skyTop: "#7C3A09", skyBottom: "#F6C58A", walk: "#9A5A20", road: "#5C5A58",
+    skyTop: "#95490D", skyBottom: "#F6C58A", walk: "#9A5A20", road: "#5C5A58",
     roadEdge: "#726F6C", accent: "#F97316", pack: "#C2641F", packAlt: "#8F4612",
   },
   infrastructure: {
-    skyTop: "#17306E", skyBottom: "#8FB9EE", walk: "#2A4D8F", road: "#55606E",
+    skyTop: "#1D3C86", skyBottom: "#8FB9EE", walk: "#2A4D8F", road: "#55606E",
     roadEdge: "#6B7684", accent: "#3B82F6", pack: "#2F6FB4", packAlt: "#1F4F85",
   },
   policy: {
-    skyTop: "#3B1D73", skyBottom: "#C3ACEF", walk: "#4B2C8C", road: "#585462",
+    skyTop: "#4C2A8C", skyBottom: "#C3ACEF", walk: "#4B2C8C", road: "#585462",
     roadEdge: "#6E6A78", accent: "#8B5CF6", pack: "#6D4AAE", packAlt: "#4E3280",
   },
   community: {
-    skyTop: "#14532D", skyBottom: "#AEE6BD", walk: "#246B3C", road: "#56605A",
+    skyTop: "#1B6B3A", skyBottom: "#AEE6BD", walk: "#246B3C", road: "#56605A",
     roadEdge: "#6C766F", accent: "#22C55E", pack: "#2E8B57", packAlt: "#1F6540",
   },
 }
@@ -185,18 +185,96 @@ function motif(category: string, cx: number, groundY: number, palette: Palette, 
   }
 }
 
+/** 空の光（夕景・朝景の抜け）。平面的な図に見せないための一番効く要素 */
+function sunGlow(rnd: () => number): string[] {
+  const rollX = Math.round((rnd() - 0.5) * 420)
+  const rollY = -Math.round(rnd() * 90)
+  return [
+    "(", "-size", `${WIDTH}x${HEIGHT}`, "radial-gradient:rgba(255,226,180,0.80)-rgba(255,226,180,0)",
+    "-roll", `${rollX >= 0 ? "+" : ""}${rollX}${rollY >= 0 ? "+" : ""}${rollY}`, ")",
+    "-compose", "screen", "-composite", "-compose", "over",
+  ]
+}
+
+/** 遠景の雲 */
+function clouds(rnd: () => number): string[] {
+  const args: string[] = [...fill("rgba(255,255,255,0.16)")]
+  const count = 2 + Math.round(rnd() * 2)
+  for (let i = 0; i < count; i++) {
+    const cx = Math.round(rnd() * WIDTH)
+    const cy = Math.round(70 + rnd() * 130)
+    const rx = Math.round(80 + rnd() * 80)
+    args.push(...draw(`ellipse ${cx},${cy} ${rx},${Math.round(rx * 0.2)} 0,360`))
+    args.push(...draw(`ellipse ${cx + Math.round(rx * 0.5)},${cy + 16} ${Math.round(rx * 0.7)},${Math.round(rx * 0.15)} 0,360`))
+  }
+  return args
+}
+
+/** 遠景の住宅街と街路樹（通学路の文脈を一目で出す） */
+function skyline(horizon: number, palette: Palette, rnd: () => number): string[] {
+  const args: string[] = []
+  const far = "#3B2E57"
+  const roof = "#2F2448"
+  let x = -40
+  while (x < WIDTH) {
+    const w = 90 + Math.round(rnd() * 90)
+    const h = 70 + Math.round(rnd() * 90)
+    const top = horizon - h
+    args.push(...fill(far), ...draw(`rectangle ${x},${top} ${x + w},${horizon}`))
+    if (rnd() > 0.45) {
+      args.push(...fill(roof), ...draw(`polygon ${x},${top} ${x + w / 2},${top - 38} ${x + w},${top}`))
+    }
+    // 灯りの点いた窓（夕方の通学時間帯の気配）
+    args.push(...fill("rgba(255,228,176,0.45)"))
+    for (let wy = top + 22; wy < horizon - 30; wy += 46) {
+      for (let wx = x + 18; wx < x + w - 24; wx += 44) {
+        if (rnd() > 0.45) args.push(...draw(`rectangle ${wx},${wy} ${wx + 18},${wy + 22}`))
+      }
+    }
+    x += w + 10 + Math.round(rnd() * 26)
+  }
+  // 街路樹
+  const trees = 2 + Math.round(rnd() * 2)
+  for (let i = 0; i < trees; i++) {
+    // 主役（児童）の立ち位置に重ならない範囲に植える
+    const tx = rnd() > 0.5
+      ? Math.round(470 + rnd() * (WIDTH - 540))
+      : Math.round(40 + rnd() * 90)
+    const r = 34 + Math.round(rnd() * 18)
+    args.push(...fill("#3B4A2E"), ...draw(`rectangle ${tx - 7},${horizon - r} ${tx + 7},${horizon}`))
+    args.push(...fill("#2F5E42"), ...draw(`circle ${tx},${horizon - r - 20} ${tx},${horizon - r - 20 - r}`))
+    args.push(...fill("#36694A"), ...draw(`circle ${tx + Math.round(r * 0.6)},${horizon - r - 4} ${tx + Math.round(r * 0.6)},${horizon - r - 4 - Math.round(r * 0.72)}`))
+  }
+  void palette
+  return args
+}
+
+/** 足元の影（接地させると立体に見える） */
+function groundShadow(x: number, y: number, rx: number): string[] {
+  return [...fill("rgba(0,0,0,0.22)"), ...draw(`ellipse ${x},${y} ${rx},${Math.round(rx * 0.26)} 0,360`)]
+}
+
+function vignette(): string[] {
+  return ["(", "-size", `${WIDTH}x${HEIGHT}`, "radial-gradient:rgba(0,0,0,0)-rgba(0,0,0,0.26)", ")", "-compose", "over", "-composite"]
+}
+
 function thumbnailArgs(category: string, seed: string): string[] {
   const palette = PALETTES[category] ?? PALETTES.policy
   const rnd = makeRandom(seed)
-  const horizon = 364 + Math.round(rnd() * 24)
-  const walkBottom = horizon + 52
-  const groundY = walkBottom - 34
+  const horizon = 396 + Math.round(rnd() * 22)
+  const walkBottom = horizon + 44
+  const groundY = horizon + 30
   const args: string[] = ["-size", `${WIDTH}x${HEIGHT}`, `gradient:${palette.skyTop}-${palette.skyBottom}`]
+
+  args.push(...sunGlow(rnd))
+  args.push(...clouds(rnd))
+  args.push(...skyline(horizon, palette, rnd))
 
   // 歩道と車道
   args.push(...fill(palette.walk), ...draw(`rectangle 0,${horizon} ${WIDTH},${walkBottom}`))
+  args.push(...fill("rgba(255,255,255,0.10)"), ...draw(`rectangle 0,${horizon} ${WIDTH},${horizon + 7}`))
   args.push(...fill(palette.road), ...draw(`rectangle 0,${walkBottom} ${WIDTH},${HEIGHT}`))
-  args.push(...fill(palette.roadEdge), ...draw(`rectangle 0,${walkBottom} ${WIDTH},${walkBottom + 16}`))
+  args.push(...fill(palette.roadEdge), ...draw(`rectangle 0,${walkBottom} ${WIDTH},${walkBottom + 14}`))
 
   // 横断歩道（手前ほど広がる）
   const stripes = 6
@@ -206,18 +284,27 @@ function thumbnailArgs(category: string, seed: string): string[] {
   for (let i = 0; i < stripes; i++) {
     const x = Math.round(i * gap + 50)
     const spread = Math.round((i - stripes / 2) * skew)
-    args.push(...draw(`polygon ${x},${walkBottom + 48} ${x + 90},${walkBottom + 48} ${x + 90 + spread},${HEIGHT} ${x + spread},${HEIGHT}`))
+    args.push(...draw(`polygon ${x},${walkBottom + 46} ${x + 90},${walkBottom + 46} ${x + 90 + spread},${HEIGHT} ${x + spread},${HEIGHT}`))
   }
+  // 路面の濡れた反射（手前を少し明るく）
+  args.push(...fill("rgba(255,255,255,0.05)"), ...draw(`rectangle 0,${HEIGHT - 70} ${WIDTH},${HEIGHT}`))
 
   // 児童（1〜2人）と、community のみ見守りの大人
   const baseX = 210 + Math.round(rnd() * 90)
+  args.push(...groundShadow(baseX, groundY + 4, 44))
   args.push(...child(baseX, groundY, 1, palette.pack, palette.packAlt))
   if (rnd() > 0.35) {
-    args.push(...child(baseX + 112 + Math.round(rnd() * 26), groundY + 6, 0.8, palette.packAlt, palette.pack))
+    const x2 = baseX + 112 + Math.round(rnd() * 26)
+    args.push(...groundShadow(x2, groundY + 10, 36))
+    args.push(...child(x2, groundY + 6, 0.8, palette.packAlt, palette.pack))
   }
-  if (category === "community") args.push(...guardian(baseX + 240, groundY, palette.accent))
+  if (category === "community") {
+    args.push(...groundShadow(baseX + 240, groundY + 4, 48))
+    args.push(...guardian(baseX + 240, groundY, palette.accent))
+  }
 
   args.push(...motif(category, 900 + Math.round(rnd() * 90), groundY, palette, rnd))
+  args.push(...vignette())
   return args
 }
 
@@ -234,16 +321,41 @@ function figureArgs(category: string, seed: string): string[] {
 
   for (let i = 0; i < 3; i++) {
     const x = Math.round(startX + i * (panelW + gapX))
+    const cx = Math.round(x + panelW / 2)
+    const groundY = panelY + panelH - 54
+
+    // 影 → パネル → パネル内の空
+    args.push(...fill("rgba(0,0,0,0.16)"), ...draw(`roundrectangle ${x + 6},${panelY + 10} ${x + panelW + 6},${panelY + panelH + 10} 24,24`))
     args.push(...fill("#FFFFFF"), ...draw(`roundrectangle ${x},${panelY} ${x + panelW},${panelY + panelH} 24,24`))
+    args.push(...fill(`${palette.skyBottom}`), ...draw(`roundrectangle ${x + 10},${panelY + 24} ${x + panelW - 10},${panelY + panelH - 16} 16,16`))
+    args.push(...fill(palette.walk), ...draw(`rectangle ${x + 10},${groundY} ${x + panelW - 10},${panelY + panelH - 16}`))
     args.push(...fill(palette.accent), ...draw(`roundrectangle ${x},${panelY} ${x + panelW},${panelY + 14} 7,7`))
 
-    const cx = x + panelW / 2
-    const groundY = panelY + panelH - 54
-    if (i === 2 && category === "community") {
-      args.push(...guardian(Math.round(cx), groundY, palette.accent))
+    // 手順ごとに場面を変える（①家の前 → ②歩道のきわ → ③横断歩道の上）
+    if (i === 0) {
+      args.push(...fill("#E8E2D8"), ...draw(`rectangle ${x + 28},${groundY - 96} ${x + 118},${groundY}`))
+      args.push(...fill(palette.walk), ...draw(`polygon ${x + 16},${groundY - 96} ${x + 130},${groundY - 96} ${x + 73},${groundY - 142}`))
+    } else if (i === 1) {
+      args.push(...fill(palette.roadEdge), ...draw(`rectangle ${x + 10},${groundY} ${x + panelW - 10},${groundY + 12}`))
+      args.push(...fill("#9AA6B8"), ...draw(`rectangle ${x + panelW - 86},${groundY - 150} ${x + panelW - 74},${groundY}`))
+      args.push(...fill("#1F2937"), ...draw(`roundrectangle ${x + panelW - 112},${groundY - 196} ${x + panelW - 48},${groundY - 146} 8,8`))
+      args.push(...fill(palette.accent), ...draw(`circle ${x + panelW - 80},${groundY - 171} ${x + panelW - 80},${groundY - 160}`))
     } else {
-      args.push(...child(Math.round(cx), groundY, 0.78, i === 1 ? palette.packAlt : palette.pack, palette.pack))
+      args.push(...fill(palette.road), ...draw(`rectangle ${x + 10},${groundY - 10} ${x + panelW - 10},${groundY + 32}`))
+      args.push(...fill(STRIPE))
+      for (let s = 0; s < 4; s++) {
+        const sx = x + 24 + s * 74
+        args.push(...draw(`roundrectangle ${sx},${groundY - 4} ${sx + 44},${groundY + 26} 5,5`))
+      }
     }
+
+    args.push(...groundShadow(cx, groundY + 6, 32))
+    if (i === 2 && category === "community") {
+      args.push(...guardian(cx, groundY, palette.accent))
+    } else {
+      args.push(...child(cx, groundY, 0.78, i === 1 ? palette.packAlt : palette.pack, palette.pack))
+    }
+
     // 手順の番号は数字を書かずドットの数で示す（画像内に文字・数字は入れない）
     for (let d = 0; d <= i; d++) {
       args.push(...fill(palette.accent), ...draw(`circle ${x + 44 + d * 40},${panelY + 62} ${x + 44 + d * 40},${panelY + 46}`))
