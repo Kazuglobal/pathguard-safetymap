@@ -1,0 +1,61 @@
+name: Accident Preview Data Stage
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+# An import must survive unrelated PR pushes. Preserve partial data on any failure.
+concurrency:
+  group: accident-national-preview-data-stage
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    if: >-
+      github.repository == 'Kazuglobal/pathguard-safetymap' &&
+      github.event.pull_request.number == 250 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'codex/accident-rankings'
+    runs-on: ubuntu-latest
+    environment: cloudflare-preview
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the current open PR head
+        run: |
+          test "$(gh pr view 250 --repo Kazuglobal/pathguard-safetymap --json state --jq .state)" = OPEN
+          test "$(gh pr view 250 --repo Kazuglobal/pathguard-safetymap --json headRefOid --jq .headRefOid)" = "$(git rev-parse HEAD)"
+      - run: pnpm install --frozen-lockfile
+      - name: Verify immutable preview import guards
+        run: python -m unittest discover -s tests/scripts -p 'test_verified_preview_stage.py'
+      - name: Stage pinned nationwide aggregate in isolated preview D1
+        run: python scripts/accidents/stage_verified_preview.py
+      - name: Preserve all import evidence including partial output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accident-preview-stage-${{ github.run_id }}
+          path: artifacts/verified-preview-stage/
+          if-no-files-found: warn
+          retention-days: 30
