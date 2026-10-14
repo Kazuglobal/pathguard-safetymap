@@ -5,9 +5,10 @@ import { readFileSync } from 'node:fs'
 import { parseAccidentQuery, type SnapshotMetadata } from '@/lib/accidents/query'
 vi.mock('@opennextjs/cloudflare',()=>({getCloudflareContext:()=>({env:{}})}))
 import { rankings, location, type RankingDatabase } from '@/lib/accidents/server'
-function fixture(exceptions: SnapshotMetadata['regionalCoverageExceptions'] = [], municipality = '12217'): RankingDatabase {
+function fixture(exceptions: SnapshotMetadata['regionalCoverageExceptions'] = [], municipality = '12217', partial = false): RankingDatabase {
   const db=new Database(':memory:');db.exec(readFileSync('lib/db/traffic-migrations/0002_accident_rankings.sql','utf8'))
-  const metadata={version:'test-only',updatedAt:'2026-10-10',years:[2023,2024],method:'test fixture',sources:[],regionalCoverageExceptions:exceptions}
+  if(partial)db.exec(readFileSync('lib/db/traffic-migrations/0003_accident_regional_uncertainty.sql','utf8'))
+  const metadata={version:'test-only',updatedAt:'2026-10-10',years:[2023,2024],method:'test fixture',sources:[],regionalCoverageExceptions:exceptions,...(partial?{regionalUncertaintyMethod:'distinct-original-municipality-v1'}:{})}
   db.prepare('INSERT INTO accident_snapshots VALUES(?,?,?,?)').run('test-only',1,metadata.updatedAt,JSON.stringify(metadata))
   db.exec("INSERT INTO accident_areas VALUES('test-only','12','','千葉県'),('test-only','12217','12','柏市'),('test-only','22','','静岡県'),('test-only','22138','22','中央区')")
   for(const [id,count,mask] of [['a',12,1],['b',12,3],['c',9,2]] as const){
@@ -16,10 +17,29 @@ function fixture(exceptions: SnapshotMetadata['regionalCoverageExceptions'] = []
   }
   db.exec("INSERT INTO accident_quality_counts VALUES('test-only','12','12217',2024,7,1,0,12,2,1),('test-only','12','12217',2024,7,3,0,12,0,0),('test-only','12','12217',2024,7,2,0,9,0,0)")
   db.exec("INSERT INTO accident_quality_counts VALUES('test-only','22','22131',2023,7,0,0,0,5,0)")
+  if(partial)db.exec("INSERT INTO accident_regional_uncertainty_counts VALUES('test-only','12','12217',2024,7,1,0,4,1),('test-only','12','',2024,7,1,0,3,2),('test-only','12','12217',2023,7,1,0,6,0)")
   return {prepare(sql){const statement=db.prepare(sql);let values:(string|number)[]=[];return {bind(...v){values=v;return this},async first<T>(){return (statement.get(...values)??null) as T|null},async all<T>(){return {results:statement.all(...values) as T[]}}}}}
 }
 const query=(value='')=>parseAccidentQuery(new URLSearchParams(value))
 describe('public aggregate rankings',()=>{
+  it('shows verified counts with possible inbound and prefecture-wide uncertainty',async()=>{
+    const db=fixture([{prefecture:'12',municipality:'12217',year:2024,reason:'historical_region_check'}],'12217',true)
+    const result=await rankings(db,query('prefecture=12&municipality=12217&from=2024&to=2024&participant=bicycle'))
+    expect(result.status).toBe('ready');expect(result.items.map(x=>x.id)).toEqual(['a','b'])
+    expect(result.coverage).toEqual({status:'partial',possibleUncertain:7,possibleExcluded:3})
+    expect(result.quality).toEqual({assigned:24,uncertain:7,excluded:3})
+    expect((await rankings(db,query('from=2024&to=2024&participant=bicycle'))).quality).toEqual({assigned:24,uncertain:2,excluded:1})
+    const detail=await location(db,'a',query('from=2024&to=2024&participant=bicycle'))
+    expect(detail?.status).toBe('ready');expect(detail?.coverage).toEqual(result.coverage)
+  })
+  it('keeps unknown-place warnings for road-only filters and does not claim a zero',async()=>{
+    const db=fixture([],'12217',true)
+    const result=await rankings(db,query('prefecture=12&municipality=12217&from=2024&to=2024&kind=road'))
+    expect(result.status).toBe('preparing');expect(result.coverage?.possibleUncertain).toBe(7)
+    expect((await rankings(db,query('prefecture=12&municipality=12217&from=2023&to=2023'))).status).toBe('preparing')
+    expect((await location(db,'a',query('from=2023&to=2023')))?.status).toBe('preparing')
+    expect((await rankings(db,query('prefecture=12&municipality=12217&severity=fatal'))).status).toBe('ready')
+  })
   const historicalExceptions = [{prefecture:'22',year:2023,reason:'historical_region_check' as const}]
   it('does not turn unresolved old-code records into a current-city zero',async()=>{
     const db=fixture(historicalExceptions)

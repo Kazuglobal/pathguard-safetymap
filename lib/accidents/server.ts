@@ -1,6 +1,6 @@
 import 'server-only'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import type { AccidentQuery, RankedLocation, RankingsResponse, SnapshotMetadata } from './query'
+import type { AccidentQuery, RankedLocation, RankingsResponse, RegionalCoverage, SnapshotMetadata } from './query'
 
 interface Statement {
   bind(...values: (string | number)[]): Statement
@@ -47,6 +47,15 @@ function regionalCoveragePending(q: AccidentQuery, m: SnapshotMetadata) {
   const from=q.from??Math.min(...m.years),to=q.to??Math.max(...m.years)
   return !!q.municipality && !!m.regionalCoverageExceptions?.some(e=>e.prefecture===q.prefecture&&(!e.municipality||e.municipality===q.municipality)&&e.year>=from&&e.year<=to)
 }
+async function municipalCoverage(db: RankingDatabase, q: AccidentQuery, m: SnapshotMetadata): Promise<RegionalCoverage | undefined> {
+  if (!q.municipality || m.regionalUncertaintyMethod!=='distinct-original-municipality-v1') return undefined
+  const d=dimensions(q,m,'c')
+  const row=await db.prepare(`SELECT COALESCE(SUM(uncertain),0) AS uncertain,COALESCE(SUM(excluded),0) AS excluded
+    FROM accident_regional_uncertainty_counts c WHERE ${d.where} AND c.prefecture=? AND (c.municipality=? OR c.municipality='')`)
+    .bind(...d.values,q.prefecture,q.municipality).first<{uncertain:number;excluded:number}>()
+  if (!row || !Number.isSafeInteger(row.uncertain) || !Number.isSafeInteger(row.excluded) || row.uncertain<0 || row.excluded<0) throw new Error('Invalid regional uncertainty counts')
+  return row.uncertain || row.excluded ? {status:'partial',possibleUncertain:row.uncertain,possibleExcluded:row.excluded} : undefined
+}
 export async function rankings(db: RankingDatabase, q: AccidentQuery): Promise<RankingsResponse> {
   const m = await snapshot(db,q.version)
   if (!m) return { status: q.version ? 'unavailable' : 'preparing', metadata: null, items: [], nextOffset: null, quality: { assigned: 0, uncertain: 0, excluded: 0 } }
@@ -55,7 +64,7 @@ export async function rankings(db: RankingDatabase, q: AccidentQuery): Promise<R
     if (!covered) return {status:'unavailable',metadata:m,items:[],nextOffset:null,quality:{assigned:0,uncertain:0,excluded:0}}
   }
   const d = dimensions(q,m,'c')
-  if (regionalCoveragePending(q,m)) return {status:'preparing',preparingReason:'regional_correspondence',metadata:m,items:[],nextOffset:null,quality:{assigned:0,uncertain:0,excluded:0}}
+  if (regionalCoveragePending(q,m) && m.regionalUncertaintyMethod!=='distinct-original-municipality-v1') return {status:'preparing',preparingReason:'regional_correspondence',metadata:m,items:[],nextOffset:null,quality:{assigned:0,uncertain:0,excluded:0}}
   let where = d.where + area(q,'l',d.values)
   if (q.kind !== 'all') { where += ' AND l.kind=?'; d.values.push(q.kind) }
   const { results } = await db.prepare(`WITH totals AS (
@@ -67,7 +76,12 @@ export async function rankings(db: RankingDatabase, q: AccidentQuery): Promise<R
   const qualityDimensions = dimensions(q,m,'c')
   const qualityWhere = qualityDimensions.where + area(q,'c',qualityDimensions.values)
   const quality = await db.prepare(`SELECT COALESCE(SUM(assigned),0) AS assigned,COALESCE(SUM(uncertain),0) AS uncertain,COALESCE(SUM(excluded),0) AS excluded FROM accident_quality_counts c WHERE ${qualityWhere}`).bind(...qualityDimensions.values).first<RankingsResponse['quality']>()
-  return { status: 'ready', metadata: m, items: results.slice(0,q.limit), nextOffset: results.length > q.limit ? q.offset+q.limit : null, quality: quality! }
+  const coverage=await municipalCoverage(db,q,m)
+  if (coverage) {
+    quality!.uncertain=coverage.possibleUncertain;quality!.excluded=coverage.possibleExcluded
+    if (!results.length && q.offset===0) return {status:'preparing',preparingReason:'regional_correspondence',metadata:m,items:[],nextOffset:null,quality:quality!,coverage}
+  }
+  return { status: 'ready', metadata: m, items: results.slice(0,q.limit), nextOffset: results.length > q.limit ? q.offset+q.limit : null, quality: quality!, ...(coverage?{coverage}:{}) }
 }
 export async function areas(db: RankingDatabase, version: string, prefecture: string) {
   const metadata = await snapshot(db,version)
@@ -81,7 +95,10 @@ export async function location(db: RankingDatabase, id: string, q: AccidentQuery
   const item = await db.prepare('SELECT id,name,kind,latitude,longitude,prefecture,municipality,scope_json AS scope FROM accident_locations WHERE version=? AND id=?').bind(metadata.version,id).first<{id:string;name:string;kind:string;latitude:number;longitude:number;prefecture:string;municipality:string;scope:string}>()
   if (!item) return null
   const d = dimensions(q,metadata,'c')
-  if (regionalCoveragePending({...q,prefecture:item.prefecture,municipality:item.municipality},metadata)) return {status:'preparing',preparingReason:'regional_correspondence',metadata}
+  const itemQuery={...q,prefecture:item.prefecture,municipality:item.municipality}
+  if (regionalCoveragePending(itemQuery,metadata) && metadata.regionalUncertaintyMethod!=='distinct-original-municipality-v1') return {status:'preparing',preparingReason:'regional_correspondence',metadata}
   const { results: counts } = await db.prepare(`SELECT year,hour,accident_class AS accidentClass,SUM(count) AS count FROM accident_location_counts c WHERE ${d.where} AND location_id=? GROUP BY year,hour,accident_class ORDER BY year,hour`).bind(...d.values,id).all<{year:number;hour:number;accidentClass:string;count:number}>()
-  return { status: 'ready', metadata, item: {...item,scope:JSON.parse(item.scope)}, counts }
+  const coverage=await municipalCoverage(db,itemQuery,metadata)
+  if (!counts.length && coverage) return {status:'preparing',preparingReason:'regional_correspondence',metadata,coverage}
+  return { status: 'ready', metadata, item: {...item,scope:JSON.parse(item.scope)}, counts, ...(coverage?{coverage}:{}) }
 }

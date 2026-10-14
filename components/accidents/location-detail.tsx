@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import type { RankedLocation, SnapshotMetadata } from '@/lib/accidents/query'
+import type { RankedLocation, RegionalCoverage, SnapshotMetadata } from '@/lib/accidents/query'
 const AccidentMap=dynamic(()=>import('./map'),{ssr:false})
-interface Detail { status:string; preparingReason?:'regional_correspondence'; metadata?:SnapshotMetadata; item?: {id:string;name:string;kind:'road'|'intersection';latitude:number;longitude:number;scope:{radiusMeters?:number;description:string}}; counts?:Array<{year:number;hour:number;accidentClass:string;count:number}> }
+interface Detail { status:string; preparingReason?:'regional_correspondence'; coverage?:RegionalCoverage; metadata?:SnapshotMetadata; item?: {id:string;name:string;kind:'road'|'intersection';latitude:number;longitude:number;scope:{radiusMeters?:number;description:string}}; counts?:Array<{year:number;hour:number;accidentClass:string;count:number}> }
 export default function LocationDetail({id}: {id:string}) {
   const params=useSearchParams(), key=params.toString()
   const [result,setResult]=useState<Detail|null>(null), [error,setError]=useState(''), [attempt,setAttempt]=useState(0)
@@ -21,6 +21,7 @@ export default function LocationDetail({id}: {id:string}) {
     <Link className="inline-flex min-h-11 items-center text-forest-strong underline" href={`/accidents?${key}`}>一覧へ戻る</Link>
     {error&&<div role="alert"><p>{error}</p><button className="mt-3 min-h-11 rounded-xl border px-4" onClick={()=>setAttempt(n=>n+1)}>もう一度読み込む</button></div>}
     {!result&&!error&&<p role="status">読み込み中…</p>}
+    {result?.coverage&&<p role="status" className="mt-4 rounded-xl border border-border bg-card p-4 leading-7">この地域との対応を確認中の記録があり、件数が変わることがあります。この地域に関係する可能性がある未確定記録は{result.coverage.possibleUncertain.toLocaleString()}件、対象外は{result.coverage.possibleExcluded.toLocaleString()}件です。この地点の確定件数には含めていません。</p>}
     {result&&!item&&<p className="py-6">{result.status==='unavailable'?'この集計の版は現在表示できません。':result.preparingReason==='regional_correspondence'?'集計準備中です。この期間の記録と、現在の市区町村との対応を確認しています。':'集計準備中です。確認済みの地点から表示します。'}</p>}
     {item&&<><h1 className="mt-4 text-3xl font-bold">{item.name}</h1><p className="mt-4 text-3xl font-bold text-forest-strong">{total.toLocaleString()}件</p><p className="mt-2 leading-7">選んだ条件で数えた事故件数です。<br/>事故に遭う確率を示すものではありません。</p>
       <section className="mt-8"><h2 className="text-xl font-bold">年ごとの事故件数</h2><table className="mt-3 w-full bg-card"><caption className="sr-only">対象期間の年別事故件数</caption><thead><tr><th className="p-3 text-left">年</th><th className="p-3 text-right">件数</th></tr></thead><tbody>{result.metadata?.years.filter(y=>y>=Number(params.get('from')??0)&&y<=Number(params.get('to')??2100)).map(y=><tr key={y} className="border-t border-border"><td className="p-3">{y}年</td><td className="p-3 text-right">{grouped('year').find(([k])=>k===String(y))?.[1]??0}件</td></tr>)}</tbody></table></section>

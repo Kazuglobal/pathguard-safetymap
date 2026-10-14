@@ -75,10 +75,11 @@ export default function AccidentExplorer() {
         </details>
         <div className="grid grid-cols-2 rounded-full border border-border p-1 lg:hidden">{[['list','一覧'],['map','地図']].map(([v,t])=><button key={v} className={`flex min-h-11 items-center justify-center gap-2 rounded-full ${view===v?'bg-forest-strong text-white':''}`} aria-pressed={view===v} onClick={()=>change({view:v})}>{v==='list'?<List size={20}/>:<Map size={20}/>} {t}</button>)}</div>
       </section>
+      {response?.coverage&&<p role="status" className="mt-6 rounded-xl border border-border bg-card p-4 leading-7">この地域との対応を確認中の記録があり、順位や件数が変わることがあります。この地域に関係する可能性がある未確定記録は{response.coverage.possibleUncertain.toLocaleString()}件、対象外は{response.coverage.possibleExcluded.toLocaleString()}件です。</p>}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className={`${view==='map'?'hidden lg:block':''}`} aria-label="事故件数ランキング">
           <h2 className="text-2xl font-bold">事故が多い場所</h2>
-          <p className="mt-3 leading-7">事故件数の多い順です。<br/>事故に遭う確率を示すものではありません。</p>
+          <p className="mt-3 leading-7">確認できた事故件数の多い順です。<br/>事故に遭う確率を示すものではありません。</p>
           {response?.metadata&&<p className="mt-2">{params.get('from')??Math.min(...years)}〜{params.get('to')??Math.max(...years)}年</p>}
           {loading&&<p role="status" className="py-8">読み込み中…</p>}
           {error&&<div role="alert" className="py-6"><p>読み込めませんでした</p><button className={`${control} mt-2`} onClick={()=>setReload(n=>n+1)}>もう一度読み込む</button></div>}
@@ -96,7 +97,7 @@ export default function AccidentExplorer() {
         <p>同じ交差点・道路に割り当てられた事故を1件ずつ数えています。場所を決められない事故は順位に含めません。地図を動かしても順位は変わりません。</p>
         {response?.metadata?.reconciliation&&<p>原本全体の照合：{response.metadata.reconciliation.uniqueRecords.toLocaleString()}件＝場所を確認できた {response.metadata.reconciliation.assigned.toLocaleString()}件＋場所が未確定 {response.metadata.reconciliation.uncertain.toLocaleString()}件＋対象外 {response.metadata.reconciliation.excluded.toLocaleString()}件。対象外には、確認した期間の外 {response.metadata.reconciliation.outsidePeriod.toLocaleString()}件、発生日不明 {response.metadata.reconciliation.missingDate.toLocaleString()}件を含みます。</p>}
         {typeof response?.metadata?.reconciliation?.administrativeCodeMismatch==='number'&&<p>記録の地域と地図上の地域が違うため、場所を確認中の事故は{response.metadata.reconciliation.administrativeCodeMismatch.toLocaleString()}件です。</p>}
-        {response?.metadata ? <><p>集計方法：{response.metadata.method}<br/>更新日：{response.metadata.updatedAt}<br/>集計の版：{response.metadata.version}</p>{response.status==='ready'&&<p>選んだ地域・期間・事故条件の全地点：集計済み {response.quality.assigned.toLocaleString()}件／場所が未確定 {response.quality.uncertain.toLocaleString()}件／集計対象外 {response.quality.excluded.toLocaleString()}件</p>}{response.metadata.sources.map(s=><p key={s.url}><a className="underline" href={s.url} rel="noreferrer">{s.name}</a>（{s.license}、取得日 {s.retrievedAt}）</p>)}</> : <p>事故件数と出典は、集計の確認が終わり次第掲載します。</p>}
+        {response?.metadata ? <><p>集計方法：{response.metadata.method}<br/>更新日：{response.metadata.updatedAt}<br/>集計の版：{response.metadata.version}</p>{response.status==='ready'&&<p>確認できた事故 {response.quality.assigned.toLocaleString()}件／{response.coverage?"この地域に関係する可能性がある未確定記録":"場所が未確定"} {response.quality.uncertain.toLocaleString()}件／{response.coverage?"この地域に関係する可能性がある対象外記録":"集計対象外"} {response.quality.excluded.toLocaleString()}件</p>}{response.metadata.sources.map(s=><p key={s.url}><a className="underline" href={s.url} rel="noreferrer">{s.name}</a>（{s.license}、取得日 {s.retrievedAt}）</p>)}</> : <p>事故件数と出典は、集計の確認が終わり次第掲載します。</p>}
       </div></details>
     </div>
   </main>
