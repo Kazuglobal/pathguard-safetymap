@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { Map, List, MapPin, SlidersHorizontal, ChevronRight, ChevronDown, Bike, PersonStanding, FileText } from 'lucide-react'
@@ -11,7 +11,7 @@ const AccidentMap = dynamic(() => import('./map'), { ssr: false })
 const control = 'min-h-11 rounded-xl border border-border bg-card px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest-strong'
 interface Area { code: string; name: string }
 export default function AccidentExplorer() {
-  const params = useSearchParams(), router = useRouter(), pathname = usePathname()
+  const params = useSearchParams(), pathname = usePathname()
   const [response, setResponse] = useState<RankingsResponse | null>(null)
   const [error, setError] = useState(false), [loading, setLoading] = useState(true), [reload,setReload]=useState(0)
   const [prefectures,setPrefectures]=useState<Area[]>([]), [cities,setCities]=useState<Area[]>([])
@@ -21,10 +21,11 @@ export default function AccidentExplorer() {
   const fetchParams=new URLSearchParams(key);fetchParams.delete('view');const fetchKey=fetchParams.toString()
   const view=params.get('view')??'list', participant=params.get('participant')??'all'
   const change=(patch: Record<string,string>)=>{
-    const next=new URLSearchParams(key)
+    // Read the synchronous browser URL so consecutive controls retain the last selection.
+    const next=new URLSearchParams(window.location.search)
     if (Object.keys(patch).some(k=>k!=='view')) { next.delete('offset');next.delete('version') }
     for(const [k,v] of Object.entries(patch)) v ? next.set(k,v) : next.delete(k)
-    router.push(`${pathname}?${next}`)
+    window.history.pushState(null,'',`${pathname}?${next}`)
   }
   useEffect(()=>{
     const abort=new AbortController();moreController.current?.abort();setMore(false)
