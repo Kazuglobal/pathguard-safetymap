@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { Map, List, MapPin, SlidersHorizontal, ChevronRight, ChevronDown, Bike, PersonStanding, FileText } from 'lucide-react'
 import type { RankedLocation, RankingsResponse } from '@/lib/accidents/query'
 import SourceNotices from './source-notices'
+import DataCredit from './data-credit'
 const AccidentMap = dynamic(() => import('./map'), { ssr: false })
 const control = 'min-h-11 rounded-xl border border-border bg-card px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-forest-strong'
 interface Area { code: string; name: string }
@@ -81,6 +82,7 @@ export default function AccidentExplorer() {
         <section className={`${view==='map'?'hidden lg:block':''}`} aria-label="事故件数ランキング">
           <h2 className="text-2xl font-bold">事故が多い場所</h2>
           <p className="mt-3 leading-7">場所を確認できた事故件数の多い順です。場所を決められない事故は含みません。<br/>事故に遭う確率を示すものではありません。</p>
+          {response?.status==='ready'&&<DataCredit/>}
           {response?.metadata&&<p className="mt-2">{params.get('from')??Math.min(...years)}〜{params.get('to')??Math.max(...years)}年</p>}
           {loading&&<p role="status" className="py-8">読み込み中…</p>}
           {error&&<div role="alert" className="py-6"><p>読み込めませんでした</p><button className={`${control} mt-2`} onClick={()=>setReload(n=>n+1)}>もう一度読み込む</button></div>}

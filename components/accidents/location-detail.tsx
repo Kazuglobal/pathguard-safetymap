@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import SourceNotices from './source-notices'
+import DataCredit from './data-credit'
 import type { RankedLocation, RegionalCoverage, SnapshotMetadata } from '@/lib/accidents/query'
 const AccidentMap=dynamic(()=>import('./map'),{ssr:false})
 interface Detail { status:string; preparingReason?:'regional_correspondence'; coverage?:RegionalCoverage; metadata?:SnapshotMetadata; item?: {id:string;name:string;kind:'road'|'intersection';latitude:number;longitude:number;scope:{radiusMeters?:number;description:string}}; counts?:Array<{year:number;hour:number;accidentClass:string;count:number}> }
@@ -25,6 +26,7 @@ export default function LocationDetail({id}: {id:string}) {
     {result?.coverage&&<p role="status" className="mt-4 rounded-xl border border-border bg-card p-4 leading-7">この地域との対応を確認中の記録があり、件数が変わることがあります。この地域に関係する可能性がある未確定記録は{result.coverage.possibleUncertain.toLocaleString()}件、対象外は{result.coverage.possibleExcluded.toLocaleString()}件です。この地点の確定件数には含めていません。</p>}
     {result&&!item&&<p className="py-6">{result.status==='unavailable'?'この集計の版は現在表示できません。':result.preparingReason==='regional_correspondence'?'集計準備中です。この期間の記録と、現在の市区町村との対応を確認しています。':'集計準備中です。確認済みの地点から表示します。'}</p>}
     {item&&<><h1 className="mt-4 text-3xl font-bold">{item.name}</h1><p className="mt-4 text-3xl font-bold text-forest-strong">{total.toLocaleString()}件</p><p className="mt-2 leading-7">選んだ条件で数えた事故件数です。<br/>事故に遭う確率を示すものではありません。</p>
+      <DataCredit/>
       <section className="mt-8"><h2 className="text-xl font-bold">年ごとの事故件数</h2><table className="mt-3 w-full bg-card"><caption className="sr-only">対象期間の年別事故件数</caption><thead><tr><th className="p-3 text-left">年</th><th className="p-3 text-right">件数</th></tr></thead><tbody>{result.metadata?.years.filter(y=>y>=Number(params.get('from')??0)&&y<=Number(params.get('to')??2100)).map(y=><tr key={y} className="border-t border-border"><td className="p-3">{y}年</td><td className="p-3 text-right">{grouped('year').find(([k])=>k===String(y))?.[1]??0}件</td></tr>)}</tbody></table></section>
       <section className="mt-8"><h2 className="text-xl font-bold">事故が多い時間帯</h2>{grouped('hour').sort((a,b)=>b[1]-a[1]||Number(a[0])-Number(b[0])).slice(0,3).map(([h,n])=><p className="mt-3" key={h}>{h==='-1'?'時刻不明':`${h}時台`}：{n}件</p>)}{!counts.length&&<p className="mt-3">この条件で集計できた事故は0件です。</p>}</section>
       <section className="mt-8"><h2 className="text-xl font-bold">事故の種類</h2>{grouped('accidentClass').map(([k,n])=><p key={k} className="mt-3">{k}：{n}件</p>)}</section>
