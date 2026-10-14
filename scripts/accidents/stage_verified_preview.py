@@ -119,18 +119,19 @@ def query(sql):
     return d1('--command', sql)[0]['results']
 
 
-def verify_remote(expected_metadata):
+def verify_remote(expected_metadata, run_query=None):
+    run_query = run_query or query
     actual = {}
     for table, count in TABLE_ROWS.items():
-        actual[table] = query(f"SELECT COUNT(*) AS n FROM {table} WHERE version='{VERSION}'")[0]['n']
+        actual[table] = run_query(f"SELECT COUNT(*) AS n FROM {table} WHERE version='{VERSION}'")[0]['n']
         require(actual[table] == count, f'Incomplete version in {table}; preserve partial data')
-    snapshot = query(f"SELECT published,metadata_json FROM accident_snapshots WHERE version='{VERSION}'")[0]
+    snapshot = run_query(f"SELECT published,metadata_json FROM accident_snapshots WHERE version='{VERSION}'")[0]
     require(json.loads(snapshot['metadata_json']) == expected_metadata, 'Snapshot metadata differs')
-    quality = query(f"SELECT SUM(assigned) AS assigned,SUM(uncertain) AS uncertain,SUM(excluded) AS excluded FROM accident_quality_counts WHERE version='{VERSION}'")[0]
+    quality = run_query(f"SELECT SUM(assigned) AS assigned,SUM(uncertain) AS uncertain,SUM(excluded) AS excluded FROM accident_quality_counts WHERE version='{VERSION}'")[0]
     require(quality == {'assigned': 329033, 'uncertain': 1842634, 'excluded': 10631}, 'Original reconciliation mismatch')
-    require(query(f"SELECT SUM(count) AS n FROM accident_location_counts WHERE version='{VERSION}'")[0]['n'] == 329033, 'Location totals mismatch')
-    require(query(f"SELECT COUNT(DISTINCT prefecture) AS n FROM accident_locations WHERE version='{VERSION}'")[0]['n'] == 47, 'Incomplete national coverage')
-    require(not query('PRAGMA foreign_key_check'), 'Foreign key violation')
+    require(run_query(f"SELECT SUM(count) AS n FROM accident_location_counts WHERE version='{VERSION}'")[0]['n'] == 329033, 'Location totals mismatch')
+    require(run_query(f"SELECT COUNT(DISTINCT prefecture) AS n FROM accident_locations WHERE version='{VERSION}'")[0]['n'] == 47, 'Incomplete national coverage')
+    require(not run_query('PRAGMA foreign_key_check'), 'Foreign key violation')
     return actual
 
 
@@ -151,9 +152,7 @@ def import_remote(manifest, sql_folder, expected_metadata):
     return rows
 
 
-def main():
-    validate_target(json.loads((ROOT / 'wrangler.preview-resources.json').read_text('utf8')))
-    output = ROOT / 'artifacts/verified-preview-stage'
+def prepare_verified_pack(output):
     require(not output.exists(), 'Preserve existing staging evidence; use a clean CI runner')
     output.mkdir(parents=True)
     release = command_json(['gh', 'api', f'repos/{REPOSITORY}/releases/{RELEASE_ID}'])
@@ -170,6 +169,13 @@ def main():
         local.executescript((output / 'sql/0000-schema.sql').read_text('utf8'))
         local.executescript((output / 'sql/0001-accident_snapshots.sql').read_text('utf8'))
         expected_metadata = json.loads(local.execute('SELECT metadata_json FROM accident_snapshots').fetchone()[0])
+    return manifest, expected_metadata
+
+
+def main():
+    validate_target(json.loads((ROOT / 'wrangler.preview-resources.json').read_text('utf8')))
+    output = ROOT / 'artifacts/verified-preview-stage'
+    manifest, expected_metadata = prepare_verified_pack(output)
     rows = import_remote(manifest, output / 'sql', expected_metadata)
     receipt = {'completed': True, 'version': VERSION, 'databaseId': PREVIEW_ID, 'manifestSha256': MANIFEST_SHA,
                'archiveSha256': ARCHIVE_SHA, 'rows': rows, 'previewActivated': True, 'productionChanged': False}

@@ -56,11 +56,15 @@ jobs:
         run: python -m unittest discover -s tests/scripts -p 'test_verified_preview_stage.py'
       - name: Stage pinned nationwide aggregate in isolated preview D1
         run: python scripts/accidents/stage_verified_preview.py
+      - name: Verify every public preview row against immutable database
+        run: python -B scripts/accidents/publish_verified_national.py --preview-check
       - name: Preserve all import evidence including partial output
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: accident-preview-stage-${{ github.run_id }}
-          path: artifacts/verified-preview-stage/
+          path: |
+            artifacts/verified-preview-stage/
+            artifacts/verified-preview-full-rows/
           if-no-files-found: warn
           retention-days: 30

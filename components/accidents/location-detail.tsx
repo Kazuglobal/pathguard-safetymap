@@ -31,7 +31,7 @@ export default function LocationDetail({id}: {id:string}) {
       <section className="mt-8"><h2 className="text-xl font-bold">事故が多い時間帯</h2>{grouped('hour').sort((a,b)=>b[1]-a[1]||Number(a[0])-Number(b[0])).slice(0,3).map(([h,n])=><p className="mt-3" key={h}>{h==='-1'?'時刻不明':`${h}時台`}：{n}件</p>)}{!counts.length&&<p className="mt-3">この条件で集計できた事故は0件です。</p>}</section>
       <section className="mt-8"><h2 className="text-xl font-bold">事故の種類</h2>{grouped('accidentClass').map(([k,n])=><p key={k} className="mt-3">{k}：{n}件</p>)}</section>
       <section className="mt-8"><h2 className="mb-3 text-xl font-bold">場所と数えた範囲</h2><p className="mb-3 leading-7">{item.scope.description}{item.scope.radiusMeters&&`（交差点から${item.scope.radiusMeters}m以内）`}</p><AccidentMap items={mapped?[mapped]:[]} selected={mapped} onSelect={()=>{}}/></section>
-      <details className="mt-6 border-t py-3"><summary className="min-h-11 cursor-pointer">数え方とデータについて</summary><p className="leading-7">{result.metadata?.method}<br/>更新日：{result.metadata?.updatedAt}<br/>集計の版：{result.metadata?.version}</p><SourceNotices sources={result.metadata?.sources??[]}/></details>
+      <details className="mt-6 border-t py-3"><summary className="min-h-11 cursor-pointer">数え方とデータについて</summary><p className="leading-7">{result.metadata?.method}<br/>更新日：{result.metadata?.updatedAt}<br/>集計の版：{result.metadata?.version}</p><SourceNotices sources={result.metadata?.sources??[]} version={result.metadata?.version}/></details>
     </>}
   </div></main>
 }

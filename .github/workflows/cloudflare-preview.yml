@@ -37,7 +37,7 @@ jobs:
       - name: Verify offline assignment and count reconciliation
         run: python -m unittest discover -s tests/scripts -p 'test_accident*.py'
       - name: Verify immutable preview import guards
-        run: python -m unittest discover -s tests/scripts -p 'test_verified_preview_stage.py'
+        run: python -m unittest discover -s tests/scripts -p 'test_verified*stage.py'
 
   report-image-regressions:
     if: github.event.action != 'closed'

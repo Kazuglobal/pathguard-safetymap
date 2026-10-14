@@ -14,9 +14,12 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Kazuglobal/pathguard-safetymap'
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 60
+    timeout-minutes: 90
+    permissions:
+      contents: write
     env:
       CI: 'true'
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -98,8 +101,25 @@ jobs:
       - name: Test independent source audit
         run: python -B scripts/migrate/audit-traffic-source.test.py
 
+      - name: Test verified nationwide publication guards
+        run: python -B -m unittest discover -s tests/scripts -p 'test_verified*stage.py'
+
       - name: Build and deploy all production Workers
         run: pnpm deploy:cloudflare
+
+      - name: Publish verified nationwide aggregate after fresh deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -B scripts/accidents/publish_verified_national.py
+
+      - name: Preserve nationwide publication evidence including partial output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accident-production-stage-${{ github.run_id }}
+          path: artifacts/verified-production-stage/
+          if-no-files-found: warn
+          retention-days: 90
 
       - name: Verify production is reachable
         shell: bash

@@ -1,0 +1,17 @@
+{
+  "completed": true,
+  "version": "national-current-rule-v1-20261014",
+  "databaseId": "a5404251-54d6-48e0-9f9d-111c206f5ce6",
+  "manifestSha256": "62cf6df35cd64651319fec287e4a12d7bad434dcb20ff1873e2fe1c32bc2db31",
+  "archiveSha256": "1df05f89526360e92c5171ee84dfa306fa3dfe0ea109ed5a938ba0bace583336",
+  "rows": {
+    "accident_snapshots": 1,
+    "accident_areas": 1952,
+    "accident_locations": 205695,
+    "accident_location_counts": 326803,
+    "accident_quality_counts": 400493,
+    "accident_regional_uncertainty_counts": 370972
+  },
+  "previewActivated": true,
+  "productionChanged": false
+}

@@ -1,4 +1,5 @@
 # Preserve diagnostic receipt bytes so recorded file hashes survive checkout.
+docs/operations/data/national-release-v1/*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-full-geometry-diagnosis.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-geometry-evidence-verification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/operations/data/national-geometry-review-ledger.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
