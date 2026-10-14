@@ -14,6 +14,9 @@ GitHub release ID `412514430` の固定 asset ID から manifest と SQL archive
 未公開の下書きは自動で公開しない。manifest と archive の固定 SHA256、全84SQLファイルの
 SHA256/サイズ、tar の通常ファイル許可リスト、リポジトリの schema SHA256 を照合する。
 取得失敗・権限不足時にはデータベースへの変更前に止まる。
+GitHubが未公開draftを読み取り専用トークンに返さないため、この専用ジョブに限り
+`contents: write` を付与する。取得スクリプトはrelease/assetにGETのみを使用し、
+draftの公開・編集、リポジトリへのpushを行わない。他のプレビューCI権限は変更しない。
 
 新しい版 `national-current-rule-v1-20261014` のみ INSERT する。既存の未公開版があれば
 追加取り込みせず停止する。部分データを削除・置換して再開しない。失敗時の成果物を保持し、

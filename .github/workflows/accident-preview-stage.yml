@@ -23,6 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: cloudflare-preview
     timeout-minutes: 90
+    # GitHub hides draft releases from tokens without repository push access.
+    # Only this approved, same-repository job receives it; the importer uses GET only.
+    permissions:
+      contents: write
+      pull-requests: read
     env:
       GH_TOKEN: ${{ github.token }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
