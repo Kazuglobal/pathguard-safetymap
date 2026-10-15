@@ -3,8 +3,16 @@ name: School Route News Images
 # 記事が参照する画像（サムネイル・記事内図版）を CI で生成してPRに積む。
 #
 # スケジュール実行のクラウドセッションには GEMINI_API_KEY が無く、本生成ができない。
-# 一方 GitHub Actions には既に secrets.GEMINI_API_KEY がある（cloudflare-production.yml が使用）。
 # そこで「記事データはセッションが書き、画像はCIが作る」分担にする。
+#
+# 【本生成を有効にするために必要な設定】
+# cloudflare-production.yml が使っている secrets.GEMINI_API_KEY は
+# environment: production スコープのため、このワークフローからは空に見える
+# （2026-10-15 の実行ログで確認済み）。本生成を動かすにはどちらかが必要:
+#   1. GEMINI_API_KEY を「リポジトリ秘密」としても登録する（推奨・影響範囲が最小）
+#   2. この job に environment: production を付ける
+#      （承認ゲートが入り、本番の全シークレットがこのjobから見えるようになる）
+# どちらも未設定の間は、暫定画像で代替してPRは緑のまま進む。
 #
 # このワークフローはデプロイを一切行わない（本番公開は main の Cloudflare Production に一本化）。
 
@@ -46,6 +54,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      # 鍵が無いときのフォールバック作図に使う。GitHub のランナーには同梱されていない
+      - name: Install ImageMagick (placeholder fallback)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends imagemagick
 
       - name: List images that need generating
         run: pnpm exec tsx scripts/generate-missing-images.ts news --dry-run
