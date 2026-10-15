@@ -186,7 +186,16 @@ npx tsx scripts/generate-missing-images.ts news --placeholder-fallback
 - **画像内に文字・数字を入れない**
 - **画像の使い回し禁止**。必ず当該記事のslugで新規生成する
 
-#### Step 5-a: 鍵が無い環境でのフォールバック（スケジュール実行）
+#### Step 5-a: CIが自動で生成する（スケジュール実行の既定の経路）
+
+**クラウドのスケジュール実行には `GEMINI_API_KEY` が無いが、GitHub Actions には有る。** そのため画像の本生成は CI に任せる。
+
+- PRを作ると `.github/workflows/school-route-news-images.yml` が走り、`lib/school-route-news.ts` が参照する画像のうち**未生成・暫定のものだけ**を生成して、**そのPRのブランチに追加コミットする**
+- したがってセッション側は**記事データ（`thumbnailUrl` と `contentImages`）を正しく書くことに集中すればよい**
+- PRを作ったら、このワークフローの結果を確認する。暫定画像が残っている場合はジョブのサマリーに一覧が出る
+- CIが `GEMINI_API_KEY` を参照できなかった場合は警告を出して暫定画像で代替するため、**PRが赤くなることはない**
+
+#### Step 5-b: 鍵が無い環境でのフォールバック（セッション側）
 
 `GEMINI_API_KEY` が無い環境では `--placeholder-fallback` を付ける。ImageMagick で**カテゴリ別の抽象イラストを slug ごとに作図**し（上記の作画要件を満たす。AI生成ではない）、`scripts/image-placeholders.json` に登録する。
 
