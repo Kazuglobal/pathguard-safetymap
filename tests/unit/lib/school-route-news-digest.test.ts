@@ -103,11 +103,19 @@ describe("findLatestWeeklyTrend (週次傾向のピン留め)", () => {
     expect(findLatestWeeklyTrend([daily("2026-07-01T09:00:00+09:00")])).toBeUndefined()
   })
 
-  it("pins the published weekly trend article from NEWS_ITEMS", () => {
+  it("derives the pinned weekly trend from NEWS_ITEMS (no hard-coded slug)", () => {
+    // 保持期間ポリシー（90日）で記事が入れ替わってもテストが壊れないよう、
+    // 固定スラッグではなく NEWS_ITEMS からの導出が一致することを検証する。
+    const newest = [...NEWS_ITEMS]
+      .filter((item) => item.newsType === "weekly_trend")
+      .sort((a, b) => Date.parse(b.publishedDate) - Date.parse(a.publishedDate))[0]
     const pinned = findLatestWeeklyTrend(NEWS_ITEMS)
-    expect(pinned?.slug).toBe("national-weekly-trend-20260706")
-    expect(pinned?.tags).toContain("週次傾向")
-    expect(pinned?.actionAdvice).toBeTruthy()
+
+    expect(pinned?.slug).toBe(newest?.slug)
+    if (newest) {
+      expect(pinned?.tags).toContain("週次傾向")
+      expect(pinned?.actionAdvice).toBeTruthy()
+    }
   })
 
   it("does not mutate the input array order", () => {
