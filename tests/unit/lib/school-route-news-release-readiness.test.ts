@@ -15,13 +15,18 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
+      "kumamoto-kita-two-days-stalking-20261015",
+      "ofunato-masaki-bicycle-hitandrun-20261011",
+      "asahikawa-higashikou-voice-call-20261008",
+      "tendo-ekinishi-candy-lure-voice-call-20261002",
+      "gifu-schools-intruder-drill-20261015",
+    ]))
+    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "omaezaki-sakura-schoolway-boy-hit-20261013",
       "suzuka-schoolway-crosswalk-hitandrun-arrest-20261014",
       "hiroshima-city-october-voice-calls-20261009",
       "okinoshima-schoolway-security-camera-20261001",
       "national-school-safety-volunteer-award-20261013",
-    ]))
-    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "kochi-city-schoolway-indecent-exposure-arrest-20261007",
       "sagamihara-minami-shimomizo-children-confinement-20261005",
       "matsue-higashitsuda-wrist-grabbed-20261006",
@@ -47,11 +52,19 @@ describe("school route news release readiness regressions", () => {
   })
 
   it("keeps NEWS_ITEMS within the 90-day retention window", () => {
-    const now = new Date("2026-10-02T00:00:00+09:00")
-    const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+    // 基準日を直書きすると、更新を止めた瞬間にゲートが素通りになる
+    // （2026-10-02 に固定されたまま期限切れ記事が9本残っていた）。
+    // 最新記事の公開日を基準にして、フィードの幅が90日を超えないことを検証する。
+    const DAY_MS = 24 * 60 * 60 * 1000
+    const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+    // 保持期間は「日」単位なので、最新記事の JST の日付の0時を基準にする
+    // （時刻まで含めると、同じ日に公開された記事が数分差で落ちる）。
+    const jstDayStart = (ms: number) => Math.floor((ms + JST_OFFSET_MS) / DAY_MS) * DAY_MS - JST_OFFSET_MS
+    const newest = Math.max(...NEWS_ITEMS.map((item) => new Date(item.publishedDate).getTime()))
+    const cutoff = jstDayStart(newest) - 90 * DAY_MS
     for (const item of NEWS_ITEMS) {
       expect(new Date(item.publishedDate).getTime(), `${item.slug} is older than the 90-day retention window`)
-        .toBeGreaterThanOrEqual(cutoff.getTime())
+        .toBeGreaterThanOrEqual(cutoff)
     }
   })
 
