@@ -24,6 +24,10 @@ function uncoveredKanji(text: string): string[] {
 }
 
 describe("splitFurigana", () => {
+  it("reads common checklist words as complete words", () => {
+    expect(splitFurigana("今日")).toEqual([{ t: "今日", r: "きょう" }])
+    expect(splitFurigana("天気")).toEqual([{ t: "天気", r: "てんき" }])
+  })
   it("annotates dictionary kanji words with readings", () => {
     const tokens = splitFurigana("正面衝突")
     expect(tokens).toEqual([{ t: "正面衝突", r: "しょうめんしょうとつ" }])
@@ -62,6 +66,11 @@ describe("splitFurigana", () => {
 })
 
 describe("kid-facing vocabulary furigana coverage", () => {
+  it("reads 行動 as こうどう while preserving 動き as うごき", () => {
+    expect(splitFurigana("行動")).toEqual([{ t: "行動", r: "こうどう" }])
+    expect(splitFurigana("動き").find((token) => token.t === "動")?.r).toBe("うご")
+  })
+
   it("covers every kanji in KID_LABEL_BY_KIND", () => {
     for (const kind of KID_DANGER_KINDS) {
       expect(uncoveredKanji(KID_LABEL_BY_KIND[kind])).toEqual([])

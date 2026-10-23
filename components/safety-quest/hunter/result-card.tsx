@@ -20,6 +20,7 @@ import type { HunterMissionReward } from "@/lib/hunter/rewards"
 import type { HunterHazard } from "@/lib/hunter/types"
 import { splitFurigana } from "@/lib/hunter/furigana"
 import { RubyText } from "./ruby-text"
+import { ActionReview } from "./action-review"
 import {
   Celebrate,
   Mascot,
@@ -281,6 +282,8 @@ export function ResultCard(props: ResultCardProps) {
         </p>
       )}
 
+      <ActionReview hazards={hazards} />
+
       {/* おうちの人と はなそう(会話のタネ) */}
       <motion.div {...rise(0.14)}>
         <PaperPanel tone="green" className="px-4 py-4">
@@ -373,6 +376,9 @@ export function ResultCard(props: ResultCardProps) {
                   </p>
                   <p className="mt-1.5 text-[13px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
                     <RubyText text={h.kidExplanation} />
+                  </p>
+                  <p className="mt-1 text-[13px] font-bold leading-relaxed" style={{ color: C.primaryStrong }}>
+                    <RubyText text={h.safeAction} />
                   </p>
                 </li>
               ))}
