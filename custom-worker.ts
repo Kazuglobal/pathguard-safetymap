@@ -240,8 +240,12 @@ const worker = {
       })
     })
   },
-  scheduled(controller, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledRoutes(controller, env, ctx), startD1Backup(controller, env)]).then(() => undefined))
+  // Await instead of ctx.waitUntil: waitUntil only extends execution for
+  // 30 seconds after the handler returns, which cut off the Gemini-backed
+  // local-alert-fetcher cron. Awaited scheduled work gets the full cron
+  // wall-clock limit.
+  async scheduled(controller, env, ctx) {
+    await Promise.all([runScheduledRoutes(controller, env, ctx), startD1Backup(controller, env)])
   },
 } satisfies ExportedHandler<RouterEnv>
 
