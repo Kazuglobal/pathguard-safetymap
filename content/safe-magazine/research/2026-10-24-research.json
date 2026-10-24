@@ -59,7 +59,15 @@
       "data_as_of": "調査期間 2026年7月22日〜7月26日／有効回答1,973件／公表 2026年9月1日。制度は2026年9月1日施行",
       "category": "policy-update",
       "relevance_score": 9,
-      "keywords": ["生活道路", "法定速度", "30km/h", "中央線", "車両通行帯", "認知度", "通学路"],
+      "keywords": [
+        "生活道路",
+        "法定速度",
+        "30km/h",
+        "中央線",
+        "車両通行帯",
+        "認知度",
+        "通学路"
+      ],
       "requires_fact_check": true,
       "cross_checked_by": 4,
       "verification_status": "APPROVED",
@@ -98,7 +106,15 @@
       "data_as_of": "交通事故総合分析センター（ITARDA）の2025年1月〜12月データ／公表 2026年9月",
       "category": "danger-ranking",
       "relevance_score": 9,
-      "keywords": ["自転車通学", "中学生", "高校生", "都道府県ランキング", "群馬県", "第1当事者", "ITARDA"],
+      "keywords": [
+        "自転車通学",
+        "中学生",
+        "高校生",
+        "都道府県ランキング",
+        "群馬県",
+        "第1当事者",
+        "ITARDA"
+      ],
       "requires_fact_check": true,
       "cross_checked_by": 4,
       "verification_status": "APPROVED",
@@ -114,7 +130,8 @@
         "gunma_high_school_streak": "高校生は12年連続ワースト1位",
         "first_party_rate_national": "中学生21.0%、高校生21.8%（中高生ともに約2割が加害者側）",
         "first_party_worst": "中学生 1位 栃木県、2位 東京都、3位 和歌山県／高校生 1位 東京都、2位 栃木県、3位 兵庫県",
-        "ranking_exclusion": "自転車事故件数が10件以下の県はランキングから除外（中学生10県、高校生1県）"
+        "ranking_exclusion": "自転車事故件数が10件以下の県はランキングから除外（中学生10県、高校生1県）",
+        "denominator_caveat": "1万人当たりの件数の分母は在籍生徒数であり、自転車通学者数・走行距離・走行時間では調整されていない。したがって中学→高校で自転車通学の割合が上がれば、通学者1人あたりのリスクが変わらなくても件数と1万人当たり件数の差は生じ得る。この集計から言えるのは『高校段階で事故の件数が大きい』ことまでで、『通学者1人あたりのリスクが高校で上がる』とは言えない"
       }
     }
   ],
@@ -138,6 +155,10 @@
     {
       "fact": "2026年11月の薄暮時間帯死亡事故件数",
       "reason": "リサーチ日（2026年10月24日）時点で未到来・未集計"
+    },
+    {
+      "fact": "「1万人当たりでも差があるのだから、通学者1人あたりのリスクが進学で一段上がる」という推論",
+      "reason": "1万人当たりの分母は在籍生徒数であり自転車通学者数ではないため、自転車通学の参加率の差だけでこの差は説明可能。exposure（どれだけ乗っているか）で調整されたデータが本集計に含まれないため、リスクの比較としては成立しない。PR #260 のレビュー指摘（Codex P2）を受けて記事本文・keyPoints・excerpt から当該断定を削除し、言える範囲（件数の大きさ／進学が自転車通学の本格化する節目）に限定した"
     }
   ],
   "follow_up_watchlist": [
@@ -145,37 +166,53 @@
       "series": "シリーズ:30km/h規制ウォッチ",
       "watching": "警察庁による生活道路の法定速度引下げ後の集計（速度違反取締り件数・生活道路での事故件数の前後比較）",
       "expected": "施行から半年前後（2027年春）／警察庁の報道発表資料",
-      "previous_articles": ["30kmh-speed-limit", "30kmh-speed-limit-enforced", "30kmh-road-identification"]
+      "previous_articles": [
+        "30kmh-speed-limit",
+        "30kmh-speed-limit-enforced",
+        "30kmh-road-identification"
+      ]
     },
     {
       "series": "シリーズ:自転車青切符ウォッチ",
       "watching": "自転車に対する交通反則通告制度の導入後6か月・1年の運用状況（警察庁 交通局交通企画課）",
       "expected": "施行1年の2027年春ごろ。1か月間の運用状況は2026年5月14日に公表済み",
-      "previous_articles": ["bicycle-blue-ticket", "bicycle-blue-ticket-one-month-report"]
+      "previous_articles": [
+        "bicycle-blue-ticket",
+        "bicycle-blue-ticket-one-month-report"
+      ]
     },
     {
       "series": "シリーズ:自転車通学事故ウォッチ",
       "watching": "自転車の安全利用促進委員会『都道府県別ランキング・自転車通学時の事故件数』の2026年分（毎年9月前後に公表）",
       "expected": "2027年9月ごろ",
-      "previous_articles": ["bicycle-commute-accident-ranking-2025"]
+      "previous_articles": [
+        "bicycle-commute-accident-ranking-2025"
+      ]
     },
     {
       "series": "ゾーン30プラス",
       "watching": "国土交通省『生活道路の交通安全に係る連携施策「ゾーン30プラス」の取組状況について』の令和8年版（全国地区数の更新）",
       "expected": "例年5〜6月ごろ。令和7年3月末時点で全国263地区",
-      "previous_articles": ["zone30plus-model-areas"]
+      "previous_articles": [
+        "zone30plus-model-areas"
+      ]
     },
     {
       "series": "通学路合同点検",
       "watching": "文部科学省・国土交通省・警察庁による通学路合同点検の対策必要箇所と対策完了状況の最新集計",
       "expected": "未定（直近の全国集計は7万6,404か所）",
-      "previous_articles": ["school-route-safety-statistics", "chikushino-accident"]
+      "previous_articles": [
+        "school-route-safety-statistics",
+        "chikushino-accident"
+      ]
     },
     {
       "series": "季節連動",
       "watching": "令和8年『冬の交通安全運動／年末の交通事故防止運動』の実施要綱（都道府県ごと・11月下旬〜12月上旬に公表されることが多い）",
       "expected": "2026年11月〜12月",
-      "previous_articles": ["autumn-twilight-reflective-gear"]
+      "previous_articles": [
+        "autumn-twilight-reflective-gear"
+      ]
     }
   ],
   "next_recommended_themes": [
