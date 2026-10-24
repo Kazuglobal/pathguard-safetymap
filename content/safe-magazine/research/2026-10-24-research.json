@@ -1,0 +1,187 @@
+{
+  "research_date": "2026-10-24",
+  "researcher": "news-researcher (SAFE MAGAZINE weekly)",
+  "editorial_calendar_slot": "10〜11月: 薄暮時間帯の事故・反射材 / 12〜1月への先回り",
+  "environment_notes": [
+    "本セッションはクラウド実行環境のため、WebFetch と curl による直接のページ取得が egress ポリシーで拒否された（connect_rejected / ENOTFOUND）。",
+    "そのため各事実は WebSearch を複数回・異なるクエリで実行し、一次プレスリリース・公的機関ページ・複数の報道の要約が一致することを確認して採用した。",
+    "数値の表記が1ソースにしか現れず他ソースで裏が取れなかったものは、記事本文では使用していない（下記 rejected_facts 参照）。"
+  ],
+  "existing_articles_checked": 18,
+  "excluded_duplicate_topics": [
+    {
+      "topic": "薄暮時間帯の事故と反射材",
+      "reason": "2026-09-04-autumn-twilight-reflective-gear で既出。年間カレンダーの10〜11月テーマだが同一トピックのため除外"
+    },
+    {
+      "topic": "秋の全国交通安全運動の全国重点",
+      "reason": "2026-09-11-autumn-campaign-bicycle-rules および 2026-05-01-spring-traffic-safety-2026 で既出"
+    },
+    {
+      "topic": "自転車青切符の運用状況",
+      "reason": "2026-07-05-bicycle-blue-ticket-one-month-report で既出。半年分の公式集計はリサーチ時点で未公表のため続報化できず（続報候補に記録）"
+    },
+    {
+      "topic": "ゾーン30プラスの進捗",
+      "reason": "2026-05-01-zone30plus-model-areas で既出。令和8年分の全国地区数の公表を確認できず（続報候補に記録）"
+    },
+    {
+      "topic": "通学路の防犯カメラ整備（島根県隠岐の島町・10月1日運用開始）",
+      "reason": "2026-03-15-ai-camera-kakogawa と類似トピック。かつ設置場所の記述が報道各社で食い違い、一次情報を確認できなかったため不採用"
+    },
+    {
+      "topic": "冬の交通安全運動／年末の交通事故防止運動",
+      "reason": "令和8年（2026年）版の実施要綱が多くの都道府県で未公表。確認できたのは令和7年以前の要綱のみのため、今回は記事化を見送り次回テーマに回す"
+    }
+  ],
+  "items": [
+    {
+      "id": "2026-10-24-001",
+      "title": "生活道路30km/h化、ドライバーの約6割が「内容を十分に知らない」——最大の不安は「どの道路が対象かわからない」",
+      "summary": "東京海上ダイレクト損害保険が2026年9月1日に公表した意識調査で、2026年9月1日施行の生活道路の法定速度引下げを「知っている」と答えた人は約4割にとどまった。順守するうえで最も多く挙がった不安は「どの道路が対象かわからない」。調査は2026年7月22〜26日に同社契約者を対象にインターネットで実施、有効回答1,973件。",
+      "source_urls": [
+        "https://www.e-design.net/company/news/2026/2026_09_01.html",
+        "https://prtimes.jp/main/html/rd/p/000000153.000022908.html",
+        "https://response.jp/article/2026/09/01/415958.html",
+        "https://news.mynavi.jp/article/20260902-4903723/",
+        "https://www.pref.niigata.lg.jp/site/kenkei/seikatu-douro-hikisage.html",
+        "https://www.gov-online.go.jp/article/202610/entry-11684.html"
+      ],
+      "source_names": [
+        "東京海上ダイレクト損害保険（旧イーデザイン損保）公式ニュース",
+        "PR TIMES（同社プレスリリース）",
+        "レスポンス",
+        "マイナビニュース",
+        "新潟県警察（公式）",
+        "政府広報オンライン（2026年10月）"
+      ],
+      "evidence_grade": "[専門機関]（意識調査） + [公式発表]（制度内容） + [報道]（周辺解説）",
+      "data_as_of": "調査期間 2026年7月22日〜7月26日／有効回答1,973件／公表 2026年9月1日。制度は2026年9月1日施行",
+      "category": "policy-update",
+      "relevance_score": 9,
+      "keywords": ["生活道路", "法定速度", "30km/h", "中央線", "車両通行帯", "認知度", "通学路"],
+      "requires_fact_check": true,
+      "cross_checked_by": 4,
+      "verification_status": "APPROVED",
+      "approved_for_publication": true,
+      "article_decision": "T4 シリーズ追跡型として記事化（シリーズ:30km/h規制ウォッチ 3本目）。前回 2026-09-04-30kmh-speed-limit-enforced との差分は『認知度が数値で判明した』『最大の不安が対象道路の判別だと特定された』『判別の3条件と標識優先の例外を整理した』『政府広報オンラインが2026年10月に改めて周知した』の4点",
+      "verified_facts": {
+        "enforcement_date": "2026年9月1日（改正道路交通法施行令）",
+        "change": "対象道路の法定速度を60km/hから30km/hへ引下げ",
+        "target_road_conditions": "中央線がない／車両通行帯がない／中央分離帯等で往復の方向別に分離されていない、の3条件をすべて満たす一般道路",
+        "exception": "道路標識・道路標示で最高速度が指定されている道路は、指定された速度が優先される",
+        "common_misunderstanding": "住宅街にある道路や道幅が狭い道路でも、中央線や車両通行帯が設けられていれば対象外",
+        "survey_awareness": "法改正を「知っている」と答えた人は約4割（＝約6割は内容を十分に知らない、または全く知らない）",
+        "survey_top_concern": "「どの道路が対象かわからない」",
+        "bicycle_scope": "今回引き下げられたのは自動車等の法定速度。自転車は今回の改正の対象ではない"
+      }
+    },
+    {
+      "id": "2026-10-24-002",
+      "title": "通学時の自転車事故、2025年は中学生1,688件・高校生7,081件でともに増加——1万人当たりは群馬県が中高ともワースト、高校生は12年連続",
+      "summary": "自転車の安全利用促進委員会が2026年9月に公表した『2025年 都道府県別ランキング・自転車通学時の事故件数』で、通学時の自転車事故は中学生1,688件（前年1,654件）、高校生7,081件（前年6,843件、+3.5%）とともに増加した。自転車事故全体は67,470件で前年比0.1%減。生徒1万人当たりの件数は中学生・高校生ともに群馬県がワースト1位で、高校生は12年連続。第1当事者（加害者）となった割合は全国平均で中学生21.0%、高校生21.8%。",
+      "source_urls": [
+        "https://www.atpress.ne.jp/news/630576",
+        "https://response.jp/article/2026/09/12/416499.html",
+        "https://resemom.jp/article/2026/10/08/87810.html",
+        "https://carcareplus.jp/article/2026/09/14/15665.html",
+        "https://np-schools.com/news/28136"
+      ],
+      "source_names": [
+        "@Press（自転車の安全利用促進委員会 プレスリリース原文）",
+        "レスポンス",
+        "リセマム",
+        "カーケアプラス",
+        "上毛新聞系 教育ニュース"
+      ],
+      "evidence_grade": "[専門機関]（自転車の安全利用促進委員会／一般社団法人自転車協会・交通事故総合分析センター(ITARDA)データ） + [報道]",
+      "data_as_of": "交通事故総合分析センター（ITARDA）の2025年1月〜12月データ／公表 2026年9月",
+      "category": "danger-ranking",
+      "relevance_score": 9,
+      "keywords": ["自転車通学", "中学生", "高校生", "都道府県ランキング", "群馬県", "第1当事者", "ITARDA"],
+      "requires_fact_check": true,
+      "cross_checked_by": 4,
+      "verification_status": "APPROVED",
+      "approved_for_publication": true,
+      "article_decision": "T2 統計解説型として記事化。既存の自転車関連記事（青切符・秋の運動・岐阜の事故）とは扱う対象（年次の都道府県統計）が異なるため重複ではない。年次更新される統計のため定点観測枠として続報候補に登録",
+      "verified_facts": {
+        "junior_high_total": "1,688件（前年1,654件から34件・約2.1%増）",
+        "high_school_total": "7,081件（前年6,843件から238件・3.5%増）",
+        "all_bicycle_accidents_2025": "67,470件（前年67,531件から61件・0.1%減）",
+        "worst3_junior_high_per_10k": "1位 群馬県、2位 徳島県、3位 香川県",
+        "worst3_high_school_per_10k": "1位 群馬県（98.70件）、2位 静岡県（62.08件）、3位 愛知県（49.12件）",
+        "gunma_junior_high_per_10k": "29.17件（前年33.94件から減少）",
+        "gunma_high_school_streak": "高校生は12年連続ワースト1位",
+        "first_party_rate_national": "中学生21.0%、高校生21.8%（中高生ともに約2割が加害者側）",
+        "first_party_worst": "中学生 1位 栃木県、2位 東京都、3位 和歌山県／高校生 1位 東京都、2位 栃木県、3位 兵庫県",
+        "ranking_exclusion": "自転車事故件数が10件以下の県はランキングから除外（中学生10県、高校生1県）"
+      }
+    }
+  ],
+  "rejected_facts": [
+    {
+      "fact": "栃木県の中学生 第1当事者率55.9%／東京都の高校生 55.3%",
+      "reason": "ワースト1位という順位は複数ソースで一致したが、具体的な率は1系統の要約にしか現れず、全国平均（中学生21.0%／高校生21.8%）との整合も確認できなかったため本文では使用しない"
+    },
+    {
+      "fact": "生活道路30km/h化で『各地の警察の見解が割れ、一部が撤回された』",
+      "reason": "出典が自動車専門誌系のコラム（2026年10月13日配信）のみで、一次情報（各県警の公式見解や撤回の事実）を確認できなかったため記事化しない"
+    },
+    {
+      "fact": "対象道路の条件に『車道幅5.5m未満』を含める説明",
+      "reason": "一部の解説記事にのみ現れる。警察庁・県警の公式説明は『中央線・車両通行帯・中央分離帯等がない』という道路構造の条件であり、幅員の数値基準は確認できなかったため使用しない"
+    },
+    {
+      "fact": "令和8年（2026年）の通学路合同点検の全国集計／ゾーン30プラスの令和8年地区数",
+      "reason": "リサーチ時点で公表を確認できず。続報候補として記録"
+    },
+    {
+      "fact": "2026年11月の薄暮時間帯死亡事故件数",
+      "reason": "リサーチ日（2026年10月24日）時点で未到来・未集計"
+    }
+  ],
+  "follow_up_watchlist": [
+    {
+      "series": "シリーズ:30km/h規制ウォッチ",
+      "watching": "警察庁による生活道路の法定速度引下げ後の集計（速度違反取締り件数・生活道路での事故件数の前後比較）",
+      "expected": "施行から半年前後（2027年春）／警察庁の報道発表資料",
+      "previous_articles": ["30kmh-speed-limit", "30kmh-speed-limit-enforced", "30kmh-road-identification"]
+    },
+    {
+      "series": "シリーズ:自転車青切符ウォッチ",
+      "watching": "自転車に対する交通反則通告制度の導入後6か月・1年の運用状況（警察庁 交通局交通企画課）",
+      "expected": "施行1年の2027年春ごろ。1か月間の運用状況は2026年5月14日に公表済み",
+      "previous_articles": ["bicycle-blue-ticket", "bicycle-blue-ticket-one-month-report"]
+    },
+    {
+      "series": "シリーズ:自転車通学事故ウォッチ",
+      "watching": "自転車の安全利用促進委員会『都道府県別ランキング・自転車通学時の事故件数』の2026年分（毎年9月前後に公表）",
+      "expected": "2027年9月ごろ",
+      "previous_articles": ["bicycle-commute-accident-ranking-2025"]
+    },
+    {
+      "series": "ゾーン30プラス",
+      "watching": "国土交通省『生活道路の交通安全に係る連携施策「ゾーン30プラス」の取組状況について』の令和8年版（全国地区数の更新）",
+      "expected": "例年5〜6月ごろ。令和7年3月末時点で全国263地区",
+      "previous_articles": ["zone30plus-model-areas"]
+    },
+    {
+      "series": "通学路合同点検",
+      "watching": "文部科学省・国土交通省・警察庁による通学路合同点検の対策必要箇所と対策完了状況の最新集計",
+      "expected": "未定（直近の全国集計は7万6,404か所）",
+      "previous_articles": ["school-route-safety-statistics", "chikushino-accident"]
+    },
+    {
+      "series": "季節連動",
+      "watching": "令和8年『冬の交通安全運動／年末の交通事故防止運動』の実施要綱（都道府県ごと・11月下旬〜12月上旬に公表されることが多い）",
+      "expected": "2026年11月〜12月",
+      "previous_articles": ["autumn-twilight-reflective-gear"]
+    }
+  ],
+  "next_recommended_themes": [
+    "【12月・T6】令和8年 冬の交通安全運動／年末の交通事故防止運動の重点——要綱が公表され次第、通学路に関わる重点を抽出する",
+    "【12〜1月・T6】積雪・路面凍結期の通学路（圧雪・ブラックアイスバーン、除雪で狭くなった歩行空間、雪山による見通しの悪化）",
+    "【T5】保存版・冬休み前の通学路チェックリスト（薄暮＋路面＋行動範囲の拡大をまとめた1枚）",
+    "【T4】警察庁の生活道路30km/h施行後集計が出た時点で「30km/h規制ウォッチ」4本目"
+  ]
+}

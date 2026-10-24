@@ -962,6 +962,106 @@ ${QUALITY_SUFFIX}`,
         description: "反射材をつける3か所（ランドセル／靴／傘・袖口）"
       }
     ]
+  },
+  {
+    articleId: "2026-10-24-30kmh-road-identification",
+    articleSlug: "30kmh-road-identification",
+    category: "policy-update",
+    title: "生活道路30km/hの対象道路を見分ける3条件",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a parent and child checking whether their school route road is covered by the new 30km/h default speed limit.
+
+Scene elements (Japanese specific):
+- A parent and an elementary school child, seen mostly from behind and from the side, standing safely on the edge of a narrow Japanese residential street
+- The child wears a yellow school cap and a randoseru backpack; the parent points down at the road surface
+- The road clearly has NO centre line painted down the middle and no lane markings - the empty middle of the asphalt is the focal point of the composition
+- A green belt edge marking along the side of the road, a school zone sign on a pole, low garden walls and Japanese two-storey houses
+- In the far background, a wider road where a faint white centre line IS visible, to contrast the two road types
+- A small car approaching slowly in the distance, well separated from the pair
+
+Mood: Calm, instructive, reassuring; this is about learning to read the road, not about danger. No crash, no injury, no near-miss.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines, warm late-October afternoon light
+Color palette: Warm autumn amber and soft grey asphalt, with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, speed limit numerals, police enforcement imagery, text overlays
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "three-conditions-check",
+        prompt: `Create a clean Japanese educational infographic showing the three structural conditions that decide whether a road is covered by the new default 30km/h limit, as three numbered panels side by side. Each panel is a simple bird's-eye-view diagram of a short stretch of road.
+
+PANEL 1 - NO CENTRE LINE: a plain grey road strip with the middle completely empty, and beside it a faded ghost version of the same road WITH a white dashed centre line, marked with a small red cross to show that version is NOT covered.
+PANEL 2 - NO LANE MARKINGS: a plain road strip with no lane-dividing lines, beside a faded ghost version divided into two marked lanes with a small red cross.
+PANEL 3 - NO CENTRAL DIVIDER: a plain road strip, beside a faded ghost version with a raised concrete and planted median separating the two directions, marked with a small red cross.
+
+A single green check mark circle sits at the end of the row, indicating that all three must apply together.
+
+Style: Flat Japanese infographic design on a light neutral background, clear numbered circles 1, 2 and 3, purple and amber accent colours, educational aesthetic, no vehicles and no people
+Avoid (negative prompt): photographic textures, real brand logos, garbled text, any lettering other than the numerals 1, 2 and 3
+${QUALITY_SUFFIX}`,
+        description: "対象道路を見分ける3条件（中央線なし／車両通行帯なし／中央分離帯なし）"
+      },
+      {
+        id: "sign-priority-exception",
+        prompt: `Create a clear Japanese educational infographic explaining that a posted speed limit sign overrides the new default limit.
+
+Layout: a single narrow Japanese residential road drawn in perspective with no centre line. A round Japanese speed limit sign on a slim pole stands at the roadside, drawn blank with a plain white face and red rim so that no numeral is shown. A bold upward arrow runs from the sign, and a simple balance-scale icon beside it tips toward the sign, indicating that the sign wins over the default rule.
+
+Below, two small side-by-side badges: a plain road badge and a road-with-sign badge, with the road-with-sign badge visually emphasised.
+
+Style: Flat Japanese infographic design on a light background, purple and amber accents, clean geometric shapes, educational aesthetic, no people and no vehicles
+Avoid (negative prompt): photographic textures, real brand logos, garbled text, any numerals or lettering on the sign face or anywhere in the image
+${QUALITY_SUFFIX}`,
+        description: "標識優先の例外（標識があるときは標識の速度が優先される）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-10-24-bicycle-commute-accident-ranking-2025",
+    articleSlug: "bicycle-commute-accident-ranking-2025",
+    category: "danger-ranking",
+    title: "通学時の自転車事故・都道府県別統計（2025年）",
+    thumbnailPrompt: `Create a Japanese editorial illustration about bicycle commuting safety for junior high and high school students, paired with a data theme.
+
+Scene elements (Japanese specific):
+- Two students in Japanese school uniforms riding bicycles to school, seen from behind and the side so no faces are prominent; both wear properly fastened bicycle helmets
+- The nearer student has one foot down on the ground at a stop line at a residential intersection, looking right and left
+- A Japanese suburban commuting road at dusk: a green belt edge marking, a guardrail, a school zone sign, a stop marking suggested only as an abstract painted shape on the asphalt
+- Bicycle front lights switched on, rear reflectors catching the light, early sunset sky in late October
+- On one side of the composition, a soft abstract bar-chart motif rising in the background haze, suggesting statistics without any numerals
+
+Mood: Serious but constructive; the stopped foot, the helmet and the lit front lamp are the hero elements. No crash, no injury.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Dusk indigo and amber, with an orange accent to match the danger-ranking category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, text overlays, any numerals or lettering
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "junior-to-high-jump",
+        prompt: `Create a clean Japanese educational infographic contrasting the scale of bicycle commuting accidents between junior high school students and high school students, using shape size rather than text.
+
+Layout: two columns side by side on a light background.
+LEFT COLUMN - JUNIOR HIGH: a small cluster of simple bicycle silhouettes stacked into a short bar, with a single generic student figure in a junior high uniform silhouette beside it.
+RIGHT COLUMN - HIGH SCHOOL: a much taller bar made of the same bicycle silhouettes, roughly four times the height of the left bar, with a generic high school uniform silhouette beside it.
+Between the two columns, a wide upward curving arrow accompanied by a stylised cherry blossom icon, representing the transition at the spring school entrance.
+
+Style: Flat Japanese infographic design, orange and indigo accent colours, clean geometric shapes, silhouettes only for people, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any numerals or lettering
+${QUALITY_SUFFIX}`,
+        description: "中学生と高校生の通学時自転車事故件数の規模比較（高校生は約4.2倍）"
+      },
+      {
+        id: "first-party-one-in-five",
+        prompt: `Create a simple Japanese educational infographic showing that roughly one in five bicycle commuting accidents has the student on the at-fault side.
+
+Layout: a single horizontal row of five identical rounded cards. Four cards show a plain bicycle silhouette in calm blue-grey. The fifth card, visually emphasised with an orange fill and a slightly raised shadow, shows the same bicycle silhouette together with a small shield-and-handshake icon representing liability insurance.
+
+Below the row, a wide flat band with three simple icons in a line: a document with a seal, a house, and an umbrella, representing the places a family can check whether they already hold personal liability coverage.
+
+Style: Flat Japanese infographic design on a light neutral background, orange and blue-grey palette, clean geometric shapes, no people
+Avoid (negative prompt): photographic textures, real brand logos, garbled text, any numerals or lettering, depiction of a crash or injury
+${QUALITY_SUFFIX}`,
+        description: "通学時自転車事故の約5件に1件は生徒側が第1当事者（賠償への備えの確認先）"
+      }
+    ]
   }
 ]
 
