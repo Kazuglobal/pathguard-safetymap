@@ -1,0 +1,107 @@
+name: School Route News Images
+
+# 記事が参照する画像（サムネイル・記事内図版）を CI で生成してPRに積む。
+#
+# スケジュール実行のクラウドセッションには GEMINI_API_KEY が無く、本生成ができない。
+# そこで「記事データはセッションが書き、画像はCIが作る」分担にする。
+#
+# 【本生成を有効にするために必要な設定】
+# cloudflare-production.yml が使っている secrets.GEMINI_API_KEY は
+# environment: production スコープのため、このワークフローからは空に見える
+# （2026-10-15 の実行ログで確認済み）。本生成を動かすにはどちらかが必要:
+#   1. GEMINI_API_KEY を「リポジトリ秘密」としても登録する（推奨・影響範囲が最小）
+#   2. この job に environment: production を付ける
+#      （承認ゲートが入り、本番の全シークレットがこのjobから見えるようになる）
+# どちらも未設定の間は、暫定画像で代替してPRは緑のまま進む。
+#
+# このワークフローはデプロイを一切行わない（本番公開は main の Cloudflare Production に一本化）。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'lib/school-route-news.ts'
+      - 'scripts/generate-missing-images.ts'
+      - 'scripts/school-route-placeholder-art.ts'
+      - 'scripts/image-prompts/**'
+      - 'scripts/image-placeholders.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: school-route-news-images-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    # フォークからのPRにはシークレットが渡らないので実行しない
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          # GITHUB_TOKEN による push は次のワークフローを起こさないため、生成ループにならない
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # 鍵が無いときのフォールバック作図に使う。GitHub のランナーには同梱されていない
+      - name: Install ImageMagick (placeholder fallback)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends imagemagick
+
+      - name: List images that need generating
+        run: pnpm exec tsx scripts/generate-missing-images.ts news --dry-run
+
+      - name: Generate images
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_IMAGE_MODEL: ${{ vars.GEMINI_IMAGE_MODEL }}
+        run: |
+          set -eu
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+            echo "::warning title=GEMINI_API_KEY が参照できません::本生成ができないため暫定画像で代替します。リポジトリのシークレットが environment スコープ（production）になっていないか確認してください。"
+            pnpm exec tsx scripts/generate-missing-images.ts news --placeholder-fallback
+          else
+            pnpm exec tsx scripts/generate-missing-images.ts news
+          fi
+
+      - name: Commit generated images
+        run: |
+          set -eu
+          if git diff --quiet -- public/images/school-route-news scripts/image-placeholders.json; then
+            echo "差分なし（すべて生成済み）"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/images/school-route-news scripts/image-placeholders.json
+          git commit -m "chore(school-route-news): 記事が参照する画像を生成する"
+          git push
+
+      - name: Report remaining provisional images
+        if: always()
+        run: |
+          set -eu
+          if [ -f scripts/image-placeholders.json ]; then
+            {
+              echo "### 暫定画像が残っています"
+              echo
+              echo "本生成に差し替えるには \`GEMINI_API_KEY\` を参照できる状態で再実行してください。"
+              echo
+              echo '```json'
+              cat scripts/image-placeholders.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### 画像はすべて本生成済みです" >> "$GITHUB_STEP_SUMMARY"
+          fi
