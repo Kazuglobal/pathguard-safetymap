@@ -710,6 +710,68 @@ Color palette: Purple and blue-violet for policy and official action, green acce
 Mood: Determined, constructive, institutional response to a preventable tragedy
 ${QUALITY_SUFFIX}`,
     description: "小牧市 市議会による信号機設置・通学路緊急点検の要望（2026年7月26日号）"
+  },
+  {
+    slug: "tokushima-oshin-higashisadakata-schoolway-girl-hit-20261023",
+    filename: "tokushima-oshin-higashisadakata-schoolway-girl-hit-20261023.jpg",
+    prompt: `Create a Japanese safety awareness illustration about the danger of crossing at an intersection that has no traffic signal and no crosswalk markings, during the afternoon walk home from school.
+
+Scene elements (abstract, NOT depicting injury, blood, or any person being hit):
+- A plain suburban crossroads on a narrow local road, with completely bare asphalt: NO white crosswalk stripes anywhere and NO traffic signal pole anywhere
+- One light-coloured compact car silhouette approaching from the side road, its windows plain dark glass with no faces visible
+- Two small school-children silhouettes, an older and a younger one, standing together and stopped at the kerb well back from the road edge, seen from behind so no faces are shown, both wearing yellow caps and school backpacks
+- A soft red caution outline drawn across the bare roadway where a crosswalk would have been, marking the unprotected crossing line
+- Mid-afternoon autumn light, long soft shadows, low sun, dry leaves at the roadside
+
+STRICT RULE: No text, no letters, no kanji, no numbers anywhere in the image. No recognizable face. No depiction of impact or injury.
+
+Style: Clean Japanese editorial illustration, cautionary but calm
+Color palette: Red warning accents against muted autumn afternoon street tones
+Mood: The quiet moment of deciding whether to step out, not the collision
+${QUALITY_SUFFIX}`,
+    description: "徳島市応神町東貞方 信号も横断歩道もない交差点での下校中の事故（2026年10月25日号）"
+  },
+  {
+    slug: "itoigawa-yokomachi-two-voice-calls-20261023",
+    filename: "itoigawa-yokomachi-two-voice-calls-20261023.jpg",
+    prompt: `Create a Japanese crime-prevention illustration about two separate street voice-call incidents that happened in the same neighbourhood on the same afternoon, one involving a man on a bicycle and one involving a man on foot.
+
+Visual elements (abstract, NOT depicting a recognizable suspect or any physical contact):
+- A split composition showing the same small-town shopping street twice, left panel in mid-afternoon light and right panel in later low-angle light, to convey two incidents about an hour apart
+- Left panel: a faceless adult figure on a bicycle with a green front basket, passing along a pavement, rendered as a flat grey silhouette with no facial features
+- Right panel: a faceless adult figure on foot in all-black clothing with a grey cap, standing at a distance from the pavement, rendered as a flat grey silhouette with no facial features
+- In both panels, a single small school-child figure seen from behind with a school backpack, walking away from the adult figure toward a lit shop entrance
+- A soft orange caution glow tracing the pavement in both panels
+- Low-rise Japanese provincial townscape, shutters and small shopfronts, autumn afternoon
+
+STRICT RULE: No text, no letters, no kanji, no numbers anywhere in the image. No recognizable face on any figure. No depiction of physical contact.
+
+Style: Clean Japanese editorial illustration, cautionary but not frightening
+Color palette: Orange caution accents over cool late-afternoon town tones
+Mood: Alert and protective, emphasising the child moving away toward help
+${QUALITY_SUFFIX}`,
+    description: "糸魚川市横町 同日2件の声かけ事案（2026年10月25日号）"
+  },
+  {
+    slug: "gifu-city-watch-network-expansion-20261022",
+    filename: "gifu-city-watch-network-expansion-20261022.jpg",
+    prompt: `Create a Japanese editorial illustration about a city-wide IoT watch-over network for children walking to and from school, in which small beacons along the route record that a child has passed.
+
+Visual elements (constructive and reassuring, NOT depicting any danger):
+- A stylized bird's-eye view of a Japanese city neighbourhood with school routes drawn as softly glowing green lines connecting a school, shops, a community hall and houses
+- Many small rounded beacon markers placed along those routes, drawn as simple blank green dots with a soft halo, suggesting fixed watch-over spots, with no words or numbers on them
+- A taxi with a small rooftop sign rendered as a blank shape, driving along one of the routes and emitting a soft signal ring
+- A few adult figures walking with smartphones, each emitting a soft signal ring, suggesting volunteers and working people who double as watchers, drawn without facial detail
+- Elementary school children with yellow caps and school backpacks walking the routes safely in daylight
+- A very small lightweight pendant-style device shown as a plain rounded tag clipped to a school backpack, with no lettering
+
+STRICT RULE: No text, no letters, no kanji, no numbers of any kind anywhere in the image, including on signage, devices, or map labels.
+
+Style: Clean, warm Japanese editorial infographic illustration
+Color palette: Green for community safety, with soft blue signal accents and bright daylight
+Mood: Reassuring, cooperative, the whole town quietly keeping watch
+${QUALITY_SUFFIX}`,
+    description: "岐阜市 見守りスポットと端末配布による登下校見守り網（2026年10月25日号）"
   }
 ]
 
