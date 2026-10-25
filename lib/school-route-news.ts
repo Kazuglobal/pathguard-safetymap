@@ -1086,7 +1086,7 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
   {
     id: "news-2026-10-15-001",
     slug: "omaezaki-sakura-schoolway-boy-hit-20261013",
-    thumbnailUrl: "/images/school-route-news/thumbnails/omaezaki-sakura-schoolway-boy-hit-20261013.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/omaezaki-sakura-schoolway-boy-hit-20261013.jpg",
     title: "【静岡県御前崎市】登校中の9歳男児が車にはねられ重傷 運転は市内小学校の常勤講師",
     excerpt: "10月13日午前7時15分ごろ、御前崎市佐倉の県道で、集団登校の集合場所へ向かっていた9歳の男児が乗用車にはねられた。男児は頭を強く打ち重傷だが命に別状はない。運転していたのは市内の小学校に勤める25歳の常勤講師で、けがはなかった。",
     content: `## 事案の概要
@@ -1163,7 +1163,7 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
   {
     id: "news-2026-10-15-002",
     slug: "suzuka-schoolway-crosswalk-hitandrun-arrest-20261014",
-    thumbnailUrl: "/images/school-route-news/thumbnails/suzuka-schoolway-crosswalk-hitandrun-arrest-20261014.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/suzuka-schoolway-crosswalk-hitandrun-arrest-20261014.jpg",
     title: "【三重県鈴鹿市】下校中の男児はねて逃走 1年3か月後に34歳の男を逮捕",
     excerpt: "2025年7月に鈴鹿市の信号のない交差点の横断歩道で、下校中だった当時7歳の男児が車にはねられ全治6か月の大けがをしたひき逃げ事件で、三重県警は10月14日、34歳の男を無免許過失運転傷害などの疑いで逮捕した。防犯カメラの捜査などから関与が浮上したと報じられている。",
     content: `## 事案の概要
@@ -1238,7 +1238,7 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
   {
     id: "news-2026-10-15-003",
     slug: "hiroshima-city-october-voice-calls-20261009",
-    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-city-october-voice-calls-20261009.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/hiroshima-city-october-voice-calls-20261009.jpg",
     title: "【広島県広島市】子どもへの声かけ・撮影が4日間で4件 市の防犯メールが配信",
     excerpt: "広島市の防災情報メールは、10月7日から10日にかけて市内4区（西区・東区・南区・安佐南区）で子どもに対する声かけや容姿撮影の事案が発生したとして、計4件の不審者情報を配信した。いずれも下校・帰宅中、または公園で遊んでいる最中の発生である。",
     content: `## 配信された4件の概要
@@ -1312,7 +1312,7 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
   {
     id: "news-2026-10-15-004",
     slug: "okinoshima-schoolway-security-camera-20261001",
-    thumbnailUrl: "/images/school-route-news/thumbnails/okinoshima-schoolway-security-camera-20261001.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/okinoshima-schoolway-security-camera-20261001.jpg",
     title: "【島根県隠岐の島町】小中学校の通学路に防犯カメラ 10月1日から運用開始",
     excerpt: "島根県隠岐の島町で、小中学校の通学路に寄贈された防犯カメラの運用が10月1日に始まった。島根県遊技業防犯協力会の隠岐西郷支部が地元の防犯連合会にカメラを寄贈したもので、2台1組で広い範囲を見渡せるように設置され、記録は1週間ほど保存されるという。",
     content: `## 何が始まったか
@@ -1376,7 +1376,7 @@ NHKなどの報道によると、**島根県隠岐の島町**で、子どもが�
   {
     id: "news-2026-10-15-005",
     slug: "national-school-safety-volunteer-award-20261013",
-    thumbnailUrl: "/images/school-route-news/thumbnails/national-school-safety-volunteer-award-20261013.png",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-school-safety-volunteer-award-20261013.jpg",
     title: "【全国】見守り団体17団体に文科大臣の奨励賞 学校安全表彰の受賞者が決定",
     excerpt: "文部科学省が2026年度の「学校保健及び学校安全表彰」の被表彰者を決定した。報道によると、通学時の保護・誘導などを行う団体に贈られる「学校安全ボランティア活動奨励賞」には17団体が選ばれ、表彰式は11月19日に愛知県で開かれる全国学校保健・安全研究大会で行われる。",
     content: `## 何が発表されたか

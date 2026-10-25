@@ -73,7 +73,7 @@
   tags: ["タグ1", "タグ2"],
   sources: ["ソース1", "ソース2"],
   keyPoints: ["最重要ファクト", "そなえの一言"],
-  thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.png",
+  thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.jpg",
   isBreaking: true/false,
   verifiedAt: "ISO8601形式",
 
@@ -159,7 +159,9 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 - 事故現場・不審者本人を直接描かない。抽象的・注意喚起的な表現
 - 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）
 - カテゴリカラーに合わせたトーン（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ）
-- 出力先: `public/images/school-route-news/thumbnails/{slug}.png`
+- 出力先: `public/images/school-route-news/thumbnails/{slug}.jpg`（JPEG のみ。PNG を作らない）
+- 生成: `npx tsx scripts/generate-missing-images.ts news`（`thumbnailUrl` が指す欠落分だけ生成。slug 別の指定は `scripts/image-prompts/school-route-news.json`）
+- **ImageMagick 等で描いた暫定画像を置いたまま PR を出さない・マージしない。** 暫定画像は本番にそのまま公開され、後から差し替わらない（2026-10-24 分で発生）。`GEMINI_API_KEY` が無い環境では画像を置かず `thumbnailUrl` も書かず、PR を draft にして「画像未生成」を本文の先頭に書く。release-readiness の「uses generated artwork」テスト（100KB 以上の JPEG・重複なし）が暫定画像を弾く
 - **サムネイルの使い回し禁止**。必ず当該記事のslugで新規生成する
 
 ### Step 6: 公開前監査（regional-coverage-auditor・必須ゲート）
