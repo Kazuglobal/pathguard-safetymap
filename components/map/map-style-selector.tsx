@@ -245,7 +245,7 @@ export default function MapStyleSelector({
     return (
       <Popover open={isDisplaySheetOpen} onOpenChange={setIsDisplaySheetOpen}>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent align={contentAlign} className="w-[24rem] rounded-2xl p-4">
+        <PopoverContent align={contentAlign} className="max-h-[var(--radix-popover-content-available-height)] w-[24rem] overflow-y-auto rounded-2xl p-4">
           <div className="mb-4 space-y-1">
             <p className="text-base font-semibold text-slate-950">表示する情報</p>
             <p className="text-xs text-slate-500">地図の見た目と重ねる情報を選択します。</p>

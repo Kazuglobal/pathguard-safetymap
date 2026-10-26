@@ -91,7 +91,9 @@ async function waitForCardImages(
 
   await Promise.all(
     images.map((image) => {
-      if (image.complete && image.naturalHeight > 0) {
+      // 画面外のカードも共有対象になる。lazyのまま待つと読み込みが始まらない。
+      image.loading = "eager"
+      if (image.complete) {
         return Promise.resolve()
       }
 
@@ -172,19 +174,27 @@ export async function shareFamilyShareCard({
   if (typeof File !== "undefined" && typeof nav.share === "function") {
     const file = new File([blob], fileName, { type: "image/png" })
     if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
-      await nav.share({
-        title: card.title,
-        text: shareText,
-        files: [file],
-      })
-      return { mode: "share" as const }
+      try {
+        await nav.share({
+          title: card.title,
+          text: shareText,
+          files: [file],
+        })
+        return { mode: "share" as const }
+      } catch (error) {
+        // 画像生成を待つ間にユーザー操作の有効期間が切れる端末では保存に切り替える。
+        if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
+          throw error
+        }
+      }
     }
   }
 
   downloadBlob(blob, fileName)
 
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(shareText)
+    // 画像の保存は完了している。コピー権限の拒否で共有全体を失敗扱いにしない。
+    await navigator.clipboard.writeText(shareText).catch(() => undefined)
   }
 
   return { mode: "download" as const }

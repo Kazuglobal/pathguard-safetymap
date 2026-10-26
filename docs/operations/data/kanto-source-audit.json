@@ -1,0 +1,10 @@
+{
+  "source": "https://download.geofabrik.de/asia/japan/kanto-261009.osm.pbf",
+  "retrievedAt": "2026-10-11",
+  "license": "ODbL 1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "bytes": 517790355,
+  "md5": "c349fd54af45fef502b69450dbaeabab",
+  "sha256": "11c72483ff81ab7a61f0581278310e7e3357a6a6006ef0a6f1bfddbaea3bd499",
+  "scope": "Kanto input for Kashiwa pilot; not complete national coverage"
+}

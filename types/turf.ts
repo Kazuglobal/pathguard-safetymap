@@ -26,4 +26,7 @@ declare module "@turf/turf" {
   const turf: any
   export default turf
   export * from "@turf/helpers"
-} 
+  export const earthRadius: number
+  export function circle(center: number[], radius: number, options?: { steps?: number; units?: 'kilometers' | 'meters'; properties?: Record<string, unknown> }): import('geojson').Feature<import('geojson').Polygon>
+  export function featureCollection<G extends import('geojson').Geometry>(features: import('geojson').Feature<G>[]): import('geojson').FeatureCollection<G>
+}

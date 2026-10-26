@@ -51,7 +51,7 @@ describe('MapFloatingControls mobile layout', () => {
 
     expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
     expect(screen.getByTestId('map-display-dock')).toHaveStyle({
-      bottom: '5.75rem',
+      bottom: '9rem',
     })
     expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
   })
@@ -70,7 +70,7 @@ describe('MapFloatingControls mobile layout', () => {
     renderControls()
 
     expect(screen.getByTestId('mobile-action-dock')).toHaveStyle({
-      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)',
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
     })
     expect(screen.getByRole('button', { name: '危険地点一覧を開く' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
@@ -101,6 +101,43 @@ describe('MapFloatingControls mobile layout', () => {
   it('does not render the bottom legend on mobile', () => {
     renderControls()
 
-    expect(screen.queryByTitle('交通危険')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-legend-compact')).not.toBeInTheDocument()
+  })
+
+  it('offers the legend behind a button on mobile', () => {
+    renderControls()
+
+    expect(screen.getByRole('button', { name: 'ピンの見方を表示' })).toBeInTheDocument()
+  })
+
+  it('shows the always-visible legend on desktop instead of the button', () => {
+    renderControls({ isMobile: false })
+
+    expect(screen.getByTestId('map-legend-compact')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ピンの見方を表示' })).not.toBeInTheDocument()
+  })
+})
+
+describe('MapFloatingControls mobile menu (bottom tab bar is hidden on the map)', () => {
+  it('opens a menu with the other screens from the action dock', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    renderControls()
+
+    await user.click(screen.getByRole('button', { name: 'メニューを開く' }))
+
+    const links = await screen.findAllByRole('link')
+    expect(links.map((link) => [link.getAttribute('aria-label'), link.getAttribute('href')])).toEqual([
+      ['ホーム', '/landing'],
+      ['きけんハンター', '/safety-quest/hunter'],
+      ['通学路', '/routes'],
+      ['活動', '/mypage'],
+      ['報告一覧', '/report'],
+    ])
+  })
+
+  it('does not show the menu button on desktop, where the top navigation stays', () => {
+    renderControls({ isMobile: false })
+    expect(screen.queryByRole('button', { name: 'メニューを開く' })).not.toBeInTheDocument()
   })
 })

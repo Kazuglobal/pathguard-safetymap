@@ -109,6 +109,35 @@ describe("family-share-card", () => {
     expect(textWith).toContain("一人で通らない")
   })
 
+  const card = { title: "危険地点", summary: "横断前に確認", mapLabel: "通学路" }
+
+  it("downloads when native sharing loses user activation and clipboard permission is denied", async () => {
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true })
+    vi.mocked(navigator.share).mockRejectedValue(new DOMException("", "NotAllowedError"))
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new DOMException("", "NotAllowedError"))
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
+
+    await expect(shareFamilyShareCard({ cardElement: document.createElement("div"), card })).resolves.toEqual({ mode: "download" })
+    expect(click).toHaveBeenCalledOnce()
+    click.mockRestore()
+  })
+
+  it("does not download when the user cancels the share sheet", async () => {
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true })
+    vi.mocked(navigator.share).mockRejectedValue(new DOMException("", "AbortError"))
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
+
+    await expect(shareFamilyShareCard({ cardElement: document.createElement("div"), card })).rejects.toMatchObject({ name: "AbortError" })
+    expect(click).not.toHaveBeenCalled()
+    click.mockRestore()
+  })
+
+  it("shares the rendered PNG when native file sharing succeeds", async () => {
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true })
+    await expect(shareFamilyShareCard({ cardElement: document.createElement("div"), card })).resolves.toEqual({ mode: "share" })
+    expect(navigator.share).toHaveBeenCalledWith(expect.objectContaining({ files: [expect.any(File)] }))
+  })
+
   it("waits for card images to load before rendering the canvas", async () => {
     const cardElement = document.createElement("div")
     const image = document.createElement("img")

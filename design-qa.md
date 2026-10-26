@@ -46,3 +46,16 @@ No actionable P0, P1, or P2 differences remain.
 - P3: a future usability study could compare 15 px and 16 px inner icons on lower-density mobile devices. This does not block the current desktop result.
 
 final result: passed
+
+## 2026-09-30 Revision: 「色つきの外形 + 白い丸 + 濃い色の絵」
+
+Supersedes the marker shape, cluster treatment, and asset-fidelity findings above. User feedback after the pass above: the icons inside the map were still hard to understand.
+
+- Root cause: Lucide `MapPin` carries an inner circle (r=3). Drawn with a white stroke it put a white ring directly behind the 15 px category icon, and the white icon had low contrast on the yellow/amber pins.
+- Individual reports: 44 × 54 px teardrop from `lib/map/pin-shape.ts` (one handcrafted `<path>`, no inner ring), filled with the danger-level color, with a white disc and a 20 px category icon in ink color. This intentionally reverses the earlier "no handcrafted SVG" finding; category icons are still Lucide.
+- Clusters: round count badge (`N件`) in the members' highest danger-level color, so clusters and single pins differ by shape.
+- Shapes carry meaning: teardrop = report / circle = cluster / rounded square = route hazard (flood = cyan, tsunami = purple; neither collides with danger-level colors or the green report-location pin).
+- Category icons come from `lib/map/danger-type-presentation.ts` for the pin, legend, sidebar, report wizard, detail modal and help dialog. Crime is `Siren` (was `Shield`), disaster is `CloudRainWind` (matches the wizard), other is `CircleAlert` (was `HelpCircle`).
+- Text labels (`交通 ★★★☆`) appear under pins from zoom 16 (`PIN_LABEL_MIN_ZOOM`). A pin only gets a label when no other marker is within 110 px horizontally and 84 px vertically (`findPointsWithLabelRoom`), so labels never overlap each other or cover a neighboring pin.
+- Legend: desktop shows category icons plus the danger-level color scale; mobile opens the full legend from a "ピンの見方" button.
+- Evidence: Playwright (Chrome, 390 × 844 and 1366 × 768) against the dev server with fixture reports, at zoom 15 / 16 / 17 / 18. Not covered by screenshots: route hazard markers (no route with hazard data in the local environment) and satellite styles.

@@ -15,11 +15,9 @@ import {
   Plus, 
   Eye, 
   Trophy,
-  Car,
-  Shield,
-  AlertTriangle,
-  HelpCircle as OtherIcon
 } from "lucide-react"
+import { MapLegendDetails } from "@/components/map/map-legend"
+import { DANGER_TYPE_ORDER, getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 
 interface HelpDialogProps {
   children: React.ReactNode
@@ -87,27 +85,11 @@ export default function HelpDialog({ children }: HelpDialogProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">危険度の見方</CardTitle>
+                <CardTitle className="text-lg">ピンの見方</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                    <span className="text-sm">レベル1-2（軽度）</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                    <span className="text-sm">レベル3（中度）</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                    <span className="text-sm">レベル4（高度）</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                    <span className="text-sm">レベル5（重度）</span>
-                  </div>
-                </div>
+                {/* 地図の凡例と同じ定義(絵=種類 / 色=あぶなさ / かたち)を表示する */}
+                <MapLegendDetails />
               </CardContent>
             </Card>
           </TabsContent>
@@ -178,22 +160,16 @@ export default function HelpDialog({ children }: HelpDialogProps) {
                 <div className="space-y-3">
                   <h4 className="font-medium">危険タイプ</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm">交通危険</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-red-600" />
-                      <span className="text-sm">犯罪危険</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm">災害危険</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <OtherIcon className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm">その他</span>
-                    </div>
+                    {DANGER_TYPE_ORDER.map((id) => {
+                      const type = getDangerTypePresentation(id)
+                      const Icon = type.icon
+                      return (
+                        <div key={id} className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-slate-700" />
+                          <span className="text-sm">{type.label}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </CardContent>

@@ -1,0 +1,47 @@
+{
+  "scope": "原本の市区町村コード12217（柏市）・地点ランキングではない",
+  "sourceYears": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "originalRecords": 6950,
+  "bySourceYear": {
+    "2019": 1169,
+    "2020": 868,
+    "2021": 918,
+    "2022": 900,
+    "2023": 1088,
+    "2024": 961,
+    "2025": 1046
+  },
+  "byOccurrenceYear": {
+    "2019": 1166,
+    "2018": 14,
+    "2017": 1,
+    "2020": 876,
+    "2021": 915,
+    "2022": 893,
+    "2023": 1089,
+    "2024": 958,
+    "2025": 1038
+  },
+  "before2019": 15,
+  "bicycleInvolvingAccidents": 2073,
+  "bothPartiesBicycles": 60,
+  "pedestrianInvolvingAccidents": 1290,
+  "inside2025Boundary": 6882,
+  "outside2025Boundary": 68,
+  "zeroCoordinates": 0,
+  "boundaryBounds": [
+    139.913328444,
+    35.781215081,
+    140.111943865,
+    35.935846946
+  ],
+  "completeLocationAssignmentReviewed": false
+}

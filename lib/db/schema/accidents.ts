@@ -48,3 +48,26 @@ export const trafficAccidents = sqliteTable('traffic_accidents', {
   index('idx_traffic_accidents_child_year_lat_lng').on(table.involvesChild, table.sourceYear, table.latitude, table.longitude),
   index('idx_traffic_accidents_ped_year_lat_lng').on(table.involvesPedestrian, table.sourceYear, table.latitude, table.longitude),
 ])
+
+/** 事故多発地点（scripts/migrate/build-traffic-hotspots.ts で事前計算。条件は lib/traffic-accident/hotspot-config.ts）。 */
+export const accidentHotspots = sqliteTable('accident_hotspots', {
+  id: integer('id').primaryKey(),
+  datasetVersion: text('dataset_version').notNull(),
+  latitude: real('lat').notNull(),
+  longitude: real('lng').notNull(),
+  radiusMeters: integer('radius_meters').notNull(),
+  minYear: integer('min_year').notNull(),
+  maxYear: integer('max_year').notNull(),
+  accidentCount: integer('accident_count').notNull(),
+  fatalCount: integer('fatal_count').notNull(),
+  pedestrianCount: integer('pedestrian_count').notNull(),
+  youngCount: integer('young_count').notNull(),
+  byYearJson: text('by_year_json').notNull(),
+  byClassJson: text('by_class_json').notNull(),
+  peakHour: integer('peak_hour'),
+  prefectureCode: integer('prefecture_code').notNull(),
+  municipalityCode: text('municipality_code'),
+  nationalRank: integer('national_rank').notNull(),
+}, (table) => [
+  index('idx_accident_hotspots_version_lat_lng').on(table.datasetVersion, table.latitude, table.longitude),
+])

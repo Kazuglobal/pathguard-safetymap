@@ -377,3 +377,20 @@ describe("extractAccidentThemes", () => {
     expect(themes).toEqual(["追突", "出会い頭"]);
   });
 });
+
+describe("buildAccidentPromptContext with hotspots", () => {
+  it("mentions the nearby accident hotspot with data-only numbers", () => {
+    const context = buildAccidentPromptContext(
+      makeStats({
+        total_accidents: 5,
+        search_params: { latitude: 35, longitude: 139, radius_meters: 300, years: 5 },
+        hotspots: [{
+  id: 1, latitude: 35, longitude: 139, radiusMeters: 30, minYear: 2021, maxYear: 2025,
+  accidentCount: 12, fatalCount: 0, pedestrianCount: 3, youngCount: 0,
+  byYear: {}, byClass: { 車両相互: 9, 人対車両: 3 }, peakHour: 8, nationalRank: 42, distanceMeters: 85,
+}],
+      }),
+    );
+    expect(context).toContain("半径300m以内に事故多発地点が1か所（最大: 半径30m以内で12件・主に車両相互・85m先）。");
+  });
+});

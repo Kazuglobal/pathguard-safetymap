@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { dismissTransientMapUi, getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
+import { dismissTransientMapUi, getMapDisplayDockBottomOffset, MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
 
 describe("map overlay ui helpers", () => {
   it("dismisses the active top panel and increments the search dismiss signal", () => {
@@ -22,6 +22,10 @@ describe("map overlay ui helpers", () => {
 
   it("keeps the display dock above the mobile action dock and desktop mapbox controls", () => {
     expect(getMapDisplayDockBottomOffset(true)).toBe("calc(env(safe-area-inset-bottom, 0px) + 10.5rem)")
-    expect(getMapDisplayDockBottomOffset(false)).toBe("5.75rem")
+    expect(getMapDisplayDockBottomOffset(false)).toBe("9rem")
+  })
+
+  it("puts the mobile action dock at the bottom edge because the map page hides the bottom tab bar", () => {
+    expect(MOBILE_MAP_DOCK_BOTTOM).toBe("calc(env(safe-area-inset-bottom, 0px) + 0.75rem)")
   })
 })

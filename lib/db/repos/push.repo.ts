@@ -1,8 +1,8 @@
-import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { dangerReports, localSafetyAlerts, pushSubscriptions, userRoutes } from '../schema'
+import { dangerReports, localSafetyAlerts, localAlertDistricts, pushSubscriptions, userRoutes } from '../schema'
 
 export const DANGER_REPORT_NOTIFICATION_STATUSES = ['approved', 'published', 'resolved'] as const
 
@@ -33,11 +33,12 @@ export interface LocalAlertWriteInput {
 
 export function createPushRepo(db: AppDb) {
   return {
-    async listAlerts(actor: Actor, input: { since: string; prefecture?: string; limit?: number }) {
+    async listAlerts(actor: Actor, input: { since: string; prefecture?: string; schoolDistrictId?: string; limit?: number }) {
       assertCan(actor, 'select', 'local_safety_alerts')
       const limit = Math.min(100, Math.max(1, Math.trunc(input.limit ?? 50)))
       const predicates = [gte(localSafetyAlerts.occurredAt, input.since)]
       if (input.prefecture) predicates.push(eq(localSafetyAlerts.prefecture, input.prefecture))
+      if (input.schoolDistrictId) predicates.push(sql`exists (select 1 from ${localAlertDistricts} where ${localAlertDistricts.alertId} = ${localSafetyAlerts.id} and ${localAlertDistricts.districtId} = ${input.schoolDistrictId})`)
       return db.select().from(localSafetyAlerts).where(and(...predicates))
         .orderBy(desc(localSafetyAlerts.occurredAt)).limit(limit)
     },
@@ -264,7 +265,7 @@ export function createPushRepo(db: AppDb) {
   }
 }
 
-export function listLocalSafetyAlerts(actor: Actor, input: { since: string; prefecture?: string; limit?: number }) { return createPushRepo(getDb()).listAlerts(actor, input) }
+export function listLocalSafetyAlerts(actor: Actor, input: { since: string; prefecture?: string; schoolDistrictId?: string; limit?: number }) { return createPushRepo(getDb()).listAlerts(actor, input) }
 export function getPushSubscription(actor: Actor, endpoint: string) { return createPushRepo(getDb()).getSubscription(actor, endpoint) }
 export function listPushSubscriptions(actor: Actor, input?: { preference?: string; userId?: string }) { return createPushRepo(getDb()).listSubscriptions(actor, input) }
 export function upsertPushSubscription(actor: Actor, input: Parameters<ReturnType<typeof createPushRepo>['upsertSubscription']>[1]) { return createPushRepo(getDb()).upsertSubscription(actor, input) }

@@ -1,11 +1,14 @@
 "use client"
 
 import type { MapDisplayOption } from "@/lib/map-display-options"
-import { MapPin, Car, Shield, AlertTriangle, HelpCircle, Trophy, PlusCircle, List, Loader2, Crosshair } from "lucide-react"
+import { useState } from "react"
+import { MapPin, MapPinPlus, HelpCircle, Trophy, PlusCircle, List, Loader2, Menu } from "lucide-react"
 import MapStyleSelector from "./map-style-selector"
 import HelpDialog from "./help-dialog"
+import { MapLegendButton, MapLegendCompact } from "./map-legend"
 import { useGamification } from "@/hooks/use-gamification"
-import { getMapDisplayDockBottomOffset } from "@/lib/map-overlay-ui"
+import { getMapDisplayDockBottomOffset, MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
+import { MapMenuSheet } from "./map-menu-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -61,7 +64,9 @@ export default function MapFloatingControls({
   const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile
-  const mobileBottomNavClearance = "calc(env(safe-area-inset-bottom, 0px) + 5rem)"
+  // 地図では下部タブバーを出さないので、ボタン列は画面の一番下に置く
+  const mobileBottomNavClearance = MOBILE_MAP_DOCK_BOTTOM
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
   }
@@ -117,11 +122,15 @@ export default function MapFloatingControls({
             </HelpDialog>
           )}
         </div>
+
+        {/* スマホは凡例を常時出す場所がないため、ボタンから開く */}
+        {isMobile && <MapLegendButton />}
       </div>
 
       {/* 右下: 地図表示ドック */}
       <div
         data-testid="map-display-dock"
+        data-map-overlay="bottom"
         className="absolute right-3 z-20"
         style={displayDockBottomStyle}
       >
@@ -142,13 +151,24 @@ export default function MapFloatingControls({
       {showMobileActionDock && (
         <div
           data-testid="mobile-action-dock"
+          data-map-overlay="bottom"
           className="absolute inset-x-3 z-20"
           style={{ bottom: mobileBottomNavClearance }}
         >
           <div
-            className="grid grid-cols-3 gap-2 rounded-[22px] border p-2"
+            className="grid grid-cols-4 gap-1.5 rounded-[22px] border p-2"
             style={floatPill}
           >
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              className={`chunky-press flex h-12 items-center justify-center gap-1 rounded-full border-2 bg-white text-[12px] font-black ${tankenTokens.cls.focus}`}
+              style={{ borderColor: "rgba(67,57,43,.12)", color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
+              aria-label="メニューを開く"
+            >
+              <Menu className="h-4 w-4" strokeWidth={2.6} />
+              メニュー
+            </button>
             {onToggleSidebar ? (
               <button
                 type="button"
@@ -180,7 +200,7 @@ export default function MapFloatingControls({
                   </>
                 ) : (
                   <>
-                    <Crosshair className="h-4 w-4" strokeWidth={2.6} />
+                    <MapPinPlus className="h-4 w-4" strokeWidth={2.6} />
                     現在地
                   </>
                 )}
@@ -231,6 +251,7 @@ export default function MapFloatingControls({
       {/* 下部中央: 報告ドック（デスクトップ）。主CTAと現在地報告を1列にまとめ、迷いをなくす */}
       {showPrimaryCta && (
         <div
+          data-map-overlay="bottom"
           className="absolute left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2"
           style={ctaBottomStyle}
         >
@@ -254,7 +275,7 @@ export default function MapFloatingControls({
                 </>
               ) : (
                 <>
-                  <Crosshair className="h-4 w-4" strokeWidth={2.6} />
+                  <MapPinPlus className="h-4 w-4" strokeWidth={2.6} />
                   現在地で報告
                 </>
               )}
@@ -298,29 +319,15 @@ export default function MapFloatingControls({
         </div>
       )}
 
-      {/* 危険種別レジェンド（コンパクト版） - 画面下部 */}
+      {/* 凡例（コンパクト版） - 画面下部。絵=種類 / 色=あぶなさ */}
       {showLegend && (
-        <div className="absolute left-3 z-10" style={legendBottomStyle}>
-          <div className="flex gap-1 rounded-full border px-2 py-1.5" style={floatPill}>
-            <div className="flex items-center gap-1 px-1.5" title="交通危険">
-              <Car className="h-3.5 w-3.5" style={{ color: "#3E8FB8" }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>交通</span>
-            </div>
-            <div className="flex items-center gap-1 px-1.5" title="犯罪危険">
-              <Shield className="h-3.5 w-3.5" style={{ color: C.danger }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>犯罪</span>
-            </div>
-            <div className="flex items-center gap-1 px-1.5" title="災害危険">
-              <AlertTriangle className="h-3.5 w-3.5" style={{ color: C.accent }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>災害</span>
-            </div>
-            <div className="flex items-center gap-1 px-1.5" title="その他">
-              <HelpCircle className="h-3.5 w-3.5" style={{ color: C.inkFaint }} />
-              <span className="hidden text-xs font-bold sm:inline" style={{ color: C.inkSoft }}>他</span>
-            </div>
+        <div data-map-overlay="bottom" className="absolute left-3 z-10" style={legendBottomStyle}>
+          <div className="rounded-full border px-3 py-1.5" style={floatPill}>
+            <MapLegendCompact />
           </div>
         </div>
       )}
+      {isMobile && <MapMenuSheet open={isMenuOpen} onOpenChange={setIsMenuOpen} />}
     </>
   )
 }

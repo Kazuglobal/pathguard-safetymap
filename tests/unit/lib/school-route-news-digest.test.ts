@@ -10,6 +10,7 @@ import {
   LOCAL_ALERT_ACTION_PHRASES,
 } from "@/lib/local-alert-action-phrases"
 import { isWithinQuietHoursJst } from "@/lib/push-notifications/notify-local-alert"
+import { ALL_PREFECTURES, NATIONWIDE } from "@/lib/user-region"
 
 describe("toJstDateKey", () => {
   it("rolls UTC evening over to the next JST calendar day", () => {
@@ -29,21 +30,42 @@ describe("toJstDateKey", () => {
 
 describe("getTodaysDigest", () => {
   it("counts items published on the same JST day, split by prefecture", () => {
-    // NEWS_ITEMS の最新公開日（2026-07-26・4本／神奈川・広島・福岡・愛知）を「今日」とみなす
-    const now = new Date("2026-07-26T10:00:00+09:00")
+    // 基準日とその日の本数を直書きすると、90日の保持期間ポリシーで該当記事が落ちた瞬間に
+    // このテストが壊れる（2026-07-26 の4本を直書きしていたため、実際に赤になった）。
+    // NEWS_ITEMS の最新公開日を基準にして、同じ日の件数と都道府県の内訳を検証する。
+    const newestIso = NEWS_ITEMS.reduce(
+      (acc, item) =>
+        new Date(item.publishedDate).getTime() > new Date(acc).getTime() ? item.publishedDate : acc,
+      NEWS_ITEMS[0].publishedDate
+    )
+    const dateKey = toJstDateKey(newestIso)
+    const sameDay = NEWS_ITEMS.filter((item) => toJstDateKey(item.publishedDate) === dateKey)
+    const now = new Date(newestIso)
+    expect(sameDay.length).toBeGreaterThan(0)
 
     const national = getTodaysDigest("全国", now)
-    expect(national.date).toBe("2026-07-26")
-    expect(national.nationalCount).toBe(4)
-    expect(national.localNewsCount).toBe(4)
+    expect(national.date).toBe(dateKey)
+    expect(national.nationalCount).toBe(sameDay.length)
+    expect(national.localNewsCount).toBe(sameDay.length)
 
-    const fukuoka = getTodaysDigest("福岡県", now)
-    expect(fukuoka.nationalCount).toBe(4)
-    expect(fukuoka.localNewsCount).toBe(1)
+    const targetPrefecture = sameDay
+      .map((item) => item.location.prefecture)
+      .find((prefecture) => prefecture !== NATIONWIDE)
+    expect(targetPrefecture).toBeTruthy()
+    const expectedLocal = sameDay.filter(
+      (item) => item.location.prefecture === targetPrefecture
+    ).length
+    const local = getTodaysDigest(targetPrefecture as string, now)
+    expect(local.nationalCount).toBe(sameDay.length)
+    expect(local.localNewsCount).toBe(expectedLocal)
 
-    const osaka = getTodaysDigest("大阪府", now)
-    expect(osaka.nationalCount).toBe(4)
-    expect(osaka.localNewsCount).toBe(0)
+    const absentPrefecture = ALL_PREFECTURES.find(
+      (prefecture) => !sameDay.some((item) => item.location.prefecture === prefecture)
+    )
+    expect(absentPrefecture).toBeTruthy()
+    const none = getTodaysDigest(absentPrefecture as string, now)
+    expect(none.nationalCount).toBe(sameDay.length)
+    expect(none.localNewsCount).toBe(0)
   })
 
   it("returns zero counts on a day without published items", () => {
@@ -103,11 +125,19 @@ describe("findLatestWeeklyTrend (週次傾向のピン留め)", () => {
     expect(findLatestWeeklyTrend([daily("2026-07-01T09:00:00+09:00")])).toBeUndefined()
   })
 
-  it("pins the published weekly trend article from NEWS_ITEMS", () => {
+  it("derives the pinned weekly trend from NEWS_ITEMS (no hard-coded slug)", () => {
+    // 保持期間ポリシー（90日）で記事が入れ替わってもテストが壊れないよう、
+    // 固定スラッグではなく NEWS_ITEMS からの導出が一致することを検証する。
+    const newest = [...NEWS_ITEMS]
+      .filter((item) => item.newsType === "weekly_trend")
+      .sort((a, b) => Date.parse(b.publishedDate) - Date.parse(a.publishedDate))[0]
     const pinned = findLatestWeeklyTrend(NEWS_ITEMS)
-    expect(pinned?.slug).toBe("national-weekly-trend-20260706")
-    expect(pinned?.tags).toContain("週次傾向")
-    expect(pinned?.actionAdvice).toBeTruthy()
+
+    expect(pinned?.slug).toBe(newest?.slug)
+    if (newest) {
+      expect(pinned?.tags).toContain("週次傾向")
+      expect(pinned?.actionAdvice).toBeTruthy()
+    }
   })
 
   it("does not mutate the input array order", () => {

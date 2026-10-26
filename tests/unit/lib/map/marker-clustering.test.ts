@@ -11,7 +11,10 @@ import {
   groupMarkersByProximity,
   spreadOverlappingPins,
   pixelsToLngDegrees,
+  findPointsWithLabelRoom,
   CLUSTER_PIXEL_THRESHOLD,
+  PIN_LABEL_CLEARANCE_X_PX,
+  PIN_LABEL_CLEARANCE_Y_PX,
 } from "@/lib/map/marker-clustering"
 
 const BASE_LAT = 35.68
@@ -104,9 +107,53 @@ describe("spreadOverlappingPins", () => {
     }
   })
 
+  it("散らしたピン同士はラベルを出す空きがない", () => {
+    const items = [pt("a"), pt("b"), pt("c"), pt("far", 0.05, 0)]
+    const spread = spreadOverlappingPins(items, 18)
+    const room = findPointsWithLabelRoom(spread, 18)
+
+    const roomById = new Map(spread.map((pin, index) => [pin.item.id, room[index]]))
+    expect(roomById.get("a")).toBe(false)
+    expect(roomById.get("b")).toBe(false)
+    expect(roomById.get("c")).toBe(false)
+    expect(roomById.get("far")).toBe(true)
+  })
+
   it("展開しても件数が失われない", () => {
     const items = [pt("a"), pt("b"), pt("c"), pt("d", 0.05, 0)]
     const result = spreadOverlappingPins(items, 18)
     expect(result.map((r) => r.item.id).sort()).toEqual(["a", "b", "c", "d"])
+  })
+})
+
+describe("findPointsWithLabelRoom", () => {
+  const ZOOM = 16
+  const xDeg = pixelsToLngDegrees(PIN_LABEL_CLEARANCE_X_PX, ZOOM)
+  // 緯度方向は同じpxでも度数が小さい(cos(lat)倍)
+  const yDeg = pixelsToLngDegrees(PIN_LABEL_CLEARANCE_Y_PX, ZOOM) * Math.cos((BASE_LAT * Math.PI) / 180)
+
+  it("周囲に何もないピンはラベルを出せる", () => {
+    expect(findPointsWithLabelRoom([pt("a")], ZOOM)).toEqual([true])
+    expect(findPointsWithLabelRoom([], ZOOM)).toEqual([])
+  })
+
+  it("横に近いピン同士は両方ともラベルを出さない(ラベル同士が重なる)", () => {
+    const items = [pt("a"), pt("b", 0, xDeg * 0.5)]
+    expect(findPointsWithLabelRoom(items, ZOOM)).toEqual([false, false])
+  })
+
+  it("真下に近いピンがあるとラベルを出さない(下のピンを覆う)", () => {
+    const items = [pt("a"), pt("b", -yDeg * 0.5, 0)]
+    expect(findPointsWithLabelRoom(items, ZOOM)).toEqual([false, false])
+  })
+
+  it("横・縦どちらかが十分離れていればラベルを出せる", () => {
+    expect(findPointsWithLabelRoom([pt("a"), pt("b", 0, xDeg * 1.2)], ZOOM)).toEqual([true, true])
+    expect(findPointsWithLabelRoom([pt("a"), pt("b", yDeg * 1.2, 0)], ZOOM)).toEqual([true, true])
+  })
+
+  it("近い組だけがラベルを失い、離れたピンには影響しない", () => {
+    const items = [pt("a"), pt("b", 0, xDeg * 0.3), pt("far", 0.05, 0.05)]
+    expect(findPointsWithLabelRoom(items, ZOOM)).toEqual([false, false, true])
   })
 })

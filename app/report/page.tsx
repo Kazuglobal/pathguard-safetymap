@@ -384,7 +384,7 @@ export default function ReportHubPage() {
 
       toast({
         title: "共有カードを保存しました",
-        description: "画像を保存し、共有文面もコピーしました。",
+        description: "保存した画像をLINEやメッセージに添付できます。",
       })
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {

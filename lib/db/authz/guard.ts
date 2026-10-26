@@ -40,6 +40,7 @@ const REFERENCE_TABLES = new Set<Table>([
   'hazard_zone_coverage',
   'hazard_image_cache',
   'traffic_accidents',
+  'accident_hotspots',
 ])
 
 const OPERATIONAL_TABLES = new Set<Table>([
@@ -78,6 +79,9 @@ function changesNoModerationField(context: AuthzContext): boolean {
 
 function evaluate(actor: Actor, action: Action, table: Table, context: AuthzContext): boolean {
   if (actor.kind === 'service') return true
+  if (table === 'school_districts' || table === 'local_alert_districts') return action === 'select'
+  if (table === 'school_district_boundaries' || table === 'local_alert_locations') return false
+
 
   if (table === 'danger_reports') {
     if (action === 'select') {

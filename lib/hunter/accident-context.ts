@@ -7,6 +7,7 @@
 // 重要: traffic-accident-data は "use client" のため、runtime値はimportせず型のみimportする。
 import type { AccidentStats } from "@/lib/traffic-accident-data";
 import type { HunterAccidentSummary } from "@/lib/hunter/types";
+import { hotspotPromptLine } from "@/lib/traffic-accident/hotspot-presentation";
 
 /** リスクレベルの表示メタ情報 (本モジュール内で自前定義)。 */
 interface RiskLevelMeta {
@@ -186,6 +187,10 @@ export function buildAccidentPromptContext(stats: AccidentStats | null): string 
   }
   if (peakTimeSlot !== null) {
     lines.push(`事故が多い時間帯: ${peakTimeSlot}。`);
+  }
+  const hotspotLine = hotspotPromptLine(stats.hotspots, stats.search_params.radius_meters, stats.hotspot_count);
+  if (hotspotLine !== null) {
+    lines.push(`${hotspotLine}。`);
   }
   lines.push(
     "写真の中で、この傾向に関連する危険（出会い頭→見通しの悪い角、飛び出し→物かげからの飛び出し地点 など）を優先的に、正確なbboxで検出してください。",

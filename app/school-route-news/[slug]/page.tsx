@@ -190,6 +190,27 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
             {item.content}
           </ReactMarkdown>
         </div>
+
+        {item.contentImages && item.contentImages.length > 0 && (
+          <div className="mt-8 grid gap-6">
+            {item.contentImages.map((image) => (
+              <figure key={image.id} className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                <div className="relative w-full aspect-[16/9]">
+                  <Image
+                    src={image.url}
+                    alt={image.description}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, 768px"
+                  />
+                </div>
+                <figcaption className="px-4 py-3 text-sm text-gray-600 text-center border-t border-gray-200">
+                  {image.description}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
       </article>
 
       {/* タグ */}

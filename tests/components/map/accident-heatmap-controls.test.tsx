@@ -79,7 +79,7 @@ describe('AccidentHeatmapControls', () => {
     expect(screen.queryByText('24歳以下関与のみ')).not.toBeInTheDocument()
   })
 
-  it('includes 2024 in the year range selectors', () => {
+  it('includes 2025 in the year range selectors', () => {
     render(
       <AccidentHeatmapControls
         filters={DEFAULT_HEATMAP_FILTERS}
@@ -92,7 +92,7 @@ describe('AccidentHeatmapControls', () => {
       />,
     )
 
-    expect(screen.getAllByText('2024年').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('2025年').length).toBeGreaterThan(0)
   })
 
   it('updates the young filter independently', () => {

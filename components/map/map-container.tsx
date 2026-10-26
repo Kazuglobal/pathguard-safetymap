@@ -27,6 +27,7 @@ import { useDangerReportSubmit, type SubmittedReportState } from "@/hooks/use-da
 import { useMapImageOverlays, type MapImageOverlayEntry } from "@/hooks/use-map-image-overlays"
 import { useDangerMarkers } from "@/hooks/use-danger-markers"
 import { AccidentStatsOverlay } from "@/components/map/accident-stats-overlay"
+import { AccidentInspectionLayer } from "./accident-inspection-layer"
 import { MapReportForms } from "@/components/map/map-report-forms"
 import { MobileLocationSheet } from "@/components/map/mobile-location-sheet"
 import { MapStatusOverlays } from "@/components/map/map-status-overlays"
@@ -35,6 +36,7 @@ import { useHazardTileLayers } from "@/hooks/use-hazard-tile-layers"
 import { useSelectedRouteLayer } from "@/hooks/use-selected-route-layer"
 import { useRouteHazards } from "@/hooks/use-route-hazards"
 import { useRouteHazardMarkers } from "@/hooks/use-route-hazard-markers"
+import { buildPointPinSvg } from "@/lib/map/pin-shape"
 import { useDeleteDangerReport } from "@/hooks/use-delete-danger-report"
 import { useSuspiciousAlert } from "@/hooks/use-suspicious-alert"
 import {
@@ -45,6 +47,10 @@ import {
 import { useAccidentHeatmap } from "@/hooks/use-accident-heatmap"
 import { AccidentHeatmapLayer } from "./accident-heatmap-layer"
 import { AccidentHeatmapControls } from "./accident-heatmap-controls"
+import { AccidentHotspotLayer } from "./accident-hotspot-layer"
+import { hitsMapDataPoint } from "./map-popup-in-view"
+import { RouteAccidentHotspotList } from "./route-accident-hotspot-list"
+import { useRouteAccidentHotspots } from "@/hooks/use-route-accident-hotspots"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
 import { useUserRoutes } from "@/hooks/use-user-routes"
@@ -71,7 +77,7 @@ if (!tokenValidation.isValid) {
   console.error("Mapbox token validation failed:", tokenValidation.error)
 }
 
-mapboxgl.accessToken = mapboxToken || ""
+mapboxgl.accessToken = (mapboxToken || "").trim()
 
 // --- 型定義 ---
 // SubmittedReportState / MapImageOverlayEntry はそれぞれ hooks/use-danger-report-submit.ts /
@@ -222,6 +228,7 @@ export default function MapContainer({
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
+  const [isHotspotVisible, setIsHotspotVisible] = useState(false)
 
   // --- Accident Statistics for clicked location ---
   const {
@@ -229,7 +236,14 @@ export default function MapContainer({
     status: clickedLocationStatsStatus,
     fetchStats: fetchClickedLocationStats,
     reset: resetClickedLocationStats,
+    error: clickedLocationStatsError,
   } = useAccidentStats()
+  const [accidentInspection, setAccidentInspection] = useState<{ center: [number, number]; source: 'map' | 'gps' } | null>(null)
+  const [inspectionLocationError, setInspectionLocationError] = useState<string | null>(null)
+  const geolocateControlRef = useRef<mapboxgl.GeolocateControl | null>(null)
+  const inspectGPSRef = useRef(false)
+  const inspectionGPSPositionRef = useRef<GeolocationPosition | null>(null)
+  const inspectionGPSRequestRef = useRef(0)
 
   // 送信された報告の情報を保持する状態 (型を更新)
   const [submittedReport, setSubmittedReport] = useState<SubmittedReportState | null>(null)
@@ -293,6 +307,7 @@ export default function MapContainer({
     setRouteHazardError,
     resetRouteHazards,
   } = useRouteHazards({ selectedUserRoute, hazardLayerVisibility })
+  const routeAccidentHotspots = useRouteAccidentHotspots(selectedUserRoute?.id ?? null, selectedUserRoute?.updated_at ?? null)
   const visibleRouteHazards = useMemo(
     () => routeHazards.filter((hazard) => hazardLayerVisibility[hazard.hazard_type]),
     [hazardLayerVisibility, routeHazards],
@@ -411,41 +426,16 @@ export default function MapContainer({
 
     const markerElement = document.createElement("div");
     
-    if (isSubmitted) {
-      markerElement.className = "submitted-marker";
-      markerElement.style.cssText = `
-        width: 20px; height: 20px; border-radius: 50%;
-        background: #22c55e; border: 3px solid white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer;
-      `;
-    } else {
-      markerElement.className = "selection-marker";
-      markerElement.style.cssText = `
-        width: 24px; height: 24px; border-radius: 50%;
-        background: #3b82f6; border: 4px solid white;
-        box-shadow: 0 4px 15px rgba(59,130,246,0.5);
-        cursor: grab; transition: all 0.2s ease;
-        animation: pulse 2s infinite;
-      `;
-      
-      // パルスアニメーション用のスタイルを追加
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes pulse {
-          0% { box-shadow: 0 4px 15px rgba(59,130,246,0.5); }
-          50% { box-shadow: 0 4px 25px rgba(59,130,246,0.8); }
-          100% { box-shadow: 0 4px 15px rgba(59,130,246,0.5); }
-        }
-      `;
-      if (!document.querySelector('#marker-pulse-style')) {
-        style.id = 'marker-pulse-style';
-        document.head.appendChild(style);
-      }
-    }
+    // 現在地の青い丸(GeolocateControl)と見分けられるよう、みどりのしずく形にする。
+    // 見た目は globals.css の .selection-marker / .submitted-marker。
+    markerElement.className = isSubmitted ? "submitted-marker" : "selection-marker";
+    markerElement.innerHTML = buildPointPinSvg(isSubmitted ? "submitted" : "select");
+    markerElement.setAttribute("aria-label", isSubmitted ? "送信した報告の場所" : "報告する場所");
 
-    selectionMarker.current = new mapboxgl.Marker({ 
-      element: markerElement, 
-      draggable: !isSubmitted 
+    selectionMarker.current = new mapboxgl.Marker({
+      element: markerElement,
+      anchor: "bottom",
+      draggable: !isSubmitted
     }).setLngLat(coordinates).addTo(map.current);
 
     if (isSubmitted) {
@@ -511,6 +501,27 @@ export default function MapContainer({
     accidentMarkerTimerRef.current = timerId
   }, []);
 
+  const inspectAccidents = useEventCallback((center: [number, number], source: 'map' | 'gps') => {
+    if (!isValidCoordinates(center[1], center[0])) return
+    inspectionGPSRequestRef.current += 1
+    setInspectionLocationError(null)
+    setAccidentInspection({ center, source })
+    setIsSidebarOpen(false)
+    void fetchClickedLocationStats({ latitude: center[1], longitude: center[0], radiusMeters: 300, years: 5 })
+  })
+  const handleInspectionGeolocate = useEventCallback((position: GeolocationPosition) => {
+    inspectionGPSPositionRef.current = position
+    if (!inspectGPSRef.current || awaitingLocationSelection || isReportFormOpen || isSuspiciousAlertOpen || isSidebarOpen || isDetailModalOpen || isSubmittedPreviewOpen) return
+    inspectAccidents([position.coords.longitude, position.coords.latitude], 'gps')
+  })
+  const resetAccidentInspection = useCallback(() => {
+    inspectionGPSRequestRef.current += 1
+    setInspectionLocationError(null)
+    inspectGPSRef.current = false
+    setAccidentInspection(null)
+    resetClickedLocationStats()
+  }, [resetClickedLocationStats])
+
   // --- ▼▼▼ handleMapClick（useEventCallback で常に最新 state を読む） ▼▼▼ ---
   // Mapbox へ一度だけ登録されても stale closure にならないよう useEventCallback 経由にする。
   const handleMapClick = useEventCallback((e: mapboxgl.MapMouseEvent) => {
@@ -554,19 +565,14 @@ export default function MapContainer({
         description: "新しい位置に報告地点を変更しました"
       });
     } else {
+      // 多発地点・事故の丸をタップしたときは、その吹き出しを出す。事故統計やサイドバー（スマホ）を
+      // 開くと吹き出しが隠れるので、地図全体のクリック処理は動かさない
+      if (hitsMapDataPoint(e.target, e.point)) return;
+
       // 通常の地図クリック時に事故統計を取得・表示
       console.log("Normal map click: Fetching accident statistics");
-      fetchClickedLocationStats({
-        latitude: coordinates[1],
-        longitude: coordinates[0],
-        radiusMeters: 300,
-        years: 5,
-      });
-
-      // サイドバーを開く（モバイル時）
-      if (isMobile) {
-        setIsSidebarOpen(true);
-      }
+      inspectGPSRef.current = false
+      inspectAccidents(coordinates, 'map')
     }
   });
   // --- ▲▲▲ ---
@@ -645,7 +651,11 @@ export default function MapContainer({
             shouldShow: shouldRenderNavigationControl,
           })
         }
-        map.current?.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
+        const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
+        geolocateControlRef.current = geolocate
+        geolocate.on('trackuserlocationstart', () => { inspectGPSRef.current = true })
+        geolocate.on('geolocate', handleInspectionGeolocate)
+        map.current?.addControl(geolocate, "bottom-right")
 
         // 危険レポートのbbox絞り込み用に、表示範囲を初期化＆パン/ズームのたびに更新する
         const updateMapBounds = () => {
@@ -1064,10 +1074,12 @@ export default function MapContainer({
     () =>
       buildMapDisplayOverlayOptions({
         isHeatmapVisible: accidentHeatmap.isVisible,
+        isHotspotVisible,
         isFloodVisible: hazardLayerVisibility.flood,
         isTsunamiVisible: hazardLayerVisibility.tsunami,
         isSuspiciousVisible: isSuspiciousVisible,
         onToggleHeatmap: accidentHeatmap.toggleVisibility,
+        onToggleHotspot: () => setIsHotspotVisible((visible) => !visible),
         onToggleFlood: () => handleHazardLayerToggle("flood", !hazardLayerVisibility.flood),
         onToggleTsunami: () => handleHazardLayerToggle("tsunami", !hazardLayerVisibility.tsunami),
         onToggleSuspicious: () => setIsSuspiciousVisible((v) => !v),
@@ -1075,6 +1087,7 @@ export default function MapContainer({
     [
       accidentHeatmap.isVisible,
       accidentHeatmap.toggleVisibility,
+      isHotspotVisible,
       handleHazardLayerToggle,
       hazardLayerVisibility.flood,
       hazardLayerVisibility.tsunami,
@@ -1169,6 +1182,16 @@ export default function MapContainer({
                 summary={selectedUserRouteId ? routeSafetySummary : undefined}
                 evidenceItems={selectedUserRouteId ? routeSafetyEvidenceItems : []}
                 hazards={visibleRouteHazards}
+                accidentHotspotSlot={
+                  <RouteAccidentHotspotList
+                    {...routeAccidentHotspots}
+                    onSelect={(hotspot) => {
+                      // 地図上で場所が分かるよう、多発地点レイヤーも表示する
+                      setIsHotspotVisible(true)
+                      flyToLocation(hotspot.longitude, hotspot.latitude, 17)
+                    }}
+                  />
+                }
                 toggles={hazardLayerVisibility}
                 isLoading={isRouteHazardsLoading}
                 onRouteChange={handleRouteSelectionChange}
@@ -1206,13 +1229,39 @@ export default function MapContainer({
 
         {/* 事故統計パネル - 地図クリック時に表示 */}
         <AccidentStatsOverlay
-          status={clickedLocationStatsStatus}
+          status={inspectionLocationError ? 'error' : clickedLocationStatsStatus}
           stats={clickedLocationStats}
           isMobile={isMobile}
           awaitingLocationSelection={awaitingLocationSelection}
           isReportFormOpen={isReportFormOpen}
-          onReset={resetClickedLocationStats}
+          onReset={resetAccidentInspection}
+          isOtherPanelOpen={isSidebarOpen || isDetailModalOpen || isSuspiciousAlertOpen || isSubmittedPreviewOpen}
+          locationSource={accidentInspection?.source}
+          center={accidentInspection?.center}
+          error={inspectionLocationError ?? clickedLocationStatsError}
+          mapYearWindow={accidentHeatmap.isVisible ? { minYear: accidentHeatmap.filters.minYear, maxYear: accidentHeatmap.filters.maxYear } : undefined}
+          onCurrentLocation={() => {
+            inspectGPSRef.current = true
+            setInspectionLocationError(null)
+            const request = ++inspectionGPSRequestRef.current
+            const position = inspectionGPSPositionRef.current
+            if (position && Date.now() - position.timestamp <= 60_000) handleInspectionGeolocate(position)
+            else if (navigator.geolocation) navigator.geolocation.getCurrentPosition((fix) => {
+              if (request === inspectionGPSRequestRef.current) handleInspectionGeolocate(fix)
+            }, () => {
+              if (request !== inspectionGPSRequestRef.current) return
+              inspectGPSRef.current = false
+              setInspectionLocationError('現在地を取得できません。位置情報の許可を確認してください。')
+            }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 })
+            else setInspectionLocationError('この端末では現在地を取得できません。')
+          }}
+          onAccidentNavigate={(coords) => {
+            if (!isValidCoordinates(coords[1], coords[0])) return
+            flyToLocation(coords[0], coords[1], 17)
+            showTemporaryAccidentMarker(coords)
+          }}
         />
+        <AccidentInspectionLayer map={map.current} center={clickedLocationStatsStatus !== 'idle' && !isSidebarOpen && !isReportFormOpen && !awaitingLocationSelection && !isDetailModalOpen && !isSuspiciousAlertOpen ? accidentInspection?.center ?? null : null} />
 
         {/* Sidebar (フローティング) */}
         <div className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ${!isSidebarOpen ? '-translate-x-full' : ''}`}>
@@ -1244,7 +1293,7 @@ export default function MapContainer({
         {/* Map Canvas (フルスクリーン) */}
         <div
           ref={mapContainer}
-          className="absolute inset-0 w-full h-full"
+          className="pg-main-map absolute inset-0 w-full h-full"
           style={{ minHeight: mapMinHeight }}
           onPointerDownCapture={() => {
             if (showMobileMapHint) setShowMobileMapHint(false);
@@ -1272,6 +1321,9 @@ export default function MapContainer({
           }}
         />
 
+        {/* 事故多発地点レイヤー（警察庁オープンデータから事前計算） */}
+        <AccidentHotspotLayer map={map.current} isVisible={isHotspotVisible} />
+
         {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
         <SuspiciousAlertLayer
           map={map.current}
@@ -1281,10 +1333,10 @@ export default function MapContainer({
         />
 
         {/* 不審者アラート 専用入力フォーム（モバイル/タブレットはボトムナビの上／デスクトップ右） */}
-        {/* ボトムナビ（navigation.tsx の fixed bottom-0 z-50, h-20, md:hidden）に重ならないよう
-            md 未満では下端をナビ高さ分（約5rem＋safe-area）持ち上げる。md 以上はナビが消えるため右下に配置。 */}
+        {/* 地図画面ではスマホの下部タブバーを出さない（lib/navigation-visibility.ts）ので、md 未満は画面の下端に置く。
+            md 以上は右下に配置。 */}
         {isSuspiciousAlertOpen && (
-          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
+          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-[60] px-3 md:inset-x-auto md:bottom-4 md:right-4 md:w-[24rem] md:px-0">
             <div className="max-h-[70dvh] overflow-y-auto overscroll-contain rounded-2xl border border-orange-100 bg-white p-4 shadow-2xl">
               <SuspiciousAlertForm
                 selectedLocation={selectedLocation}

@@ -1,0 +1,69 @@
+{
+  "years": [
+    {
+      "year": 2019,
+      "regions": 1902,
+      "prefectures": 47,
+      "holes": 177,
+      "uncodedPieces": 140,
+      "hashes": {
+        "codedSource": "ad478576f9252f73a2d3c58d030b585f06b6332cb8a5e4cac5d2161f431ae1e7",
+        "codedWgs84": "1aa0b445e7ab15e5d9e4f0d943357dabcf2025b79ef2051f610c7ef7ef0fd6be",
+        "uncodedWgs84": "2d95c023ab63c23297a4f562c71a1068031003efb9fff2cebf4254ae6d9edb96"
+      },
+      "conversionReceiptSha256": "6efb3bc6c346501454dad9494d2284a865dd56a66300c22ae007abec16bf6438"
+    },
+    {
+      "year": 2021,
+      "regions": 1902,
+      "prefectures": 47,
+      "holes": 190,
+      "uncodedPieces": 141,
+      "hashes": {
+        "codedSource": "0cdef7dbfcfca46b5b559cf3cd90163f9fced0ae22d58572ccdc64689183df90",
+        "codedWgs84": "e28c486c72d50757fc500ad9fecb0df6ce79cba685de6e32a5e2d2260cf80914",
+        "uncodedWgs84": "c3a12217629dfc960cc8b9edef6d812bd2aa065854805d026fce5aa378a0fc89"
+      },
+      "conversionReceiptSha256": "6fa128ae07348e00ee66987b5d7e59c83bda80c12c0749a14ac7cbd667474982"
+    },
+    {
+      "year": 2022,
+      "regions": 1902,
+      "prefectures": 47,
+      "holes": 216,
+      "uncodedPieces": 201,
+      "hashes": {
+        "codedSource": "6e8c789554588bda7f44c0bed6a24646b1cd5f8646a8f45c5592d126d95f1410",
+        "codedWgs84": "b07f81fb883be1a4b75069bb1ae5ddfb6956c827278b35af60ff07c052da9626",
+        "uncodedWgs84": "22b9fd7806b960397f90116e942e6ce97a205acd967e939b5fbd6a89072b0579"
+      },
+      "conversionReceiptSha256": "8dd93c9d1df8dbbe6be6a4a600aabfa49c4ca6a0800ce2d05bd69a92544cc21f"
+    },
+    {
+      "year": 2023,
+      "regions": 1917,
+      "prefectures": 47,
+      "holes": 187,
+      "uncodedPieces": 0,
+      "hashes": {
+        "codedSource": "2248ece6e62c640fb1ef59c688d97d3f9700bc67c4d5de54fe28c5fa0d86bf32",
+        "codedWgs84": "425d7e50ebe26200f306806f95ee617f7fb2f46b176c62a9d5831904a794dbc6",
+        "uncodedWgs84": "ed778c73ea51338d6576fb5992b189f2b94d9f3d5e199f46c1af520d6b0b3e6c"
+      },
+      "conversionReceiptSha256": "b7e63dbf7b080a74fed9519114f94f84636f9283302ec0e81e4ee6cc3345bfda"
+    }
+  ],
+  "unresolvedYears": [
+    2020,
+    2024
+  ],
+  "full2019To2024Coverage": false,
+  "auditScriptSha256": "3b57ab9fef77820c773414bf9c948c2e61992a16d3f32263b6aa4fc1b876f580",
+  "limitations": [
+    "Coordinate conversion verification does not approve historical jurisdiction or accident assignments."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

@@ -1,0 +1,12 @@
+{
+  "boundaryFeatures": 1905,
+  "indexSeconds": 49.71,
+  "checkedRecords": 1046,
+  "singleBoundaryMatches": 1046,
+  "querySeconds": 6.62,
+  "peakWorkingSetBytes": 115605504,
+  "cacheEstimateBytes": 4092976,
+  "cacheEntries": 11,
+  "indexBytes": 475828224,
+  "fullNationwideThroughputVerified": false
+}

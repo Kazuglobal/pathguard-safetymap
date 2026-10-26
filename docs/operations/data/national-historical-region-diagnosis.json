@@ -1,0 +1,217 @@
+{
+  "sourceRowsExamined": 28004,
+  "selectedOccurrenceYears": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "byOriginalCodeAndCurrentBoundary": {
+    "22131": {
+      "22138": 9172,
+      "outside_selected_period": 13
+    },
+    "22132": {
+      "22138": 5887,
+      "outside_selected_period": 13,
+      "22139": 3,
+      "22211": 5
+    },
+    "22133": {
+      "22138": 3274,
+      "outside_selected_period": 9,
+      "22139": 1
+    },
+    "22134": {
+      "22138": 3290,
+      "outside_selected_period": 4
+    },
+    "22135": {
+      "22139": 1264,
+      "22138": 1690,
+      "outside_selected_period": 3,
+      "22221": 2
+    },
+    "22136": {
+      "22139": 2665,
+      "22138": 8,
+      "outside_selected_period": 2
+    },
+    "22137": {
+      "22140": 447,
+      "22139": 1
+    },
+    "40305": {
+      "outside_selected_period": 5
+    },
+    "47995": {
+      "47361": 14
+    },
+    "47996": {
+      "outside_selected_period": 3,
+      "47362": 223,
+      "47210": 6
+    }
+  },
+  "byOriginalCodeAndOccurrenceYear": {
+    "22131": {
+      "2019": 2230,
+      "2018": 13,
+      "2020": 1790,
+      "2021": 1752,
+      "2022": 1676,
+      "2023": 1724
+    },
+    "22132": {
+      "2019": 1388,
+      "2018": 13,
+      "2020": 1167,
+      "2021": 1175,
+      "2022": 1114,
+      "2023": 1051
+    },
+    "22133": {
+      "2019": 780,
+      "2018": 9,
+      "2020": 714,
+      "2021": 629,
+      "2022": 583,
+      "2023": 569
+    },
+    "22134": {
+      "2019": 751,
+      "2018": 4,
+      "2020": 687,
+      "2021": 642,
+      "2022": 630,
+      "2023": 580
+    },
+    "22135": {
+      "2019": 673,
+      "2018": 3,
+      "2020": 613,
+      "2021": 611,
+      "2022": 523,
+      "2023": 536
+    },
+    "22136": {
+      "2019": 670,
+      "2018": 2,
+      "2020": 543,
+      "2021": 505,
+      "2022": 503,
+      "2023": 452
+    },
+    "22137": {
+      "2019": 119,
+      "2020": 87,
+      "2021": 86,
+      "2022": 82,
+      "2023": 74
+    },
+    "40305": {
+      "2018": 5
+    },
+    "47995": {
+      "2019": 3,
+      "2020": 2,
+      "2021": 2,
+      "2022": 4,
+      "2023": 3
+    },
+    "47996": {
+      "2018": 3,
+      "2019": 50,
+      "2020": 49,
+      "2021": 43,
+      "2022": 44,
+      "2023": 43
+    }
+  },
+  "totals": {
+    "22138": 23321,
+    "22139": 3934,
+    "22140": 447,
+    "22211": 5,
+    "22221": 2,
+    "47210": 6,
+    "47361": 14,
+    "47362": 223,
+    "outside_selected_period": 52
+  },
+  "inputs": {
+    "recordsSha256": "bb880611db2f288acd78bf9159397a75ed79a3b96646307c57fcdda52933c2ec",
+    "areasSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+    "codebooksSha256": "40c52a69c9bbf41b18640385fce5d66977d69681825b9739b95889b4126451d2"
+  },
+  "boundaryIndex": "Readonly index from completed Kashiwa physical-alternatives extraction; full national administrative boundaries, 1905 features",
+  "method": "Preserve original jurisdiction codes; strict point-in-polygon containment, no nearest boundary or coordinate repair. Outside-period source occurrences skipped before boundary diagnosis.",
+  "limitations": [
+    "Diagnostic only; no source codes changed and no accident assigned to a ranking location",
+    "Matching current boundary does not alone prove historical jurisdiction correspondence",
+    "Okinawa special codes require official definitions; do not assume ordinary municipality codes",
+    "Near-boundary errors and historical code policy remain unreviewed"
+  ],
+  "reviewed": false,
+  "published": false,
+  "hamamatsuDiagnostic": {
+    "officialReorganizationAllowedCurrentCodes": {
+      "22131": [
+        "22138"
+      ],
+      "22132": [
+        "22138"
+      ],
+      "22133": [
+        "22138"
+      ],
+      "22134": [
+        "22138"
+      ],
+      "22135": [
+        "22138",
+        "22139"
+      ],
+      "22136": [
+        "22139"
+      ],
+      "22137": [
+        "22140"
+      ]
+    },
+    "unexpectedCurrentBoundaryMatches": {
+      "22131": {},
+      "22132": {
+        "22139": 3,
+        "22211": 5
+      },
+      "22133": {
+        "22139": 1
+      },
+      "22134": {},
+      "22135": {
+        "22221": 2
+      },
+      "22136": {
+        "22138": 8
+      },
+      "22137": {
+        "22139": 1
+      }
+    },
+    "unexpectedRows": 20,
+    "automaticRemappingApproved": false,
+    "sources": [
+      "https://www.city.hamamatsu.shizuoka.jp/kikaku/kuseido/index.html",
+      "https://www.e-stat.go.jp/municipalities/cities/absorption-separation-of-municipalities/22135"
+    ]
+  },
+  "npaMunicipalityDefinition": {
+    "source": "https://www.npa.go.jp/publications/statistics/koutsuu/opendata/2025/codebook_2025.pdf",
+    "page": 40,
+    "note": "Uses standard regional codes; intra-year municipal code revisions use previous codes until year end. No explicit 995/996 mapping found; preserve as unresolved."
+  }
+}

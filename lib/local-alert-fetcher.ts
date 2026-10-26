@@ -18,6 +18,8 @@ export const LocalAlertInputSchema = z.object({
   description: z.string().min(10).max(500),
   source_url: z.string().url().nullable(),
   occurred_at: z.string().datetime({ offset: true }),
+  location_address: z.string().min(1).max(200).nullable().optional(),
+  location_evidence: z.string().min(1).max(500).nullable().optional(),
 })
 
 export type LocalAlertInput = z.infer<typeof LocalAlertInputSchema>
@@ -36,7 +38,9 @@ const SEARCH_PROMPT = `過去24時間以内に日本国内で発生した「声�
     "category": "suspicious | voice_call | following | other",
     "description": "事案の概要（100字以内）",
     "source_url": "記事URL（不明な場合は null）",
-    "occurred_at": "ISO8601形式の発生日時（不明な場合は検索時点のJST時刻。未来時刻は不可）"
+    "occurred_at": "ISO8601形式の発生日時（不明な場合は検索時点のJST時刻。未来時刻は不可）",
+    "location_address": "出典が明記する発生場所の住所。番地まで特定できない場合はnull。学校や自治体の所在地で代用しない",
+    "location_evidence": "発生場所を示す出典本文の短い原文抜粋。場所を特定できない場合はnull"
   }
 ]
 

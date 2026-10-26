@@ -1,0 +1,95 @@
+{
+  "rows": 48251,
+  "counts": {
+    "annual_reference_differs_original": 11465,
+    "no_or_multiple_annual_reference": 926,
+    "invalid_coordinates": 169,
+    "annual_reference_agrees_original": 16802,
+    "uncoded_annual_overlap": 7819,
+    "annual_reference_unavailable": 11070
+  },
+  "byOccurrenceYear": {
+    "2019": {
+      "annual_reference_differs_original": 3342,
+      "no_or_multiple_annual_reference": 258,
+      "invalid_coordinates": 74,
+      "annual_reference_agrees_original": 6536,
+      "uncoded_annual_overlap": 7
+    },
+    "2020": {
+      "annual_reference_unavailable": 8344,
+      "invalid_coordinates": 39
+    },
+    "2021": {
+      "annual_reference_differs_original": 2794,
+      "no_or_multiple_annual_reference": 148,
+      "annual_reference_agrees_original": 5330,
+      "invalid_coordinates": 33,
+      "uncoded_annual_overlap": 4
+    },
+    "2022": {
+      "uncoded_annual_overlap": 7808,
+      "no_or_multiple_annual_reference": 165,
+      "invalid_coordinates": 20
+    },
+    "2023": {
+      "annual_reference_differs_original": 2804,
+      "no_or_multiple_annual_reference": 178,
+      "annual_reference_agrees_original": 4936
+    },
+    "2024": {
+      "annual_reference_unavailable": 2726
+    },
+    "2025": {
+      "annual_reference_differs_original": 2525,
+      "no_or_multiple_annual_reference": 177,
+      "invalid_coordinates": 3
+    }
+  },
+  "referenceCounts": {
+    "2019-coded": 1902,
+    "2019-uncoded": 140,
+    "2021-coded": 1902,
+    "2021-uncoded": 141,
+    "2022-coded": 1902,
+    "2022-uncoded": 201,
+    "2023-coded": 1917,
+    "2023-uncoded": 0,
+    "2025-coded": 1905
+  },
+  "inputHashes": {
+    "ledger": "e1a31cc9389443fffc03bf2adc6108ac7dd6a5fca519b5469b7493cba89e3b07",
+    "verification": "e5526ba75087d88eb9d38281c41536c1eb388637c81c06ec1c0710659bd79e30",
+    "script": "95bf9ee9c638078c6e88ebad8f323243c0050ce9d1e39e996a45b022876810f0",
+    "2019-coded": "1aa0b445e7ab15e5d9e4f0d943357dabcf2025b79ef2051f610c7ef7ef0fd6be",
+    "2019-uncoded": "2d95c023ab63c23297a4f562c71a1068031003efb9fff2cebf4254ae6d9edb96",
+    "2021-coded": "e28c486c72d50757fc500ad9fecb0df6ce79cba685de6e32a5e2d2260cf80914",
+    "2021-uncoded": "c3a12217629dfc960cc8b9edef6d812bd2aa065854805d026fce5aa378a0fc89",
+    "2022-coded": "b07f81fb883be1a4b75069bb1ae5ddfb6956c827278b35af60ff07c052da9626",
+    "2022-uncoded": "22b9fd7806b960397f90116e942e6ce97a205acd967e939b5fbd6a89072b0579",
+    "2023-coded": "425d7e50ebe26200f306806f95ee617f7fb2f46b176c62a9d5831904a794dbc6",
+    "2023-uncoded": "ed778c73ea51338d6576fb5992b189f2b94d9f3d5e199f46c1af520d6b0b3e6c",
+    "2025-coded": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6"
+  },
+  "resultsSha256": "4eeffb8088e48776eee279bff2a736dafcd9704ceb39792c00105fbe6a7306a8",
+  "availableReferenceYears": [
+    2019,
+    2021,
+    2022,
+    2023,
+    2025
+  ],
+  "unavailableReferenceYears": [
+    2020,
+    2024
+  ],
+  "limitations": [
+    "Occurrence-year January1 boundaries do not prove jurisdiction on accident date or source-year code rules.",
+    "Uncoded feature ordinals refer to retained normalized uncoded files; no code invented.",
+    "All historical decisions remain unresolved; no source correction or publication."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

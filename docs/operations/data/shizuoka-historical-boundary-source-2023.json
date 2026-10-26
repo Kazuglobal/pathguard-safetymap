@@ -1,0 +1,17 @@
+{
+  "name": "国土数値情報 行政区域データ 静岡県 2023年",
+  "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2023/N03-20230101_22_GML.zip",
+  "detailsUrl": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2023.html",
+  "retrievedAt": "2026-10-12",
+  "dataAsOf": "2023-01-01",
+  "license": "CC BY 4.0 (government-standard terms compatible)",
+  "licenseUrl": "https://nlftp.mlit.go.jp/ksj/other/agreement_01.html",
+  "archiveSha256": "0e7a861050842f60ca3dcd92cf9b9d2eb64d7c142be5be41d3e70aacb129b7bf",
+  "rawSha256": "3742e379a249bdb10eef56d5abfb6274e69ae338fd42d765d2c0756d8a147263",
+  "inputPieces": 1832,
+  "regions": 43,
+  "sourceCrs": "EPSG:6668",
+  "purpose": "Diagnostic reference for pre-reorganization Hamamatsu codes; not historical coverage approval for all years",
+  "published": false,
+  "reviewed": false
+}

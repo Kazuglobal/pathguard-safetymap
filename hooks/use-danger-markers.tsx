@@ -1,41 +1,21 @@
 "use client"
 
-import { useEffect, type ElementType, type MutableRefObject } from "react"
+import { useEffect, type MutableRefObject } from "react"
 import mapboxgl from "mapbox-gl"
 import { createRoot } from "react-dom/client"
-import {
-  AlertTriangle,
-  Car,
-  HelpCircle,
-  MapPin,
-  Shield,
-  UserX,
-} from "lucide-react"
 import type { DangerReport } from "@/lib/types"
-import { SUSPICIOUS_DANGER_TYPE } from "@/lib/suspicious-alert"
+import { DangerClusterBadge, DangerPin } from "@/components/map/danger-pin"
+import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
 import { isValidCoordinates } from "@/lib/coordinates"
 import {
+  findPointsWithLabelRoom,
   groupMarkersByProximity,
   spreadOverlappingPins,
   CLUSTER_MAX_ZOOM,
+  PIN_LABEL_MIN_ZOOM,
+  type MarkerGroup,
 } from "@/lib/map/marker-clustering"
-
-const DANGER_TYPE_LABELS: Record<string, string> = {
-  traffic: "交通",
-  crime: "犯罪",
-  disaster: "災害",
-  suspicious: "不審者",
-  other: "その他",
-}
-
-const getDangerTypeMarkerClass = (dangerType: string) =>
-  DANGER_TYPE_LABELS[dangerType]
-    ? `danger-marker-${dangerType}`
-    : "danger-marker-other"
-
-const getDangerTypeLabel = (dangerType: string) =>
-  DANGER_TYPE_LABELS[dangerType] ?? DANGER_TYPE_LABELS.other
 
 interface UseDangerMarkersParams {
   mapRef: MutableRefObject<mapboxgl.Map | null>
@@ -94,35 +74,27 @@ export function useDangerMarkers({
       report: DangerReport,
       isPending: boolean,
       displayLngLat: [number, number],
+      showLabel: boolean,
     ) => {
       const markerElement = document.createElement("div");
-      const typeClass = getDangerTypeMarkerClass(report.danger_type);
-      markerElement.className = `danger-marker${isPending ? " pending-marker" : ""} danger-level-${report.danger_level} ${typeClass}`;
+      const type = getDangerTypePresentation(report.danger_type);
+      const level = getDangerLevelPresentation(report.danger_level);
+      markerElement.className = `danger-marker${isPending ? " pending-marker" : ""} danger-level-${report.danger_level} danger-marker-${type.id}`;
       markerElement.setAttribute("role", "button");
       markerElement.setAttribute("tabindex", "0");
       markerElement.setAttribute(
         "aria-label",
-        `${getDangerTypeLabel(report.danger_type)}の危険報告${isPending ? "（確認中）" : ""}。詳細を開きます`,
+        `${type.label}の危険報告（${level.kidLabel}）${isPending ? "（確認中）" : ""}。詳細を開きます`,
       );
 
-      // Render icon inside marker
       const root = createRoot(markerElement);
-      let IconComponent: ElementType = HelpCircle;
-      if (report.danger_type === "traffic") IconComponent = Car;
-      else if (report.danger_type === "crime") IconComponent = Shield;
-      else if (report.danger_type === "disaster") IconComponent = AlertTriangle;
-      else if (report.danger_type === SUSPICIOUS_DANGER_TYPE) IconComponent = UserX;
-      const backgroundColor = getDangerLevelPresentation(report.danger_level).colorHex;
       root.render(
-        <span className="danger-pin-visual" aria-hidden="true">
-          <MapPin
-            className="danger-pin-shape"
-            fill={backgroundColor}
-            stroke="white"
-            strokeWidth={1.8}
-          />
-          <IconComponent className="danger-pin-icon" strokeWidth={2.4} />
-        </span>,
+        <DangerPin
+          dangerType={report.danger_type}
+          dangerLevel={report.danger_level}
+          isPending={isPending}
+          showLabel={showLabel}
+        />,
       );
 
       const marker = new mapboxgl.Marker({ element: markerElement, anchor: "bottom" })
@@ -154,13 +126,16 @@ export function useDangerMarkers({
     ) => {
       // クラスタ色はメンバー中の最大危険度(安全側: 最悪ケースを見せる)
       const maxLevel = Math.max(...entries.map((entry) => entry.report.danger_level));
-      const presentation = getDangerLevelPresentation(maxLevel);
       const count = entries.length;
-      const size = Math.min(48, 32 + count * 2);
+      const size = Math.min(54, 40 + count * 2);
 
       const markerElement = document.createElement("div");
       markerElement.className = "danger-cluster-marker";
       markerElement.style.setProperty("--cluster-size", `${size}px`);
+      markerElement.style.setProperty(
+        "--cluster-color",
+        getDangerLevelPresentation(maxLevel).colorHex,
+      );
       markerElement.setAttribute("role", "button");
       markerElement.setAttribute("tabindex", "0");
       markerElement.setAttribute(
@@ -169,23 +144,7 @@ export function useDangerMarkers({
       );
 
       const root = createRoot(markerElement);
-      root.render(
-        <span className="danger-cluster-visual" aria-hidden="true">
-          <MapPin
-            className="danger-cluster-pin danger-cluster-pin-back"
-            fill={presentation.colorHex}
-            stroke="white"
-            strokeWidth={1.5}
-          />
-          <MapPin
-            className="danger-cluster-pin danger-cluster-pin-front"
-            fill={presentation.colorHex}
-            stroke="white"
-            strokeWidth={1.8}
-          />
-          <span className="danger-cluster-count">{count}</span>
-        </span>,
-      );
+      root.render(<DangerClusterBadge count={count} />);
 
       const marker = new mapboxgl.Marker(markerElement).setLngLat(lngLat).addTo(map);
       markerResources.push({ marker, unmount: () => root.unmount() })
@@ -229,25 +188,30 @@ export function useDangerMarkers({
       const zoom = map.getZoom();
 
       try {
-        if (zoom >= CLUSTER_MAX_ZOOM) {
-          // 高ズーム: 重なりだけ扇状に散らして全件表示
-          for (const spread of spreadOverlappingPins(entries, zoom)) {
-            addMarker(spread.item.report, spread.item.isPending, [
-              spread.longitude,
-              spread.latitude,
-            ]);
+        // 高ズーム: 重なりだけ扇状に散らして全件表示 / 通常ズーム: 近接ピンをクラスタへ
+        const displayed: MarkerGroup<MarkerEntry>[] =
+          zoom >= CLUSTER_MAX_ZOOM
+            ? spreadOverlappingPins(entries, zoom).map((spread) => ({
+                latitude: spread.latitude,
+                longitude: spread.longitude,
+                items: [spread.item],
+              }))
+            : groupMarkersByProximity(entries, zoom);
+
+        // ラベルは拡大時かつ周囲に空きがあるピンだけ。近くに他のマーカーがあると
+        // ラベル同士が重なるか、隣のピンを覆ってしまう。
+        const hasLabelRoom =
+          zoom >= PIN_LABEL_MIN_ZOOM ? findPointsWithLabelRoom(displayed, zoom) : null;
+
+        displayed.forEach((group, index) => {
+          const lngLat: [number, number] = [group.longitude, group.latitude];
+          if (group.items.length === 1) {
+            const entry = group.items[0];
+            addMarker(entry.report, entry.isPending, lngLat, hasLabelRoom?.[index] ?? false);
+          } else {
+            addClusterMarker(lngLat, group.items, zoom);
           }
-        } else {
-          // 通常ズーム: 近接ピンをクラスタへ
-          for (const group of groupMarkersByProximity(entries, zoom)) {
-            if (group.items.length === 1) {
-              const entry = group.items[0];
-              addMarker(entry.report, entry.isPending, [entry.longitude, entry.latitude]);
-            } else {
-              addClusterMarker([group.longitude, group.latitude], group.items, zoom);
-            }
-          }
-        }
+        });
       } catch (error) {
         console.error("Error adding markers:", error);
       }

@@ -16,10 +16,10 @@ export type RouteBinding =
 const ROUTE_BINDINGS = [
   { binding: 'EDITORIAL', prefixes: ['/landing', '/lp', '/safe-magazine', '/school-route-news'] },
   { binding: 'MAP_3D', prefixes: ['/3d-route-poc'] },
-  { binding: 'MAP_UI', prefixes: ['/map', '/xroad'] },
+  { binding: 'MAP_UI', prefixes: ['/map', '/xroad', '/accidents'] },
   { binding: 'ROUTE_QUIZ', prefixes: ['/route-quiz'] },
   { binding: 'ROUTE_LIST', prefixes: ['/routes'] },
-  { binding: 'MAP_DATA', prefixes: ['/api/mapbox', '/api/traffic-accidents', '/api/xroad'] },
+  { binding: 'MAP_DATA', prefixes: ['/api/mapbox', '/api/traffic-accidents', '/api/accidents', '/api/xroad'] },
   { binding: 'AI_VISION', prefixes: ['/hazard-game', '/tools/image-gen', '/api/gemini', '/api/hazard', '/api/image', '/api/vlm'] },
   { binding: 'HUNTER', prefixes: ['/safety-quest/hunter', '/api/hunter'] },
   { binding: 'SAFETY_QUEST', prefixes: ['/safety-quest', '/api/safety-quest'] },
@@ -43,7 +43,7 @@ const ROUTE_BINDINGS = [
   },
   { binding: 'COMMUNITY', prefixes: ['/report', '/api/abuse-report', '/api/danger-report', '/api/media', '/api/reactions', '/api/report-interactions', '/api/reports', '/api/suspicious-alert'] },
   { binding: 'USER', prefixes: ['/badges', '/dashboard', '/leaderboard', '/missions', '/mypage', '/api/gamification', '/api/missions', '/api/notifications', '/api/profile', '/api/push', '/api/routes'] },
-  { binding: 'OPERATIONS', prefixes: ['/api/cron', '/api/local-safety-alerts'] },
+  { binding: 'OPERATIONS', prefixes: ['/api/cron', '/api/local-safety-alerts', '/api/school-districts'] },
 ] as const satisfies ReadonlyArray<{
   binding: RouteBinding
   prefixes: readonly string[]

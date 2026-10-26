@@ -1,0 +1,81 @@
+{
+  "originalRows": 2182298,
+  "radii": [
+    10,
+    20,
+    30,
+    50
+  ],
+  "counts": {
+    "10": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98067,
+      "multiple_locations": 892261,
+      "structural_single_candidate_unreviewed": 643250,
+      "nonconnecting_road_competition": 235562,
+      "multiple_elevation_levels": 235080,
+      "no_candidate": 37297,
+      "elevation_unresolved": 15229,
+      "geometry_requires_review": 14921,
+      "invalid_coordinate": 169
+    },
+    "20": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98068,
+      "multiple_locations": 880974,
+      "structural_single_candidate_unreviewed": 777422,
+      "multiple_elevation_levels": 235079,
+      "no_candidate": 37297,
+      "nonconnecting_road_competition": 109186,
+      "elevation_unresolved": 15229,
+      "geometry_requires_review": 18412,
+      "invalid_coordinate": 169
+    },
+    "30": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98077,
+      "multiple_locations": 1035901,
+      "structural_single_candidate_unreviewed": 653588,
+      "multiple_elevation_levels": 236787,
+      "no_candidate": 33934,
+      "nonconnecting_road_competition": 83293,
+      "elevation_unresolved": 14468,
+      "geometry_requires_review": 15619,
+      "invalid_coordinate": 169
+    },
+    "50": {
+      "outside_selected_period": 10462,
+      "ambiguous_road_or_region_geometry": 98096,
+      "multiple_locations": 1377122,
+      "multiple_elevation_levels": 245041,
+      "structural_single_candidate_unreviewed": 360648,
+      "elevation_unresolved": 11698,
+      "nonconnecting_road_competition": 50106,
+      "no_candidate": 19349,
+      "geometry_requires_review": 9607,
+      "invalid_coordinate": 169
+    }
+  },
+  "actualAssignedRecords": 0,
+  "unresolvedRecords": 2171667,
+  "outsideScopeRecords": 10631,
+  "regionLedgerUnresolvedRows": 48251,
+  "inputHashes": {
+    "index": "ac15df59243d5288586a67678ba415fe9c6a9ed4738b7648b14fdaa39c1deb3f",
+    "summary": "a3546624beabb1b3e9143f1eccd13d5d1950981cd0ceab488f44c12cf315a388",
+    "verification": "38115c80fab721071211fdb09577734a42a187c731156332e7a85bc52b9a668d",
+    "script": "3105dbb39e0fcdfde7acb76675e881fd5badd2d2d47e3153d3536ccd70f3efff",
+    "distanceHelper": "16e58348cee2002fdaa4c41c70fabd196fd8f8e228ae57ad69aa5a46ac7a53dd"
+  },
+  "diagnosisSha256": "39156e419281c8c81761dbbce5c44232f2ca26135f2fa130c1422dc8022d4279",
+  "diagnosisBytes": 6010097664,
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false,
+  "limitations": [
+    "Structural single candidates and focus frequencies are diagnostic only, not reviewed assignments or public rankings.",
+    "All actual assigned IDs remain null. Existing unresolved region/geometry/elevation and historical road requirements remain.",
+    "Road candidate threshold remains20m;10/20/30/50m compare intersection candidates."
+  ]
+}

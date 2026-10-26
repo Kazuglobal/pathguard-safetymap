@@ -1,0 +1,29 @@
+{
+  "sourceRows": 2182298,
+  "ledgerRows": 48251,
+  "counts": {
+    "outside_selected_period": 10462,
+    "current_code_agrees": 2123585,
+    "current_code_differs": 46862,
+    "no_current_boundary": 1220,
+    "invalid_coordinate": 169
+  },
+  "ledgerSha256": "e1a31cc9389443fffc03bf2adc6108ac7dd6a5fca519b5469b7493cba89e3b07",
+  "auditScriptSha256": "4f650adf1896a706f32b6b22da9718eb156df13e960c77dd02a1b710bb165593",
+  "inputs": {
+    "recordsSha256": "bb880611db2f288acd78bf9159397a75ed79a3b96646307c57fcdda52933c2ec",
+    "areasSha256": "47cc1c7cdd94c0d5669ddd3e9aa91b922e4a1d96150c3e00c0c79a33da627ce6",
+    "codebooksSha256": "40c52a69c9bbf41b18640385fce5d66977d69681825b9739b95889b4126451d2"
+  },
+  "boundaryIndexSha256": "7b9c6a9b0e283c7faae540a5b8414c5c3139c9d06b97a720a06063e8ea4e0613",
+  "uniqueLedgerIdentities": 48251,
+  "kashiwaAffected": 96,
+  "method": "Period-first national coordinate diagnosis; retain original identity and codes in a local unresolved review ledger.",
+  "limitations": [
+    "Current containment is not historical jurisdiction or an approved code mapping.",
+    "All ledger decisions remain unresolved; no accident assignment or publication."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false
+}

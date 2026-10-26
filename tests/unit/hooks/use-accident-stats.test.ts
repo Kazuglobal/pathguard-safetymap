@@ -115,6 +115,18 @@ describe("useAccidentStats", () => {
     expect(result.current.error).toContain("boom");
   });
 
+  it("clears the previous location's totals as soon as a new request starts", async () => {
+    mocked.getAccidentStatsRPC.mockResolvedValueOnce(makeStats());
+    const pending = createDeferred<AccidentStats>();
+    mocked.getAccidentStatsRPC.mockReturnValueOnce(pending.promise);
+    const { result } = renderHook(() => useAccidentStats());
+    await act(async () => { await result.current.fetchStats({ latitude: 35, longitude: 139 }); });
+    act(() => { void result.current.fetchStats({ latitude: 36, longitude: 140 }); });
+    expect(result.current.status).toBe('loading');
+    expect(result.current.stats).toBeNull();
+    expect(result.current.hasData).toBe(false);
+  });
+
   it("keeps only latest fetch result when requests resolve out of order", async () => {
     const first = createDeferred<AccidentStats>();
     const second = createDeferred<AccidentStats>();

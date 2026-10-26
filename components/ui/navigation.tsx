@@ -31,6 +31,8 @@ interface NavigationProps {
   isLoggingOut?: boolean
   hideTopNavMobile?: boolean
   isOverlay?: boolean
+  /** スマホの下部タブバーを出さない（地図。lib/navigation-visibility.ts） */
+  hideBottomNavMobile?: boolean
 }
 
 type NavItem = {
@@ -92,6 +94,7 @@ export function Navigation({
   isLoggingOut = false,
   hideTopNavMobile = false,
   isOverlay = false,
+  hideBottomNavMobile = false,
 }: NavigationProps) {
   const pathname = usePathname()
   const isAdmin = isAdminUser(user)
@@ -318,6 +321,7 @@ export function Navigation({
       </nav>
 
       {/* モバイルボトムナビ(たんけんノートの持ち手) */}
+      {!hideBottomNavMobile && (
       <nav
         className="fixed inset-x-0 bottom-0 z-50 border-t md:hidden"
         style={{
@@ -403,6 +407,7 @@ export function Navigation({
           })}
         </div>
       </nav>
+      )}
 
       {/* 報告BottomSheet */}
       <ReportBottomSheet open={isReportOpen} onOpenChange={setIsReportOpen} />

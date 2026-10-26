@@ -168,7 +168,7 @@ export class MapboxMCPService {
   private processor: ParallelProcessor
 
   constructor() {
-    this.token = getMapboxToken()
+    this.token = getMapboxToken()?.trim() ?? null
     this.processor = new ParallelProcessor(5)
   }
 

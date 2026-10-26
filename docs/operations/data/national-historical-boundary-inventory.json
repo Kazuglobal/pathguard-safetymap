@@ -1,0 +1,54 @@
+{
+  "years": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "countsByYear": {
+    "2019": {
+      "pieces": 117580,
+      "codedPieces": 117440,
+      "uncodedPieces": 140
+    },
+    "2020": {
+      "pieces": 118900,
+      "codedPieces": 118760,
+      "uncodedPieces": 140
+    },
+    "2021": {
+      "pieces": 121158,
+      "codedPieces": 121017,
+      "uncodedPieces": 141
+    },
+    "2022": {
+      "pieces": 123006,
+      "codedPieces": 122805,
+      "uncodedPieces": 201
+    },
+    "2023": {
+      "pieces": 122929,
+      "codedPieces": 122929,
+      "uncodedPieces": 0
+    },
+    "2024": {
+      "pieces": 124133,
+      "codedPieces": 124133,
+      "uncodedPieces": 0
+    }
+  },
+  "all47PrefecturesEachYear": true,
+  "sourceReceiptSha256": "ab8e0ccb6435b448b59864bd5664eff37cf1ae76df3d8807a292f4ab4562441a",
+  "auditScriptSha256": "0857ce13c1db797396651324c774433dc395926a9a31ccfdfa93be931cd82301",
+  "uncodedLedgerSha256": "50e0096f59e3e4991fc13ae8a907def9108dad4ee6a4b9a39147fa915521519e",
+  "completedAt": "2026-10-13T06:02:12.597545+00:00",
+  "limitations": [
+    "Inventory does not validate coordinates, transform geometry or approve historical jurisdiction."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

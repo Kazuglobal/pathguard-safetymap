@@ -34,9 +34,14 @@ export const AUTHZ_TABLES = [
   'image_generation_gate_log',
   'push_subscriptions',
   'local_safety_alerts',
+  'school_districts',
+  'school_district_boundaries',
+  'local_alert_districts',
+  'local_alert_locations',
   'api_usage_logs',
   'api_budget_settings',
   'traffic_accidents',
+  'accident_hotspots',
 ] as const
 
 export type Table = (typeof AUTHZ_TABLES)[number]

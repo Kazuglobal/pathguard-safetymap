@@ -117,4 +117,19 @@ describe("isAccidentImageContextEnabled", () => {
     expect(isAccidentImageContextEnabled("false")).toBe(false)
     expect(isAccidentImageContextEnabled(undefined)).toBe(false)
   })
+
+  it("adds the nearby accident hotspot line only when hotspots exist", () => {
+    const withHotspot = buildAccidentPromptContext(stats({ hotspots: [{
+  id: 1, latitude: 35, longitude: 139, radiusMeters: 30, minYear: 2021, maxYear: 2025,
+  accidentCount: 12, fatalCount: 0, pedestrianCount: 3, youngCount: 0,
+  byYear: {}, byClass: { 車両相互: 9, 人対車両: 3 }, peakHour: 8, nationalRank: 42, distanceMeters: 85,
+}, { ...{
+  id: 1, latitude: 35, longitude: 139, radiusMeters: 30, minYear: 2021, maxYear: 2025,
+  accidentCount: 12, fatalCount: 0, pedestrianCount: 3, youngCount: 0,
+  byYear: {}, byClass: { 車両相互: 9, 人対車両: 3 }, peakHour: 8, nationalRank: 42, distanceMeters: 85,
+}, id: 2, accidentCount: 6, distanceMeters: 200 }] }))
+    expect(withHotspot).toContain("- 半径300m以内に事故多発地点が2か所（最大: 半径30m以内で12件・主に車両相互・85m先）")
+    expect(buildAccidentPromptContext(stats({ hotspots: [] }))).not.toContain("事故多発地点")
+    expect(buildAccidentPromptContext(stats())).not.toContain("事故多発地点")
+  })
 })

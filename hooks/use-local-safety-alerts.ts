@@ -24,6 +24,8 @@ export interface LocalSafetyAlert {
 }
 
 interface UseLocalSafetyAlertsOptions {
+  schoolDistrictId?: string
+  enabled?: boolean
   /** undefined または '全国' で全件取得 */
   prefecture?: string
   /** 何時間前まで取得するか（デフォルト 24 時間） */
@@ -72,13 +74,14 @@ function getAlertAgeMs(isoString: string): number | null {
 export function useLocalSafetyAlerts(
   options: UseLocalSafetyAlertsOptions = {}
 ): UseLocalSafetyAlertsResult {
-  const { prefecture, limitHours = 24 } = options
+  const { prefecture, schoolDistrictId, enabled = true, limitHours = 24 } = options
 
-  const cacheKey = ['local_safety_alerts', prefecture ?? 'all', limitHours]
+  const cacheKey = enabled ? ['local_safety_alerts', prefecture ?? 'all', schoolDistrictId ?? 'all', limitHours] : null
 
   const fetcher = async (): Promise<LocalSafetyAlert[]> => {
     const params = new URLSearchParams({ hours: String(limitHours) })
     if (prefecture && prefecture !== '全国') params.set('prefecture', prefecture)
+    if (schoolDistrictId) params.set('schoolDistrictId', schoolDistrictId)
     const response = await fetch(`/api/local-safety-alerts?${params}`, { credentials: 'same-origin' })
     if (!response.ok) throw new Error(`地域安全情報の取得に失敗しました (${response.status})`)
     const payload = await response.json() as { alerts?: LocalSafetyAlert[] }
@@ -88,13 +91,13 @@ export function useLocalSafetyAlerts(
   const { data, error, isLoading, mutate } = useSWR<LocalSafetyAlert[]>(
     cacheKey,
     fetcher,
-    { refreshInterval: REFRESH_INTERVAL_MS }
+    { refreshInterval: REFRESH_INTERVAL_MS, keepPreviousData: false }
   )
 
   return {
-    alerts: data ?? [],
-    isLoading,
-    error: error instanceof Error ? error.message : null,
+    alerts: enabled ? data ?? [] : [],
+    isLoading: enabled && isLoading,
+    error: enabled && error instanceof Error ? error.message : null,
     mutate,
   }
 }

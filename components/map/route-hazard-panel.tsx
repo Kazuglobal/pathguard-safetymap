@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { AlertTriangle, Flame, Layers, Navigation, Route as RouteIcon, Waves } from "lucide-react"
+import { useMemo, useState, type ReactNode } from "react"
+import { Flame, Layers, Navigation, Route as RouteIcon } from "lucide-react"
 
 import { HazardReasonList } from "@/components/map/hazard-reason-list"
 import { RouteHazardList } from "@/components/map/route-hazard-list"
@@ -21,8 +21,15 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { getRouteHazardPresentation } from "@/lib/map/route-hazard-presentation"
 import type { HazardType, RouteHazardMarker, UserRoute } from "@/lib/types"
 import type { RouteSafetyEvidenceItem, RouteSafetySummary } from "@/lib/safety-scoring/route-safety-scorer"
+
+// 地図マーカーと同じ絵・色(route-hazard-presentation)をトグルにも使う
+const FLOOD = getRouteHazardPresentation("flood")
+const TSUNAMI = getRouteHazardPresentation("tsunami")
+const FloodIcon = FLOOD.icon
+const TsunamiIcon = TSUNAMI.icon
 
 interface RouteHazardPanelProps {
   routes: UserRoute[]
@@ -31,6 +38,8 @@ interface RouteHazardPanelProps {
   summary?: RouteSafetySummary
   evidenceItems?: RouteSafetyEvidenceItem[]
   hazards?: RouteHazardMarker[]
+  /** 通学路の近くの事故多発地点一覧（RouteAccidentHotspotList）を差し込む */
+  accidentHotspotSlot?: ReactNode
   toggles: Record<HazardType, boolean>
   isLoading: boolean
   onRouteChange: (routeId: string) => void
@@ -88,7 +97,7 @@ function HazardPanelContent({
       <div className="space-y-3">
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-sky-600" />
+            <FloodIcon className="h-4 w-4" style={{ color: FLOOD.colorHex }} />
             <div>
               <p className="text-sm font-medium">洪水浸水想定</p>
               <p className="text-xs text-muted-foreground">重ねるハザードマップ</p>
@@ -103,7 +112,7 @@ function HazardPanelContent({
 
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="flex items-center gap-2">
-            <Waves className="h-4 w-4 text-blue-700" />
+            <TsunamiIcon className="h-4 w-4" style={{ color: TSUNAMI.colorHex }} />
             <div>
               <p className="text-sm font-medium">津波浸水想定</p>
               <p className="text-xs text-muted-foreground">重ねるハザードマップ</p>
@@ -136,6 +145,7 @@ export function RouteHazardPanel({
   summary,
   evidenceItems = [],
   hazards = [],
+  accidentHotspotSlot,
   toggles,
   isLoading,
   onRouteChange,
@@ -224,6 +234,7 @@ export function RouteHazardPanel({
       <div className="space-y-4">
         {summary && <RouteSafetySummaryCard summary={summary} />}
         <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+        {accidentHotspotSlot}
         <HazardReasonList items={evidenceItems} />
         <div className="space-y-1">
           <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
@@ -277,6 +288,7 @@ export function RouteHazardPanel({
               <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
                 {summary && <RouteSafetySummaryCard summary={summary} />}
                 <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+                {accidentHotspotSlot}
                 <HazardReasonList items={evidenceItems} />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
@@ -317,6 +329,7 @@ export function RouteHazardPanel({
       <CardContent className="space-y-4">
         {summary && <RouteSafetySummaryCard summary={summary} />}
         <RouteHazardList hazards={hazards} onSelectHazard={onHazardSelect} />
+        {accidentHotspotSlot}
         <HazardReasonList items={evidenceItems} />
         <HazardPanelContent
           routes={routes}

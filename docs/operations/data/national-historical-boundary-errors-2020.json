@@ -1,0 +1,27 @@
+{
+  "year": 2020,
+  "codedPieces": 118760,
+  "invalidPieces": 2,
+  "byMunicipality": {
+    "40214": 1,
+    "42209": 1
+  },
+  "byReason": {
+    "Self-intersection[131.100326306085 33.6181145208947]": 1,
+    "Ring Self-intersection[129.45402351 34.60429064]": 1
+  },
+  "inputHashes": {
+    "staging": "c7e31890bf6e47a26c103fb19c0c7f2d902989a861508adbcfabea0686b41add",
+    "codedSource": "5ba0fa1cf4295e1aa3843f3cdede1a14b279dc1790bcc0d5841f6f9f6eb97563",
+    "script": "9ff1938fd4be734359d799dc3b2596426f7fcce3f0ca39ddff102989de2c533d"
+  },
+  "ledgerSha256": "172b90218722d51b9b7121d141e63fb026a8215e1feb1776a3c7a8e1e5c7c843",
+  "positionMeaning": "One-based feature ordinal in retained 2020-coded-source.geojson, not the original archive feature ordinal.",
+  "limitations": [
+    "No source repair, region approval, coordinate conversion or publication."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

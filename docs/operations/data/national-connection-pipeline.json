@@ -1,0 +1,17 @@
+{
+  "codeHashes": {
+    "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\scripts\\accidents\\diagnose_connections.py": "e0acfd5c7cf6ed9e9cc7ed151a12f0add50a30fff705aa92d9ea3a7ac2602648",
+    "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\scripts\\accidents\\recover_connections.py": "77aa758a73848f02ba20650c075ead928cfde50f66a3b6ffd5bde70c911d9e24",
+    "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\scripts\\accidents\\build_snapshot.py": "16e58348cee2002fdaa4c41c70fabd196fd8f8e228ae57ad69aa5a46ac7a53dd"
+  },
+  "pipelineScriptSha256": "f84679e66153c32bf08a6eeb80bbb98027e9b3395d9c7c14cebb638b06d82672",
+  "structuralCompletionSha256": "5446154fa748bc6811bb8404716881cf124023395ccd69b26349a1714c48f480",
+  "structuralReportSha256": "4e9b94193fee34eabc5757c21bc0510578b99967bb0d724089984d1d496c5483",
+  "report": "C:\\Users\\s1598\\mapsefe\\20250615\\.worktrees\\accident-rankings-main\\artifacts\\national-source-connections-v3-20261012.json",
+  "reportSha256": "fa66268a2bf9f5f0b3058abf20e27743565358646d98e7a6a48c51072d416656",
+  "features": 28969266,
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

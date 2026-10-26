@@ -1,0 +1,11 @@
+{
+  "inputPieces": 1832,
+  "regions": 43,
+  "outputHoles": 0,
+  "sourceCrs": "EPSG:6668",
+  "outputCrs": "EPSG:4326",
+  "transformAccuracyMeters": 1.0,
+  "inputSha256": "3742e379a249bdb10eef56d5abfb6274e69ae338fd42d765d2c0756d8a147263",
+  "outputSha256": "9bf43e7917917d11435948da3deda2aaaac372355428ea12c5f2ce430261be68",
+  "completeCoverageReviewed": false
+}

@@ -47,10 +47,13 @@ const routeGroups = {
     '3d-route-poc*',
   ]),
   mapUi: splitFunction([
+    'app/accidents/page',
+    'app/accidents/locations/[id]/page',
     'app/map/page',
     'app/xroad/page',
   ], [
     'map*',
+    'accidents*',
     'xroad*',
   ]),
   routeQuiz: splitFunction([
@@ -64,17 +67,24 @@ const routeGroups = {
     'routes*',
   ]),
   mapData: splitFunction([
+    'app/api/accidents/areas/route',
+    'app/api/accidents/rankings/route',
+    'app/api/accidents/locations/route',
+    'app/api/accidents/locations/[id]/route',
     'app/api/mapbox/directions/route',
     'app/api/mapbox/geocode/route',
     'app/api/mapbox/isochrone/route',
     'app/api/mapbox/matrix/route',
     'app/api/mapbox/tilequery/route',
     'app/api/traffic-accidents/bbox/route',
+    'app/api/traffic-accidents/hotspots/route',
+    'app/api/traffic-accidents/hotspots/route-risks/route',
     'app/api/traffic-accidents/nearby/route',
     'app/api/xroad-proxy/route',
     'app/api/xroad/route',
   ], [
     'api/mapbox/*',
+    'api/accidents/*',
     'api/traffic-accidents/*',
     'api/xroad*',
   ]),
@@ -208,14 +218,17 @@ const routeGroups = {
     'app/api/cron/daily-news-digest/route',
     'app/api/cron/hunter-retention-cleanup/route',
     'app/api/cron/local-alert-fetcher/route',
+    'app/api/cron/local-alert-district-backfill/route',
     'app/api/cron/local-safety-alerts/route',
     'app/api/cron/moderation-sweep/route',
     'app/api/cron/push-danger-reports/route',
     'app/api/cron/r2-orphan-cleanup/route',
     'app/api/local-safety-alerts/route',
+    'app/api/school-districts/route',
   ], [
     'api/cron/*',
     'api/local-safety-alerts*',
+    'api/school-districts*',
   ]),
 } satisfies NonNullable<typeof config.functions>
 

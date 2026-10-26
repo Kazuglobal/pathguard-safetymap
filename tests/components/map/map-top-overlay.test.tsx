@@ -53,6 +53,32 @@ describe("MapTopOverlay", () => {
     expect(screen.getByRole("button", { name: "ハザード" })).toBeInTheDocument()
   })
 
+  it("gives every chip an icon next to its label", () => {
+    render(
+      <MapTopOverlay
+        activePanel={null}
+        is3DEnabled={false}
+        isARMode={false}
+        isHeatmapVisible={false}
+        onPanelChange={() => {}}
+        onToggle3D={() => {}}
+        onToggleAR={() => {}}
+        onToggleHeatmap={() => {}}
+        searchSlot={<div>search-slot</div>}
+        heatmapPanelSlot={<div>heatmap-panel</div>}
+        hazardPanelSlot={<div>hazard-panel</div>}
+        threeDPanelSlot={<div>3d-panel</div>}
+        arPanelSlot={<div>ar-panel</div>}
+      />,
+    )
+
+    for (const name of ["3D", "AR", "事故ヒートマップ", "不審者情報", "ハザード"]) {
+      const chip = screen.getByRole("button", { name })
+      expect(chip.querySelector("svg")).not.toBeNull()
+      expect(chip).toHaveTextContent(name)
+    }
+  })
+
   it("opens the matching panel when a chip is pressed", async () => {
     const user = userEvent.setup()
     const onPanelChange = vi.fn()

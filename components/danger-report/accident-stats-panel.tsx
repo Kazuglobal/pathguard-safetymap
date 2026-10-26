@@ -3,7 +3,7 @@
  * 交通事故統計 拡張表示パネル v4
  * PathGuardian - 通学路安全マップ
  *
- * 153万件の警察庁オープンデータから、事故の詳細状況・
+ * 警察庁オープンデータ（本票）から、事故の詳細状況・
  * 道路環境・当事者分析・時間帯分析をリッチUIで表示
  *
  * shadcn/ui + Tailwind CSS
@@ -12,6 +12,15 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import {
+  accidentYearWindow,
+  DEFAULT_ACCIDENT_YEARS,
+  formatAccidentYearWindow,
+  statsYearRangeSuffix,
+} from "@/lib/accident-stats-year-window";
+import { NearbyHotspotsSection } from "@/components/danger-report/nearby-hotspots-section";
+import { AccidentRecordList } from "./accident-record-list";
+import { accidentStatsIntegrityError } from "@/lib/traffic-accident/stats-integrity";
 import {
   BarChart2,
   Clock,
@@ -108,9 +117,6 @@ export function deriveSeveritySummaryText(
     "fatal_accidents" | "total_fatalities" | "nearest_accidents" | "situation_summary"
   >
 ): string {
-  const backendText = stats.situation_summary?.severity_text?.trim() ?? "";
-  if (backendText) return backendText;
-
   const fatalAccidentCount = deriveFatalAccidentCount(stats);
   if (fatalAccidentCount > 0) {
     return `死亡事故${fatalAccidentCount}件が確認されています`;
@@ -1143,8 +1149,8 @@ function OverviewPanel({
         />
         <StatCard
           label="子ども"
-          value={stats.child_involved}
-          highlight={stats.child_involved > 0}
+          value={stats.child_data_available === true ? stats.child_involved : '不明'}
+          highlight={stats.child_data_available === true && stats.child_involved > 0}
           icon={<Baby size={15} />}
         />
         <StatCard
@@ -1250,7 +1256,7 @@ function CompactPanel({ stats }: { stats: AccidentStats }) {
       )}
       <p className="text-xs text-gray-400 text-center">
         半径{stats.search_params.radius_meters}m / 過去
-        {stats.search_params.years}年 ・出典: 警察庁オープンデータ
+        {stats.search_params.years}年{statsYearRangeSuffix(stats.search_params)} ・出典: 警察庁オープンデータ
       </p>
     </div>
   );
@@ -1285,7 +1291,7 @@ function SummaryChip({
   hot,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   hot?: boolean;
 }) {
   return (
@@ -1294,12 +1300,12 @@ function SummaryChip({
       style={{ backgroundColor: tankenTokens.color.paper }}
     >
       <div
-        className="text-base font-bold leading-none"
+        className="text-lg font-bold leading-none"
         style={{ color: hot ? tankenTokens.color.danger : tankenTokens.color.ink }}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-[9px]" style={{ color: tankenTokens.color.inkSoft }}>
+      <div className="mt-1 text-[11px]" style={{ color: tankenTokens.color.inkSoft }}>
         {label}
       </div>
     </div>
@@ -1372,18 +1378,16 @@ export function AccidentStatsLoading() {
   );
 }
 
-export function AccidentStatsEmpty({ radius }: { radius: number }) {
+export function AccidentStatsEmpty({ radius, years = DEFAULT_ACCIDENT_YEARS, minYear, maxYear }: { radius: number; years?: number; minYear?: number; maxYear?: number }) {
   return (
-    <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
-      <div className="flex justify-center mb-1">
-        <CheckCircle2 size={28} className="text-green-500" />
-      </div>
-      <p className="text-sm font-medium text-green-800">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+      <p className="text-sm font-medium text-slate-800">
         半径{radius}m以内に交通事故の記録はありません
       </p>
-      <p className="text-xs text-green-600 mt-1">
-        過去5年間の警察庁オープンデータに基づく
+      <p className="text-xs text-slate-600 mt-1">
+        過去{years}年間（{formatAccidentYearWindow(minYear != null && maxYear != null ? { minYear, maxYear } : accidentYearWindow(years))}）の警察庁オープンデータに基づく
       </p>
+      <p className="mt-2 text-xs text-slate-600">この集計範囲・収録期間での記録です。事故が起きないことを示すものではありません。</p>
     </div>
   );
 }
@@ -1398,12 +1402,24 @@ const TAB_LIST: { id: string; label: string; icon: React.ReactNode }[] = [
   { id: "detail", label: "事故詳細", icon: <List size={12} /> },
 ];
 
-export default function AccidentStatsPanel({
+export default function AccidentStatsPanel(props: {
+  stats: AccidentStats;
+  mode?: 'full' | 'compact';
+  onAccidentNavigate?: (coordinates: [number, number]) => void;
+}) {
+  const error = accidentStatsIntegrityError(props.stats);
+  if (error) return <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>;
+  return <AccidentStatsPanelContent {...props} />;
+}
+
+function AccidentStatsPanelContent({
   stats,
   mode = "full",
+  onAccidentNavigate,
 }: {
   stats: AccidentStats;
   mode?: "full" | "compact";
+  onAccidentNavigate?: (coordinates: [number, number]) => void;
 }) {
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -1417,7 +1433,7 @@ export default function AccidentStatsPanel({
   const actionAdvice = useMemo(() => deriveAccidentActionAdvice(stats), [stats]);
 
   if (stats.total_accidents === 0) {
-    return <AccidentStatsEmpty radius={stats.search_params.radius_meters} />;
+    return <AccidentStatsEmpty radius={stats.search_params.radius_meters} years={stats.search_params.years} minYear={stats.search_params.min_year} maxYear={stats.search_params.max_year} />;
   }
 
   return (
@@ -1458,33 +1474,13 @@ export default function AccidentStatsPanel({
         <>
           {/* ひとことサマリー・そなえ・折りたたみ詳細 */}
           <div className="px-4 pt-3 pb-4">
-            <div className="flex items-center gap-3">
-              <RiskStamp score={stats.risk_score} accent={tankenAccent} />
-              <div className="min-w-0">
-                <p
-                  className="text-sm font-bold leading-snug"
-                  style={{ color: tankenTokens.color.ink }}
-                >
-                  {headline}
-                </p>
-                <p
-                  className="mt-0.5 text-[11px] font-bold"
-                  style={{ color: tankenAccent.text }}
-                >
-                  警戒レベル・{risk.label}
-                </p>
-              </div>
-            </div>
-
-            <AdviceCard text={actionAdvice} />
-
-            <div className="mt-3 grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               <SummaryChip label="事故件数" value={stats.total_accidents} />
               <SummaryChip label="歩行者" value={stats.pedestrian_involved} />
               <SummaryChip
                 label="子ども"
-                value={stats.child_involved}
-                hot={stats.child_involved > 0}
+                value={stats.child_data_available === true ? stats.child_involved : '不明'}
+                hot={stats.child_data_available === true && stats.child_involved > 0}
               />
               <SummaryChip
                 label="死亡事故"
@@ -1493,7 +1489,21 @@ export default function AccidentStatsPanel({
               />
             </div>
 
+            <p className="mt-2 text-xs text-slate-600">子ども（15歳以下）は元データの年齢区分から判別できません。</p>
+
+            <NearbyHotspotsSection hotspots={stats.hotspots} total={stats.hotspot_count} />
+
+            <AccidentRecordList records={stats.accident_records ?? stats.nearest_accidents} total={stats.total_accidents} radius={stats.search_params.radius_meters} truncated={stats.records_truncated ?? stats.nearest_accidents.length < stats.total_accidents} onNavigate={onAccidentNavigate} />
+
             <DetailsAccordion>
+              <div className="flex items-center gap-3">
+                <RiskStamp score={stats.risk_score} accent={tankenAccent} />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-snug" style={{ color: tankenTokens.color.ink }}>{headline}</p>
+                  <p className="mt-0.5 text-[11px] font-bold" style={{ color: tankenAccent.text }}>警戒レベル・{risk.label}</p>
+                </div>
+              </div>
+              <AdviceCard text={actionAdvice} />
               <RiskScoreBar score={stats.risk_score} />
 
               <div className="mt-3">
@@ -1528,7 +1538,7 @@ export default function AccidentStatsPanel({
           <div className="border-t px-4 py-2 text-xs text-gray-400 text-center space-y-0.5">
             <p>
               半径{stats.search_params.radius_meters}m以内 / 過去
-              {stats.search_params.years}年間 / {stats.total_accidents}件
+              {stats.search_params.years}年間{statsYearRangeSuffix(stats.search_params)} / {stats.total_accidents}件
             </p>
             <p>出典: 警察庁「交通事故統計情報のオープンデータ」</p>
           </div>

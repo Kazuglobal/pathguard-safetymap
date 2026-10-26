@@ -1,0 +1,86 @@
+{
+  "sourceYears": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "records": 2182298,
+  "bySourceYear": {
+    "2019": 381237,
+    "2020": 309178,
+    "2021": 305196,
+    "2022": 300839,
+    "2023": 307930,
+    "2024": 290895,
+    "2025": 287023
+  },
+  "byOccurrenceYear": {
+    "2015": 1,
+    "2016": 12,
+    "2017": 53,
+    "2018": 10396,
+    "2019": 380200,
+    "2020": 307909,
+    "2021": 305503,
+    "2022": 301539,
+    "2023": 307348,
+    "2024": 291090,
+    "2025": 278247
+  },
+  "invalidCoordinates": 171,
+  "bothPartiesMissing": 0,
+  "bicycle": 495165,
+  "pedestrian": 273650,
+  "inputs": [
+    {
+      "sourceYear": 2019,
+      "path": "npa-honhyo-2019-normalized.csv",
+      "sha256": "7848647b5e4d581193a953608e1832a87cdc894c8f09bab100fdafc28ca23843",
+      "records": 381237
+    },
+    {
+      "sourceYear": 2020,
+      "path": "npa-honhyo-2020-normalized.csv",
+      "sha256": "e842d30b1fbe0198c69325e9cd5c5b62616865c80d98903a3b92d9c642f8c17f",
+      "records": 309178
+    },
+    {
+      "sourceYear": 2021,
+      "path": "npa-honhyo-2021-normalized.csv",
+      "sha256": "3a93aa1e91eeca7f07d138ff5c7fe656cda944c72e2a7d79e02590a0cb91dc77",
+      "records": 305196
+    },
+    {
+      "sourceYear": 2022,
+      "path": "npa-honhyo-2022-normalized.csv",
+      "sha256": "cc668e7c482a4a28a06acf650ec079fd1e793c66bab0d7bc575731e2865af540",
+      "records": 300839
+    },
+    {
+      "sourceYear": 2023,
+      "path": "npa-honhyo-2023-normalized.csv",
+      "sha256": "e0e4e37ca0472daa3830f5cdce2b8f752b321692076d13ea75e388497c9a93d4",
+      "records": 307930
+    },
+    {
+      "sourceYear": 2024,
+      "path": "npa-honhyo-2024-normalized.csv",
+      "sha256": "165fafdef18551a40d5706f6e37e336f3246aab56acab0e3912f8145c729cc22",
+      "records": 290895
+    },
+    {
+      "sourceYear": 2025,
+      "path": "npa-honhyo-2025-normalized-v2.csv",
+      "sha256": "c188861c1f7c89c2481ef049891f933c5221c7b7020e0a4897ae4fed32c87eaa",
+      "records": 287023
+    }
+  ],
+  "published": false,
+  "completeCoverageReviewed": false,
+  "combinedSha256": "bb880611db2f288acd78bf9159397a75ed79a3b96646307c57fcdda52933c2ec",
+  "combinedBytes": 217000990
+}

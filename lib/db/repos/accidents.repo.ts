@@ -1,10 +1,12 @@
 import * as turf from '@turf/turf'
-import { and, eq, gte, inArray, isNull, lte, notInArray, or, type SQL } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lte, notInArray, or, sql, type SQL } from 'drizzle-orm'
 
 import type { AccidentStats, NearbyAccident } from '@/lib/traffic-accident-data'
+import { ACCIDENT_DATA_MAX_YEAR, accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
 import { normalizeAccidentRow, PEDESTRIAN_ACCIDENT_CODE } from '@/lib/traffic-accident/codes'
 
 import { assertCan, type Actor } from '../authz'
+import { createAccidentHotspotsRepo } from './accident-hotspots.repo'
 import { getTrafficDb, type AppDb } from '../client'
 import { trafficAccidents } from '../schema'
 
@@ -35,6 +37,15 @@ function yearsIn(minYear: number, maxYear: number): SQL {
   const years: number[] = []
   for (let year = minYear; year <= maxYear; year += 1) years.push(year)
   return inArray(trafficAccidents.sourceYear, years)
+}
+
+/** 遅れて公表された事故も発生年で絞る。source_year は旧取り込みでは発生年、新取り込みでは公開ファイル年。 */
+function occurrenceYears(minYear: number, maxYear: number): SQL {
+  const year = sql`cast(strftime('%Y', ${trafficAccidents.occurredAt}, '+9 hours') as integer)`
+  return and(
+    yearsIn(minYear - 1, Math.max(maxYear, ACCIDENT_DATA_MAX_YEAR)),
+    or(and(gte(year, minYear), lte(year, maxYear)), and(isNull(trafficAccidents.occurredAt), yearsIn(minYear, maxYear))),
+  )!
 }
 
 /** 人対車両（大分類コード01）も歩行者関与として扱う（取り込みで involves_pedestrian が常に false のため）。 */
@@ -69,7 +80,6 @@ export interface NearbyStatsInput {
   longitude: number
   radiusMeters?: number
   years?: number
-  currentYear?: number
 }
 
 export interface AccidentFeatureCollection {
@@ -128,11 +138,23 @@ function topEntries(source: Record<string, number>, limit: number): Record<strin
   )
 }
 
-function dateParts(value: string | null): { hour: number; month: number } | null {
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+/**
+ * occurred_at の日本時間での時・月。
+ * occurred_at は本当の時刻（既存行は '2024-04-08T23:15:00+00:00' のようなUTC表記、2025年取り込みは '+09:00' 表記）。
+ * 以前は UTC の時で数えていたため、時間帯・月の集計が9時間ずれていた（2026-10-07 に本番の行とCSVを突き合わせて確認）。
+ */
+function dateParts(value: string | null): { hour: number; month: number; year: number } | null {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.valueOf())) return null
-  return { hour: date.getUTCHours(), month: date.getUTCMonth() + 1 }
+  const tokyo = new Date(date.valueOf() + JST_OFFSET_MS)
+  return { hour: tokyo.getUTCHours(), month: tokyo.getUTCMonth() + 1, year: tokyo.getUTCFullYear() }
+}
+
+function occurrenceYear(row: AccidentRow): number {
+  return dateParts(row.occurredAt)?.year ?? row.sourceYear
 }
 
 function timeBucket(hour: number): string {
@@ -178,8 +200,9 @@ function toTokyoMinute(value: string | null): string | null {
 
 function nearbyAccident(row: AccidentRow, distanceMeters: number): NearbyAccident {
   return {
+    id: row.id,
     distance_m: Math.round(distanceMeters * 10) / 10,
-    year: row.sourceYear,
+    year: occurrenceYear(row),
     occurred_at: toTokyoMinute(row.occurredAt),
     type: row.accidentTypeLabel,
     severity: row.severityCode === 1 ? 'fatal' : 'injury',
@@ -205,8 +228,10 @@ function nearbyAccident(row: AccidentRow, distanceMeters: number): NearbyAcciden
 
 function aggregateNearby(
   rows: Array<{ row: AccidentRow; distanceMeters: number }>,
-  input: Required<Pick<NearbyStatsInput, 'latitude' | 'longitude' | 'radiusMeters' | 'years'>>,
+  input: Required<Pick<NearbyStatsInput, 'latitude' | 'longitude' | 'radiusMeters' | 'years'>> & AccidentYearWindow,
 ): AccidentStats {
+  // 要求年数がデータの年数より多くても、実際に集計した年数を書く（例: 10年要求 → 2019〜2025 の7年）
+  const spanYears = input.maxYear - input.minYear + 1
   const byYear: Record<string, number> = {}
   const byTimeOfDay: Record<string, number> = {}
   const byWeather: Record<string, number> = {}
@@ -246,7 +271,7 @@ function aggregateNearby(
     if (row.involvesPedestrian) pedestrianInvolved += 1
     if (row.severityCode === 1) fatalAccidents += 1
 
-    increment(byYear, row.sourceYear)
+    increment(byYear, occurrenceYear(row))
     increment(byWeather, row.weatherLabel)
     increment(byAccidentType, row.accidentTypeLabel)
     incrementIfPresent(byPartyType, row.partyATypeLabel)
@@ -302,6 +327,7 @@ function aggregateNearby(
     total_fatalities: totalFatalities,
     total_injuries: totalInjuries,
     child_involved: childInvolved,
+    child_data_available: false,
     pedestrian_involved: pedestrianInvolved,
     fatal_accidents: fatalAccidents,
     by_year: byYear,
@@ -333,7 +359,7 @@ function aggregateNearby(
       peak_month: peakKey(byMonth),
     },
     situation_summary: {
-      total_text: `${total}件の事故が過去${input.years}年間に半径${input.radiusMeters}m以内で発生`,
+      total_text: `${total}件の事故が過去${spanYears}年間（${formatAccidentYearWindow(input)}）に半径${input.radiusMeters}m以内で発生`,
       severity_text: fatalAccidents > 0 ? `死亡事故${fatalAccidents}件を含む` : '死亡事故なし',
       pedestrian_text: pedestrianTypeRows > 0
         ? `歩行者事故${pedestrianTypeRows}件（横断中${crossingRows}件）`
@@ -358,6 +384,13 @@ function aggregateNearby(
       .sort((left, right) => left.distanceMeters - right.distanceMeters)
       .slice(0, 10)
       .map(({ row, distanceMeters }) => nearbyAccident(row, distanceMeters)),
+    // 件数は全件で集計。明細は死亡事故を優先し、表示上限を超えた場合は明示する。
+    accident_records: rows.slice()
+      .sort((a, b) => Number(b.row.severityCode === 1) - Number(a.row.severityCode === 1) || a.distanceMeters - b.distanceMeters)
+      .slice(0, 100)
+      .map(({ row, distanceMeters }) => nearbyAccident(row, distanceMeters)),
+    records_truncated: rows.length > 100,
+    records_limit: 100,
     risk_score: Math.min(
       100,
       Math.min(60, total * 10)
@@ -369,12 +402,27 @@ function aggregateNearby(
       latitude: input.latitude,
       longitude: input.longitude,
       radius_meters: input.radiusMeters,
-      years: input.years,
+      years: spanYears,
+      min_year: input.minYear,
+      max_year: input.maxYear,
     },
   }
 }
 
 export function createAccidentsRepo(db: AppDb) {
+  /**
+   * 多発地点は補足情報なので、取得に失敗しても事故統計そのものは返す
+   * （accident_hotspots の本番適用前や、件数データの欠落時に統計全体を落とさないため）。
+   */
+  async function nearbyHotspots(actor: Actor, latitude: number, longitude: number, radiusMeters: number) {
+    try {
+      return await createAccidentHotspotsRepo(db).hotspotsNearPoint(actor, { latitude, longitude, radiusMeters })
+    } catch (error) {
+      console.error('[accidents.repo] nearby hotspots failed', error instanceof Error ? error.message : 'unknown')
+      return { hotspots: [], total: 0 }
+    }
+  }
+
   return {
     async accidentsInBbox(actor: Actor, input: AccidentsInBboxInput): Promise<AccidentFeatureCollection> {
       assertCan(actor, 'select', 'traffic_accidents')
@@ -394,7 +442,7 @@ export function createAccidentsRepo(db: AppDb) {
         lte(trafficAccidents.longitude, input.maxLng),
         gte(trafficAccidents.latitude, input.minLat),
         lte(trafficAccidents.latitude, input.maxLat),
-        yearsIn(input.minYear, input.maxYear),
+        occurrenceYears(input.minYear, input.maxYear),
       ]
       if (input.severity === 'fatal') predicates.push(eq(trafficAccidents.severityCode, 1))
       if (input.child != null) predicates.push(eq(trafficAccidents.involvesChild, input.child))
@@ -425,7 +473,7 @@ export function createAccidentsRepo(db: AppDb) {
             severity: row.severityCode,
             fatalities: row.fatalities ?? 0,
             injuries: row.injuries ?? 0,
-            year: row.sourceYear,
+            year: occurrenceYear(row),
             type: row.accidentTypeLabel,
             hasChild: row.involvesChild,
             hasYoung: row.partyAAge === 1 || row.partyBAge === 1,
@@ -447,23 +495,35 @@ export function createAccidentsRepo(db: AppDb) {
       const years = input.years ?? 5
       assertIntegerInRange('radiusMeters', radiusMeters, 1, MAX_RADIUS_METERS)
       assertIntegerInRange('years', years, 1, 10)
-      const currentYear = input.currentYear ?? new Date().getUTCFullYear()
-      assertIntegerInRange('currentYear', currentYear, 1900, 2200)
+      // 「過去N年」は今年ではなくデータの最新年から数える（例: 5年 → 2021〜2025）
+      const window = accidentYearWindow(years)
 
-      const latitudeDelta = radiusMeters / 111_320
-      const longitudeScale = Math.max(Math.cos((input.latitude * Math.PI) / 180), 0.01)
-      const longitudeDelta = radiusMeters / (111_320 * longitudeScale)
+      // 球面距離(Turf)と同じ半径で候補範囲を計算する。111320m/度では300m境界の事故を落とす。
+      const angularRadius = radiusMeters / turf.earthRadius
+      const latitudeDelta = angularRadius * 180 / Math.PI
+      const crossesPole = Math.abs(input.latitude) + latitudeDelta >= 90
+      const longitudeDelta = crossesPole ? 180 : Math.asin(Math.sin(angularRadius) / Math.cos(input.latitude * Math.PI / 180)) * 180 / Math.PI
+      const minLng = input.longitude - longitudeDelta
+      const maxLng = input.longitude + longitudeDelta
+      const longitudePredicate = crossesPole ? undefined : minLng < -180
+        ? or(gte(trafficAccidents.longitude, minLng + 360), lte(trafficAccidents.longitude, maxLng))
+        : maxLng > 180
+          ? or(gte(trafficAccidents.longitude, minLng), lte(trafficAccidents.longitude, maxLng - 360))
+          : and(gte(trafficAccidents.longitude, minLng), lte(trafficAccidents.longitude, maxLng))
       const candidateRows = await db
         .select()
         .from(trafficAccidents)
         .where(and(
           gte(trafficAccidents.latitude, input.latitude - latitudeDelta),
           lte(trafficAccidents.latitude, input.latitude + latitudeDelta),
-          gte(trafficAccidents.longitude, input.longitude - longitudeDelta),
-          lte(trafficAccidents.longitude, input.longitude + longitudeDelta),
-          yearsIn(currentYear - years, currentYear),
+          longitudePredicate,
+          occurrenceYears(window.minYear, window.maxYear),
         ))
-        .limit(MAX_NEARBY_CANDIDATES)
+        .limit(MAX_NEARBY_CANDIDATES + 1)
+
+      if (candidateRows.length > MAX_NEARBY_CANDIDATES) {
+        throw new Error('事故データが集計上限を超えたため正確な件数を確認できません。範囲を狭めてください。')
+      }
 
       const center = turfOps.point([input.longitude, input.latitude])
       const nearbyRows = candidateRows
@@ -478,12 +538,15 @@ export function createAccidentsRepo(db: AppDb) {
         }))
         .filter(({ distanceMeters }) => distanceMeters <= radiusMeters)
 
-      return aggregateNearby(nearbyRows, {
+      const stats = aggregateNearby(nearbyRows, {
         latitude: input.latitude,
         longitude: input.longitude,
         radiusMeters,
         years,
+        ...window,
       })
+      const nearby = await nearbyHotspots(actor, input.latitude, input.longitude, radiusMeters)
+      return { ...stats, hotspots: nearby.hotspots, hotspot_count: nearby.total }
     },
   }
 }

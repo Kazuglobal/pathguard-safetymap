@@ -1,0 +1,22 @@
+{
+  "rows": 48251,
+  "uniqueIdentities": 48251,
+  "counts": {
+    "annual_reference_differs_original": 11465,
+    "no_or_multiple_annual_reference": 926,
+    "invalid_coordinates": 169,
+    "annual_reference_agrees_original": 16802,
+    "uncoded_annual_overlap": 7819,
+    "annual_reference_unavailable": 11070
+  },
+  "allOriginalIdentityFieldsEqual": true,
+  "allDecisionsUnresolved": true,
+  "allInputHashesVerified": true,
+  "normalStdoutConfirmed": true,
+  "summarySha256": "2709e05289af1b1a09f421fa92ee43c66265eda2cb135de238b9d2162771b5df",
+  "resultsSha256": "4eeffb8088e48776eee279bff2a736dafcd9704ceb39792c00105fbe6a7306a8",
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

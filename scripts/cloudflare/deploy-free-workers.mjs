@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import dotenv from 'dotenv'
 import { isSensitiveBuildVariable } from './secret-policy.mjs'
+import { serverWorkerDeployEnv } from './ci-worker-env.mjs'
+import { assertProductionSource } from './production-source-guard.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const wranglerCli = path.join(projectRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
@@ -54,6 +56,8 @@ const secretNames = [
   'OPENAI_ORG_ID',
   'GEMINI_API_KEY',
   'GOOGLE_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'CLAUDE_VISION_MODEL',
   'MAPBOX_SECRET_TOKEN',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
@@ -112,7 +116,9 @@ for (const envFile of ['.env.production.local', '.env.local', '.env.production']
   if (existsSync(envPath)) dotenv.config({ path: envPath, override: false, quiet: true })
 }
 
+if (!dryRun) assertProductionSource({ cwd: projectRoot, skipBuild })
 if (!skipBuild) run([buildScript])
+if (!dryRun) assertProductionSource({ cwd: projectRoot, skipBuild })
 
 const sensitiveBuildTimeValues = secretNames
   .filter(isSensitiveBuildVariable)
@@ -144,8 +150,8 @@ for (const output of requiredOutputs) {
 
 const secretValues = Object.fromEntries(
   secretNames
-    .map((name) => [name, process.env[name]])
-    .filter((entry) => typeof entry[1] === 'string' && entry[1].trim().length > 0),
+    .map((name) => [name, typeof process.env[name] === 'string' ? process.env[name].trim() : process.env[name]])
+    .filter((entry) => typeof entry[1] === 'string' && entry[1].length > 0),
 )
 const tempSecretPath = path.join(tmpdir(), `pathguardian-worker-secrets-${randomUUID()}.json`)
 const dryRunRoot = path.join(projectRoot, '.codex-artifacts', 'wrangler-free')
@@ -177,7 +183,8 @@ try {
     }
     console.log(`\n=== ${dryRun ? 'Checking' : 'Deploying'} ${name} ===`)
     if (dryRun) runDryRun(args, name)
-    else run(args)
+    // Workers Builds の名前・タグ固定を外さないと、--name を無視して router に上書きされる（ci-worker-env.mjs）
+    else run(args, serverWorkerDeployEnv(process.env))
   }
 
   if (deployRouter) {

@@ -10,10 +10,12 @@ export interface MapDisplayOption {
 
 interface BuildMapDisplayOverlayOptionsParams {
   isHeatmapVisible: boolean
+  isHotspotVisible: boolean
   isFloodVisible: boolean
   isTsunamiVisible: boolean
   isSuspiciousVisible: boolean
   onToggleHeatmap: () => void
+  onToggleHotspot: () => void
   onToggleFlood: () => void
   onToggleTsunami: () => void
   onToggleSuspicious: () => void
@@ -21,10 +23,12 @@ interface BuildMapDisplayOverlayOptionsParams {
 
 export function buildMapDisplayOverlayOptions({
   isHeatmapVisible,
+  isHotspotVisible,
   isFloodVisible,
   isTsunamiVisible,
   isSuspiciousVisible,
   onToggleHeatmap,
+  onToggleHotspot,
   onToggleFlood,
   onToggleTsunami,
   onToggleSuspicious,
@@ -38,6 +42,13 @@ export function buildMapDisplayOverlayOptions({
       onSelect: onToggleHeatmap,
       previewImage: "/images/map-style-previews/heat-map.png",
       previewAlt: "事故ヒートマップのプレビュー",
+    },
+    {
+      id: "hotspot",
+      label: "事故多発地点",
+      description: "半径30m以内で5年に5件以上の事故がある地点を表示します",
+      selected: isHotspotVisible,
+      onSelect: onToggleHotspot,
     },
     {
       id: "suspicious",

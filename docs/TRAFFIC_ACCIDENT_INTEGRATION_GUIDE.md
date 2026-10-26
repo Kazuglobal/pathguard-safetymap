@@ -1,5 +1,7 @@
 # PathGuardian 統合実装ガイド v4
 
+> ※ この章は2025/02/20時点の記録です。2026年10月現在、事故データは Cloudflare D1 `pathguardian-traffic` に約215万件(2019〜2025年、2018年は一部のみ)あります。最新は `docs/plans/2026-10-02-traffic-accidents-2025-and-hotspots.md` を参照。
+
 ## 最新状況（2025/02/20時点）
 
 ### DB: traffic_accidents テーブル（153万件, 2019-2023年, 72カラム）

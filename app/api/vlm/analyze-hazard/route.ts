@@ -2,10 +2,11 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
+import { callClaudeVision, hasClaudeApiKey } from '@/lib/claude-vision'
 import { getDangerReportById } from '@/lib/db/repos/danger-reports.repo'
 import { callGeminiVision } from '@/lib/gemini-hazard'
 import { checkGeminiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
-import { isVlmAnalysisResult } from '@/lib/vlm-analysis'
+import { isVlmAnalysisResult, normalizeVlmAnalysisResult } from '@/lib/vlm-analysis'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -24,7 +25,8 @@ const PROMPT = (context: string) => `あなたは通学路の安全分析の専�
 
 追加情報: ${context || 'なし'}
 
-次のJSONだけを返してください。
+危険要因は重要なものから最大8件に絞り、各説明は簡潔にしてください。
+categoryは例に並べた値のうち1つを選び、severityとoverall_risk_levelは1〜5、overall_safety_scoreは0〜100の整数にしてください。次のJSONだけを返してください。
 {
   "hazards":[{"category":"traffic|visibility|pedestrian_space|barriers|lighting|terrain|infrastructure|crossings|signage|environmental|social|emergency|behavioral|surveillance|maintenance","severity":1,"description_ja":"","description_en":"","child_specific_risk":"","recommendation":""}],
   "overall_safety_score":0,
@@ -71,18 +73,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unsupported image format' }, { status: 400 })
     }
     const base64 = Buffer.from(await object.arrayBuffer()).toString('base64')
-    const responseText = await callGeminiVision(
-      `data:${contentType};base64,${base64}`,
-      PROMPT(context),
-      { temperature: 0.1, responseMimeType: 'application/json' },
-    )
-    const analysis = parseJson(responseText)
+    // ANTHROPIC_API_KEY があれば Claude Haiku、無ければ従来どおり Gemini を使う。
+    const responseText = hasClaudeApiKey()
+      ? await callClaudeVision({
+        base64,
+        mediaType: contentType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+        prompt: PROMPT(context),
+      })
+      : await callGeminiVision(
+        `data:${contentType};base64,${base64}`,
+        PROMPT(context),
+        { temperature: 0.1, responseMimeType: 'application/json' },
+      )
+    const analysis = normalizeVlmAnalysisResult(parseJson(responseText))
     if (!isVlmAnalysisResult(analysis)) {
+      console.error('[api/vlm/analyze-hazard] schema mismatch after normalization')
       return NextResponse.json({ error: 'Invalid AI response schema' }, { status: 502 })
     }
     return NextResponse.json({ success: true, analysis, analysis_id: crypto.randomUUID() })
   } catch (error) {
-    console.error('[api/vlm/analyze-hazard] failed', error instanceof Error ? error.message : 'unknown')
-    return NextResponse.json({ error: 'AI analysis failed' }, { status: 502 })
+    // APIエラー本文にはリクエスト情報が含まれ得るため、分類のみ記録する。
+    const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : null
+    const name = error instanceof Error ? error.name : 'UnknownError'
+    console.error('[api/vlm/analyze-hazard] failed', { name, status })
+    const message = name.includes('Timeout') || name === 'AbortError'
+      ? '分析に時間がかかっています。少し時間をおいて再試行してください。'
+      : status === 429
+        ? '分析が混み合っています。少し時間をおいて再試行してください。'
+        : '画像の分析を完了できませんでした。報告は保存されています。再試行してください。'
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 }

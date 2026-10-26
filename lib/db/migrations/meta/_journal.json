@@ -29,6 +29,13 @@
       "when": 1788451199213,
       "tag": "20260903155959_report_creation_rewards",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790899058834,
+      "tag": "20261001235738_accident_hotspots",
+      "breakpoints": true
     }
   ]
 }

@@ -9,13 +9,8 @@ import {
   type LocalAlertCategory,
 } from "@/hooks/use-local-safety-alerts"
 import { getActionPhraseForAlert } from "@/lib/local-alert-action-phrases"
-import {
-  NATIONWIDE,
-  getRegionChipOptions,
-  getStoredRegion,
-  setStoredRegion,
-} from "@/lib/user-region"
-import { syncPushSubscriptionRegion } from "@/hooks/use-push-subscription"
+import { ALL_PREFECTURES } from "@/lib/user-region"
+import { useAlertSchoolDistrict } from "@/hooks/use-alert-school-district"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -32,27 +27,16 @@ const CATEGORY_CONFIG: Record<LocalAlertCategory, { label: string; color: string
 // --- コンポーネント ---
 
 export function LocalSafetyAlertsSection() {
-  const [selectedPrefecture, setSelectedPrefecture] = React.useState<string>(NATIONWIDE)
-  const [mounted, setMounted] = React.useState(false)
-
-  // localStorage から都道府県を復元（SSR 対策で useEffect 内で実施）
-  React.useEffect(() => {
-    setMounted(true)
-    setSelectedPrefecture(getStoredRegion())
-  }, [])
-
-  const handlePrefectureChange = React.useCallback((pref: string) => {
-    setSelectedPrefecture(pref)
-    setStoredRegion(pref)
-    void syncPushSubscriptionRegion(pref)
-  }, [])
-
+  const selection = useAlertSchoolDistrict()
+  const enabled = selection.mounted && Boolean(selection.district) && !selection.error
   const { alerts, isLoading, error } = useLocalSafetyAlerts({
-    prefecture: selectedPrefecture,
+    prefecture: selection.prefecture,
+    schoolDistrictId: selection.district?.id,
+    enabled,
     limitHours: 24,
   })
-
-  const areaLabel = selectedPrefecture === NATIONWIDE ? "全国" : selectedPrefecture
+  const areaLabel = selection.district ? `${selection.city} ${selection.district.name}の学区` : ''
+  const selectClass = `w-full rounded-xl border bg-white px-3 py-2 text-sm disabled:opacity-50 ${tankenTokens.cls.focus}`
 
   return (
     <section className="py-6 md:py-10" style={{ background: C.accentSoft }}>
@@ -80,38 +64,47 @@ export function LocalSafetyAlertsSection() {
           </p>
         </div>
 
-        {/* 都道府県フィルター */}
-        {mounted && (
-          <div className="mb-4 px-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
-              <span className="flex-shrink-0 text-xs font-bold" style={{ color: C.inkSoft }}>
-                地域:
-              </span>
-              {getRegionChipOptions(selectedPrefecture).map((pref) => {
-                const active = selectedPrefecture === pref
-                return (
-                  <button
-                    key={pref}
-                    onClick={() => handlePrefectureChange(pref)}
-                    aria-pressed={active}
-                    className={`flex-shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${tankenTokens.cls.focus}`}
-                    style={
-                      active
-                        ? { background: C.accent, color: "#fff", borderColor: C.accent }
-                        : { background: C.card, color: C.inkSoft, borderColor: tankenTokens.border.soft }
-                    }
-                  >
-                    {pref}
-                  </button>
-                )
-              })}
-            </div>
+        <div className="mb-4 px-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="text-xs font-bold" style={{ color: C.inkSoft }}>
+              都道府県
+              <select className={`${selectClass} mt-1`} value={selection.prefecture} disabled={!selection.mounted} onChange={event => selection.changePrefecture(event.target.value)}>
+                <option value="">都道府県を選択</option>
+                {ALL_PREFECTURES.map(pref => <option key={pref} value={pref}>{pref}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-bold" style={{ color: C.inkSoft }}>
+              市区町村
+              <select className={`${selectClass} mt-1`} value={selection.city ?? ''} disabled={!selection.prefecture || selection.isLoading || Boolean(selection.error)} onChange={event => selection.changeCity(event.target.value)}>
+                <option value="">市区町村を選択</option>
+                {selection.cities.map(city => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-bold" style={{ color: C.inkSoft }}>
+              小学校区
+              <select className={`${selectClass} mt-1`} value={selection.districtId} disabled={!selection.city || selection.isLoading || Boolean(selection.error)} onChange={event => selection.changeDistrict(event.target.value)}>
+                <option value="">小学校区を選択</option>
+                {selection.districts.map(district => <option key={district.id} value={district.id}>{district.name}</option>)}
+              </select>
+            </label>
           </div>
-        )}
+          {selection.district && <p className="mt-2 text-xs" style={{ color: C.inkSoft }}>
+            {areaLabel} · {selection.district.dataYear}年度の通学区域データ
+            {' · '}<a href={selection.district.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">学区データの出典（加工して利用）</a>
+            <span className="mt-1 block">通学区域は変更される場合があります。最新の区域は自治体にご確認ください。</span>
+          </p>}
+        </div>
 
         {/* アラートリスト */}
         <div className="px-4">
-          {isLoading && (
+          {selection.isLoading && <p role="status" className="mb-3 text-sm">学区情報を読み込んでいます…</p>}
+          {selection.error && <div role="alert" className="mb-3 rounded-xl border bg-white p-4 text-sm">
+            学区情報の読み込みに失敗しました。
+            <button className={`ml-2 underline ${tankenTokens.cls.focus}`} onClick={selection.retry}>再試行</button>
+          </div>}
+          {!selection.isLoading && !selection.error && selection.unsupported && <p role="status" className="rounded-xl border bg-white p-4 text-sm">この地域の小学校区データは現在未対応です。</p>}
+          {!enabled && !selection.isLoading && !selection.error && !selection.unsupported && <p className="rounded-xl border bg-white p-4 text-sm">地域と小学校区を選ぶと、この地域の最新情報を確認できます。</p>}
+          {enabled && isLoading && (
             <div
               className="flex min-h-[88px] animate-pulse items-center justify-center rounded-[18px] border p-6 text-sm"
               style={{ background: C.card, borderColor: tankenTokens.border.faint, color: C.inkFaint }}
@@ -120,7 +113,7 @@ export function LocalSafetyAlertsSection() {
             </div>
           )}
 
-          {error && (
+          {enabled && error && (
             <div
               className="rounded-[18px] border p-4 text-sm"
               style={{ background: C.card, borderColor: "rgba(217,85,85,.4)", color: C.danger }}
@@ -129,7 +122,7 @@ export function LocalSafetyAlertsSection() {
             </div>
           )}
 
-          {!isLoading && !error && alerts.length === 0 && (
+          {enabled && !isLoading && !error && alerts.length === 0 && (
             <div
               className="flex min-h-[88px] items-center justify-center gap-3 rounded-[18px] border p-6"
               style={{ background: C.card, borderColor: tankenTokens.border.faint }}
@@ -142,16 +135,16 @@ export function LocalSafetyAlertsSection() {
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-bold" style={{ color: C.ink }}>
-                  {areaLabel}では、この24時間 新しいアラートはありません
+                  {areaLabel}では、この24時間の新しいアラートは確認されていません
                 </p>
                 <p className="mt-0.5 text-xs" style={{ color: C.inkSoft }}>
-                  いつもどおりです。このまま見守りを続けましょう。
+                  取得した情報のうち、発生場所を学区内と確認できたものを表示しています。
                 </p>
               </div>
             </div>
           )}
 
-          {alerts.length > 0 && (
+          {enabled && !error && alerts.length > 0 && (
             <div
               className="divide-y overflow-hidden rounded-[18px] border"
               style={{

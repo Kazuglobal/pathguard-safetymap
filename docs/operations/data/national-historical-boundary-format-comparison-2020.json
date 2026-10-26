@@ -1,0 +1,72 @@
+{
+  "year": 2020,
+  "archiveSha256": "f6c5c689e774003a16e6d132d80c5989d2afe1f2311e8bd90895d77339b4a22a",
+  "comparison": [
+    {
+      "codedFeatureNumber": 84036,
+      "municipality": "40214",
+      "geojsonBounds": [
+        130.98995166,
+        33.50789195,
+        131.16618664,
+        33.63445241
+      ],
+      "geojsonReasons": [
+        "Self-intersection[131.100326306085 33.6181145208947]"
+      ],
+      "shapefileCandidates": [
+        {
+          "shapefileFeatureNumber": 84163,
+          "bounds": [
+            130.98995166,
+            33.50789195,
+            131.16618664,
+            33.63445241
+          ],
+          "valid": false,
+          "reason": "Self-intersection[131.100326306085 33.6181145208947]",
+          "geometrySha256": "f63d875a0e2283dcdf77b186d2f537a233e19f6606f83a2acbc4f635694267dc"
+        }
+      ]
+    },
+    {
+      "codedFeatureNumber": 89835,
+      "municipality": "42209",
+      "geojsonBounds": [
+        129.22732381,
+        34.29553263,
+        129.49755886,
+        34.70661738
+      ],
+      "geojsonReasons": [
+        "Ring Self-intersection[129.45402351 34.60429064]"
+      ],
+      "shapefileCandidates": [
+        {
+          "shapefileFeatureNumber": 89963,
+          "bounds": [
+            129.22732381,
+            34.295532630000004,
+            129.49755886,
+            34.706617380000004
+          ],
+          "valid": false,
+          "reason": "Ring Self-intersection[129.45402351 34.60429064]",
+          "geometrySha256": "5003eb4e5b6d14dbdb84666976ce97e85dca3e6a76e481e7db0b80337db2f4df"
+        }
+      ]
+    }
+  ],
+  "boundingBoxToleranceDegrees": 1e-10,
+  "sourceDiagnosisSha256": "b42d1b17ed31ea28dc406e215c98ff415b4d00f67469e5be1b0338cb0e80250d",
+  "readerVersion": "2.3.1",
+  "readerCodeSha256": "9c749d73e31cc332e4683130a808258b407d2ba8cf33a5e1d5ea190c0eaae73f",
+  "auditScriptSha256": "5bce269c85cd2d984ceeef03685f1298fe74ddb8e0b1c72919e9e177d22750f3",
+  "limitations": [
+    "Bounding boxes identify candidates only; no format substitution, repair or jurisdiction approval."
+  ],
+  "completed": true,
+  "reviewed": false,
+  "published": false,
+  "productionChanged": false
+}

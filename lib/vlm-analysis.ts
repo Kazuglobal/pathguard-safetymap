@@ -189,6 +189,78 @@ function isVlmHazard(value: unknown): value is VlmHazard {
   )
 }
 
+function toText(value: unknown, maxLength: number): string {
+  if (typeof value === "string") return value.trim().slice(0, maxLength)
+  if (typeof value === "number" || typeof value === "boolean") return String(value).slice(0, maxLength)
+  return ""
+}
+
+function toOptionalText(value: unknown, maxLength: number): string | undefined {
+  const text = toText(value, maxLength)
+  return text || undefined
+}
+
+function toClampedInteger(value: unknown, min: number, max: number): number | null {
+  const num = typeof value === "string" ? Number(value.trim()) : value
+  if (typeof num !== "number" || !Number.isFinite(num)) return null
+  return Math.min(max, Math.max(min, Math.round(num)))
+}
+
+function toTextList(value: unknown, maxItems: number, itemMaxLength: number): string[] | undefined {
+  if (value == null) return undefined
+  const items = Array.isArray(value) ? value : [value]
+  return items
+    .map((item) => toText(item, itemMaxLength))
+    .filter(Boolean)
+    .slice(0, maxItems)
+}
+
+/**
+ * Gemini はスキーマ指定をしても、小数・null・長すぎる文章・想定外のカテゴリを
+ * 返すことがある。厳密な検証の前に、安全に直せる揺れだけを整える。
+ * 直せない場合(危険度や点数が数値でない等)は null を返す。
+ */
+export function normalizeVlmAnalysisResult(value: unknown): unknown {
+  if (!isRecord(value)) return null
+
+  const score = toClampedInteger(value.overall_safety_score, 0, 100)
+  const risk = toClampedInteger(value.overall_risk_level, 1, 5)
+  if (score === null || risk === null) return null
+
+  const hazards = (Array.isArray(value.hazards) ? value.hazards : [])
+    .filter(isRecord)
+    .map((hazard) => ({
+      category: isHazardCategory(hazard.category) ? hazard.category : "environmental",
+      severity: toClampedInteger(hazard.severity, 1, 5) ?? 3,
+      description_ja: toText(hazard.description_ja, 500),
+      description_en: toText(hazard.description_en, 500),
+      child_specific_risk: toText(hazard.child_specific_risk, 500),
+      recommendation: toText(hazard.recommendation, 500),
+    }))
+    .slice(0, 30)
+
+  const timeWeather = isRecord(value.time_weather_risks) ? value.time_weather_risks : {}
+  const suggestions = isRecord(value.improvement_suggestions) ? value.improvement_suggestions : {}
+
+  return {
+    hazards,
+    overall_safety_score: score,
+    overall_risk_level: risk,
+    child_perspective_summary: toText(value.child_perspective_summary, 2000),
+    time_weather_risks: {
+      morning_commute: toOptionalText(timeWeather.morning_commute, 500),
+      evening_return: toOptionalText(timeWeather.evening_return, 500),
+      rainy_conditions: toOptionalText(timeWeather.rainy_conditions, 500),
+      winter_conditions: toOptionalText(timeWeather.winter_conditions, 500),
+    },
+    improvement_suggestions: {
+      immediate_actions: toTextList(suggestions.immediate_actions, 20, 300),
+      medium_term_improvements: toTextList(suggestions.medium_term_improvements, 20, 300),
+      community_involvement: toTextList(suggestions.community_involvement, 20, 300),
+    },
+  }
+}
+
 export function isVlmAnalysisResult(value: unknown): value is VlmAnalysisResult {
   if (!isRecord(value)) {
     return false

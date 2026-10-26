@@ -242,7 +242,7 @@ export function useDangerReportSubmit({
       // Return report ID and image URL for VLM analysis
       return {
         reportId: newReportId,
-        imageUrl: finalReportData.image_url || null,
+        imageUrl: finalReportData.image_url || finalReportData.processed_image_urls?.[0] || null,
       };
     } catch (error: any) {
       console.error("Error submitting report:", error);
