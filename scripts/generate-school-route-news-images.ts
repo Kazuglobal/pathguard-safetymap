@@ -29,6 +29,90 @@ interface NewsImageConfig {
 
 const NEWS_IMAGES: NewsImageConfig[] = [
   {
+    slug: "fukuroi-asaoka-left-turn-truck-girl-20261027",
+    filename: "fukuroi-asaoka-left-turn-truck-girl-20261027.jpg",
+    prompt: `Create a Japanese safety awareness illustration about the danger of a left-turning truck sweeping across a signalised crosswalk while a child is walking home from school.
+
+Scene elements (abstract, NOT depicting injury, blood, or any person being struck):
+- A signalised urban intersection with clearly painted white crosswalk stripes and a pedestrian signal pole showing a plain green lamp with no symbols or characters on it
+- One large box-truck silhouette in the middle of a left turn, its cab windows plain dark glass with no faces visible, the rear half of the trailer visibly cutting inward toward the crosswalk to show the inner-wheel-difference hazard
+- A faint dashed arc on the asphalt tracing the path the rear wheels sweep, well inside the path of the front wheels
+- One small school-child silhouette standing stopped at the kerb, seen from behind so no face is shown, wearing a school backpack, positioned safely back from the painted stripes
+- A soft red caution band laid over the portion of the crosswalk that the turning trailer overruns
+- Mid-afternoon autumn light, long low shadows, roadside trees turning colour
+
+STRICT RULE: No text, no letters, no kanji, no numbers anywhere in the image, including on the truck body, signals, and road signs. No recognizable face. No depiction of impact or injury.
+
+Style: Clean Japanese editorial illustration, cautionary but calm
+Color palette: Red warning accents against muted autumn street tones, neutral grey truck
+Mood: The instant of judgement before stepping onto a green crosswalk, not the collision
+${QUALITY_SUFFIX}`,
+    description: "袋井市浅岡 左折トラックの巻き込み・信号のある横断歩道（2026年10月28日号）"
+  },
+  {
+    slug: "minamialps-dodo-candy-lure-arm-grabbed-20261023",
+    filename: "minamialps-dodo-candy-lure-arm-grabbed-20261023.jpg",
+    prompt: `Create a Japanese crime-prevention illustration about an adult who gets out of a parked car and tries to lure children walking home from school by offering sweets and claiming to be a family friend.
+
+Visual elements (abstract, NOT depicting a recognizable suspect and NOT depicting the moment of grabbing):
+- A quiet residential lane lined with low hedges and a rice-field edge, typical of a Japanese provincial town in autumn
+- A plain parked car at the kerb with its driver door standing open, windows rendered as flat dark glass with no faces visible
+- One faceless adult figure standing beside the open car door, rendered as a flat grey silhouette with no facial features, wearing a dark jacket, dark trousers and a dark face mask, one hand held out in an offering gesture
+- Two small school-child silhouettes seen from behind, side by side, already turning and moving away from the car toward a lit house entrance in the distance, both with school backpacks, clearly putting distance between themselves and the adult
+- A soft orange caution ring drawn on the road surface around the car to mark a keep-back distance the children have stayed outside of
+- Late-afternoon low-angle light, long shadows stretching along the lane
+
+STRICT RULE: No text, no letters, no kanji, no numbers anywhere in the image, including on the car, number plate, and any signage. No recognizable face on any figure. No depiction of physical contact or restraint.
+
+Style: Clean Japanese editorial illustration, cautionary but not frightening, emphasis on the children escaping successfully
+Color palette: Orange caution accents over cool late-afternoon residential tones
+Mood: The children doing the right thing, walking away, rather than the threat succeeding
+${QUALITY_SUFFIX}`,
+    description: "南アルプス市 車から降りた男の菓子による誘い・児童は振りほどいて逃げた（2026年10月28日号）"
+  },
+  {
+    slug: "shibushi-noikura-commute-moped-collision-20261026",
+    filename: "shibushi-noikura-commute-moped-collision-20261026.jpg",
+    prompt: `Create a Japanese road safety illustration about the hazard of a centre-line-less curve on a wet morning, where a student riding a moped to school meets an oncoming car.
+
+Scene elements (abstract, NOT depicting injury, blood, or the moment of collision):
+- A narrow rural local road bending in a gentle curve between low hedges and farm fields, the asphalt completely bare with NO white centre line painted anywhere
+- The road surface wet and reflective from recent rain, with soft mirrored highlights and a few shallow puddles at the edges
+- One small moped silhouette with a rider seen from behind, wearing a plain helmet, travelling along the near side of the curve, no face visible
+- One oncoming compact car silhouette emerging from the far side of the bend, its windows plain dark glass with no faces visible, its body drifting slightly wide toward the middle of the unmarked road
+- A faint translucent band along the centre of the roadway indicating the absent, unpainted boundary that neither vehicle can see
+- Early morning overcast autumn light, grey sky, mist hanging low over the fields
+
+STRICT RULE: No text, no letters, no kanji, no numbers anywhere in the image, including on the vehicles, number plates, helmet, and any signage. No recognizable face. No depiction of impact or injury.
+
+Style: Clean Japanese editorial illustration, cautionary and calm
+Color palette: Cool wet-morning greys and muted greens with a restrained red caution accent on the unmarked centre band
+Mood: Reduced visibility and reduced grip on a commuting route, before anything happens
+${QUALITY_SUFFIX}`,
+    description: "志布志市有明町野井倉 センターラインのない濡れたカーブとバイク通学（2026年10月28日号）"
+  },
+  {
+    slug: "yamatokoriyama-preschool-schoolway-inspection-20261027",
+    filename: "yamatokoriyama-preschool-schoolway-inspection-20261027.jpg",
+    prompt: `Create a warm Japanese community-safety illustration about preschool children who will start primary school next spring walking their future route to school together with a police officer, checking it for hazards before they start.
+
+Scene elements (positive and reassuring, NO hazard or accident depicted):
+- A bright suburban Japanese street with a painted crosswalk, a kerbside guardrail and a convex traffic mirror on a pole
+- A small group of young children, three or four, seen from behind or in profile with faces turned away so no features are visible, holding hands in a short line, walking along the pavement
+- One adult figure in a plain dark-blue uniform with a peaked cap, rendered without facial features, walking beside them and pointing toward the crosswalk and the traffic mirror
+- One or two other faceless adult figures following behind, suggesting parents and school staff joining the walk
+- Soft green and blue accents marking the checked points along the route: the crosswalk, the mirror, and a kerb corner
+- Clear autumn morning light, blue sky, trees in autumn colour, a low primary-school building visible at the end of the street
+
+STRICT RULE: No text, no letters, no kanji, no numbers anywhere in the image, including on the uniform, badges, signage, and the school building. No recognizable face on any figure. No depiction of danger, injury, or any vehicle threatening anyone.
+
+Style: Clean, warm Japanese editorial illustration, hopeful and constructive
+Color palette: Green and blue tones for community safety and reassurance, warm autumn highlights
+Mood: Preparation and shared care before the first day of school, not warning
+${QUALITY_SUFFIX}`,
+    description: "大和郡山市 入学前の子どもと警察官による通学路点検（2026年10月28日号）"
+  },
+  {
     slug: "shunan-ogochi-crosswalk-highschool-girl-20261021",
     filename: "shunan-ogochi-crosswalk-highschool-girl-20261021.jpg",
     prompt: `Create a Japanese safety awareness illustration about a pedestrian being struck on an unsignalised crosswalk near a small rural railway station in the early morning.

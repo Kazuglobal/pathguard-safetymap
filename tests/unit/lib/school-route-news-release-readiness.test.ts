@@ -16,16 +16,20 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
+      "fukuroi-asaoka-left-turn-truck-girl-20261027",
+      "minamialps-dodo-candy-lure-arm-grabbed-20261023",
+      "shibushi-noikura-commute-moped-collision-20261026",
+      "yamatokoriyama-preschool-schoolway-inspection-20261027",
       "tokushima-oshin-higashisadakata-schoolway-girl-hit-20261023",
-      "itoigawa-yokomachi-two-voice-calls-20261023",
-      "gifu-city-watch-network-expansion-20261022",
-      "matsumoto-arigasaki-hitandrun-referral-20261019",
-      "saga-kamimine-takeo-voice-call-chase-20261022",
     ]))
     expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "matsuyama-jobomen-crosswalk-girl-hit-20261019",
     ]))
     expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
+      "itoigawa-yokomachi-two-voice-calls-20261023",
+      "gifu-city-watch-network-expansion-20261022",
+      "matsumoto-arigasaki-hitandrun-referral-20261019",
+      "saga-kamimine-takeo-voice-call-chase-20261022",
       "shunan-ogochi-crosswalk-highschool-girl-20261021",
       "nagasaki-hoei-shindo-camera-voice-call-20261015",
       "tatebayashi-highschool-bicycle-safety-class-20261020",
