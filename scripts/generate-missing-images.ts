@@ -53,7 +53,7 @@ interface ImageJob {
 
 const CATEGORY_TONE: Record<string, string> = {
   accident: "Somber but calm safety awareness. Muted tones with red warning accents. Abstract objects only (dropped yellow cap, crosswalk, signal), no people injured.",
-  suspicious: "Alert but reassuring. Warm afternoon tones with orange accents. A child seen from behind at a distance, a faceless shadowy silhouette far away, and a clearly visible safe place (shop, child-safe-house sign shape) to escape to.",
+  suspicious: "Alert but reassuring. Warm afternoon tones with orange accents. A child seen from behind walking steadily toward a clearly visible safe place (a warmly lit shop with an open door, a child-safe-house pictogram). Never draw any stranger, silhouette, shadow figure or driver: the threat is not shown at all, only the safe action.",
   infrastructure: "Bright, reassuring. Blue and gray infrastructure, green surroundings, children walking safely.",
   policy: "Positive public-information poster mood. Purple and blue policy accents, children and community volunteers.",
   community: "Warm community mood. Greens and warm yellows, volunteers in yellow vests smiling at children.",
@@ -84,7 +84,7 @@ Mood and palette: ${tone}
 Scene rules:
 - Elementary school children wear yellow caps and randoseru backpacks, always seen from behind or small in the frame
 - Abstract, NOT depicting any actual person, injury or incident; focus on what a family can do to stay safe
-- No text, no letters, no kanji, no numbers of any kind (signs and road surfaces use plain shapes only)
+- No text, no letters, no kanji, no katakana, no numbers of any kind. Road surfaces carry only plain white stripes and lines, never painted words, symbols or glyph-like marks; shopfronts, banners, vests and sashes are plain without printing
 ${QUALITY_SUFFIX}`
 }
 
@@ -98,8 +98,9 @@ Mood and palette: ${tone}
 
 Rules:
 - Children wear yellow caps and randoseru backpacks and are seen from behind or drawn as faceless simple figures
-- Never depict any threatening person, injury or incident; show only the safe action
-- Purely pictorial: no text, no letters, no kanji, no numbers anywhere (the caption is added separately)
+- Never depict any threatening person, stranger, silhouette, injury or incident; show only the safe action
+- The figure description above is a brief for you, NOT text to draw: never render it, its step numbers, circled numerals or any English/Japanese captions in the image
+- Purely pictorial: no text, no letters, no kanji, no katakana, no numbers anywhere (the caption is added separately)
 ${QUALITY_SUFFIX}`
 }
 
