@@ -974,28 +974,30 @@ Scene elements (Japanese specific):
 - A parent and an elementary school child, seen mostly from behind and from the side, standing safely on the edge of a narrow Japanese residential street
 - The child wears a yellow school cap and a randoseru backpack; the parent points down at the road surface
 - The road clearly has NO centre line painted down the middle and no lane markings - the empty middle of the asphalt is the focal point of the composition
-- A green belt edge marking along the side of the road, a school zone sign on a pole, low garden walls and Japanese two-storey houses
+- A green belt edge marking along the side of the road, a diamond-shaped school-zone sign on a pole showing only a pictogram of two children (the sign has no sub-panel and no writing at all), low garden walls and Japanese two-storey houses
 - In the far background, a wider road where a faint white centre line IS visible, to contrast the two road types
-- A small car approaching slowly in the distance, well separated from the pair
+- A small car approaching slowly in the distance, well separated from the pair (no driver visible, windows plain dark glass)
 
 Mood: Calm, instructive, reassuring; this is about learning to read the road, not about danger. No crash, no injury, no near-miss.
 Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines, warm late-October afternoon light
 Color palette: Warm autumn amber and soft grey asphalt, with a purple accent to match the policy-update category colour
-Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, speed limit numerals, police enforcement imagery, text overlays
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no numerals, no labels, no captions, no pseudo-characters, no signage writing, no title bars). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, real brand logos, threatening strangers, silhouettes of strangers or glowing eyes
 ${QUALITY_SUFFIX}`,
     contentImages: [
       {
         id: "three-conditions-check",
-        prompt: `Create a clean Japanese educational infographic showing the three structural conditions that decide whether a road is covered by the new default 30km/h limit, as three numbered panels side by side. Each panel is a simple bird's-eye-view diagram of a short stretch of road.
+        prompt: `Create a clean Japanese educational infographic showing the three structural conditions that decide whether a road is covered by the new default 30km/h limit, as three panels side by side. Each panel is a simple bird's-eye-view diagram of a short stretch of road. Panels are numbered only by dots: the first panel has one small filled dot in its top-left corner, the second panel two dots, the third panel three dots (dots, not numerals).
 
-PANEL 1 - NO CENTRE LINE: a plain grey road strip with the middle completely empty, and beside it a faded ghost version of the same road WITH a white dashed centre line, marked with a small red cross to show that version is NOT covered.
-PANEL 2 - NO LANE MARKINGS: a plain road strip with no lane-dividing lines, beside a faded ghost version divided into two marked lanes with a small red cross.
-PANEL 3 - NO CENTRAL DIVIDER: a plain road strip, beside a faded ghost version with a raised concrete and planted median separating the two directions, marked with a small red cross.
+PANEL 1: a plain grey road strip with the middle completely empty, and beside it a faded ghost version of the same road WITH a white dashed centre line, marked with a small red cross to show that version is NOT covered.
+PANEL 2: a plain road strip with no lane-dividing lines, beside a faded ghost version divided into two marked lanes with a small red cross.
+PANEL 3: a plain road strip, beside a faded ghost version with a raised concrete and planted median separating the two directions, marked with a small red cross.
 
-A single green check mark circle sits at the end of the row, indicating that all three must apply together.
+A single green check mark circle sits at the end of the row, indicating that all three must apply together. No title, no header and no caption area: every panel is filled by its diagram only.
 
-Style: Flat Japanese infographic design on a light neutral background, clear numbered circles 1, 2 and 3, purple and amber accent colours, educational aesthetic, no vehicles and no people
-Avoid (negative prompt): photographic textures, real brand logos, garbled text, any lettering other than the numerals 1, 2 and 3
+Style: Flat Japanese infographic design on a light neutral background, purple and amber accent colours, educational aesthetic, no vehicles and no people
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no numerals, no labels, no captions, no pseudo-characters, no signage writing, no title bars). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, real brand logos, threatening strangers, silhouettes of strangers or glowing eyes
 ${QUALITY_SUFFIX}`,
         description: "対象道路を見分ける3条件（中央線なし／車両通行帯なし／中央分離帯なし）"
       },
@@ -1003,12 +1005,11 @@ ${QUALITY_SUFFIX}`,
         id: "sign-priority-exception",
         prompt: `Create a clear Japanese educational infographic explaining that a posted speed limit sign overrides the new default limit.
 
-Layout: a single narrow Japanese residential road drawn in perspective with no centre line. A round Japanese speed limit sign on a slim pole stands at the roadside, drawn blank with a plain white face and red rim so that no numeral is shown. A bold upward arrow runs from the sign, and a simple balance-scale icon beside it tips toward the sign, indicating that the sign wins over the default rule.
-
-Below, two small side-by-side badges: a plain road badge and a road-with-sign badge, with the road-with-sign badge visually emphasised.
+Layout: a single narrow Japanese residential road drawn in perspective with no centre line, filling the lower half of the image. A round speed-limit-style sign on a slim pole stands at the roadside, drawn completely blank: a plain white face with a red rim and nothing written on it. A bold upward arrow runs from the sign, and a simple balance-scale icon beside it tips toward the sign, indicating that the sign wins over the default rule. Nothing else: no badges, no panels, no captions, no title.
 
 Style: Flat Japanese infographic design on a light background, purple and amber accents, clean geometric shapes, educational aesthetic, no people and no vehicles
-Avoid (negative prompt): photographic textures, real brand logos, garbled text, any numerals or lettering on the sign face or anywhere in the image
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no numerals, no labels, no captions, no pseudo-characters, no signage writing, no title bars). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, real brand logos, threatening strangers, silhouettes of strangers or glowing eyes
 ${QUALITY_SUFFIX}`,
         description: "標識優先の例外（標識があるときは標識の速度が優先される）"
       }
@@ -1036,15 +1037,13 @@ ${QUALITY_SUFFIX}`,
     contentImages: [
       {
         id: "junior-to-high-jump",
-        prompt: `Create a clean Japanese educational infographic contrasting the scale of bicycle commuting accidents between junior high school students and high school students, using shape size rather than text.
+        prompt: `Create a clean Japanese educational infographic contrasting the scale of bicycle commuting accidents between junior high school students and high school students, using only bar heights and silhouettes.
 
-Layout: two columns side by side on a light background.
-LEFT COLUMN - JUNIOR HIGH: a small cluster of simple bicycle silhouettes stacked into a short bar, with a single generic student figure in a junior high uniform silhouette beside it.
-RIGHT COLUMN - HIGH SCHOOL: a much taller bar made of the same bicycle silhouettes, roughly four times the height of the left bar, with a generic high school uniform silhouette beside it.
-Between the two columns, a wide upward curving arrow accompanied by a stylised cherry blossom icon, representing the transition at the spring school entrance.
+Layout: two solid vertical bars side by side on a light background, standing on one shared thin baseline, with generous empty margins. The shorter bar on the left is solid soft orange, with one small bicycle pictogram centred on top of it and a junior high school student silhouette in a sailor-style uniform beside it. The taller bar on the right is exactly 4.2 times as tall as the shorter one, solid deeper orange, with one bicycle pictogram of the same size centred on top and a high school student silhouette in a blazer-style uniform beside it. Between the bars, a wide upward curving arrow accompanied by a small stylised cherry blossom icon. The bars are plain solid fills with nothing drawn inside or in front of them, and the background behind the bars is one plain flat colour with no road, crosswalk, stripes or ground pattern.
 
-Style: Flat Japanese infographic design, orange and indigo accent colours, clean geometric shapes, silhouettes only for people, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any numerals or lettering
+Style: Flat Japanese infographic design, orange and indigo accent colours, clean geometric shapes, silhouettes only for people
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no numerals, no labels, no captions, no pseudo-characters, no signage writing, no title bars). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, real brand logos, threatening strangers, silhouettes of strangers or glowing eyes
 ${QUALITY_SUFFIX}`,
         description: "中学生と高校生の通学時自転車事故件数の規模比較（高校生は約4.2倍）"
       },
@@ -1060,6 +1059,141 @@ Style: Flat Japanese infographic design on a light neutral background, orange an
 Avoid (negative prompt): photographic textures, real brand logos, garbled text, any numerals or lettering, depiction of a crash or injury
 ${QUALITY_SUFFIX}`,
         description: "通学時自転車事故の約5件に1件は生徒側が第1当事者（賠償への備えの確認先）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-10-28-autumn-campaign-2026-night-pedestrians",
+    articleSlug: "autumn-campaign-2026-night-pedestrians",
+    category: "danger-ranking",
+    title: "令和8年秋の運動の結果と夜の歩行者",
+    thumbnailPrompt: `Create a Japanese editorial illustration for an article about walking safely at dusk after the autumn traffic safety campaign.
+
+Scene elements (Japanese specific):
+- A quiet Japanese residential street at dusk, a deep orange sky turning to indigo, street lamps just switching on, a guardrail and a green belt road edge marking
+- A parent and a child (yellow cap, randoseru backpack), both seen from behind, walk along the road edge holding hands
+- Small reflective bands on the child's backpack shoulder strap and on the parent's bag glint softly in the light
+- A compact car approaches slowly far in the distance with its headlights already on, keeping a wide gap (no driver visible, windows plain dark glass)
+
+Mood: Calm and protective, the feeling of being clearly seen. No crash, no injury, no threatening figure.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Dusk orange and indigo with a warm amber highlight on the reflective bands
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "night-walkers-share",
+        prompt: `Create a clean Japanese educational infographic comparing two quantities as two solid vertical bars, using plain shapes only.
+
+Layout: a plain light neutral background, the composition centred with generous empty margins and no decorative corner shapes. LEFT BAR: short, solid warm yellow, a small sun pictogram above it. RIGHT BAR: exactly 2.7 times as tall as the left bar, solid deep indigo, a small crescent-moon pictogram above it. Both bars stand on one shared thin baseline. Do NOT draw any people, pedestrian icons or patterns inside the bars: the bars are plain solid fills.
+
+Style: Flat Japanese infographic design, orange and indigo palette, clean geometric shapes
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+        description: "運動期間中の歩行中の死者は、昼より夜が圧倒的に多い（昼7人・夜19人）"
+      },
+      {
+        id: "reflector-placement",
+        prompt: `Create a clean Japanese educational infographic showing where to put reflective bands on a schoolchild so that a car's headlights make them glow.
+
+Layout: in the centre a simple schoolchild silhouette (yellow cap, randoseru backpack) seen from the side, on a deep indigo dusk background. Three bright orange circular highlight markers glow on the backpack shoulder strap, on the side of the backpack, and near the ankle. From the left edge, a soft cone of warm headlight beam (no car body visible, only the beam) reaches these three spots, making them shine.
+
+Style: Flat Japanese infographic design, orange, amber and indigo palette, clean geometric shapes, silhouette only for the child
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+        description: "反射材をつける位置（ランドセルの肩ひも・側面・足元）に車のライトが当たって光る"
+      }
+    ]
+  },
+  {
+    articleId: "2026-10-28-pedestrian-deaths-age5-9-sep2026",
+    articleSlug: "pedestrian-deaths-age5-9-sep2026",
+    category: "danger-ranking",
+    title: "5〜9歳の歩行中の死者と数字の読み方",
+    thumbnailPrompt: `Create a Japanese editorial illustration about children learning to stop and check before crossing the road.
+
+Scene elements (Japanese specific):
+- A bright daytime crosswalk near a Japanese elementary school, a school zone sign shape (pictogram only), a guardrail and a green belt edge marking
+- A schoolchild in a yellow cap and randoseru backpack, seen from behind, stands one step back from the kerb with one hand raised; a car has stopped well before the crosswalk (no driver visible, windows plain dark glass)
+- A parent crouches beside the child, pointing gently left and right, both seen from behind or in profile without detailed faces
+
+Mood: Calm, practising a habit together, hopeful. No crash, no injury, no threatening figure.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Clear daylight blue and green with an orange accent matching the danger-ranking category
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "numbers-wave",
+        prompt: `Create a clean Japanese educational infographic of a gentle wavy line chart across eleven evenly spaced points, suggesting year-to-year ups and downs of a small number.
+
+Layout: a plain light background; a wavy line in indigo with small round markers; the last (rightmost) marker is larger and orange and sits inside the upper part of the faint horizontal band; the band behind the line marks the usual range and contains every marker, including the last one. The axes are plain thin lines without ticks or any numerals. A small schoolchild silhouette icon wearing a yellow cap and a randoseru backpack (a primary-school child, clearly not a baby or toddler) sits in the top-left corner.
+
+Style: Flat Japanese infographic design, orange and indigo palette, clean geometric shapes
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+        description: "5〜9歳の歩行中の死者は年によって上下する（2026年は例年の範囲の上のほうにある）"
+      },
+      {
+        id: "three-habits-routes",
+        prompt: `Create a clean Japanese educational infographic with three simple panels arranged left to right, connected by orange arrows.
+
+Panel 1: a schoolchild silhouette (yellow cap, randoseru) standing still at a kerb with one hand raised.
+Panel 2: a parent silhouette and a child silhouette walking along a path drawn on a very simple map made of plain lines, with one orange map pin marking a stopping place.
+Panel 3: a sunset sky with the sun low over rooftops and a parent silhouette waiting at a street corner.
+
+Style: Flat Japanese infographic design, orange, blue and warm yellow palette, clean geometric shapes, silhouettes only for people
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+        description: "止まって手を挙げる・通学路以外の道を親子で歩く・夕方以降の一人歩きを曜日で決める"
+      }
+    ]
+  },
+  {
+    articleId: "2026-10-28-winter-snow-ice-school-route",
+    articleSlug: "winter-snow-ice-school-route",
+    category: "safety-tips",
+    title: "冬の通学路：雪山と見通し",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a winter school route with a snow bank at an intersection.
+
+Scene elements (Japanese specific):
+- A snowy Japanese residential intersection in soft morning light after snowfall; snow piled high at the corner partly blocking the view of the side street; a pedestrian signal glowing a plain green
+- A schoolchild in a yellow cap with randoseru backpack, wearing mittens and snow boots, seen from behind, waiting one step back from the kerb; two more children wait behind, all seen from behind
+- A car far away on the snowy road with its headlights on, slowing down (no driver visible, windows plain dark glass)
+
+Mood: Calm and attentive, a quiet cold morning. No crash, no skid marks, no injury, no threatening figure.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Snow white and pale blue with warm yellow caps and a soft blue accent matching the safety-tips category
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "step-back-from-kerb",
+        prompt: `Create a clean Japanese educational infographic with two panels side by side comparing where a child waits at a pedestrian signal next to a snow bank.
+
+LEFT PANEL: a schoolchild silhouette (yellow cap, randoseru) standing right at the very edge of the kerb beside a tall snow bank; a soft orange caution ring around the kerb edge.
+RIGHT PANEL: the same child silhouette standing one clear step back from the kerb, with a soft green ring around the child; a small footprint pictogram showing the one step backwards.
+A curved arrow from the left panel to the right panel.
+
+Style: Flat Japanese infographic design, snow white, pale blue, orange and green accents, clean geometric shapes, silhouettes only for people
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+        description: "信号待ちは縁石から一歩下がる（雪山のある交差点では車道寄りに立たない）"
+      },
+      {
+        id: "hand-sign-before-crossing",
+        prompt: `Create a clean Japanese educational infographic with three simple panels arranged left to right, connected by orange arrows, showing how a child crosses next to a snow bank.
+
+Panel 1: a schoolchild silhouette (yellow cap, randoseru) standing still, one step back from a kerb, a snow bank at the corner.
+Panel 2: the same child silhouette turning the head, with two small eye-shaped pictograms and two small arrows pointing left and right.
+Panel 3: the same child silhouette with one hand raised high, crossing a crosswalk while a plain light-coloured car stands stopped before the stop line; the car windows are plain dark glass and nobody is visible inside.
+
+The illustration has no title bars, headers, footers or caption strips: every panel is filled edge to edge by its picture and no space is reserved for words.
+
+Style: Flat Japanese infographic design, snow white, pale blue, warm yellow and orange accents, clean geometric shapes, silhouettes only for people
+CRITICAL TEXT REQUIREMENTS: Draw absolutely no text of any kind (no letters, no numbers, no labels, no captions, no pseudo-characters, no signage writing). Use only shapes and pictograms. Road surfaces carry only plain white stripes and lines.
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any letters, kanji, katakana, numerals, captions, labels, speech-bubble text, signage lettering, UI chrome, watermarks, depiction of a crash or injury, threatening strangers, silhouettes of strangers or glowing eyes${QUALITY_SUFFIX}`,
+        description: "渡る前に止まる・左右を見る・手を挙げる（ハンドサイン）"
       }
     ]
   }
