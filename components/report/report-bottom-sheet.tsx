@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Sheet,
@@ -18,17 +19,31 @@ interface ReportBottomSheetProps {
   onOpenChange: (open: boolean) => void
 }
 
+/** このシートから行ける先。先読み(prefetch)と遷移(push)で同じ値を使う。 */
+const HUNTER_PATH = "/safety-quest/hunter"
+const SUSPICIOUS_ALERT_MAP_PATH = "/map?suspiciousAlert=1"
+
 export function ReportBottomSheet({ open, onOpenChange }: ReportBottomSheetProps) {
   const router = useRouter()
 
+  // シートが開いたら、両方の行き先を先に読み込んでおく。
+  // きけんハンターはログイン確認つきの動的ページで、本番では専用の Worker が担当する。
+  // 押してから取りに行くと、起動を待つ数秒間いまの画面のまま何も起きないように見える。
+  // 待ち画面(app/safety-quest/hunter/loading.tsx)まで先読みしておけば、押した直後に切り替わる。
+  useEffect(() => {
+    if (!open) return
+    router.prefetch(HUNTER_PATH)
+    router.prefetch(SUSPICIOUS_ALERT_MAP_PATH)
+  }, [open, router])
+
   const handleHunter = () => {
     onOpenChange(false)
-    router.push("/safety-quest/hunter")
+    router.push(HUNTER_PATH)
   }
 
   const handleSuspiciousAlert = () => {
     onOpenChange(false)
-    router.push("/map?suspiciousAlert=1")
+    router.push(SUSPICIOUS_ALERT_MAP_PATH)
   }
 
   return (
