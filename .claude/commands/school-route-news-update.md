@@ -163,11 +163,12 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 
 書くもの（記事ごと）:
 - `thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.jpg"` — **必ず書く**。拡張子は `.jpg`（生成は JPEG のみ。`.png` は書かない）。slug は記事の slug と一致させる
-- `contentImages` — **accident / suspicious は1件必須**（`actionAdvice` の行動を①→②→③で図解する）。community / policy / infrastructure は、手順や表を図解したいときだけ。`url` は `/images/school-route-news/articles/{slug}/{id}.jpg`、`description` は図の内容を一文で（alt テキスト兼 生成プロンプトになる）
+- `contentImages` — **accident / suspicious は1件必須**（`actionAdvice` の行動を①→②→③で図解する）。community / policy / infrastructure は、手順や表を図解したいときだけ。`url` は `/images/school-route-news/articles/{slug}/{id}.jpg`、`description` は図の内容を一文で（alt テキスト兼 生成プロンプトになる）。**①②③ などの番号や「ステップ」を書かない**（画像に文字として描かれてしまう）。動作は「→」でつなぐ
 
 作画の要件（プロンプトの上書きが必要なときは `scripts/image-prompts/school-route-news.json` に `{slug}` または `{slug}/{図版id}` で書く）:
 - 事故現場・不審者本人・負傷・接触を直接描かない。抽象的・注意喚起的な表現。体に触れる事案など安全フィルタに弾かれる題材は、事案を描かず「そなえ」の絵（防犯ブザー・駆け込み先・歩いて渡る場所）にする
 - 画像内に文字・数字・看板の文字・路面の文字を入れない（キャプションは HTML 側で出す）
+- 不審者・運転者・人影・事故の後の様子（路上に落ちたランドセルや帽子、倒れたバイク）を描かない。生成物は必ず目視し、文字状の模様・光る目・事故の後に見える構図があれば専用プロンプトで撮り直す
 - 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）。カテゴリカラー（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ）
 - サムネイル・図版の使い回し禁止（slug ごとに新規）
 
