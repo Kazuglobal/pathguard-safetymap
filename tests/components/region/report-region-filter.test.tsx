@@ -225,6 +225,75 @@ describe("ReportRegionFilter", () => {
     })
   })
 
+  describe("市町村セレクトの読み込み状態", () => {
+    const state = (status: "loading" | "ready" | "error", errorMessage: string | null = null) => ({
+      status,
+      errorMessage,
+      retry: vi.fn(),
+    })
+
+    it("報告の無い県でも市町村セレクトを出し、理由を添えて無効にする", () => {
+      renderFilter({ prefecture: "鳥取県", cityOptions: [], cityOptionsState: state("ready") })
+
+      const select = screen.getByRole("combobox", { name: "市町村を選ぶ" })
+      expect(select).toBeDisabled()
+      expect(screen.getByText("この都道府県の報告はまだありません")).toBeInTheDocument()
+      expect(select).toHaveAccessibleDescription("この都道府県の報告はまだありません")
+    })
+
+    it("読み込み状態を渡さない呼び出しでも、県を選んだら市町村セレクトを隠さない", () => {
+      renderFilter({ prefecture: "鳥取県", cityOptions: [] })
+
+      expect(screen.getByRole("combobox", { name: "市町村を選ぶ" })).toBeDisabled()
+      expect(screen.getByText("この都道府県の報告はまだありません")).toBeInTheDocument()
+    })
+
+    it("読み込み中は「読み込み中…」だけを出して無効にし、前の選択肢や復元値を並べない", () => {
+      renderFilter({
+        prefecture: "大阪府",
+        city: "千代田区",
+        cityOptions: ["千代田区"],
+        cityOptionsState: state("loading"),
+      })
+
+      const select = screen.getByRole("combobox", { name: "市町村を選ぶ" })
+      expect(select).toBeDisabled()
+      const labels = Array.from(select.querySelectorAll("option")).map((o) => o.textContent)
+      expect(labels).toEqual(["読み込み中…"])
+      expect(screen.queryByText("この都道府県の報告はまだありません")).not.toBeInTheDocument()
+    })
+
+    it("読み込みに失敗したら理由と「もう一度読み込む」を出し、押すと再読み込みする", () => {
+      const failed = state("error", "時間内に応答がありませんでした。通信状況を確かめて、もう一度お試しください。")
+      renderFilter({ prefecture: "東京都", cityOptions: [], cityOptionsState: failed })
+
+      const select = screen.getByRole("combobox", { name: "市町村を選ぶ" })
+      expect(select).toBeDisabled()
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "市町村の候補を読み込めませんでした。時間内に応答がありませんでした。",
+      )
+      expect(screen.queryByText("この都道府県の報告はまだありません")).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "もう一度読み込む" }))
+      expect(failed.retry).toHaveBeenCalledTimes(1)
+    })
+
+    it("読み込みに失敗しても、復元した市町村は「すべて」に戻せる", () => {
+      const { props } = renderFilter({
+        prefecture: "東京都",
+        city: "港区",
+        cityOptions: [],
+        cityOptionsState: state("error", "通信できませんでした。インターネット接続を確かめてください。"),
+      })
+
+      const select = screen.getByRole("combobox", { name: "市町村を選ぶ" })
+      expect(select).toBeEnabled()
+      expect(select).toHaveValue("港区")
+      fireEvent.change(select, { target: { value: "" } })
+      expect(props.onCityChange).toHaveBeenCalledWith(null)
+    })
+  })
+
   it("学校選択中はチップと解除ボタンを表示し、解除で null を通知する", () => {
     const { props } = renderFilter({
       school: { id: "poi-1", name: "テスト小学校", latitude: 35.68, longitude: 139.76 },

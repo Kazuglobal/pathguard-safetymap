@@ -15,6 +15,7 @@ import {
 import { SCHOOL_RADIUS_KM, type SchoolSelection } from "@/lib/region-filter"
 import { searchSchools, type SchoolSearchResult } from "@/lib/school-search"
 import { tankenTokens } from "@/lib/design/tanken"
+import type { CityOptionsState } from "@/hooks/use-report-region-filter"
 
 const C = tankenTokens.color
 
@@ -23,6 +24,8 @@ export interface ReportRegionFilterProps {
   city: string | null
   school: SchoolSelection | null
   cityOptions: string[]
+  /** 市町村の選択肢の読み込み状態。省略時は cityOptions を読み込み済みとして扱う */
+  cityOptionsState?: CityOptionsState
   onPrefectureChange: (prefecture: string) => void
   onCityChange: (city: string | null) => void
   onSchoolChange: (school: SchoolSelection | null) => void
@@ -34,18 +37,26 @@ export function ReportRegionFilter({
   city,
   school,
   cityOptions,
+  cityOptionsState,
   onPrefectureChange,
   onCityChange,
   onSchoolChange,
   variant = "plain",
 }: ReportRegionFilterProps) {
   const isTanken = variant === "tanken"
+  const cityStatus = cityOptionsState?.status ?? "ready"
+  const cityLoading = cityStatus === "loading" || cityStatus === "idle"
   // 復元した市町村が選択肢に無い場合(該当報告が消えた等)でも、表示と
-  // フィルタ状態がズレないよう選択中の値は選択肢へ補完する
+  // フィルタ状態がズレないよう選択中の値は選択肢へ補完する。
+  // 読み込み中は何も並べず「読み込み中…」だけを見せる
   const cityChoices = React.useMemo(() => {
+    if (cityLoading) return []
     if (city && !cityOptions.includes(city)) return [...cityOptions, city]
     return cityOptions
-  }, [city, cityOptions])
+  }, [city, cityOptions, cityLoading])
+  const cityHintId = React.useId()
+  const cityHasNoReports = cityStatus === "ready" && cityOptions.length === 0
+  const cityHasHint = cityHasNoReports || cityStatus === "error"
   const [schoolQuery, setSchoolQuery] = React.useState("")
   const [schoolResults, setSchoolResults] = React.useState<SchoolSearchResult[]>([])
   const [isSearching, setIsSearching] = React.useState(false)
@@ -165,26 +176,58 @@ export function ReportRegionFilter({
         </select>
       </div>
 
-      {/* 市町村: 選択中の県に報告がある市町村のみ */}
-      {prefecture !== NATIONWIDE && cityChoices.length > 0 && (
-        <div className="flex items-center gap-2">
+      {/* 市町村: 県を選んだら常に出す。選択肢は選択中の県に報告がある市町村のみ */}
+      {prefecture !== NATIONWIDE && (
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`flex-shrink-0 ${labelCls}`} style={labelStyle}>
             市町村:
           </span>
           <select
             aria-label="市町村を選ぶ"
+            aria-describedby={cityHasHint ? cityHintId : undefined}
+            aria-busy={cityLoading || undefined}
             value={city ?? ""}
+            disabled={cityLoading || cityChoices.length === 0}
             onChange={(event) => onCityChange(event.target.value || null)}
-            className={selectCls}
+            className={`${selectCls} disabled:opacity-60`}
             style={selectStyle}
           >
-            <option value="">すべて</option>
+            <option value="">{cityLoading ? "読み込み中…" : "すべて"}</option>
             {cityChoices.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
           </select>
+          {cityHasNoReports && (
+            <span id={cityHintId} className={labelCls} style={labelStyle} role="status">
+              この都道府県の報告はまだありません
+            </span>
+          )}
+          {cityStatus === "error" && (
+            <>
+              <span
+                id={cityHintId}
+                className={`text-xs font-bold ${isTanken ? "" : "text-red-600"}`.trim()}
+                style={isTanken ? { color: C.danger } : undefined}
+                role="alert"
+              >
+                市町村の候補を読み込めませんでした。{cityOptionsState?.errorMessage}
+              </span>
+              {cityOptionsState && (
+                <button
+                  type="button"
+                  onClick={cityOptionsState.retry}
+                  className={`flex-shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${focusCls} ${
+                    isTanken ? "" : "border-slate-200 bg-white text-slate-600"
+                  }`.trim()}
+                  style={selectStyle}
+                >
+                  もう一度読み込む
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
