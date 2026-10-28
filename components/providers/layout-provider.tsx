@@ -7,6 +7,7 @@ import { AuthContextProvider, type AuthStatus } from "@/components/providers/aut
 import { isProtectedPath } from "@/lib/auth/protected-paths"
 import { LOGGED_OUT_PATH, loginPathFor } from "@/lib/auth/login-path"
 import { getDisplayName } from "@/lib/user-display-name"
+import { shouldShowFloatingPrompts } from "@/lib/navigation-visibility"
 import {
   SupabaseProvider,
   isAbortLikeFetchError,
@@ -26,6 +27,7 @@ interface LayoutProviderInnerProps {
 function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
   const { supabase } = useSupabase()
   const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   // 確定するまでは loading。ヘッダーに「ログイン/新規登録」を先に描かないために使う
   const [status, setStatus] = useState<AuthStatus>("loading")
@@ -112,17 +114,24 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     }
   }, [supabase])
 
+  // 古い応答(前のユーザー・前回の読み込み)で新しい呼び名を上書きしないための通し番号
+  const profileRequestSeqRef = useRef(0)
   const refreshProfile = useCallback(async () => {
+    profileRequestSeqRef.current += 1
+    const seq = profileRequestSeqRef.current
+    const isLatest = () => seq === profileRequestSeqRef.current
     try {
       const response = await fetch("/api/profile", { credentials: "same-origin" })
+      if (!isLatest()) return
       if (!response.ok) {
         setDisplayName(null)
         return
       }
       const { profile } = (await response.json()) as { profile?: { display_name?: string | null } | null }
+      if (!isLatest()) return
       setDisplayName(getDisplayName(profile))
     } catch {
-      setDisplayName(null)
+      if (isLatest()) setDisplayName(null)
     }
   }, [])
 
@@ -130,6 +139,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
   const userId = user?.id ?? null
   useEffect(() => {
     if (!userId) {
+      // 進行中の読み込みがあっても、その結果を使わない
+      profileRequestSeqRef.current += 1
       setDisplayName(null)
       return
     }
@@ -171,8 +182,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
       <Toaster />
       <ServiceWorkerRegistrar />
       {user && <AppOnboardingGate />}
-      {user && <PushPermissionPrompt />}
-      {user && <IosInstallPrompt />}
+      {user && shouldShowFloatingPrompts(pathname) && <PushPermissionPrompt />}
+      {user && shouldShowFloatingPrompts(pathname) && <IosInstallPrompt />}
     </AuthContextProvider>
   )
 }

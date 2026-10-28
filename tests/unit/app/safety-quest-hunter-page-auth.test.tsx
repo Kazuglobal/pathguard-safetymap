@@ -81,10 +81,21 @@ describe("きけんハンターのページのログイン確認", () => {
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
-  it("セッション切れ以外の認証エラー(Cookie が残る)でもログインへは送らない", async () => {
+  it("期限切れ・無効なセッション(4xx の認証エラー)はログインへ送る(ログイン画面が getUser で確かめ直すので往復しない)", async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: null },
       error: new AuthApiError("invalid JWT", 403, "bad_jwt"),
+    })
+
+    await expect(HunterPage()).rejects.toThrow("NEXT_REDIRECT")
+
+    expect(mockRedirect).toHaveBeenCalledWith(LOGIN_WITH_NEXT)
+  })
+
+  it("認証サーバーの 5xx は確かめられなかった扱いで、読み込み直しの画面を出す", async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: new AuthApiError("upstream unavailable", 503, "unexpected_failure"),
     })
 
     await renderRetryScreen()

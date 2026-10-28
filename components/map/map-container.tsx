@@ -13,6 +13,9 @@ import { findNearbyReports } from "@/lib/nearby-reports"
 import { useToast } from "@/components/ui/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
+// AR は遅延読み込みにしない。iOS の DeviceOrientationEvent.requestPermission() はタップの直後に
+// 呼ぶ必要があり、部品の読み込みを待つとその猶予が切れて方位センサーの許可が出なくなる
+import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { useInitialMapView } from "@/hooks/use-initial-map-view"
 import { CURRENT_LOCATION_ZOOM, MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION } from "@/lib/map-center"
@@ -67,11 +70,10 @@ import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
 import { NATIONWIDE } from "@/lib/user-region"
 
 // 最初に地図を出すのに要らない画面は別チャンクに分ける(低速端末で地図の表示が約20秒かかっていた)。
-// 詳細・プレビュー・AR は開くまで描かれないか中身が空なので、遅れて届いても見え方は変わらない
+// 詳細・プレビューは開くまで描かれないか中身が空なので、遅れて届いても見え方は変わらない
 const ImagePreviewDialog = dynamic(() => import("../danger-report/image-preview-dialog"), { ssr: false })
 const DangerReportDetailModal = dynamic(() => import("../danger-report/danger-report-detail-modal"), { ssr: false })
 const SubmittedReportPreview = dynamic(() => import("../danger-report/submitted-report-preview"), { ssr: false })
-const ARView = dynamic(() => import("./ar-view"), { ssr: false })
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -178,15 +180,13 @@ export default function MapContainer({
   const {
     initialView: initialMapView,
     lateCurrentLocation,
-    lateRouteView,
   } = useInitialMapView({
     primaryRoute,
     routes: userRoutes,
     isRoutesLoading: Boolean(isUserRoutesLoading),
   })
   const lateLocationConsumedRef = useRef(false)
-  const lateRouteConsumedRef = useRef(false)
-  // 利用者が自分で地図を動かしたか(動かしたあとは遅れて届いたルートへ勝手に移動しない)
+  // 利用者が自分で地図を動かしたか(動かしたあとは、遅れて届いた現在地へ勝手に移動しない)
   const userMovedMapRef = useRef(false)
   const [selectedUserRouteId, setSelectedUserRouteId] = useState<string | null>(null)
   const [hazardLayerVisibility, setHazardLayerVisibility] = useState<Record<HazardType, boolean>>({
@@ -474,6 +474,8 @@ export default function MapContainer({
   };
 
   const flyToLocation = (longitude: number, latitude: number, zoom = 15) => {
+    // 一覧・検索・ピンなど利用者の操作で動かした印(遅れて届いた現在地で上書きしない)
+    userMovedMapRef.current = true
     map.current?.flyTo({ center: [longitude, latitude], zoom: zoom, essential: true });
   };
 
@@ -667,7 +669,10 @@ export default function MapContainer({
         }
         const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
         geolocateControlRef.current = geolocate
-        geolocate.on('trackuserlocationstart', () => { inspectGPSRef.current = true })
+        geolocate.on('trackuserlocationstart', () => {
+          inspectGPSRef.current = true
+          userMovedMapRef.current = true
+        })
         geolocate.on('geolocate', handleInspectionGeolocate)
         map.current?.addControl(geolocate, "bottom-right")
 
@@ -715,24 +720,17 @@ export default function MapContainer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, initialMapView]);
 
-  // 東京フォールバックで初期化した後に現在地が取れた場合、一度だけそこへ移動する
+  // フォールバック(日本全体)で初期化した後に現在地が取れた場合、一度だけそこへ移動する。
+  // ただし通学路が選ばれている(遅れて届いたルートへ寄せた・ルート指定で開いた)とき、
+  // または利用者がもう地図を動かしたときは動かさない(ルート → 現在地 の優先順を守る)
   useEffect(() => {
     if (!lateCurrentLocation || lateLocationConsumedRef.current) return
     if (!map.current || !mapInitialized.current) return
     lateLocationConsumedRef.current = true
+    if (selectedUserRouteId || userMovedMapRef.current) return
     flyToLocation(lateCurrentLocation[0], lateCurrentLocation[1], CURRENT_LOCATION_ZOOM)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lateCurrentLocation, isLoading])
-
-  // ルートを待たずに地図を出した後でルートが届いたら、一度だけそのルートへ移動する
-  // (利用者がもう地図を動かしていたら、その操作を優先して動かさない)
-  useEffect(() => {
-    if (!lateRouteView || lateRouteConsumedRef.current) return
-    if (!map.current || !mapInitialized.current) return
-    lateRouteConsumedRef.current = true
-    if (userMovedMapRef.current) return
-    map.current.flyTo({ center: lateRouteView.center, zoom: lateRouteView.zoom })
-  }, [lateRouteView, isLoading])
 
   useEffect(() => {
     if (!map.current || !mapInitialized.current || !navigationControlRef.current) return

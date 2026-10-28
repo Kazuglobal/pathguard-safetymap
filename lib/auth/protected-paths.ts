@@ -17,6 +17,9 @@ export const PROTECTED_PREFIXES = [
   '/xroad',
   '/admin',
   '/tools',
+  // きけんハンターはページ側でもログインを確かめるが、ここにも載せて
+  // ログアウトを検知したときにその場でログインへ移す(ハブの /safety-quest は公開のまま)
+  '/safety-quest/hunter',
 ] as const
 
 export function isProtectedPath(pathname: string): boolean {

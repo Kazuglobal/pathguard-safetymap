@@ -6,7 +6,6 @@ import {
   getCurrentLocationMapView,
   getFallbackMapView,
   resolveInitialMapView,
-  resolveRouteMapView,
   type InitialMapView,
 } from "@/lib/map-center"
 import type { UserRoute } from "@/lib/types"
@@ -14,7 +13,8 @@ import type { UserRoute } from "@/lib/types"
 /**
  * ルート取得がこの時間を超えたら待たずにフォールバックで初期化する。
  * 低速の端末では地図の表示がもともと遅いので長く待たない(4秒→1.5秒)。
- * 遅れて届いたルートへは lateRouteView で一度だけ移動する
+ * 遅れて届いたルートは、地図が選択中ルートとして自動で選び、そのルートの範囲へ寄せる
+ * (hooks/use-selected-route-layer.ts の fitBounds。ルート指定の深いリンクもこちらが担う)
  */
 export const ROUTES_WAIT_TIMEOUT_MS = 1500
 
@@ -35,11 +35,6 @@ export interface UseInitialMapViewReturn {
    * 一度だけ非nullに変わる。
    */
   lateCurrentLocation: [number, number] | null
-  /**
-   * ルートを待たずに初期化した後でルートが届いた場合の移動先。一度だけ非nullに変わる。
-   * (利用者がすでに地図を動かしていたら、呼び出し側で無視する)
-   */
-  lateRouteView: InitialMapView | null
 }
 
 /**
@@ -58,9 +53,7 @@ export function useInitialMapView({
   const { location, requestLocation } = useCurrentLocation({ showErrorToast: false })
   const [initialView, setInitialView] = useState<InitialMapView | null>(null)
   const [lateCurrentLocation, setLateCurrentLocation] = useState<[number, number] | null>(null)
-  const [lateRouteView, setLateRouteView] = useState<InitialMapView | null>(null)
   const gpsRequestedRef = useRef(false)
-  const initializedBeforeRoutesRef = useRef(false)
 
   // ルート取得完了で初期ビューを確定する
   useEffect(() => {
@@ -70,12 +63,11 @@ export function useInitialMapView({
   }, [initialView, isRoutesLoading, primaryRoute, routes, location])
 
   // ルート取得が長引く場合の安全弁（無限ローディング防止）。
-  // 初期表示は一度だけ決める。タイムアウト後に届いたルートへは lateRouteView で移動してもらう。
+  // 初期表示は一度だけ決める。タイムアウト後に届いたルートへは、地図側の選択中ルートが寄せる。
   useEffect(() => {
     if (initialView || !isRoutesLoading) return
 
     const timer = window.setTimeout(() => {
-      initializedBeforeRoutesRef.current = true
       setInitialView((view) => view ?? getFallbackMapView())
     }, ROUTES_WAIT_TIMEOUT_MS)
     return () => window.clearTimeout(timer)
@@ -99,15 +91,5 @@ export function useInitialMapView({
     }
   }, [initialView, lateCurrentLocation, location])
 
-  // ルートを待たずに初期化した後でルートが届いたら、そのルートの表示を一度だけ公開する
-  useEffect(() => {
-    if (!initializedBeforeRoutesRef.current || isRoutesLoading || lateRouteView) return
-
-    const view = resolveRouteMapView(primaryRoute, routes)
-    if (view) {
-      setLateRouteView(view)
-    }
-  }, [isRoutesLoading, lateRouteView, primaryRoute, routes])
-
-  return { initialView, lateCurrentLocation, lateRouteView }
+  return { initialView, lateCurrentLocation }
 }

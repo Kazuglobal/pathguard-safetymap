@@ -1,4 +1,4 @@
-import { isAuthSessionMissingError } from "@supabase/supabase-js"
+import { isAuthApiError, isAuthSessionMissingError } from "@supabase/supabase-js"
 import { redirect, unstable_rethrow } from "next/navigation"
 
 import { createServerClient } from "@/lib/supabase-server"
@@ -31,6 +31,10 @@ async function resolveHunterViewer(): Promise<HunterViewer> {
     const { data, error } = await supabase.auth.getUser()
     if (!error && data.user) return { kind: "signed-in", userId: data.user.id }
     if (!error || isAuthSessionMissingError(error)) return { kind: "signed-out" }
+    // 期限切れ・無効なセッション(4xx の認証エラー)もログインへ。ログイン画面は getUser で確かめ直すので、
+    // Cookie が残っていても行ったり来たりにはならない
+    const authStatus = isAuthApiError(error as unknown) ? (error as { status?: number }).status : undefined
+    if (typeof authStatus === "number" && authStatus >= 400 && authStatus < 500) return { kind: "signed-out" }
     console.error("きけんハンター: ログイン状態を確かめられませんでした", error)
     return { kind: "unknown" }
   } catch (error) {

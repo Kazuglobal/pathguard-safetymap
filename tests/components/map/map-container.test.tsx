@@ -166,6 +166,12 @@ const h = vi.hoisted(() => {
     toast: vi.fn(),
     isMobile: false,
     searchParams: new URLSearchParams(),
+    initialGps: null as null | {
+      location: [number, number] | null
+      isLoading: boolean
+      requestLocation: ReturnType<typeof vi.fn>
+      reset: ReturnType<typeof vi.fn>
+    },
     gps: {
       location: null as [number, number] | null,
       isLoading: false,
@@ -258,7 +264,10 @@ vi.mock('@/hooks/use-user-routes', () => ({
 }))
 
 vi.mock('@/hooks/use-current-location', () => ({
-  useCurrentLocation: () => h.gps,
+  // 初期表示(useInitialMapView は showErrorToast:false で呼ぶ)と「現在地で報告」は本物では別の状態を持つ。
+  // h.initialGps を入れたテストだけ分け、未設定なら従来どおり h.gps を共有する
+  useCurrentLocation: (options?: { showErrorToast?: boolean }) =>
+    options?.showErrorToast === false && h.initialGps ? h.initialGps : h.gps,
 }))
 
 vi.mock('@/hooks/use-accident-heatmap', () => ({
@@ -504,6 +513,7 @@ beforeEach(() => {
   h.searchParams = new URLSearchParams()
   h.gps.location = null
   h.gps.isLoading = false
+  h.initialGps = null
   h.userRoutes.routes = []
   h.userRoutes.primaryRoute = null
   h.reports.dangerReports = []
@@ -608,6 +618,43 @@ describe('MapContainer characterization', () => {
 
       expect(lastMap().options.center).toEqual([140.5, 36.5])
       expect(lastMap().options.zoom).toBe(15)
+    })
+
+    it('フォールバック後に現在地が届いたら一度だけそこへ移動する', () => {
+      h.initialGps = { location: null, isLoading: false, requestLocation: vi.fn(), reset: vi.fn() }
+      const { rerender } = renderMapContainer()
+      fireMapLoad()
+
+      h.initialGps.location = [140.5, 36.5]
+      rerender(<MapContainer />)
+
+      // 遅れて届いた現在地への移動は CURRENT_LOCATION_ZOOM(15)。ズーム16は「現在地で報告」の流れ
+      // (このテストの GPS モックは両方の useCurrentLocation で共有されているため区別する)
+      expect(lastMap().flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [140.5, 36.5], zoom: 15 }))
+    })
+
+    it('通学路が選ばれているときは、遅れて届いた現在地へ移動しない(ルート → 現在地 の優先順)', () => {
+      // 座標の無いルート: 初期表示はフォールバックになるが、地図はこのルートを選択中にする
+      const route = {
+        id: 'route-x',
+        name: 'ルートX',
+        start_lat: Number.NaN,
+        start_lng: Number.NaN,
+        end_lat: Number.NaN,
+        end_lng: Number.NaN,
+        is_favorite: true,
+        created_at: '2026-01-01T00:00:00Z',
+      }
+      h.userRoutes.routes = [route]
+      h.userRoutes.primaryRoute = route
+      h.initialGps = { location: null, isLoading: false, requestLocation: vi.fn(), reset: vi.fn() }
+      const { rerender } = renderMapContainer()
+      fireMapLoad()
+
+      h.initialGps.location = [140.5, 36.5]
+      rerender(<MapContainer />)
+
+      expect(lastMap().flyTo).not.toHaveBeenCalledWith(expect.objectContaining({ center: [140.5, 36.5], zoom: 15 }))
     })
 
     it('ルートなし・現在地なしなら日本全体のフォールバックで初期化し、現在地を要求する(特定の市に寄せない)', () => {

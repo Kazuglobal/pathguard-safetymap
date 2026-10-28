@@ -219,6 +219,28 @@ describe('cleanup-test-data main', () => {
     expect(count(database, 'user_routes')).toBe(2)
   })
 
+  it('refuses --apply for rows that matched only by title until --allow-title-matches is given', async () => {
+    // 「テスト」は学校の試験の意味でも使われる。題名だけで候補になった本物の報告を消さない
+    const titleOnly = JSON.stringify({
+      reports: [
+        { id: 'r-keep', title: '本物の報告', matched_by: ['title'] },
+        { id: 'r-pending', title: '削除可', matched_by: ['title', 'owner'] },
+      ],
+    })
+    const fake = createFakeWrangler(database.sqlite)
+    const env = { [CLEANUP_CONFIRM_ENV]: 'yes' }
+    const blocked = createTestDeps({ runner: fake.runner, env, files: { 'input.json': titleOnly } })
+
+    await expect(main(['--input=input.json', '--apply'], blocked)).resolves.toBe(1)
+    expect(fake.calls).toEqual([])
+    expect(blocked.lines.join('\n')).toContain('r-keep')
+    expect(count(database, 'danger_reports')).toBe(3)
+
+    const allowed = createTestDeps({ runner: fake.runner, env, files: { 'input.json': titleOnly } })
+    await expect(main(['--input=input.json', '--apply', '--allow-title-matches'], allowed)).resolves.toBe(0)
+    expect(count(database, 'danger_reports')).toBe(1)
+  })
+
   it('refuses empty and oversized inputs before contacting anything', async () => {
     const fake = createFakeWrangler(database.sqlite)
     const env = { [CLEANUP_CONFIRM_ENV]: 'yes' }

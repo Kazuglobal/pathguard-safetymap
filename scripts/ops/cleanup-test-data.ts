@@ -65,6 +65,12 @@ export interface CleanupInput {
   readonly routeIds: readonly string[]
   /** 入力ファイル（find-test-data.ts の出力）にあった表示用の情報。削除の判断には使わない */
   readonly notes: ReadonlyMap<string, CleanupNote>
+  /**
+   * テスト用アカウントの持ち物ではなく、題名・名前の言葉(テスト・サンプル等)だけで候補になった id。
+   * 「テスト」は学校の試験の意味でも使われ、本物の報告が混ざりうるため、
+   * --allow-title-matches を付けない限り --apply では消さない(2026-10-29 レビュー指摘)
+   */
+  readonly contentOnlyIds: readonly string[]
 }
 
 export interface CleanupPlan {
@@ -149,10 +155,13 @@ export function parseCleanupInput(value: unknown): CleanupInput {
     ...reports.map((entry) => [entry.id as string, noteOf(entry, 'title')] as const),
     ...routes.map((entry) => [entry.id as string, noteOf(entry, 'name')] as const),
   ])
+  const isContentOnly = (entry: Record<string, unknown>) =>
+    Array.isArray(entry.matched_by) && !entry.matched_by.includes('owner')
   return {
     reportIds: [...reports.map((entry) => entry.id as string), ...readIdList(value.reportIds, 'reportIds')],
     routeIds: [...routes.map((entry) => entry.id as string), ...readIdList(value.routeIds, 'routeIds')],
     notes,
+    contentOnlyIds: [...reports, ...routes].filter(isContentOnly).map((entry) => entry.id as string),
   }
 }
 
@@ -359,8 +368,10 @@ function formatResolved(resolved: ResolvedCleanup): string[] {
 }
 
 const USAGE = [
-  '使い方: npx tsx scripts/ops/cleanup-test-data.ts --input=<file.json> [--apply]',
+  '使い方: npx tsx scripts/ops/cleanup-test-data.ts --input=<file.json> [--apply] [--allow-title-matches]',
   `  既定はドライラン。消すときは ${CLEANUP_CONFIRM_ENV}=yes と --apply の両方が必要です。`,
+  '  題名・名前の言葉だけで候補になった行(テスト用アカウントの持ち物ではない行)は、一覧を確かめたうえで',
+  '  --allow-title-matches を付けたときだけ消します。',
 ]
 
 export async function main(argv: readonly string[], deps: OpsDeps): Promise<number> {
@@ -368,7 +379,7 @@ export async function main(argv: readonly string[], deps: OpsDeps): Promise<numb
   let input: CleanupInput
   let plan: CleanupPlan
   try {
-    args = parseCliArgs(argv, { flags: ['apply', 'help'], values: ['input'] })
+    args = parseCliArgs(argv, { flags: ['apply', 'help', 'allow-title-matches'], values: ['input'] })
     if (args.flags.has('help')) {
       USAGE.forEach((line) => deps.log(line))
       return 0
@@ -392,7 +403,18 @@ export async function main(argv: readonly string[], deps: OpsDeps): Promise<numb
   }
 
   formatDryRun(input, plan).forEach((line) => deps.log(line))
+  const blockedContentOnly = args.flags.has('allow-title-matches') ? [] : input.contentOnlyIds
+  if (blockedContentOnly.length > 0) {
+    deps.log('')
+    deps.log(`注意: 次の ${blockedContentOnly.length} 件は、テスト用アカウントの持ち物ではなく題名・名前の言葉だけで候補になっています。`)
+    deps.log('本物の報告・通学路の可能性があるため、一覧を確かめてから --allow-title-matches を付けてください:')
+    blockedContentOnly.forEach((id) => deps.log(`  - ${id}`))
+  }
   if (!args.flags.has('apply')) return 0
+  if (blockedContentOnly.length > 0) {
+    deps.error('題名・名前だけで候補になった行が含まれるため、--allow-title-matches なしでは消しません。何も消していません。')
+    return 1
+  }
   if (!hasConfirmation(deps.env, CLEANUP_CONFIRM_ENV)) {
     deps.error(`--apply には ${CLEANUP_CONFIRM_ENV}=yes が必要です。何も消していません。`)
     return 1

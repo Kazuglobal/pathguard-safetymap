@@ -26,12 +26,13 @@ describe("isProtectedPath", () => {
     expect(isProtectedPath("/routes")).toBe(true)
     expect(isProtectedPath("/map")).toBe(true)
     expect(isProtectedPath("/admin/reports")).toBe(true)
+    expect(isProtectedPath("/safety-quest/hunter")).toBe(true)
   })
 
   it("公開ページや接頭辞が似ているだけのパスは保護しない", () => {
     expect(isProtectedPath("/landing")).toBe(false)
     expect(isProtectedPath("/lp")).toBe(false)
-    expect(isProtectedPath("/safety-quest/hunter")).toBe(false)
+    expect(isProtectedPath("/safety-quest")).toBe(false)
     expect(isProtectedPath("/mapping")).toBe(false)
   })
 })

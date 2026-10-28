@@ -76,7 +76,7 @@ describe("報告一覧の地域フィルタ(フック+UI)", () => {
 
     choosePrefecture("鳥取県")
 
-    expect(await screen.findByText("この都道府県の報告はまだありません")).toBeInTheDocument()
+    expect(await screen.findByText("市区町村で絞り込める報告はまだありません")).toBeInTheDocument()
     expect(citySelect()).toBeDisabled()
   })
 
@@ -95,7 +95,7 @@ describe("報告一覧の地域フィルタ(フック+UI)", () => {
     })
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "市町村の候補を読み込めませんでした。時間内に応答がありませんでした。",
+      "市区町村の一覧を読み込めませんでした。時間内に応答がありませんでした。",
     )
     expect(within(citySelect()).queryByRole("option", { name: "読み込み中…" })).not.toBeInTheDocument()
 

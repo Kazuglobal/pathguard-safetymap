@@ -126,11 +126,7 @@ export function getCurrentLocationMapView(
 }
 
 export function getFallbackMapView(): InitialMapView {
-  return {
-    center: [DEFAULT_MAP_CENTER[0], DEFAULT_MAP_CENTER[1]],
-    zoom: DEFAULT_MAP_ZOOM,
-    source: "fallback",
-  }
+  return getNationwideMapView()
 }
 
 /**

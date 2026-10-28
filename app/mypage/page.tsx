@@ -128,7 +128,17 @@ export default function MyPage() {
           }
           return
         }
-        if (!profileResponse.ok || !reportsResponse.ok) throw new Error("Personal data request failed")
+        if (!profileResponse.ok || !reportsResponse.ok) {
+          // 呼び名は報告一覧の読み込み失敗に巻き込まない(プロフィールが取れていれば出す)
+          if (profileResponse.ok) {
+            const { profile } = (await profileResponse.json()) as { profile?: { display_name?: string | null } }
+            if (isMounted) {
+              setUserName(getDisplayName(profile))
+              setIsNameLoaded(true)
+            }
+          }
+          throw new Error("Personal data request failed")
+        }
         const [{ profile }, { reports: reportRows = [] }] = await Promise.all([
           profileResponse.json() as Promise<{ profile?: { display_name?: string | null; email?: string | null } }>,
           reportsResponse.json() as Promise<{ reports?: ReportSummary[] }>,
@@ -144,7 +154,7 @@ export default function MyPage() {
       } catch (error) {
         console.error("マイページ情報の取得に失敗しました", error)
         if (isMounted) {
-          setIsNameLoaded(true)
+          // 呼び名が分からないまま「表示名を設定する」を出さない(isNameLoaded は取れたときだけ立てる)
           setReports([])
           setIsReportsLoading(false)
         }

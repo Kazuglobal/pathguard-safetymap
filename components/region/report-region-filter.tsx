@@ -201,7 +201,7 @@ export function ReportRegionFilter({
           </select>
           {cityHasNoReports && (
             <span id={cityHintId} className={labelCls} style={labelStyle} role="status">
-              この都道府県の報告はまだありません
+              市区町村で絞り込める報告はまだありません
             </span>
           )}
           {cityStatus === "error" && (
@@ -212,7 +212,7 @@ export function ReportRegionFilter({
                 style={isTanken ? { color: C.danger } : undefined}
                 role="alert"
               >
-                市町村の候補を読み込めませんでした。{cityOptionsState?.errorMessage}
+                市区町村の一覧を読み込めませんでした。{cityOptionsState?.errorMessage}
               </span>
               {cityOptionsState && (
                 <button

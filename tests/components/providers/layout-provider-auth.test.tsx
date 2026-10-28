@@ -50,10 +50,14 @@ vi.mock("@/components/ui/navigation-wrapper", () => ({
 }))
 
 vi.mock("@/components/ui/toaster", () => ({ Toaster: () => null }))
-vi.mock("@/components/notifications/push-permission-prompt", () => ({ PushPermissionPrompt: () => null }))
+vi.mock("@/components/notifications/push-permission-prompt", () => ({
+  PushPermissionPrompt: () => <div data-testid="push-prompt" />,
+}))
 vi.mock("@/components/onboarding/app-onboarding-gate", () => ({ AppOnboardingGate: () => null }))
 vi.mock("@/components/pwa/service-worker-registrar", () => ({ ServiceWorkerRegistrar: () => null }))
-vi.mock("@/components/pwa/ios-install-prompt", () => ({ IosInstallPrompt: () => null }))
+vi.mock("@/components/pwa/ios-install-prompt", () => ({
+  IosInstallPrompt: () => <div data-testid="ios-install-prompt" />,
+}))
 
 import { LayoutProvider } from "@/components/providers/layout-provider"
 
@@ -100,6 +104,46 @@ describe("LayoutProvider のログイン状態", () => {
 
     await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "unauthenticated"))
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("呼び名の読み込み", () => {
+  it("ログアウトしたあとに前のユーザーのプロフィールが遅れて届いても、呼び名を戻さない", async () => {
+    let resolveProfile: (value: unknown) => void = () => {}
+    fetchMock.mockReturnValue(new Promise((resolve) => (resolveProfile = resolve)))
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+    await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "authenticated"))
+
+    act(() => authCallback?.("SIGNED_OUT", null))
+    await act(async () => {
+      resolveProfile({ ok: true, json: async () => ({ profile: { display_name: "前のユーザー" } }) })
+    })
+
+    expect(screen.getByTestId("nav")).toHaveAttribute("data-name", "")
+  })
+})
+
+describe("画面下に浮かぶお願い", () => {
+  it("子どものきけんハンターでは通知・ホーム画面追加のお願いを出さない", async () => {
+    pathname = "/safety-quest/hunter"
+    window.history.pushState({}, "", "/safety-quest/hunter")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+    await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "authenticated"))
+
+    expect(screen.queryByTestId("push-prompt")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("ios-install-prompt")).not.toBeInTheDocument()
+  })
+
+  it("ふつうの画面ではログイン中の人に出す", async () => {
+    pathname = "/landing"
+    window.history.pushState({}, "", "/landing")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+
+    expect(await screen.findByTestId("push-prompt")).toBeInTheDocument()
+    expect(screen.getByTestId("ios-install-prompt")).toBeInTheDocument()
   })
 })
 

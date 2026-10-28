@@ -384,7 +384,7 @@ describe("HiyariHatReport", () => {
         target: { value: "鳥取県" },
       })
 
-      expect(await screen.findByText("この都道府県の報告はまだありません")).toBeInTheDocument()
+      expect(await screen.findByText("市区町村で絞り込める報告はまだありません")).toBeInTheDocument()
       expect(screen.getByRole("combobox", { name: "市町村を選ぶ" })).toBeDisabled()
     })
 

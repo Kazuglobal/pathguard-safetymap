@@ -237,15 +237,15 @@ describe("ReportRegionFilter", () => {
 
       const select = screen.getByRole("combobox", { name: "市町村を選ぶ" })
       expect(select).toBeDisabled()
-      expect(screen.getByText("この都道府県の報告はまだありません")).toBeInTheDocument()
-      expect(select).toHaveAccessibleDescription("この都道府県の報告はまだありません")
+      expect(screen.getByText("市区町村で絞り込める報告はまだありません")).toBeInTheDocument()
+      expect(select).toHaveAccessibleDescription("市区町村で絞り込める報告はまだありません")
     })
 
     it("読み込み状態を渡さない呼び出しでも、県を選んだら市町村セレクトを隠さない", () => {
       renderFilter({ prefecture: "鳥取県", cityOptions: [] })
 
       expect(screen.getByRole("combobox", { name: "市町村を選ぶ" })).toBeDisabled()
-      expect(screen.getByText("この都道府県の報告はまだありません")).toBeInTheDocument()
+      expect(screen.getByText("市区町村で絞り込める報告はまだありません")).toBeInTheDocument()
     })
 
     it("読み込み中は「読み込み中…」だけを出して無効にし、前の選択肢や復元値を並べない", () => {
@@ -260,7 +260,7 @@ describe("ReportRegionFilter", () => {
       expect(select).toBeDisabled()
       const labels = Array.from(select.querySelectorAll("option")).map((o) => o.textContent)
       expect(labels).toEqual(["読み込み中…"])
-      expect(screen.queryByText("この都道府県の報告はまだありません")).not.toBeInTheDocument()
+      expect(screen.queryByText("市区町村で絞り込める報告はまだありません")).not.toBeInTheDocument()
     })
 
     it("読み込みに失敗したら理由と「もう一度読み込む」を出し、押すと再読み込みする", () => {
@@ -270,9 +270,9 @@ describe("ReportRegionFilter", () => {
       const select = screen.getByRole("combobox", { name: "市町村を選ぶ" })
       expect(select).toBeDisabled()
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "市町村の候補を読み込めませんでした。時間内に応答がありませんでした。",
+        "市区町村の一覧を読み込めませんでした。時間内に応答がありませんでした。",
       )
-      expect(screen.queryByText("この都道府県の報告はまだありません")).not.toBeInTheDocument()
+      expect(screen.queryByText("市区町村で絞り込める報告はまだありません")).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole("button", { name: "もう一度読み込む" }))
       expect(failed.retry).toHaveBeenCalledTimes(1)

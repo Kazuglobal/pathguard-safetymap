@@ -10,6 +10,14 @@ import { describe, expect, it } from 'vitest'
 
 const root = process.cwd()
 
+// メタデータのファイル(app/manifest.ts など)もルートとしてビルドされる。page/route と同じく振り分けが要る
+// (2026-10-29、PWA の manifest が振り分け漏れで本番 500 になる寸前だった)
+const METADATA_ROUTE_FILES: Record<string, string> = {
+  manifest: 'manifest.webmanifest/route',
+  robots: 'robots.txt/route',
+  sitemap: 'sitemap.xml/route',
+}
+
 function appRoutes(): string[] {
   const found: string[] = []
   const walk = (dir: string) => {
@@ -18,6 +26,12 @@ function appRoutes(): string[] {
       if (entry.isDirectory()) walk(full)
       else if (/^(page|route)\.(t|j)sx?$/.test(entry.name)) {
         found.push(path.relative(root, full).split(path.sep).join('/').replace(/\.(t|j)sx?$/, ''))
+      } else {
+        const metadata = entry.name.match(/^(manifest|robots|sitemap)\.(t|j)s$/)
+        if (metadata) {
+          const dirRel = path.relative(root, dir).split(path.sep).join('/')
+          found.push(`${dirRel}/${METADATA_ROUTE_FILES[metadata[1]]}`)
+        }
       }
     }
   }
