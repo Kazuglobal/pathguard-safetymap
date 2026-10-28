@@ -1,6 +1,7 @@
-import { and, desc, eq, like, sql } from 'drizzle-orm'
+import { and, desc, eq, like, not, sql } from 'drizzle-orm'
 
 import { HUNTER_CHALLENGE_PREFIX } from '@/lib/hunter/rewards'
+import { excludedEmailCondition, getLeaderboardExclusions } from '@/lib/leaderboard-exclusions'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -55,12 +56,15 @@ export function createGamificationRepo(db: AppDb) {
 
     async leaderboard(actor: Actor, userId?: string) {
       if (actor.kind === 'anon') throw new Error('Authentication required')
+      // デモ・テストアカウントは上位50件を数える前に SQL で外す(LIMIT の後で捨てると50件に足りなくなる)。
+      // 本人の行(mine)は本人にしか返らないので、除外アカウント本人には「-」位として自分の点を見せる。
       const top = await db.select({
         userId: userPoints.userId,
         points: userPoints.points,
         level: userPoints.level,
         displayName: profiles.displayName,
       }).from(userPoints).leftJoin(profiles, eq(profiles.id, userPoints.userId))
+        .where(not(excludedEmailCondition(profiles.email, getLeaderboardExclusions())))
         .orderBy(desc(userPoints.points)).limit(50)
       let mine = null
       if (userId && !top.some((row) => row.userId === userId)) {
