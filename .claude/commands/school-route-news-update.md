@@ -73,7 +73,10 @@
   tags: ["タグ1", "タグ2"],
   sources: ["ソース1", "ソース2"],
   keyPoints: ["最重要ファクト", "そなえの一言"],
-  thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.jpg",
+  thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.jpg",  // 必ず書く（ファイルは CI が作る）
+  contentImages: [  // accident / suspicious は1件必須。他カテゴリは手順や表を図解したい時だけ
+    { id: "短い英小文字のid", url: "/images/school-route-news/articles/{slug}/{id}.jpg", description: "actionAdvice の手順を①→②→③で図解する一文（alt テキスト兼 生成プロンプト）" },
+  ],
   isBreaking: true/false,
   verifiedAt: "ISO8601形式",
 
@@ -155,14 +158,20 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 - メタタイトル（60字以内）・メタディスクリプション（160字以内）
 - 地域名＋日付のキーワード最適化、JSON-LD構造化データ
 
-### Step 5: 画像生成（image-generator）
-- 事故現場・不審者本人を直接描かない。抽象的・注意喚起的な表現
-- 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）
-- カテゴリカラーに合わせたトーン（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ）
-- 出力先: `public/images/school-route-news/thumbnails/{slug}.jpg`（JPEG のみ。PNG を作らない）
-- 生成: `npx tsx scripts/generate-missing-images.ts news`（`thumbnailUrl` が指す欠落分だけ生成。slug 別の指定は `scripts/image-prompts/school-route-news.json`）
-- **ImageMagick 等で描いた暫定画像を置いたまま PR を出さない・マージしない。** 暫定画像は本番にそのまま公開され、後から差し替わらない（2026-10-24 分で発生）。`GEMINI_API_KEY` が無い環境では画像を置かず `thumbnailUrl` も書かず、PR を draft にして「画像未生成」を本文の先頭に書く。release-readiness の「uses generated artwork」テスト（100KB 以上の JPEG・重複なし）が暫定画像を弾く
-- **サムネイルの使い回し禁止**。必ず当該記事のslugで新規生成する
+### Step 5: 画像（記事データを書き、画像ファイルは CI が作る）
+**セッション内で画像ファイルを作らない。** クラウド実行には `GEMINI_API_KEY` が無く、ImageMagick 等で描いた暫定画像は本番にそのまま公開されて後から差し替わらない（2026-10-24 分で18件が発生）。代わりに、記事データへ参照を正しく書けば、GitHub Actions の「School Route News Images」が PR ブランチへ画像を積む（数分）。
+
+書くもの（記事ごと）:
+- `thumbnailUrl: "/images/school-route-news/thumbnails/{slug}.jpg"` — **必ず書く**。拡張子は `.jpg`（生成は JPEG のみ。`.png` は書かない）。slug は記事の slug と一致させる
+- `contentImages` — **accident / suspicious は1件必須**（`actionAdvice` の行動を①→②→③で図解する）。community / policy / infrastructure は、手順や表を図解したいときだけ。`url` は `/images/school-route-news/articles/{slug}/{id}.jpg`、`description` は図の内容を一文で（alt テキスト兼 生成プロンプトになる）
+
+作画の要件（プロンプトの上書きが必要なときは `scripts/image-prompts/school-route-news.json` に `{slug}` または `{slug}/{図版id}` で書く）:
+- 事故現場・不審者本人・負傷・接触を直接描かない。抽象的・注意喚起的な表現。体に触れる事案など安全フィルタに弾かれる題材は、事案を描かず「そなえ」の絵（防犯ブザー・駆け込み先・歩いて渡る場所）にする
+- 画像内に文字・数字・看板の文字・路面の文字を入れない（キャプションは HTML 側で出す）
+- 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）。カテゴリカラー（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ）
+- サムネイル・図版の使い回し禁止（slug ごとに新規）
+
+鍵のあるローカルで手動生成する場合: `npx tsx scripts/generate-missing-images.ts news`（参照されていて欠落している画像だけ生成。既存は上書きしない。作り直すときは先に該当ファイルを削除）。生成後は必ず目視し、文字状の模様・不穏な表情が出たら専用プロンプトで撮り直す。
 
 ### Step 6: 公開前監査（regional-coverage-auditor・必須ゲート）
 以下をすべて確認し、1つでも不合格なら該当Stepへ差し戻す:
@@ -170,7 +179,8 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 - [ ] `accident` / `suspicious` 記事に `actionAdvice` がある
 - [ ] 本文が恐怖・不安の記述で終わっていない
 - [ ] 個人特定情報が含まれていない
-- [ ] `thumbnailUrl` のファイルが実在し、他記事の画像を参照していない
+- [ ] `thumbnailUrl` が `.jpg` で slug と一致し、他記事の画像を参照していない（ファイルの実在は CI が積むまで確認できない。ローカル実行なら実在も確認）
+- [ ] accident / suspicious 記事に `contentImages` が1件あり、`url` が `/images/school-route-news/articles/{slug}/{id}.jpg`、`description` が空でない
 - [ ] `NEWS_ITEMS` 内でslug・idが一意
 - [ ] 1日の新規公開が5本以内
 
@@ -178,6 +188,10 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 ```bash
 npx tsc --noEmit
 npx vitest run tests/unit/lib/school-route-news-release-readiness.test.ts tests/unit/lib/school-route-news-format.test.ts
+```
+クラウド実行では、画像が CI で積まれるまで release-readiness の画像系テスト（thumbnail coverage の存在・「uses generated artwork」）が赤になる。**それ以外が緑で、次のコマンドが参照画像の一覧を出せれば足りる**（画像系の赤は想定どおり。PR 本文に「画像は CI が追加する。マージ前に Actions の School Route News Images が成功していること」と書く）:
+```bash
+npx tsx scripts/generate-missing-images.ts news --dry-run
 ```
 その後、`/school-route-news` と `/landing` をブラウザで確認（ランディングは自動導出なので、一覧に新記事が出ていれば導出が機能している）。
 
