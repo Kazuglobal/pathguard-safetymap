@@ -243,7 +243,10 @@ vi.mock('@/hooks/use-media-query', () => ({
 
 // ---- データ系フック ----
 vi.mock('@/hooks/use-danger-reports', () => ({
-  useDangerReports: () => h.reports,
+  useDangerReports: (args: any) => {
+    h.captured.dangerReportsArgs = args
+    return h.reports
+  },
 }))
 
 vi.mock('@/hooks/use-admin-status', () => ({
@@ -561,6 +564,17 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
       // NavigationControl + GeolocateControl の2つ
       expect(lastMap().controls.length).toBe(2)
+    })
+  })
+
+  describe('地域の絞り込み', () => {
+    it('ホームやニュースで選んだ地域を持ち込まず、地図は全国(表示範囲だけ)で絞る', async () => {
+      const { setStoredRegion } = await import('@/lib/user-region')
+      setStoredRegion('千葉県')
+
+      renderMapContainer()
+
+      expect(h.captured.dangerReportsArgs.filterOptions.prefecture).toBe('全国')
     })
   })
 

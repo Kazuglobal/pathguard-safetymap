@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import dynamic from "next/dynamic"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
@@ -8,14 +9,10 @@ import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
 import type { DangerReport } from "@/lib/types"
 import MapSearch from "./map-search"
-import ImagePreviewDialog from "../danger-report/image-preview-dialog"
-import DangerReportDetailModal from "../danger-report/danger-report-detail-modal" // 以前の履歴から推測
 import { findNearbyReports } from "@/lib/nearby-reports"
 import { useToast } from "@/components/ui/use-toast"
-import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
-import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { useInitialMapView } from "@/hooks/use-initial-map-view"
 import { CURRENT_LOCATION_ZOOM } from "@/lib/map-center"
@@ -67,7 +64,14 @@ import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
 import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
-import { getStoredRegion, setStoredRegion } from "@/lib/user-region"
+import { NATIONWIDE } from "@/lib/user-region"
+
+// 最初に地図を出すのに要らない画面は別チャンクに分ける(低速端末で地図の表示が約20秒かかっていた)。
+// 詳細・プレビュー・AR は開くまで描かれないか中身が空なので、遅れて届いても見え方は変わらない
+const ImagePreviewDialog = dynamic(() => import("../danger-report/image-preview-dialog"), { ssr: false })
+const DangerReportDetailModal = dynamic(() => import("../danger-report/danger-report-detail-modal"), { ssr: false })
+const SubmittedReportPreview = dynamic(() => import("../danger-report/submitted-report-preview"), { ssr: false })
+const ARView = dynamic(() => import("./ar-view"), { ssr: false })
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -115,7 +119,9 @@ export default function MapContainer({
     dangerLevel: "all",
     dateRange: "all",
     showPending: true,
-    prefecture: getStoredRegion(),
+    // ホームやニュースで選んだ地域を地図に持ち込まない(見えないところで絞り込まれていた)。
+    // 地図は表示範囲だけで絞り、都道府県はサイドバーで選んだときだけ絞る
+    prefecture: NATIONWIDE,
   })
   // 地図の現在の表示範囲（bbox）。大量報告時に全件取得しないための絞り込みに使う。
   const [mapBounds, setMapBounds] = useState<DangerReportBounds | null>(null)
@@ -172,12 +178,16 @@ export default function MapContainer({
   const {
     initialView: initialMapView,
     lateCurrentLocation,
+    lateRouteView,
   } = useInitialMapView({
     primaryRoute,
     routes: userRoutes,
     isRoutesLoading: Boolean(isUserRoutesLoading),
   })
   const lateLocationConsumedRef = useRef(false)
+  const lateRouteConsumedRef = useRef(false)
+  // 利用者が自分で地図を動かしたか(動かしたあとは遅れて届いたルートへ勝手に移動しない)
+  const userMovedMapRef = useRef(false)
   const [selectedUserRouteId, setSelectedUserRouteId] = useState<string | null>(null)
   const [hazardLayerVisibility, setHazardLayerVisibility] = useState<Record<HazardType, boolean>>({
     flood: false,
@@ -636,6 +646,10 @@ export default function MapContainer({
         if (map.current) localizeMapLabels(map.current)
       });
 
+      map.current.on("movestart", (event) => {
+        if ((event as { originalEvent?: unknown }).originalEvent) userMovedMapRef.current = true
+      });
+
       map.current.on("load", () => {
         mapInitialized.current = true;
         setIsBaseMapReady(true)
@@ -709,6 +723,16 @@ export default function MapContainer({
     flyToLocation(lateCurrentLocation[0], lateCurrentLocation[1], CURRENT_LOCATION_ZOOM)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lateCurrentLocation, isLoading])
+
+  // ルートを待たずに地図を出した後でルートが届いたら、一度だけそのルートへ移動する
+  // (利用者がもう地図を動かしていたら、その操作を優先して動かさない)
+  useEffect(() => {
+    if (!lateRouteView || lateRouteConsumedRef.current) return
+    if (!map.current || !mapInitialized.current) return
+    lateRouteConsumedRef.current = true
+    if (userMovedMapRef.current) return
+    map.current.flyTo({ center: lateRouteView.center, zoom: lateRouteView.zoom })
+  }, [lateRouteView, isLoading])
 
   useEffect(() => {
     if (!map.current || !mapInitialized.current || !navigationControlRef.current) return
@@ -965,9 +989,6 @@ export default function MapContainer({
         next.prefecture === prev.prefecture
       ) {
         return prev
-      }
-      if (next.prefecture !== prev.prefecture) {
-        setStoredRegion(next.prefecture)
       }
       return next
     });
