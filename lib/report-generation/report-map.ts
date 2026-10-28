@@ -57,7 +57,8 @@ export function generateOverviewMapUrl(
   routeGeometry: GeoJSON.LineString,
   dangers: DangerReport[],
   mapboxToken: string,
-  dimensions: MapDimensions = DEFAULT_MAP_DIMENSIONS
+  dimensions: MapDimensions = DEFAULT_MAP_DIMENSIONS,
+  options: { spreadMarkers?: boolean } = {}
 ): string {
   const { width, height } = dimensions
   const style = 'mapbox/streets-v12'
@@ -86,7 +87,7 @@ export function generateOverviewMapUrl(
   const markerCoords: [number, number][] = normalizedDangerPoints.map(
     (point) => [point.lng, point.lat]
   )
-  const displayCoords = focusedBBox
+  const displayCoords = focusedBBox && options.spreadMarkers !== false
     ? spreadOverlappingMarkers(
         markerCoords,
         focusedBBox.maxLng - focusedBBox.minLng,
