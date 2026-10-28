@@ -1,62 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase } from "@/components/providers/supabase-provider"
+import { useState } from "react"
 import { RouteManager } from "@/components/map/route-manager"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Route as RouteIcon } from "lucide-react"
 import { tankenTokens } from "@/lib/design/tanken"
 import type { UserRoute } from "@/lib/types"
 
 const C = tankenTokens.color
 
+// /routes は middleware.ts の PROTECTED_PREFIXES で守られており、未ログインでの遷移は
+// サーバー側で /login?next=... に送られる。ここで getUser() を待ち直すと認証サーバーとの
+// 往復のぶん見出しまで全面スケルトンになるため、ページでは待たずにすぐ描画する。
+// 一覧の読み込み中の表示は RouteManager が受け持つ。
 export default function RoutesPage() {
-  const router = useRouter()
-  const { supabase } = useSupabase()
-  const [isAuthChecking, setIsAuthChecking] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<UserRoute | null>(null)
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (!user) {
-          router.push("/login")
-          return
-        }
-
-        setIsAuthChecking(false)
-      } catch {
-        // Authentication failed - redirect to login
-        router.push("/login")
-      }
-    }
-
-    checkAuth()
-  }, [supabase, router])
 
   const handleRouteSelect = (route: UserRoute) => {
     setSelectedRoute(route)
-  }
-
-  if (isAuthChecking) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-4xl px-4 py-8">
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-48" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (

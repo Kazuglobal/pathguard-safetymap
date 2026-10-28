@@ -9,7 +9,6 @@ import * as turf from "@turf/turf"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -47,14 +46,14 @@ import type {
   RouteSharePayload,
 } from "@/lib/types"
 import { DEFAULT_MAPBOX_STYLE, getMapboxToken } from "@/lib/mapbox-config"
+import {
+  getNationwideMapView,
+  getRouteMapView,
+  resolveRouteMapView,
+} from "@/lib/map-center"
+import { tankenTokens } from "@/lib/design/tanken"
 
 type InputMode = "click" | "draw" | "route"
-
-const DEFAULT_VIEW_STATE = {
-  longitude: 139.753,
-  latitude: 35.6844,
-  zoom: 12,
-}
 
 type ViewMode = "list" | "creation" | "edit"
 
@@ -170,11 +169,44 @@ function RouteFormActions({ onCancel, onSave }: RouteFormActionsProps) {
   )
 }
 
+/**
+ * 一覧をまだ一度も取れていないあいだだけ、一覧の場所に出す軽いスケルトン。
+ * 見出しはすぐ出し、カード2枚と地図の枠で読み込み後のレイアウトに近づける。
+ */
+function RouteListSkeleton() {
+  const block = { background: tankenTokens.color.paperDeep }
+
+  return (
+    <div data-testid="route-manager" className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <RouteIcon className="h-5 w-5" />
+          通学路一覧
+        </h2>
+        <div aria-hidden="true" className="h-9 w-28 rounded-full motion-safe:animate-pulse" style={block} />
+      </div>
+      <div data-testid="route-manager-loading" role="status" className="space-y-3">
+        <span className="sr-only">通学路を読み込んでいます</span>
+        {[0, 1].map((index) => (
+          <div
+            key={index}
+            aria-hidden="true"
+            className="h-36 w-full motion-safe:animate-pulse"
+            style={{ ...block, borderRadius: tankenTokens.radius.card }}
+          />
+        ))}
+        <div aria-hidden="true" className="h-64 w-full rounded-lg motion-safe:animate-pulse" style={block} />
+      </div>
+    </div>
+  )
+}
+
 export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   const { toast } = useToast()
   const userRoutes = useUserRoutes()
   const {
     routes,
+    primaryRoute,
     isLoading,
     error,
     addRoute,
@@ -457,7 +489,20 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     [comparisonRouteIds, filteredRoutes]
   )
 
-  const { counts: routeDangerCounts } = useRouteDangerCounts(filteredRoutes)
+  const {
+    counts: routeDangerCounts,
+    isLoading: isRouteDangerCountsLoading,
+  } = useRouteDangerCounts(filteredRoutes)
+
+  // 作成・編集マップの最初の表示: 編集中のルート → 登録ルート → 日本全体（東京には寄せない）。
+  // initialViewState はマップを開いたときだけ読まれる。
+  const editorInitialViewState = useMemo(() => {
+    const view =
+      (editingRoute ? getRouteMapView(editingRoute) : null) ??
+      resolveRouteMapView(primaryRoute ?? null, routes) ??
+      getNationwideMapView()
+    return { longitude: view.center[0], latitude: view.center[1], zoom: view.zoom }
+  }, [editingRoute, primaryRoute, routes])
 
   useEffect(() => {
     setComparisonRouteIds((prev) => pruneComparisonRouteIds(prev, filteredRoutes))
@@ -966,18 +1011,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setRouteToDelete(null)
   }, [])
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div data-testid="route-manager" className="space-y-4">
-        <div data-testid="route-manager-loading" className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      </div>
-    )
+  // 一覧をまだ一度も取れていないときだけスケルトンにする。
+  // 取り直し中（ルートの追加・編集のあとなど）は、表示中の一覧をそのまま残す。
+  if (isLoading && routes.length === 0) {
+    return <RouteListSkeleton />
   }
 
   // Error state
@@ -1332,6 +1369,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
                   isComparisonSelected={comparisonRouteIds.includes(route.id)}
                   onToggleCompare={handleToggleCompareRoute}
                   dangerCount={routeDangerCounts[route.id]}
+                  isDangerCountLoading={isRouteDangerCountsLoading}
                 />
               ))}
               {filteredRoutes.length === 0 && (
@@ -1381,7 +1419,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
             ref={mapRef}
             mapboxAccessToken={mapToken}
             mapStyle={DEFAULT_MAPBOX_STYLE}
-            initialViewState={DEFAULT_VIEW_STATE}
+            initialViewState={editorInitialViewState}
             onClick={
               viewMode === "creation" && (inputMode === "click" || inputMode === "route")
                 ? handleMapClick

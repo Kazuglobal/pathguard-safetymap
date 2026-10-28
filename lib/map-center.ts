@@ -1,9 +1,14 @@
 import { isValidCoordinates } from "@/lib/coordinates"
 import type { UserRoute } from "@/lib/types"
 
-/** 従来の固定初期表示（東京）。最終フォールバックとしてのみ使う */
-export const DEFAULT_MAP_CENTER: [number, number] = [139.6917, 35.6895]
-export const DEFAULT_MAP_ZOOM = 12
+/**
+ * 登録ルートも現在地も無いときの最終フォールバック。日本全体を見せる。
+ * 以前は東京(新宿)固定で、どの地域の人にも新宿の地図が開いていた(項目19)。
+ */
+export const DEFAULT_MAP_CENTER: [number, number] = [137.0, 37.5]
+export const DEFAULT_MAP_ZOOM = 4.6
+/** これより引いた(広域の)地図では、地図の中心を報告地点として勝手に選ばない */
+export const MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION = 10
 /** 現在地中心で表示するときのズーム */
 export const CURRENT_LOCATION_ZOOM = 15
 /** ルート中心表示のズーム範囲（極端なズームイン/アウトを避ける） */
@@ -129,7 +134,7 @@ export function getFallbackMapView(): InitialMapView {
 }
 
 /**
- * 初期表示の決定（優先順: 登録ルート → 現在地 → 東京フォールバック）。
+ * 初期表示の決定（優先順: 登録ルート → 現在地 → 日本全体のフォールバック）。
  */
 export function resolveInitialMapView(args: {
   primaryRoute: UserRoute | null
@@ -141,4 +146,12 @@ export function resolveInitialMapView(args: {
     getCurrentLocationMapView(args.currentLocation) ??
     getFallbackMapView()
   )
+}
+
+/**
+ * 日本全体が見える表示。登録ルートも現在地も無いとき、特定の都市（東京）に寄せずに使う。
+ * 呼ぶたびに新しいオブジェクトを返すので、受け取った側で書き換えても共有の値は変わらない。
+ */
+export function getNationwideMapView(): InitialMapView {
+  return { center: [DEFAULT_MAP_CENTER[0], DEFAULT_MAP_CENTER[1]], zoom: DEFAULT_MAP_ZOOM, source: "fallback" }
 }

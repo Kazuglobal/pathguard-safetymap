@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { invalidateFetchCache } from "@/lib/reports-fetch-cache"
 import type {
   UserRoute,
   CreateRouteInput,
@@ -9,15 +10,39 @@ import type {
   RouteChildProfile,
 } from "@/lib/types"
 
+/**
+ * いま一覧を表示している（または読み込み中の）ユーザー。
+ * undefined = 初回の認証確認がまだ / null = 未ログイン・ログアウト / string = そのユーザー
+ */
+type ActiveUserId = string | null | undefined
+
+interface AuthSessionLike {
+  user?: { id?: string | null } | null
+}
+
+/**
+ * ログイン中のユーザーの通学路一覧。
+ *
+ * - 認証の確認はマウントごとに 1 回だけ行う。onAuthStateChange はユーザーが変わったとき
+ *   （別のユーザーでのログイン・ログアウト）だけ反映し、TOKEN_REFRESHED やタブ復帰時の
+ *   SIGNED_IN、INITIAL_SESSION の重複のように同じユーザーのままのイベントでは取り直さない。
+ * - isLoading は「いまのユーザーの一覧をまだ一度も取れていない」間だけ true。
+ *   ルートの追加・編集などのあとの取り直し中は、表示中の一覧をそのまま残す。
+ */
 export function useUserRoutes() {
   const [routes, setRoutes] = useState<UserRoute[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   // Keep routes in ref to avoid circular dependencies
   const routesRef = useRef<UserRoute[]>(routes)
   routesRef.current = routes
+
+  const activeUserIdRef = useRef<ActiveUserId>(undefined)
+  // いまのユーザーの一覧を一度でも取得できたか。取得できていれば、取り直しの間も一覧を出したままにする
+  const hasLoadedRef = useRef(false)
+  // 最後に始めた読み込みの番号。古い応答が新しい状態（ログアウト後など）を上書きしないようにする
+  const loadSeqRef = useRef(0)
 
   const { supabase } = useSupabase()
 
@@ -74,33 +99,95 @@ export function useUserRoutes() {
     return user
   }, [supabase])
 
-  const fetchRoutes = useCallback(async () => {
-    try {
+  /**
+   * 追加・編集などの操作の直前に行う認証確認。ユーザーがまだ定まっていない
+   * （初回の確認で見つからなかった等）ときは、ここで分かったユーザーを覚えて、操作のあとの取り直しにつなげる。
+   */
+  const requireUser = useCallback(async () => {
+    const user = await checkAuth()
+    if (user?.id && typeof activeUserIdRef.current !== "string") {
+      activeUserIdRef.current = user.id
+    }
+    return user
+  }, [checkAuth])
+
+  /**
+   * /api/routes から一覧を取り直す。認証の確認はしない（呼び出し側がユーザーを把握している）。
+   * 一覧をまだ一度も取れていないときだけ isLoading を立て、表示中の一覧は取り直しの間も残す。
+   */
+  const loadRoutes = useCallback(async () => {
+    // ログアウトしたあと（進行中だった追加・編集の続きなど）からは取りにいかない
+    if (activeUserIdRef.current === null) return
+
+    loadSeqRef.current += 1
+    const seq = loadSeqRef.current
+    const isLatest = () => seq === loadSeqRef.current
+
+    setError(null)
+    if (!hasLoadedRef.current) {
       setIsLoading(true)
-      setError(null)
+    }
 
-      const user = await checkAuth()
-      if (!user) {
-        setRoutes([])
-        setIsLoading(false)
-        return
-      }
-
+    try {
       const response = await fetch("/api/routes", { credentials: "same-origin" })
+      if (!isLatest()) return
       if (!response.ok) {
         setError(`通学路の取得に失敗しました (${response.status})`)
         return
       }
       const payload = await response.json() as { routes?: UserRoute[] }
+      if (!isLatest()) return
+      hasLoadedRef.current = true
       setRoutes(payload.routes ?? [])
     } catch (err) {
+      if (!isLatest()) return
       setError(
         err instanceof Error ? err.message : "通学路の取得に失敗しました"
       )
     } finally {
-      setIsLoading(false)
+      if (isLatest()) {
+        setIsLoading(false)
+      }
     }
-  }, [supabase, checkAuth])
+  }, [])
+
+  /** ログアウトしたとき: 前のユーザーの一覧と、進行中の読み込みの結果を捨てる */
+  const clearForSignedOut = useCallback(() => {
+    activeUserIdRef.current = null
+    hasLoadedRef.current = false
+    loadSeqRef.current += 1
+    setRoutes((prev) => (prev.length === 0 ? prev : []))
+    setError(null)
+    setIsLoading(false)
+  }, [])
+
+  /**
+   * 表示するユーザーを決める。同じユーザーなら何もしない
+   * （一覧を取り直さず、スケルトンにも戻さない）。
+   */
+  const applyUser = useCallback(
+    (userId: string | null) => {
+      const previousUserId = activeUserIdRef.current
+      if (previousUserId === userId) return
+
+      if (typeof previousUserId === "string") {
+        // 別のユーザーに切り替わった・ログアウトした: 前のユーザーの一覧と、
+        // そのときに取った共有の応答（lib/reports-fetch-cache）を残さない
+        invalidateFetchCache()
+        setRoutes((prev) => (prev.length === 0 ? prev : []))
+      }
+
+      if (userId === null) {
+        clearForSignedOut()
+        return
+      }
+
+      activeUserIdRef.current = userId
+      hasLoadedRef.current = false
+      void loadRoutes()
+    },
+    [clearForSignedOut, loadRoutes]
+  )
 
   const validateRouteInput = useCallback(
     (input: CreateRouteInput | UpdateRouteInput, isCreate: boolean): string | null => {
@@ -144,7 +231,7 @@ export function useUserRoutes() {
     async (input: CreateRouteInput): Promise<boolean> => {
       setError(null)
 
-      const user = await checkAuth()
+      const user = await requireUser()
       if (!user) {
         setError("ログインが必要です")
         return false
@@ -169,7 +256,7 @@ export function useUserRoutes() {
           return false
         }
 
-        await fetchRoutes()
+        await loadRoutes()
         return true
       } catch (err) {
         setError(
@@ -178,14 +265,14 @@ export function useUserRoutes() {
         return false
       }
     },
-    [supabase, checkAuth, validateRouteInput, fetchRoutes]
+    [supabase, requireUser, validateRouteInput, loadRoutes]
   )
 
   const updateRoute = useCallback(
     async (id: string, input: UpdateRouteInput): Promise<boolean> => {
       setError(null)
 
-      const user = await checkAuth()
+      const user = await requireUser()
       if (!user) {
         setError("ログインが必要です")
         return false
@@ -249,7 +336,7 @@ export function useUserRoutes() {
           return false
         }
 
-        await fetchRoutes()
+        await loadRoutes()
         return true
       } catch (err) {
         setError(
@@ -258,14 +345,14 @@ export function useUserRoutes() {
         return false
       }
     },
-    [supabase, checkAuth, validateRouteInput, fetchRoutes]
+    [supabase, requireUser, validateRouteInput, loadRoutes]
   )
 
   const deleteRoute = useCallback(
     async (id: string): Promise<boolean> => {
       setError(null)
 
-      const user = await checkAuth()
+      const user = await requireUser()
       if (!user) {
         setError("ログインが必要です")
         return false
@@ -290,7 +377,7 @@ export function useUserRoutes() {
           return false
         }
 
-        await fetchRoutes()
+        await loadRoutes()
         return true
       } catch (err) {
         setError(
@@ -299,14 +386,14 @@ export function useUserRoutes() {
         return false
       }
     },
-    [supabase, checkAuth, fetchRoutes]
+    [supabase, requireUser, loadRoutes]
   )
 
   const setPrimaryRoute = useCallback(
     async (id: string): Promise<void> => {
       setError(null)
 
-      const user = await checkAuth()
+      const user = await requireUser()
       if (!user) {
         setError("ログインが必要です")
         return
@@ -331,38 +418,84 @@ export function useUserRoutes() {
           return
         }
 
-        await fetchRoutes()
+        await loadRoutes()
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "プライマリルートの設定に失敗しました"
         )
       }
     },
-    [supabase, checkAuth, fetchRoutes]
+    [supabase, requireUser, loadRoutes]
   )
 
   const refreshRoutes = useCallback(() => {
-    setRefreshKey((k) => k + 1)
-  }, [])
+    if (typeof activeUserIdRef.current === "string") {
+      void loadRoutes()
+      return
+    }
 
-  useEffect(() => {
-    fetchRoutes()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey])
-
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setRefreshKey((k) => k + 1)
-        return
+    // 初回の認証確認に失敗した・未ログインと判定されたときだけ、認証を確認し直してから読み込む
+    setError(null)
+    setIsLoading(true)
+    void (async () => {
+      try {
+        const user = await checkAuth()
+        if (user?.id) {
+          applyUser(user.id)
+        } else {
+          clearForSignedOut()
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "通学路の取得に失敗しました"
+        )
+        setIsLoading(false)
       }
+    })()
+  }, [applyUser, checkAuth, clearForSignedOut, loadRoutes])
 
-      setRoutes([])
-      setIsLoading(false)
-    })
+  // 初回の認証確認はマウントごとに 1 回だけ。先に認証イベントでユーザーが決まっていれば、そちらを優先する
+  useEffect(() => {
+    if (activeUserIdRef.current !== undefined) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const user = await checkAuth()
+        if (cancelled || activeUserIdRef.current !== undefined) return
+        applyUser(user?.id ?? null)
+      } catch (err) {
+        if (cancelled || activeUserIdRef.current !== undefined) return
+        setError(
+          err instanceof Error ? err.message : "通学路の取得に失敗しました"
+        )
+        setIsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [checkAuth, applyUser])
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange(
+      (event: string, session: AuthSessionLike | null) => {
+        if (event === "SIGNED_OUT") {
+          applyUser(null)
+          return
+        }
+
+        const userId = session?.user?.id
+        if (userId) {
+          applyUser(userId)
+        }
+        // INITIAL_SESSION が null のとき（未ログイン・一時的な取得失敗）は初回の認証確認の結果に任せる
+      }
+    )
 
     return () => data.subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, applyUser])
 
   return {
     routes,

@@ -15,7 +15,7 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { useInitialMapView } from "@/hooks/use-initial-map-view"
-import { CURRENT_LOCATION_ZOOM } from "@/lib/map-center"
+import { CURRENT_LOCATION_ZOOM, MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION } from "@/lib/map-center"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { useAdminStatus } from "@/hooks/use-admin-status"
@@ -759,7 +759,9 @@ export default function MapContainer({
   useEffect(() => {
     if (isReportFormOpen && map.current) {
       if (!clickListenerAdded.current) addClickListener();
-      if (!selectedLocation) {
+      // 日本全体など広域の地図では中心が報告地点として意味を持たないので選ばない
+      // (フォームが「地図をタップして場所を選んで」と案内する)
+      if (!selectedLocation && map.current.getZoom() >= MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION) {
         const center = map.current.getCenter();
         const initialLocation: [number, number] = [center.lng, center.lat];
         setSelectedLocation(initialLocation);

@@ -610,11 +610,11 @@ describe('MapContainer characterization', () => {
       expect(lastMap().options.zoom).toBe(15)
     })
 
-    it('ルートなし・現在地なしなら東京フォールバックで初期化し、現在地を要求する', () => {
+    it('ルートなし・現在地なしなら日本全体のフォールバックで初期化し、現在地を要求する(特定の市に寄せない)', () => {
       renderMapContainer()
 
-      expect(lastMap().options.center).toEqual([139.6917, 35.6895])
-      expect(lastMap().options.zoom).toBe(12)
+      expect(lastMap().options.center).toEqual([137.0, 37.5])
+      expect(lastMap().options.zoom).toBe(4.6)
       expect(h.gps.requestLocation).toHaveBeenCalled()
     })
   })
@@ -732,7 +732,32 @@ describe('MapContainer characterization', () => {
   })
 
   describe('報告フロー', () => {
-    it('報告ボタン（デスクトップ）: フォームが開き、地図中心が初期地点になる', () => {
+    it('報告ボタン（デスクトップ）: 日本全体の縮尺では地図中心を報告地点に選ばない', () => {
+      renderMapContainer()
+      fireMapLoad()
+
+      act(() => {
+        h.captured.floatingControls.onAddReport()
+      })
+
+      expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+      expect(h.captured.reportForms.selectedLocation).toBeNull()
+    })
+
+    it('報告ボタン（デスクトップ）: 街の縮尺ならフォームが開き、地図中心が初期地点になる', () => {
+      // 登録ルートで初期化(ズーム13)= 街の縮尺
+      const route = {
+        id: 'route-a',
+        name: 'ルートA',
+        start_lat: 35.0,
+        start_lng: 139.0,
+        end_lat: 35.2,
+        end_lng: 139.2,
+        is_favorite: true,
+        created_at: '2026-01-01T00:00:00Z',
+      }
+      h.userRoutes.routes = [route]
+      h.userRoutes.primaryRoute = route
       renderMapContainer()
       fireMapLoad()
 

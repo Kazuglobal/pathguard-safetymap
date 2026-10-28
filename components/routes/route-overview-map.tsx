@@ -6,6 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css"
 import { localizeMapLabels } from "@/lib/hunter/map-labels"
 import { tankenTokens } from "@/lib/design/tanken"
 import { DEFAULT_MAPBOX_STYLE } from "@/lib/mapbox-config"
+import { getNationwideMapView } from "@/lib/map-center"
 import type { UserRoute } from "@/lib/types"
 
 interface RouteOverviewMapProps {
@@ -65,7 +66,13 @@ export function RouteOverviewMap({ routes, mapToken }: RouteOverviewMapProps) {
 
   const initialViewState = useMemo(() => {
     if (!bounds) {
-      return { longitude: 139.753, latitude: 35.6844, zoom: 12 }
+      // 使える座標が1つも無いときは、特定の都市に寄せず日本全体を見せる
+      const nationwide = getNationwideMapView()
+      return {
+        longitude: nationwide.center[0],
+        latitude: nationwide.center[1],
+        zoom: nationwide.zoom,
+      }
     }
     return {
       longitude: (bounds.minLng + bounds.maxLng) / 2,

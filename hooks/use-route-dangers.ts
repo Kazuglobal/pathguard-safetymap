@@ -1,12 +1,16 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { DangerReport, UserRoute } from "@/lib/types"
 import {
   findDangersNearRoute,
   sortDangersByRoutePosition,
 } from "@/lib/geo/route-danger-finder"
+import {
+  FetchJsonError,
+  fetchPublicReports,
+  type PublicReportsPayload,
+} from "@/lib/reports-fetch-cache"
 
 export interface UseRouteDangersResult {
   dangers: DangerReport[]
@@ -17,6 +21,10 @@ export interface UseRouteDangersResult {
 
 /**
  * Hook to fetch and filter danger reports near a specific route.
+ *
+ * The public reports request (/api/reports?limit=2000) goes through lib/reports-fetch-cache,
+ * so it is shared with useRouteDangerCounts and other mounted callers instead of being
+ * downloaded twice. refetch() skips that cache and always asks the server again.
  *
  * @param routeId - The ID of the route to find dangers for
  * @param bufferMeters - The buffer distance in meters (default: 100)
@@ -30,8 +38,13 @@ export function useRouteDangers(
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  // refetch() のときだけ、共有キャッシュを使わずに通報を取り直す
+  const forceReloadRef = useRef(false)
 
   const fetchDangers = useCallback(async () => {
+    const forceReload = forceReloadRef.current
+    forceReloadRef.current = false
+
     if (!routeId) {
       setDangers([])
       setIsLoading(false)
@@ -67,16 +80,19 @@ export function useRouteDangers(
         return
       }
 
-      const params = new URLSearchParams({ limit: "2000" })
-      PUBLIC_DANGER_REPORT_STATUSES.forEach((status) => params.append("status", status))
-      const dangersResponse = await fetch(`/api/reports?${params}`, { credentials: "same-origin" })
-      if (!dangersResponse.ok) {
-        setError("危険箇所の取得に失敗しました")
-        setDangers([])
-        setIsLoading(false)
-        return
+      let reportsPayload: PublicReportsPayload<DangerReport> | null
+      try {
+        reportsPayload = await fetchPublicReports<DangerReport>({ force: forceReload })
+      } catch (reportsError) {
+        if (reportsError instanceof FetchJsonError) {
+          setError("危険箇所の取得に失敗しました")
+          setDangers([])
+          setIsLoading(false)
+          return
+        }
+        throw reportsError
       }
-      const { reports: allDangers = [] } = await dangersResponse.json() as { reports?: DangerReport[] }
+      const allDangers = reportsPayload?.reports ?? []
 
       if (!allDangers || allDangers.length === 0) {
         setDangers([])
@@ -109,6 +125,7 @@ export function useRouteDangers(
   }, [routeId, bufferMeters])
 
   const refetch = useCallback(() => {
+    forceReloadRef.current = true
     setRefreshKey((k) => k + 1)
   }, [])
 
