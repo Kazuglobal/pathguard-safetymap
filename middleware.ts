@@ -1,32 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { isMaintenanceWriteRequest } from '@/lib/maintenance'
-
-/**
- * 認証が必要なルートプレフィックス一覧
- */
-const PROTECTED_PREFIXES = [
-  '/map',
-  '/dashboard',
-  '/report',
-  '/mypage',
-  '/badges',
-  '/missions',
-  '/leaderboard',
-  '/routes',
-  '/hazard-game',
-  '/route-quiz',
-  '/3d-route-poc',
-  '/xroad',
-  '/admin',
-  '/tools',
-]
-
-function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
-  )
-}
+// 認証が必要なルートの一覧は、ログアウト検知時のクライアント側の移動と共有する
+import { isProtectedPath } from '@/lib/auth/protected-paths'
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl

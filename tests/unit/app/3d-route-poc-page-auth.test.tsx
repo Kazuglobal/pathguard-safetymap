@@ -34,7 +34,8 @@ describe('3d-route-poc page auth guard', () => {
     await expect(ThreeDRoutePocPage()).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockGetUser).toHaveBeenCalledTimes(1)
-    expect(mockRedirect).toHaveBeenCalledWith('/login')
+    // ログイン後に同じ画面へ戻れるよう、戻り先(next)つきでログインへ送る
+    expect(mockRedirect).toHaveBeenCalledWith('/login?next=%2F3d-route-poc')
   })
 
   it('認証済み時はリダイレクトしない', async () => {

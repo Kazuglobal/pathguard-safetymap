@@ -5,6 +5,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "framer-motion"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { useOptionalAuth } from "@/components/providers/auth-context"
+import { LOGGED_OUT_PATH } from "@/lib/auth/login-path"
+import { getDisplayName } from "@/lib/user-display-name"
 import { useGamification } from "@/hooks/use-gamification"
 import { useMissions } from "@/hooks/use-missions"
 import { useUserRoutes } from "@/hooks/use-user-routes"
@@ -94,7 +97,10 @@ export default function MyPage() {
   const push = usePushSubscription()
 
   const [reports, setReports] = useState<ReportSummary[]>([])
-  const [userName, setUserName] = useState("ゲスト")
+  // 呼び名は表示名だけ(未設定なら名前なしの「こんにちは」)。読み込み前に「ゲスト」を出さない
+  const [userName, setUserName] = useState<string | null>(null)
+  const [isNameLoaded, setIsNameLoaded] = useState(false)
+  const auth = useOptionalAuth()
   const [isReportsLoading, setIsReportsLoading] = useState(true)
   const [deletingReportId, setDeletingReportId] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -115,7 +121,8 @@ export default function MyPage() {
         ])
         if (profileResponse.status === 401 || reportsResponse.status === 401) {
           if (isMounted) {
-            setUserName("ゲスト")
+            setUserName(null)
+            setIsNameLoaded(true)
             setReports([])
             setIsReportsLoading(false)
           }
@@ -126,16 +133,18 @@ export default function MyPage() {
           profileResponse.json() as Promise<{ profile?: { display_name?: string | null; email?: string | null } }>,
           reportsResponse.json() as Promise<{ reports?: ReportSummary[] }>,
         ])
-        const resolvedName = profile?.display_name ?? profile?.email?.split("@")[0] ?? "ユーザー"
+        const resolvedName = getDisplayName(profile)
 
         if (isMounted) {
           setUserName(resolvedName)
+          setIsNameLoaded(true)
           setReports(reportRows ?? [])
           setIsReportsLoading(false)
         }
       } catch (error) {
         console.error("マイページ情報の取得に失敗しました", error)
         if (isMounted) {
+          setIsNameLoaded(true)
           setReports([])
           setIsReportsLoading(false)
         }
@@ -277,12 +286,17 @@ export default function MyPage() {
   }
 
   const handleSignOut = async () => {
+    // ログアウトはヘッダーと同じ入口に揃える(行き先も全画面で LOGGED_OUT_PATH)
+    if (auth) {
+      await auth.logout()
+      return
+    }
     if (!supabase || signOutInFlightRef.current) return
     signOutInFlightRef.current = true
     setIsSigningOut(true)
     try {
       await supabase.auth.signOut()
-      router.replace("/login")
+      router.replace(LOGGED_OUT_PATH)
       router.refresh()
     } catch (error) {
       console.error("サインアウトに失敗しました", error)
@@ -482,8 +496,18 @@ export default function MyPage() {
           <div className="min-w-0">
             <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家の見守りノート</p>
             <h1 className="truncate text-2xl font-black tracking-tight" style={{ color: t.color.ink }}>
-              こんにちは、{userName}さん
+              {userName ? `こんにちは、${userName}さん` : "こんにちは"}
             </h1>
+            {isNameLoaded && !userName && (
+              <button
+                type="button"
+                className={`mt-1 text-sm font-bold underline underline-offset-4 ${t.cls.focus}`}
+                style={{ color: t.color.primaryStrong }}
+                onClick={() => setIsEditDialogOpen(true)}
+              >
+                表示名を設定する
+              </button>
+            )}
           </div>
           <div className="flex flex-shrink-0 items-center gap-2">
             <span
@@ -707,14 +731,6 @@ export default function MyPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-0">{renderCollection()}</CardContent>
-            <CardFooter className="justify-end pt-4">
-              <Button asChild variant="outline" size="sm" className={t.cls.focus}>
-                <Link href="/dashboard">
-                  画像を管理する
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </CardFooter>
           </Card>
         </motion.section>
 
@@ -828,11 +844,11 @@ export default function MyPage() {
             className={t.cls.focus}
             style={{ color: t.color.inkSoft }}
             onClick={handleSignOut}
-            disabled={isSigningOut}
+            disabled={auth?.isLoggingOut ?? isSigningOut}
             aria-label="マイページからログアウト"
             data-testid="mypage-logout-button"
           >
-            {isSigningOut ? "ログアウト中..." : "ログアウト"}
+            {(auth?.isLoggingOut ?? isSigningOut) ? "ログアウト中..." : "ログアウト"}
           </Button>
         </div>
       </div>
@@ -842,6 +858,8 @@ export default function MyPage() {
         onOpenChange={setIsEditDialogOpen}
         onProfileUpdated={() => {
           setProfileKey((k) => k + 1)
+          // ヘッダーの呼び名も同じ値に揃える
+          void auth?.refreshProfile()
         }}
       />
     </div>

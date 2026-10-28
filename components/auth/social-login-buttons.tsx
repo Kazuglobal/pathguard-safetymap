@@ -96,7 +96,8 @@ function SocialLoginButtonsInner({ nextPath }: { nextPath?: string }) {
 
   const handleLineLogin = () => {
     setPendingProvider("line")
-    window.location.href = "/api/auth/line/start"
+    // ログイン後に元の画面へ戻れるよう、戻り先をLINEの往復にも持たせる(検証はサーバ側)
+    window.location.href = `/api/auth/line/start?next=${encodeURIComponent(requestedNext)}`
   }
 
   return (

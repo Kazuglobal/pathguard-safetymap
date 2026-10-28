@@ -1,5 +1,6 @@
 import React from "react"
 import { redirect } from "next/navigation"
+import { loginPathFor } from "@/lib/auth/login-path"
 import Link from "next/link"
 import { BarChart3, ClipboardList, Map, ShieldCheck, WalletCards } from "lucide-react"
 import { getCurrentUserAdminStatus } from "@/lib/admin-auth"
@@ -12,7 +13,7 @@ export default async function AdminLayout({
 }) {
   const { isAuthenticated, isAdmin } = await getCurrentUserAdminStatus()
   if (!isAuthenticated) {
-    redirect("/login")
+    redirect(loginPathFor("/admin/dashboard"))
   }
 
   if (!isAdmin) {

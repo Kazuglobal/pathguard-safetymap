@@ -186,7 +186,8 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(self)',
+            // AR モード(use-ar-camera.ts の getUserMedia)が自分のオリジンでカメラを使えるように self を許可する
+            value: 'camera=(self), microphone=(), geolocation=(self)',
           },
           {
             key: 'Strict-Transport-Security',

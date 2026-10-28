@@ -1,8 +1,12 @@
 "use client"
 
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { NavigationWrapper } from "@/components/ui/navigation-wrapper"
+import { AuthContextProvider, type AuthStatus } from "@/components/providers/auth-context"
+import { isProtectedPath } from "@/lib/auth/protected-paths"
+import { LOGGED_OUT_PATH, loginPathFor } from "@/lib/auth/login-path"
+import { getDisplayName } from "@/lib/user-display-name"
 import {
   SupabaseProvider,
   isAbortLikeFetchError,
@@ -23,16 +27,31 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
   const { supabase } = useSupabase()
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
+  // 確定するまでは loading。ヘッダーに「ログイン/新規登録」を先に描かないために使う
+  const [status, setStatus] = useState<AuthStatus>("loading")
+  const [displayName, setDisplayName] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const logoutInFlightRef = useRef(false)
 
   useEffect(() => {
     let isMounted = true
 
+    const settle = (nextUser: User | null) => {
+      if (!isMounted) return
+      setUser(nextUser)
+      setStatus(nextUser ? "authenticated" : "unauthenticated")
+    }
+    // 通信エラーなどで判定できないときは、先に届いた INITIAL_SESSION の結果を上書きしない
+    const settleIfUnknown = () => {
+      if (!isMounted) return
+      setStatus((current) => (current === "loading" ? "unauthenticated" : current))
+    }
+
     const loadUser = async () => {
       try {
         if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
           console.warn("Supabase環境変数が設定されていません")
+          settle(null)
           return
         }
         const { data, error } = await supabase.auth.getUser()
@@ -47,6 +66,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
             error.message?.includes("Refresh Token Not Found")
           ) {
             // Session gone — expected, not an error
+            settle(null)
             return
           }
           if (error.message?.includes("fetch failed")) {
@@ -54,9 +74,10 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
           } else {
             console.error("ユーザー取得エラー:", error.message)
           }
+          settleIfUnknown()
           return
         }
-        if (isMounted) setUser(data.user ?? null)
+        settle(data.user ?? null)
       } catch (e: any) {
         if (isAbortLikeFetchError(e)) {
           return
@@ -66,6 +87,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
         } else {
           console.error("Supabase接続エラー:", e?.message || e)
         }
+        settleIfUnknown()
       }
     }
 
@@ -73,11 +95,13 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
 
     // Keep user state in sync with auth state changes
     const { data: sub } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      setUser(session?.user ?? null)
-      if (event === 'SIGNED_OUT' && !logoutInFlightRef.current) {
-        const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password']
-        if (!publicPaths.some((p) => window.location.pathname.startsWith(p))) {
-          router.replace('/login')
+      settle(session?.user ?? null)
+      // 自分でログアウトしたとき以外(期限切れ・別タブでのログアウト)に、保護された画面を開いていたら
+      // その場でログイン画面へ移す。戻り先を付けて、ログインし直したら同じ画面に戻れるようにする
+      if (event === "SIGNED_OUT" && !logoutInFlightRef.current) {
+        const { pathname, search } = window.location
+        if (isProtectedPath(pathname)) {
+          router.replace(loginPathFor(`${pathname}${search}`))
         }
       }
     })
@@ -88,13 +112,37 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     }
   }, [supabase])
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const response = await fetch("/api/profile", { credentials: "same-origin" })
+      if (!response.ok) {
+        setDisplayName(null)
+        return
+      }
+      const { profile } = (await response.json()) as { profile?: { display_name?: string | null } | null }
+      setDisplayName(getDisplayName(profile))
+    } catch {
+      setDisplayName(null)
+    }
+  }, [])
+
+  // 呼び名はユーザーが変わったときだけ読み直す(ページ移動のたびには取りに行かない)
+  const userId = user?.id ?? null
+  useEffect(() => {
+    if (!userId) {
+      setDisplayName(null)
+      return
+    }
+    void refreshProfile()
+  }, [userId, refreshProfile])
+
   const handleLogout = useCallback(async () => {
     if (logoutInFlightRef.current) return
     logoutInFlightRef.current = true
     setIsLoggingOut(true)
     try {
       await supabase.auth.signOut()
-      router.replace("/login")
+      router.replace(LOGGED_OUT_PATH)
       router.refresh()
     } catch (e) {
       console.error("サインアウトに失敗しました:", (e as Error)?.message || e)
@@ -104,9 +152,20 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     }
   }, [router, supabase])
 
+  const authValue = useMemo(
+    () => ({ status, user, displayName, isLoggingOut, logout: handleLogout, refreshProfile }),
+    [status, user, displayName, isLoggingOut, handleLogout, refreshProfile],
+  )
+
   return (
-    <>
-      <NavigationWrapper user={user} onLogout={handleLogout} isLoggingOut={isLoggingOut}>
+    <AuthContextProvider value={authValue}>
+      <NavigationWrapper
+        user={user}
+        authStatus={status}
+        displayName={displayName}
+        onLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
+      >
         {children}
       </NavigationWrapper>
       <Toaster />
@@ -114,7 +173,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
       {user && <AppOnboardingGate />}
       {user && <PushPermissionPrompt />}
       {user && <IosInstallPrompt />}
-    </>
+    </AuthContextProvider>
   )
 }
 

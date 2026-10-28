@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { loginPathFor } from "@/lib/auth/login-path"
 import { getActor } from "@/lib/auth/actor"
 import { getLeaderboard } from "@/lib/db/repos/gamification.repo"
 import Link from "next/link"
@@ -12,7 +13,7 @@ export const metadata = {
 
 export default async function LeaderboardPage() {
   const actor = await getActor()
-  if (actor.kind !== "user") redirect("/login")
+  if (actor.kind !== "user") redirect(loginPathFor("/leaderboard"))
   const result = await getLeaderboard(actor, actor.id)
   const rankRows = result.top.map((row) => ({
     user_id: row.userId, points: row.points, level: row.level,

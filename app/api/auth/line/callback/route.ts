@@ -7,11 +7,13 @@ import {
   getLineCredentials,
   syntheticLineEmail,
 } from "@/lib/auth/line"
+import { getSafeNextPath } from "@/lib/auth/safe-next"
 
 export const dynamic = "force-dynamic"
 
 const STATE_COOKIE = "pg_line_state"
 const NONCE_COOKIE = "pg_line_nonce"
+const NEXT_COOKIE = "pg_line_next"
 
 function redirectWithError(origin: string, code: string) {
   return NextResponse.redirect(new URL(`/login?error=${code}`, origin))
@@ -30,10 +32,13 @@ export async function GET(request: Request) {
   const cookieStore = await cookies()
   const expectedState = cookieStore.get(STATE_COOKIE)?.value
   const nonce = cookieStore.get(NONCE_COOKIE)?.value
+  // 開始時に保存した戻り先。改ざんされても getSafeNextPath がアプリ内パス以外を落とす
+  const nextPath = getSafeNextPath(cookieStore.get(NEXT_COOKIE)?.value)
 
   // state/nonceは一度きり。検証前に必ず破棄してリプレイを防ぐ。
   cookieStore.delete(STATE_COOKIE)
   cookieStore.delete(NONCE_COOKIE)
+  cookieStore.delete(NEXT_COOKIE)
 
   if (url.searchParams.get("error")) {
     // ユーザーがLINE側でキャンセルした場合など
@@ -118,7 +123,7 @@ export async function GET(request: Request) {
         .catch(() => {})
     }
 
-    return NextResponse.redirect(new URL("/map", url.origin))
+    return NextResponse.redirect(new URL(nextPath, url.origin))
   } catch (error) {
     console.error("LINE login failed:", error)
     return redirectWithError(url.origin, "line_login_failed")
