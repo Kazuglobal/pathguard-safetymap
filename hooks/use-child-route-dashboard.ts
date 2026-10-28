@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { ChildRouteDashboardState, type ChildRouteQuickCheck } from "@/components/landing/child-route-dashboard"
 import { useRouteDangers } from "@/hooks/use-route-dangers"
 import { useUserRoutes } from "@/hooks/use-user-routes"
-import type { UserRoute } from "@/lib/types"
+import type { DangerReport, UserRoute } from "@/lib/types"
 
 interface ChildRouteDashboardResult {
   state: ChildRouteDashboardState
@@ -15,37 +15,32 @@ interface ChildRouteDashboardResult {
   selectedRoute: UserRoute | null
 }
 
-const formatMinutes = (minutes: number | null) => {
-  if (typeof minutes !== "number" || Number.isNaN(minutes)) {
-    return "未設定"
-  }
+/** 「この30日の注意地点」で数える期間(日)。表示ラベルもこの値から作り、数え方とずれないようにする。 */
+const RECENT_DANGER_WINDOW_DAYS = 30
+const DAY_MS = 24 * 60 * 60 * 1000
 
-  return `${minutes}分`
+/**
+ * 通学路から100m以内の公開報告(useRouteDangers が絞り込み済み)のうち、
+ * 投稿日(created_at)が直近 RECENT_DANGER_WINDOW_DAYS 日以内のものだけを数える。
+ * useRouteDangers は期間で絞らないので、ここで絞らないと何年も前の報告まで数えてしまう。
+ * 投稿日が無い・読めない報告は、いつのものか分からないので数えない。
+ */
+const countRecentDangers = (dangers: DangerReport[], nowMs: number) => {
+  const cutoffMs = nowMs - RECENT_DANGER_WINDOW_DAYS * DAY_MS
+
+  return dangers.filter((danger) => {
+    const createdMs = danger.created_at ? Date.parse(danger.created_at) : Number.NaN
+    return Number.isFinite(createdMs) && createdMs >= cutoffMs
+  }).length
 }
 
-const formatRelativeTime = (value: string | null) => {
-  if (!value) {
-    return "更新済み"
+/** 所要時間が分かるときだけ「徒歩約N分」を返す(0分以下や数値でない値は出さない)。 */
+const formatWalkingTime = (minutes: number | null) => {
+  if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) {
+    return undefined
   }
 
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return "更新済み"
-  }
-
-  const diff = Date.now() - parsed.getTime()
-  const minutes = Math.max(0, Math.floor(diff / 60000))
-
-  if (minutes < 60) {
-    return `${minutes}分前`
-  }
-
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) {
-    return `${hours}時間前`
-  }
-
-  return `${Math.floor(hours / 24)}日前`
+  return `徒歩約${Math.max(1, Math.round(minutes))}分`
 }
 
 export function useChildRouteDashboard(): ChildRouteDashboardResult {
@@ -85,36 +80,32 @@ export function useChildRouteDashboard(): ChildRouteDashboardResult {
       return []
     }
 
-    const dangerCount = dangers.length
-    const childName = selectedRoute.child_name?.trim() || "通学路"
+    const recentDangerCount = countRecentDangers(dangers, Date.now())
+    const childName = selectedRoute.child_name?.trim()
+    const routeLabel = childName ? `${childName}さんの通学路` : "登録した通学路"
 
     return [
       {
-        id: "today",
-        title: "今日の注意地点",
-        value: `${dangerCount}件`,
+        id: "recent",
+        title: `この${RECENT_DANGER_WINDOW_DAYS}日の注意地点`,
+        value: `${recentDangerCount}件`,
         href: retryHref,
         description:
-          dangerCount > 0
-            ? `${childName}の通学路で公開された危険をマップで確認`
-            : `${childName}の通学路では新しい公開危険報告はまだありません`,
+          recentDangerCount > 0
+            ? `${routeLabel}の近くで、この${RECENT_DANGER_WINDOW_DAYS}日に公開された危険をマップで確認`
+            : `${routeLabel}の近くでは、この${RECENT_DANGER_WINDOW_DAYS}日に公開された危険報告はありません`,
       },
       {
+        // 通学路は登録済み。所要時間が分かるときだけ「徒歩約N分」を添える(未設定とは出さない)
         id: "route",
-        title: "通学ルート",
-        value: formatMinutes(selectedRoute.estimated_time_minutes),
+        title: "通学路",
+        value: "登録済み",
+        detail: formatWalkingTime(selectedRoute.estimated_time_minutes),
         href: "/routes",
         description: selectedRoute.name,
       },
-      {
-        id: "update",
-        title: "直近の更新",
-        value: formatRelativeTime(selectedRoute.updated_at),
-        href: "/map",
-        description: selectedRoute.description?.trim() || "通学路を再確認できます",
-      },
     ]
-  }, [dangers.length, retryHref, selectedRoute, state])
+  }, [dangers, retryHref, selectedRoute, state])
 
   return {
     state: state === "ready" && dangersLoading ? "loading" : state,
