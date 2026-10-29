@@ -65,6 +65,17 @@ describe('報告の写真はぼかしたものだけを公開する(UIUX改装 �
     expect(await canSee(other, MASKED_ORIGINAL)).toBe(false)
   })
 
+  it('追加の写真(report_images)も、ぼかした印(m-)のある写真だけを、公開中ならほかの人に見せる', async () => {
+    await insertReport({ imageKey: MASKED_ORIGINAL, processedImageKeys: [] })
+    const extraMasked = 'danger-reports/owner-1/report-1/m-extra.webp'
+    const extraRaw = 'danger-reports/owner-1/report-1/extra.webp'
+    database.sqlite.prepare("insert into report_images (id, report_id, image_key) values ('e1', 'report-1', ?), ('e2', 'report-1', ?)").run(extraMasked, extraRaw)
+
+    expect(await canSee(other, extraMasked)).toBe(true)
+    expect(await canSee(other, extraRaw)).toBe(false)
+    expect(await canSee(owner, extraRaw)).toBe(true)
+  })
+
   it('元の写真をぼかした写真に差し替えても、古い(ぼかしていない写真から作った)もしも画像は見せない', async () => {
     await insertReport({ imageMasked: true, imageKey: MASKED_ORIGINAL, processedImageKeys: [PROCESSED, MASKED_PROCESSED] })
 

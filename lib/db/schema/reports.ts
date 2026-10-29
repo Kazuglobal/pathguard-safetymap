@@ -102,7 +102,6 @@ export const reportImages = sqliteTable('report_images', {
   imageType: text('image_type'),
   uploadedBy: text('uploaded_by'),
   /** 端末でぼかし済み(加工済み)の写真か。既存の写真は false=公開画面に出さない(項目57) */
-  masked: integer('masked', { mode: 'boolean' }).notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (table) => [

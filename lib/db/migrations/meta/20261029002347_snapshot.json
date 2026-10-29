@@ -2853,14 +2853,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "masked": {
-          "name": "masked",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "text",

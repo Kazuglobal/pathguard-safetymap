@@ -38,15 +38,14 @@ export function createPrivateMediaAuthorizer(db: AppDb) {
 
     const directKeys = [report.imageKey, report.processedImageKey, ...report.processedImageKeys]
     let isPersistedKey = directKeys.includes(parsed.key)
-    // 端末でぼかした(加工済みの)写真か。報告ごとではなく、写真ごと(キーの印)で決める
-    let masked = isMaskedMediaKey(parsed.key)
+    // 端末でぼかした(加工済みの)写真か。報告ごとではなく、写真ごと(キーの印 m-)で決める(追加の写真も同じ)
+    const masked = isMaskedMediaKey(parsed.key)
     if (!isPersistedKey) {
-      const [image] = await db.select({ id: reportImages.id, masked: reportImages.masked }).from(reportImages).where(and(
+      const [image] = await db.select({ id: reportImages.id }).from(reportImages).where(and(
         eq(reportImages.reportId, parsed.resourceId),
         eq(reportImages.imageKey, parsed.key),
       )).limit(1)
       isPersistedKey = Boolean(image)
-      masked = image?.masked ?? false
     }
     if (!isPersistedKey) return false
 
