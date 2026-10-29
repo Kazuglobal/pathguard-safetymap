@@ -231,6 +231,7 @@ const routeGroups = {
     'app/api/cron/moderation-sweep/route',
     'app/api/cron/push-danger-reports/route',
     'app/api/cron/r2-orphan-cleanup/route',
+    'app/api/cron/retention-cleanup/route',
     'app/api/local-safety-alerts/route',
     'app/api/school-districts/route',
   ], [
