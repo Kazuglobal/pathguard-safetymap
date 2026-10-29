@@ -3,6 +3,8 @@ import { and, desc, eq } from 'drizzle-orm'
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
 import { children, routeLearningSessions, userRoutes } from '../schema'
+import { coarsenRouteLocation } from '@/lib/route-privacy'
+
 import { createChildrenRepo, legacyChildNameToNickname } from './children.repo'
 
 /**
@@ -124,14 +126,16 @@ export function createRoutesRepo(db: AppDb) {
       assertCan(actor, 'insert', 'user_routes', { ownerId: actor.id })
       validateRoute(input, true)
       const childId = (await resolveChildId(actor, input)) ?? null
+      // 両端200mの道すじを削り、起点・終点・住所を粗くしてから保存する(UIUX改装 項目59)
+      const located = coarsenRouteLocation(input)
       const now = new Date().toISOString()
       const [created] = await db.insert(userRoutes).values({
         id: crypto.randomUUID(), userId: actor.id, name: input.name!.trim(),
         description: input.description?.trim() || null,
         childId, childName: null,
-        startLat: input.startLat!, startLng: input.startLng!, endLat: input.endLat!, endLng: input.endLng!,
-        startAddress: input.startAddress!.trim(), endAddress: input.endAddress!.trim(),
-        routeGeometry: input.routeGeometry ?? null,
+        startLat: located.startLat!, startLng: located.startLng!, endLat: located.endLat!, endLng: located.endLng!,
+        startAddress: located.startAddress!, endAddress: located.endAddress!,
+        routeGeometry: located.routeGeometry ?? null,
         distanceMeters: input.distanceMeters ?? null,
         estimatedTimeMinutes: input.estimatedTimeMinutes ?? null,
         isFavorite: input.isFavorite ?? false, createdAt: now, updatedAt: now,
@@ -147,19 +151,20 @@ export function createRoutesRepo(db: AppDb) {
       validateRoute(input, false)
       const requestedChildId = await resolveChildId(actor, input)
       const childId = requestedChildId !== undefined ? requestedChildId : await migrateLegacyChild(actor, existing)
+      const located = coarsenRouteLocation(input)
       const [updated] = await db.update(userRoutes).set({
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),
         ...(childId !== undefined ? { childId } : {}),
         // 移行前の行に子どもの名前が残っていれば、保存のたびに消す
         childName: null,
-        ...(input.startLat !== undefined ? { startLat: input.startLat } : {}),
-        ...(input.startLng !== undefined ? { startLng: input.startLng } : {}),
-        ...(input.endLat !== undefined ? { endLat: input.endLat } : {}),
-        ...(input.endLng !== undefined ? { endLng: input.endLng } : {}),
-        ...(input.startAddress !== undefined ? { startAddress: input.startAddress.trim() } : {}),
-        ...(input.endAddress !== undefined ? { endAddress: input.endAddress.trim() } : {}),
-        ...(input.routeGeometry !== undefined ? { routeGeometry: input.routeGeometry } : {}),
+        ...(located.startLat !== undefined ? { startLat: located.startLat } : {}),
+        ...(located.startLng !== undefined ? { startLng: located.startLng } : {}),
+        ...(located.endLat !== undefined ? { endLat: located.endLat } : {}),
+        ...(located.endLng !== undefined ? { endLng: located.endLng } : {}),
+        ...(located.startAddress !== undefined ? { startAddress: located.startAddress } : {}),
+        ...(located.endAddress !== undefined ? { endAddress: located.endAddress } : {}),
+        ...(located.routeGeometry !== undefined ? { routeGeometry: located.routeGeometry } : {}),
         ...(input.distanceMeters !== undefined ? { distanceMeters: input.distanceMeters } : {}),
         ...(input.estimatedTimeMinutes !== undefined ? { estimatedTimeMinutes: input.estimatedTimeMinutes } : {}),
         ...(input.isFavorite !== undefined ? { isFavorite: input.isFavorite } : {}),

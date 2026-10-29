@@ -154,6 +154,10 @@ function RouteFormFields({
         </p>
       </div>
 
+      <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground" data-testid="route-privacy-note">
+        自宅と学校が分からないよう、両端200mの道すじは保存せず、出発地・到着地は約1kmの粗さ、住所は市区町村までにして保存します。この端末では通学路の全体を表示します。
+      </p>
+
       {(validationError || error) && (
         <p className="text-sm text-destructive">{validationError || error}</p>
       )}

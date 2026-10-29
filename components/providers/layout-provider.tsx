@@ -8,6 +8,7 @@ import { isProtectedPath } from "@/lib/auth/protected-paths"
 import { LOGGED_OUT_PATH, loginPathFor } from "@/lib/auth/login-path"
 import { getDisplayName } from "@/lib/user-display-name"
 import { shouldShowFloatingPrompts } from "@/lib/navigation-visibility"
+import { clearAllLocalRouteGeometry } from "@/lib/route-local-geometry"
 import {
   SupabaseProvider,
   isAbortLikeFetchError,
@@ -154,6 +155,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     setIsLoggingOut(true)
     try {
       await supabase.auth.signOut()
+      // この端末に残した通学路の元の線(自宅・学校の位置)も消す
+      clearAllLocalRouteGeometry()
       router.replace(LOGGED_OUT_PATH)
       router.refresh()
     } catch (e) {
