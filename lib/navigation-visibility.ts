@@ -19,3 +19,16 @@ export function shouldShowFloatingPrompts(pathname: string): boolean {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 }
+
+/**
+ * 共通のフッター(components/layout/site-footer.tsx)を画面の下に出すか(UIUX改装 項目32)。
+ * 全画面の地図(フッターの代わりにメニューに同じリンクを出す)・きけんハンターのゲーム画面、
+ * 自分のフッターを持つ紹介HPと、ログイン系の画面(AuthShell が出す)では出さない。
+ */
+const PREFIXES_WITHOUT_SITE_FOOTER = ['/map', '/3d-route-poc', '/safety-quest/hunter', '/lp', '/login', '/register', '/forgot-password', '/reset-password']
+
+export function shouldShowSiteFooter(pathname: string): boolean {
+  return !PREFIXES_WITHOUT_SITE_FOOTER.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}

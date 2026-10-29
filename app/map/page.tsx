@@ -35,12 +35,13 @@ export default async function MapPage({
 
   return (
     <main className="flex min-h-screen flex-col overflow-x-hidden">
+      {/* 設定の話(環境変数の名前など)は利用者の画面に出さない(UIUX改装 項目42・53) */}
       {!hasMapboxToken && (
         <Alert variant="destructive" className="m-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>設定エラー</AlertTitle>
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          <AlertTitle>地図を表示できません</AlertTitle>
           <AlertDescription>
-            Mapboxアクセストークンが設定されていません。環境変数NEXT_PUBLIC_MAPBOX_ACCESS_TOKENを設定してください。
+            ただいま地図を表示できない状態です。時間をおいて、もう一度お試しください。
           </AlertDescription>
         </Alert>
       )}

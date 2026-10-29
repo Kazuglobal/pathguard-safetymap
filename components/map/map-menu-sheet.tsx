@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { BarChart3, ChevronRight, Newspaper, Route, Search, User, type LucideIcon } from "lucide-react"
 
+import { InstagramLink, SITE_FOOTER_LINKS } from "@/components/layout/site-footer"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { tankenTokens } from "@/lib/design/tanken"
 
@@ -49,9 +50,24 @@ export function MapMenuSheet({ open, onOpenChange }: MapMenuSheetProps) {
                 <span className="block text-sm font-black" style={{ color: C.ink }}>{label}</span>
                 <span className="block text-xs font-bold" style={{ color: C.inkSoft }} aria-hidden="true">{description}</span>
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0" style={{ color: C.inkFaint }} aria-hidden="true" />
+              <ChevronRight className="h-4 w-4 shrink-0" style={{ color: C.inkSoft }} aria-hidden="true" />
             </Link>
           ))}
+        </nav>
+        {/* 全画面の地図には共通のフッターを出さないので、同じリンクをここに出す(UIUX改装 項目32) */}
+        <nav aria-label="サイトの情報" className="flex flex-wrap items-center gap-x-4 border-t pt-2 text-xs font-bold" style={{ borderColor: tankenTokens.border.faint }}>
+          {SITE_FOOTER_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => onOpenChange(false)}
+              className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${tankenTokens.cls.focus}`}
+              style={{ color: C.inkSoft }}
+            >
+              {link.label}
+            </Link>
+          ))}
+          <InstagramLink style={{ color: C.inkSoft }} />
         </nav>
       </SheetContent>
     </Sheet>

@@ -27,7 +27,7 @@ const PREFERENCE_LABELS: Record<
     description: "登録通学路300m圏内に危険報告が投稿されたとき",
   },
   news: {
-    label: "通学路ニュース",
+    label: "通学路の安全ニュース",
     description: "通学路に関するニュース記事が追加されたとき",
   },
   magazine: {

@@ -7,7 +7,6 @@ import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
-  Shield,
   Map,
   User,
   LogOut,
@@ -22,6 +21,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell"
 import { isAdminUser } from "@/lib/admin"
 import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
+import { BrandLogo } from "@/components/brand/brand-logo"
 import type { AuthStatus } from "@/components/providers/auth-context"
 
 const C = tankenTokens.color
@@ -211,25 +211,13 @@ export function Navigation({
           <div className="flex justify-between items-center h-16">
             {/* ブランド */}
             <div className="flex items-center">
+              {/* 紹介HP・ログインの画面と同じロゴ(UIUX改装 項目3) */}
               <Link
                 href="/landing"
-                className="group flex items-center space-x-2 rounded-full px-1"
+                aria-label="PathGuardian のホーム"
+                className={`group flex items-center rounded-full px-1 ${tankenTokens.cls.focus}`}
               >
-                <motion.div
-                  whileHover={reduce ? undefined : { rotate: -8, scale: 1.06 }}
-                  transition={tankenTokens.spring}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border-2"
-                  style={{
-                    background: C.primary,
-                    borderColor: "rgba(67,57,43,.2)",
-                    boxShadow: "0 2px 0 rgba(12,122,85,.8)",
-                  }}
-                >
-                  <Shield className="h-5 w-5 text-white" strokeWidth={2.4} />
-                </motion.div>
-                <span className="text-xl font-black tracking-tight" style={{ color: C.ink }}>
-                  Path<span style={{ color: C.primary }}>Guardian</span>
-                </span>
+                <BrandLogo size="md" />
               </Link>
             </div>
 
@@ -370,7 +358,7 @@ export function Navigation({
                   key={item.key}
                   type="button"
                   className={cn(
-                    "relative flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 pb-1.5 text-[10.5px] font-black leading-tight",
+                    "relative flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 pb-1.5 text-[12px] font-black leading-tight",
                     tankenTokens.cls.focus
                   )}
                   style={{ color: C.inkSoft }}
@@ -401,11 +389,11 @@ export function Navigation({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] leading-tight",
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[12px] leading-tight",
                   active ? "font-black" : "font-bold",
                   tankenTokens.cls.focus
                 )}
-                style={{ color: active ? C.primaryStrong : C.inkFaint }}
+                style={{ color: active ? C.primaryStrong : C.inkSoft }}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
               >

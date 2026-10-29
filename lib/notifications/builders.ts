@@ -182,7 +182,7 @@ export function buildNewsPushPayload(params: {
   title: string
 }): PushPayload {
   return {
-    title: '通学路ニュース',
+    title: '通学路の安全ニュース',
     body: params.title,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',
