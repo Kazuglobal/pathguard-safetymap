@@ -14,7 +14,13 @@ export const runtime = 'nodejs'
 
 interface MediaBucket {
   delete(keys: string | string[]): Promise<void>
+  list(options: { prefix: string; cursor?: string }): Promise<{ objects: Array<{ key: string }>; truncated: boolean; cursor?: string }>
 }
+
+/** 本人のフォルダ(キーの頭)。消し損ねて D1 から参照されなくなった写真も、ここから消す */
+const PRIVATE_MEDIA_PREFIXES = ['danger-reports', 'hunter-photos'] as const
+const PUBLIC_MEDIA_PREFIXES = ['avatars'] as const
+const USER_ID_SEGMENT = /^[A-Za-z0-9_-]{1,128}$/
 
 /** R2 は1回に1000件まで消せる */
 const R2_DELETE_BATCH = 1_000
@@ -25,9 +31,22 @@ async function deleteObjects(bucket: MediaBucket, keys: readonly string[]) {
   }
 }
 
+/** 「頭/利用者の id/」の下にある写真を、すべて消す */
+async function deleteUserFolders(bucket: MediaBucket, prefixes: readonly string[], userId: string) {
+  for (const prefix of prefixes) {
+    let cursor: string | undefined
+    do {
+      const page = await bucket.list({ prefix: `${prefix}/${userId}/`, cursor })
+      await deleteObjects(bucket, page.objects.map((object) => object.key))
+      cursor = page.truncated ? page.cursor : undefined
+    } while (cursor)
+  }
+}
+
 /**
  * 退会(UIUX改装 項目40)。本人のデータ・写真・アカウントをすべて消す。
  * 写真 → D1 → Supabase の順に消す(途中で失敗しても、流し直せば残りを消せる)。
+ * 写真は D1 から集めたキーに加えて、本人のフォルダの下をすべて消す(差し替えのときに消し損ねた、ぼかす前の写真も残さない)。
  */
 export async function DELETE(request: Request) {
   const actor = await getActor()
@@ -48,8 +67,11 @@ export async function DELETE(request: Request) {
     const media = await collectAccountMediaKeys(db, actor.id)
     const { env } = getCloudflareContext()
     const buckets = env as unknown as { MEDIA_PRIVATE: MediaBucket; MEDIA_PUBLIC: MediaBucket }
+    if (!USER_ID_SEGMENT.test(actor.id)) throw new Error('invalid user id for media folders')
     await deleteObjects(buckets.MEDIA_PRIVATE, media.privateKeys)
     await deleteObjects(buckets.MEDIA_PUBLIC, media.publicKeys)
+    await deleteUserFolders(buckets.MEDIA_PRIVATE, PRIVATE_MEDIA_PREFIXES, actor.id)
+    await deleteUserFolders(buckets.MEDIA_PUBLIC, PUBLIC_MEDIA_PREFIXES, actor.id)
     await deleteAccountRows(db, actor.id)
     const { error } = await getSupabaseAdmin().auth.admin.deleteUser(actor.id)
     if (error) throw new Error(`supabase ${error.status ?? 'unknown'}`)

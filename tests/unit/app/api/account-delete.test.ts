@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   deleteRows: vi.fn(),
   privateDelete: vi.fn(),
   publicDelete: vi.fn(),
+  privateList: vi.fn(),
+  publicList: vi.fn(),
   deleteUser: vi.fn(),
   order: [] as string[],
 }))
@@ -20,7 +22,10 @@ vi.mock('@/lib/account-deletion', async (original) => ({
 }))
 vi.mock('@/lib/supabase-admin', () => ({ getSupabaseAdmin: () => ({ auth: { admin: { deleteUser: mocks.deleteUser } } }) }))
 vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: () => ({ env: { MEDIA_PRIVATE: { delete: mocks.privateDelete }, MEDIA_PUBLIC: { delete: mocks.publicDelete } } }),
+  getCloudflareContext: () => ({ env: {
+    MEDIA_PRIVATE: { delete: mocks.privateDelete, list: mocks.privateList },
+    MEDIA_PUBLIC: { delete: mocks.publicDelete, list: mocks.publicList },
+  } }),
 }))
 
 import { DELETE } from '@/app/api/account/route'
@@ -39,6 +44,8 @@ beforeEach(() => {
   mocks.privateDelete.mockImplementation(async () => { mocks.order.push('r2-private') })
   mocks.publicDelete.mockImplementation(async () => { mocks.order.push('r2-public') })
   mocks.deleteRows.mockImplementation(async () => { mocks.order.push('d1') })
+  mocks.privateList.mockResolvedValue({ objects: [], truncated: false })
+  mocks.publicList.mockResolvedValue({ objects: [], truncated: false })
   mocks.deleteUser.mockImplementation(async () => { mocks.order.push('supabase'); return { error: null } })
 })
 
@@ -51,6 +58,24 @@ describe('DELETE /api/account(UIUX改装 項目40)', () => {
     expect(mocks.privateDelete).toHaveBeenCalledWith(['danger-reports/user-me/r/m-a.webp'])
     expect(mocks.deleteRows).toHaveBeenCalledWith(expect.anything(), 'user-me')
     expect(mocks.deleteUser).toHaveBeenCalledWith('user-me')
+  })
+
+  it('D1 から参照されなくなった写真(差し替えで消し損ねた、ぼかす前の写真など)も、本人のフォルダから消す', async () => {
+    mocks.privateList.mockImplementation(async ({ prefix, cursor }: { prefix: string; cursor?: string }) => {
+      if (prefix === 'danger-reports/user-me/' && !cursor) return { objects: [{ key: 'danger-reports/user-me/r/orphan-original.webp' }], truncated: true, cursor: 'next' }
+      if (prefix === 'danger-reports/user-me/') return { objects: [{ key: 'danger-reports/user-me/r2/orphan.webp' }], truncated: false }
+      if (prefix === 'hunter-photos/user-me/') return { objects: [{ key: 'hunter-photos/user-me/p/masked.webp' }], truncated: false }
+      return { objects: [], truncated: false }
+    })
+
+    expect((await DELETE(request({ confirm: 'さくじょ' }))).status).toBe(200)
+
+    expect(mocks.privateList.mock.calls.map(([options]) => options.prefix)).toEqual(['danger-reports/user-me/', 'danger-reports/user-me/', 'hunter-photos/user-me/'])
+    expect(mocks.publicList).toHaveBeenCalledWith({ prefix: 'avatars/user-me/', cursor: undefined })
+    const deleted = mocks.privateDelete.mock.calls.flatMap(([keys]) => keys as string[])
+    expect(deleted).toEqual(expect.arrayContaining([
+      'danger-reports/user-me/r/orphan-original.webp', 'danger-reports/user-me/r2/orphan.webp', 'hunter-photos/user-me/p/masked.webp',
+    ]))
   })
 
   it('確認の文字が違えば何も消さない', async () => {
