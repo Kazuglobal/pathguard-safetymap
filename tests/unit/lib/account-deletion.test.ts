@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ACCOUNT_DELETION_COVERAGE, collectAccountMediaKeys, deleteAccountRows } from '@/lib/account-deletion'
 import type { AppDb } from '@/lib/db/client'
+import { D1_MAX_BOUND_PARAMETERS } from '@/lib/db/d1-limits'
 import * as schema from '@/lib/db/schema'
 import { createTestDatabase, type TestDatabase } from '@/lib/db/testing'
 
@@ -95,6 +96,30 @@ describe('退会で本人のデータをすべて消す(UIUX改装 項目40)', (
       expect(count(table, `${column} = ?`, OTHER), table).toBe(1)
     }
     expect(count('user_points', 'user_id = ? and points = 100', OTHER)).toBe(1)
+  })
+
+  it('報告が多い人でも、1回の問い合わせの変数は D1 の上限(100個)を超えない', async () => {
+    const maxParams = { value: 0 }
+    const counted = createTestDatabase({ logger: { logQuery: (_query, params) => { maxParams.value = Math.max(maxParams.value, params.length) } } })
+    try {
+      // 1時間に10件までの投稿の制限は、この確かめには関係ないので外す
+      counted.sqlite.exec('drop trigger report_create_quota')
+      const insertReport = counted.sqlite.prepare(`insert into danger_reports (id, user_id, title, danger_type, danger_level, latitude, longitude, status)
+        values (?, ?, '交差点', 'traffic', 3, 35, 139, 'approved')`)
+      const insertImage = counted.sqlite.prepare('insert into report_images (id, report_id, image_key) values (?, ?, ?)')
+      for (let index = 0; index < 120; index += 1) {
+        insertReport.run(`many-${index}`, ME)
+        insertImage.run(`many-image-${index}`, `many-${index}`, `danger-reports/${ME}/many-${index}/m-extra.webp`)
+      }
+
+      const media = await collectAccountMediaKeys(counted.db as unknown as AppDb, ME)
+      expect(media.privateKeys).toHaveLength(120)
+      await deleteAccountRows(counted.db as unknown as AppDb, ME)
+      expect(maxParams.value).toBeGreaterThan(0)
+      expect(maxParams.value).toBeLessThanOrEqual(D1_MAX_BOUND_PARAMETERS)
+    } finally {
+      counted.sqlite.close()
+    }
   })
 
   it('流し直しても失敗しない(途中で止まっても残りだけを消せる)', async () => {

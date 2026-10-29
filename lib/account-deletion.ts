@@ -78,10 +78,10 @@ export async function collectAccountMediaKeys(db: AppDb, userId: string): Promis
     processedImageKey: dangerReports.processedImageKey,
     processedImageKeys: dangerReports.processedImageKeys,
   }).from(dangerReports).where(eq(dangerReports.userId, userId))
-  const reportIds = reports.map((report) => report.id)
-  const ownReportImages = reportIds.length > 0
-    ? await db.select({ imageKey: reportImages.imageKey }).from(reportImages).where(inArray(reportImages.reportId, reportIds))
-    : []
+  // 報告の id は副問い合わせで渡す(id を並べると、報告が多い人で D1 の変数の上限(100個)を超えるため)
+  const ownReportIds = db.select({ id: dangerReports.id }).from(dangerReports).where(eq(dangerReports.userId, userId))
+  const ownReportImages = await db.select({ imageKey: reportImages.imageKey }).from(reportImages)
+    .where(inArray(reportImages.reportId, ownReportIds))
   const uploadedImages = await db.select({ imageKey: reportImages.imageKey }).from(reportImages).where(eq(reportImages.uploadedBy, userId))
   const hunter = await db.select({ imageKey: hunterPhotos.imageKey }).from(hunterPhotos).where(eq(hunterPhotos.playerId, userId))
   const [profile] = await db.select({ avatarKey: profiles.avatarKey }).from(profiles).where(eq(profiles.id, userId)).limit(1)

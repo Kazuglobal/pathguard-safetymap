@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import type { Logger } from 'drizzle-orm/logger'
 
 import * as schema from './schema'
 
@@ -17,7 +18,8 @@ function migrationFiles(): string[] {
     .map((file) => path.join(directory, file))
 }
 
-export function createTestDatabase() {
+/** logger: 問い合わせごとに SQL と変数を受け取る(D1 の変数の上限を超えないかを確かめるのに使う) */
+export function createTestDatabase(options: { logger?: Logger } = {}) {
   const sqlite = new Database(':memory:')
   sqlite.pragma('foreign_keys = ON')
 
@@ -27,6 +29,6 @@ export function createTestDatabase() {
 
   return {
     sqlite,
-    db: drizzle(sqlite, { schema }),
+    db: drizzle(sqlite, { schema, ...(options.logger ? { logger: options.logger } : {}) }),
   }
 }

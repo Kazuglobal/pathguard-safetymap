@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DEMO_SAMPLE_MODERATION_REASON } from '@/lib/admin-report-moderation-queue'
 import type { Actor } from '@/lib/db/authz'
 import type { AppDb } from '@/lib/db/client'
+import { D1_MAX_BOUND_PARAMETERS } from '@/lib/db/d1-limits'
 import { createRetentionRepo } from '@/lib/db/repos/retention.repo'
 import { createTestDatabase, type TestDatabase } from '@/lib/db/testing'
 import { isExpiredBackupKey, retentionCutoff } from '@/lib/retention/policy'
@@ -75,6 +76,32 @@ describe('保持期間を過ぎたデータ(UIUX改装 項目60)', () => {
 
     expect(await createRetentionRepo(database.db as unknown as AppDb).deleteOldReportCreateHistory(service, NOW)).toBe(1)
     expect(database.sqlite.prepare('select report_id from report_create_history').all()).toEqual([{ report_id: 'new' }])
+  })
+
+  it('期限切れが多くても、1回の問い合わせの変数は D1 の上限(100個)を超えない', async () => {
+    const maxParams = { value: 0 }
+    const counted = createTestDatabase({ logger: { logQuery: (_query, params) => { maxParams.value = Math.max(maxParams.value, params.length) } } })
+    try {
+      // 1時間に10件までの投稿の制限は、この確かめには関係ないので外す
+      counted.sqlite.exec('drop trigger report_create_quota')
+      const insertReport = counted.sqlite.prepare(`insert into danger_reports (id, user_id, title, danger_type, danger_level, latitude, longitude, status, created_at, updated_at)
+        values (?, 'owner', '交差点', 'traffic', 3, 35, 139, 'pending', ?, ?)`)
+      const insertImage = counted.sqlite.prepare('insert into report_images (id, report_id, image_key) values (?, ?, ?)')
+      for (let index = 0; index < 150; index += 1) {
+        insertReport.run(`old-${index}`, daysAgo(120), daysAgo(120))
+        insertImage.run(`image-${index}`, `old-${index}`, `danger-reports/owner/old-${index}/m-extra.webp`)
+      }
+      const repo = createRetentionRepo(counted.db as unknown as AppDb)
+
+      const expired = await repo.listExpiredReports(service, NOW)
+      expect(expired).toHaveLength(150)
+      expect(expired.every((report) => report.mediaKeys.length === 1)).toBe(true)
+      expect(await repo.deleteReports(service, expired.map((report) => report.id))).toBe(150)
+      expect(maxParams.value).toBeGreaterThan(0)
+      expect(maxParams.value).toBeLessThanOrEqual(D1_MAX_BOUND_PARAMETERS)
+    } finally {
+      counted.sqlite.close()
+    }
   })
 
   it('利用者からは呼べない', async () => {

@@ -5,6 +5,7 @@ import { RETENTION_DAYS, RETENTION_REPORT_BATCH, retentionCutoff } from '@/lib/r
 
 import type { Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
+import { chunkForD1 } from '../d1-limits'
 import { dangerReports, pushSubscriptions, reportCreateHistory, reportImages } from '../schema'
 
 /** 保持期間を過ぎたデータを消す(UIUX改装 項目60)。サービス(cron)だけが使う */
@@ -45,8 +46,12 @@ export function createRetentionRepo(db: AppDb) {
         ),
       )).limit(RETENTION_REPORT_BATCH)
       if (rows.length === 0) return []
-      const extra = await db.select({ reportId: reportImages.reportId, imageKey: reportImages.imageKey }).from(reportImages)
-        .where(inArray(reportImages.reportId, rows.map((row) => row.id)))
+      // D1 の変数の上限(100個)に収まるよう、id を分けて問い合わせる
+      const extra: Array<{ reportId: string; imageKey: string }> = []
+      for (const ids of chunkForD1(rows.map((row) => row.id))) {
+        extra.push(...await db.select({ reportId: reportImages.reportId, imageKey: reportImages.imageKey }).from(reportImages)
+          .where(inArray(reportImages.reportId, ids)))
+      }
       return rows.map((row) => ({
         id: row.id,
         mediaKeys: [...new Set([
@@ -59,10 +64,12 @@ export function createRetentionRepo(db: AppDb) {
     /** 報告を消す。先にポイントの記録を外す(報告を消すと投稿者のポイントを引くトリガーがあるため) */
     async deleteReports(actor: Actor, ids: readonly string[]): Promise<number> {
       requireService(actor)
-      if (ids.length === 0) return 0
-      await db.update(dangerReports).set({ rewardPoints: null }).where(inArray(dangerReports.id, [...ids]))
-      const deleted = await db.delete(dangerReports).where(inArray(dangerReports.id, [...ids])).returning({ id: dangerReports.id })
-      return deleted.length
+      let deleted = 0
+      for (const chunk of chunkForD1(ids)) {
+        await db.update(dangerReports).set({ rewardPoints: null }).where(inArray(dangerReports.id, chunk))
+        deleted += (await db.delete(dangerReports).where(inArray(dangerReports.id, chunk)).returning({ id: dangerReports.id })).length
+      }
+      return deleted
     },
 
     /** 180日、更新も配信もない通知の購読(配信に失敗したものは lib/web-push.ts がすぐ消す) */
