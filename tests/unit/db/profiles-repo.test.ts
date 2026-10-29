@@ -1,8 +1,11 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { getTableColumns } from 'drizzle-orm'
+
 import type { Actor } from '@/lib/db/authz'
 import { createProfilesRepo } from '@/lib/db/repos/profiles.repo'
+import { profiles } from '@/lib/db/schema'
 import { createTestDatabase, type TestDatabase } from '@/lib/db/testing'
 import { toProfileJson } from '@/lib/profile-api'
 
@@ -24,25 +27,19 @@ function storedFullName(): unknown {
 }
 
 describe('プロフィールは氏名を預からない(UIUX改装 項目55)', () => {
-  it('表示名を保存すると、以前に預かった氏名が残っていても消える', async () => {
+  it('アプリのスキーマは氏名(full_name)の列を読み書きしない(列は次のマイグレーションで消す)', () => {
+    expect(Object.keys(getTableColumns(profiles))).not.toContain('fullName')
+  })
+
+  it('以前の氏名が残った行があっても、表示名とアイコンは保存でき、氏名は返さない', async () => {
     database.sqlite.prepare('insert into profiles (id, email, display_name, full_name) values (?, ?, ?, ?)')
       .run(USER_ID, 'parent@example.com', '前の表示名', '山田 花子')
 
-    const row = await createProfilesRepo(database.db).upsertOwn(actor, 'parent@example.com', { displayName: 'さくらママ' })
-
-    expect(row.displayName).toBe('さくらママ')
-    expect(storedFullName()).toBeNull()
-  })
-
-  it('アイコンだけを保存しても氏名は消え、表示名はそのまま', async () => {
-    database.sqlite.prepare('insert into profiles (id, email, display_name, full_name) values (?, ?, ?, ?)')
-      .run(USER_ID, 'parent@example.com', 'さくらママ', '山田 花子')
-
-    const row = await createProfilesRepo(database.db).upsertOwn(actor, 'parent@example.com', { avatarKey: `avatars/${USER_ID}/icon.webp` })
+    const row = await createProfilesRepo(database.db).upsertOwn(actor, 'parent@example.com', { displayName: 'さくらママ', avatarKey: `avatars/${USER_ID}/icon.webp` })
 
     expect(row.displayName).toBe('さくらママ')
     expect(row.avatarKey).toBe(`avatars/${USER_ID}/icon.webp`)
-    expect(storedFullName()).toBeNull()
+    expect(JSON.stringify(row)).not.toContain('山田')
   })
 
   it('新しく作る行には氏名を入れない', async () => {
@@ -73,7 +70,9 @@ describe('プロフィールは氏名を預からない(UIUX改装 項目55)', (
 
   it('API に返す JSON に氏名の項目を含めない', async () => {
     const row = await createProfilesRepo(database.db).upsertOwn(actor, 'parent@example.com', { displayName: 'さくらママ' })
-    const json = toProfileJson({ ...row, fullName: '山田 花子' })
+    // 以前の行の形(氏名つき)が渡っても、JSON には出さない
+    const legacyRow = { ...row, fullName: '山田 花子' }
+    const json = toProfileJson(legacyRow)
 
     expect(json).not.toHaveProperty('full_name')
     expect(JSON.stringify(json)).not.toContain('山田')

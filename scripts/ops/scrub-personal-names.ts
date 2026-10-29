@@ -5,7 +5,7 @@
  *   1. Supabase Auth の user_metadata の名前・顔写真(full_name / name / avatar_url / picture など。
  *      キーの一覧は lib/privacy/personal-metadata.ts)。以前の登録フォームの氏名、LINE の表示名・アイコン、
  *      Google の名前・写真の URL が入っている
- *   2. D1 の profiles.full_name(以前のプロフィール編集の「氏名」)
+ *   2. D1 の profiles.full_name(以前のプロフィール編集の「氏名」)。列そのものをマイグレーションで消したあとは数えない
  * 消さないもの: 表示名(display_name。本人がつけたニックネーム)、本人が上げたアイコン(avatar_key)、
  *   ログインに使う line_user_id とメールアドレス
  * この方法では消せないもの: Supabase の auth.identities(認証プロバイダの記録)に残る Google/LINE の名前・写真の URL
@@ -48,6 +48,7 @@ const USERS_PER_PAGE = 1000
 /** 打ち切りの上限(1000人×200ページ)。これを超える規模なら、分けて流すようにスクリプトを直す */
 const MAX_PAGES = 200
 
+export const PROFILE_COLUMNS_SQL = 'PRAGMA table_info(profiles)'
 export const COUNT_FULL_NAMES_SQL = 'SELECT COUNT(*) AS n FROM profiles WHERE full_name IS NOT NULL'
 export const CLEAR_FULL_NAMES_SQL = 'UPDATE profiles SET full_name = NULL WHERE full_name IS NOT NULL'
 
@@ -112,9 +113,21 @@ export async function scanAuthUsers(auth: AuthAdminPort): Promise<AuthScan> {
   throw new Error(`ユーザーが ${USERS_PER_PAGE * MAX_PAGES} 人を超えています。分けて流せるようにスクリプトを直してください。何も書き換えていません。`)
 }
 
-export async function countStoredFullNames(deps: OpsDeps): Promise<number> {
+/** profiles に full_name の列がまだあるか(列はマイグレーションで消す。消したあとでもこのスクリプトを流せるように) */
+export async function hasFullNameColumn(deps: OpsDeps): Promise<boolean> {
+  const [result] = await runD1(deps.runner, PROFILE_COLUMNS_SQL)
+  return (result?.results ?? []).some((column) => column.name === 'full_name')
+}
+
+/** 氏名が入っている行の数。列がもう無ければ null */
+export async function countStoredFullNames(deps: OpsDeps): Promise<number | null> {
+  if (!(await hasFullNameColumn(deps))) return null
   const [result] = await runD1(deps.runner, COUNT_FULL_NAMES_SQL)
   return readNumber(result?.results[0] ?? {}, 'n') ?? 0
+}
+
+function describeFullNames(count: number | null): string {
+  return count === null ? '列はもう消してあります(消すものはありません)' : `入っている行 ${count} 件`
 }
 
 function describeKeyCounts(keyCounts: Readonly<Record<PersonalMetadataKey, number>>): string {
@@ -148,7 +161,7 @@ export async function main(argv: readonly string[], deps: OpsDeps, authPort?: Au
   const scan = await scanAuthUsers(auth)
   const fullNames = await countStoredFullNames(deps)
   deps.log(`Supabase Auth: ユーザー ${scan.totalUsers} 人のうち、名前・顔写真が残っている人 ${scan.targets.length} 人(キーごと: ${describeKeyCounts(scan.keyCounts)})`)
-  deps.log(`D1 profiles.full_name: 入っている行 ${fullNames} 件`)
+  deps.log(`D1 profiles.full_name: ${describeFullNames(fullNames)}`)
 
   if (!args.flags.has('apply')) {
     deps.log(`[scrub-personal-names] ドライラン: 何も書き換えていません。消すときは ${NAME_SCRUB_CONFIRM_ENV}=yes を付けて --apply で実行してください。`)
@@ -159,8 +172,10 @@ export async function main(argv: readonly string[], deps: OpsDeps, authPort?: Au
     return 1
   }
 
-  deps.log('[scrub-personal-names] --apply: D1 の氏名を消します')
-  await runD1(deps.runner, CLEAR_FULL_NAMES_SQL)
+  if (fullNames !== null) {
+    deps.log('[scrub-personal-names] --apply: D1 の氏名を消します')
+    await runD1(deps.runner, CLEAR_FULL_NAMES_SQL)
+  }
 
   deps.log(`[scrub-personal-names] --apply: Supabase Auth の ${scan.targets.length} 人から名前・顔写真を消します`)
   let failed = 0
@@ -174,7 +189,7 @@ export async function main(argv: readonly string[], deps: OpsDeps, authPort?: Au
   deps.log(`更新: ${scan.targets.length - failed} 人 / 失敗: ${failed} 人`)
 
   const remainingAuth = (await scanAuthUsers(auth)).targets.length
-  const remainingFullNames = await countStoredFullNames(deps)
+  const remainingFullNames = (await countStoredFullNames(deps)) ?? 0
   deps.log(`数え直し: Supabase Auth に残っている人 ${remainingAuth} 人 / D1 の氏名 ${remainingFullNames} 件`)
   if (failed > 0 || remainingAuth > 0 || remainingFullNames > 0) {
     deps.error('消し残りがあります。もう一度 --apply で実行してください(残っている分だけを消します)。')

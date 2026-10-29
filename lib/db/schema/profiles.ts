@@ -7,7 +7,8 @@ export const profiles = sqliteTable('profiles', {
   id: text('id').primaryKey(),
   email: text('email').notNull(),
   displayName: text('display_name'),
-  fullName: text('full_name'),
+  // full_name(以前の「氏名」)は預からない(UIUX改装 項目55)。アプリからは読み書きしない。
+  // 列そのものは、いまの本番のコードが読まなくなってから(このグループのデプロイのあと)次のマイグレーションで消す
   avatarKey: text('avatar_key'),
   role: text('role').notNull().default('user'),
   /**

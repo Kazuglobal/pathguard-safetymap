@@ -71,8 +71,7 @@ export function createProfilesRepo(db: AppDb) {
           ...(input.displayName !== undefined ? { displayName: input.displayName?.trim() || null } : {}),
           ...(input.avatarKey !== undefined ? { avatarKey: input.avatarKey } : {}),
           ...(input.locationPrecision !== undefined ? { locationPrecision: input.locationPrecision } : {}),
-          // 以前に預かった氏名が残っていれば、本人がプロフィールを保存したときに消す
-          fullName: null,
+          // 以前に預かった氏名(full_name)は、scripts/ops/scrub-personal-names.ts で一括で消す(列も次のマイグレーションで消す)
           updatedAt: now,
         },
       }).returning()
