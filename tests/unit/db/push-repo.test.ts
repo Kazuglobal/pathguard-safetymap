@@ -237,6 +237,15 @@ describe('danger report push D1 repository', () => {
       expect(row('legacy-human')).toEqual({ status: 'pending', ai_moderation_status: 'needs_review', human_approved_at: null, push_notified_at: null })
     })
 
+    it('運営(管理者)が写真を足す・消すときは審査に戻さない(公開・承認・通知済みの印はそのまま)', async () => {
+      await insertWith('admin-edit', { status: 'published', aiModerationStatus: 'needs_review', humanApprovedAt: '2026-09-03T01:00:00.000Z', pushNotifiedAt: '2026-09-03T01:05:00.000Z' })
+      const reports = createDangerReportsRepo(database.db as unknown as AppDb)
+
+      await reports.setImages(admin, 'admin-edit', { processedImageKeys: [] })
+
+      expect(row('admin-edit')).toEqual({ status: 'published', ai_moderation_status: 'needs_review', human_approved_at: '2026-09-03T01:00:00.000Z', push_notified_at: '2026-09-03T01:05:00.000Z' })
+    })
+
     it('人が承認した報告も、写真が変わったら審査をやり直す(人の承認と通知済みの印を外す)', async () => {
       await insertWith('human-image', { status: 'approved', aiModerationStatus: 'needs_review', humanApprovedAt: '2026-09-03T01:00:00.000Z', pushNotifiedAt: '2026-09-03T01:05:00.000Z' })
       const reports = createDangerReportsRepo(database.db as unknown as AppDb)

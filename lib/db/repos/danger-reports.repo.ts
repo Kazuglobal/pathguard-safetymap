@@ -269,8 +269,13 @@ export function createDangerReportsRepo(db: AppDb) {
       })
       const now = new Date().toISOString()
       // 公開中か、AI か運営(人)が承認済みなら、写真が変わったので審査をやり直す(人の承認も取り消す)。
-      // 承認の時刻を記録する前に人が公開した報告(human_approved_at が空)も、公開中なら審査に戻す
-      const reopens = sql`(${dangerReports.status} in ('approved', 'published', 'resolved') or ${dangerReports.aiModerationStatus} = 'approved' or ${dangerReports.humanApprovedAt} is not null)`
+      // 承認の時刻を記録する前に人が公開した報告(human_approved_at が空)も、公開中なら審査に戻す。
+      // 運営(管理者)が写真を足す・差し替える・消すときは、運営が見ているので審査に戻さない
+      // (戻すと公開が止まり、投稿者のポイントが減り、承認し直したときに同じ通知がもう一度届くため)
+      const adminEdit = actor.kind === 'user' && actor.isAdmin
+      const reopens = adminEdit
+        ? sql`0`
+        : sql`(${dangerReports.status} in ('approved', 'published', 'resolved') or ${dangerReports.aiModerationStatus} = 'approved' or ${dangerReports.humanApprovedAt} is not null)`
       const moderationFields = {
         status: sql<string>`case when ${reopens} then 'pending' else ${dangerReports.status} end`,
         aiModerationStatus: sql<string | null>`case when ${reopens} then 'needs_review' else ${dangerReports.aiModerationStatus} end`,
