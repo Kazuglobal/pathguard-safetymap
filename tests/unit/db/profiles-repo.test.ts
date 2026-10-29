@@ -52,7 +52,7 @@ describe('プロフィールは氏名を預からない(UIUX改装 項目55)', (
 
   it('「粗く保存」にすると、保存済みの通学路からも道すじを消し、起点・終点を約10kmに丸める', async () => {
     database.sqlite.prepare(`insert into user_routes (id, user_id, name, start_lat, start_lng, end_lat, end_lng, start_address, end_address, route_geometry)
-      values ('r1', ?, '通学路', 35.69, 139.69, 35.68, 139.77, '東京都新宿区', '東京都千代田区', '{"type":"LineString","coordinates":[[139.69,35.69],[139.77,35.68]]}')`).run(USER_ID)
+      values ('r1', ?, '通学路', 35.69, 139.69, 35.68, 139.77, '〒160-0023 東京都新宿区西新宿2丁目8-1', '東京都千代田区', '{"type":"LineString","coordinates":[[139.69,35.69],[139.77,35.68]]}')`).run(USER_ID)
     database.sqlite.prepare(`insert into user_routes (id, user_id, name, start_lat, start_lng, end_lat, end_lng, start_address, end_address, route_geometry)
       values ('other', 'someone-else', '通学路', 35.69, 139.69, 35.68, 139.77, 'A', 'B', '{"type":"LineString","coordinates":[[139.69,35.69],[139.77,35.68]]}')`).run()
 
@@ -60,8 +60,9 @@ describe('プロフィールは氏名を預からない(UIUX改装 項目55)', (
 
     expect(row.locationPrecision).toBe('coarse')
     expect(toProfileJson(row).location_precision).toBe('coarse')
-    expect(database.sqlite.prepare('select start_lat, start_lng, end_lat, end_lng, route_geometry from user_routes where id = ?').get('r1'))
-      .toEqual({ start_lat: 35.7, start_lng: 139.7, end_lat: 35.7, end_lng: 139.8, route_geometry: null })
+    // 以前に保存した番地つきの住所も、市区町村までにする
+    expect(database.sqlite.prepare('select start_lat, start_lng, end_lat, end_lng, start_address, end_address, route_geometry from user_routes where id = ?').get('r1'))
+      .toEqual({ start_lat: 35.7, start_lng: 139.7, end_lat: 35.7, end_lng: 139.8, start_address: '東京都新宿区', end_address: '東京都千代田区', route_geometry: null })
     expect((database.sqlite.prepare('select route_geometry from user_routes where id = ?').get('other') as { route_geometry: string | null }).route_geometry).not.toBeNull()
   })
 

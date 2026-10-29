@@ -1,6 +1,6 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
-import { isLocationPrecision, ROUTE_COARSE_ENDPOINT_DECIMALS, type LocationPrecision } from '@/lib/route-privacy'
+import { coarsenRouteLocation, isLocationPrecision, ROUTE_COARSE_ENDPOINT_DECIMALS, type LocationPrecision } from '@/lib/route-privacy'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -88,6 +88,15 @@ export function createProfilesRepo(db: AppDb) {
           endLng: sql`round(${userRoutes.endLng}, ${ROUTE_COARSE_ENDPOINT_DECIMALS})`,
           updatedAt: now,
         }).where(eq(userRoutes.userId, actor.id))
+        // 住所も「都道府県+市区町村」にする(以前に保存した、番地まである住所を残さない)
+        const saved = await db.select({ id: userRoutes.id, startAddress: userRoutes.startAddress, endAddress: userRoutes.endAddress })
+          .from(userRoutes).where(eq(userRoutes.userId, actor.id))
+        for (const route of saved) {
+          const located = coarsenRouteLocation({ startAddress: route.startAddress, endAddress: route.endAddress })
+          if (located.startAddress === route.startAddress && located.endAddress === route.endAddress) continue
+          await db.update(userRoutes).set({ startAddress: located.startAddress, endAddress: located.endAddress })
+            .where(and(eq(userRoutes.id, route.id), eq(userRoutes.userId, actor.id)))
+        }
       }
       return row
     },
