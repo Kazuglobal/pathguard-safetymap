@@ -17,6 +17,9 @@ export function getSafeNextPath(
     const base = new URL("https://pathguardian.local")
     const resolved = new URL(raw, base)
     if (resolved.origin !== base.origin) return fallback
+    // "/.//evil.com" のようにドット区間を含む値は、解決後のパスが "//evil.com" になり
+    // ブラウザではプロトコル相対URL(別サイト)として扱われる。解決後にもう一度確かめる
+    if (resolved.pathname.startsWith("//") || resolved.pathname.includes("\\")) return fallback
     return `${resolved.pathname}${resolved.search}${resolved.hash}`
   } catch {
     return fallback

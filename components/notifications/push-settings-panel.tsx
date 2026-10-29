@@ -4,6 +4,7 @@ import { Bell, BellOff } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
+import { shouldShowIosInstallGuide } from '@/lib/pwa-install'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const PREFERENCE_LABELS = {
@@ -42,6 +43,9 @@ export function PushSettingsPanel() {
   }
 
   if (state === 'unsupported') {
+    // iOSのブラウザ閲覧では PushManager が存在しないが、
+    // ホーム画面に追加(standalone起動)すれば通知を使えるので案内を分ける
+    const isIosBrowser = shouldShowIosInstallGuide()
     return (
       <Card>
         <CardHeader>
@@ -50,7 +54,9 @@ export function PushSettingsPanel() {
             プッシュ通知
           </CardTitle>
           <CardDescription>
-            お使いのブラウザはプッシュ通知に対応していません
+            {isIosBrowser
+              ? 'ブラウザの共有ボタンから「ホーム画面に追加」し、追加したアイコンからアプリを開くと通知を利用できます'
+              : 'お使いのブラウザはプッシュ通知に対応していません'}
           </CardDescription>
         </CardHeader>
       </Card>

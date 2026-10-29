@@ -542,6 +542,7 @@ export default function ReportHubPage() {
                 city={region.city}
                 school={region.school}
                 cityOptions={region.cityOptions}
+                cityOptionsState={region.cityOptionsState}
                 onPrefectureChange={region.handlePrefectureChange}
                 onCityChange={region.handleCityChange}
                 onSchoolChange={region.handleSchoolChange}

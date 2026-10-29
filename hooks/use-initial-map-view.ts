@@ -10,8 +10,13 @@ import {
 } from "@/lib/map-center"
 import type { UserRoute } from "@/lib/types"
 
-/** ルート取得がこの時間を超えたら待たずにフォールバックで初期化する */
-const ROUTES_WAIT_TIMEOUT_MS = 4000
+/**
+ * ルート取得がこの時間を超えたら待たずにフォールバックで初期化する。
+ * 低速の端末では地図の表示がもともと遅いので長く待たない(4秒→1.5秒)。
+ * 遅れて届いたルートは、地図が選択中ルートとして自動で選び、そのルートの範囲へ寄せる
+ * (hooks/use-selected-route-layer.ts の fitBounds。ルート指定の深いリンクもこちらが担う)
+ */
+export const ROUTES_WAIT_TIMEOUT_MS = 1500
 
 interface UseInitialMapViewArgs {
   primaryRoute: UserRoute | null
@@ -58,7 +63,7 @@ export function useInitialMapView({
   }, [initialView, isRoutesLoading, primaryRoute, routes, location])
 
   // ルート取得が長引く場合の安全弁（無限ローディング防止）。
-  // タイムアウト後にルートが届いても再センタリングはしない（初期表示は一度だけ決める）。
+  // 初期表示は一度だけ決める。タイムアウト後に届いたルートへは、地図側の選択中ルートが寄せる。
   useEffect(() => {
     if (initialView || !isRoutesLoading) return
 

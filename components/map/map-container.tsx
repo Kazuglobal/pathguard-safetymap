@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import dynamic from "next/dynamic"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useSupabase } from "@/components/providers/supabase-provider"
@@ -8,17 +9,16 @@ import MapFloatingControls from "./map-floating-controls"
 import MapSidebar from "./map-sidebar"
 import type { DangerReport } from "@/lib/types"
 import MapSearch from "./map-search"
-import ImagePreviewDialog from "../danger-report/image-preview-dialog"
-import DangerReportDetailModal from "../danger-report/danger-report-detail-modal" // 以前の履歴から推測
 import { findNearbyReports } from "@/lib/nearby-reports"
 import { useToast } from "@/components/ui/use-toast"
-import SubmittedReportPreview from "../danger-report/submitted-report-preview"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
+// AR は遅延読み込みにしない。iOS の DeviceOrientationEvent.requestPermission() はタップの直後に
+// 呼ぶ必要があり、部品の読み込みを待つとその猶予が切れて方位センサーの許可が出なくなる
 import ARView from "./ar-view"
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { useInitialMapView } from "@/hooks/use-initial-map-view"
-import { CURRENT_LOCATION_ZOOM } from "@/lib/map-center"
+import { CURRENT_LOCATION_ZOOM, MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION } from "@/lib/map-center"
 import { isValidCoordinates } from "@/lib/coordinates"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { useAdminStatus } from "@/hooks/use-admin-status"
@@ -67,7 +67,13 @@ import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
 import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
-import { getStoredRegion, setStoredRegion } from "@/lib/user-region"
+import { NATIONWIDE } from "@/lib/user-region"
+
+// 最初に地図を出すのに要らない画面は別チャンクに分ける(低速端末で地図の表示が約20秒かかっていた)。
+// 詳細・プレビューは開くまで描かれないか中身が空なので、遅れて届いても見え方は変わらない
+const ImagePreviewDialog = dynamic(() => import("../danger-report/image-preview-dialog"), { ssr: false })
+const DangerReportDetailModal = dynamic(() => import("../danger-report/danger-report-detail-modal"), { ssr: false })
+const SubmittedReportPreview = dynamic(() => import("../danger-report/submitted-report-preview"), { ssr: false })
 
 // Mapboxのアクセストークンを設定
 const mapboxToken = getMapboxToken()
@@ -115,7 +121,9 @@ export default function MapContainer({
     dangerLevel: "all",
     dateRange: "all",
     showPending: true,
-    prefecture: getStoredRegion(),
+    // ホームやニュースで選んだ地域を地図に持ち込まない(見えないところで絞り込まれていた)。
+    // 地図は表示範囲だけで絞り、都道府県はサイドバーで選んだときだけ絞る
+    prefecture: NATIONWIDE,
   })
   // 地図の現在の表示範囲（bbox）。大量報告時に全件取得しないための絞り込みに使う。
   const [mapBounds, setMapBounds] = useState<DangerReportBounds | null>(null)
@@ -178,6 +186,8 @@ export default function MapContainer({
     isRoutesLoading: Boolean(isUserRoutesLoading),
   })
   const lateLocationConsumedRef = useRef(false)
+  // 利用者が自分で地図を動かしたか(動かしたあとは、遅れて届いた現在地へ勝手に移動しない)
+  const userMovedMapRef = useRef(false)
   const [selectedUserRouteId, setSelectedUserRouteId] = useState<string | null>(null)
   const [hazardLayerVisibility, setHazardLayerVisibility] = useState<Record<HazardType, boolean>>({
     flood: false,
@@ -464,6 +474,8 @@ export default function MapContainer({
   };
 
   const flyToLocation = (longitude: number, latitude: number, zoom = 15) => {
+    // 一覧・検索・ピンなど利用者の操作で動かした印(遅れて届いた現在地で上書きしない)
+    userMovedMapRef.current = true
     map.current?.flyTo({ center: [longitude, latitude], zoom: zoom, essential: true });
   };
 
@@ -636,6 +648,10 @@ export default function MapContainer({
         if (map.current) localizeMapLabels(map.current)
       });
 
+      map.current.on("movestart", (event) => {
+        if ((event as { originalEvent?: unknown }).originalEvent) userMovedMapRef.current = true
+      });
+
       map.current.on("load", () => {
         mapInitialized.current = true;
         setIsBaseMapReady(true)
@@ -653,7 +669,10 @@ export default function MapContainer({
         }
         const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
         geolocateControlRef.current = geolocate
-        geolocate.on('trackuserlocationstart', () => { inspectGPSRef.current = true })
+        geolocate.on('trackuserlocationstart', () => {
+          inspectGPSRef.current = true
+          userMovedMapRef.current = true
+        })
         geolocate.on('geolocate', handleInspectionGeolocate)
         map.current?.addControl(geolocate, "bottom-right")
 
@@ -701,11 +720,14 @@ export default function MapContainer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, initialMapView]);
 
-  // 東京フォールバックで初期化した後に現在地が取れた場合、一度だけそこへ移動する
+  // フォールバック(日本全体)で初期化した後に現在地が取れた場合、一度だけそこへ移動する。
+  // ただし通学路が選ばれている(遅れて届いたルートへ寄せた・ルート指定で開いた)とき、
+  // または利用者がもう地図を動かしたときは動かさない(ルート → 現在地 の優先順を守る)
   useEffect(() => {
     if (!lateCurrentLocation || lateLocationConsumedRef.current) return
     if (!map.current || !mapInitialized.current) return
     lateLocationConsumedRef.current = true
+    if (selectedUserRouteId || userMovedMapRef.current) return
     flyToLocation(lateCurrentLocation[0], lateCurrentLocation[1], CURRENT_LOCATION_ZOOM)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lateCurrentLocation, isLoading])
@@ -735,7 +757,9 @@ export default function MapContainer({
   useEffect(() => {
     if (isReportFormOpen && map.current) {
       if (!clickListenerAdded.current) addClickListener();
-      if (!selectedLocation) {
+      // 日本全体など広域の地図では中心が報告地点として意味を持たないので選ばない
+      // (フォームが「地図をタップして場所を選んで」と案内する)
+      if (!selectedLocation && map.current.getZoom() >= MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION) {
         const center = map.current.getCenter();
         const initialLocation: [number, number] = [center.lng, center.lat];
         setSelectedLocation(initialLocation);
@@ -965,9 +989,6 @@ export default function MapContainer({
         next.prefecture === prev.prefecture
       ) {
         return prev
-      }
-      if (next.prefecture !== prev.prefecture) {
-        setStoredRegion(next.prefecture)
       }
       return next
     });

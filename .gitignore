@@ -149,3 +149,6 @@ header.txt
 # MediaPipe WASM（copy-mediapipeスクリプトで node_modules から再生成）
 # モデル(.tflite)は再生成されないため public/mediapipe/models は追跡する
 /public/mediapipe/wasm/
+
+# 本番のテスト残渣の候補一覧(scripts/ops/find-test-data.ts --out=…)。本番の id・題名を含むのでコミットしない
+test-data-candidates*.json

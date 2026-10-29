@@ -1,11 +1,23 @@
 "use client"
 
 import type { ComponentProps } from "react"
+import dynamic from "next/dynamic"
 import { createPortal } from "react-dom"
 import { MapPin } from "lucide-react"
-import DangerReportForm from "@/components/danger-report/danger-report-form"
 
-type FormProps = ComponentProps<typeof DangerReportForm>
+// 報告フォーム(約2,000行)は開いたときにだけ読み込む。地図の最初の表示を重くしないため
+const DangerReportForm = dynamic(() => import("@/components/danger-report/danger-report-form"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex min-h-[240px] items-center justify-center p-6" role="status" aria-live="polite">
+      <p className="text-sm font-bold" style={{ color: "#847661" }}>
+        報告フォームを準備しています…
+      </p>
+    </div>
+  ),
+})
+
+type FormProps = ComponentProps<typeof import("@/components/danger-report/danger-report-form").default>
 
 interface MapReportFormsProps {
   isReportFormOpen: boolean

@@ -16,6 +16,7 @@ import {
   Trash2,
   Star,
   Clock,
+  Loader2,
   MapPin,
   FileText,
   GitCompareArrows,
@@ -44,6 +45,8 @@ export interface RouteCardProps {
   onToggleCompare?: (route: UserRoute) => void
   /** 通学路の近くにある注意ポイント数。未取得のときは undefined。 */
   dangerCount?: number
+  /** 注意ポイント数を確認しているあいだ true。件数が届くまで「確認中」を出す。 */
+  isDangerCountLoading?: boolean
 }
 
 const { color, border, radius, shadow, cls } = tankenTokens
@@ -107,11 +110,13 @@ export function RouteCard({
   isComparisonSelected = false,
   onToggleCompare,
   dangerCount,
+  isDangerCountLoading = false,
 }: RouteCardProps) {
   const hasGeometry = Boolean(route.route_geometry)
   const distanceKnown = route.distance_meters !== null
   const timeKnown = route.estimated_time_minutes !== null
   const showDangerFrame = hasGeometry && typeof dangerCount === "number"
+  const showDangerPending = hasGeometry && !showDangerFrame && isDangerCountLoading
 
   const stop = (event: React.MouseEvent) => event.stopPropagation()
 
@@ -288,6 +293,15 @@ export function RouteCard({
               tone={dangerCount && dangerCount > 0 ? "accent" : "primary"}
             >
               {dangerCount && dangerCount > 0 ? `注意ポイント ${dangerCount}か所` : "注意ポイントなし"}
+            </MetricPill>
+          )}
+          {showDangerPending && (
+            <MetricPill
+              testId="route-danger-count-pending"
+              icon={<Loader2 className="h-4 w-4 motion-safe:animate-spin" />}
+              muted
+            >
+              注意ポイントを確認中…
             </MetricPill>
           )}
         </div>

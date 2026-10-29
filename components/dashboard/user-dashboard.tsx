@@ -10,6 +10,7 @@ import {
 } from "@/components/danger-report/detail/report-detail-utils"
 import { PaperPanel } from "@/components/safety-quest/hunter/theme"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
+import { getDisplayName } from "@/lib/user-display-name"
 
 type RecentReport = {
   id: string
@@ -23,7 +24,7 @@ type RecentReport = {
 export default function UserDashboard() {
   const { points, level, isLoading: pointsLoading } = useGamification()
   const [reports, setReports] = useState<RecentReport[]>([])
-  const [name, setName] = useState("ユーザー")
+  const [name, setName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -48,7 +49,7 @@ export default function UserDashboard() {
           profileResponse.json() as Promise<{ profile?: { display_name?: string | null; email?: string | null } }>,
           reportsResponse.json() as Promise<{ reports?: RecentReport[] }>,
         ])
-        setName(profile?.display_name || profile?.email?.split("@")[0] || "ユーザー")
+        setName(getDisplayName(profile))
         setReports(reportRows)
       } catch {
         if (active) setLoadError(true)
@@ -74,7 +75,7 @@ export default function UserDashboard() {
       <div className="mx-auto max-w-5xl space-y-5">
         <header>
           <p className="text-sm font-bold" style={{ color: t.color.primaryStrong }}>きょうの安全ノート</p>
-          <h1 className="mt-1 text-2xl font-black sm:text-3xl">{name}さんのダッシュボード</h1>
+          <h1 className="mt-1 text-2xl font-black sm:text-3xl">{name ? `${name}さんのダッシュボード` : "あなたのダッシュボード"}</h1>
           <p className="mt-2 text-sm" style={{ color: t.color.inkSoft }}>ポイント、報告のようす、次にできることをまとめました。</p>
         </header>
 

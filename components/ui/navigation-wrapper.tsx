@@ -6,15 +6,25 @@ import { Navigation } from "@/components/ui/navigation"
 import type { User } from "@supabase/supabase-js"
 import { cn } from "@/lib/utils"
 import { shouldShowMobileBottomNav } from "@/lib/navigation-visibility"
+import type { AuthStatus } from "@/components/providers/auth-context"
 
 interface NavigationWrapperProps {
   user: User | null
+  authStatus?: AuthStatus
+  displayName?: string | null
   onLogout: () => Promise<void>
   isLoggingOut?: boolean
   children: React.ReactNode
 }
 
-export function NavigationWrapper({ user, onLogout, isLoggingOut = false, children }: NavigationWrapperProps) {
+export function NavigationWrapper({
+  user,
+  authStatus,
+  displayName = null,
+  onLogout,
+  isLoggingOut = false,
+  children,
+}: NavigationWrapperProps) {
   const pathname = usePathname()
 
   // ナビゲーションを表示しないページ（ランディングは表示対象）
@@ -27,8 +37,8 @@ export function NavigationWrapper({ user, onLogout, isLoggingOut = false, childr
   // マップページはフルスクリーン表示（ナビゲーションはオーバーレイ）
   const isMapPage = pathname === '/map' || pathname === '/3d-route-poc'
 
-  // マップページ以外は通常のパディング
-  const mainPaddingClass = showNavigation && !isMapPage ? "pb-24 md:pb-0" : undefined
+  // マップページ以外は通常のパディング(下部タブバーは lg 未満で出るので、その高さぶん空ける)
+  const mainPaddingClass = showNavigation && !isMapPage ? "pb-24 lg:pb-0" : undefined
 
   return (
     <div className={cn(
@@ -39,6 +49,8 @@ export function NavigationWrapper({ user, onLogout, isLoggingOut = false, childr
       {showNavigation && (
         <Navigation
           user={user}
+          authStatus={authStatus}
+          displayName={displayName}
           onLogout={onLogout}
           isLoggingOut={isLoggingOut}
           hideTopNavMobile={isLandingPage || isMapPage}

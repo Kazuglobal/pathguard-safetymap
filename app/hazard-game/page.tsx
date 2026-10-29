@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
+import { loginPathFor } from "@/lib/auth/login-path"
 import HazardGameClient from "./hazard-game-client"
 
 export default async function HazardGamePage() {
@@ -10,7 +11,7 @@ export default async function HazardGamePage() {
   } = await supabase.auth.getUser()
 
   if (error || !user) {
-    redirect("/login")
+    redirect(loginPathFor("/hazard-game"))
   }
 
   return <HazardGameClient />

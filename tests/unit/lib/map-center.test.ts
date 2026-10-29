@@ -164,7 +164,7 @@ describe("getCurrentLocationMapView", () => {
 })
 
 describe("getFallbackMapView", () => {
-  it("東京固定座標と既定ズームを返す", () => {
+  it("特定の都市ではなく日本全体の座標と既定ズームを返す", () => {
     expect(getFallbackMapView()).toEqual({
       center: DEFAULT_MAP_CENTER,
       zoom: DEFAULT_MAP_ZOOM,

@@ -20,6 +20,8 @@ const splitFunction = (
 const coreRoutes: NonNullable<typeof config.functions>[string]['routes'] = [
   'app/_global-error/page',
   'app/_not-found/page',
+  // app/manifest.ts(PWA)。/manifest.webmanifest は router で CORE に流れるので CORE に載せる
+  'app/manifest.webmanifest/route',
   'app/page',
   'app/contact/page',
   'app/privacy/page',

@@ -22,11 +22,16 @@ import { NotificationBell } from "@/components/notifications/notification-bell"
 import { isAdminUser } from "@/lib/admin"
 import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
+import type { AuthStatus } from "@/components/providers/auth-context"
 
 const C = tankenTokens.color
 
 interface NavigationProps {
   user?: any
+  /** 省略時は user の有無から決める(テストや単体利用向け) */
+  authStatus?: AuthStatus
+  /** 表示名(lib/user-display-name.ts)。未設定なら名前は出さない */
+  displayName?: string | null
   onLogout: () => void | Promise<void>
   isLoggingOut?: boolean
   hideTopNavMobile?: boolean
@@ -90,6 +95,8 @@ function LupeFace({ size = 34 }: { size?: number }) {
 
 export function Navigation({
   user,
+  authStatus,
+  displayName = null,
   onLogout,
   isLoggingOut = false,
   hideTopNavMobile = false,
@@ -100,6 +107,7 @@ export function Navigation({
   const isAdmin = isAdminUser(user)
   const [isReportOpen, setIsReportOpen] = React.useState(false)
   const reduce = useReducedMotion()
+  const resolvedAuthStatus: AuthStatus = authStatus ?? (user ? "authenticated" : "unauthenticated")
 
   const mainNavItems: NavItem[] = [
     {
@@ -280,13 +288,29 @@ export function Navigation({
             {/* 右側アクション */}
             <div className="flex items-center space-x-3">
               {user && <NotificationBell isLoggedIn={!!user} />}
-              {user ? (
+              {resolvedAuthStatus === "loading" ? (
+                // ログイン状態の確定前は「ログイン/新規登録」を出さない(確定後に差し替わるチラつき防止)
+                <div className="hidden sm:flex items-center" data-testid="auth-placeholder">
+                  <span
+                    className="block h-8 w-28 animate-pulse rounded-full"
+                    style={{ background: "rgba(67,57,43,.08)" }}
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">ログイン状態を確認しています</span>
+                </div>
+              ) : user ? (
                 <div className="hidden sm:flex items-center space-x-3">
                   <div className="flex flex-col items-end text-sm leading-tight user-info" data-testid="user-info">
-                    <span className="font-bold" style={{ color: C.ink }}>
-                      {user.email?.split("@")[0] || "ユーザー"}
-                    </span>
-                    <span className="text-xs" style={{ color: C.inkFaint }}>ログイン中</span>
+                    {displayName ? (
+                      <>
+                        <span className="font-bold" style={{ color: C.ink }}>
+                          {displayName}
+                        </span>
+                        <span className="text-xs" style={{ color: C.inkSoft }}>ログイン中</span>
+                      </>
+                    ) : (
+                      <span className="text-xs font-bold" style={{ color: C.inkSoft }}>ログイン中</span>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
@@ -323,7 +347,7 @@ export function Navigation({
       {/* モバイルボトムナビ(たんけんノートの持ち手) */}
       {!hideBottomNavMobile && (
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t lg:hidden"
         style={{
           background: "rgba(255,253,247,.94)",
           backdropFilter: "blur(14px)",

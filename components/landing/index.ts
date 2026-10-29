@@ -1,4 +1,3 @@
-export { DailyCommuteCheckCard } from "./DailyCommuteCheckCard"
 export { StickyHeader } from "./StickyHeader"
 export { LandingHero } from "./LandingHero"
 export { ChildRouteDashboard } from "./child-route-dashboard"

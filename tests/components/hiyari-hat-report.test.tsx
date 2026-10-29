@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { HiyariHatReport } from "@/components/landing/HiyariHatReport"
 import type { DangerReport } from "@/lib/types"
@@ -342,7 +342,9 @@ describe("HiyariHatReport", () => {
 
       render(<HiyariHatReport />)
 
-      const citySelect = await screen.findByRole("combobox", { name: "市町村を選ぶ" })
+      // 市町村セレクトは読み込み中から出るため、選択肢が届くのを待ってから選ぶ
+      await screen.findByRole("option", { name: "港区" })
+      const citySelect = screen.getByRole("combobox", { name: "市町村を選ぶ" })
       fireEvent.change(citySelect, { target: { value: "港区" } })
 
       await waitFor(() => {
@@ -358,7 +360,7 @@ describe("HiyariHatReport", () => {
 
       render(<HiyariHatReport />)
 
-      await screen.findByRole("combobox", { name: "市町村を選ぶ" })
+      await screen.findByRole("option", { name: "千代田区" })
 
       // 大阪府の市町村取得は未解決のまま(前の県の選択肢が残ると
       // 「大阪府+千代田区」という成立しない絞り込みを選べてしまう)
@@ -366,27 +368,45 @@ describe("HiyariHatReport", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "大阪府" }))
 
-      await waitFor(() => {
-        expect(
-          screen.queryByRole("combobox", { name: "市町村を選ぶ" }),
-        ).not.toBeInTheDocument()
-      })
+      // セレクトは隠さず、読み込み中として無効にする
+      const citySelect = screen.getByRole("combobox", { name: "市町村を選ぶ" })
+      expect(citySelect).toBeDisabled()
+      expect(within(citySelect).queryByRole("option", { name: "千代田区" })).not.toBeInTheDocument()
+      expect(within(citySelect).getByRole("option", { name: "読み込み中…" })).toBeInTheDocument()
     })
 
-    it("市町村の選択は県とペアで localStorage に保存される", async () => {
+    it("報告の無い県でも市町村セレクトを出し、理由を添えて無効にする", async () => {
+      mocks.state.cityResult = { data: [], error: null }
+
+      render(<HiyariHatReport />)
+
+      fireEvent.change(await screen.findByRole("combobox", { name: "都道府県を選ぶ" }), {
+        target: { value: "鳥取県" },
+      })
+
+      expect(await screen.findByText("市区町村で絞り込める報告はまだありません")).toBeInTheDocument()
+      expect(screen.getByRole("combobox", { name: "市町村を選ぶ" })).toBeDisabled()
+    })
+
+    it("市町村の選択は県とペアで報告フィルタ専用のキーに保存される", async () => {
       window.localStorage.setItem("pathguardian:selected_prefecture", "東京都")
       mocks.state.cityResult = { data: [{ city: "港区" }], error: null }
 
       render(<HiyariHatReport />)
 
-      const citySelect = await screen.findByRole("combobox", { name: "市町村を選ぶ" })
-      fireEvent.change(citySelect, { target: { value: "港区" } })
+      await screen.findByRole("option", { name: "港区" })
+      fireEvent.change(screen.getByRole("combobox", { name: "市町村を選ぶ" }), {
+        target: { value: "港区" },
+      })
 
       await waitFor(() => {
-        expect(window.localStorage.getItem("pathguardian:selected_city")).toBe(
-          JSON.stringify({ prefecture: "東京都", city: "港区" }),
-        )
+        expect(JSON.parse(window.localStorage.getItem("pathguardian:report-region:v1") ?? "null")).toEqual({
+          prefecture: "東京都",
+          lastCity: { prefecture: "東京都", city: "港区" },
+        })
       })
+      // 地域アラートと共有していた旧キーには書かない(市町村の呼び名の体系が違うため)
+      expect(window.localStorage.getItem("pathguardian:selected_city")).toBeNull()
     })
   })
 

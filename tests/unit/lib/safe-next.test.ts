@@ -13,6 +13,16 @@ describe("getSafeNextPath", () => {
     },
   )
 
+  // ドット区間で解決後に "//evil.com"(プロトコル相対URL)になる値も拒否する(2026-10-29 レビュー指摘)
+  it.each(["/.//evil.example.com", "/a/..//evil.example.com"])(
+    "rejects a dot-segment value that resolves to another site: %s",
+    (value) => {
+      const result = getSafeNextPath(value)
+      expect(result.startsWith("//")).toBe(false)
+      expect(result).toBe("/map")
+    },
+  )
+
   it("uses the first value when Next.js supplies an array", () => {
     expect(getSafeNextPath(["/report", "/map"])).toBe("/report")
   })

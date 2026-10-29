@@ -212,7 +212,9 @@ describe("ReportHubPage", () => {
 
       render(<ReportHubPage />)
 
-      const citySelect = await screen.findByRole("combobox", { name: "市町村を選ぶ" })
+      // 市町村セレクトは読み込み中から出るため、選択肢が届くのを待ってから選ぶ
+      await screen.findByRole("option", { name: "千代田区" })
+      const citySelect = screen.getByRole("combobox", { name: "市町村を選ぶ" })
       fireEvent.change(citySelect, { target: { value: "千代田区" } })
 
       await waitFor(() => {

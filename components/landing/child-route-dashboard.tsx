@@ -3,7 +3,6 @@
 import Link from "next/link"
 import {
   ChevronRight,
-  Clock3,
   MapPin,
   MessagesSquare,
   Route,
@@ -13,10 +12,18 @@ import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
 
+/** 読み込み中に出す骨組みの数。ready のセル(この30日の注意地点・通学路)の数とそろえる。 */
+const LOADING_PLACEHOLDER_COUNT = 2
+
+/** 骨組みと ready のセルで同じ最小高さを使い、読み込み完了時のレイアウトシフトを防ぐ。 */
+const QUICK_CHECK_MIN_HEIGHT = "min-h-[108px]"
+
 export interface ChildRouteQuickCheck {
   id: string
   title: string
   value: string
+  /** 値の下に小さく添える補足(例: 徒歩約12分)。 */
+  detail?: string
   href: string
   description?: string
 }
@@ -43,6 +50,13 @@ interface ChildRouteDashboardProps {
   quickChecks?: ChildRouteQuickCheck[]
   retryHref?: string
   newsPreview?: NewsPreviewItem[]
+}
+
+/** セルの数に合わせて列数を決める(Tailwind が拾えるようクラス名は固定の文字列で持つ)。 */
+function getQuickCheckGridClass(count: number) {
+  if (count >= 3) return "grid-cols-3"
+  if (count === 2) return "grid-cols-2"
+  return "grid-cols-1"
 }
 
 /** 状態メッセージ付きの案内パネル(empty / needs_setup / error 共通の見た目)。 */
@@ -106,15 +120,14 @@ export function ChildRouteDashboard({
       ? errorMessage
       : "時間をおいて再試行するか、マップで通学路を確認してください。"
 
+  const leadText = `${childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を毎朝3分で確認できます。`
+
   const getQuickCheckIcon = (item: ChildRouteQuickCheck) => {
     if (item.id === "share" || item.title.includes("共有")) {
       return MessagesSquare
     }
     if (item.id === "route" || item.title.includes("ルート")) {
       return Route
-    }
-    if (item.id === "update" || item.title.includes("更新")) {
-      return Clock3
     }
 
     return MapPin
@@ -141,29 +154,36 @@ export function ChildRouteDashboard({
                 今日の通学3分チェック
               </h2>
               <p className="mt-1 text-xs md:hidden" style={{ color: C.inkSoft }}>
-                {childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を30秒で確認できます。
+                {leadText}
               </p>
             </div>
             <p className="hidden text-sm leading-6 md:block" style={{ color: C.inkSoft }}>
-              {childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を30秒で確認できます。
+              {leadText}
             </p>
-            <Link
-              href="/map"
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold text-white transition-transform active:translate-y-[2px] active:shadow-none ${tankenTokens.cls.focus}`}
-              style={{ background: C.primary, boxShadow: "0 3px 0 #0C7A55" }}
-            >
-              地図を見る
-              <ChevronRight className="h-3 w-3" aria-hidden="true" />
-            </Link>
+            {/* 通学路が未登録のときは「通学路を登録する」だけを出し、次の行動を1つに絞る */}
+            {state !== "empty" && (
+              <Link
+                href="/map"
+                className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold text-white transition-transform active:translate-y-[2px] active:shadow-none ${tankenTokens.cls.focus}`}
+                style={{ background: C.primary, boxShadow: "0 3px 0 #0C7A55" }}
+              >
+                地図を見る
+                <ChevronRight className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            )}
           </div>
 
           {state === "loading" ? (
             // ready 時と同じ高さを確保してレイアウトシフトを防ぐ
-            <div className="mt-2 grid grid-cols-3 gap-2" aria-label="読み込み中" role="status">
-              {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              className={`mt-2 grid ${getQuickCheckGridClass(LOADING_PLACEHOLDER_COUNT)} gap-2`}
+              aria-label="読み込み中"
+              role="status"
+            >
+              {Array.from({ length: LOADING_PLACEHOLDER_COUNT }).map((_, index) => (
                 <div
                   key={index}
-                  className="flex min-h-[104px] animate-pulse flex-col items-center justify-center gap-2 rounded-[14px] border p-2.5"
+                  className={`flex ${QUICK_CHECK_MIN_HEIGHT} animate-pulse flex-col items-center justify-center gap-2 rounded-[14px] border p-2.5`}
                   style={{ background: C.paperDeep, borderColor: tankenTokens.border.faint }}
                 >
                   <div className="h-4 w-10 rounded-full" style={{ background: "rgba(67,57,43,.12)" }} />
@@ -199,7 +219,7 @@ export function ChildRouteDashboard({
             />
           ) : (
             <>
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className={`mt-2 grid ${getQuickCheckGridClass(quickChecks.length)} gap-2`}>
                 {quickChecks.map((item) => {
                   const Icon = getQuickCheckIcon(item)
 
@@ -207,7 +227,7 @@ export function ChildRouteDashboard({
                     <Link
                       key={item.id}
                       href={item.href}
-                      className={`group flex min-h-[104px] flex-col items-center justify-center rounded-[14px] border p-2.5 text-center transition-transform hover:-translate-y-0.5 ${tankenTokens.cls.focus}`}
+                      className={`group flex ${QUICK_CHECK_MIN_HEIGHT} flex-col items-center justify-center rounded-[14px] border p-2.5 text-center transition-transform hover:-translate-y-0.5 ${tankenTokens.cls.focus}`}
                       style={{
                         background: C.paperDeep,
                         borderColor: tankenTokens.border.faint,
@@ -216,6 +236,11 @@ export function ChildRouteDashboard({
                       <span className="text-base font-black leading-tight" style={{ color: C.ink }}>
                         {item.value}
                       </span>
+                      {item.detail ? (
+                        <span className="mt-0.5 text-xs font-bold leading-tight" style={{ color: C.ink }}>
+                          {item.detail}
+                        </span>
+                      ) : null}
                       <div
                         className="my-1 inline-flex h-7 w-7 items-center justify-center rounded-full"
                         style={{ background: C.primarySoft, color: C.primaryStrong }}
@@ -223,7 +248,7 @@ export function ChildRouteDashboard({
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       </div>
                       <p
-                        className="line-clamp-2 text-[10px] font-bold leading-tight"
+                        className="line-clamp-2 text-xs font-bold leading-tight"
                         style={{ color: C.inkSoft }}
                       >
                         {item.title}

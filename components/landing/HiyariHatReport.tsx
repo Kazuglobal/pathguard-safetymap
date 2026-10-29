@@ -169,6 +169,7 @@ export function HiyariHatReport() {
               city={region.city}
               school={region.school}
               cityOptions={region.cityOptions}
+              cityOptionsState={region.cityOptionsState}
               onPrefectureChange={region.handlePrefectureChange}
               onCityChange={region.handleCityChange}
               onSchoolChange={region.handleSchoolChange}

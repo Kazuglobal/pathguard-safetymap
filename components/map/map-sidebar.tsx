@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { getRegionChipOptions } from "@/lib/user-region"
+import { NATIONWIDE, getRegionChipOptions } from "@/lib/user-region"
 import { getDangerLevelPresentation } from "@/lib/report-generation/danger-level-presentation"
 import { getDangerTypeLabel } from "@/components/danger-report/detail/report-detail-utils"
 
@@ -135,7 +135,12 @@ export default function MapSidebar({
         <div className="flex-1 overflow-hidden flex flex-col">
           <div className="shrink-0 max-h-full overflow-y-auto p-4 border-b border-gray-200">
             <h2 className="font-bold text-lg mb-2 pr-10">危険箇所の報告</h2>
-            <p className="mb-3 text-xs leading-relaxed text-slate-600">地図の表示範囲内・{filterOptions.prefecture}の報告です。警察庁の事故ピンはこの一覧には含まれません。</p>
+            <p className="mb-3 text-xs leading-relaxed text-slate-600">
+              {filterOptions.prefecture === NATIONWIDE
+                ? "地図の表示範囲内の報告です。"
+                : `地図の表示範囲内で、${filterOptions.prefecture}の報告だけにしぼっています。`}
+              警察庁の事故ピンはこの一覧には含まれません。
+            </p>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="list">報告一覧</TabsTrigger>

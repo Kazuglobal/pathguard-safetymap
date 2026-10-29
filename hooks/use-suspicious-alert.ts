@@ -44,6 +44,30 @@ interface UseSuspiciousAlertParams {
   toast: ReturnType<typeof useToast>["toast"]
 }
 
+/** 報告メニュー(中央ボタンのシート)から地図へ来たことを示すクエリ。 */
+const SUSPICIOUS_ALERT_QUERY_KEY = "suspiciousAlert"
+
+/**
+ * いまの URL から ?suspiciousAlert だけを取り除く(ほかのクエリと #hash は残す)。
+ *
+ * 残したままだと、地図を開いたまま同じ URL(/map?suspiciousAlert=1)へもう一度 push しても
+ * useSearchParams の値が変わらず、二度目からフォームが開かない。
+ * Next.js は history.replaceState を拾って useSearchParams を更新する。第1引数は必ず null にする
+ * (いまの history.state をそのまま渡すと Next.js 内部の呼び出しとみなされ、ルーター側の URL が古いまま残る)。
+ */
+function removeSuspiciousAlertQueryFromUrl() {
+  if (typeof window === "undefined") return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has(SUSPICIOUS_ALERT_QUERY_KEY)) return
+  url.searchParams.delete(SUSPICIOUS_ALERT_QUERY_KEY)
+  try {
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`)
+  } catch (error) {
+    // URL の後片づけに失敗しても、フォームはもう開いているので地図の操作は続けられる
+    console.error("URL から ?suspiciousAlert を消せませんでした", error)
+  }
+}
+
 /**
  * 不審者アラートの地図フロー一式（表示トグル・?suspiciousAlert=1 での起動・
  * 入力中ドラフトの円/ピン表示・送信とAI一次審査反映）。
@@ -70,11 +94,13 @@ export function useSuspiciousAlert({
   const suspiciousMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const suspiciousAlertSearchParams = useSearchParams()
 
-  // 報告メニューから ?suspiciousAlert=1 で来たら専用フォームを開く
+  // 報告メニューから ?suspiciousAlert=1 で来たら専用フォームを開き、合図は URL から消す
+  // (残すと、地図にいるまま同じ URL へもう一度来てもフォームが開かない)
   useEffect(() => {
     if (!suspiciousAlertSearchParams) return
-    if (suspiciousAlertSearchParams.get("suspiciousAlert") === "1") {
+    if (suspiciousAlertSearchParams.get(SUSPICIOUS_ALERT_QUERY_KEY) === "1") {
       setIsSuspiciousAlertOpen(true)
+      removeSuspiciousAlertQueryFromUrl()
     }
   }, [suspiciousAlertSearchParams])
 

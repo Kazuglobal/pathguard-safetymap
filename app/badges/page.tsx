@@ -6,10 +6,11 @@ import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/login-path";
 
 export default async function BadgePage() {
   const actor = await getActor();
-  if (actor.kind !== "user") redirect("/login?redirect=/badges");
+  if (actor.kind !== "user") redirect(loginPathFor("/badges"));
   const isLoggedIn = true;
   const result = await listBadges(actor, actor.id);
   const allBadges = result.badges;

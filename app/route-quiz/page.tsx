@@ -339,7 +339,7 @@ export default function RouteQuizPage() {
         </section>
 
         {/* サイドパネル */}
-        <aside className="min-h-0 flex-1 overflow-y-auto border-t p-4 pb-28 md:w-[380px] md:flex-none md:border-l md:border-t-0 md:pb-6" style={{ background: t.color.card, borderColor: t.border.faint }}>
+        <aside className="min-h-0 flex-1 overflow-y-auto border-t p-4 pb-28 md:w-[380px] md:flex-none md:border-l md:border-t-0 md:pb-28 lg:pb-6" style={{ background: t.color.card, borderColor: t.border.faint }}>
           {step === "select" && (
             <div className="space-y-3">
               <p className="text-center text-sm font-black" style={{ color: t.color.accentStrong }}>ちずを 2かい タップしてね</p>
