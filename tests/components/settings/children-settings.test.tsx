@@ -122,6 +122,31 @@ describe("ChildrenSettings(お子さまの登録)", () => {
     expect(confirmSpy).not.toHaveBeenCalled()
   })
 
+  it("「消す」で確かめに切り替えたら、すぐ「消す」の確定に移る(キーボードの位置を見失わない)", async () => {
+    setupApi([child({ id: "child-1", nickname: "さくちゃん" })])
+    const user = userEvent.setup()
+    render(<ChildrenSettings />)
+
+    await user.click(await screen.findByRole("button", { name: "さくちゃんを消す" }))
+
+    expect(screen.getByRole("button", { name: "消す" })).toHaveFocus()
+  })
+
+  it("消せなかったときは「消せませんでした」と出す(「保存できませんでした」と言わない)", async () => {
+    setupApi([child({ id: "child-1", nickname: "さくちゃん" })])
+    const user = userEvent.setup()
+    render(<ChildrenSettings />)
+    await user.click(await screen.findByRole("button", { name: "さくちゃんを消す" }))
+    const original = globalThis.fetch
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => (init?.method === "DELETE"
+      ? new Response(JSON.stringify({ error: "Failed to delete child" }), { status: 500 })
+      : original(url, init))))
+
+    await user.click(screen.getByRole("button", { name: "消す" }))
+
+    expect(await screen.findByText("消せませんでした。時間をおいてもう一度お試しください。")).toBeInTheDocument()
+  })
+
   it("読み込めなかったら理由と「もう一度読み込む」を出す", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })))
     render(<ChildrenSettings />)

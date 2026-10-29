@@ -77,6 +77,8 @@ function ChildForm({ initial, submitLabel, onSubmit, onCancel }: ChildFormProps)
         <label htmlFor={`${idPrefix}-nickname`} className="text-sm font-bold">呼び名</label>
         <input
           id={`${idPrefix}-nickname`}
+          // 「なおす」「お子さまを追加」で開いたら、すぐ呼び名の欄に移る(キーボードの位置を見失わない)
+          autoFocus
           value={nickname}
           onChange={(event) => { setNickname(event.target.value); setError(null) }}
           maxLength={NICKNAME_MAX_LENGTH}
@@ -137,6 +139,7 @@ export function ChildrenSettings() {
   useEffect(() => { void load() }, [load])
 
   const send = async (url: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<string | null> => {
+    const failure = method === "POST" ? "登録できませんでした" : method === "DELETE" ? "消せませんでした" : "保存できませんでした"
     try {
       const response = await fetch(url, {
         method,
@@ -144,7 +147,13 @@ export function ChildrenSettings() {
         headers: body ? { "Content-Type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       })
-      if (!response.ok) return readError(response, "保存できませんでした。時間をおいてもう一度お試しください。")
+      if (method === "DELETE" && response.status === 404) {
+        // ほかの端末などで、もう消えていた
+        await load()
+        setMode({ kind: "idle" })
+        return null
+      }
+      if (!response.ok) return readError(response, `${failure}。時間をおいてもう一度お試しください。`)
       await load()
       setMode({ kind: "idle" })
       return null
@@ -175,7 +184,7 @@ export function ChildrenSettings() {
   return (
     <section aria-labelledby="children-settings-title" className="space-y-3" data-testid="children-settings">
       <div>
-        <h3 id="children-settings-title" className="text-base font-bold">お子さま</h3>
+        <h4 id="children-settings-title" className="text-base font-bold">お子さま</h4>
         <p className="mt-1 text-sm" style={{ color: t.color.inkSoft }}>
           本名ではなく呼び名で登録します。通学路とは別に保存し、通学路にはどの子の道かだけを結びつけます。
         </p>
@@ -227,7 +236,8 @@ export function ChildrenSettings() {
                   {mode.kind === "delete" && mode.id === child.id ? (
                     <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`${child.nickname}の登録を消すかの確認`}>
                       <p className="w-full text-xs">消しても通学路は残り、どの子の道かの指定だけが外れます。</p>
-                      <button type="button" onClick={() => { void remove(child.id) }} className={`${buttonClass} text-white`} style={{ background: "#C03A3A" }}>
+                      {/* 確かめの画面に切り替えたら、すぐ「消す」に移る(キーボードの位置を見失わない) */}
+                      <button type="button" autoFocus onClick={() => { void remove(child.id) }} className={`${buttonClass} text-white`} style={{ background: "#C03A3A" }}>
                         消す
                       </button>
                       <button type="button" onClick={() => setMode({ kind: "idle" })} className={`${buttonClass} border`} style={{ borderColor: t.border.soft }}>
