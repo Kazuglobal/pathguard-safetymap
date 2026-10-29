@@ -11,6 +11,7 @@ import {
 } from '@/lib/db/repos/danger-reports.repo'
 import { ReportCreateRateLimitError, ReportCreateUnavailableError } from '@/lib/db/report-create-errors'
 import { createRouteReportNotification } from '@/lib/db/repos/notifications.repo'
+import { withGsiAddressFallback } from '@/lib/geocoding/gsi-reverse-geocode'
 import { checkApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 export const runtime = 'nodejs'
@@ -128,7 +129,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
     const bodyObject = body as JsonObject
-    const report = await createDangerReport(actor, parseInput(bodyObject))
+    const input = await withGsiAddressFallback(parseInput(bodyObject))
+    if (!input.prefecture?.trim()) {
+      console.warn('[api/reports] address lookup failed; saving without prefecture')
+    }
+    const report = await createDangerReport(actor, input)
     const routeName = typeof bodyObject.route_context_name === 'string'
       ? bodyObject.route_context_name.trim()
       : ''
