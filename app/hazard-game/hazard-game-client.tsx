@@ -327,12 +327,13 @@ export default function HazardGameClient() {
                 写真危険発見ゲーム
               </h1>
             </div>
-            <Link href="/dashboard" className="flex-shrink-0">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">ダッシュボード</span>
-              </Button>
-            </Link>
+            {/* ダッシュボードはマイページにまとめた(UIUX改装 項目6) */}
+            <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+              <Link href="/mypage" aria-label="マイページへもどる">
+                <ArrowLeft className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+                <span className="hidden sm:inline">マイページ</span>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

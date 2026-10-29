@@ -1,11 +1,13 @@
 "use client"
 
-import { Bell, BellOff } from "lucide-react"
+import { Bell, BellOff, SquarePlus } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardIcon } from "@/components/ui/card"
 import type { UsePushSubscriptionReturn } from "@/hooks/use-push-subscription"
+import { IosInstallSteps } from "@/components/pwa/ios-install-steps"
 import { BRAND } from "@/lib/brand"
+import { getPushUnavailableReason, type PushUnavailableReason } from "@/lib/pwa-install"
 import { tankenTokens } from "@/lib/design/tanken"
 import type { NotificationPreferences } from "@/lib/notifications/builders"
 
@@ -44,18 +46,54 @@ const cardStyle = {
   borderRadius: t.radius.card,
 } as const
 
+/** 通知を受け取れない環境で出す説明(カードを消さずに理由を出す。UIUX改装 項目37) */
+const UNAVAILABLE_COPY: Record<PushUnavailableReason, { title: string; description: string }> = {
+  "ios-needs-home-screen": {
+    title: "ホーム画面に追加すると通知を受け取れます",
+    description: "iPhone・iPad では、ホーム画面に追加したアプリから通知を受け取れます。追加したアイコンから開いて、ここで通知をオンにしてください。",
+  },
+  "ios-too-old": {
+    title: "この端末では通知を受け取れません",
+    description: "iOS 16.4 より前の iPhone・iPad は、通知に対応していません。iOS を新しくすると受け取れるようになります。",
+  },
+  browser: {
+    title: "このブラウザでは通知を受け取れません",
+    description: "このブラウザ(アプリの中で開いたページなど)は通知に対応していません。Chrome・Edge・Safari などで開くと受け取れます。",
+  },
+}
+
 /**
  * マイページ専用の通知カード。
  * usePushSubscription の状態に応じて「導線 / 設定 / 注意書き」を出し分ける。
- * 未対応ブラウザでは何も描画しない（空のベージュ矩形を出さない）。
+ * 通知を受け取れない環境でもカードを消さず、理由(iPhone・iPad ならホーム画面に追加する手順)を出す。
  * フックはページ側で一度だけ呼び、状態を props で受け取る。
  */
 export function MypageNotificationCard({ push }: { push: UsePushSubscriptionReturn }) {
   const { state, preferences, subscribe, unsubscribe, updatePreferences } = push
 
-  // 未対応ブラウザでは枠ごと非表示にする
   if (state === "unsupported") {
-    return null
+    // 状態はブラウザで確かめてから決まる(最初の描画は loading)ので、ここで window を読んでよい
+    const reason = getPushUnavailableReason()
+    const copy = UNAVAILABLE_COPY[reason]
+    return (
+      <Card className="border" style={cardStyle} data-testid="mypage-notification-unavailable">
+        <CardHeader className="flex-row items-center gap-3 pb-3">
+          <CardIcon
+            icon={reason === "ios-needs-home-screen" ? <SquarePlus className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+            color={reason === "ios-needs-home-screen" ? "info" : "warning"}
+          />
+          <div>
+            <CardTitle style={{ color: t.color.ink }}>{copy.title}</CardTitle>
+            <CardDescription style={{ color: t.color.inkSoft }}>{copy.description}</CardDescription>
+          </div>
+        </CardHeader>
+        {reason === "ios-needs-home-screen" && (
+          <CardContent className="p-6 pt-0">
+            <IosInstallSteps className="space-y-1.5 text-sm" />
+          </CardContent>
+        )}
+      </Card>
+    )
   }
 
   // 状態確認中は何も出さない。通知設定は非クリティカルなので、

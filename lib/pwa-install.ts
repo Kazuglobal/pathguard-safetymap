@@ -55,6 +55,22 @@ export function isStandaloneDisplayMode(): boolean {
 }
 
 /**
+ * 通知を受け取れない理由(マイページの通知カードで、カードを消さずに理由を出すため。UIUX改装 項目37)。
+ * - ios-needs-home-screen: iPhone・iPad のブラウザで開いている。ホーム画面に追加すると受け取れる
+ * - ios-too-old: iOS 16.4 より前で、Web の通知に対応していない
+ * - browser: このブラウザ(アプリ内ブラウザなど)が通知に対応していない
+ */
+export type PushUnavailableReason = "ios-needs-home-screen" | "ios-too-old" | "browser"
+
+export function getPushUnavailableReason(): PushUnavailableReason {
+  if (typeof window === "undefined") return "browser"
+  const ua = window.navigator.userAgent
+  if (!isIosDevice(ua, window.navigator.maxTouchPoints ?? 0)) return "browser"
+  if (isIosPushIncapableVersion(ua)) return "ios-too-old"
+  return isStandaloneDisplayMode() ? "browser" : "ios-needs-home-screen"
+}
+
+/**
  * 「ホーム画面に追加」案内を出すべき状態か。
  * = iOS端末 かつ ブラウザタブ内(非standalone) かつ Push対応バージョン(16.4+)
  */

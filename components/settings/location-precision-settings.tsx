@@ -75,7 +75,7 @@ export function LocationPrecisionSettings() {
   return (
     <section aria-labelledby="location-precision-title" className="space-y-3" data-testid="location-precision-settings">
       <div>
-        <h4 id="location-precision-title" className="text-base font-bold">位置の保存のしかた</h4>
+        <h3 id="location-precision-title" className="text-base font-bold">位置の保存のしかた</h3>
         <p className="mt-1 text-sm" style={{ color: t.color.inkSoft }}>
           どちらでも、自宅と学校の場所は保存しません。
         </p>

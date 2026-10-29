@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation"
-import { loginPathFor } from "@/lib/auth/login-path"
-import UserDashboard from "@/components/dashboard/user-dashboard"
-import { getCurrentUserAdminStatus } from "@/lib/admin-auth"
 
-export default async function DashboardPage() {
-  const { isAuthenticated } = await getCurrentUserAdminStatus()
-  if (!isAuthenticated) {
-    redirect(loginPathFor("/dashboard"))
-  }
-
-  return <UserDashboard />
+/**
+ * ホームは /landing の1つにし、ポイント・レベル・確認中の件数はマイページの「自分の記録」へ移した(UIUX改装 項目6)。
+ * 古いリンクやブックマークから来た人のために、ページだけ残してマイページへ送る。
+ * ログインしていない人は、/mypage の側でログイン画面へ送られる。
+ */
+export default function DashboardPage() {
+  redirect("/mypage")
 }

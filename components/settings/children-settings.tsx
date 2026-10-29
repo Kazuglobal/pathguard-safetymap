@@ -184,7 +184,7 @@ export function ChildrenSettings() {
   return (
     <section aria-labelledby="children-settings-title" className="space-y-3" data-testid="children-settings">
       <div>
-        <h4 id="children-settings-title" className="text-base font-bold">お子さま</h4>
+        <h3 id="children-settings-title" className="text-base font-bold">お子さま</h3>
         <p className="mt-1 text-sm" style={{ color: t.color.inkSoft }}>
           本名ではなく呼び名で登録します。通学路とは別に保存し、通学路にはどの子の道かだけを結びつけます。
         </p>
