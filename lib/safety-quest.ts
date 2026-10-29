@@ -5,20 +5,6 @@ export type SafetyQuestSourceType = "report" | "sample" | "private"
 export type SafetyQuestDifficulty = "easy" | "normal" | "hard"
 export type SafetyQuestAttemptMode = "hazard" | "quiz-battle" | "private-practice"
 
-export type SafetyQuestReportRow = {
-  id: string
-  title: string | null
-  status: string | null
-  image_url: string | null
-  processed_image_url: string | null
-  processed_image_urls: string[] | null
-  city: string | null
-  town: string | null
-  prefecture: string | null
-  danger_type: string | null
-  danger_level: number | null
-}
-
 export type SafetyQuestChallenge = {
   id: string
   sourceType: SafetyQuestSourceType
@@ -51,7 +37,6 @@ export type SafetyQuestAttemptResult = {
   educationalFeedback: string[]
 }
 
-const ELIGIBLE_REPORT_STATUSES = new Set(["approved", "published", "resolved"])
 const PRIVATE_PRACTICE_POINT_CAP = 120
 
 function detection(
@@ -93,57 +78,7 @@ export const SAMPLE_SAFETY_QUEST_CHALLENGES: readonly SafetyQuestChallenge[] = [
   },
 ]
 
-function getImageUrl(row: SafetyQuestReportRow): string | null {
-  return row.processed_image_urls?.[0] ?? row.processed_image_url ?? row.image_url
-}
-
-function getAreaLabel(row: SafetyQuestReportRow): string {
-  const label = [row.city, row.town].filter(Boolean).join(" ")
-  return label || row.prefecture || "地域未設定"
-}
-
-function getDifficulty(dangerLevel: number | null): SafetyQuestDifficulty {
-  if ((dangerLevel ?? 0) >= 4) return "hard"
-  if ((dangerLevel ?? 0) >= 2) return "normal"
-  return "easy"
-}
-
-function buildReportDetections(row: SafetyQuestReportRow): readonly DetectionItem[] {
-  const label = row.danger_type || "通学路の危険"
-  const dangerLevel = row.danger_level ?? 2
-  const confidence = Math.min(0.95, 0.55 + dangerLevel * 0.08)
-
-  return [
-    {
-      category: "hazards",
-      label,
-      description: `${getAreaLabel(row)}で投稿された危険情報です。`,
-      count: 1,
-      confidence,
-      coverageRatio: 0.04,
-      positions: [{ x: 0.42, y: 0.38, width: 0.2, height: 0.2 }],
-    },
-  ]
-}
-
-export function buildSafetyQuestChallengesFromReports(rows: readonly SafetyQuestReportRow[]): SafetyQuestChallenge[] {
-  return rows
-    .filter((row) => row.status != null && ELIGIBLE_REPORT_STATUSES.has(row.status))
-    .map((row) => ({ row, imageUrl: getImageUrl(row) }))
-    .filter((entry): entry is { row: SafetyQuestReportRow; imageUrl: string } => Boolean(entry.imageUrl))
-    .map(({ row, imageUrl }) => ({
-      id: `report-${row.id}`,
-      sourceType: "report" as const,
-      reportId: row.id,
-      title: row.title || "通学路チャレンジ",
-      imageUrl,
-      thumbnailUrl: imageUrl,
-      areaLabel: getAreaLabel(row),
-      difficulty: getDifficulty(row.danger_level),
-      status: "active" as const,
-      aiDetections: buildReportDetections(row),
-    }))
-}
+// 利用者の報告の写真はクエストに使わない(UIUX改装 項目57)。問題は自前の見本(SAMPLE_SAFETY_QUEST_CHALLENGES)だけ
 
 export function calculateSafetyQuestPoints({
   rawPoints,

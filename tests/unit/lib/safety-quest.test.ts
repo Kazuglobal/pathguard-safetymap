@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 
 import {
   SAMPLE_SAFETY_QUEST_CHALLENGES,
-  buildSafetyQuestChallengesFromReports,
   calculateSafetyQuestPoints,
   scoreSafetyQuestAttempt,
 } from "@/lib/safety-quest"
@@ -47,60 +46,10 @@ function marker(overrides: Partial<UserMarker>): UserMarker {
 }
 
 describe("safety-quest domain logic", () => {
-  it("builds playable public challenges only from approved report photos without exposing coordinates", () => {
-    const challenges = buildSafetyQuestChallengesFromReports([
-      {
-        id: "approved-report",
-        title: "交差点",
-        status: "approved",
-        image_url: "https://example.com/original.jpg",
-        processed_image_url: null,
-        processed_image_urls: null,
-        city: "福岡市",
-        town: "中央区",
-        prefecture: "福岡県",
-        danger_type: "intersection",
-        danger_level: 4,
-      },
-      {
-        id: "pending-report",
-        title: "未審査",
-        status: "pending",
-        image_url: "https://example.com/pending.jpg",
-        processed_image_url: null,
-        processed_image_urls: null,
-        city: "福岡市",
-        town: null,
-        prefecture: "福岡県",
-        danger_type: "road",
-        danger_level: 2,
-      },
-      {
-        id: "no-photo",
-        title: "写真なし",
-        status: "resolved",
-        image_url: null,
-        processed_image_url: null,
-        processed_image_urls: null,
-        city: "福岡市",
-        town: null,
-        prefecture: "福岡県",
-        danger_type: "road",
-        danger_level: 2,
-      },
-    ])
-
-    expect(challenges).toHaveLength(1)
-    expect(challenges[0]).toMatchObject({
-      id: "report-approved-report",
-      sourceType: "report",
-      reportId: "approved-report",
-      imageUrl: "https://example.com/original.jpg",
-      areaLabel: "福岡市 中央区",
-      difficulty: "hard",
-    })
-    expect(JSON.stringify(challenges[0])).not.toContain("latitude")
-    expect(JSON.stringify(challenges[0])).not.toContain("longitude")
+  it("問題は自前の見本だけ(利用者の報告の写真は使わない。UIUX改装 項目57)", () => {
+    expect(SAMPLE_SAFETY_QUEST_CHALLENGES.length).toBeGreaterThan(0)
+    expect(SAMPLE_SAFETY_QUEST_CHALLENGES.every((challenge) => challenge.sourceType === "sample")).toBe(true)
+    expect(JSON.stringify(SAMPLE_SAFETY_QUEST_CHALLENGES)).not.toContain("danger-reports/")
   })
 
   it("scores marker attempts by matching user boxes against AI detections", () => {

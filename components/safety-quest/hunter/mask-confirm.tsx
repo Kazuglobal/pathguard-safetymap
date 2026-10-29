@@ -38,9 +38,6 @@ import {
 
 const C = tokens.color
 
-// 出力サイズの計算は lib/media/masking.ts へ移した。既存の import のためにここからも出す
-export { calculateMaskedOutputSize } from "@/lib/media/masking"
-
 export interface MaskConfirmProps {
   /** ユーザーが選んだ元画像 (端末内のみで処理) */
   file: File

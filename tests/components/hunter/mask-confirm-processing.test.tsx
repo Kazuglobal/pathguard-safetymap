@@ -1,9 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import {
-  calculateMaskedOutputSize,
-  MaskConfirm,
-} from "@/components/safety-quest/hunter/mask-confirm"
+import { MaskConfirm } from "@/components/safety-quest/hunter/mask-confirm"
+import { calculateMaskedOutputSize } from "@/lib/media/masking"
 
 class PendingImage {
   onload: (() => void) | null = null
