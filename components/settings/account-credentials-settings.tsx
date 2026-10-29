@@ -62,7 +62,7 @@ export function AccountCredentialsSettings() {
       return
     }
     setEmail("")
-    setEmailMessage({ kind: "ok", text: "確認のメールを送りました。メールのリンクを開くと、新しいメールアドレスに変わります。" })
+    setEmailMessage({ kind: "ok", text: "確認のメールを送りました。メールのリンクを開くと、新しいメールアドレスに変わります(いまのアドレスにも確認のメールが届いたときは、両方のリンクを開いてください)。" })
   }
 
   const changePassword = async (event: FormEvent) => {

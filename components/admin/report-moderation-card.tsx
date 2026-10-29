@@ -82,7 +82,10 @@ export function ReportModerationCard(props: {
   onRemasked?: (reportId: string) => void
 }) {
   const { report, updating, onStatusChange, onRemasked } = props
-  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker()
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
+    description: "以前の(ぼかしていない)写真をぼかし直します。",
+    notice: "ぼかした写真に置き換え、元の写真はサーバーから消します。報告を公開すると、ほかの人にはぼかした写真が表示されます。",
+  })
   const [remasking, setRemasking] = useState(false)
   const [remaskError, setRemaskError] = useState<string | null>(null)
 
@@ -177,7 +180,7 @@ export function ReportModerationCard(props: {
                     disabled={remasking}
                     className="inline-flex min-h-9 items-center rounded-full border border-border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
                   >
-                    {remasking ? "置き換え中…" : "ぼかして公開する"}
+                    {remasking ? "置き換え中…" : "写真をぼかし直す"}
                   </button>
                   {remaskError && <p role="alert" className="text-xs text-red-700">{remaskError}</p>}
                 </div>

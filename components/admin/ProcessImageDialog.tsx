@@ -41,7 +41,10 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
   // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
   const signedOriginalImageUrl = useDangerReportSignedImageUrl(null, report.originalImageUrl || null);
   // 上げる画像も端末で顔などをぼかしてから送る(ぼかした画像だけを、ほかの人に見せるため。UIUX改装 項目57)
-  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker();
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
+    description: "公開する前に、写っている人や車が分からないようにします。",
+    notice: "この加工した画像だけを保存します。ほかの人には、報告を公開したときに表示されます。",
+  });
 
   useEffect(() => {
     if (selectedFile) {

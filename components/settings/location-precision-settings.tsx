@@ -57,7 +57,7 @@ export function LocationPrecisionSettings() {
       if (!response.ok) throw new Error(`profile ${response.status}`)
       setCurrent(value)
       setPending(null)
-      setMessage({ kind: "ok", text: value === "coarse" ? "粗く保存にしました。保存済みの通学路からも道すじを消しました。" : "ふつうの保存にしました。" })
+      setMessage({ kind: "ok", text: value === "coarse" ? "粗く保存にしました。保存済みの通学路からも道すじを消しました。" : "ふつうの保存にしました。「粗く保存」のあいだに消した道すじは戻りません。通学路の道すじを引き直すと、通学路の近く(300m以内)の知らせに戻ります。" })
     } catch {
       setMessage({ kind: "error", text: "保存できませんでした。時間をおいてもう一度お試しください。" })
     } finally {

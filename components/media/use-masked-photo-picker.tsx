@@ -22,7 +22,14 @@ interface PendingRequest {
   readonly resolve: (photo: MaskedPhoto | null) => void
 }
 
-export function useMaskedPhotoPicker(): {
+export interface MaskedPhotoPickerCopy {
+  /** ダイアログの説明(既定は投稿のとき向け) */
+  description?: string
+  /** 写真の扱いの知らせ(既定は投稿のとき向け。管理画面のぼかし直しなど、使う場面に合わせて変える) */
+  notice?: string
+}
+
+export function useMaskedPhotoPicker(copy: MaskedPhotoPickerCopy = {}): {
   requestMaskedPhoto: (file: File) => Promise<MaskedPhoto | null>
   photoMaskerDialog: ReactNode
 } {
@@ -60,12 +67,13 @@ export function useMaskedPhotoPicker(): {
       <DialogContent className="z-[90] max-h-[92dvh] overflow-y-auto sm:max-w-lg" overlayClassName="z-[90]" data-testid="photo-masker-dialog">
         <DialogHeader>
           <DialogTitle>写真の顔とナンバーを隠す</DialogTitle>
-          <DialogDescription>投稿する前に、写っている人や車が分からないようにします。</DialogDescription>
+          <DialogDescription>{copy.description ?? "投稿する前に、写っている人や車が分からないようにします。"}</DialogDescription>
         </DialogHeader>
         {request && (
           <PhotoMasker
             key={request.id}
             file={request.file}
+            notice={copy.notice}
             onConfirm={(photo) => finish(request.id, photo)}
             onCancel={() => finish(request.id, null)}
           />

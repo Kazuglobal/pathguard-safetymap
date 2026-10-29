@@ -34,7 +34,10 @@ export function ReportAdminImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replaceInputRef = useRef<HTMLInputElement>(null)
   const [replaceTargetIndex, setReplaceTargetIndex] = useState<number | null>(null)
-  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker()
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
+    description: "公開する前に、写っている人や車が分からないようにします。",
+    notice: "この加工した画像だけを保存します。ほかの人には、報告を公開したときに表示されます。",
+  })
 
   if (!isAdmin) return null
 

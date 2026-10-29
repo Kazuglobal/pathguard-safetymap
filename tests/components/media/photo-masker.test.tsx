@@ -110,6 +110,13 @@ describe("PhotoMasker(写真を端末でぼかす)", () => {
     await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1))
   })
 
+  it("写真の扱いの知らせは、使う場面に合わせて変えられる(管理画面のぼかし直しでは「投稿」「端末の外に出さない」と言わない)", () => {
+    render(<PhotoMasker file={photo()} notice="ぼかした写真に置き換え、元の写真はサーバーから消します。" onConfirm={vi.fn()} onCancel={vi.fn()} />)
+
+    expect(screen.getByTestId("photo-masker-ai-notice")).toHaveTextContent("ぼかした写真に置き換え、元の写真はサーバーから消します。")
+    expect(screen.getByTestId("photo-masker-ai-notice")).not.toHaveTextContent("端末の外に出しません")
+  })
+
   it("WebP を書き出せないブラウザでは JPEG にする", async () => {
     webpSupported = false
     const onConfirm = vi.fn()

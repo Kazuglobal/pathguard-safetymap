@@ -49,7 +49,7 @@ describe("審査カードの写真のぼかし直し(UIUX改装 項目57)", () =
     render(<ReportModerationCard report={report()} updating={false} onStatusChange={vi.fn()} onRemasked={onRemasked} />)
 
     expect(screen.getByText("ぼかし待ち(ほかの人には写真を出していません)")).toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole("button", { name: "ぼかして公開する" }))
+    await userEvent.setup().click(screen.getByRole("button", { name: "写真をぼかし直す" }))
 
     await waitFor(() => expect(onRemasked).toHaveBeenCalledWith("report-1"))
     expect(masking.requestMaskedPhoto).toHaveBeenCalledWith(expect.any(File))
@@ -61,12 +61,12 @@ describe("審査カードの写真のぼかし直し(UIUX改装 項目57)", () =
   it("ぼかすのをやめたら置き換えない。ぼかし済みの写真にはボタンを出さない", async () => {
     masking.requestMaskedPhoto.mockResolvedValue(null)
     const { rerender } = render(<ReportModerationCard report={report()} updating={false} onStatusChange={vi.fn()} />)
-    await userEvent.setup().click(screen.getByRole("button", { name: "ぼかして公開する" }))
+    await userEvent.setup().click(screen.getByRole("button", { name: "写真をぼかし直す" }))
     await waitFor(() => expect(masking.requestMaskedPhoto).toHaveBeenCalled())
     expect(uploads).toEqual([])
 
     rerender(<ReportModerationCard report={report({ image_masked: true })} updating={false} onStatusChange={vi.fn()} />)
-    expect(screen.queryByRole("button", { name: "ぼかして公開する" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "写真をぼかし直す" })).not.toBeInTheDocument()
     expect(screen.getByAltText("報告の写真(管理者だけに表示)")).toBeInTheDocument()
   })
 })

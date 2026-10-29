@@ -1532,7 +1532,7 @@ export default function DangerReportForm({
                   />
                 </div>
                 <p className="text-xs leading-relaxed" style={{ color: tankenTokens.color.inkSoft }} data-testid="photo-requirements">
-                  JPEG・PNG・WebP(iPhone の写真もOK)・10MBまで。大きい写真は自動で小さくします。顔は自動でぼかし、ナンバーなどは指で隠してから使います。
+                  JPEG・PNG・WebP(iPhone の写真もOK)。10MBまでの写真を選べます(送る前に自動で小さくします)。顔は自動でぼかし、ナンバーなどは指で隠してから使います。
                 </p>
 
                 {cameraError && (
