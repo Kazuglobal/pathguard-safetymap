@@ -36,7 +36,7 @@ export function LpVideo() {
     <section id="video" ref={sectionRef} className="bg-[#26221E] py-28 md:py-36">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <p data-reveal className="mb-4 text-center text-sm font-semibold tracking-[0.2em] text-[#E8A33D]">
-          MOVIE
+          {LP_VIDEO.eyebrow}
         </p>
         <h2
           data-reveal

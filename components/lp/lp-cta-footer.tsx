@@ -2,7 +2,39 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { LP_CTA } from "@/lib/lp-content"
+
+import { InstagramLink, OPERATOR_LABEL, SITE_FOOTER_LINKS } from "@/components/layout/site-footer"
+import { useOptionalAuth } from "@/components/providers/auth-context"
+import { LP_CTA, LP_OPEN_APP } from "@/lib/lp-content"
+
+const PRIMARY_CTA_CLASS =
+  "font-lp-display -rotate-1 rounded-full bg-[#E8A33D] px-10 py-4 text-base font-black text-[#2B2723] shadow-[6px_6px_0_rgba(0,0,0,0.45)] transition-transform hover:-translate-y-0.5 hover:rotate-0 hover:scale-[1.03] active:scale-[0.98]"
+
+/** ログイン済みの人には「無料ではじめる」ではなく、ヘッダーと同じ「アプリを開く」を出す */
+function CtaButtons() {
+  const status = useOptionalAuth()?.status ?? "unauthenticated"
+  if (status === "loading") return <span aria-hidden="true" className="h-14 w-56 rounded-full bg-white/10" />
+  if (status === "authenticated") {
+    return (
+      <Link href={LP_OPEN_APP.href} className={PRIMARY_CTA_CLASS}>
+        {LP_OPEN_APP.label}
+      </Link>
+    )
+  }
+  return (
+    <>
+      <Link href={LP_CTA.primary.href} className={PRIMARY_CTA_CLASS}>
+        {LP_CTA.primary.label}
+      </Link>
+      <Link
+        href={LP_CTA.secondary.href}
+        className="font-lp-display rounded-full border-2 border-white/40 px-10 py-4 text-base font-bold text-white/90 transition-colors hover:border-white hover:text-white"
+      >
+        {LP_CTA.secondary.label}
+      </Link>
+    </>
+  )
+}
 
 export function LpCtaFooter() {
   return (
@@ -30,47 +62,36 @@ export function LpCtaFooter() {
               </span>
             ))}
           </h2>
-          <p data-reveal className="mt-5 text-base text-white/70">
+          <p data-reveal className="mt-5 text-base text-white/75">
             {LP_CTA.sub}
           </p>
           <div data-reveal className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href={LP_CTA.primary.href}
-              className="font-lp-display -rotate-1 rounded-full bg-[#E8A33D] px-10 py-4 text-base font-black text-[#2B2723] shadow-[6px_6px_0_rgba(0,0,0,0.45)] transition-transform hover:-translate-y-0.5 hover:rotate-0 hover:scale-[1.03] active:scale-[0.98]"
-            >
-              {LP_CTA.primary.label}
-            </Link>
-            <Link
-              href={LP_CTA.secondary.href}
-              className="font-lp-display rounded-full border-2 border-white/40 px-10 py-4 text-base font-bold text-white/90 transition-colors hover:border-white hover:text-white"
-            >
-              {LP_CTA.secondary.label}
-            </Link>
+            <CtaButtons />
           </div>
         </div>
       </div>
 
-      {/* フッター */}
+      {/* フッター(アプリの共通フッターと同じリンク・公式 Instagram・運営者の表記。UIUX改装 項目4・32・41) */}
       <div className="relative border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 px-5 py-10 md:flex-row md:justify-between md:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 py-10 md:flex-row md:flex-wrap md:justify-between md:px-8">
           <p className="text-sm font-bold text-white/85">
             Path<span className="text-[#E8A33D]">Guardian</span>
           </p>
-          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/55">
-            <Link href="/terms" className="transition-colors hover:text-white">
-              利用規約
+          <nav aria-label="サイトの情報" className="flex flex-wrap items-center justify-center gap-x-6 text-sm text-white/75">
+            {SITE_FOOTER_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                {link.label}
+              </Link>
+            ))}
+            <Link href={LP_OPEN_APP.href} className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+              {LP_OPEN_APP.label}
             </Link>
-            <Link href="/privacy" className="transition-colors hover:text-white">
-              プライバシーポリシー
-            </Link>
-            <Link href="/contact" className="transition-colors hover:text-white">
-              お問い合わせ
-            </Link>
-            <Link href="/landing" className="transition-colors hover:text-white">
-              アプリを開く
-            </Link>
+            <InstagramLink className="transition-colors hover:text-white" />
           </nav>
-          <p className="text-xs text-white/60">© {new Date().getFullYear()} PathGuardian</p>
+          <div className="text-center text-xs text-white/70 md:text-right">
+            <p>{OPERATOR_LABEL}</p>
+            <p className="mt-1">© {new Date().getFullYear()} PathGuardian</p>
+          </div>
         </div>
       </div>
     </footer>

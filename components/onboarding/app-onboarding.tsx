@@ -53,7 +53,7 @@ const SLIDES: readonly Slide[] = [
     sticker: "その3",
     title: "きになる ばしょは、しゃしんで パチリ",
     body: "「ここ あぶないかも？」と おもったら、その場で ほうこく。ちずに スタンプが ついて、ご近所の かぞくにも つたわるよ。",
-    parentNote: "報告は承認制。顔やナンバーは加工してから共有されます。",
+    parentNote: "報告は公開前にAIが確認し、写真つきの報告は運営スタッフも確認します。写真の顔やナンバーは、スマホの中でぼかしてから送ります。",
   },
   {
     image: "/images/onboarding/app-onboarding-4.png",
@@ -250,7 +250,7 @@ export function AppOnboarding({
               <div className="flex shrink-0 items-center justify-between px-4 pt-[max(env(safe-area-inset-top),14px)]">
                 <span
                   className="text-[13px] font-black tracking-wide"
-                  style={{ color: C.inkFaint }}
+                  style={{ color: C.inkSoft }}
                   aria-hidden="true"
                 >
                   はじめてガイド
@@ -334,7 +334,7 @@ export function AppOnboarding({
                       <div className="mt-2.5 flex min-h-[44px] items-start justify-center">
                         {slide.parentNote ? (
                           <p
-                            className="inline-block rounded-full px-3.5 py-1.5 text-[11.5px] font-bold leading-snug"
+                            className="inline-block rounded-full px-3.5 py-1.5 text-[12px] font-bold leading-snug"
                             style={{ color: C.inkSoft, background: "rgba(67,57,43,.06)" }}
                           >
                             {slide.parentNote}

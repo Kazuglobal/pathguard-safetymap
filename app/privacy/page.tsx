@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { RETENTION_DAYS } from "@/lib/retention/policy"
 
 export const metadata: Metadata = {
@@ -61,7 +62,8 @@ export default function PrivacyPage() {
         <p>
           投稿内容と写真は、公開してよいかの確認や危険の解析のため、Google(Gemini)・Anthropic(Claude)・OpenAI の AI サービスへ送ります。
           送るのはぼかした写真だけですが、ぼかしは完全ではないため、写っている人や車が分かりにくい写真をお選びください。
-          写真つきの投稿や判断がむずかしい投稿は、運営スタッフも確認します。
+          {/* 紹介HP・よくある質問と同じ説明(lib/product-facts.ts) */}
+          {PRODUCT_FACTS.moderation.adult}
         </p>
         <p>以前に投稿された(ぼかしていない)写真は、運営がぼかし直すまで、ほかの利用者には表示しません。</p>
       </LegalSection>
