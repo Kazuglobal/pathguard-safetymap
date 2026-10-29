@@ -153,7 +153,7 @@ export function buildHotspotPopupContent(spot: AccidentHotspotSummary): HTMLDivE
   }
   root.appendChild(chart)
 
-  root.appendChild(line(HOTSPOT_ATTRIBUTION, { fontSize: '10px', color: tankenTokens.color.inkFaint, marginTop: '6px' }))
+  root.appendChild(line(HOTSPOT_ATTRIBUTION, { fontSize: '12px', color: tankenTokens.color.inkSoft, marginTop: '6px' }))
   return root
 }
 

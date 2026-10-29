@@ -203,7 +203,7 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
               {previewUrl ? (
                 <img src={previewUrl} alt="source preview" className="w-full h-auto rounded border" />
               ) : (
-                <div className="w-full h-40 border rounded flex items-center justify-center text-gray-400 text-xs sm:text-sm">
+                <div className="w-full h-40 border rounded flex items-center justify-center text-gray-500 text-xs sm:text-sm">
                   写真が未指定です
                 </div>
               )}
@@ -213,7 +213,7 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
                 <p className="text-xs sm:text-sm text-gray-700 mb-2">
                   カテゴリ別に色分けして危険箇所を描画します:
                 </p>
-                <div className="grid grid-cols-2 gap-1 text-[10px] sm:text-xs">
+                <div className="grid grid-cols-2 gap-1 text-[12px] sm:text-xs">
                   <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-green-400 mr-1" /> 安全設備</span>
                   <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-red-400 mr-1" /> 危険要素</span>
                   <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-blue-400 mr-1" /> 交通</span>
@@ -257,22 +257,22 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200 text-center">
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">マッチ数</p>
+                <p className="text-[12px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">マッチ数</p>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
                   {result.comparison.matches.length}
-                  <span className="text-xs sm:text-sm font-normal text-gray-400">
+                  <span className="text-xs sm:text-sm font-normal text-gray-500">
                     /{userMarking.markers.length}
                   </span>
                 </p>
               </div>
               <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200 text-center">
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">精度スコア</p>
+                <p className="text-[12px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">精度スコア</p>
                 <p className="text-lg sm:text-2xl font-bold text-blue-600">
                   {result.comparison.accuracyScore}%
                 </p>
               </div>
               <div className="bg-purple-50 p-2 sm:p-3 rounded-lg border border-purple-200 text-center">
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">ボーナス</p>
+                <p className="text-[12px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">ボーナス</p>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
                   +{result.comparison.bonusPoints}pt
                 </p>
@@ -301,12 +301,12 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
                                 ? "secondary"
                                 : "outline"
                           }
-                          className="text-[10px] sm:text-xs flex-shrink-0"
+                          className="text-[12px] sm:text-xs flex-shrink-0"
                         >
                           {Math.round(match.overlapRatio * 100)}%一致
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500">
+                      <div className="flex items-center gap-2 text-[12px] sm:text-xs text-gray-500">
                         {match.categoryMatch && (
                           <span className="text-green-600">カテゴリ一致 +5pt</span>
                         )}
@@ -397,13 +397,13 @@ export function AnalysisResults({ result, onPlayAgain, sourceImageFile, userMark
                         <span className="text-gray-900 min-w-0">{risk.description}</span>
                         <Badge
                           variant={risk.severity === "high" ? "destructive" : risk.severity === "medium" ? "default" : "secondary"}
-                          className="text-[10px] sm:text-xs flex-shrink-0"
+                          className="text-[12px] sm:text-xs flex-shrink-0"
                         >
                           {risk.severity === "high" ? "高" : risk.severity === "medium" ? "中" : "低"}
                         </Badge>
                       </div>
                       {risk.relatedDetections.length > 0 && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500">
                           関連: {risk.relatedDetections.join(", ")}
                         </p>
                       )}

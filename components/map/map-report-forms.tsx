@@ -10,7 +10,7 @@ const DangerReportForm = dynamic(() => import("@/components/danger-report/danger
   ssr: false,
   loading: () => (
     <div className="flex min-h-[240px] items-center justify-center p-6" role="status" aria-live="polite">
-      <p className="text-sm font-bold" style={{ color: "#847661" }}>
+      <p className="text-sm font-bold" style={{ color: "#746855" }}>
         報告フォームを準備しています…
       </p>
     </div>
@@ -94,7 +94,7 @@ export function MapReportForms({
           type="button"
           onClick={onMobileClose}
           className="inline-flex min-h-[40px] items-center rounded-full px-3 text-[13px] font-black"
-          style={{ color: "#847661" }}
+          style={{ color: "#746855" }}
         >
           とじる
         </button>

@@ -12,7 +12,7 @@ export function AiDisclaimerNote({ compact = false, className = "" }: AiDisclaim
   return (
     <p
       className={`text-gray-500 leading-relaxed ${
-        compact ? "text-[11px]" : "text-xs"
+        compact ? "text-[12px]" : "text-xs"
       } ${className}`}
     >
       ※ このAI分析は参考情報です。誤りを含むことがあり、安全を保証するものではありません。最終的な判断は必ず大人の方が行ってください。

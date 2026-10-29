@@ -155,7 +155,7 @@ export function NewsFeedClient({ items }: NewsFeedClientProps) {
                   </p>
                 </>
               ) : (
-                <p className="text-sm font-medium text-gray-400">
+                <p className="text-sm font-medium text-gray-500">
                   きょうのダイジェストを確認しています…
                 </p>
               )}
@@ -225,15 +225,15 @@ export function NewsFeedClient({ items }: NewsFeedClientProps) {
                   className="rounded-xl border border-orange-100 bg-white p-4"
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="flex items-center gap-1 rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="flex items-center gap-1 rounded bg-orange-500 px-1.5 py-0.5 text-[12px] font-bold text-white">
                       <AlertCircle className="h-3 w-3" />
                       {ALERT_CATEGORY_LABELS[alert.category] ?? "その他"}
                     </span>
-                    <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                    <span className="flex items-center gap-0.5 text-[12px] text-gray-500">
                       <Clock className="h-2.5 w-2.5" />
                       {formatRelativeTime(alert.occurred_at)}
                     </span>
-                    <span className="flex items-center gap-0.5 text-[10px] text-gray-500">
+                    <span className="flex items-center gap-0.5 text-[12px] text-gray-500">
                       <MapPin className="h-2.5 w-2.5" />
                       {alert.prefecture}
                       {alert.city && ` ${alert.city}`}

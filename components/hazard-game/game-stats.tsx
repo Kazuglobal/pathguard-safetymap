@@ -52,7 +52,7 @@ export function GameStats({ stats, getUserRank, getAchievementLevel }: GameStats
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <div className="text-gray-400 mb-4">
+          <div className="text-gray-500 mb-4">
             <Target className="h-12 w-12 mx-auto" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">

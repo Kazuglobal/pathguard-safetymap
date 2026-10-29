@@ -43,7 +43,7 @@ export function MapImagePopupContent({
     return (
       <div className="w-28 sm:w-36 rounded-xl border border-blue-100 bg-white/90 px-3 py-2 shadow-md">
         <div className="flex aspect-[4/3] w-full items-center justify-center">
-          <span className="text-xs text-slate-400">読み込み中...</span>
+          <span className="text-xs text-slate-500">読み込み中...</span>
         </div>
       </div>
     )

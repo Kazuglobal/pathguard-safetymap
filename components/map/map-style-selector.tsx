@@ -168,7 +168,7 @@ export default function MapStyleSelector({
                     </span>
                   </span>
                   {isSelected ? (
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-600 px-1.5 py-1 text-[12px] font-semibold text-white">
                       <Check className="h-3 w-3" />
                       表示中
                     </span>
@@ -215,7 +215,7 @@ export default function MapStyleSelector({
                   </span>
                 </span>
                 {option.selected ? (
-                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-1.5 py-1 text-[12px] font-semibold text-white">
                     <Check className="h-3 w-3" />
                     表示中
                   </span>

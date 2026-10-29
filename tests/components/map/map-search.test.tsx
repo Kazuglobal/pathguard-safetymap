@@ -56,7 +56,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "東京" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
 
@@ -104,7 +104,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "〇〇小学校" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("〇〇小学校, 東京都千代田区")).toBeInTheDocument()
 
@@ -158,7 +158,7 @@ describe("MapSearch", () => {
       fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
         target: { value: facilityName },
       })
-      fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+      fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
       expect(await screen.findByText(`${facilityName}, 東京都千代田区`)).toBeInTheDocument()
 
@@ -198,7 +198,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "小学校通り" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("千代田区立小学校通り, 東京都")).toBeInTheDocument()
 
@@ -237,7 +237,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "〇〇高等学校" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("〇〇高等学校, 東京都港区")).toBeInTheDocument()
 
@@ -278,7 +278,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "東京" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -319,7 +319,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "東京" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
 
@@ -393,7 +393,7 @@ describe("MapSearch", () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
       target: { value: "千代田" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: /search/i }).closest("form")!)
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
 
     expect(await screen.findByText("東京都千代田区")).toBeInTheDocument()
     expect(mockFlyTo).toHaveBeenCalledWith({

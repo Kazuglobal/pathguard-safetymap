@@ -43,7 +43,7 @@ export function LegalPageShell({
         <h1 className="mt-6 text-2xl font-bold sm:text-3xl" style={{ color: tankenTokens.color.ink }}>
           {title}
         </h1>
-        <p className="mt-2 text-xs" style={{ color: tankenTokens.color.inkFaint }}>
+        <p className="mt-2 text-xs" style={{ color: tankenTokens.color.inkSoft }}>
           最終更新日: {updatedAt}
         </p>
 

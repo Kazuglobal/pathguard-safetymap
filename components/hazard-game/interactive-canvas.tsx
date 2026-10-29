@@ -303,7 +303,7 @@ export function InteractiveCanvas({
             className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-100"
           >
             {!imageLoaded && (
-              <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
                 画像を読み込み中...
               </div>
             )}
@@ -341,7 +341,7 @@ export function InteractiveCanvas({
               )}
             </div>
             {markers.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-2">
+              <p className="text-xs text-gray-500 text-center py-2">
                 写真上をドラッグしてマーキングしてください
               </p>
             ) : (
@@ -365,7 +365,7 @@ export function InteractiveCanvas({
                     </div>
                     <button
                       onClick={() => handleRemoveMarker(marker.id)}
-                      className="text-gray-400 hover:text-red-500 p-1"
+                      className="text-gray-500 hover:text-red-500 p-1"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>

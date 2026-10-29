@@ -22,7 +22,7 @@ const CATEGORY_CONFIG: Record<LocalAlertCategory, { label: string; color: string
   suspicious: { label: "不審者情報", color: "#D8660A" },
   voice_call: { label: "声かけ事案", color: "#D95555" },
   following:  { label: "つきまとい",  color: "#C03A3A" },
-  other:      { label: "その他",     color: "#847661" },
+  other:      { label: "その他",     color: "#746855" },
 }
 
 /** 選択肢を読み込んでいる select だけに「読み込み中…」を出す */
@@ -93,7 +93,7 @@ export function LocalSafetyAlertsSection() {
               リアルタイム
             </span>
           </div>
-          <p className="px-0.5 text-xs" style={{ color: C.inkFaint }}>
+          <p className="px-0.5 text-xs" style={{ color: C.inkSoft }}>
             3時間毎に収集・5分毎に自動更新
           </p>
         </div>
@@ -154,7 +154,7 @@ export function LocalSafetyAlertsSection() {
           {enabled && isLoading && (
             <div
               className="flex min-h-[88px] animate-pulse items-center justify-center rounded-[18px] border p-6 text-sm"
-              style={{ background: C.card, borderColor: tankenTokens.border.faint, color: C.inkFaint }}
+              style={{ background: C.card, borderColor: tankenTokens.border.faint, color: C.inkSoft }}
             >
               確認しています…
             </div>
@@ -226,21 +226,21 @@ export function LocalSafetyAlertsSection() {
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
                         <span
-                          className="rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+                          className="rounded px-1.5 py-0.5 text-[12px] font-bold text-white"
                           style={{ backgroundColor: config.color }}
                         >
                           {config.label}
                         </span>
                         {breaking && (
                           <span
-                            className="inline-flex animate-pulse items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+                            className="inline-flex animate-pulse items-center gap-0.5 rounded px-1.5 py-0.5 text-[12px] font-bold text-white"
                             style={{ background: C.danger }}
                           >
                             <span className="h-1 w-1 rounded-full bg-white" />
                             新着
                           </span>
                         )}
-                        <span className="flex items-center gap-0.5 text-[10px]" style={{ color: C.inkFaint }}>
+                        <span className="flex items-center gap-0.5 text-[12px]" style={{ color: C.inkSoft }}>
                           <Clock className="h-2.5 w-2.5" aria-hidden="true" />
                           {formatRelativeTime(alert.occurred_at)}
                         </span>
@@ -273,7 +273,7 @@ export function LocalSafetyAlertsSection() {
                             href={alert.source_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`flex items-center gap-0.5 rounded text-[10px] font-bold hover:underline ${tankenTokens.cls.focus}`}
+                            className={`flex items-center gap-0.5 rounded text-[12px] font-bold hover:underline ${tankenTokens.cls.focus}`}
                             style={{ color: C.sky }}
                           >
                             <ExternalLink className="h-3 w-3" aria-hidden="true" />

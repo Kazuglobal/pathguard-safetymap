@@ -224,7 +224,7 @@ export function ProfileEditDialog({
                     className="h-24 w-24 rounded-full bg-slate-200 flex items-center justify-center"
                     data-testid="user-avatar"
                   >
-                    <User className="h-12 w-12 text-slate-400" />
+                    <User className="h-12 w-12 text-slate-500" />
                   </div>
                 )}
                 <button

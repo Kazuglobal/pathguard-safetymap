@@ -40,7 +40,7 @@ export function NearbyHotspotsSection({
           );
         })}
       </ul>
-      <p className="mt-1.5 text-[10px]" style={{ color: tankenTokens.color.inkFaint }}>
+      <p className="mt-1.5 text-[12px]" style={{ color: tankenTokens.color.inkSoft }}>
         半径30m以内で5年間に5件以上の地点 ・{HOTSPOT_ATTRIBUTION}
       </p>
     </section>

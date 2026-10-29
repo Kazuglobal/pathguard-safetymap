@@ -94,7 +94,7 @@ export default function SafeMagazinePage() {
                           {IconComponent && <IconComponent className="w-3.5 h-3.5" />}
                           {article.categoryLabel}
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
                           <Clock className="w-3.5 h-3.5" />
                           {formatDate(article.publishedDate)}
                         </div>
@@ -122,7 +122,7 @@ export default function SafeMagazinePage() {
                           </span>
                         ))}
                         {article.tags.length > 3 && (
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-500">
                             +{article.tags.length - 3}
                           </span>
                         )}

@@ -126,7 +126,7 @@ export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
           {showDetails && (
             <CardContent className="pt-0">
               <div className="space-y-2">
-                <div className="text-xs text-gray-400 flex justify-between px-1">
+                <div className="text-xs text-gray-500 flex justify-between px-1">
                   <span>項目</span>
                   <span>減点</span>
                 </div>

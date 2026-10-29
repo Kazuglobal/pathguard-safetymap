@@ -24,7 +24,7 @@ export const tankenTokens = {
     card: "#FFFDF7",
     /** インク(文字) */
     ink: "#43392B",
-    inkSoft: "#847661",
+    inkSoft: "#746855",
     inkFaint: "#B7AB93",
     /** 森のみどり(主行動・発見) */
     primary: "#159E72",

@@ -219,7 +219,7 @@ export function HiyariHatReport() {
                     >
                       {dangerLabel}
                     </span>
-                    <span className="text-xs" style={{ color: C.inkFaint }}>
+                    <span className="text-xs" style={{ color: C.inkSoft }}>
                       {timeLabel}
                     </span>
                   </div>
@@ -270,7 +270,7 @@ export function HiyariHatReport() {
                         tankenTokens.cls.focus,
                         reactions[report.id]?.helpful
                           ? "bg-blue-100 text-blue-600"
-                          : "bg-[#F3EAD6] text-[#847661] hover:bg-[#EDE2C8]"
+                          : "bg-[#F3EAD6] text-[#746855] hover:bg-[#EDE2C8]"
                       )}
                     >
                       <ThumbsUp className="h-4 w-4" aria-hidden="true" />
@@ -284,7 +284,7 @@ export function HiyariHatReport() {
                         tankenTokens.cls.focus,
                         reactions[report.id]?.caution
                           ? "bg-orange-100 text-orange-600"
-                          : "bg-[#F3EAD6] text-[#847661] hover:bg-[#EDE2C8]"
+                          : "bg-[#F3EAD6] text-[#746855] hover:bg-[#EDE2C8]"
                       )}
                     >
                       <AlertCircle className="h-4 w-4" aria-hidden="true" />

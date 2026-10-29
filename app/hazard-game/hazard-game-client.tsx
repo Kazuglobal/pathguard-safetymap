@@ -248,7 +248,7 @@ export default function HazardGameClient() {
               disabled={isAnalyzing}
               variant="ghost"
               size="sm"
-              className="text-xs text-gray-400 hover:text-gray-600 underline"
+              className="text-xs text-gray-500 hover:text-gray-600 underline"
             >
               {isAnalyzing ? "分析中..." : "マーキングをスキップして直接分析"}
             </Button>

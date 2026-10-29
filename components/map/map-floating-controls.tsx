@@ -102,7 +102,7 @@ export default function MapFloatingControls({
               className="flex h-5 w-5 items-center justify-center rounded-full sm:h-6 sm:w-6"
               style={{ background: C.primarySoft }}
             >
-              <span className="text-[10px] font-black sm:text-xs" style={{ color: C.primaryStrong }}>
+              <span className="text-[12px] font-black sm:text-xs" style={{ color: C.primaryStrong }}>
                 L{level}
               </span>
             </div>

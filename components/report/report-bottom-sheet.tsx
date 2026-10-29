@@ -90,9 +90,9 @@ export function ReportBottomSheet({ open, onOpenChange }: ReportBottomSheetProps
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[14.5px] font-black" style={{ color: C.ink }}>きけんハンターを はじめる</p>
-              <p className="text-[11.5px] font-bold" style={{ color: C.inkSoft }}>しゃしんを えらんで、きけんを さがそう</p>
+              <p className="text-[12px] font-bold" style={{ color: C.inkSoft }}>しゃしんを えらんで、きけんを さがそう</p>
             </div>
-            <ChevronRight className="h-5 w-5 shrink-0" style={{ color: C.inkFaint }} />
+            <ChevronRight className="h-5 w-5 shrink-0" style={{ color: C.inkSoft }} />
           </button>
 
           <button
@@ -109,9 +109,9 @@ export function ReportBottomSheet({ open, onOpenChange }: ReportBottomSheetProps
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[14.5px] font-black" style={{ color: C.ink }}>不審者アラートを地図化</p>
-              <p className="text-[11.5px] font-bold" style={{ color: C.inkSoft }}>学校からの不審者情報を地図ですぐ共有</p>
+              <p className="text-[12px] font-bold" style={{ color: C.inkSoft }}>学校からの不審者情報を地図ですぐ共有</p>
             </div>
-            <ChevronRight className="h-5 w-5 shrink-0" style={{ color: C.inkFaint }} />
+            <ChevronRight className="h-5 w-5 shrink-0" style={{ color: C.inkSoft }} />
           </button>
         </div>
       </SheetContent>

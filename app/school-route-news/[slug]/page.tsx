@@ -85,7 +85,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
             {item.location.prefecture}{item.location.city ? ` ${item.location.city}` : ""}
             {item.location.area ? ` ${item.location.area}` : ""}
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400">
+          <div className="flex items-center gap-1 text-xs text-gray-500">
             <Clock className="w-3.5 h-3.5" />
             {formatNewsDate(item.publishedDate)}
           </div>
@@ -243,7 +243,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
             ))}
           </ul>
           {item.verifiedAt && (
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-xs text-gray-500">
               検証日時: {formatNewsDate(item.verifiedAt)}
             </p>
           )}

@@ -120,7 +120,7 @@ export function SuspiciousPanelContent({
         不審者アラートを投稿
       </Button>
       {!hasReports && (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-500">
           まだ不審者情報がありません。「不審者アラートを投稿」から登録できます。
         </p>
       )}

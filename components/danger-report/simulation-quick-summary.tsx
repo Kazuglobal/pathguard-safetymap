@@ -47,7 +47,7 @@ export function SimulationQuickSummary({
         ) : null}
 
         <div className="border-t border-slate-100 pt-3">
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
             <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
             危険要約
           </p>
@@ -56,8 +56,8 @@ export function SimulationQuickSummary({
 
         {action ? (
           <div className="border-t border-slate-100 pt-3">
-            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
-              <Footprints className="h-3.5 w-3.5 text-slate-400" />
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <Footprints className="h-3.5 w-3.5 text-slate-500" />
               回避行動
             </p>
             <p className="text-sm leading-6 text-slate-700">{action}</p>

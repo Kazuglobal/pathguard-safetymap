@@ -347,7 +347,7 @@ export default function SafetyQuestClient() {
               const content = (
                 <>
                   <Icon className="h-4 w-4" />
-                  <span className="text-[10px] opacity-75">{item.concept}</span>
+                  <span className="text-[12px] opacity-75">{item.concept}</span>
                   {item.label}
                 </>
               )

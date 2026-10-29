@@ -430,7 +430,7 @@ export default function MapSearch({
           variant="ghost"
           className="absolute right-0 top-0 h-full"
           disabled={isSearching}
-          aria-label="search"
+          aria-label="検索する"
         >
           {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>

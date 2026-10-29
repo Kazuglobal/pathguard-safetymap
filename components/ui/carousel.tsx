@@ -139,7 +139,7 @@ const Carousel = React.forwardRef<
           onKeyDownCapture={handleKeyDown}
           className={cn("relative", className)}
           role="region"
-          aria-roledescription="carousel"
+          aria-roledescription="スライド"
           {...props}
         >
           {children}
@@ -182,7 +182,7 @@ const CarouselItem = React.forwardRef<
     <div
       ref={ref}
       role="group"
-      aria-roledescription="slide"
+      aria-roledescription="スライドの1枚"
       className={cn(
         "min-w-0 shrink-0 grow-0 basis-full",
         orientation === "horizontal" ? "pl-4" : "pt-4",
@@ -217,7 +217,7 @@ const CarouselPrevious = React.forwardRef<
       {...props}
     >
       <ArrowLeft className="h-4 w-4" />
-      <span className="sr-only">Previous slide</span>
+      <span className="sr-only">前のスライド</span>
     </Button>
   )
 })
@@ -246,7 +246,7 @@ const CarouselNext = React.forwardRef<
       {...props}
     >
       <ArrowRight className="h-4 w-4" />
-      <span className="sr-only">Next slide</span>
+      <span className="sr-only">次のスライド</span>
     </Button>
   )
 })

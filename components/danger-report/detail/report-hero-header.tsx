@@ -54,7 +54,7 @@ export function ReportHeroHeader({ report }: ReportHeroHeaderProps) {
             RLSで投稿者本人にしか見えないため、この表示は本人向け */}
         {statusPresentation.moderationNote && (
           <div className="flex items-start gap-1.5 rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-600">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-400" />
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-gray-500" />
             <span>{statusPresentation.moderationNote}</span>
           </div>
         )}
@@ -67,17 +67,17 @@ export function ReportHeroHeader({ report }: ReportHeroHeaderProps) {
         {/* Address line */}
         {(address || postalCode) ? (
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-500" />
             <span>
               {address}
               {postalCode && (
-                <span className="ml-1 text-gray-400">{postalCode}</span>
+                <span className="ml-1 text-gray-500">{postalCode}</span>
               )}
             </span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-sm text-gray-500">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-500" />
             <span>{formatCoordinates(report.latitude, report.longitude)} 付近</span>
           </div>
         )}

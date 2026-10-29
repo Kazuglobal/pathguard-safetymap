@@ -316,7 +316,7 @@ export function ReportRegionFilter({
                         {result.name}
                       </span>
                       {result.address && (
-                        <span className={`block truncate text-[11px] ${isTanken ? "" : "text-slate-400"}`}>
+                        <span className={`block truncate text-[12px] ${isTanken ? "" : "text-slate-500"}`}>
                           {result.address}
                         </span>
                       )}
