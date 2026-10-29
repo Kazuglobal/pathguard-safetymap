@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { ArrowRight, BadgeCheck, Gift } from "lucide-react"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 import { REPORT_PATH } from "@/lib/report-entry"
+import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
 
 /**
  * ミッション種別(missions.target_type) → 開始導線。
@@ -36,6 +37,7 @@ export default function MissionsPage() {
   return (
     <div className="min-h-screen px-4 py-8" style={{ backgroundColor: t.color.paper, backgroundImage: PAPER_NOISE, color: t.color.ink }}>
       <div className="mx-auto max-w-3xl">
+      <KidsUmbrellaLabel className="text-center" />
       <h1 className="text-2xl font-bold mb-6 text-center">ミッション</h1>
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">

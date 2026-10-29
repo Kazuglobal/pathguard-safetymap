@@ -6,6 +6,7 @@ import {
   LocalSafetyAlertsSection,
   HazardMapBanner,
   FamilyTalkCard,
+  HunterPlayBlock,
   SafeMagazine,
   HiyariHatReport,
 } from "@/components/landing"
@@ -52,6 +53,9 @@ export default function LandingPage() {
 
         {/* こんやの かぞく さくせんかいぎ */}
         <FamilyTalkCard />
+
+        {/* 子ども向けの遊びの入口は、この1つだけ(UIUX改装 項目8) */}
+        <HunterPlayBlock />
 
         {/* SAFE MAGAZINE */}
         <SafeMagazine />

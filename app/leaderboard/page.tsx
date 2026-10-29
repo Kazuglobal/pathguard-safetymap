@@ -5,6 +5,7 @@ import { getLeaderboard } from "@/lib/db/repos/gamification.repo"
 import Link from "next/link"
 import { Camera, Flag, MapPin, MessageCircleQuestion } from "lucide-react"
 import { Mascot } from "@/components/safety-quest/hunter/theme"
+import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
 export const metadata = {
@@ -31,6 +32,7 @@ export default async function LeaderboardPage() {
   return (
     <div className="min-h-screen py-8" style={{ backgroundColor: t.color.paper, backgroundImage: PAPER_NOISE, color: t.color.ink }}>
       <div className="max-w-3xl mx-auto px-4">
+        <KidsUmbrellaLabel className="text-center" />
         <h1 className="text-2xl font-bold mb-6 text-center">ランキング</h1>
         {rankRows.length === 0 ? (
           <section className="rounded-[22px] border p-5 text-center sm:p-8" style={{ background: t.color.card, borderColor: t.border.soft, boxShadow: t.shadow.card }}>

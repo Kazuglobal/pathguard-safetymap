@@ -51,4 +51,16 @@ describe("LandingPage 今日の通学3分チェック integration", () => {
     expect(within(dashboard).queryByText(/^\d+件$/)).not.toBeInTheDocument()
     expect(within(dashboard).queryByText("未設定")).not.toBeInTheDocument()
   })
+
+  // 子ども向けの遊びの入口は「きけんハンターで あそぶ」の1つにまとめる(UIUX改装 項目8)
+  it("offers the kids games through a single 「きけんハンターで あそぶ」 block", () => {
+    const { container } = render(<LandingPage />)
+
+    const block = screen.getByRole("region", { name: "きけんハンターで あそぶ" })
+    expect(within(block).getByRole("link", { name: /あそんでみる/ })).toHaveAttribute("href", "/safety-quest/hunter")
+    expect(container.querySelectorAll('a[href="/safety-quest/hunter"]')).toHaveLength(1)
+    for (const href of ["/hazard-game", "/route-quiz", "/safety-quest"]) {
+      expect(container.querySelector(`a[href="${href}"]`)).toBeNull()
+    }
+  })
 })
