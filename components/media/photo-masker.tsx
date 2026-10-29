@@ -194,7 +194,7 @@ export function PhotoMasker({ file, onConfirm, onCancel }: PhotoMaskerProps) {
       ) : (
         <p className="text-sm leading-relaxed">
           {status === "ready"
-            ? `顔は自動でぼかしました(${autoRegions.length}か所)。ナンバープレート・表札・名札など、ほかに隠したいところは、写真の上を指でなぞって四角で囲んでください。`
+            ? `顔は自動でぼかしました(${autoRegions.length}か所)。遠くの人や小さく写った顔は見つからないことがあるので、写っている顔を確かめてください。ナンバープレート・表札・名札なども、写真の上を指でなぞって四角で隠せます。`
             : "写真の中の顔をさがしています…(この端末の中だけで行います)"}
         </p>
       )}

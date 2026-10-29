@@ -67,9 +67,12 @@ export async function POST(request: Request) {
       })
     })
     if (!replaced) return json('報告が見つかりません', 404)
-    // 元の(ぼかしていない)写真は消す
+    // 元の(ぼかしていない)写真は消す。消せなくても置き換えは終わっているので、失敗は記録に残す
+    // (参照されなくなった写真は、R2 の掃除と、退会のときの本人のフォルダごとの削除で消える)
     if (replaced.previousKey && replaced.previousKey !== replaced.imageKey) {
-      await bucket.delete(replaced.previousKey).catch(() => undefined)
+      await bucket.delete(replaced.previousKey).catch(() => {
+        console.error('[api/admin/reports/remask] failed to delete the unmasked original')
+      })
     }
     return json('ぼかした写真に置き換えました', 200, { imageUrl: privateMediaUrl(replaced.imageKey) })
   } catch (error) {
