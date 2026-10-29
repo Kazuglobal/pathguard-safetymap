@@ -167,7 +167,7 @@ export function ReportModerationCard(props: {
           {report.image_url && (
             <div className="mt-3 flex flex-wrap items-start gap-3" data-testid="admin-report-photo">
               {/* 管理者だけに見える写真。ぼかしていない写真もここでは表示する */}
-              <img src={report.image_url} alt="報告の写真(管理者だけに表示)" className="h-24 w-32 rounded object-cover" />
+              <img src={report.image_url} alt="報告の写真(管理者だけに表示)" loading="lazy" decoding="async" className="h-24 w-32 rounded object-cover" />
               {report.image_masked === false && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-amber-800">ぼかし待ち(ほかの人には写真を出していません)</p>

@@ -90,6 +90,22 @@ describe("D1 API backed hooks", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/routes", expect.objectContaining({ method: "POST" }))
   })
 
+  it("移行前の id(child-名前)と新しい id で同じ呼び名の通学路は、1人の子どもにまとめる", async () => {
+    const route = (id: string, childId: string | null, childName: string | null) => ({
+      id, user_id: "user-1", name: id, child_id: childId, child_name: childName, is_favorite: false,
+      start_lat: 35.69, start_lng: 139.69, end_lat: 35.69, end_lng: 139.7, start_address: "東京都新宿区", end_address: "東京都新宿区",
+      route_geometry: null, created_at: "2026-10-29T00:00:00.000Z", updated_at: "2026-10-29T00:00:00.000Z",
+    })
+    global.fetch = vi.fn(async () => json({ routes: [route("legacy", "child-さくら", "さくら"), route("new", "c-uuid-1", "さくら"), route("shared", null, null)] })) as typeof fetch
+
+    const { result } = renderHook(() => useUserRoutes())
+
+    await waitFor(() => expect(result.current.routes).toHaveLength(3))
+    const named = result.current.childProfiles.filter((profile) => profile.label === "さくら")
+    expect(named).toHaveLength(1)
+    expect(named[0]?.routeCount).toBe(2)
+  })
+
   it("loads and toggles landing reactions through the D1 API", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => init?.method === "POST"
       ? json({ active: false })

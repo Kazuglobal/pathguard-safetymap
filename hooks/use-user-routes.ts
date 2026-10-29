@@ -55,16 +55,18 @@ export function useUserRoutes() {
     const groupedProfiles = new Map<string, RouteChildProfile>()
 
     for (const route of routes) {
-      const profileId = route.child_id ?? "shared"
       const profileLabel = route.child_name?.trim() || "共通"
-      const existingProfile = groupedProfiles.get(profileId)
+      // 同じ呼び名は1人にまとめる(移行前の id「child-名前」と新しい id で、同じ子が2人に分かれないように)
+      const groupKey = route.child_name?.trim() ? `name:${profileLabel}` : "shared"
+      const profileId = route.child_name?.trim() ? route.child_id ?? groupKey : "shared"
+      const existingProfile = groupedProfiles.get(groupKey)
 
       if (existingProfile) {
         existingProfile.routeCount += 1
         continue
       }
 
-      groupedProfiles.set(profileId, {
+      groupedProfiles.set(groupKey, {
         id: profileId,
         label: profileLabel,
         routeCount: 1,

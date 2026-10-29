@@ -235,7 +235,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
   } = userRoutes
   const childProfiles = userRoutes.childProfiles ?? [{ id: "all", label: "すべて", routeCount: routes.length }]
   const childNicknameOptions = useMemo(
-    () => childProfiles.filter((profile) => profile.id !== "all" && profile.id !== "shared").map((profile) => profile.label),
+    () => [...new Set(childProfiles.filter((profile) => profile.id !== "all" && profile.id !== "shared").map((profile) => profile.label))],
     [childProfiles]
   )
 
@@ -493,8 +493,11 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
       return routes
     }
 
-    return routes.filter((route) => (route.child_id ?? "shared") === selectedChildId)
-  }, [routes, selectedChildId])
+    // 子どもは呼び名で見分ける(移行前の id と新しい id の通学路を、同じ子の通学路として出す)
+    if (selectedChildId === "shared") return routes.filter((route) => !route.child_name?.trim())
+    const selectedLabel = childProfiles.find((profile) => profile.id === selectedChildId)?.label
+    return routes.filter((route) => route.child_name?.trim() === selectedLabel)
+  }, [childProfiles, routes, selectedChildId])
 
   const comparisonRoutes = useMemo(
     () => filteredRoutes.filter((route) => comparisonRouteIds.includes(route.id)),

@@ -1,4 +1,23 @@
+import { childErrorMessage } from '@/lib/children-api'
 import type { RouteWriteInput, UserRouteWithChild } from '@/lib/db/repos/routes.repo'
+
+/**
+ * 通学路の保存の入力の誤りを、画面に出せる日本語にする(英語の内部メッセージは出さない)。
+ * 呼び名から子どもを登録するときの誤り(上限・長さなど)も含む
+ */
+export function routeErrorMessage(error: RangeError | SyntaxError): string {
+  if (error instanceof SyntaxError) return '送った内容を読み取れませんでした。もう一度お試しください'
+  switch (error.message) {
+    case 'Invalid route body':
+    case 'Missing required route fields': return '通学路の名前・出発地・到着地を入れてください'
+    case 'Invalid route name': return '通学路の名前は1〜100文字で入れてください'
+    case 'Invalid route coordinates': return '出発地・到着地の場所を選び直してください'
+    case 'Route description is too long': return 'メモは2000文字までにしてください'
+    case 'Route not found': return '通学路が見つかりませんでした'
+    case 'Too many children': return 'お子さまは10人まで登録できます。設定でお子さまを整理してから、もう一度保存してください'
+    default: return childErrorMessage(error)
+  }
+}
 
 function optionalNullableString(body: Record<string, unknown>, key: string): string | null | undefined {
   const value = body[key]
