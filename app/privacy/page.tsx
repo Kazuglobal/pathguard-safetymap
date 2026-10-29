@@ -22,7 +22,7 @@ const RETENTION_ROWS: ReadonlyArray<[string, string]> = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年10月29日">
+    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年10月30日">
       <LegalSection title="1. 基本の考え方">
         <p>
           PathGuardian(通学路みまもりアプリ)は、通学路の安全を見守るために必要な情報だけを預かり、
@@ -80,6 +80,7 @@ export default function PrivacyPage() {
           <li>Cloudflare(サイトの配信・データベース・写真の保存)</li>
           <li>Google・Anthropic・OpenAI(AI による確認と解析。上記4.)</li>
           <li>Mapbox(地図の表示と住所の検索)</li>
+          <li>国土地理院(Mapbox で住所が分からなかった報告の都道府県・市区町村を調べるため。約100mの粗さに丸めた場所だけを送ります)</li>
           <li>Sentry(不具合の記録)。通常時の画面の録画はしません。エラーが起きたときだけ、その前後の画面を、文字と画像を隠した状態で記録します。通信の記録からは、住所の検索語や地図の範囲などが入る URL の後半(「?」から後ろ)を消して送ります</li>
           <li>ブラウザの通知サービス(通知を受け取る設定をした場合)</li>
         </ul>
@@ -129,6 +130,10 @@ export default function PrivacyPage() {
 
       <LegalSection title="11. 改定の履歴" id="revisions">
         <ul className="list-disc space-y-1 pl-5">
+          <li>
+            2026年10月30日: 報告の場所から都道府県・市区町村が分からなかったとき、国土地理院に問い合わせるようにしました
+            (約100mの粗さに丸めた場所だけを送ります)。
+          </li>
           <li>
             2026年10月29日: 氏名を預からないようにしました(登録の氏名欄をなくし、既存の氏名と LINE・Google のお名前・アイコンを削除)。
             写真は端末でぼかしてから保存し、AI にもぼかした写真だけを送るようにしました。通学路の位置の保存を粗くし、
