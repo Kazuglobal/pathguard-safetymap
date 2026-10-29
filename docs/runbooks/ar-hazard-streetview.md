@@ -74,4 +74,6 @@ python scripts/migrate/import-official-hazards.py --directory artifacts/migratio
 
 選択したデザインとの比較はルートの [design-qa.md](../../design-qa.md)。負荷測定とPaid前提の見積もりは [実装前確認](../plans/2026-10-29-ar-hazard-implementation-preflight.md) を参照。
 
-2026-10-30のローカル検証では関連Vitest 18ファイル77件、プレビュー設定のNodeテスト9件、取り込みのPythonテスト6件が成功。アプリとWorkerの型検査、Next本番ビルド、変更対象のOpenNextビルド（mapUi / aiVision / core）も成功した。実画像と実機センサーをモックテストで代替済みとは扱わない。
+2026-10-30のローカル検証では関連Vitest 18ファイル77件、プレビュー設定のNodeテスト9件、取り込みのPythonテスト6件が成功。アプリの型検査、Next本番ビルド、変更対象のOpenNextビルド（mapUi / aiVision / core）も成功した。実画像と実機センサーをモックテストで代替済みとは扱わない。
+
+`tsconfig.worker.json` は全分割Workerの生成済みhandlerを参照する。対象3 Workerだけのビルドでは他の生成物がないため、全Workerを対象とする独立した型検査は未完了。公開前の全体ビルドと区別する。
