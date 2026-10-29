@@ -1,5 +1,6 @@
 import type { Actor } from '@/lib/db/authz'
 import type { dangerReports } from '@/lib/db/schema'
+import { reportMediaUrl } from '@/lib/media/report-media'
 import { isMaskedMediaKey, privateMediaUrl } from '@/lib/media/url'
 
 type DangerReportRow = typeof dangerReports.$inferSelect
@@ -50,15 +51,18 @@ const toDay = (value: string) => (/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice
  */
 export function toOthersDangerReportJson(report: DangerReportRow) {
   const base = toDangerReportJson(report)
-  // 写真ごとに、ぼかし済みの印があるものだけを返す(元の写真を差し替えても、古いもしも画像は出さない)
+  // 写真ごとに、ぼかし済みの印があるものだけを返す(元の写真を差し替えても、古いもしも画像は出さない)。
+  // URL は報告の id と写真の場所だけで作り、投稿者の id が入った保存のキーは見せない
   return {
     ...base,
     user_id: '',
     latitude: roundTo3(report.latitude),
     longitude: roundTo3(report.longitude),
-    image_url: report.imageKey && isMaskedMediaKey(report.imageKey) ? privateMediaUrl(report.imageKey) : null,
-    processed_image_url: report.processedImageKey && isMaskedMediaKey(report.processedImageKey) ? privateMediaUrl(report.processedImageKey) : null,
-    processed_image_urls: report.processedImageKeys.filter(isMaskedMediaKey).map(privateMediaUrl),
+    image_url: report.imageKey && isMaskedMediaKey(report.imageKey) ? reportMediaUrl(report.id, 'image') : null,
+    processed_image_url: report.processedImageKey && isMaskedMediaKey(report.processedImageKey) ? reportMediaUrl(report.id, 'legacy') : null,
+    processed_image_urls: report.processedImageKeys
+      .map((key, index) => (isMaskedMediaKey(key) ? reportMediaUrl(report.id, `p${index}`) : null))
+      .filter((url): url is string => url !== null),
     postal_code: null,
     address_hash: null,
     geocode_source: null,

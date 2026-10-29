@@ -2,6 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
+import { isMaskedMediaKey } from '@/lib/media/url'
 import { callClaudeVision, hasClaudeApiKey } from '@/lib/claude-vision'
 import { getDangerReportById } from '@/lib/db/repos/danger-reports.repo'
 import { callGeminiVision } from '@/lib/gemini-hazard'
@@ -60,8 +61,11 @@ export async function POST(request: Request) {
     if (!report || report.userId !== actor.id) {
       return NextResponse.json({ error: 'Report not found or not accessible' }, { status: 403 })
     }
-    const imageKey = report.imageKey ?? report.processedImageKeys[0] ?? report.processedImageKey
-    if (!imageKey) return NextResponse.json({ error: 'Report image not found' }, { status: 404 })
+    // AI に送るのは、端末でぼかした写真(ぼかし済みの印があるキー)だけ(UIUX改装 項目57)
+    const imageKey = [report.imageKey, ...report.processedImageKeys, report.processedImageKey].find(isMaskedMediaKey) ?? null
+    if (!imageKey) {
+      return NextResponse.json({ error: 'ぼかした写真が無いため解析できません。写真をぼかしてから投稿し直してください。' }, { status: 409 })
+    }
     const { env } = getCloudflareContext()
     const object = await (env as unknown as { MEDIA_PRIVATE: MediaBucket }).MEDIA_PRIVATE.get(imageKey)
     if (!object) return NextResponse.json({ error: 'Report image not found' }, { status: 404 })

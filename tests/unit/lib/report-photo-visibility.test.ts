@@ -92,8 +92,10 @@ describe('見る人に合わせた報告の JSON(UIUX改装 項目61)', () => {
   it('ぼかした写真なら、ほかの人にも写真の URL を返す(写真ごとに決める)', async () => {
     await insertReport({ imageMasked: true, imageKey: MASKED_ORIGINAL, processedImageKeys: [PROCESSED, MASKED_PROCESSED] })
     const json = toDangerReportJsonForViewer(report(), other)
-    expect(json.image_url).toBe(`/api/media/private/${MASKED_ORIGINAL}`)
-    expect(json.processed_image_urls).toEqual([`/api/media/private/${MASKED_PROCESSED}`])
+    // ほかの人には、投稿者の id が入った保存のキーではなく、報告の id と写真の場所だけの URL を返す(項目61)
+    expect(json.image_url).toBe('/api/media/report/report-1/image')
+    expect(json.processed_image_urls).toEqual(['/api/media/report/report-1/p1'])
+    expect(JSON.stringify(json)).not.toContain('owner-1')
   })
 
   it('本人と管理者には全部を返す(写真がぼかし直し待ちかも分かる)', async () => {

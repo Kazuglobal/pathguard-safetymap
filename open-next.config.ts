@@ -168,6 +168,7 @@ const routeGroups = {
     'app/api/abuse-report/route',
     'app/api/danger-report/moderate/route',
     'app/api/media/private/[...key]/route',
+    'app/api/media/report/[id]/[slot]/route',
     'app/api/reactions/route',
     'app/api/report-interactions/route',
     'app/api/reports/[id]/accident-stats/route',

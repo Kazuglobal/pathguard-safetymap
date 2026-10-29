@@ -344,7 +344,7 @@ export async function analyzeHazardWithVLM(
   }
 
   // R2 private media uses a same-origin route; legacy absolute URLs must remain HTTPS.
-  if (!imageUrl.startsWith('/api/media/private/')) {
+  if (!imageUrl.startsWith('/api/media/private/') && !imageUrl.startsWith('/api/media/report/')) {
     try {
       const parsed = new URL(imageUrl)
       if (parsed.protocol !== "https:") throw new Error("image_url must use HTTPS")
