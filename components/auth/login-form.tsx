@@ -133,7 +133,8 @@ export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) 
     <div className="space-y-4">
       <Card>
         <form onSubmit={handleLogin} aria-busy={isLoading}>
-          <CardContent className="space-y-4 pt-6">
+          {/* 余白はカードの側にある(components/ui/card.tsx の p-6)。中身に足すと上が二重に空く */}
+          <CardContent className="space-y-4">
             {formError && (
               <p
                 role="alert"

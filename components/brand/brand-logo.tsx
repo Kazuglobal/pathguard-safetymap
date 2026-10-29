@@ -6,6 +6,8 @@ import { BRAND } from "@/lib/brand"
  */
 
 const SIZES = {
+  /** 幅の狭いヘッダー(紹介HP)。スマホでは少し小さくして、横のボタンとくっつかないようにする */
+  compact: "text-base sm:text-lg",
   sm: "text-lg",
   md: "text-xl",
   lg: "text-3xl",

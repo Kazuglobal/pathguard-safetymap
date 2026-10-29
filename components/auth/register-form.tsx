@@ -115,7 +115,7 @@ export default function RegisterForm() {
   return (
     <Card>
       <form onSubmit={handleRegister} noValidate aria-busy={isLoading}>
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="space-y-4">
           <p className="text-sm leading-relaxed text-muted-foreground">{PRODUCT_FACTS.registration.summary}</p>
           {errors.form && (
             <p role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">

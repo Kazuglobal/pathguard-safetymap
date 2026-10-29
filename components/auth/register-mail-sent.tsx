@@ -52,7 +52,7 @@ export function RegisterMailSent({ email, onEditEmail }: { email: string; onEdit
 
   return (
     <Card>
-      <CardContent className="space-y-4 pt-6" data-testid="register-mail-sent">
+      <CardContent className="space-y-4" data-testid="register-mail-sent">
         <div className="flex items-start gap-3">
           <MailCheck className="mt-0.5 h-6 w-6 shrink-0 text-green-700" aria-hidden="true" />
           <div>

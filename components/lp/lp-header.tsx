@@ -63,9 +63,9 @@ export function LpHeader() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className="fixed inset-x-0 top-3 z-50 px-3 md:top-5"
     >
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between rounded-full border-2 border-[#2B2723]/10 bg-[#F3EFE4]/95 py-2 pl-5 pr-2 shadow-[0_12px_32px_-12px_rgba(43,39,35,0.35)] backdrop-blur-md md:h-16 md:pl-7">
+      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-2 rounded-full border-2 border-[#2B2723]/10 bg-[#F3EFE4]/95 py-2 pl-4 pr-2 shadow-[0_12px_32px_-12px_rgba(43,39,35,0.35)] backdrop-blur-md md:h-16 md:pl-7">
         <Link href="/lp" aria-label="PathGuardian 紹介ページの先頭へ" className="flex items-center">
-          <BrandLogo size="sm" />
+          <BrandLogo size="compact" />
         </Link>
 
         <nav aria-label="紹介ページの中の移動" className="hidden items-center gap-6 md:flex">
