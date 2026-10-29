@@ -83,6 +83,12 @@ describe('Sentry に送る URL からクエリを落とす(UIUX改装 項目60)'
     expect(scrubBreadcrumbUrls({ message: 'params query=西新宿2-8-1 lat=35.68' }).message).toBe('params [filtered] [filtered]')
   })
 
+  it('クエリの値にかっこが入っていても、1つの語に URL がいくつあっても、クエリを残さない', () => {
+    expect(scrubBreadcrumbUrls({ message: 'GET /api/mapbox/geocode?query=西新宿(2丁目)[8-1]{x} 500' }).message).toBe('GET /api/mapbox/geocode 500')
+    expect(scrubBreadcrumbUrls({ message: 'see(https://a.example/x?addr=1,https://b.example/y?lat=2)' }).message).toBe('see(https://a.example/x')
+    expect(scrubBreadcrumbUrls({ message: 'oauth code=abc state=xyz proximity=139.7,35.6' }).message).toBe('oauth [filtered] [filtered] [filtered]')
+  })
+
   it('とても長い文字列でも時間をかけずに処理する(先頭だけを残す)', () => {
     const huge = '/'.repeat(500_000)
     const started = Date.now()

@@ -16,25 +16,44 @@ export function stripUrlQuery(value: string): string {
 const MAX_SCRUB_LENGTH = 8_192
 /** 入れ子をたどる深さ */
 const MAX_DEPTH = 6
-/** 語の区切り(空白・引用符・かっこ) */
-const DELIMITERS = /([\s"'`<>()[\]{}]+)/
-/** 位置・住所・連絡先が入る名前の「名前=値」は、パスが無くても値ごと落とす */
-const SENSITIVE_PARAMETER = /(?:^|[?&;,])(?:query|q|search|address|lat|lng|lon|latitude|longitude|min_?lat|max_?lat|min_?lng|max_?lng|bbox|bounds|center|email|endpoint)=/i
+/** クエリの終わり(空白・引用符・<>)。かっこはクエリの値の中にも入るので、終わりにしない */
+const QUERY_END = /[\s"'`<>]/
+/** 位置・住所・連絡先・認証の値が入る名前の「名前=値」は、パスが無くても語ごと落とす */
+const SENSITIVE_PARAMETER = /(?:^|[^a-z0-9_])(?:query|q|search|address|addr|lat|lng|lon|latitude|longitude|min_?lat|max_?lat|min_?lng|max_?lng|bbox|bounds|center|proximity|user_?location|coordinates|waypoints|email|endpoint|code|state|token|access_token|refresh_token)=/i
 
-function scrubToken(token: string): string {
-  // URL(http://…)・パス(/… や api/…)に続くクエリを落とす
-  const queryAt = token.search(/[?#]|%3f/i)
-  if (queryAt > 0) {
-    const head = token.slice(0, queryAt)
-    if (/^(?:[a-z][a-z0-9+.-]*:\/\/|\/)/i.test(head) || head.includes('/')) return head
+/**
+ * 文字を1回だけ読む。語(空白・引用符で区切ったもの)の中で「/」のあとに ? # %3F が来たら、
+ * そこから語の終わりまでを落とす(かっこ・別の URL が続いても、まとめて落とす)
+ */
+function stripQueriesAfterPaths(text: string): string {
+  let out = ''
+  let seenPath = false
+  let inQuery = false
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]!
+    if (QUERY_END.test(char)) {
+      seenPath = false
+      inQuery = false
+      out += char
+      continue
+    }
+    if (inQuery) continue
+    if (char === '/') seenPath = true
+    const startsQuery = char === '?' || char === '#' || (char === '%' && text.slice(index + 1, index + 3).toLowerCase() === '3f')
+    if (startsQuery && seenPath) {
+      inQuery = true
+      continue
+    }
+    out += char
   }
-  // パスの無い「query=…」なども、位置・住所の名前なら値ごと落とす
-  return SENSITIVE_PARAMETER.test(token) ? '[filtered]' : token
+  return out
 }
 
 export function stripQueriesInText(text: string): string {
   const limited = text.length > MAX_SCRUB_LENGTH ? `${text.slice(0, MAX_SCRUB_LENGTH)}…` : text
-  return limited.split(DELIMITERS).map((part, index) => (index % 2 === 1 ? part : scrubToken(part))).join('')
+  // パスの無い「query=…」なども、位置・住所などの名前なら語ごと落とす
+  return stripQueriesAfterPaths(limited).split(/(\s+)/)
+    .map((part) => (SENSITIVE_PARAMETER.test(part) ? '[filtered]' : part)).join('')
 }
 
 /** クエリそのものが入る項目(値ごと消す) */
