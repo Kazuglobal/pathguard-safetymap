@@ -3,7 +3,6 @@ import type { ReactNode } from "react"
 
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { Lupe } from "@/components/brand/lupe"
-import { SiteFooter } from "@/components/layout/site-footer"
 import { BRAND } from "@/lib/brand"
 import { tankenTokens } from "@/lib/design/tanken"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
@@ -12,7 +11,8 @@ const C = tankenTokens.color
 
 /**
  * ログイン・新規登録・パスワードの再設定の画面の外枠(UIUX改装 項目1・15・32)。
- * 上にロゴと「PathGuardianとは」(紹介HP /lp へ)、下に共通のフッター。
+ * 上にロゴと「PathGuardianとは」(紹介HP /lp へ)。共通のフッターは、ほかの画面と同じく NavigationWrapper が <main> の外に出す。
+ * 全体は NavigationWrapper の <main> の中に入るので、ここでは <main> を使わない(main を入れ子にしない)。
  * intro を付けると、1行の紹介・「無料・インストール不要」・相棒のルペを見出しの上に出す。
  */
 export function AuthShell({
@@ -43,7 +43,7 @@ export function AuthShell({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col items-center px-4 py-8 sm:px-6">
+      <div className="flex flex-1 flex-col items-center px-4 py-8 sm:px-6">
         <div className="w-full max-w-md">
           {intro && (
             <section
@@ -69,9 +69,7 @@ export function AuthShell({
           </h1>
           <div className="mt-4">{children}</div>
         </div>
-      </main>
-
-      <SiteFooter />
+      </div>
     </div>
   )
 }

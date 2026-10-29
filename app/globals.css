@@ -399,14 +399,13 @@
   pointer-events: none;
 }
 
+/* 文字の大きさは親の .map-marker-label(12px)のまま */
 .danger-pin-label-stars {
-  font-size: 12px;
   letter-spacing: 0.5px;
 }
 
 .danger-pin-label-pending {
   color: #746855;
-  font-size: 12px;
 }
 
 .danger-marker:hover,

@@ -40,7 +40,7 @@ describe('登録で聞くこと', () => {
   })
 
   it('紹介HPの「はじめかた」とよくある質問も、同じ登録の条件を書く', () => {
-    expect(LP_HOW.steps[0].description).toContain('メールアドレスとパスワードだけ')
+    expect(LP_HOW.steps[0].description).toContain(PRODUCT_FACTS.registration.short)
     expect(LP_FAQ.some((item) => item.a.includes(PRODUCT_FACTS.registration.summary))).toBe(true)
   })
 })
@@ -50,6 +50,32 @@ describe('審査・料金・写真の説明', () => {
     expect(LP_TRUST.items[0].description).toContain(PRODUCT_FACTS.moderation.adult)
     expect(LP_FAQ.some((item) => item.a.includes(PRODUCT_FACTS.moderation.adult))).toBe(true)
     expect(read('app/privacy/page.tsx')).toContain('{PRODUCT_FACTS.moderation.adult}')
+  })
+
+  it('機能の説明の審査の書き方も、同じ文', () => {
+    const report = PRODUCT_FEATURES.find((feature) => feature.key === 'report')
+    expect(report?.description).toContain(PRODUCT_FACTS.moderation.adult)
+  })
+
+  it('写真: 自動でぼかすのは顔だけ。ナンバーや表札は指で隠すと書き、ホームとはじめてガイドも同じ文から読む', () => {
+    for (const text of [PRODUCT_FACTS.photo.adult, PRODUCT_FACTS.photo.parent]) {
+      expect(text).toMatch(/顔[^。]*自動/)
+      expect(text).toMatch(/(ナンバー|表札)[^。]*指/)
+    }
+    // 短い言い方は、何を自動でぼかすかを言い切らない
+    expect(PRODUCT_FACTS.photo.short).not.toMatch(/ナンバー|顔/)
+    expect(read('components/landing/LandingHero.tsx')).toContain('{PRODUCT_FACTS.photo.short}')
+    expect(read('components/onboarding/app-onboarding.tsx')).toContain('${PRODUCT_FACTS.moderation.adult}${PRODUCT_FACTS.photo.parent}')
+  })
+
+  it('デモ: 入れたものは本物として扱われるので「すべて見本」とは書かず、共用であることを伝える', () => {
+    expect(PRODUCT_FACTS.demo.note).not.toContain('すべて見本')
+    expect(PRODUCT_FACTS.demo.note).toContain('本物として扱われ')
+    expect(PRODUCT_FACTS.demo.shared).toContain('ほかの人も使います')
+  })
+
+  it('お問い合わせのフォームを公開したら、プライバシーポリシーの預け先にも自動で載る', () => {
+    expect(read('app/privacy/page.tsx')).toMatch(/\{BRAND\.contactFormUrl && <li>Google フォーム/)
   })
 
   it('有料の機能は無いので「すべての機能が無料」とだけ書く(「基本機能は」と書かない)', () => {

@@ -4,8 +4,8 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 
 import { BrandLogo } from "@/components/brand/brand-logo"
-import { useOptionalAuth } from "@/components/providers/auth-context"
-import { LP_OPEN_APP } from "@/lib/lp-content"
+import { useLpAuthStatus } from "@/components/lp/use-lp-auth-status"
+import { LP_LOGIN, LP_OPEN_APP, LP_SIGNUP } from "@/lib/lp-content"
 
 const NAV_LINKS = [
   { label: "課題", href: "#problem" },
@@ -20,7 +20,7 @@ const NAV_LINKS = [
  * ログイン状態が分かるまでは、どちらも出さずに同じ大きさの枠だけを出す(あとから入れ替わるチラつきを防ぐ)。
  */
 function HeaderActions() {
-  const status = useOptionalAuth()?.status ?? "unauthenticated"
+  const status = useLpAuthStatus()
 
   if (status === "loading") {
     return <span aria-hidden="true" className="h-10 w-32 rounded-full bg-[#2B2723]/10" data-testid="lp-header-actions-loading" />
@@ -40,16 +40,16 @@ function HeaderActions() {
   return (
     <>
       <Link
-        href="/login"
+        href={LP_LOGIN.href}
         className="rounded-full bg-[#2B2723] px-3 py-2.5 text-xs font-bold text-white transition-transform hover:scale-[1.03] active:scale-[0.98] sm:px-5 sm:text-sm"
       >
-        ログイン
+        {LP_LOGIN.label}
       </Link>
       <Link
-        href="/register"
+        href={LP_SIGNUP.href}
         className="font-lp-display rounded-full bg-[#E8A33D] px-5 py-2.5 text-sm font-black text-[#2B2723] transition-transform hover:scale-[1.03] active:scale-[0.98]"
       >
-        無料ではじめる
+        {LP_SIGNUP.label}
       </Link>
     </>
   )

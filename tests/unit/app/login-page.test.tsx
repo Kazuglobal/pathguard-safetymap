@@ -52,7 +52,7 @@ describe("ログイン画面", () => {
     expect(screen.getByRole("status")).toHaveTextContent("ログアウトしました")
   })
 
-  it("ロゴ・「PathGuardianとは」(紹介HPへ)・1行の紹介・「無料・インストール不要」・ルペ・共通のフッターを出す(項目1・15・32)", async () => {
+  it("ロゴ・「PathGuardianとは」(紹介HPへ)・1行の紹介・「無料・インストール不要」・ルペを出す(項目1・15・32)", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: "Auth session missing!" } })
 
     await renderPage({})
@@ -65,7 +65,8 @@ describe("ログイン画面", () => {
     expect(intro).toHaveTextContent(PRODUCT_FACTS.tagline)
     expect(intro).toHaveTextContent("無料・インストール不要")
     expect(screen.getAllByTestId("lupe").length).toBeGreaterThan(0)
-    expect(screen.getByTestId("site-footer")).toHaveTextContent("利用規約")
+    // 共通のフッターは NavigationWrapper が <main> の外に出す。外枠は <main> を持たない(入れ子にしない)
+    expect(document.querySelectorAll("main")).toHaveLength(0)
     // 旧名は出さない
     expect(document.body).not.toHaveTextContent("通学路安全マップ")
   })

@@ -8,7 +8,8 @@ import { profiles, userRoutes } from '../schema'
 
 /**
  * 本人が変えられる項目。氏名(full_name)は預からない設計になったので受け付けない(UIUX改装 項目55)。
- * 列は古いコードが読まなくなってから消す(グループ3)。それまでは保存のたびに空にする
+ * アプリは full_name を読み書きしない(保存しても以前の氏名は消えない)。以前の氏名は
+ * scripts/ops/scrub-personal-names.ts で一括で消し、列そのものはグループ4のマイグレーションで消す
  */
 export interface ProfileUpdateInput {
   displayName?: string | null

@@ -45,6 +45,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react"
+import { BRAND } from "@/lib/brand"
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { ChildrenSettings } from "@/components/settings/children-settings"
@@ -513,7 +514,7 @@ export default function MyPage() {
         {/* ヘッダー: あいさつ + レベルチップ + 編集 */}
         <motion.header {...fade(0)} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家のあんぜんノート</p>
+            <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家の{BRAND.notebook}</p>
             <h1 className="truncate text-2xl font-black tracking-tight" style={{ color: t.color.ink }}>
               {userName ? `こんにちは、${userName}さん` : "こんにちは"}
             </h1>

@@ -9,6 +9,7 @@ import {
   isReportUnderReview,
 } from "@/components/danger-report/detail/report-detail-utils"
 import { PaperPanel } from "@/components/safety-quest/hunter/theme"
+import { BRAND } from "@/lib/brand"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 import { getDisplayName } from "@/lib/user-display-name"
 
@@ -74,7 +75,7 @@ export default function UserDashboard() {
     >
       <div className="mx-auto max-w-5xl space-y-5">
         <header>
-          <p className="text-sm font-bold" style={{ color: t.color.primaryStrong }}>きょうのあんぜんノート</p>
+          <p className="text-sm font-bold" style={{ color: t.color.primaryStrong }}>きょうの{BRAND.notebook}</p>
           <h1 className="mt-1 text-2xl font-black sm:text-3xl">{name ? `${name}さんのダッシュボード` : "あなたのダッシュボード"}</h1>
           <p className="mt-2 text-sm" style={{ color: t.color.inkSoft }}>ポイント、報告のようす、次にできることをまとめました。</p>
         </header>

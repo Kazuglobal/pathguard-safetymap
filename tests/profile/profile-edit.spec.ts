@@ -790,12 +790,11 @@ test.describe('Profile Edit - Phase 1.2', () => {
         await expect(modal).toBeVisible();
 
         // キャンセルボタンをクリック
+        // ×(読み上げは「閉じる」)ではなく、キャンセルのボタンを押す
         const cancelButton = page.locator(
           '[data-testid="profile-cancel-button"], ' +
-          'button:has-text("キャンセル"), ' +
-          'button:has-text("閉じる"), ' +
-          '[aria-label="Close"]'
-        );
+          'button:has-text("キャンセル")'
+        ).first();
 
         if (await cancelButton.count() > 0) {
           await cancelButton.click();

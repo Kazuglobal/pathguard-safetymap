@@ -176,6 +176,15 @@ describe('scrub-personal-names main', () => {
     expect(deps.lines.join('\n')).toContain('数え直し: Supabase Auth に残っている人 0 人 / D1 の氏名 0 件')
   })
 
+  it('D1 に profiles の表そのものが無い(接続先の取り違えなど)ときは、「消し終えた」とせずに止まる', async () => {
+    database.sqlite.exec('DROP TABLE profiles')
+    const auth = createFakeAuth([])
+    const deps = createTestDeps({ runner: createFakeWrangler(database.sqlite).runner, env: { [NAME_SCRUB_CONFIRM_ENV]: 'yes' } })
+
+    await expect(main(['--apply'], deps, auth)).rejects.toThrow('profiles の表が見つかりません')
+    expect(deps.lines.join('\n')).not.toContain('すべて消しました')
+  })
+
   it('Supabase の接続情報が無ければ、キー名だけを示して止まる', async () => {
     const deps = createTestDeps({ runner: createFakeWrangler(database.sqlite).runner, env: {} })
 

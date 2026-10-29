@@ -1,31 +1,16 @@
 "use client"
 
 import { useRef, useState } from "react"
-import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 import { AuthShell } from "@/components/auth/auth-shell"
+import { BackToLogin } from "@/components/auth/back-to-login"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft } from "lucide-react"
-import { OFFLINE_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
+import { AlertCircle } from "lucide-react"
+import { isRateLimitAuthError, OFFLINE_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 import { EMAIL_PLACEHOLDER, emailInputError } from "@/lib/auth/form-copy"
-
-function BackToLogin() {
-  return (
-    <div className="mt-6 text-center">
-      <Link
-        href="/login"
-        className="inline-flex min-h-11 items-center text-sm font-bold text-blue-700 hover:underline"
-        data-testid="back-to-login"
-      >
-        <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
-        ログインに戻る
-      </Link>
-    </div>
-  )
-}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -61,7 +46,9 @@ export default function ForgotPasswordPage() {
         }
       )
 
-      if (resetError) {
+      // 送信の上限(同じアドレスに続けて送った)は、登録されているアドレスのときだけ返る。
+      // 成功と同じ画面にして、アカウントの有無が分からないようにする(前に送ったメールはそのまま使える)
+      if (resetError && !isRateLimitAuthError(resetError)) {
         setError(resolveAuthErrorMessage(resetError, "再設定のメールを送れませんでした。時間をおいて、もう一度お試しください。"))
         emailRef.current?.focus()
         return
@@ -138,7 +125,7 @@ export default function ForgotPasswordPage() {
           aria-busy={isLoading}
           data-testid="forgot-password-submit"
         >
-          {isLoading ? "送信中..." : "再設定のリンクを送る"}
+          {isLoading ? "送信中..." : "再設定のメールを送る"}
         </Button>
       </form>
 

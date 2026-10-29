@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 
 import { InstagramLink, OPERATOR_LABEL, SITE_FOOTER_LINKS } from "@/components/layout/site-footer"
-import { useOptionalAuth } from "@/components/providers/auth-context"
+import { useLpAuthStatus } from "@/components/lp/use-lp-auth-status"
 import { LP_CTA, LP_OPEN_APP } from "@/lib/lp-content"
 
 const PRIMARY_CTA_CLASS =
@@ -12,7 +12,7 @@ const PRIMARY_CTA_CLASS =
 
 /** ログイン済みの人には「無料ではじめる」ではなく、ヘッダーと同じ「アプリを開く」を出す */
 function CtaButtons() {
-  const status = useOptionalAuth()?.status ?? "unauthenticated"
+  const status = useLpAuthStatus()
   if (status === "loading") return <span aria-hidden="true" className="h-14 w-56 rounded-full bg-white/10" />
   if (status === "authenticated") {
     return (
@@ -90,7 +90,8 @@ export function LpCtaFooter() {
           </nav>
           <div className="text-center text-xs text-white/70 md:text-right">
             <p>{OPERATOR_LABEL}</p>
-            <p className="mt-1">© {new Date().getFullYear()} PathGuardian</p>
+            {/* 年はサーバーとブラウザで年明けにずれることがあるので、食い違いを警告しない */}
+            <p className="mt-1" suppressHydrationWarning>© {new Date().getFullYear()} PathGuardian</p>
           </div>
         </div>
       </div>

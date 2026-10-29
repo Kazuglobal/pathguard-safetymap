@@ -37,14 +37,16 @@ export function RegisterMailSent({ email, onEditEmail }: { email: string; onEdit
       const { error } = await supabase.auth.resend({ type: "signup", email })
       if (error) throw error
       setState({ kind: "sent" })
-      const sentAt = Date.now()
-      setNow(sentAt)
-      setAvailableAt(sentAt + RESEND_COOLDOWN_SECONDS * 1000)
     } catch (error) {
       setState({
         kind: "error",
         message: resolveAuthErrorMessage(error, "確認メールを送れませんでした。時間をおいて、もう一度お試しください。"),
       })
+    } finally {
+      // 送れたときも、送れなかったとき(送信の上限など)も、少し待ってから押せるようにする
+      const triedAt = Date.now()
+      setNow(triedAt)
+      setAvailableAt(triedAt + RESEND_COOLDOWN_SECONDS * 1000)
     }
   }
 

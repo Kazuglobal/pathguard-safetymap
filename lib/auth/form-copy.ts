@@ -11,9 +11,10 @@ export function isEmailShaped(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-/** 入力されたメールアドレスを確かめて、問題があれば画面に出す文を返す */
+/** 入力されたメールアドレスを確かめて、問題があれば画面に出す文を返す(前後の空白は無視する) */
 export function emailInputError(value: string): string | null {
-  if (!value.trim()) return EMAIL_REQUIRED_MESSAGE
-  if (!isEmailShaped(value.trim())) return EMAIL_FORMAT_MESSAGE
+  const trimmed = value.trim()
+  if (!trimmed) return EMAIL_REQUIRED_MESSAGE
+  if (!isEmailShaped(trimmed)) return EMAIL_FORMAT_MESSAGE
   return null
 }

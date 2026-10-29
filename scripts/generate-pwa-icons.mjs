@@ -22,7 +22,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const SOURCE_PNG = resolve(ROOT, "assets/pwa/icon-source.png")
 const PUBLIC_DIR = resolve(ROOT, "public")
 
-const BRAND_COLOR = "#0ea5e9" // app/layout.tsx viewport.themeColor と一致させる
+// アイコンの地の色。テーマ色(app/layout.tsx の viewport.themeColor・app/manifest.ts)は、UIUX改装で紙の色(#FBF5E9)にしたが、
+// アイコンはまだ以前の水色の盾のまま(作り直すときに、ここと public/icon-*.png をそろえて直す)
+const BRAND_COLOR = "#0ea5e9"
 
 // 暫定アイコンの中身: 白いシールド + 通学路(点線の道) + ピン + 出発点
 const FALLBACK_CONTENT = `

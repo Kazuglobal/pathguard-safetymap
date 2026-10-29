@@ -1,3 +1,4 @@
+import { SLOW_NETWORK_NOTE } from "@/components/layout/page-loading"
 import { tankenTokens } from "@/lib/design/tanken"
 
 /**
@@ -27,7 +28,7 @@ export function MapLoadingPlaceholder() {
             地図の部品を読み込んでいます。このあと地図がひらき、危険マーカーがならびます。
           </p>
           <p className="mt-2 text-sm" style={{ color: t.color.inkSoft }}>
-            通信が遅いと少し時間がかかります。このままお待ちください。
+            {SLOW_NETWORK_NOTE}
           </p>
         </div>
       </div>

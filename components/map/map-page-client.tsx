@@ -8,10 +8,8 @@ import { HelpCircle } from "lucide-react"
 import AppOnboarding from "@/components/onboarding/app-onboarding"
 import { Button } from "@/components/ui/button"
 import { tankenTokens } from "@/lib/design/tanken"
+// 地図を開いた直後(app/map/loading.tsx)と同じ待ち表示
 import { MapLoadingPlaceholder } from "@/components/map/map-loading-placeholder"
-
-// 地図を開いた直後(app/map/loading.tsx)と同じ待ち表示。以前ここに書いていたものを移した
-export { MapLoadingPlaceholder }
 
 const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   ssr: false,

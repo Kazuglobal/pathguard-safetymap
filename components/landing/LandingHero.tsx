@@ -3,6 +3,7 @@ import Link from "next/link"
 import { MapPin, Route as RouteIcon, ShieldCheck, ScanFace, Landmark } from "lucide-react"
 
 import { BRAND } from "@/lib/brand"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { tankenTokens, ENDPAPER } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -91,7 +92,7 @@ export function LandingHero() {
             </li>
             <li className="flex items-center gap-1.5">
               <ScanFace className="h-3.5 w-3.5" style={{ color: C.primary }} aria-hidden="true" />
-              写真の顔・ナンバーはぼかして保存
+              {PRODUCT_FACTS.photo.short}
             </li>
             <li className="flex items-center gap-1.5">
               <Landmark className="h-3.5 w-3.5" style={{ color: C.primary }} aria-hidden="true" />

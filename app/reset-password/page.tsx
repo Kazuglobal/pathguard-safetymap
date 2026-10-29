@@ -1,17 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
 import { AuthShell } from "@/components/auth/auth-shell"
+import { BackToLogin } from "@/components/auth/back-to-login"
+import { PasswordChecklist } from "@/components/auth/password-checklist"
 import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, CheckCircle, CheckCircle2, Circle } from "lucide-react"
+import { CheckCircle } from "lucide-react"
 import { isSessionMissingAuthError, LINK_EXPIRED_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
-import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/auth/password-rules"
+import { isPasswordValid, PASSWORD_MIN_LENGTH, PASSWORD_RULES_ERROR } from "@/lib/auth/password-rules"
 
 export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("")
@@ -25,29 +27,19 @@ export default function ResetPasswordPage() {
   const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
 
+  // 再設定のリンクの中の情報は、クライアントを作るときに読み取られる(一時的にログインした状態になる)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  useEffect(() => {
-    // 再設定のリンクを開くと PASSWORD_RECOVERY が来る(リンクの中の情報で、一時的にログインした状態になる)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {})
-
-    return () => subscription.unsubscribe()
-  }, [supabase])
-
-  // 新規登録と同じ決まり(lib/auth/password-rules.ts)
-  const passwordChecks = checkPassword(newPassword)
-
   const validatePassword = (): boolean => {
     setPasswordError(null)
     setConfirmError(null)
 
-    if (!Object.values(passwordChecks).every(Boolean)) {
-      setPasswordError("下の3つの条件をすべて満たしてください")
+    // 新規登録と同じ決まり(lib/auth/password-rules.ts)
+    if (!isPasswordValid(newPassword)) {
+      setPasswordError(PASSWORD_RULES_ERROR)
       return false
     }
 
@@ -106,14 +98,8 @@ export default function ResetPasswordPage() {
           <p className="mt-3 text-sm text-gray-700">
             新しいパスワードでログインできます。自動的にログインページに移動します...
           </p>
-          <Link
-            href="/login"
-            className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-blue-700 hover:underline"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
-            今すぐログインする
-          </Link>
         </div>
+        <BackToLogin label="今すぐログインする" />
       </AuthShell>
     )
   }
@@ -122,7 +108,8 @@ export default function ResetPasswordPage() {
     <AuthShell title="新しいパスワードを設定" titleTestId="reset-password-title">
       <p className="text-sm text-gray-700">新しいパスワードを入力してください。</p>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4" aria-busy={isLoading}>
+      {/* 長さなどは画面の決まりの文で知らせる(ブラウザの標準の吹き出しにしない) */}
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate aria-busy={isLoading}>
         {generalError && (
           <Alert variant="destructive">
             <AlertDescription>
@@ -154,18 +141,7 @@ export default function ResetPasswordPage() {
             aria-describedby="new-password-checklist"
             data-testid="new-password"
           />
-          <ul id="new-password-checklist" className="space-y-1 text-xs font-bold" aria-label="パスワードの条件">
-            {[
-              [passwordChecks.length, `${PASSWORD_MIN_LENGTH}文字以上で入力してください`],
-              [passwordChecks.letter, "英字（アルファベット）を含めてください"],
-              [passwordChecks.number, "数字を含めてください"],
-            ].map(([passed, label]) => (
-              <li key={String(label)} className="flex items-center gap-2" style={{ color: passed ? "#0C7A55" : "#746855" }}>
-                {passed ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <Circle className="h-4 w-4" aria-hidden="true" />}
-                {String(label)}
-              </li>
-            ))}
-          </ul>
+          <PasswordChecklist id="new-password-checklist" password={newPassword} />
           {passwordError && (
             <p role="alert" className="text-sm font-bold text-red-600" data-testid="password-error">
               {passwordError}
@@ -204,15 +180,7 @@ export default function ResetPasswordPage() {
         </Button>
       </form>
 
-      <div className="mt-6 text-center">
-        <Link
-          href="/login"
-          className="inline-flex min-h-11 items-center text-sm font-bold text-blue-700 hover:underline"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
-          ログインに戻る
-        </Link>
-      </div>
+      <BackToLogin />
     </AuthShell>
   )
 }

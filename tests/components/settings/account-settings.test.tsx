@@ -20,6 +20,8 @@ vi.mock("@/components/providers/auth-context", () => ({
 
 import { AccountCredentialsSettings } from "@/components/settings/account-credentials-settings"
 import { AccountDeletionSettings } from "@/components/settings/account-deletion-settings"
+import { DEMO_ACCOUNT_LOCKED_MESSAGE } from "@/lib/auth/demo-account"
+import { PASSWORD_RULES_ERROR } from "@/lib/auth/password-rules"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -80,7 +82,7 @@ describe("AccountCredentialsSettings(メール・パスワード。UIUX改装 �
 
     await user.type(screen.getByLabelText("パスワードを変える"), "short")
     await user.click(screen.getByRole("button", { name: "パスワードを変える" }))
-    expect(screen.getByRole("alert")).toHaveTextContent("8文字以上で、英字と数字を含めてください")
+    expect(screen.getByRole("alert")).toHaveTextContent(PASSWORD_RULES_ERROR)
     expect(mocks.updateUser).toHaveBeenCalledTimes(1)
 
     await user.clear(screen.getByLabelText("パスワードを変える"))
@@ -88,6 +90,32 @@ describe("AccountCredentialsSettings(メール・パスワード。UIUX改装 �
     await user.click(screen.getByRole("button", { name: "パスワードを変える" }))
     expect(await screen.findByText("パスワードを変えました。")).toBeInTheDocument()
     expect(mocks.updateUser).toHaveBeenLastCalledWith({ password: "password123" })
+  })
+
+  it("デモのアカウント(共用)では、メール・パスワードの変更と削除を出さない", () => {
+    mocks.email = "demo@example.com"
+    render(
+      <>
+        <AccountCredentialsSettings />
+        <AccountDeletionSettings />
+      </>,
+    )
+
+    expect(screen.getAllByText(DEMO_ACCOUNT_LOCKED_MESSAGE)).toHaveLength(2)
+    expect(screen.queryByLabelText("メールアドレスを変える")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("パスワードを変える")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "アカウントを削除する" })).not.toBeInTheDocument()
+  })
+
+  it("メールの形の確かめと例示は、登録の画面と同じ", async () => {
+    const user = userEvent.setup()
+    render(<AccountCredentialsSettings />)
+
+    expect(screen.getByLabelText("メールアドレスを変える")).toHaveAttribute("placeholder", "例: name@example.com")
+    await user.type(screen.getByLabelText("メールアドレスを変える"), "abc")
+    await user.click(screen.getByRole("button", { name: "確認のメールを送る" }))
+    expect(screen.getByRole("alert")).toHaveTextContent("例: name@example.com の形で入力してください")
+    expect(mocks.updateUser).not.toHaveBeenCalled()
   })
 
   it("LINE でログインしているアカウントでは、メールとパスワードを変えさせない", () => {

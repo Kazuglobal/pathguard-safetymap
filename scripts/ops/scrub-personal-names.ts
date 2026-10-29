@@ -113,10 +113,18 @@ export async function scanAuthUsers(auth: AuthAdminPort): Promise<AuthScan> {
   throw new Error(`ユーザーが ${USERS_PER_PAGE * MAX_PAGES} 人を超えています。分けて流せるようにスクリプトを直してください。何も書き換えていません。`)
 }
 
-/** profiles に full_name の列がまだあるか(列はマイグレーションで消す。消したあとでもこのスクリプトを流せるように) */
+/**
+ * profiles に full_name の列がまだあるか(列はマイグレーションで消す。消したあとでもこのスクリプトを流せるように)。
+ * PRAGMA table_info は、表そのものが無いときもエラーにならず空を返す。そのときは「列を消した」とみなさず止める
+ * (接続先のデータベースの取り違えなどで、氏名を残したまま「消し終えた」と報告しないため)
+ */
 export async function hasFullNameColumn(deps: OpsDeps): Promise<boolean> {
   const [result] = await runD1(deps.runner, PROFILE_COLUMNS_SQL)
-  return (result?.results ?? []).some((column) => column.name === 'full_name')
+  const columns = result?.results ?? []
+  if (columns.length === 0) {
+    throw new Error('D1 に profiles の表が見つかりません。wrangler の接続先のデータベースを確かめてください。何も書き換えていません。')
+  }
+  return columns.some((column) => column.name === 'full_name')
 }
 
 /** 氏名が入っている行の数。列がもう無ければ null */

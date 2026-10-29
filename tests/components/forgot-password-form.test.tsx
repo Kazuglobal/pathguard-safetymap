@@ -61,14 +61,20 @@ describe("ForgotPasswordPage", () => {
     expect(alert).not.toHaveTextContent("Unexpected")
   })
 
-  it("distinguishes rate limiting from a generic failure", async () => {
-    mocks.resetPasswordForEmail.mockResolvedValueOnce({ error: { message: "rate limit exceeded" } })
+  it("送信の上限(登録されているアドレスのときだけ返る)でも成功と同じ画面にして、アカウントの有無を分からせない", async () => {
+    mocks.resetPasswordForEmail.mockResolvedValueOnce({ error: { message: "For security purposes, you can only request this after 42 seconds.", code: "over_email_send_rate_limit", status: 429 } })
     const user = userEvent.setup()
     render(<ForgotPasswordPage />)
 
     await user.type(screen.getByTestId("forgot-password-email"), "demo@example.com")
     await user.click(screen.getByTestId("forgot-password-submit"))
 
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("少し待ってから"))
+    expect(await screen.findByTestId("forgot-password-success")).toHaveTextContent("登録されているメールアドレスなら")
+    expect(screen.queryByText(/少し待ってから/)).not.toBeInTheDocument()
+  })
+
+  it("送るボタンの文字は「再設定のメールを送る」", () => {
+    render(<ForgotPasswordPage />)
+    expect(screen.getByTestId("forgot-password-submit")).toHaveTextContent("再設定のメールを送る")
   })
 })

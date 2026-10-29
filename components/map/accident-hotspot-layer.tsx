@@ -135,7 +135,7 @@ export function buildHotspotPopupContent(spot: AccidentHotspotSummary): HTMLDivE
     row.style.display = 'flex'
     row.style.alignItems = 'center'
     row.style.gap = '4px'
-    row.style.fontSize = '11px'
+    row.style.fontSize = '12px'
     row.style.color = tankenTokens.color.inkSoft
     const label = document.createElement('span')
     label.style.width = '36px'

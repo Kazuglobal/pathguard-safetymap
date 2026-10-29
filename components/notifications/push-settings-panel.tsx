@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
 import { shouldShowIosInstallGuide } from '@/lib/pwa-install'
+import { BRAND } from '@/lib/brand'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const PREFERENCE_LABELS = {
@@ -13,12 +14,12 @@ const PREFERENCE_LABELS = {
     description: '登録通学路300m圏内に危険報告が投稿されたとき',
   },
   news: {
-    label: '通学路の安全ニュース',
+    label: BRAND.news,
     description: '通学路に関するニュース記事が追加されたとき',
   },
   magazine: {
-    label: 'SAFE MAGAZINE',
-    description: 'SAFE MAGAZINE の新しい記事が公開されたとき',
+    label: BRAND.magazine,
+    description: `${BRAND.magazine} の新しい記事が公開されたとき`,
   },
 } as const
 

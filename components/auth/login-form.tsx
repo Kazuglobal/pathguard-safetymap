@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD } from "@/lib/auth/demo-account"
 import { resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 import { EMAIL_PLACEHOLDER } from "@/lib/auth/form-copy"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
@@ -102,8 +103,8 @@ export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) 
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: "demo@example.com",
-        password: "demopassword",
+        email: DEMO_ACCOUNT_EMAIL,
+        password: DEMO_ACCOUNT_PASSWORD,
       })
 
       if (error) throw error
@@ -114,9 +115,10 @@ export default function LoginForm({ nextPath = "/map" }: { nextPath?: string }) 
         await waitForSession()
       }
 
+      // 入力する画面に移る前に、共用であることをもう一度伝える
       toast({
         title: "デモユーザーでログインしました",
-        description: PRODUCT_FACTS.demo.note,
+        description: PRODUCT_FACTS.demo.shared,
       })
 
       router.replace(nextPath === "/map" ? "/landing" : nextPath)

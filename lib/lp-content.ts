@@ -13,13 +13,17 @@ export const LP_META = {
   ogImage: "/images/lp/og-share.png",
 } as const
 
+/** 登録とログインの入口(ヒーロー・ヘッダー・最後の呼びかけで同じ行き先にする) */
+export const LP_SIGNUP = { label: "無料ではじめる", href: "/register" } as const
+export const LP_LOGIN = { label: "ログイン", href: "/login" } as const
+
 export const LP_HERO = {
   eyebrow: "通学路みまもりアプリ",
   headline: ["「いってらっしゃい」に、", "確かな安心を。"],
   sub: "PathGuardian は、子どもの通学路にひそむ危険を地図で見える化し、地域の目と AI で家族の安全習慣をつくる見守りアプリです。",
-  ctaPrimary: { label: "無料ではじめる", href: "/register" },
+  ctaPrimary: LP_SIGNUP,
   ctaSecondary: { label: "機能を見る", href: "#features" },
-  note: "登録は無料。アプリのインストールは不要で、ブラウザからすぐ使えます。",
+  note: `${PRODUCT_FACTS.pricing}${PRODUCT_FACTS.install}`,
 } as const
 
 export const LP_PROBLEM = {
@@ -62,7 +66,7 @@ export const LP_HOW = {
     {
       label: "準備 1",
       title: "無料で登録",
-      description: "メールアドレスとパスワードだけで登録できます(お名前は不要)。アプリのインストールもいりません。",
+      description: `${PRODUCT_FACTS.registration.short}アプリのインストールもいりません。`,
     },
     {
       label: "準備 2",
@@ -164,8 +168,8 @@ export const LP_VIDEO = {
 export const LP_CTA = {
   headline: ["明日の「いってらっしゃい」を、", "もっと安心に。"],
   sub: "登録は1分。今日から家族の見守りをはじめましょう。",
-  primary: { label: "無料ではじめる", href: "/register" },
-  secondary: { label: "ログインはこちら", href: "/login" },
+  primary: LP_SIGNUP,
+  secondary: { label: "ログインはこちら", href: LP_LOGIN.href },
 } as const
 
 /** ログイン済みの人に出す入口(ヘッダーとフッターで同じ文言・同じ行き先。UIUX改装 項目13・54) */

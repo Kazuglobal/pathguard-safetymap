@@ -6,6 +6,8 @@
  * 英語のメッセージ・認証サービスの名前・設定の話(環境変数など)は、利用者の画面に出さない(UIUX改装 項目42)。
  */
 
+import { EMAIL_FORMAT_MESSAGE } from "./form-copy"
+
 export const OFFLINE_MESSAGE = "インターネットにつながりませんでした。通信の状態を確かめて、もう一度お試しください。"
 export const RATE_LIMIT_MESSAGE = "短い時間に送信が続きました。少し待ってから、もう一度お試しください。"
 export const DUPLICATE_EMAIL_MESSAGE = "このメールアドレスは登録済みです"
@@ -14,12 +16,17 @@ export const SERVICE_UNAVAILABLE_MESSAGE = "ただいまログインの機能を
 export const INVALID_CREDENTIALS_MESSAGE = "メールアドレスまたはパスワードが正しくありません。"
 export const EMAIL_NOT_CONFIRMED_MESSAGE =
   "メールアドレスの確認がまだ終わっていません。登録のときに届いた確認メールのリンクを開いてください。"
-export const WEAK_PASSWORD_MESSAGE = "このパスワードは使えません。8文字以上で、英字と数字をまぜてください。"
+// 画面の条件(lib/auth/password-rules.ts)は送る前に確かめるので、ここに来るのは認証サービスのより厳しい決まりに当たったとき
+export const WEAK_PASSWORD_MESSAGE =
+  "このパスワードは使えません。よく使われているパスワードや、ほかで漏れたことのあるパスワードは使えないことがあります。別のパスワードにしてください。"
 export const SAME_PASSWORD_MESSAGE = "いまと同じパスワードは使えません。別のパスワードにしてください。"
-export const INVALID_EMAIL_MESSAGE = "メールアドレスの形を確かめてください(例: name@example.com)。"
+/** 画面が見つけたときと同じ文にする */
+export const INVALID_EMAIL_MESSAGE = EMAIL_FORMAT_MESSAGE
 export const SIGNUP_CLOSED_MESSAGE = "いまは新しい登録を受け付けていません。時間をおいて、もう一度お試しください。"
 export const SESSION_EXPIRED_MESSAGE = "ログインの有効期限が切れました。もう一度ログインしてください。"
-export const LINK_EXPIRED_MESSAGE = "メールのリンクの有効期限が切れたか、すでに使われています。もう一度メールを送ってください。"
+// 別のブラウザやアプリでリンクを開いたときも同じエラーになるので、開き方も添える
+export const LINK_EXPIRED_MESSAGE =
+  "メールのリンクの有効期限が切れたか、すでに使われています。もう一度メールを送り、届いたリンクは、送ったときと同じブラウザで開いてください。"
 export const REAUTH_NEEDED_MESSAGE = "安全のため、いったんログアウトして、ログインし直してからお試しください。"
 
 function extractMessage(error: unknown): string {
@@ -33,6 +40,12 @@ function extractCode(error: unknown): string {
   return typeof error === "object" && error !== null && "code" in error
     ? String((error as { code: unknown }).code ?? "")
     : ""
+}
+
+/** HTTP の状態の番号(429 はレート制限) */
+function extractStatus(error: unknown): number | null {
+  const status = typeof error === "object" && error !== null && "status" in error ? (error as { status: unknown }).status : null
+  return typeof status === "number" ? status : null
 }
 
 interface Rule {
@@ -50,7 +63,8 @@ const RULES: readonly Rule[] = [
   },
   {
     codes: ["over_email_send_rate_limit", "over_request_rate_limit", "over_sms_send_rate_limit"],
-    matches: (m) => m.includes("rate limit") || m.includes("too many requests") || m.includes("429"),
+    // 「429」の文字だけでは決めない(入力したメールアドレスが文に入るエラーがあるため)。状態の番号は findRule が見る
+    matches: (m) => m.includes("rate limit") || m.includes("too many requests"),
     text: RATE_LIMIT_MESSAGE,
   },
   {
@@ -111,10 +125,16 @@ const RULES: readonly Rule[] = [
   },
 ]
 
+const RATE_LIMIT_RULE = RULES.find((rule) => rule.text === RATE_LIMIT_MESSAGE)
+
+/** コードが合う規則を先に探し、無ければ状態の番号、それも無ければ文で見分ける(前の規則の文が、後ろの規則のコードに勝たないように) */
 function findRule(error: unknown): Rule | undefined {
   const code = extractCode(error)
+  const byCode = code !== "" ? RULES.find((rule) => rule.codes.includes(code)) : undefined
+  if (byCode) return byCode
+  if (extractStatus(error) === 429) return RATE_LIMIT_RULE
   const message = extractMessage(error).toLowerCase()
-  return RULES.find((rule) => (code !== "" && rule.codes.includes(code)) || rule.matches(message))
+  return RULES.find((rule) => rule.matches(message))
 }
 
 /** Supabase auth のレート制限(429)エラーか */

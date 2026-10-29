@@ -44,7 +44,8 @@ describe('文字の読みやすさ', () => {
       const text = fs.readFileSync(file, 'utf8')
       const lines = text.split(/\r?\n/)
       lines.forEach((line, index) => {
-        if (/text-\[(?:[5-9]|[5-9]\.5|10|10\.5|11|11\.5)px\]|fontSize: ['"](?:[5-9]|[5-9]\.5|10|10\.5|11|11\.5)px['"]/.test(line)) {
+        // fontSize: '11px'(style の値)と、fontSize = '11px'(地図のポップアップの DOM への代入)の両方を見る
+        if (/text-\[(?:[5-9]|[5-9]\.5|10|10\.5|11|11\.5)px\]|fontSize\s*[:=]\s*['"](?:[5-9]|[5-9]\.5|10|10\.5|11|11\.5)px['"]/.test(line)) {
           hits.push(`${file}:${index + 1}`)
         }
       })
@@ -65,11 +66,13 @@ describe('文字の読みやすさ', () => {
     }
   })
 
-  it('ハンターの画面の色と、tailwind の ink-soft も同じ色', () => {
+  it('ハンターの画面の色と、tailwind の ink-soft も同じ色。以前の inkSoft(#847661)の直書きも残っていない', () => {
     const hunterTheme = fs.readFileSync('components/safety-quest/hunter/theme.tsx', 'utf8')
     const tailwind = fs.readFileSync('tailwind.config.ts', 'utf8')
     expect(hunterTheme).toContain(`inkSoft: "${tankenTokens.color.inkSoft}"`)
     expect(tailwind).toContain(`soft: "${tankenTokens.color.inkSoft}"`)
+    const stale = ROOTS.flatMap(sourceFiles).filter((file) => /#847661/i.test(fs.readFileSync(file, 'utf8')))
+    expect(stale).toEqual([])
   })
 
   it('明るい面の上の文字に、Tailwind の薄いグレー(gray-400 / slate-400。白の上で 2.5:1)を使っていない', () => {

@@ -99,10 +99,10 @@ export default function MapFloatingControls({
               <span className="hidden sm:inline">pt</span>
             </span>
             <div
-              className="flex h-5 w-5 items-center justify-center rounded-full sm:h-6 sm:w-6"
+              className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 sm:h-6 sm:min-w-[1.5rem]"
               style={{ background: C.primarySoft }}
             >
-              <span className="text-[12px] font-black sm:text-xs" style={{ color: C.primaryStrong }}>
+              <span className="text-xs font-black leading-none" style={{ color: C.primaryStrong }}>
                 L{level}
               </span>
             </div>

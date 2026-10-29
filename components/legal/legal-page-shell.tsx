@@ -2,14 +2,10 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
-const LEGAL_NAV = [
-  { href: "/terms", label: "利用規約" },
-  { href: "/privacy", label: "プライバシーポリシー" },
-  { href: "/contact", label: "お問い合わせ" },
-]
-
 /**
  * 法務ページ(利用規約・プライバシーポリシー・お問い合わせ)共通の枠。
+ * 3つのページへのリンクは、共通のフッター(components/layout/site-footer.tsx)が出す。
+ * NavigationWrapper の <main> の中に入るので、ここでは <main> を使わない。
  * デザインは「たんけんノート」トークンに合わせたシンプルな静的レイアウト。
  */
 export function LegalPageShell({
@@ -31,7 +27,7 @@ export function LegalPageShell({
         color: tankenTokens.color.ink,
       }}
     >
-      <main className="mx-auto max-w-2xl px-5 py-10 sm:py-14">
+      <div className="mx-auto max-w-2xl px-5 py-10 sm:py-14">
         <Link
           href="/landing"
           className="text-sm font-bold"
@@ -58,20 +54,7 @@ export function LegalPageShell({
         >
           {children}
         </div>
-
-        <nav className="mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-          {LEGAL_NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="font-bold underline-offset-4 hover:underline"
-              style={{ color: tankenTokens.color.primaryStrong }}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </main>
+      </div>
     </div>
   )
 }

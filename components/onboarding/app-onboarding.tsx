@@ -17,6 +17,7 @@ import { ArrowRight, Map as MapIcon, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { markTutorialCompleted } from "@/lib/tutorial-storage"
 import { tankenTokens, ENDPAPER, PAPER_NOISE } from "@/lib/design/tanken"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 
 const C = tankenTokens.color
 
@@ -53,7 +54,7 @@ const SLIDES: readonly Slide[] = [
     sticker: "その3",
     title: "きになる ばしょは、しゃしんで パチリ",
     body: "「ここ あぶないかも？」と おもったら、その場で ほうこく。ちずに スタンプが ついて、ご近所の かぞくにも つたわるよ。",
-    parentNote: "報告は公開前にAIが確認し、写真つきの報告は運営スタッフも確認します。写真の顔やナンバーは、スマホの中でぼかしてから送ります。",
+    parentNote: `${PRODUCT_FACTS.moderation.adult}${PRODUCT_FACTS.photo.parent}`,
   },
   {
     image: "/images/onboarding/app-onboarding-4.png",

@@ -3,18 +3,12 @@
 // AI出力を表示する画面には必ずこれを添えること(チケット T-10)。
 
 interface AiDisclaimerNoteProps {
-  /** true: 1行程度の省スペース表示。false(既定): 通常表示 */
-  compact?: boolean
   className?: string
 }
 
-export function AiDisclaimerNote({ compact = false, className = "" }: AiDisclaimerNoteProps) {
+export function AiDisclaimerNote({ className = "" }: AiDisclaimerNoteProps) {
   return (
-    <p
-      className={`text-gray-500 leading-relaxed ${
-        compact ? "text-[12px]" : "text-xs"
-      } ${className}`}
-    >
+    <p className={`text-xs leading-relaxed text-gray-500 ${className}`}>
       ※ このAI分析は参考情報です。誤りを含むことがあり、安全を保証するものではありません。最終的な判断は必ず大人の方が行ってください。
     </p>
   )

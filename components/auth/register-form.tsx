@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
 import { PasswordInput } from "@/components/auth/password-input"
+import { PasswordChecklist } from "@/components/auth/password-checklist"
 import { RegisterMailSent } from "@/components/auth/register-mail-sent"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,10 +16,10 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import { AlertCircle, CheckCircle2, Circle, Mail } from "lucide-react"
+import { AlertCircle, Mail } from "lucide-react"
 import { DUPLICATE_EMAIL_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 import { EMAIL_PLACEHOLDER, emailInputError } from "@/lib/auth/form-copy"
-import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/auth/password-rules"
+import { isPasswordValid, PASSWORD_MIN_LENGTH, PASSWORD_RULES_ERROR } from "@/lib/auth/password-rules"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 
 type FieldErrors = Partial<Record<"email" | "password" | "terms" | "form", string>>
@@ -41,15 +42,13 @@ export default function RegisterForm() {
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
-  const passwordChecks = checkPassword(password)
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     const normalizedEmail = email.trim()
     const nextErrors: FieldErrors = {}
     const emailError = emailInputError(normalizedEmail)
     if (emailError) nextErrors.email = emailError
-    if (!Object.values(passwordChecks).every(Boolean)) nextErrors.password = "下の3つの条件をすべて満たしてください"
+    if (!isPasswordValid(password)) nextErrors.password = PASSWORD_RULES_ERROR
     if (!agreedToTerms) nextErrors.terms = "利用規約とプライバシーポリシーへの同意が必要です"
 
     if (Object.keys(nextErrors).length > 0) {
@@ -162,18 +161,7 @@ export default function RegisterForm() {
               aria-invalid={Boolean(errors.password)}
               aria-describedby="password-checklist"
             />
-            <ul id="password-checklist" className="space-y-1 text-xs font-bold" aria-label="パスワードの条件">
-              {[
-                [passwordChecks.length, `${PASSWORD_MIN_LENGTH}文字以上で入力してください`],
-                [passwordChecks.letter, "英字（アルファベット）を含めてください"],
-                [passwordChecks.number, "数字を含めてください"],
-              ].map(([passed, label]) => (
-                <li key={String(label)} className="flex items-center gap-2" style={{ color: passed ? "#0C7A55" : "#746855" }}>
-                  {passed ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <Circle className="h-4 w-4" aria-hidden="true" />}
-                  {String(label)}
-                </li>
-              ))}
-            </ul>
+            <PasswordChecklist id="password-checklist" password={password} />
             {errors.password && <p role="alert" className="text-sm font-bold text-red-600">{errors.password}</p>}
           </div>
           <div className="flex min-h-11 items-start space-x-2">

@@ -51,6 +51,25 @@ describe('認証エラーの日本語の文(UIUX改装 項目42)', () => {
     expect(resolveAuthErrorMessage('文字だけ', FALLBACK)).toBe(FALLBACK)
   })
 
+  it('コードを先に見る(入力したアドレスに「429」が入っていても、レート制限の文にしない)', () => {
+    const error = { message: 'Email address "hanako0429@gmial.com" is invalid', code: 'email_address_invalid' }
+    expect(resolveAuthErrorMessage(error, FALLBACK)).toBe(INVALID_EMAIL_MESSAGE)
+    expect(isRateLimitAuthError(error)).toBe(false)
+    // コードが無い古い形でも、「429」の文字だけではレート制限にしない
+    expect(isRateLimitAuthError({ message: 'Email address "hanako0429@gmial.com" is invalid' })).toBe(false)
+  })
+
+  it('HTTP の状態が 429 なら、文やコードが無くてもレート制限', () => {
+    expect(resolveAuthErrorMessage({ message: '', status: 429 }, FALLBACK)).toBe(RATE_LIMIT_MESSAGE)
+    expect(isRateLimitAuthError({ status: 429 })).toBe(true)
+  })
+
+  it('画面が確かめる条件(8文字など)を、認証サービスの「弱いパスワード」の文にくり返さない。期限切れのリンクは開き方も伝える', () => {
+    expect(WEAK_PASSWORD_MESSAGE).not.toMatch(/\d/)
+    expect(LINK_EXPIRED_MESSAGE).toContain('同じブラウザ')
+    expect(INVALID_EMAIL_MESSAGE).toBe('例: name@example.com の形で入力してください')
+  })
+
   it('形の違反(validation_failed)でも、メールの話でなければメールの形の文にしない', () => {
     expect(resolveAuthErrorMessage({ message: 'Invalid redirect URL', code: 'validation_failed' }, FALLBACK)).toBe(FALLBACK)
   })

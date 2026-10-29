@@ -52,8 +52,9 @@ export function SiteFooter({ reserveBottomNav = false }: { reserveBottomNav?: bo
   const year = new Date().getFullYear()
   return (
     <footer
-      // スマホの下部タブバーが重なる画面では、その高さぶん下を空ける
-      className={`border-t px-4 pt-6 text-center ${reserveBottomNav ? "pb-28 lg:pb-8" : "pb-8"}`}
+      // スマホの下部タブバーが重なる画面では、その高さぶん下を空ける。
+      // relative z-10: 画面に固定の飾り(セーフティクエストの角など)の下に隠れないようにする
+      className={`relative z-10 border-t px-4 pt-6 text-center ${reserveBottomNav ? "pb-28 lg:pb-8" : "pb-8"}`}
       style={{ background: C.paperDeep, borderColor: tankenTokens.border.faint, color: C.inkSoft }}
       data-testid="site-footer"
     >
@@ -74,7 +75,10 @@ export function SiteFooter({ reserveBottomNav = false }: { reserveBottomNav?: bo
         <InstagramLink style={{ color: C.inkSoft }} />
       </nav>
       <p className="mt-2 text-xs">{OPERATOR_LABEL}</p>
-      <p className="mt-1 text-xs">© {year} {BRAND.name}</p>
+      {/* 年はサーバー(UTC・ビルドの時点)とブラウザ(日本時間)で年明けにずれることがあるので、食い違いを警告しない */}
+      <p className="mt-1 text-xs" suppressHydrationWarning>
+        © {year} {BRAND.name}
+      </p>
     </footer>
   )
 }

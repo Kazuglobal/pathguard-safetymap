@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
+import { BRAND } from "@/lib/brand"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { RETENTION_DAYS } from "@/lib/retention/policy"
 
@@ -84,6 +85,8 @@ export default function PrivacyPage() {
           <li>Mapbox(地図の表示と住所の検索)</li>
           <li>Sentry(不具合の記録)。通常時の画面の録画はしません。エラーが起きたときだけ、その前後の画面を、文字と画像を隠した状態で記録します。通信の記録からは、住所の検索語や地図の範囲などが入る URL の後半(「?」から後ろ)を消して送ります</li>
           <li>ブラウザの通知サービス(通知を受け取る設定をした場合)</li>
+          {/* お問い合わせのフォーム(lib/brand.ts の contactFormUrl)を公開したら、預け先として自動で載る */}
+          {BRAND.contactFormUrl && <li>Google フォーム(お問い合わせの内容と、返信のために書いていただいた連絡先)</li>}
         </ul>
         <p>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</p>
       </LegalSection>

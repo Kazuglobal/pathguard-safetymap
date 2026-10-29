@@ -7,6 +7,7 @@ import {
   deleteAccountRows,
 } from '@/lib/account-deletion'
 import { getActor } from '@/lib/auth/actor'
+import { isDemoAccountEmail } from '@/lib/auth/demo-account'
 import { getDb } from '@/lib/db/client'
 import { deleteR2Keys, type DeletableBucket } from '@/lib/media/r2-batch-delete'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
@@ -42,6 +43,10 @@ async function deleteUserFolders(bucket: MediaBucket, prefixes: readonly string[
 export async function DELETE(request: Request) {
   const actor = await getActor()
   if (actor.kind !== 'user') return NextResponse.json({ error: 'ログインが必要です' }, { status: 401 })
+  // デモのアカウントは共用なので消させない(1人が消すと、ほかの人がデモを使えなくなる)
+  if (isDemoAccountEmail(actor.email)) {
+    return NextResponse.json({ error: 'デモのアカウントは、ほかの人も使うため削除できません。' }, { status: 403 })
+  }
 
   let body: unknown
   try {

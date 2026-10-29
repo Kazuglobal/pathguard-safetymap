@@ -2,6 +2,9 @@ import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
 
+/** 待ち表示に添える一文(地図の待ち表示 components/map/map-loading-placeholder.tsx と同じ) */
+export const SLOW_NETWORK_NOTE = "通信が遅いと少し時間がかかります。このままお待ちください。"
+
 /**
  * 画面を開くまでの共通の待ち表示(各ルートの loading.tsx が使う。UIUX改装 項目42)。
  * サーバーコンポーネントのまま描く(先読みと最初の表示を軽くするため、動きの部品は読み込まない)。
@@ -23,7 +26,7 @@ export function PageLoading({ label = "画面を準備しています…" }: { l
           {label}
         </p>
         <p className="text-sm" style={{ color: C.inkSoft }}>
-          通信が遅いと少し時間がかかります。このままお待ちください。
+          {SLOW_NETWORK_NOTE}
         </p>
       </div>
     </div>
