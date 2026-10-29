@@ -84,16 +84,17 @@ export function toDangerReportJsonForViewer(report: DangerReportRow, actor: Acto
   return toOthersDangerReportJson(report)
 }
 
-/** Match the former security-invoker public preview: coarse coordinates and no media keys. */
+/**
+ * 未ログインのプレビュー。ログインしたほかの人に見せるもの(toOthersDangerReportJson)より、さらに粗くする:
+ * 座標は小数2桁(約1km)、写真は返さない。投稿者の id・審査の結果・細かい日時・郵便番号なども返さない
+ */
 export function toPublicDangerReportPreviewJson(report: DangerReportRow) {
   return {
-    ...toDangerReportJson(report),
+    ...toOthersDangerReportJson(report),
     latitude: Math.round(report.latitude * 100) / 100,
     longitude: Math.round(report.longitude * 100) / 100,
     image_url: null,
     processed_image_url: null,
     processed_image_urls: [],
-    user_id: '',
-    ai_moderation_reason: null,
   }
 }

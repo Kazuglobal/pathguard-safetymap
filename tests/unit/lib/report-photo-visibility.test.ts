@@ -108,8 +108,16 @@ describe('見る人に合わせた報告の JSON(UIUX改装 項目61)', () => {
     expect(toDangerReportJsonForViewer(report(), admin).user_id).toBe('owner-1')
   })
 
-  it('未ログインには写真なしのプレビューだけ', async () => {
-    await insertReport({ imageMasked: true })
-    expect(toDangerReportJsonForViewer(report(), { kind: 'anon' })).toMatchObject({ user_id: '', image_url: null, processed_image_urls: [] })
+  it('未ログインには写真なしのプレビューだけ(ログインしたほかの人に見せるものより粗くする)', async () => {
+    await insertReport({ imageKey: MASKED_ORIGINAL, processedImageKeys: [MASKED_PROCESSED], imageMasked: true, postalCode: '1600023' })
+    const json = toDangerReportJsonForViewer(report(), { kind: 'anon' })
+
+    expect(json).toMatchObject({
+      user_id: '', image_url: null, processed_image_url: null, processed_image_urls: [],
+      latitude: 35.69, longitude: 139.69,
+      created_at: '2026-10-29', updated_at: '2026-10-29',
+      postal_code: null, address_hash: null, geocoded_at: null, geocode_source: null, geocode_confidence: null,
+      ai_moderation_status: null, ai_moderation_reason: null, ai_moderation_score: null, ai_moderation_checked_at: null,
+    })
   })
 })
