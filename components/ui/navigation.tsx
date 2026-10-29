@@ -20,6 +20,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { isAdminUser } from "@/lib/admin"
 import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
+import { REPORT_SHEET_TITLE } from "@/lib/report-entry"
 import { tankenTokens } from "@/lib/design/tanken"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import type { AuthStatus } from "@/components/providers/auth-context"
@@ -45,6 +46,8 @@ type NavItem = {
   href: string
   label: string
   mobileLabel?: string
+  /** スマホの下部タブバーで2行に分けて出すとき(1行では幅に入らない名前) */
+  mobileLabelLines?: readonly string[]
   icon: LucideIcon
   description?: string
   emphasize?: boolean
@@ -127,10 +130,11 @@ export function Navigation({
     {
       key: "report-action",
       href: "#report",
-      label: "きけんハンター",
-      mobileLabel: "ハンター",
+      // 中央のボタンとシートの名前(UIUX改装 項目5)。中身はヒヤリハット報告・不審者アラート・きけんハンター
+      label: REPORT_SHEET_TITLE,
+      mobileLabelLines: ["知らせる・", "さがす"],
       icon: Search,
-      description: "写真で危険をさがす練習",
+      description: "危険を知らせる・写真で危険をさがす",
       emphasize: true,
       isAction: true,
     },
@@ -144,9 +148,9 @@ export function Navigation({
     {
       key: "activity",
       href: "/mypage",
-      label: "活動",
+      label: "マイページ",
       icon: User,
-      description: "プロフィール・ミッション・設定",
+      description: "自分の記録・あそぶ・設定",
     },
   ]
 
@@ -175,7 +179,7 @@ export function Navigation({
   const desktopNavItems = [...mainNavItems.filter((i) => !i.isAction), ...secondaryNavItems, ...adminNavItems]
   const bottomNavItems = mainNavItems
 
-  // /hazard-game, /missions, /leaderboard はすべて「活動」タブをアクティブにする
+  // /hazard-game, /missions, /leaderboard はすべて「マイページ」タブをアクティブにする
   const activityPaths = ["/mypage", "/hazard-game", "/safety-quest/hunter", "/missions", "/leaderboard", "/badges"]
 
   const isActivePath = (item: NavItem) => {
@@ -254,7 +258,7 @@ export function Navigation({
                   </Link>
                 )
               })}
-              {/* デスクトップ: きけんハンターボタン */}
+              {/* デスクトップ: 「知らせる・さがす」ボタン(スマホの中央のボタンと同じシートを開く。UIUX改装 項目5) */}
               <button
                 type="button"
                 onClick={() => setIsReportOpen(true)}
@@ -268,8 +272,8 @@ export function Navigation({
                   boxShadow: tankenTokens.shadow.pressAccent,
                 }}
               >
-                <Search className="h-4 w-4" strokeWidth={2.8} />
-                きけんハンター
+                <Search className="h-4 w-4" strokeWidth={2.8} aria-hidden="true" />
+                {REPORT_SHEET_TITLE}
               </button>
             </div>
 
@@ -377,9 +381,18 @@ export function Navigation({
                   >
                     <LupeFace size={40} />
                   </motion.span>
-                  <span className="mt-auto block max-w-[72px] truncate whitespace-nowrap text-center">
-                    {item.mobileLabel ?? item.label}
-                  </span>
+                  {item.mobileLabelLines ? (
+                    // 2行にしても中央の丸と重ならないよう、行の高さを詰める
+                    <span className="mt-auto block text-center leading-none" aria-hidden="true">
+                      {item.mobileLabelLines.map((line) => (
+                        <span key={line} className="block whitespace-nowrap">{line}</span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="mt-auto block max-w-[72px] truncate whitespace-nowrap text-center">
+                      {item.mobileLabel ?? item.label}
+                    </span>
+                  )}
                 </button>
               )
             }

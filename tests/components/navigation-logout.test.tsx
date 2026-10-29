@@ -39,7 +39,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('framer-motion', () => {
   const strip =
     (Tag: any) =>
-    ({
+    function MotionStub({
       children,
       layoutId,
       initial,
@@ -51,7 +51,9 @@ vi.mock('framer-motion', () => {
       variants,
       custom,
       ...props
-    }: any) => <Tag {...props}>{children}</Tag>
+    }: any) {
+      return <Tag {...props}>{children}</Tag>
+    }
   return {
     motion: {
       div: strip('div'),
@@ -154,12 +156,13 @@ describe('Navigation Logout Functionality', () => {
   })
 
   describe('Mobile bottom nav labels', () => {
-    it('renders the activity tab link', () => {
+    it('renders the my page tab link(「活動」から「マイページ」へ。UIUX改装 項目7)', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const activityBottomLink = container.querySelector('a[aria-label="活動"]')
+      const activityBottomLink = container.querySelector('a[aria-label="マイページ"]')
       expect(activityBottomLink).toBeInTheDocument()
-      expect(activityBottomLink).toHaveTextContent('活動')
+      expect(activityBottomLink).toHaveTextContent('マイページ')
+      expect(container.querySelector('a[aria-label="活動"]')).toBeNull()
     })
 
     it('falls back to label when mobileLabel is not provided', () => {
@@ -173,18 +176,21 @@ describe('Navigation Logout Functionality', () => {
     it('applies one-line truncation styles to bottom nav labels', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const activityBottomLink = container.querySelector('a[aria-label="活動"]')
+      const activityBottomLink = container.querySelector('a[aria-label="マイページ"]')
       const label = activityBottomLink?.querySelector('span:last-child')
       expect(label).toBeInTheDocument()
       expect(activityBottomLink).toHaveClass('min-w-0')
       expect(label).toHaveClass('block', 'max-w-[72px]', 'truncate', 'whitespace-nowrap', 'text-center')
     })
 
-    it('renders report action button (not a link) in bottom nav', () => {
+    it('renders the 「知らせる・さがす」 action button (not a link) in bottom nav, in two lines(UIUX改装 項目5)', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const reportButton = container.querySelector('button[aria-label="きけんハンター"]')
+      const reportButton = container.querySelector('button[aria-label="知らせる・さがす"]')
       expect(reportButton).toBeInTheDocument()
+      // 1行では幅に入らないので2行に分ける(読み上げは aria-label の1つの名前)
+      expect(reportButton).toHaveTextContent('知らせる・さがす')
+      expect(reportButton?.querySelectorAll('span.whitespace-nowrap')).toHaveLength(2)
     })
   })
 })

@@ -14,7 +14,7 @@ const MAP_MENU_LINKS: ReadonlyArray<{ href: string; label: string; description: 
   { href: "/landing", label: "ホーム", description: "ヒヤリハット・ニュース", icon: Newspaper },
   { href: "/safety-quest/hunter", label: "きけんハンター", description: "写真で危険をさがす練習", icon: Search },
   { href: "/routes", label: "通学路", description: "通学路を登録・確認", icon: Route },
-  { href: "/mypage", label: "活動", description: "プロフィール・ミッション・設定", icon: User },
+  { href: "/mypage", label: "マイページ", description: "自分の記録・あそぶ・設定", icon: User },
   { href: "/report", label: "報告一覧", description: "みんなの危険報告", icon: BarChart3 },
 ]
 

@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { ArrowRight, BadgeCheck, Gift } from "lucide-react"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
+import { REPORT_PATH } from "@/lib/report-entry"
 
 /**
  * ミッション種別(missions.target_type) → 開始導線。
@@ -16,7 +17,8 @@ const MISSION_TARGET_HREF: Record<string, string> = {
   hazard_game_play: "/safety-quest/hunter",
   hazard_game_high_score: "/safety-quest/hunter",
   route_quiz: "/route-quiz",
-  report: "/report",
+  // 報告の入口は、どこから入っても地図つきの報告フォーム(UIUX改装 項目5)
+  report: REPORT_PATH,
   visit: "/map",
 }
 

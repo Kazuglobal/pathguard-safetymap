@@ -132,7 +132,7 @@ describe('MapFloatingControls mobile menu (bottom tab bar is hidden on the map)'
       ['ホーム', '/landing'],
       ['きけんハンター', '/safety-quest/hunter'],
       ['通学路', '/routes'],
-      ['活動', '/mypage'],
+      ['マイページ', '/mypage'],
       ['報告一覧', '/report'],
     ])
     // 全画面の地図には共通のフッターが無いので、規約などのリンクをメニューに出す(UIUX改装 項目32)
