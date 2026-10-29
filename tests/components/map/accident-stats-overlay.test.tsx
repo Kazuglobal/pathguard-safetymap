@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AccidentStatsOverlay } from '@/components/map/accident-stats-overlay'
+vi.mock('@/components/map/point-hazard-section', () => ({ PointHazardSection: () => null }))
 
 const props = { status: 'loading' as const, stats: null, isMobile: true, awaitingLocationSelection: false, isReportFormOpen: false, onReset: vi.fn(), center: [139.957, 35.8983] as [number, number] }
 

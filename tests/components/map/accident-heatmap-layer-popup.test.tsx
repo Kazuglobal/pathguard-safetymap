@@ -1,10 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   toPopupDisplayData,
   buildAccidentPopupContent,
 } from '@/components/map/accident-heatmap-layer'
 
 describe('AccidentHeatmapLayer popup helpers', () => {
+  it('opens Street View with one click without changing the existing report action', () => {
+    const onScene = vi.fn(), onReports = vi.fn()
+    const content = buildAccidentPopupContent({ severity: 2 }, { onShowStreetView: onScene, onShowNearbyReports: onReports })
+    const scene = [...content.querySelectorAll('button')].find(button => button.textContent?.includes('現地の景色を見る'))!
+    scene.click()
+    expect(onScene).toHaveBeenCalledOnce()
+    expect(onReports).not.toHaveBeenCalled()
+  })
   it('normalizes mixed property types from mapbox feature payloads', () => {
     const parsed = toPopupDisplayData({
       severity: '1',
