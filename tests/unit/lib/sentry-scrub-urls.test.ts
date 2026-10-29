@@ -61,6 +61,36 @@ describe('Sentry に送る URL からクエリを落とす(UIUX改装 項目60)'
     expect(scrubBreadcrumbUrls({ message: 'もう一度ためしますか?' }).message).toBe('もう一度ためしますか?')
   })
 
+  it('入れ子の値(コンソールのパンくずの引数・extra・contexts・例外の mechanism)もたどる', () => {
+    const crumb = scrubBreadcrumbUrls({ category: 'console', data: { arguments: ['failed', { url: GEOCODE, nested: [`see ${GEOCODE}`] }] } })
+    expect(crumb.data).toEqual({ arguments: ['failed', { url: 'https://path-guardian.com/api/mapbox/geocode', nested: ['see https://path-guardian.com/api/mapbox/geocode'] }] })
+
+    const event = scrubEventUrls({
+      extra: { lastRequest: GEOCODE },
+      tags: { page: '/map?lat=35.68' },
+      contexts: { app: { route: '/routes?id=1' } },
+      exception: { values: [{ type: 'Error', value: 'x', mechanism: { type: 'onerror', data: { url: GEOCODE } } }] },
+    } as Parameters<typeof scrubEventUrls>[0])
+    expect(event.extra).toEqual({ lastRequest: 'https://path-guardian.com/api/mapbox/geocode' })
+    expect(event.tags).toEqual({ page: '/map' })
+    expect(event.contexts).toEqual({ app: { route: '/routes' } })
+    expect(event.exception?.values?.[0]?.mechanism?.data).toEqual({ url: 'https://path-guardian.com/api/mapbox/geocode' })
+  })
+
+  it('先頭に / の無いパス・%3F で書いた ?・パスの無い「query=…」も落とす', () => {
+    expect(scrubBreadcrumbUrls({ message: 'GET api/reports?minLat=35.68 failed' }).message).toBe('GET api/reports failed')
+    expect(scrubBreadcrumbUrls({ message: 'redirect /login%3Fnext=/routes' }).message).toBe('redirect /login')
+    expect(scrubBreadcrumbUrls({ message: 'params query=西新宿2-8-1 lat=35.68' }).message).toBe('params [filtered] [filtered]')
+  })
+
+  it('とても長い文字列でも時間をかけずに処理する(先頭だけを残す)', () => {
+    const huge = '/'.repeat(500_000)
+    const started = Date.now()
+    const result = scrubBreadcrumbUrls({ message: huge }).message!
+    expect(Date.now() - started).toBeLessThan(500)
+    expect(result.length).toBeLessThanOrEqual(8_193)
+  })
+
   it('エラー時の録画の、通信の記録', () => {
     const frame = scrubReplayFrameUrls({
       type: 5, timestamp: 0,
