@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image"; // Next.js の Image コンポーネント
 import { useDangerReportSignedImageUrl } from "@/lib/danger-report-image-access";
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker";
 
 // 親コンポーネントから渡されるレポート情報の型 (仮)
 // TODO: 실제 DangerReport 타입으로 변경
@@ -39,6 +40,8 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
   // danger-reports バケット非公開化に備え、DB保存済みの公開URL文字列を
   // 表示直前に短TTLの署名URLへ差し替える(取得中/失敗時は null)。
   const signedOriginalImageUrl = useDangerReportSignedImageUrl(null, report.originalImageUrl || null);
+  // 上げる画像も端末で顔などをぼかしてから送る(ぼかした画像だけを、ほかの人に見せるため。UIUX改装 項目57)
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker();
 
   useEffect(() => {
     if (selectedFile) {
@@ -49,12 +52,16 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
     setPreviewUrl(null);
   }, [selectedFile]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
-    } else {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file) {
       setSelectedFile(null);
+      return;
     }
+    const masked = await requestMaskedPhoto(file);
+    if (!masked) input.value = "";
+    setSelectedFile(masked ? masked.file : null);
   };
 
   const handleUpload = async () => {
@@ -71,6 +78,7 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
       formData.append('file', selectedFile);
       formData.append('reportId', report.id);
       formData.append('imageType', 'processed');
+      formData.append('masked', '1');
       const response = await fetch('/api/image/process', { method: 'POST', body: formData });
       const data = await response.json().catch(() => ({})) as { message?: string; processedImageUrl?: string };
       if (!response.ok || !data.processedImageUrl) throw new Error(data.message ?? 'アップロードに失敗しました');
@@ -154,6 +162,7 @@ export function ProcessImageDialog({ report, onUploadComplete }: ProcessImageDia
           </div>
 
           {/* TODO: 既存の加工画像表示エリア (あれば) */}
+          {photoMaskerDialog}
 
         </div>
         <DialogFooter>

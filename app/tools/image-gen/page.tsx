@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
+
 type PresetKey =
   | "hazard-visual"
   | "earthquake"
@@ -63,10 +65,19 @@ export default function ImageGenPage() {
     setPrompt(buildPresetPrompt("hazard-visual"))
   }, [])
 
-  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] || null
-    setFile(f)
-  }, [])
+  // 参照画像も、端末で顔・ナンバーなどをぼかしてから送る(ぼかす前の写真は AI に送らない。UIUX改装 項目57)
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker()
+  const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const f = input.files?.[0] || null
+    if (!f) {
+      setFile(null)
+      return
+    }
+    const masked = await requestMaskedPhoto(f)
+    if (!masked) input.value = ""
+    setFile(masked ? masked.file : null)
+  }, [requestMaskedPhoto])
 
   const hazardPoint = useMemo(() => {
     const parsedLongitude = Number(longitude)
@@ -198,10 +209,11 @@ export default function ImageGenPage() {
           <label htmlFor="image-gen-reference" className="block text-sm font-medium">
             参照画像（必須）
           </label>
-          <input id="image-gen-reference" type="file" accept="image/*" onChange={onFileChange} />
+          <input id="image-gen-reference" type="file" accept="image/*" onChange={(event) => { void onFileChange(event) }} />
           {file && (
-            <p className="text-xs text-gray-600">選択中: {file.name} ({Math.round(file.size / 1024)} KB)</p>
+            <p className="text-xs text-gray-600">選択中: ぼかした写真 ({Math.round(file.size / 1024)} KB)</p>
           )}
+          {photoMaskerDialog}
         </div>
 
         <button

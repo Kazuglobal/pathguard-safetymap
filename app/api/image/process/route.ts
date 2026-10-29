@@ -129,9 +129,10 @@ export async function POST(request: Request) {
 
     const transformed = await env.IMAGES.input(fileValue.stream())
       .output({ format: 'image/webp', quality: 85 })
-    // ぼかし済みの印(ファイル名の頭)は写真ごとに付ける。加工画像(もしも画像)は、ぼかした写真から作ったもの(masked=1)か
-    // 運営が上げたものだけ。印の無い写真は、本人と管理者にしか見せない
-    const masked = imageType === 'original' || formData.get('masked') === '1' || actor.isAdmin
+    // ぼかし済みの印(ファイル名の頭)は写真ごとに付ける。加工画像(もしも画像)は、ぼかした写真から作ったものか、
+    // 端末でぼかしたもの(masked=1)だけ。運営が上げる画像も同じ(管理画面も端末でぼかしてから送る)。
+    // 印の無い写真は、本人と管理者にしか見せない
+    const masked = imageType === 'original' || formData.get('masked') === '1'
     uploadedKey = `danger-reports/${report.userId}/${report.id}/${masked ? MASKED_MEDIA_FILE_PREFIX : ''}${crypto.randomUUID()}.webp`
     await bucket.put(uploadedKey, transformed.image(), {
       httpMetadata: {

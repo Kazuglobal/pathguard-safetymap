@@ -119,6 +119,13 @@ describe('app/api/image/process D1 + R2 upload', () => {
     expect(keys[1]).toMatch(/^danger-reports\/owner-1\/report-1\/m-[\w-]+\.webp$/)
   })
 
+  it('管理者が上げた加工画像も、masked=1 が無ければ「ぼかし済み」のキーにしない(ほかの人には見せない)', async () => {
+    mocks.getActor.mockResolvedValue({ ...owner, id: 'admin-1', isAdmin: true })
+    await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'processed' }))
+    const keys = mocks.r2Put.mock.calls.map(([key]) => key as string)
+    expect(keys.at(-1)).toMatch(/^danger-reports\/owner-1\/report-1\/(?!m-)[\w-]+\.webp$/)
+  })
+
   it('re-encodes originals with Images, stores a private key, and updates D1', async () => {
     const response = await POST(requestWith({
       file: imageFile('photo.webp', 'image/webp'), reportId: 'report-1', imageType: 'original', masked: '1',

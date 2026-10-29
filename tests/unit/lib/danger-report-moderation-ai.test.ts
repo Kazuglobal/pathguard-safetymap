@@ -141,12 +141,20 @@ describe("moderateDangerReportWithAi", () => {
   it('keeps actual provider fanout within the reserved text-plus-image units', async () => {
     const text = mockTextAi(APPROVE)
     vi.mocked(callGeminiVision).mockResolvedValue(JSON.stringify(CLEAN_IMAGE))
-    const keys = moderationImageKeys({ imageKey: 'a', processedImageKey: 'b', processedImageKeys: ['c', 'd'] })
+    const keys = moderationImageKeys({ imageKey: 'r/m-a.webp', processedImageKey: 'r/m-b.webp', processedImageKeys: ['r/m-c.webp', 'r/m-d.webp'] })
     await moderateDangerReportWithAi(input({ hasImage: true, imageDataUrls: keys.map(() => 'data:image/jpeg;base64,QUJD') }))
-    expect(keys).toEqual(['a', 'b', 'c'])
+    expect(keys).toEqual(['r/m-a.webp', 'r/m-b.webp', 'r/m-c.webp'])
     expect(text).toHaveBeenCalledTimes(1)
     expect(callGeminiVision).toHaveBeenCalledTimes(3)
     expect(text.mock.calls.length + vi.mocked(callGeminiVision).mock.calls.length).toBe(1 + keys.length)
+  })
+
+  it('AI に送る写真は、端末でぼかしたもの(m-)だけ(以前のぼかしていない写真は送らない)', () => {
+    expect(moderationImageKeys({
+      imageKey: 'danger-reports/u/r/original.webp',
+      processedImageKey: 'danger-reports/u/r/m-legacy.webp',
+      processedImageKeys: ['danger-reports/u/r/processed.webp', 'danger-reports/u/r/m-p.webp'],
+    })).toEqual(['danger-reports/u/r/m-legacy.webp', 'danger-reports/u/r/m-p.webp'])
   })
 
   it("sends an approve verdict below the 0.7 threshold to review", async () => {
