@@ -39,6 +39,17 @@ export function publicMediaUrl(
   return `${base.origin}/${encodeKey(key)}`
 }
 
+/**
+ * 端末でぼかした(加工済みの)報告の写真のファイル名の頭(UIUX改装 項目57)。
+ * キーはサーバーだけが作るので、利用者はこの印を付けられない。ほかの人に見せてよいかは写真ごとにこの印で決める
+ */
+export const MASKED_MEDIA_FILE_PREFIX = 'm-'
+
+export function isMaskedMediaKey(key: string | null | undefined): boolean {
+  if (!key) return false
+  return (key.split('/').pop() ?? '').startsWith(MASKED_MEDIA_FILE_PREFIX)
+}
+
 export function privateMediaUrl(key: string): string {
   const parsed = parsePrivateMediaKey(key)
   return `/api/media/private/${encodeKey(parsed.key)}`

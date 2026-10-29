@@ -63,6 +63,29 @@ describe('danger reports D1 repository', () => {
     expect(prefectureOnly.map((report) => report.id)).toEqual(['chiba'])
   })
 
+  it('ほかの人の絞り込みは、見せるのと同じ粗さで行う(範囲を狭めて丸める前の場所・時刻を割り出せない)', async () => {
+    const repo = createDangerReportsRepo(database.db as unknown as AppDb)
+    await database.db.insert(dangerReports).values({
+      id: 'exact', userId: owner.id, title: '交差点', dangerType: 'traffic', dangerLevel: 3,
+      latitude: 35.689634, longitude: 139.691706, status: 'approved', createdAt: '2026-10-29T07:41:12.345Z',
+    })
+    const admin: Actor = { kind: 'user', id: 'admin-1', email: null, isAdmin: true }
+    const ids = async (actor: Actor, input: Parameters<typeof repo.list>[1]) => (await repo.list(actor, input)).map((report) => report.id)
+    // 元の座標だけを囲む小さな範囲(丸めた 35.690 / 139.692 は外)
+    const tinyBounds = { minLng: 139.6917, minLat: 35.6896, maxLng: 139.6918, maxLat: 35.6897 }
+
+    expect(await ids(otherUser, { bounds: tinyBounds })).toEqual([])
+    expect(await ids(otherUser, { bounds: { minLng: 139.6915, minLat: 35.6895, maxLng: 139.6925, maxLat: 35.6905 } })).toEqual(['exact'])
+    expect(await ids({ kind: 'anon' }, { bounds: { minLng: 139.6915, minLat: 35.6895, maxLng: 139.6925, maxLat: 35.6905 } })).toEqual([])
+    expect(await ids({ kind: 'anon' }, { bounds: { minLng: 139.685, minLat: 35.685, maxLng: 139.695, maxLat: 35.695 } })).toEqual(['exact'])
+    // 日時は日単位(同じ日のうちは、時刻で絞り込めない)
+    expect(await ids(otherUser, { createdAfter: '2026-10-29T07:41:13.000Z' })).toEqual(['exact'])
+    expect(await ids(otherUser, { createdAfter: '2026-10-30T00:00:00.000Z' })).toEqual([])
+    // 管理者は元の値で絞り込む
+    expect(await ids(admin, { bounds: tinyBounds })).toEqual(['exact'])
+    expect(await ids(admin, { createdAfter: '2026-10-29T07:41:13.000Z' })).toEqual([])
+  })
+
   it('atomically reopens approved moderation when an image key changes', async () => {
     const repo = createDangerReportsRepo(database.db as unknown as AppDb)
     const report = await repo.create(owner, {

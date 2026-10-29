@@ -33,4 +33,11 @@ describe('buildDangerReportPushPayload', () => {
     expect(payload.body).toBe('通学路の危険に関する新しい報告が公開されました。')
     expect(JSON.stringify(payload)).not.toContain(attack)
   })
+
+  it('学区で知らせるときは「〇〇小学校の学区で」と書く(学区のデータの名前は学校名なので、学校そのものの危険に読めないように)', () => {
+    expect(buildDangerReportPushPayload({ reportId: 'r', dangerType: 'traffic', areaLabel: '千代田区立番町小学校' }).title)
+      .toBe('千代田区立番町小学校の学区で危険報告')
+    expect(buildDangerReportPushPayload({ reportId: 'r', dangerType: 'traffic', areaLabel: '第一小学校区' }).title)
+      .toBe('第一小学校区で危険報告')
+  })
 })

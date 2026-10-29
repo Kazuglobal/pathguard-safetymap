@@ -5,11 +5,14 @@ import {
   claimDangerReport,
   completeDangerReportClaim,
   confirmDangerReportClaim,
+  listDistrictBoundariesAround,
+  listDistrictNotificationUsers,
   listNotificationRoutes,
   releaseDangerReportClaim,
 } from '@/lib/db/repos/push.repo'
 import { findDangersNearRoute } from '@/lib/geo/route-danger-finder'
 import { buildDangerReportPushPayload } from '@/lib/notifications/builders'
+import { isWithinOrNearSchoolDistrict } from '@/lib/school-districts'
 import { sendPushToUser } from '@/lib/web-push'
 
 const NOTIFICATION_RADIUS_METERS = 300
@@ -85,20 +88,63 @@ async function listUsersNearReport(report: DangerReportLocation): Promise<string
   return [...notifiedUserIds]
 }
 
-async function notifyUsers(report: DangerReportLocation, userIds: readonly string[]): Promise<number> {
-  const payload = buildDangerReportPushPayload({
+interface Recipients {
+  /** 通学路の 300m 以内に報告がある人 */
+  readonly nearRoute: readonly string[]
+  /**
+   * 報告の地点の小学校区にお子さまを登録していて、道すじで判定できない人(学区の名前つき):
+   * 「粗く保存」の人と、通学路が短くて道すじを保存していない人
+   */
+  readonly byDistrict: ReadonlyArray<{ userId: string; districtName: string }>
+}
+
+/** 報告の地点を含む小学校区に、お子さまを登録している人のうち、道すじで判定できない人(学区の名前つき) */
+async function listUsersInReportDistrict(report: DangerReportLocation): Promise<Array<{ userId: string; districtName: string }>> {
+  const service = getServiceActor()
+  const boundaries = await listDistrictBoundariesAround(service, report)
+  const districts = new Map<string, { name: string; geometries: Array<(typeof boundaries)[number]['geometry']> }>()
+  for (const row of boundaries) {
+    const current = districts.get(row.districtId) ?? { name: row.name, geometries: [] }
+    districts.set(row.districtId, { name: current.name, geometries: [...current.geometries, row.geometry] })
+  }
+  // 学区の境界の道の上の報告は、両側の学区に知らせる(境界から 50m 以内なら、その学区にも入れる)
+  const matched = [...districts].filter(([, district]) => isWithinOrNearSchoolDistrict(report.longitude, report.latitude, district.geometries))
+  if (matched.length === 0) return []
+  const names = new Map(matched.map(([id, district]) => [id, district.name]))
+  const byUser = new Map<string, string>()
+  for (const row of await listDistrictNotificationUsers(service, [...names.keys()])) {
+    if (!byUser.has(row.userId)) byUser.set(row.userId, names.get(row.districtId) ?? '')
+  }
+  return [...byUser].map(([userId, districtName]) => ({ userId, districtName }))
+}
+
+async function listRecipients(report: DangerReportLocation): Promise<Recipients> {
+  const nearRoute = await listUsersNearReport(report)
+  const near = new Set(nearRoute)
+  const byDistrict = (await listUsersInReportDistrict(report)).filter((recipient) => !near.has(recipient.userId))
+  return { nearRoute, byDistrict }
+}
+
+async function notifyUsers(report: DangerReportLocation, recipients: Recipients): Promise<number> {
+  const routePayload = buildDangerReportPushPayload({
     reportId: report.id,
     dangerType: report.dangerType,
     prefecture: report.prefecture,
   })
-  const counts = await Promise.all(
-    userIds.map((userId) => sendPushToUser(userId, payload, 'danger_reports')),
-  )
+  const counts = await Promise.all([
+    ...recipients.nearRoute.map((userId) => sendPushToUser(userId, routePayload, 'danger_reports')),
+    ...recipients.byDistrict.map((recipient) => sendPushToUser(recipient.userId, buildDangerReportPushPayload({
+      reportId: report.id,
+      dangerType: report.dangerType,
+      prefecture: report.prefecture,
+      areaLabel: recipient.districtName || null,
+    }), 'danger_reports')),
+  ])
   return counts.reduce((sum, count) => sum + count, 0)
 }
 
 export async function notifyUsersNearReport(report: DangerReportLocation): Promise<number> {
-  return notifyUsers(report, await listUsersNearReport(report))
+  return notifyUsers(report, await listRecipients(report))
 }
 
 function scheduleBackground(task: Promise<unknown>): void {
@@ -120,13 +166,13 @@ export async function dispatchDangerReportNotification(
   if (claimed.status !== 'claimed') return { status: claimed.status }
 
   const delivery = (async () => {
-    const userIds = await listUsersNearReport(claimed.report)
+    const recipients = await listRecipients(claimed.report)
     const confirmed = await confirmDangerReportNotificationClaim({
       reportId: claimed.report.id,
       claimedAt: claimed.claimedAt,
     })
     if (!confirmed) return null
-    const notified = await notifyUsers(claimed.report, userIds)
+    const notified = await notifyUsers(claimed.report, recipients)
     await completeDangerReportNotificationClaim({
       reportId: claimed.report.id,
       claimedAt: claimed.claimedAt,

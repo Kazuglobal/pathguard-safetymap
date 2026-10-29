@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useOptionalAuth } from "@/components/providers/auth-context"
 import { LOGGED_OUT_PATH } from "@/lib/auth/login-path"
+import { clearAllLocalRouteGeometry } from "@/lib/route-local-geometry"
 import { getDisplayName } from "@/lib/user-display-name"
 import { useGamification } from "@/hooks/use-gamification"
 import { useMissions } from "@/hooks/use-missions"
@@ -46,8 +47,13 @@ import {
 } from "lucide-react"
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
+import { ChildrenSettings } from "@/components/settings/children-settings"
+import { LocationPrecisionSettings } from "@/components/settings/location-precision-settings"
+import { AccountCredentialsSettings } from "@/components/settings/account-credentials-settings"
+import { AccountDeletionSettings } from "@/components/settings/account-deletion-settings"
 import { useToast } from "@/components/ui/use-toast"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
+import { isMaskedMediaKey } from "@/lib/media/url"
 
 interface ReportSummary extends Pick<
   DangerReport,
@@ -195,14 +201,15 @@ export default function MyPage() {
     }).length
   }, [reports])
 
+  // 画像コレクションには、端末でぼかした写真(と、そこから作ったもしも画像)だけを並べる(UIUX改装 項目57)
   const collectionImages = useMemo(() => {
     const images: { src: string; id: string }[] = []
     reports.forEach((report) => {
-      if (report.image_url) {
+      if (report.image_url && isMaskedMediaKey(report.image_url)) {
         images.push({ src: report.image_url, id: `${report.id}-original` })
       }
       ;(report.processed_image_urls ?? []).forEach((url, index) => {
-        if (url) {
+        if (url && isMaskedMediaKey(url)) {
           images.push({ src: url, id: `${report.id}-processed-${index}` })
         }
       })
@@ -306,6 +313,8 @@ export default function MyPage() {
     setIsSigningOut(true)
     try {
       await supabase.auth.signOut()
+      // この端末に残した通学路の元の線(自宅・学校の位置)も消す
+      clearAllLocalRouteGeometry()
       router.replace(LOGGED_OUT_PATH)
       router.refresh()
     } catch (error) {
@@ -802,6 +811,21 @@ export default function MyPage() {
         {/* 通知 */}
         <motion.section {...fade(5)} id="notifications">
           <MypageNotificationCard push={push} />
+        </motion.section>
+
+        {/* 設定(お子さまの登録など。UIUX改装 項目46・56) */}
+        <motion.section {...fade(6)} id="settings" aria-labelledby="settings-title">
+          <Card className="border" style={cardStyle}>
+            <CardHeader>
+              <CardTitle id="settings-title">設定</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <ChildrenSettings />
+              <LocationPrecisionSettings />
+              <AccountCredentialsSettings />
+              <AccountDeletionSettings />
+            </CardContent>
+          </Card>
         </motion.section>
 
         {/* 次にできること */}

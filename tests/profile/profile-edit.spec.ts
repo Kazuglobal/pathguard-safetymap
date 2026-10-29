@@ -9,7 +9,7 @@ import { AuthHelper, TEST_USERS, hasE2ERegularCredentials } from '../utils/auth-
  * タスク 1-2-profile-integration: マイページへの統合
  *
  * 期待する機能:
- * - display_name / full_name 編集フォーム
+ * - display_name 編集フォーム(氏名 full_name は預からないので欄を置かない。UIUX改装 項目55)
  * - アバター画像アップロード (avatar_url)
  * - マイページへの統合
  *
@@ -99,7 +99,7 @@ test.describe('Profile Edit - Phase 1.2', () => {
       await expect(displayNameInput).toBeVisible({ timeout: 10000 });
     });
 
-    test('full_name入力フィールドが存在する', async ({ page }) => {
+    test('氏名(full_name)の入力フィールドは無い', async ({ page }) => {
       const loggedIn = await tryLogin(page);
 
       expect(loggedIn, 'Login failed for test user').toBeTruthy();
@@ -126,7 +126,8 @@ test.describe('Profile Edit - Phase 1.2', () => {
         '#fullName'
       );
 
-      await expect(fullNameInput).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('[data-testid="profile-edit-dialog"]')).toBeVisible({ timeout: 10000 });
+      await expect(fullNameInput).toHaveCount(0);
     });
 
     test('現在の値がフォームにプリフィルされる', async ({ page }) => {

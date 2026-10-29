@@ -4,8 +4,12 @@ import { listPendingDangerReportIds } from '@/lib/db/repos/push.repo'
 import { dispatchDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 import { verifyCronSecret } from '@/lib/cron-auth'
 
-// Cron: 過去20分の新規レポートを処理してプッシュ通知を送信する安全網
+// Cron: まだ通知していない報告のうち、24時間以内に承認されたものへプッシュ通知を送る安全網。
+// 運営(人)の承認はここで送る(審査に時間がかかっても取りこぼさない)。24時間より前の承認は
+// 一斉に送らない(古い報告がまとめて届かないように)。
 // wrangler.jsonc の Cron Trigger で */15 * * * * (15分毎) に設定
+// (route.ts は Next.js が決めた名前しか export できないので、定数は export しない)
+const PENDING_NOTIFICATION_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -14,7 +18,7 @@ export async function GET(req: NextRequest) {
   const authError = verifyCronSecret(req)
   if (authError) return authError
 
-  const since = new Date(Date.now() - 20 * 60 * 1000).toISOString()
+  const since = new Date(Date.now() - PENDING_NOTIFICATION_WINDOW_MS).toISOString()
   const reports = await listPendingDangerReportIds(getServiceActor(), since)
 
   if (!reports || reports.length === 0) {

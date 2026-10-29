@@ -18,7 +18,8 @@ describe('submitted photo AI analysis', () => {
     vi.clearAllMocks()
     mocks.actor.mockResolvedValue({ kind: 'user', id: 'owner-1' })
     mocks.rate.mockResolvedValue({ success: true })
-    mocks.report.mockResolvedValue({ userId: 'owner-1', imageKey: 'original.webp', processedImageKeys: ['processed.webp'] })
+    // ファイル名の頭の m- は「端末でぼかした写真」の印(lib/media/url.ts)
+    mocks.report.mockResolvedValue({ userId: 'owner-1', imageKey: 'danger-reports/owner-1/r/m-original.webp', processedImageKeys: ['danger-reports/owner-1/r/m-processed.webp'] })
     mocks.getImage.mockResolvedValue({ size: 3, httpMetadata: { contentType: 'image/webp' }, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer })
     mocks.hasKey.mockReturnValue(true)
     mocks.claude.mockResolvedValue(JSON.stringify(analysis))
@@ -28,16 +29,27 @@ describe('submitted photo AI analysis', () => {
   it('uses the configured Claude provider and privately stored original', async () => {
     const response = await POST(request())
     expect(response.status).toBe(200)
-    expect(mocks.getImage).toHaveBeenCalledWith('original.webp')
+    expect(mocks.getImage).toHaveBeenCalledWith('danger-reports/owner-1/r/m-original.webp')
     expect(mocks.claude).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'image/webp', base64: 'AQID' }))
     expect(mocks.gemini).not.toHaveBeenCalled()
     await expect(response.json()).resolves.toMatchObject({ success: true, analysis })
   })
 
   it('analyzes a processed-only attachment', async () => {
-    mocks.report.mockResolvedValue({ userId: 'owner-1', imageKey: null, processedImageKeys: ['processed.webp'] })
+    mocks.report.mockResolvedValue({ userId: 'owner-1', imageKey: null, processedImageKeys: ['danger-reports/owner-1/r/m-processed.webp'] })
     expect((await POST(request())).status).toBe(200)
-    expect(mocks.getImage).toHaveBeenCalledWith('processed.webp')
+    expect(mocks.getImage).toHaveBeenCalledWith('danger-reports/owner-1/r/m-processed.webp')
+  })
+
+  it('ぼかしていない写真(以前の写真)は AI に送らない(UIUX改装 項目57)', async () => {
+    mocks.report.mockResolvedValue({ userId: 'owner-1', imageKey: 'danger-reports/owner-1/r/original.webp', processedImageKeys: ['danger-reports/owner-1/r/processed.webp'] })
+
+    const response = await POST(request())
+
+    expect(response.status).toBe(409)
+    expect(mocks.getImage).not.toHaveBeenCalled()
+    expect(mocks.claude).not.toHaveBeenCalled()
+    expect(mocks.gemini).not.toHaveBeenCalled()
   })
 
   it('retains Gemini compatibility when the Claude key is not configured', async () => {

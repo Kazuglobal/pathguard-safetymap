@@ -7,6 +7,7 @@ import { Upload, Camera, Loader2, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useToast } from "@/components/ui/use-toast"
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 import type { DangerReport } from "@/lib/types"
 
 interface ReportAdminImageUploadProps {
@@ -18,6 +19,7 @@ interface ReportAdminImageUploadProps {
 /**
  * Admin-only collapsible section for uploading, replacing, and deleting processed images.
  * Extracted from the main modal to reduce its complexity.
+ * 上げる画像も端末で顔などをぼかしてから送る(ぼかした画像だけを、ほかの人に見せるため。UIUX改装 項目57)
  */
 export function ReportAdminImageUpload({
   report,
@@ -32,6 +34,10 @@ export function ReportAdminImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replaceInputRef = useRef<HTMLInputElement>(null)
   const [replaceTargetIndex, setReplaceTargetIndex] = useState<number | null>(null)
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
+    description: "公開する前に、写っている人や車が分からないようにします。",
+    notice: "この加工した画像だけを保存します。ほかの人には、報告を公開したときに表示されます。",
+  })
 
   if (!isAdmin) return null
 
@@ -55,16 +61,21 @@ export function ReportAdminImageUpload({
     return true
   }
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !validateFile(file)) return
+    const masked = await requestMaskedPhoto(file)
+    if (!masked) {
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      return
+    }
 
-    setNewFile(file)
+    setNewFile(masked.file)
     const reader = new FileReader()
     reader.onload = (ev) => {
       setNewPreview(ev.target?.result as string)
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(masked.file)
   }
 
   const handleRemoveNewImage = () => {
@@ -83,6 +94,7 @@ export function ReportAdminImageUpload({
       const formData = new FormData()
       formData.append("file", newFile)
       formData.append("reportId", report.id)
+      formData.append("masked", "1")
 
       const response = await fetch("/api/image/process", {
         method: "POST",
@@ -166,14 +178,21 @@ export function ReportAdminImageUpload({
   const handleReplaceImage = async (file: File) => {
     if (replaceTargetIndex === null) return
     if (!validateFile(file)) return
+    const masked = await requestMaskedPhoto(file)
+    if (!masked) {
+      setReplaceTargetIndex(null)
+      if (replaceInputRef.current) replaceInputRef.current.value = ""
+      return
+    }
 
     setIsUploading(true)
     try {
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("file", masked.file)
       formData.append("reportId", report.id)
       formData.append("imageType", "processed")
       formData.append("replaceIndex", String(replaceTargetIndex))
+      formData.append("masked", "1")
 
       const response = await fetch("/api/image/process", {
         method: "POST",
@@ -341,6 +360,7 @@ export function ReportAdminImageUpload({
           />
         </CollapsibleContent>
       </Collapsible>
+      {photoMaskerDialog}
     </div>
   )
 }

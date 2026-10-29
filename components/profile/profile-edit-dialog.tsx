@@ -21,9 +21,9 @@ interface ProfileEditDialogProps {
   onProfileUpdated?: () => void
 }
 
+// 氏名は預からない(UIUX改装 項目55)。編集できるのは表示名とアイコンだけ
 interface ProfileData {
   display_name: string
-  full_name: string
   avatar_url: string | null
 }
 
@@ -41,12 +41,10 @@ export function ProfileEditDialog({
   const [isSaving, setIsSaving] = useState(false)
   const [profile, setProfile] = useState<ProfileData>({
     display_name: "",
-    full_name: "",
     avatar_url: null,
   })
   const [originalProfile, setOriginalProfile] = useState<ProfileData>({
     display_name: "",
-    full_name: "",
     avatar_url: null,
   })
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -68,7 +66,6 @@ export function ProfileEditDialog({
 
       const profileData = {
         display_name: data?.display_name || "",
-        full_name: data?.full_name || "",
         avatar_url: data?.avatar_url || null,
       }
 
@@ -82,19 +79,16 @@ export function ProfileEditDialog({
     }
   }
 
-  const hasChanges = () => {
-    return (
-      profile.display_name !== originalProfile.display_name ||
-      profile.full_name !== originalProfile.full_name ||
-      selectedFile !== null
-    )
-  }
+  const displayNameChanged = () => profile.display_name.trim() !== originalProfile.display_name.trim()
 
+  const hasChanges = () => displayNameChanged() || selectedFile !== null
+
+  // 表示名が未設定のままでも、アイコンだけを変えて保存できる。空にできないのは、入っていた表示名を消したときだけ
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {}
 
-    if (!profile.display_name.trim()) {
-      newErrors.display_name = "表示名は必須です"
+    if (displayNameChanged() && !profile.display_name.trim()) {
+      newErrors.display_name = "表示名を入力してください"
     }
 
     setErrors(newErrors)
@@ -145,17 +139,15 @@ export function ProfileEditDialog({
         avatarUrl = await uploadAvatar(selectedFile)
       }
 
-      const profileUpdates = {
-        display_name: profile.display_name.trim(),
-        full_name: profile.full_name.trim(),
+      if (displayNameChanged()) {
+        const response = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ display_name: profile.display_name.trim() }),
+        })
+        if (!response.ok) throw new Error(`Profile update failed (${response.status})`)
       }
-      const response = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify(profileUpdates),
-      })
-      if (!response.ok) throw new Error(`Profile update failed (${response.status})`)
 
       toast({
         title: "プロフィールを更新しました",
@@ -163,7 +155,7 @@ export function ProfileEditDialog({
       })
 
       setOriginalProfile({
-        ...profile,
+        display_name: profile.display_name.trim(),
         avatar_url: avatarUrl,
       })
       setSelectedFile(null)
@@ -200,7 +192,7 @@ export function ProfileEditDialog({
         <DialogHeader>
           <DialogTitle>プロフィール編集</DialogTitle>
           <DialogDescription id="profile-edit-description">
-            表示名やアバター画像を変更できます
+            表示名とアイコンを変更できます。どちらか一方だけでも保存できます
           </DialogDescription>
         </DialogHeader>
 
@@ -265,7 +257,7 @@ export function ProfileEditDialog({
 
             {/* Display Name */}
             <div className="space-y-2">
-              <Label htmlFor="display_name">表示名 *</Label>
+              <Label htmlFor="display_name">表示名</Label>
               <Input
                 id="display_name"
                 name="display_name"
@@ -274,10 +266,14 @@ export function ProfileEditDialog({
                 onChange={(e) =>
                   setProfile({ ...profile, display_name: e.target.value })
                 }
-                placeholder="表示名を入力"
+                placeholder="例: さくらママ"
+                maxLength={100}
                 aria-invalid={!!errors.display_name}
-                aria-describedby={errors.display_name ? "display-name-error" : undefined}
+                aria-describedby={errors.display_name ? "display-name-hint display-name-error" : "display-name-hint"}
               />
+              <p id="display-name-hint" className="text-xs text-muted-foreground">
+                ランキングやコメントで、ほかの人にも表示されます。本名ではなくニックネームにしてください
+              </p>
               {errors.display_name && (
                 <p
                   id="display-name-error"
@@ -288,21 +284,6 @@ export function ProfileEditDialog({
                   {errors.display_name}
                 </p>
               )}
-            </div>
-
-            {/* Full Name */}
-            <div className="space-y-2">
-              <Label htmlFor="full_name">氏名</Label>
-              <Input
-                id="full_name"
-                name="full_name"
-                data-testid="full-name-input"
-                value={profile.full_name}
-                onChange={(e) =>
-                  setProfile({ ...profile, full_name: e.target.value })
-                }
-                placeholder="氏名を入力（任意）"
-              />
             </div>
 
             {errors.submit && (

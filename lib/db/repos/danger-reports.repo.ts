@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import { assertCan, AuthzError, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -111,13 +111,22 @@ export function createDangerReportsRepo(db: AppDb) {
       if (input.dangerType) predicates.push(eq(dangerReports.dangerType, input.dangerType))
       if (input.minimumDangerLevel != null) predicates.push(gte(dangerReports.dangerLevel, input.minimumDangerLevel))
       if (input.exactDangerLevel != null) predicates.push(eq(dangerReports.dangerLevel, input.exactDangerLevel))
-      if (input.createdAfter) predicates.push(gte(dangerReports.createdAt, input.createdAfter))
+      // ほかの人には座標を丸め(ログイン中は小数3桁、未ログインは2桁)、日時は日単位で見せるので、絞り込みも同じ粗さで行う
+      // (細かい値で絞り込めると、範囲を狭めながら問い合わせて、丸める前の場所と時刻を割り出せるため。UIUX改装 項目61)
+      const coarseDecimals = actor.kind === 'anon' ? 2 : actor.kind === 'user' && !actor.isAdmin ? 3 : null
+      if (input.createdAfter) {
+        predicates.push(coarseDecimals === null
+          ? gte(dangerReports.createdAt, input.createdAfter)
+          : sql`substr(${dangerReports.createdAt}, 1, 10) >= ${input.createdAfter.slice(0, 10)}`)
+      }
       if (input.bounds) {
+        const longitude = coarseDecimals === null ? sql`${dangerReports.longitude}` : sql`round(${dangerReports.longitude}, ${coarseDecimals})`
+        const latitude = coarseDecimals === null ? sql`${dangerReports.latitude}` : sql`round(${dangerReports.latitude}, ${coarseDecimals})`
         predicates.push(
-          gte(dangerReports.longitude, input.bounds.minLng),
-          lte(dangerReports.longitude, input.bounds.maxLng),
-          gte(dangerReports.latitude, input.bounds.minLat),
-          lte(dangerReports.latitude, input.bounds.maxLat),
+          sql`${longitude} >= ${input.bounds.minLng}`,
+          sql`${longitude} <= ${input.bounds.maxLng}`,
+          sql`${latitude} >= ${input.bounds.minLat}`,
+          sql`${latitude} <= ${input.bounds.maxLat}`,
         )
       }
 
@@ -207,6 +216,28 @@ export function createDangerReportsRepo(db: AppDb) {
       }
     },
 
+    /**
+     * 管理者が、ぼかしていない元の写真を、ぼかした写真に置き換える(UIUX改装 項目57)。審査はやり直さない。
+     * keyFor で新しいキーを決め、store でその写真を保存してから D1 を書き換える。元のキーを返す(呼び出し側が消す)
+     */
+    async replaceImageWithMasked(
+      actor: Actor,
+      reportId: string,
+      keyFor: (report: { id: string; userId: string }) => string,
+      store: (key: string) => Promise<void>,
+    ): Promise<{ imageKey: string; previousKey: string | null } | null> {
+      if (actor.kind !== 'user' || !actor.isAdmin) throw new Error('管理者権限が必要です')
+      const [report] = await db.select({ id: dangerReports.id, userId: dangerReports.userId, imageKey: dangerReports.imageKey })
+        .from(dangerReports).where(eq(dangerReports.id, reportId)).limit(1)
+      if (!report) return null
+      assertCan(actor, 'update', 'danger_reports', { ownerId: report.userId, changedFields: ['image_key', 'image_masked'] })
+      const imageKey = keyFor(report)
+      await store(imageKey)
+      await db.update(dangerReports).set({ imageKey, imageMasked: true, updatedAt: new Date().toISOString() })
+        .where(eq(dangerReports.id, report.id))
+      return { imageKey, previousKey: report.imageKey }
+    },
+
     async getForImageUpdate(actor: Actor, reportId: string) {
       const [report] = await db.select().from(dangerReports)
         .where(eq(dangerReports.id, reportId)).limit(1)
@@ -221,7 +252,8 @@ export function createDangerReportsRepo(db: AppDb) {
     async setImages(
       actor: Actor,
       reportId: string,
-      input: { imageKey?: string; processedImageKeys?: string[] },
+      /** imageMasked: imageKey の写真が端末でぼかした(加工済みの)ものか。imageKey と一緒に渡す */
+      input: { imageKey?: string; imageMasked?: boolean; processedImageKeys?: string[] },
     ) {
       if (input.imageKey === undefined && input.processedImageKeys === undefined) {
         throw new RangeError('An image update is required')
@@ -236,23 +268,32 @@ export function createDangerReportsRepo(db: AppDb) {
           : ['processed_image_keys'],
       })
       const now = new Date().toISOString()
+      // 公開中か、AI か運営(人)が承認済みなら、写真が変わったので審査をやり直す(人の承認も取り消す)。
+      // 承認の時刻を記録する前に人が公開した報告(human_approved_at が空)も、公開中なら審査に戻す。
+      // 運営(管理者)が写真を足す・差し替える・消すときは、運営が見ているので審査に戻さない
+      // (戻すと公開が止まり、投稿者のポイントが減り、承認し直したときに同じ通知がもう一度届くため)
+      const adminEdit = actor.kind === 'user' && actor.isAdmin
+      const reopens = adminEdit
+        ? sql`0`
+        : sql`(${dangerReports.status} in ('approved', 'published', 'resolved') or ${dangerReports.aiModerationStatus} = 'approved' or ${dangerReports.humanApprovedAt} is not null)`
       const moderationFields = {
-        status: sql<string>`case when ${dangerReports.aiModerationStatus} = 'approved' then 'pending' else ${dangerReports.status} end`,
-        aiModerationStatus: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then 'needs_review' else ${dangerReports.aiModerationStatus} end`,
+        status: sql<string>`case when ${reopens} then 'pending' else ${dangerReports.status} end`,
+        aiModerationStatus: sql<string | null>`case when ${reopens} then 'needs_review' else ${dangerReports.aiModerationStatus} end`,
+        humanApprovedAt: sql<string | null>`case when ${reopens} then null else ${dangerReports.humanApprovedAt} end`,
         aiModerationReason: sql<string | null>`case
-          when ${dangerReports.aiModerationStatus} = 'approved' then
+          when ${reopens} then
             case when ${dangerReports.aiModerationReason} is null or ${dangerReports.aiModerationReason} = ''
               then ${IMAGE_REOPEN_REASON}
               else ${dangerReports.aiModerationReason} || ' / ' || ${IMAGE_REOPEN_REASON}
             end
           else ${dangerReports.aiModerationReason}
         end`,
-        aiModerationCheckedAt: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then ${now} else ${dangerReports.aiModerationCheckedAt} end`,
-        pushNotifiedAt: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then null else ${dangerReports.pushNotifiedAt} end`,
+        aiModerationCheckedAt: sql<string | null>`case when ${reopens} then ${now} else ${dangerReports.aiModerationCheckedAt} end`,
+        pushNotifiedAt: sql<string | null>`case when ${reopens} then null else ${dangerReports.pushNotifiedAt} end`,
         updatedAt: now,
       }
       const values = input.imageKey !== undefined
-        ? { ...moderationFields, imageKey: input.imageKey }
+        ? { ...moderationFields, imageKey: input.imageKey, imageMasked: input.imageMasked === true }
         : { ...moderationFields, processedImageKeys: input.processedImageKeys ?? [] }
       const [updated] = await db.update(dangerReports).set(values)
         .where(eq(dangerReports.id, reportId)).returning()
@@ -285,12 +326,22 @@ export function createDangerReportsRepo(db: AppDb) {
       if (!['pending', 'approved', 'published', 'resolved', 'rejected'].includes(status)) {
         throw new RangeError('Invalid report status')
       }
-      assertCan(actor, 'update', 'danger_reports', { changedFields: ['status'] })
+      assertCan(actor, 'update', 'danger_reports', { changedFields: ['status', 'human_approved_at'] })
       const keepsNotificationState = ['approved', 'published', 'resolved'].includes(status)
+      const now = new Date().toISOString()
+      // 運営(管理者)が非公開から公開にしたら承認した時刻を残す(通知のゲート・取りこぼしの範囲に使う)。
+      // すでに公開中の状態どうしの変更(公開→解決済みなど)では、時刻が無くても付けない
+      // (付けると、通知していない古い報告が「新しい報告」として届き、保持期間も延びるため)。非公開に戻したら承認を取り消す
+      const humanApprovedAt = keepsNotificationState
+        ? actor.kind === 'user' && actor.isAdmin
+          ? { humanApprovedAt: sql<string | null>`case when ${dangerReports.status} in ('approved', 'published', 'resolved') then ${dangerReports.humanApprovedAt} else ${now} end` }
+          : {}
+        : { humanApprovedAt: null }
       const [row] = await db.update(dangerReports).set({
         status,
+        ...humanApprovedAt,
         ...(!keepsNotificationState ? { pushNotifiedAt: null } : {}),
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       })
         .where(eq(dangerReports.id, reportId)).returning()
       if (!row) throw new Error('Danger report not found')
@@ -340,7 +391,16 @@ export function getDangerReportForImageUpdate(actor: Actor, reportId: string) {
   return createDangerReportsRepo(getDb()).getForImageUpdate(actor, reportId)
 }
 
-export function setDangerReportImages(actor: Actor, reportId: string, input: { imageKey?: string; processedImageKeys?: string[] }) {
+export function replaceDangerReportImageWithMasked(
+  actor: Actor,
+  reportId: string,
+  keyFor: (report: { id: string; userId: string }) => string,
+  store: (key: string) => Promise<void>,
+) {
+  return createDangerReportsRepo(getDb()).replaceImageWithMasked(actor, reportId, keyFor, store)
+}
+
+export function setDangerReportImages(actor: Actor, reportId: string, input: { imageKey?: string; imageMasked?: boolean; processedImageKeys?: string[] }) {
   return createDangerReportsRepo(getDb()).setImages(actor, reportId, input)
 }
 

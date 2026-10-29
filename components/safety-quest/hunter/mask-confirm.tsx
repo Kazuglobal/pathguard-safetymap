@@ -17,10 +17,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { ImageIcon, RotateCcw, Sparkles, X } from "lucide-react"
+import { applyBlurRegion } from "@/lib/media/canvas-mask"
+import { detectFaces, releaseMediaPipeFaceDetector } from "@/lib/media/face-detection"
 import {
   buildBlurRegions,
-  type DetectedFace,
-} from "@/lib/hunter/masking"
+  calculateMaskedOutputSize,
+  dragToRegion,
+  MIN_DRAG_SIZE,
+  type DragState,
+} from "@/lib/media/masking"
 import type { HunterRegion } from "@/lib/hunter/types"
 import {
   BottomBar,
@@ -42,237 +47,9 @@ export interface MaskConfirmProps {
   onCancel: () => void
 }
 
-/** ぼかしの強さ (ピクセレート時の縮小先サイズ目安・px) */
-const PIXELATE_TARGET_PX = 12
 /** 表示キャンバスの最大幅 (見やすさ用。出力解像度には影響しない方針で原寸描画) */
 const MAX_DISPLAY_WIDTH = 480
-/**
- * AI送信用画像の長辺上限。
- * Vercel Functions の 4.5MB リクエスト上限に対し、base64/JSON の膨張分を含めても
- * 十分な余白を持たせつつ、危険箇所を判別できる解像度を維持する。
- */
-const MAX_MASKED_OUTPUT_LONG_EDGE = 1600
-/** ドラッグ確定とみなす最小サイズ (相対座標 0..1) */
-const MIN_DRAG_SIZE = 0.02
 const PROCESSING_TIMEOUT_MS = 12_000
-
-type DragState = {
-  startX: number
-  startY: number
-  curX: number
-  curY: number
-}
-
-// --- MediaPipe 顔検出 (第一候補・端末内推論) ---
-// WASM とモデル(.tflite)は self-host (public/mediapipe/*) から取得する。
-// 外部 CDN に依存せず CSP(script-src/connect-src 'self') 内で完結し、
-// オフラインでも動く (設計書 §6.6)。写真(未マスク画像)は fetch せず、
-// detector.detect(img) に渡してブラウザ内 (WASM) で推論する。
-// 資産は scripts/copy-mediapipe.js が predev/build 時に node_modules から配置する。
-const MEDIAPIPE_WASM_BASE = "/mediapipe/wasm"
-const BLAZE_FACE_MODEL_URL = "/mediapipe/models/blaze_face_short_range.tflite"
-
-/** detect() の戻り値で利用する最小形 (型は @mediapipe/tasks-vision に準拠)。 */
-type MediaPipeFaceDetector = {
-  detect: (image: HTMLImageElement) => {
-    detections: ReadonlyArray<{
-      boundingBox?: { originX: number; originY: number; width: number; height: number }
-      categories?: ReadonlyArray<{ score: number }>
-    }>
-  }
-  close?: () => void
-}
-
-/**
- * FaceDetector の生成は重い (WASM + モデル取得) ため、モジュール内で 1 度だけ。
- * 失敗時は promise をクリアし、次回の呼び出しで再試行できるようにする。
- */
-let faceDetectorPromise: Promise<MediaPipeFaceDetector> | null = null
-
-async function loadMediaPipeFaceDetector(): Promise<MediaPipeFaceDetector> {
-  if (faceDetectorPromise) return faceDetectorPromise
-  const promise = (async () => {
-    // 動的 import: 初回検出時のみ MediaPipe を読み込み、初期バンドルを軽く保つ。
-    const vision = await import("@mediapipe/tasks-vision")
-    const fileset = await vision.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE)
-    const detector = await vision.FaceDetector.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: BLAZE_FACE_MODEL_URL },
-      runningMode: "IMAGE",
-    })
-    return detector as unknown as MediaPipeFaceDetector
-  })()
-  faceDetectorPromise = promise
-  // ロード失敗はキャッシュしない (次回フォールバック後も再試行可能に)
-  promise.catch(() => {
-    if (faceDetectorPromise === promise) faceDetectorPromise = null
-  })
-  return promise
-}
-
-function releaseMediaPipeFaceDetector(): void {
-  const active = faceDetectorPromise
-  faceDetectorPromise = null
-  if (!active) return
-  void active.then((detector) => detector.close?.()).catch(() => undefined)
-}
-
-/**
- * MediaPipe による顔検出。ロード/推論に失敗した場合は throw する
- * (呼び出し側 detectFaces がフォールバックを担う)。
- */
-async function detectFacesMediaPipe(
-  source: HTMLImageElement,
-  imgWidth: number,
-  imgHeight: number,
-): Promise<DetectedFace[]> {
-  if (imgWidth <= 0 || imgHeight <= 0) return []
-  const detector = await loadMediaPipeFaceDetector()
-  // 推論は端末内 (WASM)。画像データは外部送信しない。
-  const result = detector.detect(source)
-  const faces: DetectedFace[] = []
-  for (const det of result.detections) {
-    const box = det.boundingBox
-    if (!box) continue
-    faces.push({
-      x: box.originX / imgWidth,
-      y: box.originY / imgHeight,
-      width: box.width / imgWidth,
-      height: box.height / imgHeight,
-      score: det.categories?.[0]?.score,
-    })
-  }
-  return faces
-}
-
-/** ネイティブ FaceDetector の有無を判定 (SSR セーフ) */
-function hasNativeFaceDetector(): boolean {
-  return typeof window !== "undefined" && "FaceDetector" in window
-}
-
-/**
- * ブラウザ標準 (実験的) の FaceDetector によるフォールバック検出。
- * 無い / 失敗しても throw せず空配列を返す (手動のみで続行)。
- */
-async function detectFacesNative(
-  source: CanvasImageSource,
-  imgWidth: number,
-  imgHeight: number,
-): Promise<DetectedFace[]> {
-  if (!hasNativeFaceDetector() || imgWidth <= 0 || imgHeight <= 0) return []
-  try {
-    // FaceDetector は実験的 API のため型定義が無い環境を考慮。
-    const Ctor = (window as unknown as {
-      FaceDetector: new (opts?: { fastMode?: boolean; maxDetectedFaces?: number }) => {
-        detect: (s: CanvasImageSource) => Promise<
-          ReadonlyArray<{ boundingBox: { x: number; y: number; width: number; height: number } }>
-        >
-      }
-    }).FaceDetector
-    const detector = new Ctor({ fastMode: true, maxDetectedFaces: 10 })
-    const results = await detector.detect(source)
-    return results.map((r) => ({
-      x: r.boundingBox.x / imgWidth,
-      y: r.boundingBox.y / imgHeight,
-      width: r.boundingBox.width / imgWidth,
-      height: r.boundingBox.height / imgHeight,
-    }))
-  } catch {
-    // 検出失敗は許容 (手動ぼかしで続行)
-    return []
-  }
-}
-
-/**
- * オンデバイス顔検出 (検出チェーン)。
- * 1. MediaPipe FaceDetector を第一候補 (端末内推論)。
- * 2. 失敗したら throw せず、ネイティブ FaceDetector にフォールバック。
- * 3. それも無ければ空配列 → 手動矩形のみで続行。
- * いずれの段でも未マスク画像は外部へ送らない。
- */
-async function detectFaces(
-  source: HTMLImageElement,
-  imgWidth: number,
-  imgHeight: number,
-): Promise<DetectedFace[]> {
-  if (imgWidth <= 0 || imgHeight <= 0) return []
-  try {
-    return await detectFacesMediaPipe(source, imgWidth, imgHeight)
-  } catch (error) {
-    // MediaPipe のロード/推論失敗は許容し、ネイティブ検出へフォールバック。
-    console.warn(
-      "MediaPipe 顔検出に失敗したため、ネイティブ FaceDetector にフォールバックします:",
-      error,
-    )
-  }
-  return detectFacesNative(source, imgWidth, imgHeight)
-}
-
-/**
- * 1つのぼかし領域を canvas に適用 (強いピクセレート)。
- * 対象範囲を極小サイズに縮小 → 元範囲へ拡大描画することで判別不能化する。
- */
-function applyBlurRegion(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  region: HunterRegion,
-): void {
-  const sx = Math.round(region.x * canvas.width)
-  const sy = Math.round(region.y * canvas.height)
-  const sw = Math.round(region.w * canvas.width)
-  const sh = Math.round(region.h * canvas.height)
-  if (sw <= 0 || sh <= 0) return
-
-  // 縮小先サイズ (アスペクト維持・最低1px)
-  const scale = Math.min(1, PIXELATE_TARGET_PX / Math.max(sw, sh))
-  const tw = Math.max(1, Math.round(sw * scale))
-  const th = Math.max(1, Math.round(sh * scale))
-
-  const tmp = document.createElement("canvas")
-  tmp.width = tw
-  tmp.height = th
-  const tctx = tmp.getContext("2d")
-  if (!tctx) return
-
-  // 対象範囲を縮小コピー
-  tctx.imageSmoothingEnabled = true
-  tctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, tw, th)
-
-  // 縮小画像をブロック状に拡大描画 (ピクセレート)
-  const prevSmoothing = ctx.imageSmoothingEnabled
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(tmp, 0, 0, tw, th, sx, sy, sw, sh)
-
-  // さらにブラーで境界をなじませる (対応ブラウザのみ)
-  try {
-    ctx.save()
-    ctx.filter = "blur(4px)"
-    ctx.drawImage(tmp, 0, 0, tw, th, sx, sy, sw, sh)
-    ctx.restore()
-  } catch {
-    // ctx.filter 未対応でもピクセレートだけで十分判別不能
-  }
-  ctx.imageSmoothingEnabled = prevSmoothing
-}
-
-/** ドラッグ状態 → 正規化矩形 (0..1) */
-function dragToRegion(drag: DragState): HunterRegion {
-  const x = Math.min(drag.startX, drag.curX)
-  const y = Math.min(drag.startY, drag.curY)
-  const w = Math.abs(drag.curX - drag.startX)
-  const h = Math.abs(drag.curY - drag.startY)
-  return { x, y, w, h }
-}
-
-export function calculateMaskedOutputSize(
-  width: number,
-  height: number,
-): { width: number; height: number } {
-  const scale = Math.min(1, MAX_MASKED_OUTPUT_LONG_EDGE / Math.max(width, height))
-  return {
-    width: Math.max(1, Math.round(width * scale)),
-    height: Math.max(1, Math.round(height * scale)),
-  }
-}
 
 export function MaskConfirm(props: MaskConfirmProps) {
   const { file, onConfirm, onCancel } = props
@@ -292,6 +69,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
   const [processingTimedOut, setProcessingTimedOut] = useState(false)
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  // この端末で自動の顔検出が使えなかったとき(顔が無かったのではない)は、指で隠したことを確かめてから進める
+  const [detectionAvailable, setDetectionAvailable] = useState(true)
+  const [manualFaceCheck, setManualFaceCheck] = useState(false)
   const [, setDisplaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
 
   // --- 画像ロード + 自動検出 ---
@@ -304,6 +84,8 @@ export function MaskConfirm(props: MaskConfirmProps) {
     setLoadFailed(false)
     setProcessingTimedOut(false)
     setErrorMessage(null)
+    setDetectionAvailable(true)
+    setManualFaceCheck(false)
 
     const timeoutId = window.setTimeout(() => {
       if (revoked) return
@@ -323,15 +105,17 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
       // 自動検出 (失敗しても続行)
       void detectFaces(img, naturalW, naturalH)
-        .then((faces) => {
+        .then((result) => {
           if (revoked) return
           window.clearTimeout(timeoutId)
-          setAutoRegions(buildBlurRegions(faces))
+          setAutoRegions(buildBlurRegions(result.faces))
+          setDetectionAvailable(result.available)
           // タイムアウト表示後に検出が完了した場合はUIを回復させる
           // (回復させないと、実際は準備完了なのに「やりなおしてね」で固定される)
           setProcessingTimedOut(false)
           setErrorMessage(null)
         })
+        .catch(() => { if (!revoked) setDetectionAvailable(false) })
         .finally(() => {
           if (!revoked) {
             window.clearTimeout(timeoutId)
@@ -509,9 +293,11 @@ export function MaskConfirm(props: MaskConfirmProps) {
       <div className="flex flex-1 flex-col gap-3.5">
         <SpeechBubble mood={isLoading || processingTimedOut ? "think" : "cheer"}>
           {isLoading || processingTimedOut ? (
-            <>かおや なまえを かくしています。しゃしんは この端末の中で じゅんびするよ。</>
+            <>かおを さがして かくしています。しゃしんは この端末の中で じゅんびするよ。</>
+          ) : !detectionAvailable ? (
+            <>この端末では かおを じどうで かくせなかったよ。かお・なまえ・おうち・くるまの ナンバーが うつっていたら、<b>ゆびで なぞって</b> かくしてね。</>
           ) : (
-            <>かお・なまえ・おうち・くるまの ナンバーを もやもやに かくしたよ。かくしたい ところは <b>ゆびで なぞって</b> ついかしてね。</>
+            <>かおは もやもやに かくしたよ。とおくの ひとの かおや、なまえ・おうち・くるまの ナンバーが うつっていたら、<b>ゆびで なぞって</b> かくしてね。</>
           )}
         </SpeechBubble>
 
@@ -560,7 +346,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
                 )}
                 <div className="relative z-10 rounded-[18px] border bg-[#FFFDF7]/95 px-5 py-4 text-center shadow-lg" style={{ borderColor: "rgba(67,57,43,.14)" }}>
                   <p className="text-[15px] font-black" style={{ color: C.ink }}>しゃしんを じゅんび中 2/3</p>
-                  <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkSoft }}>かおや なまえを かくしています</p>
+                  <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkSoft }}>かおを さがしています</p>
                   <div className="mt-3 flex justify-center gap-3" aria-hidden="true">
                     {[1, 2, 3].map((step) => <span key={step} className="h-3 w-3 rounded-full" style={{ background: step <= 2 ? C.primary : C.inkFaint }} />)}
                   </div>
@@ -653,7 +439,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
         {/* 自動検出の結果をやさしく知らせる */}
         <AnimatePresence>
-          {!isLoading && !loadFailed && !processingTimedOut && autoRegions.length === 0 && (
+          {!isLoading && !loadFailed && !processingTimedOut && detectionAvailable && autoRegions.length === 0 && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -665,11 +451,23 @@ export function MaskConfirm(props: MaskConfirmProps) {
             </motion.p>
           )}
         </AnimatePresence>
+        {/* 自動で顔をさがせなかったときは、指で隠したことを確かめてから進める */}
+        {!isLoading && !loadFailed && !processingTimedOut && !detectionAvailable && (
+          <label className="flex min-h-11 items-center gap-2.5 rounded-2xl border bg-white px-3 py-2 text-[14px] font-bold" style={{ color: C.ink }}>
+            <input
+              type="checkbox"
+              checked={manualFaceCheck}
+              onChange={(event) => setManualFaceCheck(event.target.checked)}
+              className="h-5 w-5 shrink-0"
+            />
+            うつっている かおは ぜんぶ ゆびで かくしたよ(かおは うつっていないよ)
+          </label>
+        )}
       </div>
 
       {/* 主ボタン(みどり: この先へ進む安心アクション)。読み込み失敗時は進ませない */}
       <BottomBar className="-mx-5 px-5">
-        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed || processingTimedOut} variant="green">
+        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed || processingTimedOut || (!detectionAvailable && !manualFaceCheck)} variant="green">
           <Sparkles className="h-5 w-5" strokeWidth={2.4} aria-hidden="true" />
           {isLoading ? "もうすこし まってね" : loadFailed || processingTimedOut ? "やりなおしてね" : "この しゃしんを つかう"}
         </PrimaryCTA>

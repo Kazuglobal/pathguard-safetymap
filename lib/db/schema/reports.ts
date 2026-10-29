@@ -42,6 +42,10 @@ export const dangerReports = sqliteTable('danger_reports', {
   postalCode: text('postal_code'),
   alertRadiusM: integer('alert_radius_m'),
   pushNotifiedAt: text('push_notified_at'),
+  /** 運営(人)が公開を承認した時刻。AI 承認と並んで通知のゲートに使う(項目59) */
+  humanApprovedAt: text('human_approved_at'),
+  /** image_key の写真が端末でぼかし済み(加工済み)か。既存の写真は false=公開画面に出さない(項目57) */
+  imageMasked: integer('image_masked', { mode: 'boolean' }).notNull().default(false),
   aiModerationStatus: text('ai_moderation_status'),
   aiModerationReason: text('ai_moderation_reason'),
   aiModerationScore: real('ai_moderation_score'),
@@ -97,6 +101,7 @@ export const reportImages = sqliteTable('report_images', {
   imageKey: text('image_key').notNull(),
   imageType: text('image_type'),
   uploadedBy: text('uploaded_by'),
+  /** 端末でぼかし済み(加工済み)の写真か。既存の写真は false=公開画面に出さない(項目57) */
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (table) => [

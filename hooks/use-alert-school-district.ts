@@ -35,7 +35,7 @@ const NO_DISTRICTS: SchoolDistrictOption[] = []
 
 // 学区マスターは静的なデータ。失敗時の自動再試行やフォーカス復帰の再取得で
 // select を「読み込み中…」へ戻さないよう、再取得は「もう一度読み込む」に任せる
-const MASTER_SWR_OPTIONS: SWRConfiguration<SchoolDistrictOptions> = {
+export const MASTER_SWR_OPTIONS: SWRConfiguration<SchoolDistrictOptions> = {
   keepPreviousData: false,
   shouldRetryOnError: false,
   revalidateOnFocus: false,
@@ -75,7 +75,7 @@ interface MasterQuery {
   isLoading: boolean
 }
 
-function loadStatusOf(key: string | null, query: MasterQuery): RegionLoadStatus {
+export function loadStatusOf(key: string | null, query: MasterQuery): RegionLoadStatus {
   if (!key) return 'idle'
   if (query.data !== undefined) return 'ready'
   // 「もう一度読み込む」の最中は error が残ったまま isLoading になる

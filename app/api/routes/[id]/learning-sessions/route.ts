@@ -28,8 +28,8 @@ export async function POST(request: Request, context: Context) {
     const stopResults = Array.isArray(body.stop_results) ? body.stop_results.slice(0, 100) : []
     const row = await upsertRouteLearningSession(actor, {
       id: crypto.randomUUID(), userId: actor.id, routeId, sessionId,
+      // 子どもの名前は預からない。id は本人の子どものものだけをリポジトリが残す(UIUX改装 項目56)
       childId: typeof body.child_id === 'string' ? body.child_id.slice(0, 128) : null,
-      childName: typeof body.child_name === 'string' ? body.child_name.slice(0, 100) : null,
       schemaVersion: Math.max(1, nonNegativeInteger(body.schema_version)),
       startedAt,
       completedAt: typeof body.completed_at === 'string' && !Number.isNaN(Date.parse(body.completed_at))

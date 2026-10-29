@@ -60,6 +60,7 @@ describe('D1 authorization matrix', () => {
       'report_flags',
       'user_routes',
       'route_learning_sessions',
+      'children',
       'push_subscriptions',
       'user_badges',
       'user_mission_progress',
@@ -70,6 +71,15 @@ describe('D1 authorization matrix', () => {
       expect(can(owner, 'select', table, { ownerId: owner.id })).toBe(true)
       expect(can(other, 'select', table, { ownerId: owner.id })).toBe(false)
       expect(can(service, 'select', table, { ownerId: owner.id })).toBe(true)
+    }
+  })
+
+  it('keeps children (nickname, grade, district) private even from admins', () => {
+    for (const action of ['select', 'insert', 'update', 'delete'] as const) {
+      expect(can(owner, action, 'children', { ownerId: owner.id })).toBe(true)
+      expect(can(other, action, 'children', { ownerId: owner.id })).toBe(false)
+      expect(can(admin, action, 'children', { ownerId: owner.id })).toBe(false)
+      expect(can(anon, action, 'children', { ownerId: owner.id })).toBe(false)
     }
   })
 

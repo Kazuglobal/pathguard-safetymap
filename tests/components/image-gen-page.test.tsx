@@ -1,10 +1,22 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const masker = vi.hoisted(() => ({ request: vi.fn() }))
+// ぼかす画面はここでは出さず、ぼかした写真を返したことにする(画面そのものは tests/components/media/photo-masker.test.tsx)
+vi.mock("@/components/media/use-masked-photo-picker", () => ({
+  useMaskedPhotoPicker: () => ({ requestMaskedPhoto: masker.request, photoMaskerDialog: null }),
+}))
 
 import ImageGenPage from "@/app/tools/image-gen/page"
 
+const maskedPhoto = () => new File(["masked"], "masked.webp", { type: "image/webp" })
+
 describe("ImageGenPage", () => {
+  beforeEach(() => {
+    masker.request.mockReset()
+    masker.request.mockImplementation(async () => ({ file: maskedPhoto(), faces: 0, manual: 0 }))
+  })
   afterEach(() => vi.unstubAllGlobals())
 
   it("requires a point and sends flood through the gated situation", async () => {
@@ -53,5 +65,35 @@ describe("ImageGenPage", () => {
     expect(form.get("situation")).toBe("viz")
     expect(form.has("longitude")).toBe(false)
     expect(form.has("latitude")).toBe(false)
+  })
+
+  it("参照画像は端末でぼかしたものだけを送る(ぼかす前の写真は AI に送らない)", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ images: [] }))
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+    render(<ImageGenPage />)
+    const original = new File(["raw-photo"], "street.png", { type: "image/png" })
+
+    await user.upload(screen.getByLabelText("参照画像（必須）"), original)
+    await user.click(screen.getByRole("button", { name: "画像を生成" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(masker.request).toHaveBeenCalledWith(original)
+    const sent = (fetchMock.mock.calls[0][1]?.body as FormData).get("image") as File
+    expect(sent.name).toBe("masked.webp")
+    expect(sent.size).toBe(6)
+  })
+
+  it("ぼかすのをやめたら、写真を選んでいないことにする", async () => {
+    masker.request.mockResolvedValue(null)
+    const fetchMock = vi.fn(async () => Response.json({ images: [] }))
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+    render(<ImageGenPage />)
+
+    await user.upload(screen.getByLabelText("参照画像（必須）"), new File(["raw"], "street.png", { type: "image/png" }))
+
+    expect(screen.getByRole("button", { name: "画像を生成" })).toBeDisabled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

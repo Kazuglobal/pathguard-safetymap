@@ -36,6 +36,13 @@
       "when": 1790899058834,
       "tag": "20261001235738_accident_hotspots",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793233427657,
+      "tag": "20261029002347_uiux_privacy_columns",
+      "breakpoints": true
     }
   ]
 }

@@ -47,7 +47,12 @@ describe('private media row authorization', () => {
       insert into danger_reports (
         id, user_id, title, danger_type, danger_level, latitude, longitude, status, image_key
       ) values (?, 'owner-1', 'report', 'traffic', 3, 35, 139, ?, ?)
-    `).run('public-report', 'published', 'danger-reports/owner-1/public-report/photo.webp')
+    `).run('public-report', 'published', 'danger-reports/owner-1/public-report/m-photo.webp')
+    database.sqlite.prepare(`
+      insert into danger_reports (
+        id, user_id, title, danger_type, danger_level, latitude, longitude, status, image_key
+      ) values (?, 'owner-1', 'report', 'traffic', 3, 35, 139, ?, ?)
+    `).run('public-unmasked', 'published', 'danger-reports/owner-1/public-unmasked/photo.webp')
     database.sqlite.prepare(`
       insert into danger_reports (
         id, user_id, title, danger_type, danger_level, latitude, longitude, status, image_key
@@ -64,8 +69,15 @@ describe('private media row authorization', () => {
   it('allows authenticated public reports but protects pending reports', async () => {
     const authorize = createPrivateMediaAuthorizer(database.db as unknown as AppDb)
 
+    // ほかの人には、公開中の報告の、端末でぼかした写真(ファイル名の頭に m-)だけを見せる(UIUX改装 項目57)
     await expect(authorize(other, parsePrivateMediaKey(
-      'danger-reports/owner-1/public-report/photo.webp',
+      'danger-reports/owner-1/public-report/m-photo.webp',
+    ))).resolves.toBe(true)
+    await expect(authorize(other, parsePrivateMediaKey(
+      'danger-reports/owner-1/public-unmasked/photo.webp',
+    ))).resolves.toBe(false)
+    await expect(authorize(owner, parsePrivateMediaKey(
+      'danger-reports/owner-1/public-unmasked/photo.webp',
     ))).resolves.toBe(true)
     await expect(authorize(other, parsePrivateMediaKey(
       'danger-reports/owner-1/pending-report/photo.webp',

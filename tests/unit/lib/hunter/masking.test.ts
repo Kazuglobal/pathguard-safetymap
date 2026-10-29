@@ -6,7 +6,7 @@ import {
   faceToBlurRegion,
   buildBlurRegions,
   type DetectedFace,
-} from "@/lib/hunter/masking"
+} from "@/lib/media/masking"
 
 describe("clampRegion", () => {
   it("leaves an in-bounds region unchanged", () => {

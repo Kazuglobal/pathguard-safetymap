@@ -58,6 +58,9 @@ vi.mock("@/components/pwa/service-worker-registrar", () => ({ ServiceWorkerRegis
 vi.mock("@/components/pwa/ios-install-prompt", () => ({
   IosInstallPrompt: () => <div data-testid="ios-install-prompt" />,
 }))
+vi.mock("@/components/notices/privacy-update-notice", () => ({
+  PrivacyUpdateNotice: () => <div data-testid="privacy-update-notice" />,
+}))
 
 import { LayoutProvider } from "@/components/providers/layout-provider"
 
@@ -134,6 +137,7 @@ describe("画面下に浮かぶお願い", () => {
 
     expect(screen.queryByTestId("push-prompt")).not.toBeInTheDocument()
     expect(screen.queryByTestId("ios-install-prompt")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("privacy-update-notice")).not.toBeInTheDocument()
   })
 
   it("ふつうの画面ではログイン中の人に出す", async () => {
@@ -144,6 +148,7 @@ describe("画面下に浮かぶお願い", () => {
 
     expect(await screen.findByTestId("push-prompt")).toBeInTheDocument()
     expect(screen.getByTestId("ios-install-prompt")).toBeInTheDocument()
+    expect(screen.getByTestId("privacy-update-notice")).toBeInTheDocument()
   })
 })
 
@@ -157,6 +162,28 @@ describe("ログアウト時の移動", () => {
 
     expect(router.replace).toHaveBeenCalledWith("/login?next=%2Froutes%3Ftab%3D1")
     expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "unauthenticated")
+  })
+
+  it("自分でログアウトした以外の SIGNED_OUT(期限切れ・別の端末での退会)でも、この端末の通学路の元の線を消す", async () => {
+    localStorage.setItem("pathguardian:route-full-geometry:v1:u1", "{}")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+    await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "authenticated"))
+
+    act(() => authCallback?.("SIGNED_OUT", null))
+
+    expect(localStorage.getItem("pathguardian:route-full-geometry:v1:u1")).toBeNull()
+  })
+
+  it("ログインした人と別のアカウントがこの端末に残した通学路の元の線を消す", async () => {
+    localStorage.setItem("pathguardian:route-full-geometry:v1:someone-else", "{}")
+    localStorage.setItem("pathguardian:route-full-geometry:v1:u1", "{}")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+    await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "authenticated"))
+
+    expect(localStorage.getItem("pathguardian:route-full-geometry:v1:someone-else")).toBeNull()
+    expect(localStorage.getItem("pathguardian:route-full-geometry:v1:u1")).toBe("{}")
   })
 
   it("公開ページでは SIGNED_OUT でも移動しない", async () => {

@@ -11,7 +11,8 @@ function isLocalPreviewUrl(value: string): boolean {
 function displayUrl(key: string | null | undefined): string | null {
   if (!key) return null
   if (isLocalPreviewUrl(key)) return key
-  if (key.startsWith('/api/media/private/')) return key
+  // 本人の写真は /api/media/private/...、ほかの人の写真は /api/media/report/{id}/{slot}(投稿者の id を出さない URL)
+  if (key.startsWith('/api/media/private/') || key.startsWith('/api/media/report/')) return key
   try {
     return privateMediaUrl(key)
   } catch {

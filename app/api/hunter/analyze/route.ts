@@ -27,6 +27,7 @@ import {
   REALTIME_VISION_DEFAULT_MODEL,
 } from "@/lib/gemini-util"
 import type { HunterHazard } from "@/lib/hunter/types"
+import { RETENTION_DAYS } from "@/lib/retention/policy"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -36,8 +37,8 @@ export const maxDuration = 60
  * callGeminiVision が実際に解決するモデルと同じ手順で解決し、DB記録と実呼び出しを一致させる。
  */
 const HUNTER_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAULT_MODEL)
-/** 写真の保持期限 (90日)。サーバ側で now() から算出する。 */
-const PHOTO_RETENTION_DAYS = 90
+/** 写真の保持期限。サーバ側で now() から算出する。日数はプライバシーポリシーの表と同じ値(lib/retention/policy.ts) */
+const PHOTO_RETENTION_DAYS = RETENTION_DAYS.hunterPhoto
 
 /**
  * save=true のときだけ呼ばれる保存フロー (Phase 1)。

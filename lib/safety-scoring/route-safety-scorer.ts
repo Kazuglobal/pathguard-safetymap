@@ -61,6 +61,8 @@ export interface RouteSafetySummaryInput {
   routeHazards?: Pick<RouteHazardMarker, "id" | "hazard_type" | "risk_level" | "title" | "summary">[]
   routeDangers?: Pick<DangerReport, "id" | "danger_level" | "danger_type" | "title">[]
   isLoading?: boolean
+  /** 判定できない理由(道すじが無い・危険箇所を読み込めない)。あれば「安全」と言わずに、これを出す */
+  unavailableDetail?: string
 }
 
 export interface RouteSafetySummary {
@@ -375,10 +377,25 @@ export function buildRouteSafetySummary({
   routeHazards = [],
   routeDangers = [],
   isLoading = false,
+  unavailableDetail,
 }: RouteSafetySummaryInput): RouteSafetySummary {
   const normalizedRouteName = routeName?.trim() || "この通学路"
   const hazardCount = routeHazards.length
   const dangerCount = routeDangers.length
+
+  // 道すじが無い・危険箇所を読み込めないときは、件数が0でも「安全」と言わない
+  if (unavailableDetail && !isLoading) {
+    return {
+      status: "caution",
+      label: "判定できません",
+      headline: `${normalizedRouteName}の安全状況を判定できません`,
+      detail: unavailableDetail,
+      reasons: [],
+      score: null,
+      hazardCount,
+      dangerCount,
+    }
+  }
 
   if (isLoading) {
     return {

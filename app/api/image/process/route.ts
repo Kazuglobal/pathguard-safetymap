@@ -6,7 +6,7 @@ import {
   getDangerReportForImageUpdate,
   setDangerReportImages,
 } from '@/lib/db/repos/danger-reports.repo'
-import { privateMediaUrl } from '@/lib/media/url'
+import { MASKED_MEDIA_FILE_PREFIX, privateMediaUrl } from '@/lib/media/url'
 import { checkPaidApiRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 export const runtime = 'nodejs'
@@ -91,6 +91,12 @@ export async function POST(request: Request) {
     if (Number.isNaN(replaceIndex)) return json('replaceIndex must be a non-negative integer', 400)
     const validationError = validateFile(fileValue)
     if (validationError) return json(validationError, 400)
+    // 報告の写真は、端末で顔をぼかし・ナンバーなどを隠した WebP だけを受け付ける(UIUX改装 項目57)。
+    // 元の写真は預からない(この API にも届かない)
+    // (canvas が WebP を書き出せないブラウザでは JPEG になるので、どちらも受け付ける)
+    if (imageType === 'original' && (formData.get('masked') !== '1' || !['image/webp', 'image/jpeg'].includes(fileValue.type))) {
+      return json('端末でぼかした写真だけを送れます。写真を選び直してください。', 400)
+    }
 
     const report = await getDangerReportForImageUpdate(actor, reportIdValue)
     if (!report) return json('Report not found', 404)
@@ -123,7 +129,11 @@ export async function POST(request: Request) {
 
     const transformed = await env.IMAGES.input(fileValue.stream())
       .output({ format: 'image/webp', quality: 85 })
-    uploadedKey = `danger-reports/${report.userId}/${report.id}/${crypto.randomUUID()}.webp`
+    // ぼかし済みの印(ファイル名の頭)は写真ごとに付ける。加工画像(もしも画像)は、ぼかした写真から作ったものか、
+    // 端末でぼかしたもの(masked=1)だけ。運営が上げる画像も同じ(管理画面も端末でぼかしてから送る)。
+    // 印の無い写真は、本人と管理者にしか見せない
+    const masked = imageType === 'original' || formData.get('masked') === '1'
+    uploadedKey = `danger-reports/${report.userId}/${report.id}/${masked ? MASKED_MEDIA_FILE_PREFIX : ''}${crypto.randomUUID()}.webp`
     await bucket.put(uploadedKey, transformed.image(), {
       httpMetadata: {
         contentType: 'image/webp',
@@ -133,7 +143,7 @@ export async function POST(request: Request) {
 
     if (imageType === 'original') {
       const oldKey = report.imageKey
-      await setDangerReportImages(actor, report.id, { imageKey: uploadedKey })
+      await setDangerReportImages(actor, report.id, { imageKey: uploadedKey, imageMasked: true })
       if (oldKey && oldKey !== uploadedKey) await bucket.delete(oldKey).catch(() => undefined)
       return json('Original image uploaded and report updated successfully.', 200, {
         imageUrl: privateMediaUrl(uploadedKey),

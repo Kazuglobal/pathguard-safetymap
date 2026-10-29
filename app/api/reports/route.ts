@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
-import { toDangerReportJson, toPublicDangerReportPreviewJson } from '@/lib/danger-report-api'
+import { toDangerReportJson, toDangerReportJsonForViewer } from '@/lib/danger-report-api'
 import { AuthzError } from '@/lib/db/authz'
 import {
   createDangerReport,
@@ -99,8 +99,8 @@ export async function GET(request: Request) {
       input.ownerId = actor.id
     }
     const reports = await listDangerReports(actor, input)
-    const serialize = actor.kind === 'anon' ? toPublicDangerReportPreviewJson : toDangerReportJson
-    return NextResponse.json({ reports: reports.map(serialize) })
+    // ほかの人の報告は投稿者の id・審査の理由・細かい日時と座標・ぼかしていない写真を返さない
+    return NextResponse.json({ reports: reports.map((report) => toDangerReportJsonForViewer(report, actor)) })
   } catch (error) {
     if (error instanceof AuthzError) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     if (error instanceof RangeError) return NextResponse.json({ error: error.message }, { status: 400 })

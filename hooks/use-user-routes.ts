@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { invalidateFetchCache } from "@/lib/reports-fetch-cache"
+import { mergeLocalRouteGeometry, removeLocalRouteGeometry, saveLocalRouteGeometry } from "@/lib/route-local-geometry"
 import type {
   UserRoute,
   CreateRouteInput,
@@ -54,16 +55,18 @@ export function useUserRoutes() {
     const groupedProfiles = new Map<string, RouteChildProfile>()
 
     for (const route of routes) {
-      const profileId = route.child_id ?? "shared"
       const profileLabel = route.child_name?.trim() || "共通"
-      const existingProfile = groupedProfiles.get(profileId)
+      // 同じ呼び名は1人にまとめる(移行前の id「child-名前」と新しい id で、同じ子が2人に分かれないように)
+      const groupKey = route.child_name?.trim() ? `name:${profileLabel}` : "shared"
+      const profileId = route.child_name?.trim() ? route.child_id ?? groupKey : "shared"
+      const existingProfile = groupedProfiles.get(groupKey)
 
       if (existingProfile) {
         existingProfile.routeCount += 1
         continue
       }
 
-      groupedProfiles.set(profileId, {
+      groupedProfiles.set(groupKey, {
         id: profileId,
         label: profileLabel,
         routeCount: 1,
@@ -118,6 +121,7 @@ export function useUserRoutes() {
   const loadRoutes = useCallback(async () => {
     // ログアウトしたあと（進行中だった追加・編集の続きなど）からは取りにいかない
     if (activeUserIdRef.current === null) return
+    const userId = activeUserIdRef.current
 
     loadSeqRef.current += 1
     const seq = loadSeqRef.current
@@ -138,7 +142,8 @@ export function useUserRoutes() {
       const payload = await response.json() as { routes?: UserRoute[] }
       if (!isLatest()) return
       hasLoadedRef.current = true
-      setRoutes(payload.routes ?? [])
+      // サーバーには両端を削った線しか無いので、この端末で作った通学路は手元の元の線を重ねて表示する
+      setRoutes(typeof userId === "string" ? mergeLocalRouteGeometry(userId, payload.routes ?? []) : payload.routes ?? [])
     } catch (err) {
       if (!isLatest()) return
       setError(
@@ -254,6 +259,20 @@ export function useUserRoutes() {
           const payload = await response.json().catch(() => ({})) as { error?: string }
           setError(payload.error ?? "ルートの作成に失敗しました")
           return false
+        }
+
+        // 元の線・起点・終点・住所はこの端末にだけ残す(サーバーには粗くしたものだけが保存される)
+        const created = await response.json().catch(() => ({})) as { route?: { id?: unknown } }
+        if (typeof created.route?.id === "string") {
+          saveLocalRouteGeometry(user.id, created.route.id, {
+            start_lat: input.start_lat,
+            start_lng: input.start_lng,
+            end_lat: input.end_lat,
+            end_lng: input.end_lng,
+            start_address: input.start_address,
+            end_address: input.end_address,
+            route_geometry: input.route_geometry ?? null,
+          })
         }
 
         await loadRoutes()
@@ -377,6 +396,7 @@ export function useUserRoutes() {
           return false
         }
 
+        removeLocalRouteGeometry(user.id, id)
         await loadRoutes()
         return true
       } catch (err) {

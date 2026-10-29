@@ -82,7 +82,8 @@ export function useChildRouteDashboard(): ChildRouteDashboardResult {
 
     const recentDangerCount = countRecentDangers(dangers, Date.now())
     const childName = selectedRoute.child_name?.trim()
-    const routeLabel = childName ? `${childName}さんの通学路` : "登録した通学路"
+    // 呼び名(例: さくちゃん)には「さん」を付けない
+    const routeLabel = childName ? `${childName}の通学路` : "登録した通学路"
 
     return [
       {

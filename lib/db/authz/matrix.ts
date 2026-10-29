@@ -20,6 +20,7 @@ export const AUTHZ_MATRIX: Readonly<Record<Table, Readonly<Record<Action, Matrix
   report_images: { select: 'conditional', insert: 'own', update: 'own', delete: 'conditional' },
   user_routes: { select: 'own', insert: 'own', update: 'own', delete: 'own' },
   route_learning_sessions: { select: 'own', insert: 'own', update: 'own', delete: 'own' },
+  children: { select: 'own', insert: 'own', update: 'own', delete: 'own' },
   user_points: { select: 'conditional', insert: 'service', update: 'service', delete: 'none' },
   user_badges: { select: 'own', insert: 'own', update: 'own', delete: 'own' },
   badges: { select: 'authenticated', insert: 'service', update: 'service', delete: 'service' },

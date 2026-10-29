@@ -52,7 +52,7 @@ import { hitsMapDataPoint } from "./map-popup-in-view"
 import { RouteAccidentHotspotList } from "./route-accident-hotspot-list"
 import { useRouteAccidentHotspots } from "@/hooks/use-route-accident-hotspots"
 import { useAccidentStats } from "@/hooks/use-accident-stats"
-import { useRouteDangers } from "@/hooks/use-route-dangers"
+import { ROUTE_LINE_UNAVAILABLE_MESSAGE, useRouteDangers } from "@/hooks/use-route-dangers"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 import { RouteHazardPanel } from "@/components/map/route-hazard-panel"
 import { HazardImageModal } from "@/components/map/hazard-image-modal"
@@ -389,6 +389,7 @@ export default function MapContainer({
   const {
     dangers: routeDangers,
     isLoading: isRouteDangersLoading,
+    error: routeDangersError,
   } = useRouteDangers(selectedUserRouteId ?? "")
   const routeSafetySummary = useMemo(
     () =>
@@ -397,11 +398,17 @@ export default function MapContainer({
         routeHazards: visibleRouteHazards,
         routeDangers,
         isLoading: Boolean(selectedUserRouteId) && (isRouteHazardsLoading || isRouteDangersLoading),
+        unavailableDetail: !routeDangersError
+          ? undefined
+          : routeDangersError === ROUTE_LINE_UNAVAILABLE_MESSAGE
+            ? "短い通学路や「粗く保存」の道すじはサーバーに保存せず、作った端末にだけ残しています。作った端末で確認してください。"
+            : "近くの危険報告を読み込めませんでした。時間をおいて、もう一度開いてください。",
       }),
     [
       isRouteDangersLoading,
       isRouteHazardsLoading,
       routeDangers,
+      routeDangersError,
       selectedUserRoute?.name,
       selectedUserRouteId,
       visibleRouteHazards,

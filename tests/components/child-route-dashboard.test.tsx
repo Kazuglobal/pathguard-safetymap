@@ -322,10 +322,11 @@ describe("ChildRouteDashboard", () => {
     render(<ChildRouteDashboard state="needs_setup" quickChecks={[]} />)
 
     expect(
-      screen.getByText("この通学路はまだシミュレーション準備中です")
+      screen.getByText("この端末には、通学路の道すじがありません")
     ).toBeInTheDocument()
+    // 短い通学路・「粗く保存」の道すじはサーバーに無い。作った端末で見るか、この端末で引き直す
     expect(
-      screen.getByText("ルートをもう一度設定すると、危険地点や見直しポイントをここで表示できます。")
+      screen.getByText(/作った端末で見るか、この端末でもう一度道すじを引くと、近くの危険を表示できます。/)
     ).toBeInTheDocument()
   })
 
@@ -415,7 +416,7 @@ describe("ChildRouteDashboard", () => {
     )
 
     expect(screen.getByRole("heading", { name: "今日の通学3分チェック" })).toBeInTheDocument()
-    expect(screen.getAllByText(/さくらさん向け/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/さくら向け/).length).toBeGreaterThan(0)
     expect(screen.getByText("この30日の注意地点")).toBeInTheDocument()
     expect(screen.getByText("直近の共有カード")).toBeInTheDocument()
   })
@@ -431,7 +432,7 @@ describe("ChildRouteDashboard", () => {
       />
     )
 
-    const childLabels = screen.getAllByText(/さくらさん向け/)
+    const childLabels = screen.getAllByText(/さくら向け/)
 
     expect(childLabels.some((element) => element.className.includes("md:hidden"))).toBe(true)
   })
@@ -447,7 +448,7 @@ describe("ChildRouteDashboard", () => {
     )
 
     expect(screen.getAllByText(/登録した通学路向け/).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/さん向け/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/さくら向け/)).not.toBeInTheDocument()
   })
 
   const mockNewsPreview = [
@@ -615,7 +616,8 @@ describe("今日の通学3分チェック: 表示と実データの整合", () =
     render(<LandingChildRouteDashboard newsPreview={[]} />)
 
     // モバイル用とデスクトップ用の2か所
-    expect(screen.getAllByText("さくらさん向けの注意点を毎朝3分で確認できます。")).toHaveLength(2)
+    // 呼び名には「さん」を付けない(例: さくちゃんさん にしない)
+    expect(screen.getAllByText("さくら向けの注意点を毎朝3分で確認できます。")).toHaveLength(2)
     expect(screen.queryByText(/30秒/)).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: /地図を見る/ })).toHaveAttribute("href", "/map")
   })

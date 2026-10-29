@@ -98,21 +98,49 @@ describe('app/api/image/process D1 + R2 upload', () => {
     expect(mocks.getReport).not.toHaveBeenCalled()
   })
 
+  it('報告の写真は、端末でぼかした WebP(masked=1)でなければ受け付けない(UIUX改装 項目57)', async () => {
+    const unmarked = await POST(requestWith({ file: imageFile('photo.webp', 'image/webp'), reportId: 'report-1', imageType: 'original' }))
+    const png = await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'original', masked: '1' }))
+
+    expect(unmarked.status).toBe(400)
+    expect(png.status).toBe(400)
+    await expect(unmarked.json()).resolves.toMatchObject({ message: '端末でぼかした写真だけを送れます。写真を選び直してください。' })
+    expect(mocks.imageInfo).not.toHaveBeenCalled()
+    expect(mocks.r2Put).not.toHaveBeenCalled()
+    expect(mocks.setImages).not.toHaveBeenCalled()
+  })
+
+  it('加工画像は、ぼかした写真から作った印(masked=1)があるときだけ「ぼかし済み」のキーにする', async () => {
+    await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'processed' }))
+    await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'processed', masked: '1' }))
+
+    const keys = mocks.r2Put.mock.calls.map(([key]) => key as string)
+    expect(keys[0]).toMatch(/^danger-reports\/owner-1\/report-1\/(?!m-)[\w-]+\.webp$/)
+    expect(keys[1]).toMatch(/^danger-reports\/owner-1\/report-1\/m-[\w-]+\.webp$/)
+  })
+
+  it('管理者が上げた加工画像も、masked=1 が無ければ「ぼかし済み」のキーにしない(ほかの人には見せない)', async () => {
+    mocks.getActor.mockResolvedValue({ ...owner, id: 'admin-1', isAdmin: true })
+    await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'processed' }))
+    const keys = mocks.r2Put.mock.calls.map(([key]) => key as string)
+    expect(keys.at(-1)).toMatch(/^danger-reports\/owner-1\/report-1\/(?!m-)[\w-]+\.webp$/)
+  })
+
   it('re-encodes originals with Images, stores a private key, and updates D1', async () => {
     const response = await POST(requestWith({
-      file: imageFile(), reportId: 'report-1', imageType: 'original',
+      file: imageFile('photo.webp', 'image/webp'), reportId: 'report-1', imageType: 'original', masked: '1',
     }))
     expect(response.status).toBe(200)
     expect(mocks.imageInfo).toHaveBeenCalledTimes(1)
     expect(mocks.r2Put).toHaveBeenCalledWith(
-      expect.stringMatching(/^danger-reports\/owner-1\/report-1\/[\w-]+\.webp$/),
+      expect.stringMatching(/^danger-reports\/owner-1\/report-1\/m-[\w-]+\.webp$/),
       expect.anything(),
       expect.objectContaining({ httpMetadata: expect.objectContaining({ contentType: 'image/webp' }) }),
     )
     expect(mocks.setImages).toHaveBeenCalledWith(
       owner,
       'report-1',
-      { imageKey: expect.stringMatching(/^danger-reports\/owner-1\/report-1\//) },
+      { imageKey: expect.stringMatching(/^danger-reports\/owner-1\/report-1\//), imageMasked: true },
     )
     await expect(response.json()).resolves.toMatchObject({
       imageUrl: expect.stringMatching(/^\/api\/media\/private\/danger-reports\/owner-1\/report-1\//),

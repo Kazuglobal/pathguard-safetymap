@@ -16,6 +16,7 @@ import { LongPressZoomableImage } from "@/components/ui/long-press-zoomable-imag
 import { ReportCommentSection } from "@/components/comments/report-comment-section"
 import { useReportInteractionsBatch } from "@/hooks/use-report-interactions"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
+import { isDateOnly } from "@/lib/report-dates"
 import { useToast } from "@/components/ui/use-toast"
 import FamilyShareCard from "@/components/report/family-share-card"
 import {
@@ -96,6 +97,10 @@ const getCoverImage = (report: PublicReport) =>
 
 const formatDate = (value: string | null) => {
   if (!value) return "日時不明"
+  // ほかの人の報告は日付だけ(YYYY-MM-DD)で届く。時刻は付けない
+  if (isDateOnly(value)) {
+    return new Date(`${value}T00:00:00Z`).toLocaleDateString("ja-JP", { month: "short", day: "numeric", timeZone: "UTC" })
+  }
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
     return value

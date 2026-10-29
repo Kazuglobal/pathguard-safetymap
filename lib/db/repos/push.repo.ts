@@ -1,26 +1,47 @@
-import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, notExists, or, sql } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { dangerReports, localSafetyAlerts, localAlertDistricts, pushSubscriptions, userRoutes } from '../schema'
+import { chunkForD1 } from '../d1-limits'
+import {
+  children,
+  dangerReports,
+  localSafetyAlerts,
+  localAlertDistricts,
+  profiles,
+  pushSubscriptions,
+  schoolDistrictBoundaries,
+  schoolDistricts,
+  userRoutes,
+} from '../schema'
 
 export const DANGER_REPORT_NOTIFICATION_STATUSES = ['approved', 'published', 'resolved'] as const
+/** 学区の境界の矩形を広げる幅(度)。境界から 50m(lib/school-districts.ts)より広く取る */
+const DISTRICT_SEARCH_MARGIN_DEGREES = 0.001
 
+/**
+ * 通知してよい報告か。公開の状態で、AI が承認したか運営(人)が承認したもの(UIUX改装 項目59)。
+ * 審査前・審査中のものは送らない
+ */
 export function isDangerReportNotificationReady(report: {
   status: string
   aiModerationStatus: string | null
+  humanApprovedAt?: string | null
 }): boolean {
   return DANGER_REPORT_NOTIFICATION_STATUSES.includes(
     report.status as (typeof DANGER_REPORT_NOTIFICATION_STATUSES)[number],
-  ) && report.aiModerationStatus === 'approved'
+  ) && (report.aiModerationStatus === 'approved' || Boolean(report.humanApprovedAt))
 }
 
 function dangerReportNotificationReadyPredicate() {
   return and(
     inArray(dangerReports.status, [...DANGER_REPORT_NOTIFICATION_STATUSES]),
-    eq(dangerReports.aiModerationStatus, 'approved'),
+    or(eq(dangerReports.aiModerationStatus, 'approved'), isNotNull(dangerReports.humanApprovedAt)),
   )!
 }
+
+/** 承認された時刻(人の承認 → AI の審査 → 作成の順に使う)。通知の取りこぼしを拾う範囲に使う */
+const dangerReportApprovedAt = sql<string>`coalesce(${dangerReports.humanApprovedAt}, ${dangerReports.aiModerationCheckedAt}, ${dangerReports.createdAt})`
 
 export interface LocalAlertWriteInput {
   prefecture: string
@@ -124,10 +145,19 @@ export function createPushRepo(db: AppDb) {
       await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, id))
     },
 
+    /** 配信できた購読に、配信した時刻を残す(180日、更新も配信もない購読を消すときに見る。lib/retention/policy.ts) */
+    async markSubscriptionsNotified(actor: Actor, ids: readonly string[], notifiedAt: string) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      for (const chunk of chunkForD1([...new Set(ids)])) {
+        await db.update(pushSubscriptions).set({ lastNotifiedAt: notifiedAt }).where(inArray(pushSubscriptions.id, chunk))
+      }
+    },
+
+    /** まだ通知していない報告のうち、since 以降に承認されたもの(作成からの時間ではなく承認からの時間で見る) */
     async listPendingReportIds(actor: Actor, since: string) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       return db.select({ id: dangerReports.id }).from(dangerReports).where(and(
-        gte(dangerReports.createdAt, since), isNull(dangerReports.pushNotifiedAt),
+        gte(dangerReportApprovedAt, since), isNull(dangerReports.pushNotifiedAt),
         dangerReportNotificationReadyPredicate(),
       )).orderBy(asc(dangerReports.createdAt)).limit(500)
     },
@@ -139,7 +169,8 @@ export function createPushRepo(db: AppDb) {
       const [existing] = await db.select({
         id: dangerReports.id, dangerType: dangerReports.dangerType,
         prefecture: dangerReports.prefecture, status: dangerReports.status,
-        aiModerationStatus: dangerReports.aiModerationStatus, latitude: dangerReports.latitude,
+        aiModerationStatus: dangerReports.aiModerationStatus, humanApprovedAt: dangerReports.humanApprovedAt,
+        latitude: dangerReports.latitude,
         longitude: dangerReports.longitude, pushNotifiedAt: dangerReports.pushNotifiedAt,
       }).from(dangerReports).where(and(...predicates)).limit(1)
       if (!existing) return { status: 'not_found' as const }
@@ -200,6 +231,46 @@ export function createPushRepo(db: AppDb) {
         rows.push(...page)
         if (page.length < pageSize) return rows
       }
+    },
+
+    /**
+     * 報告の地点を囲む矩形に入る小学校区の境界(地点が本当に学区の中かは呼び出し側が確かめる。
+     * このリポジトリに図形の計算ライブラリを持ち込まないため)
+     */
+    async listDistrictBoundariesAround(actor: Actor, report: { longitude: number; latitude: number; prefecture: string | null }) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      const { longitude, latitude } = report
+      if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return []
+      // 境界のすぐ外の報告も、となりの学区として拾えるよう、矩形を少し広げて探す(約100m)
+      const margin = DISTRICT_SEARCH_MARGIN_DEGREES
+      const predicates = [
+        lte(schoolDistrictBoundaries.minLng, longitude + margin), gte(schoolDistrictBoundaries.maxLng, longitude - margin),
+        lte(schoolDistrictBoundaries.minLat, latitude + margin), gte(schoolDistrictBoundaries.maxLat, latitude - margin),
+      ]
+      if (report.prefecture) predicates.push(eq(schoolDistricts.prefecture, report.prefecture))
+      return db.select({
+        districtId: schoolDistrictBoundaries.districtId, name: schoolDistricts.name, geometry: schoolDistrictBoundaries.geometry,
+      }).from(schoolDistrictBoundaries)
+        .innerJoin(schoolDistricts, eq(schoolDistricts.id, schoolDistrictBoundaries.districtId))
+        .where(and(...predicates))
+    },
+
+    /**
+     * 指定の小学校区にお子さまを登録している人のうち、通学路の道すじで 300m の判定ができない人(UIUX改装 項目59):
+     * 「粗く保存」を選んだ人と、道すじを保存していない人(短くて保存できない通学路だけ・通学路が無い)。学区単位で知らせる
+     */
+    async listDistrictNotificationUsers(actor: Actor, districtIds: readonly string[]) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      if (districtIds.length === 0) return []
+      const routeLine = db.select({ id: userRoutes.id }).from(userRoutes)
+        .where(and(eq(userRoutes.userId, children.userId), isNotNull(userRoutes.routeGeometry)))
+      const rows = await db.selectDistinct({ userId: children.userId, districtId: children.schoolDistrictId }).from(children)
+        .leftJoin(profiles, eq(profiles.id, children.userId))
+        .where(and(
+          inArray(children.schoolDistrictId, [...districtIds]),
+          or(eq(profiles.locationPrecision, 'coarse'), notExists(routeLine)),
+        ))
+      return rows.flatMap((row) => (row.districtId ? [{ userId: row.userId, districtId: row.districtId }] : []))
     },
 
     async listPendingAlerts(actor: Actor, since: string) {
@@ -272,12 +343,21 @@ export function upsertPushSubscription(actor: Actor, input: Parameters<ReturnTyp
 export function patchPushSubscription(actor: Actor, endpoint: string, input: Parameters<ReturnType<typeof createPushRepo>['patchSubscription']>[2]) { return createPushRepo(getDb()).patchSubscription(actor, endpoint, input) }
 export function deletePushSubscription(actor: Actor, endpoint: string) { return createPushRepo(getDb()).deleteSubscription(actor, endpoint) }
 export function deletePushSubscriptionById(actor: Actor, id: string) { return createPushRepo(getDb()).deleteSubscriptionById(actor, id) }
+export function markPushSubscriptionsNotified(actor: Actor, ids: readonly string[], notifiedAt: string) {
+  return createPushRepo(getDb()).markSubscriptionsNotified(actor, ids, notifiedAt)
+}
 export function listPendingDangerReportIds(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingReportIds(actor, since) }
 export function claimDangerReport(actor: Actor, reportId: string, userId?: string) { return createPushRepo(getDb()).claimReport(actor, reportId, userId) }
 export function releaseDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).releaseReportClaim(actor, reportId, claimedAt) }
 export function confirmDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).confirmReportClaim(actor, reportId, claimedAt) }
 export function completeDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).completeReportClaim(actor, reportId, claimedAt) }
 export function listNotificationRoutes(actor: Actor) { return createPushRepo(getDb()).listRoutesWithGeometry(actor) }
+export function listDistrictBoundariesAround(actor: Actor, report: { longitude: number; latitude: number; prefecture: string | null }) {
+  return createPushRepo(getDb()).listDistrictBoundariesAround(actor, report)
+}
+export function listDistrictNotificationUsers(actor: Actor, districtIds: readonly string[]) {
+  return createPushRepo(getDb()).listDistrictNotificationUsers(actor, districtIds)
+}
 export function listPendingLocalAlerts(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingAlerts(actor, since) }
 export function claimLocalAlert(actor: Actor, alertId: string) { return createPushRepo(getDb()).claimAlert(actor, alertId) }
 export function releaseLocalAlertClaim(actor: Actor, alertId: string, claimedAt: string) { return createPushRepo(getDb()).releaseAlertClaim(actor, alertId, claimedAt) }

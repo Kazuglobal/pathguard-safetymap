@@ -99,8 +99,9 @@ describe('POST /api/danger-report/moderate (D1)', () => {
   })
 
   it('reserves all text and image calls and blocks the compatibility path too', async () => {
-    mocks.report.mockResolvedValue({ ...ownReport, dangerType: 'suspicious', imageKey: 'a',
-      processedImageKey: 'b', processedImageKeys: ['c', 'd'] })
+    // AI に送るのは端末でぼかした写真(m-)だけなので、ぼかした写真で数える
+    mocks.report.mockResolvedValue({ ...ownReport, dangerType: 'suspicious', imageKey: 'r/m-a.webp',
+      processedImageKey: 'r/m-b.webp', processedImageKeys: ['r/m-c.webp', 'r/m-d.webp'] })
     mocks.paidRate.mockResolvedValue({ success: false })
     for (const handler of [postDanger, postSuspicious]) {
       expect((await handler(request('/api/moderate', { reportId: 'report-1' }))).status).toBe(429)
@@ -108,6 +109,14 @@ describe('POST /api/danger-report/moderate (D1)', () => {
     expect(mocks.paidRate).toHaveBeenNthCalledWith(1, 'ai', owner.id, 4)
     expect(mocks.paidRate).toHaveBeenNthCalledWith(2, 'ai', owner.id, 4)
     expect(mocks.moderate).not.toHaveBeenCalled()
+  })
+
+  it('ぼかしていない以前の写真は AI に送らないので、その分は予約しない', async () => {
+    mocks.report.mockResolvedValue({ ...ownReport, imageKey: 'r/original.webp', processedImageKey: null, processedImageKeys: ['r/m-p.webp'] })
+    mocks.paidRate.mockResolvedValue({ success: false })
+
+    expect((await postDanger(request('/api/danger-report/moderate', { reportId: 'report-1' }))).status).toBe(429)
+    expect(mocks.paidRate).toHaveBeenCalledWith('ai', owner.id, 2)
   })
 
   it('does not expose internal moderation reason or score', async () => {

@@ -37,26 +37,34 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   daily_digest: true,
 }
 
-async function fetchSavedPreferences(endpoint: string): Promise<NotificationPreferences | null> {
+type SavedSubscription =
+  | { kind: 'saved'; preferences: NotificationPreferences | null }
+  /** サーバーに購読が無い(180日、更新も配信もなく消えた・別のアカウントでログインしている など) */
+  | { kind: 'missing' }
+  /** 通信の失敗などで分からない */
+  | { kind: 'unknown' }
+
+async function fetchSavedSubscription(endpoint: string): Promise<SavedSubscription> {
   try {
     const res = await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`)
-    if (!res.ok) {
-      return null
-    }
+    if (!res.ok) return { kind: 'unknown' }
 
     const data = (await res.json()) as {
       subscribed?: boolean
       preferences?: NotificationPreferences | null
     }
 
-    if (!data.subscribed || !data.preferences) {
-      return null
-    }
-
-    return data.preferences
+    if (data.subscribed === false) return { kind: 'missing' }
+    if (data.subscribed !== true) return { kind: 'unknown' }
+    return { kind: 'saved', preferences: data.preferences ?? null }
   } catch {
-    return null
+    return { kind: 'unknown' }
   }
+}
+
+async function fetchSavedPreferences(endpoint: string): Promise<NotificationPreferences | null> {
+  const saved = await fetchSavedSubscription(endpoint)
+  return saved.kind === 'saved' ? saved.preferences : null
 }
 
 async function getExistingPushSubscription(): Promise<PushSubscription | null> {
@@ -121,10 +129,16 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
         }
 
         if (sub) {
-          const savedPreferences = await fetchSavedPreferences(sub.endpoint)
-          if (savedPreferences) {
+          const saved = await fetchSavedSubscription(sub.endpoint)
+          if (saved.kind === 'missing') {
+            // ブラウザには購読が残っていても、サーバーに無ければ通知は届かない。
+            // 「通知をオンにする」からもう一度登録できるよう、未購読として見せる
+            setState('unsubscribed')
+            return
+          }
+          if (saved.kind === 'saved' && saved.preferences) {
             // 後から追加されたキー（daily_digest等）を持たない既存行はデフォルトで補完する
-            setPreferences({ ...DEFAULT_PREFERENCES, ...savedPreferences })
+            setPreferences({ ...DEFAULT_PREFERENCES, ...saved.preferences })
           }
           setSubscription(sub)
           setState('subscribed')

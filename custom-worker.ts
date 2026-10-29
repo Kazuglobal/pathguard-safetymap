@@ -164,6 +164,8 @@ function scheduledRoutes(controller: ScheduledController): string[] {
     ...(minute === 0 && hour === 19
       ? [
           '/api/cron/hunter-retention-cleanup',
+          // 保持期間を過ぎた報告・通知の購読・作成の記録・バックアップ(UIUX改装 項目60)
+          '/api/cron/retention-cleanup',
           ...(scheduledAt.getUTCDay() === 0 ? ['/api/cron/r2-orphan-cleanup'] : []),
         ]
       : []),

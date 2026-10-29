@@ -33,6 +33,10 @@ export interface AdminModerationReport {
   ai_moderation_reason: string | null
   ai_moderation_score: number | null
   ai_moderation_checked_at: string | null
+  /** 報告の写真(管理者は見られる)。無ければ null */
+  image_url?: string | null
+  /** 写真が端末でぼかした(加工済みの)ものか。false の写真はほかの人には出ていない */
+  image_masked?: boolean
   /**
    * 投稿者がデモ・テストアカウント(lib/leaderboard-exclusions.ts の判定)か。
    * サーバー(lib/admin-reports-service.ts)が付ける。メールアドレス自体は画面に渡さない。

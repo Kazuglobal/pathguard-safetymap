@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   AlertOctagon,
   Bot,
@@ -8,6 +9,8 @@ import {
   MapPin,
   User,
 } from "lucide-react"
+
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 
 import {
   Select,
@@ -75,8 +78,41 @@ export function ReportModerationCard(props: {
   report: AdminModerationReport
   updating: boolean
   onStatusChange: (reportId: string, status: string) => void
+  /** 写真をぼかし直して置き換えたあと(一覧を読み直す) */
+  onRemasked?: (reportId: string) => void
 }) {
-  const { report, updating, onStatusChange } = props
+  const { report, updating, onStatusChange, onRemasked } = props
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
+    description: "以前の(ぼかしていない)写真をぼかし直します。",
+    notice: "ぼかした写真に置き換え、元の写真はサーバーから消します。報告を公開すると、ほかの人にはぼかした写真が表示されます。",
+  })
+  const [remasking, setRemasking] = useState(false)
+  const [remaskError, setRemaskError] = useState<string | null>(null)
+
+  // 既存の(ぼかしていない)写真を、管理者の端末でぼかして置き換える(UIUX改装 項目57)
+  const remask = async () => {
+    if (!report.image_url) return
+    setRemaskError(null)
+    try {
+      const original = await fetch(report.image_url, { credentials: "same-origin" })
+      if (!original.ok) throw new Error(`original ${original.status}`)
+      const blob = await original.blob()
+      const masked = await requestMaskedPhoto(new File([blob], "original", { type: blob.type || "image/webp" }))
+      if (!masked) return
+      setRemasking(true)
+      const form = new FormData()
+      form.set("file", masked.file)
+      form.set("reportId", report.id)
+      form.set("masked", "1")
+      const response = await fetch("/api/admin/reports/remask", { method: "POST", body: form, credentials: "same-origin" })
+      if (!response.ok) throw new Error(`remask ${response.status}`)
+      onRemasked?.(report.id)
+    } catch {
+      setRemaskError("写真を置き換えられませんでした。時間をおいてもう一度お試しください。")
+    } finally {
+      setRemasking(false)
+    }
+  }
   const status = report.status as ReportStatus
   const ai = report.ai_moderation_status
     ? AI_PRESENTATION[report.ai_moderation_status]
@@ -129,6 +165,27 @@ export function ReportModerationCard(props: {
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
               {report.description}
             </p>
+          )}
+
+          {report.image_url && (
+            <div className="mt-3 flex flex-wrap items-start gap-3" data-testid="admin-report-photo">
+              {/* 管理者だけに見える写真。ぼかしていない写真もここでは表示する */}
+              <img src={report.image_url} alt="報告の写真(管理者だけに表示)" loading="lazy" decoding="async" className="h-24 w-32 rounded object-cover" />
+              {report.image_masked === false && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-amber-800">ぼかし待ち(ほかの人には写真を出していません)</p>
+                  <button
+                    type="button"
+                    onClick={() => { void remask() }}
+                    disabled={remasking}
+                    className="inline-flex min-h-9 items-center rounded-full border border-border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
+                  >
+                    {remasking ? "置き換え中…" : "写真をぼかし直す"}
+                  </button>
+                  {remaskError && <p role="alert" className="text-xs text-red-700">{remaskError}</p>}
+                </div>
+              )}
+            </div>
           )}
 
           {report.ai_moderation_reason && (
@@ -187,6 +244,7 @@ export function ReportModerationCard(props: {
           </SelectContent>
         </Select>
       </div>
+      {photoMaskerDialog}
     </article>
   )
 }

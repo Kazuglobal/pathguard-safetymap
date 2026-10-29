@@ -11,6 +11,13 @@ import {
   fetchPublicReports,
   type PublicReportsPayload,
 } from "@/lib/reports-fetch-cache"
+import { withLocalRouteGeometry } from "@/lib/route-local-geometry"
+
+/**
+ * 道すじが無いときの知らせ。サーバーには両端を削った線しか無く、短い通学路と「粗く保存」の道すじは保存しない。
+ * 元の線は作った端末にだけある(lib/route-local-geometry.ts)
+ */
+export const ROUTE_LINE_UNAVAILABLE_MESSAGE = "この端末には通学路の道すじがありません"
 
 export interface UseRouteDangersResult {
   dangers: DangerReport[]
@@ -71,10 +78,13 @@ export function useRouteDangers(
         return
       }
 
-      const typedRoute = route as UserRoute
+      // 作った端末では、手元に残した元の線(両端を削る前)で判定する。サーバーの線は両端が無く、短い線は保存していない
+      const typedRoute = typeof route.user_id === "string" && route.user_id
+        ? withLocalRouteGeometry(route.user_id, route as UserRoute)
+        : route as UserRoute
 
       if (!typedRoute.route_geometry) {
-        setError("ルートジオメトリがありません")
+        setError(ROUTE_LINE_UNAVAILABLE_MESSAGE)
         setDangers([])
         setIsLoading(false)
         return

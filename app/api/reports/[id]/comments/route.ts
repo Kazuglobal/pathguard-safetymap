@@ -13,9 +13,11 @@ export async function GET(_request: Request, context: Context) {
     const { id } = await context.params
     const rows = await listComments(actor, id)
     if (!rows) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    // 書いた人の id は、本人と管理者にだけ返す(報告の投稿者のコメントから、投稿者の id が分からないように。UIUX改装 項目61)
+    const canSeeAuthor = (userId: string | null) => actor.kind === 'user' && (actor.isAdmin || actor.id === userId)
     return NextResponse.json({ comments: rows.map((row) => ({
       id: row.id, content: row.content, created_at: row.createdAt, updated_at: row.updatedAt,
-      user_id: row.userId, report_id: row.reportId, is_edited: row.isEdited,
+      user_id: canSeeAuthor(row.userId) ? row.userId : null, report_id: row.reportId, is_edited: row.isEdited,
       parent_comment_id: row.parentCommentId, profiles: { display_name: row.displayName },
     })) })
   } catch (error) {

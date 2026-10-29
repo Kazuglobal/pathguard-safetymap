@@ -2,31 +2,18 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { getActor } from "@/lib/auth/actor"
 import { getServiceActor } from "@/lib/auth/service-actor"
-import { toDangerReportJson } from "@/lib/danger-report-api"
-import { getDangerReportById } from "@/lib/db/repos/danger-reports.repo"
 import { recordSafetyQuestAttemptAndAward } from "@/lib/db/repos/gamification.repo"
 import {
-  buildSafetyQuestChallengesFromReports,
   findSampleSafetyQuestChallenge,
   parseSafetyQuestMarkers,
   scoreSafetyQuestAttempt,
   type SafetyQuestAttemptMode,
-  type SafetyQuestChallenge,
-  type SafetyQuestReportRow,
 } from "@/lib/safety-quest"
 import { checkApiRateLimit, rateLimitedResponse } from "@/lib/upstash-rate-limiter"
 
 export const runtime = "nodejs"
 
 const VALID_MODES = new Set<SafetyQuestAttemptMode>(["hazard", "quiz-battle", "private-practice"])
-
-async function loadReportChallenge(actor: Awaited<ReturnType<typeof getActor>>, challengeId: string): Promise<SafetyQuestChallenge | null> {
-  if (!challengeId.startsWith("report-")) return null
-  const reportId = challengeId.slice("report-".length)
-  const report = await getDangerReportById(actor, reportId)
-  if (!report || !["approved", "published", "resolved"].includes(report.status)) return null
-  return buildSafetyQuestChallengesFromReports([toDangerReportJson(report) as SafetyQuestReportRow])[0] ?? null
-}
 
 async function persistAttempt({
   actor,
@@ -82,7 +69,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "チャレンジID、モード、マーカーが必要です" }, { status: 400 })
   }
 
-  const challenge = findSampleSafetyQuestChallenge(challengeId) ?? await loadReportChallenge(actor, challengeId)
+  // 問題はアプリで用意した見本だけ(報告の写真は使い回さない。UIUX改装 項目57)
+  const challenge = findSampleSafetyQuestChallenge(challengeId)
   if (!challenge) {
     return NextResponse.json({ error: "チャレンジが見つかりません" }, { status: 404 })
   }
