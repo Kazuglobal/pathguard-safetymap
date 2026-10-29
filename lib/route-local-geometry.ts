@@ -8,7 +8,8 @@ import type { UserRoute } from '@/lib/types'
  * 通学路の全体を表示する。ほかの端末では削った線が表示される。
  *
  * - ユーザーごとに別のキーに保存する(同じ端末でアカウントを切り替えても混ざらない)
- * - 自分でログアウトしたら消す(家族で使う端末に自宅の位置を残さない)
+ * - ログアウトしたら消す(自分でログアウトしたときも、期限切れ・別のタブ・別の端末での退会でログアウトになったときも)。
+ *   別のアカウントでログインしたら、ほかのアカウントの分を消す(家族で使う端末に自宅の位置を残さない)
  * - 保存できない環境(プライベートモードなど)では何もしない
  */
 
@@ -98,16 +99,25 @@ export function mergeLocalRouteGeometry<T extends UserRoute>(userId: string, rou
   })
 }
 
-/** 自分でログアウトしたときに、この端末に残したすべての元の線を消す */
-export function clearAllLocalRouteGeometry(): void {
+function removeStoredGeometry(keep: (key: string) => boolean): void {
   try {
     const keys: string[] = []
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index)
-      if (key?.startsWith(KEY_PREFIX)) keys.push(key)
+      if (key?.startsWith(KEY_PREFIX) && !keep(key)) keys.push(key)
     }
     keys.forEach((key) => localStorage.removeItem(key))
   } catch {
     // 消せない環境では何もしない
   }
+}
+
+/** ログアウトしたときに、この端末に残したすべての元の線を消す */
+export function clearAllLocalRouteGeometry(): void {
+  removeStoredGeometry(() => false)
+}
+
+/** ログインした人の分だけを残し、ほかのアカウントがこの端末に残した元の線を消す */
+export function clearOtherUsersLocalRouteGeometry(userId: string): void {
+  removeStoredGeometry((key) => key === keyFor(userId))
 }

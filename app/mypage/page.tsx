@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useOptionalAuth } from "@/components/providers/auth-context"
 import { LOGGED_OUT_PATH } from "@/lib/auth/login-path"
+import { clearAllLocalRouteGeometry } from "@/lib/route-local-geometry"
 import { getDisplayName } from "@/lib/user-display-name"
 import { useGamification } from "@/hooks/use-gamification"
 import { useMissions } from "@/hooks/use-missions"
@@ -312,6 +313,8 @@ export default function MyPage() {
     setIsSigningOut(true)
     try {
       await supabase.auth.signOut()
+      // この端末に残した通学路の元の線(自宅・学校の位置)も消す
+      clearAllLocalRouteGeometry()
       router.replace(LOGGED_OUT_PATH)
       router.refresh()
     } catch (error) {

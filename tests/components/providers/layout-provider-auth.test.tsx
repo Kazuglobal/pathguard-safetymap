@@ -164,6 +164,28 @@ describe("ログアウト時の移動", () => {
     expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "unauthenticated")
   })
 
+  it("自分でログアウトした以外の SIGNED_OUT(期限切れ・別の端末での退会)でも、この端末の通学路の元の線を消す", async () => {
+    localStorage.setItem("pathguardian:route-full-geometry:v1:u1", "{}")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+    await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "authenticated"))
+
+    act(() => authCallback?.("SIGNED_OUT", null))
+
+    expect(localStorage.getItem("pathguardian:route-full-geometry:v1:u1")).toBeNull()
+  })
+
+  it("ログインした人と別のアカウントがこの端末に残した通学路の元の線を消す", async () => {
+    localStorage.setItem("pathguardian:route-full-geometry:v1:someone-else", "{}")
+    localStorage.setItem("pathguardian:route-full-geometry:v1:u1", "{}")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+    await waitFor(() => expect(screen.getByTestId("nav")).toHaveAttribute("data-status", "authenticated"))
+
+    expect(localStorage.getItem("pathguardian:route-full-geometry:v1:someone-else")).toBeNull()
+    expect(localStorage.getItem("pathguardian:route-full-geometry:v1:u1")).toBe("{}")
+  })
+
   it("公開ページでは SIGNED_OUT でも移動しない", async () => {
     pathname = "/landing"
     window.history.pushState({}, "", "/landing")

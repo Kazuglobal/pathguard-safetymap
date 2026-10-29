@@ -8,7 +8,7 @@ import { isProtectedPath } from "@/lib/auth/protected-paths"
 import { LOGGED_OUT_PATH, loginPathFor } from "@/lib/auth/login-path"
 import { getDisplayName } from "@/lib/user-display-name"
 import { shouldShowFloatingPrompts } from "@/lib/navigation-visibility"
-import { clearAllLocalRouteGeometry } from "@/lib/route-local-geometry"
+import { clearAllLocalRouteGeometry, clearOtherUsersLocalRouteGeometry } from "@/lib/route-local-geometry"
 import {
   SupabaseProvider,
   isAbortLikeFetchError,
@@ -100,6 +100,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
     // Keep user state in sync with auth state changes
     const { data: sub } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       settle(session?.user ?? null)
+      // ログアウトになったら(期限切れ・別タブでのログアウト・別の端末での退会も)、この端末に残した通学路の元の線を消す
+      if (event === "SIGNED_OUT") clearAllLocalRouteGeometry()
       // 自分でログアウトしたとき以外(期限切れ・別タブでのログアウト)に、保護された画面を開いていたら
       // その場でログイン画面へ移す。戻り先を付けて、ログインし直したら同じ画面に戻れるようにする
       if (event === "SIGNED_OUT" && !logoutInFlightRef.current) {
@@ -146,6 +148,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
       setDisplayName(null)
       return
     }
+    // 別のアカウントがこの端末に残した通学路の元の線は消す(同じ端末でアカウントを切り替えたとき)
+    clearOtherUsersLocalRouteGeometry(userId)
     void refreshProfile()
   }, [userId, refreshProfile])
 

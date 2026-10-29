@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   clearAllLocalRouteGeometry,
+  clearOtherUsersLocalRouteGeometry,
   mergeLocalRouteGeometry,
   removeLocalRouteGeometry,
   saveLocalRouteGeometry,
@@ -63,6 +64,18 @@ describe('通学路の元の線は作成した端末にだけ残す', () => {
 
     expect(localStorage.getItem('pathguardian:route-full-geometry:v1:user-1')).toBeNull()
     expect(localStorage.getItem('pathguardian:route-full-geometry:v1:user-2')).toBeNull()
+    expect(localStorage.getItem('pathguardian:other')).toBe('keep')
+  })
+
+  it('別のアカウントでログインしたら、ほかのアカウントの元の線を消す(ログインした人の分とほかの保存は残す)', () => {
+    saveLocalRouteGeometry('user-1', 'r1', FULL)
+    saveLocalRouteGeometry('user-2', 'r9', FULL)
+    localStorage.setItem('pathguardian:other', 'keep')
+
+    clearOtherUsersLocalRouteGeometry('user-2')
+
+    expect(localStorage.getItem('pathguardian:route-full-geometry:v1:user-1')).toBeNull()
+    expect(localStorage.getItem('pathguardian:route-full-geometry:v1:user-2')).not.toBeNull()
     expect(localStorage.getItem('pathguardian:other')).toBe('keep')
   })
 
