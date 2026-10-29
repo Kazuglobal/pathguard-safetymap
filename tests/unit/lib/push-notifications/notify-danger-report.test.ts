@@ -9,6 +9,9 @@ vi.mock('@/lib/db/repos/push.repo', () => ({
   completeDangerReportClaim: mocks.complete,
   releaseDangerReportClaim: mocks.release,
   listNotificationRoutes: mocks.listRoutes,
+  // 「粗く保存」の人の学区の知らせ(tests/unit/lib/notify-danger-report-district.test.ts で確かめる)。ここでは該当なし
+  listDistrictBoundariesAround: async () => [],
+  listCoarseUsersInDistricts: async () => [],
 }))
 vi.mock('@/lib/web-push', () => ({ sendPushToUser: mocks.send }))
 
