@@ -44,6 +44,23 @@ describe('Sentry に送る URL からクエリを落とす(UIUX改装 項目60)'
     expect((event as { urls?: string[] }).urls).toEqual(['https://path-guardian.com/map'])
   })
 
+  it('Referer・メッセージ・例外の文・trace の data・http.target など、項目の名前によらず URL のクエリを落とす', () => {
+    const event = scrubEventUrls({
+      request: { url: 'https://path-guardian.com/routes', headers: { Referer: `${GEOCODE}`, 'User-Agent': 'x' } },
+      message: `fetch failed: ${GEOCODE}`,
+      exception: { values: [{ type: 'TypeError', value: 'Failed to fetch /api/reports?minLat=35.68&maxLat=35.69' }] },
+      contexts: { trace: { trace_id: 't', span_id: 's', data: { 'http.target': '/api/mapbox/geocode?query=西新宿2-8-1' } } },
+    } as Parameters<typeof scrubEventUrls>[0])
+
+    expect(event.request?.headers).toEqual({ Referer: 'https://path-guardian.com/api/mapbox/geocode', 'User-Agent': 'x' })
+    expect(event.message).toBe('fetch failed: https://path-guardian.com/api/mapbox/geocode')
+    expect(event.exception?.values?.[0]?.value).toBe('Failed to fetch /api/reports')
+    expect(event.contexts?.trace?.data).toEqual({ 'http.target': '/api/mapbox/geocode' })
+    expect(scrubBreadcrumbUrls({ category: 'console', message: `GET ${GEOCODE} 500` }).message).toBe('GET https://path-guardian.com/api/mapbox/geocode 500')
+    // URL でない「?」はそのまま
+    expect(scrubBreadcrumbUrls({ message: 'もう一度ためしますか?' }).message).toBe('もう一度ためしますか?')
+  })
+
   it('エラー時の録画の、通信の記録', () => {
     const frame = scrubReplayFrameUrls({
       type: 5, timestamp: 0,
