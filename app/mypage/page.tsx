@@ -48,6 +48,8 @@ import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { ChildrenSettings } from "@/components/settings/children-settings"
 import { LocationPrecisionSettings } from "@/components/settings/location-precision-settings"
+import { AccountCredentialsSettings } from "@/components/settings/account-credentials-settings"
+import { AccountDeletionSettings } from "@/components/settings/account-deletion-settings"
 import { useToast } from "@/components/ui/use-toast"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 import { isMaskedMediaKey } from "@/lib/media/url"
@@ -817,6 +819,8 @@ export default function MyPage() {
             <CardContent className="space-y-6">
               <ChildrenSettings />
               <LocationPrecisionSettings />
+              <AccountCredentialsSettings />
+              <AccountDeletionSettings />
             </CardContent>
           </Card>
         </motion.section>

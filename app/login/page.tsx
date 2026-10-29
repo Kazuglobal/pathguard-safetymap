@@ -7,11 +7,13 @@ import { tankenTokens } from "@/lib/design/tanken"
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[]; loggedOut?: string | string[] }>
+  searchParams: Promise<{ next?: string | string[]; loggedOut?: string | string[]; deleted?: string | string[] }>
 }) {
   const params = await searchParams
   const nextPath = getSafeNextPath(params.next)
   const justLoggedOut = params.loggedOut === "1"
+  // 退会(設定 > アカウントを削除)のあと
+  const justDeleted = params.deleted === "1"
   const supabase = await createServerClient()
 
   if (!supabase) {
@@ -50,7 +52,7 @@ export default async function LoginPage({
           <h1 className="text-3xl font-bold">通学路安全マップ</h1>
           <p className="mt-2 text-gray-600">子供たちの安全な通学をサポートします</p>
         </div>
-        {justLoggedOut && (
+        {(justLoggedOut || justDeleted) && (
           <p
             role="status"
             className="mb-4 rounded-xl border px-4 py-3 text-center text-sm font-bold"
@@ -60,7 +62,7 @@ export default async function LoginPage({
               color: tankenTokens.color.primaryStrong,
             }}
           >
-            ログアウトしました
+            {justDeleted ? "アカウントを削除しました。ご利用ありがとうございました。" : "ログアウトしました"}
           </p>
         )}
         <LoginForm nextPath={nextPath} />

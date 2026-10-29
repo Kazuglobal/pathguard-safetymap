@@ -14,7 +14,8 @@ const LINE_TOKEN_URL = "https://api.line.me/oauth2/v2.1/token"
 const LINE_VERIFY_URL = "https://api.line.me/oauth2/v2.1/verify"
 
 /** LINEユーザー用の合成メールドメイン(メール未許諾のチャネルでも一意なIDを保てる) */
-export const LINE_SYNTHETIC_EMAIL_DOMAIN = "line.auth.local"
+import { LINE_SYNTHETIC_EMAIL_DOMAIN } from "./line-email"
+export { LINE_SYNTHETIC_EMAIL_DOMAIN }
 
 export function getLineCredentials(): { channelId: string; channelSecret: string } | null {
   const channelId = process.env.LINE_CHANNEL_ID
