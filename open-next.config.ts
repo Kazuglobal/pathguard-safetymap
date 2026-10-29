@@ -141,6 +141,7 @@ const routeGroups = {
     'app/api/admin/costs/budget/route',
     'app/api/admin/costs/mapbox-usage/route',
     'app/api/admin/costs/route',
+    'app/api/admin/reports/remask/route',
     'app/api/admin/reports/route',
     'app/api/auth/admin-status/route',
     'app/api/auth/line/callback/route',

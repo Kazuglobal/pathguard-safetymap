@@ -46,8 +46,9 @@ export function ReportModerationQueue(props: {
   reports: AdminModerationReport[]
   updatingIds: Set<string>
   onStatusChange: (reportId: string, status: string) => void
+  onRemasked?: (reportId: string) => void
 }) {
-  const { reports, updatingIds, onStatusChange } = props
+  const { reports, updatingIds, onStatusChange, onRemasked } = props
   const [activeQueue, setActiveQueue] =
     useState<ModerationQueue>("escalated")
   const [auditSample, setAuditSample] =
@@ -124,6 +125,7 @@ export function ReportModerationQueue(props: {
                   report={report}
                   updating={updatingIds.has(report.id)}
                   onStatusChange={onStatusChange}
+                  onRemasked={onRemasked}
                 />
               ))}
             </div>

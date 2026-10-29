@@ -207,6 +207,28 @@ export function createDangerReportsRepo(db: AppDb) {
       }
     },
 
+    /**
+     * 管理者が、ぼかしていない元の写真を、ぼかした写真に置き換える(UIUX改装 項目57)。審査はやり直さない。
+     * keyFor で新しいキーを決め、store でその写真を保存してから D1 を書き換える。元のキーを返す(呼び出し側が消す)
+     */
+    async replaceImageWithMasked(
+      actor: Actor,
+      reportId: string,
+      keyFor: (report: { id: string; userId: string }) => string,
+      store: (key: string) => Promise<void>,
+    ): Promise<{ imageKey: string; previousKey: string | null } | null> {
+      if (actor.kind !== 'user' || !actor.isAdmin) throw new Error('管理者権限が必要です')
+      const [report] = await db.select({ id: dangerReports.id, userId: dangerReports.userId, imageKey: dangerReports.imageKey })
+        .from(dangerReports).where(eq(dangerReports.id, reportId)).limit(1)
+      if (!report) return null
+      assertCan(actor, 'update', 'danger_reports', { ownerId: report.userId, changedFields: ['image_key', 'image_masked'] })
+      const imageKey = keyFor(report)
+      await store(imageKey)
+      await db.update(dangerReports).set({ imageKey, imageMasked: true, updatedAt: new Date().toISOString() })
+        .where(eq(dangerReports.id, report.id))
+      return { imageKey, previousKey: report.imageKey }
+    },
+
     async getForImageUpdate(actor: Actor, reportId: string) {
       const [report] = await db.select().from(dangerReports)
         .where(eq(dangerReports.id, reportId)).limit(1)
@@ -351,6 +373,15 @@ export function getDangerReportById(actor: Actor, reportId: string) {
 
 export function getDangerReportForImageUpdate(actor: Actor, reportId: string) {
   return createDangerReportsRepo(getDb()).getForImageUpdate(actor, reportId)
+}
+
+export function replaceDangerReportImageWithMasked(
+  actor: Actor,
+  reportId: string,
+  keyFor: (report: { id: string; userId: string }) => string,
+  store: (key: string) => Promise<void>,
+) {
+  return createDangerReportsRepo(getDb()).replaceImageWithMasked(actor, reportId, keyFor, store)
 }
 
 export function setDangerReportImages(actor: Actor, reportId: string, input: { imageKey?: string; imageMasked?: boolean; processedImageKeys?: string[] }) {

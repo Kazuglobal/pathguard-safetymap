@@ -131,6 +131,10 @@ export default function AdminReportsPage() {
           reports={reports}
           updatingIds={updatingIds}
           onStatusChange={handleStatusChange}
+          onRemasked={() => {
+            toast({ title: "写真をぼかして置き換えました", description: "ほかの人にも、ぼかした写真が表示されます。" })
+            void fetchReports()
+          }}
         />
       )}
     </main>

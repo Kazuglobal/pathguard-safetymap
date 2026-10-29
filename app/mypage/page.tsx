@@ -50,6 +50,7 @@ import { ChildrenSettings } from "@/components/settings/children-settings"
 import { LocationPrecisionSettings } from "@/components/settings/location-precision-settings"
 import { useToast } from "@/components/ui/use-toast"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
+import { isMaskedMediaKey } from "@/lib/media/url"
 
 interface ReportSummary extends Pick<
   DangerReport,
@@ -197,14 +198,15 @@ export default function MyPage() {
     }).length
   }, [reports])
 
+  // 画像コレクションには、端末でぼかした写真(と、そこから作ったもしも画像)だけを並べる(UIUX改装 項目57)
   const collectionImages = useMemo(() => {
     const images: { src: string; id: string }[] = []
     reports.forEach((report) => {
-      if (report.image_url) {
+      if (report.image_url && isMaskedMediaKey(report.image_url)) {
         images.push({ src: report.image_url, id: `${report.id}-original` })
       }
       ;(report.processed_image_urls ?? []).forEach((url, index) => {
-        if (url) {
+        if (url && isMaskedMediaKey(url)) {
           images.push({ src: url, id: `${report.id}-processed-${index}` })
         }
       })
