@@ -610,10 +610,12 @@ export default function MapContainer({
     if (!mapContainer.current || mapInitialized.current || !supabase || !initialMapView) return;
 
     if (!mapboxgl.supported()) {
-      setMapError("このブラウザはMapboxをサポートしていません。WebGLが有効か確認してください。"); setIsLoading(false); return;
+      // 設定や部品の名前(環境変数・Mapbox・WebGL)は利用者の画面に出さない(UIUX改装 項目53)
+      setMapError("このブラウザでは地図を表示できません。ブラウザを新しくするか、別のブラウザでお試しください。"); setIsLoading(false); return;
     }
     if (!mapboxgl.accessToken) {
-      setMapError("Mapboxアクセストークンが設定されていません。環境変数を確認してください。"); setIsLoading(false); return;
+      console.error("[map] Mapbox のアクセストークンが設定されていません")
+      setMapError("地図を表示できませんでした。時間をおいて、もう一度お試しください。"); setIsLoading(false); return;
     }
 
     try {

@@ -151,7 +151,7 @@ export default function ImageGenPage() {
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Gemini 画像生成 (防災イメージアシスタントGPT プリセット)</h1>
       <p className="text-sm text-gray-600">
-        画像をアップロードすると、指定のプリセットに沿って生成します。環境変数 <code>GOOGLE_API_KEY</code> を設定してください。
+        画像をアップロードすると、指定のプリセットに沿って生成します。
       </p>
 
       <form onSubmit={onSubmit} className="space-y-4">
