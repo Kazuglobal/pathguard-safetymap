@@ -1,8 +1,10 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
+
+import { isLocationPrecision, ROUTE_COARSE_ENDPOINT_DECIMALS, type LocationPrecision } from '@/lib/route-privacy'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { profiles } from '../schema'
+import { profiles, userRoutes } from '../schema'
 
 /**
  * 本人が変えられる項目。氏名(full_name)は預からない設計になったので受け付けない(UIUX改装 項目55)。
@@ -11,6 +13,8 @@ import { profiles } from '../schema'
 export interface ProfileUpdateInput {
   displayName?: string | null
   avatarKey?: string | null
+  /** 位置の保存のしかた(UIUX改装 項目59)。coarse にすると、保存済みの通学路も粗くする */
+  locationPrecision?: LocationPrecision
 }
 
 function validate(input: ProfileUpdateInput): void {
@@ -20,6 +24,15 @@ function validate(input: ProfileUpdateInput): void {
   if (input.avatarKey != null && !/^avatars\/[A-Za-z0-9_-]{1,128}\/[A-Za-z0-9_-]{1,128}\.webp$/.test(input.avatarKey)) {
     throw new RangeError('Invalid avatar key')
   }
+  if (input.locationPrecision !== undefined && !isLocationPrecision(input.locationPrecision)) {
+    throw new RangeError('Invalid location precision')
+  }
+}
+
+const FIELD_COLUMNS: Record<keyof ProfileUpdateInput, string> = {
+  displayName: 'display_name',
+  avatarKey: 'avatar_key',
+  locationPrecision: 'location_precision',
 }
 
 export function createProfilesRepo(db: AppDb) {
@@ -38,7 +51,7 @@ export function createProfilesRepo(db: AppDb) {
       if (actor.kind !== 'user') throw new Error('A user actor is required')
       assertCan(actor, 'update', 'profiles', {
         ownerId: actor.id,
-        changedFields: Object.keys(input).map((key) => key === 'displayName' ? 'display_name' : 'avatar_key'),
+        changedFields: (Object.keys(input) as Array<keyof ProfileUpdateInput>).map((key) => FIELD_COLUMNS[key]),
       })
       validate(input)
       const now = new Date().toISOString()
@@ -47,6 +60,7 @@ export function createProfilesRepo(db: AppDb) {
         email,
         displayName: input.displayName?.trim() || null,
         avatarKey: input.avatarKey ?? null,
+        locationPrecision: input.locationPrecision ?? 'standard',
         role: 'user',
         createdAt: now,
         updatedAt: now,
@@ -56,12 +70,25 @@ export function createProfilesRepo(db: AppDb) {
           email,
           ...(input.displayName !== undefined ? { displayName: input.displayName?.trim() || null } : {}),
           ...(input.avatarKey !== undefined ? { avatarKey: input.avatarKey } : {}),
+          ...(input.locationPrecision !== undefined ? { locationPrecision: input.locationPrecision } : {}),
           // 以前に預かった氏名が残っていれば、本人がプロフィールを保存したときに消す
           fullName: null,
           updatedAt: now,
         },
       }).returning()
       if (!row) throw new Error('Failed to update profile')
+      if (input.locationPrecision === 'coarse') {
+        // 「粗く保存」にしたら、保存済みの通学路からも道すじを消し、起点・終点を約10kmに丸める
+        assertCan(actor, 'update', 'user_routes', { ownerId: actor.id })
+        await db.update(userRoutes).set({
+          routeGeometry: null,
+          startLat: sql`round(${userRoutes.startLat}, ${ROUTE_COARSE_ENDPOINT_DECIMALS})`,
+          startLng: sql`round(${userRoutes.startLng}, ${ROUTE_COARSE_ENDPOINT_DECIMALS})`,
+          endLat: sql`round(${userRoutes.endLat}, ${ROUTE_COARSE_ENDPOINT_DECIMALS})`,
+          endLng: sql`round(${userRoutes.endLng}, ${ROUTE_COARSE_ENDPOINT_DECIMALS})`,
+          updatedAt: now,
+        }).where(eq(userRoutes.userId, actor.id))
+      }
       return row
     },
   }

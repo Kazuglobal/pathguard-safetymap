@@ -121,6 +121,30 @@ describe('danger report push D1 repository', () => {
     })
   })
 
+  describe('「粗く保存」の人の学区の知らせ(UIUX改装 項目59)', () => {
+    it('学区にお子さまを登録している「粗く保存」の人だけを返す(ふつうの保存の人は通学路で知らせる)', async () => {
+      database.sqlite.prepare("insert into profiles (id, email, location_precision) values ('coarse-1', 'a@example.com', 'coarse'), ('standard-1', 'b@example.com', 'standard'), ('coarse-2', 'c@example.com', 'coarse')").run()
+      database.sqlite.prepare("insert into children (id, user_id, nickname, school_district_id) values ('c1', 'coarse-1', 'さく', 'd1'), ('c2', 'coarse-1', 'だい', 'd1'), ('c3', 'standard-1', 'あお', 'd1'), ('c4', 'coarse-2', 'みな', 'd2')").run()
+      const push = createPushRepo(database.db as unknown as AppDb)
+
+      expect(await push.listCoarseUsersInDistricts(service, ['d1'])).toEqual([{ userId: 'coarse-1', districtId: 'd1' }])
+      expect(await push.listCoarseUsersInDistricts(service, [])).toEqual([])
+    })
+
+    it('報告の地点を囲む矩形に入る学区の境界を返す(都道府県が分かればその県だけ)', async () => {
+      database.sqlite.prepare("insert into school_districts (id, municipality_code, school_code, prefecture, city, name, source_url, data_year) values ('d1', '13104', 'A1', '東京都', '新宿区', '第一小学校区', 'https://nlftp.mlit.go.jp/', 2023), ('d2', '14100', 'B1', '神奈川県', '横浜市', '横浜小学校区', 'https://nlftp.mlit.go.jp/', 2023)").run()
+      const polygon = JSON.stringify({ type: 'Polygon', coordinates: [[[139, 35], [139.02, 35], [139.02, 35.02], [139, 35.02], [139, 35]]] })
+      database.sqlite.prepare('insert into school_district_boundaries (id, district_id, min_lng, min_lat, max_lng, max_lat, geometry) values (?, ?, 139, 35, 139.02, 35.02, ?), (?, ?, 139, 35, 139.02, 35.02, ?)')
+        .run('b1', 'd1', polygon, 'b2', 'd2', polygon)
+      const push = createPushRepo(database.db as unknown as AppDb)
+
+      const rows = await push.listDistrictBoundariesAround(service, { longitude: 139.01, latitude: 35.01, prefecture: '東京都' })
+
+      expect(rows.map((row) => row.districtId)).toEqual(['d1'])
+      expect(await push.listDistrictBoundariesAround(service, { longitude: 140, latitude: 36, prefecture: null })).toEqual([])
+    })
+  })
+
   describe('運営(人)の承認と、取りこぼしを拾う範囲(UIUX改装 項目59)', () => {
     async function insertWith(id: string, fields: Partial<typeof dangerReports.$inferInsert>) {
       await database.db.insert(dangerReports).values({

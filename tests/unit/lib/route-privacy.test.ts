@@ -94,6 +94,20 @@ describe('起点・終点の座標と住所を粗くする', () => {
     expect(coarsenAddress(address)).toBeNull()
   })
 
+  it('「粗く保存」では道すじを保存せず、起点・終点を約10km(小数1桁)に丸める', () => {
+    const located = coarsenRouteLocation({
+      startLat: 35.689634, startLng: 139.691706, endLat: 35.681236, endLng: 139.767125,
+      startAddress: '東京都新宿区西新宿2丁目8-1', endAddress: '東京都千代田区丸の内1丁目',
+      routeGeometry: { type: 'LineString', coordinates: eastwardLine(1_000) },
+    }, 'coarse')
+
+    expect(located).toEqual({
+      startLat: 35.7, startLng: 139.7, endLat: 35.7, endLng: 139.8,
+      startAddress: '東京都新宿区', endAddress: '東京都千代田区', routeGeometry: null,
+    })
+    expect(coarsenRouteLocation({ name: 'のみ' }, 'coarse')).toEqual({ name: 'のみ' })
+  })
+
   it('渡された項目だけを粗くし、読み取れない住所は「出発地」「到着地」にする', () => {
     const input = {
       name: '登校',

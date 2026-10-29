@@ -47,6 +47,17 @@ describe('通学路はサーバーに粗くして保存する(UIUX改装 項目5
     expect(JSON.stringify(row)).not.toContain('8-1')
   })
 
+  it('「粗く保存」の人の通学路は、道すじを保存しない', async () => {
+    database.sqlite.prepare("insert into profiles (id, email, location_precision) values ('user-1', 'owner@example.com', 'coarse')").run()
+    const route = await createRoutesRepo(database.db as unknown as AppDb).create(owner, {
+      name: '登校ルート', startLat: HOME[1], startLng: HOME[0], endLat: SCHOOL[1], endLng: SCHOOL[0],
+      startAddress: '東京都新宿区西新宿2丁目8-1', endAddress: '東京都新宿区西新宿3丁目',
+      routeGeometry: { type: 'LineString', coordinates: [HOME, SCHOOL] },
+    })
+
+    expect(stored(route.id)).toMatchObject({ start_lat: 35.7, start_lng: 139.7, end_lat: 35.7, end_lng: 139.7, route_geometry: null })
+  })
+
   it('道すじを書き換えるときも同じように粗くする(書き換えない項目はそのまま)', async () => {
     const repo = createRoutesRepo(database.db as unknown as AppDb)
     const route = await repo.create(owner, {

@@ -1,8 +1,18 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { dangerReports, localSafetyAlerts, localAlertDistricts, pushSubscriptions, userRoutes } from '../schema'
+import {
+  children,
+  dangerReports,
+  localSafetyAlerts,
+  localAlertDistricts,
+  profiles,
+  pushSubscriptions,
+  schoolDistrictBoundaries,
+  schoolDistricts,
+  userRoutes,
+} from '../schema'
 
 export const DANGER_REPORT_NOTIFICATION_STATUSES = ['approved', 'published', 'resolved'] as const
 
@@ -212,6 +222,39 @@ export function createPushRepo(db: AppDb) {
       }
     },
 
+    /**
+     * 報告の地点を囲む矩形に入る小学校区の境界(地点が本当に学区の中かは呼び出し側が確かめる。
+     * このリポジトリに図形の計算ライブラリを持ち込まないため)
+     */
+    async listDistrictBoundariesAround(actor: Actor, report: { longitude: number; latitude: number; prefecture: string | null }) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      const { longitude, latitude } = report
+      if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return []
+      const predicates = [
+        lte(schoolDistrictBoundaries.minLng, longitude), gte(schoolDistrictBoundaries.maxLng, longitude),
+        lte(schoolDistrictBoundaries.minLat, latitude), gte(schoolDistrictBoundaries.maxLat, latitude),
+      ]
+      if (report.prefecture) predicates.push(eq(schoolDistricts.prefecture, report.prefecture))
+      return db.select({
+        districtId: schoolDistrictBoundaries.districtId, name: schoolDistricts.name, geometry: schoolDistrictBoundaries.geometry,
+      }).from(schoolDistrictBoundaries)
+        .innerJoin(schoolDistricts, eq(schoolDistricts.id, schoolDistrictBoundaries.districtId))
+        .where(and(...predicates))
+    },
+
+    /**
+     * 「粗く保存」を選んだ人のうち、指定の小学校区にお子さまを登録している人(UIUX改装 項目59)。
+     * 道すじを預からないので 300m の判定はできず、学区単位で知らせる
+     */
+    async listCoarseUsersInDistricts(actor: Actor, districtIds: readonly string[]) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      if (districtIds.length === 0) return []
+      const rows = await db.selectDistinct({ userId: children.userId, districtId: children.schoolDistrictId }).from(children)
+        .innerJoin(profiles, eq(profiles.id, children.userId))
+        .where(and(inArray(children.schoolDistrictId, [...districtIds]), eq(profiles.locationPrecision, 'coarse')))
+      return rows.flatMap((row) => (row.districtId ? [{ userId: row.userId, districtId: row.districtId }] : []))
+    },
+
     async listPendingAlerts(actor: Actor, since: string) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       return db.select({
@@ -288,6 +331,12 @@ export function releaseDangerReportClaim(actor: Actor, reportId: string, claimed
 export function confirmDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).confirmReportClaim(actor, reportId, claimedAt) }
 export function completeDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).completeReportClaim(actor, reportId, claimedAt) }
 export function listNotificationRoutes(actor: Actor) { return createPushRepo(getDb()).listRoutesWithGeometry(actor) }
+export function listDistrictBoundariesAround(actor: Actor, report: { longitude: number; latitude: number; prefecture: string | null }) {
+  return createPushRepo(getDb()).listDistrictBoundariesAround(actor, report)
+}
+export function listCoarseUsersInDistricts(actor: Actor, districtIds: readonly string[]) {
+  return createPushRepo(getDb()).listCoarseUsersInDistricts(actor, districtIds)
+}
 export function listPendingLocalAlerts(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingAlerts(actor, since) }
 export function claimLocalAlert(actor: Actor, alertId: string) { return createPushRepo(getDb()).claimAlert(actor, alertId) }
 export function releaseLocalAlertClaim(actor: Actor, alertId: string, claimedAt: string) { return createPushRepo(getDb()).releaseAlertClaim(actor, alertId, claimedAt) }

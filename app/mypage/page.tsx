@@ -47,6 +47,7 @@ import {
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { ChildrenSettings } from "@/components/settings/children-settings"
+import { LocationPrecisionSettings } from "@/components/settings/location-precision-settings"
 import { useToast } from "@/components/ui/use-toast"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
@@ -813,6 +814,7 @@ export default function MyPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <ChildrenSettings />
+              <LocationPrecisionSettings />
             </CardContent>
           </Card>
         </motion.section>

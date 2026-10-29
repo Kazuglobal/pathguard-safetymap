@@ -19,6 +19,17 @@ export const ROUTE_ENDPOINT_DECIMALS = 2
 /** 1本の道すじの点の上限(これより多い線は保存しない) */
 export const ROUTE_MAX_POINTS = 5_000
 
+/** 「粗く保存」の起点・終点の丸め(小数1桁 = 約10km)。道すじは保存しない */
+export const ROUTE_COARSE_ENDPOINT_DECIMALS = 1
+
+/** 位置の保存のしかた(profiles.location_precision) */
+export type LocationPrecision = 'standard' | 'coarse'
+export const LOCATION_PRECISIONS: readonly LocationPrecision[] = ['standard', 'coarse']
+
+export function isLocationPrecision(value: unknown): value is LocationPrecision {
+  return typeof value === 'string' && (LOCATION_PRECISIONS as readonly string[]).includes(value)
+}
+
 export const ROUTE_START_FALLBACK_LABEL = '出発地'
 export const ROUTE_END_FALLBACK_LABEL = '到着地'
 
@@ -128,8 +139,23 @@ export interface RouteLocationInput {
   routeGeometry?: Record<string, unknown> | null
 }
 
-/** 保存の直前に通す。渡された項目だけを粗くする(undefined はそのまま=変えない) */
-export function coarsenRouteLocation<T extends RouteLocationInput>(input: T): T {
+/**
+ * 保存の直前に通す。渡された項目だけを粗くする(undefined はそのまま=変えない)。
+ * 「粗く保存」では道すじを保存せず、起点・終点は約10kmに丸める(300m の判定は端末の中だけで行う)
+ */
+export function coarsenRouteLocation<T extends RouteLocationInput>(input: T, precision: LocationPrecision = 'standard'): T {
+  if (precision === 'coarse') {
+    const standard = coarsenRouteLocation(input)
+    const round = (value: number | undefined) => (value === undefined ? undefined : roundCoordinate(value, ROUTE_COARSE_ENDPOINT_DECIMALS))
+    return {
+      ...standard,
+      ...(input.startLat !== undefined ? { startLat: round(input.startLat) } : {}),
+      ...(input.startLng !== undefined ? { startLng: round(input.startLng) } : {}),
+      ...(input.endLat !== undefined ? { endLat: round(input.endLat) } : {}),
+      ...(input.endLng !== undefined ? { endLng: round(input.endLng) } : {}),
+      ...(input.routeGeometry !== undefined ? { routeGeometry: null } : {}),
+    }
+  }
   return {
     ...input,
     ...(input.startLat !== undefined ? { startLat: roundCoordinate(input.startLat) } : {}),

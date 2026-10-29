@@ -2,8 +2,8 @@ import { and, desc, eq } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { children, routeLearningSessions, userRoutes } from '../schema'
-import { coarsenRouteLocation } from '@/lib/route-privacy'
+import { children, profiles, routeLearningSessions, userRoutes } from '../schema'
+import { coarsenRouteLocation, isLocationPrecision, type LocationPrecision } from '@/lib/route-privacy'
 
 import { createChildrenRepo, legacyChildNameToNickname } from './children.repo'
 
@@ -56,6 +56,13 @@ function withChild(rows: Array<{ route: UserRouteRow; childNickname: string | nu
 
 export function createRoutesRepo(db: AppDb) {
   const childrenRepo = createChildrenRepo(db)
+
+  /** 持ち主が選んだ位置の保存のしかた(プロフィールが無ければ standard) */
+  async function locationPrecisionOf(userId: string): Promise<LocationPrecision> {
+    const [row] = await db.select({ locationPrecision: profiles.locationPrecision }).from(profiles)
+      .where(eq(profiles.id, userId)).limit(1)
+    return isLocationPrecision(row?.locationPrecision) ? row.locationPrecision : 'standard'
+  }
 
   /**
    * 書き込む child_id を決める。undefined は「変えない」。
@@ -127,7 +134,7 @@ export function createRoutesRepo(db: AppDb) {
       validateRoute(input, true)
       const childId = (await resolveChildId(actor, input)) ?? null
       // 両端200mの道すじを削り、起点・終点・住所を粗くしてから保存する(UIUX改装 項目59)
-      const located = coarsenRouteLocation(input)
+      const located = coarsenRouteLocation(input, await locationPrecisionOf(actor.id))
       const now = new Date().toISOString()
       const [created] = await db.insert(userRoutes).values({
         id: crypto.randomUUID(), userId: actor.id, name: input.name!.trim(),
@@ -151,7 +158,7 @@ export function createRoutesRepo(db: AppDb) {
       validateRoute(input, false)
       const requestedChildId = await resolveChildId(actor, input)
       const childId = requestedChildId !== undefined ? requestedChildId : await migrateLegacyChild(actor, existing)
-      const located = coarsenRouteLocation(input)
+      const located = coarsenRouteLocation(input, await locationPrecisionOf(existing.userId))
       const [updated] = await db.update(userRoutes).set({
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),

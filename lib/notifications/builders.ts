@@ -58,6 +58,8 @@ export function buildDangerReportPushPayload(params: {
   reportId: string
   dangerType: string
   prefecture?: string | null
+  /** 「粗く保存」の人には、通学路ではなく小学校区の名前で知らせる(例: 第一小学校区) */
+  areaLabel?: string | null
 }): PushPayload {
   const dangerTypeLabels: Record<string, string> = {
     traffic: "交通危険",
@@ -69,7 +71,7 @@ export function buildDangerReportPushPayload(params: {
   }
   const dangerLabel = dangerTypeLabels[params.dangerType] ?? "通学路の危険"
   return {
-    title: "近隣の通学路に危険報告",
+    title: params.areaLabel ? `${params.areaLabel}で危険報告` : "近隣の通学路に危険報告",
     body: `${dangerLabel}に関する新しい報告が公開されました。`,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',

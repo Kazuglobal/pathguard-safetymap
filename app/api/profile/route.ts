@@ -4,6 +4,7 @@ import { getActor } from '@/lib/auth/actor'
 import { AuthzError } from '@/lib/db/authz'
 import { getProfile, upsertOwnProfile } from '@/lib/db/repos/profiles.repo'
 import { toProfileJson } from '@/lib/profile-api'
+import type { LocationPrecision } from '@/lib/route-privacy'
 
 export const runtime = 'nodejs'
 
@@ -34,6 +35,7 @@ export async function PATCH(request: Request) {
     // 氏名(full_name)は預からないので、送られてきても読まない(UIUX改装 項目55)
     const profile = await upsertOwnProfile(actor, actor.email ?? '', {
       displayName: optionalNullableString(body, 'display_name'),
+      ...(body.location_precision !== undefined ? { locationPrecision: body.location_precision as LocationPrecision } : {}),
     })
     return NextResponse.json({ profile: toProfileJson(profile, actor.email) })
   } catch (error) {
