@@ -314,11 +314,12 @@ export function createDangerReportsRepo(db: AppDb) {
       assertCan(actor, 'update', 'danger_reports', { changedFields: ['status', 'human_approved_at'] })
       const keepsNotificationState = ['approved', 'published', 'resolved'].includes(status)
       const now = new Date().toISOString()
-      // 運営(管理者)が公開にしたら承認した時刻を残す(通知のゲート・取りこぼしの範囲に使う)。
-      // すでに公開中の状態どうしの変更では時刻を変えず、非公開に戻したら承認を取り消す
+      // 運営(管理者)が非公開から公開にしたら承認した時刻を残す(通知のゲート・取りこぼしの範囲に使う)。
+      // すでに公開中の状態どうしの変更(公開→解決済みなど)では、時刻が無くても付けない
+      // (付けると、通知していない古い報告が「新しい報告」として届き、保持期間も延びるため)。非公開に戻したら承認を取り消す
       const humanApprovedAt = keepsNotificationState
         ? actor.kind === 'user' && actor.isAdmin
-          ? { humanApprovedAt: sql<string | null>`case when ${dangerReports.status} in ('approved', 'published', 'resolved') and ${dangerReports.humanApprovedAt} is not null then ${dangerReports.humanApprovedAt} else ${now} end` }
+          ? { humanApprovedAt: sql<string | null>`case when ${dangerReports.status} in ('approved', 'published', 'resolved') then ${dangerReports.humanApprovedAt} else ${now} end` }
           : {}
         : { humanApprovedAt: null }
       const [row] = await db.update(dangerReports).set({

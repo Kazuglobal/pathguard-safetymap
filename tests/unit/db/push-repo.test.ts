@@ -208,6 +208,20 @@ describe('danger report push D1 repository', () => {
       expect(row('toggle').human_approved_at).toBeNull()
     })
 
+    it('公開中の状態どうしの変更(公開→解決済み)では承認の時刻を付けない(通知していない古い報告を送らない)', async () => {
+      await insertWith('legacy', {
+        status: 'published', aiModerationStatus: 'approved', createdAt: '2026-01-10T00:00:00.000Z',
+        aiModerationCheckedAt: '2026-01-10T00:05:00.000Z', humanApprovedAt: null, pushNotifiedAt: null,
+      })
+      const reports = createDangerReportsRepo(database.db as unknown as AppDb)
+      const push = createPushRepo(database.db as unknown as AppDb)
+
+      await reports.updateStatus(admin, 'legacy', 'resolved')
+
+      expect(row('legacy')).toMatchObject({ status: 'resolved', human_approved_at: null })
+      expect(await push.listPendingReportIds(service, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())).toEqual([])
+    })
+
     it('人が承認した報告も、写真が変わったら審査をやり直す(人の承認と通知済みの印を外す)', async () => {
       await insertWith('human-image', { status: 'approved', aiModerationStatus: 'needs_review', humanApprovedAt: '2026-09-03T01:00:00.000Z', pushNotifiedAt: '2026-09-03T01:05:00.000Z' })
       const reports = createDangerReportsRepo(database.db as unknown as AppDb)
