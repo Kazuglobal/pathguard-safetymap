@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { AR_SPEED_SUPPRESS_THRESHOLD_KMH } from '@/lib/ar-safety'
 import { LP_FAQ, LP_FEATURE_TOUR, LP_FEATURES, LP_HOW, LP_TRUST } from '@/lib/lp-content'
 import { PRODUCT_FACTS, PRODUCT_FEATURES } from '@/lib/product-facts'
 
@@ -76,6 +77,14 @@ describe('審査・料金・写真の説明', () => {
 
   it('お問い合わせのフォームを公開したら、プライバシーポリシーの預け先にも自動で載る', () => {
     expect(read('app/privacy/page.tsx')).toMatch(/\{BRAND\.contactFormUrl && <li>Google フォーム/)
+  })
+
+  it('AR: 速く移動しているときはお知らせを止める。数字は判定と同じ値で、AR の起動時と紹介HPで同じ文を出す(項目45)', () => {
+    expect(PRODUCT_FACTS.ar.speedSuppress).toContain(`時速${AR_SPEED_SUPPRESS_THRESHOLD_KMH}km`)
+    // 速さを測れない端末では止まらないので、言い切らない
+    expect(PRODUCT_FACTS.ar.speedSuppress).toContain('速さを測れる端末')
+    expect(LP_TRUST.items.some((item) => item.description.includes(PRODUCT_FACTS.ar.speedSuppress))).toBe(true)
+    expect(read('components/map/ar-view.tsx').match(/\{PRODUCT_FACTS\.ar\.speedSuppress\}/g)).toHaveLength(2)
   })
 
   it('有料の機能は無いので「すべての機能が無料」とだけ書く(「基本機能は」と書かない)', () => {

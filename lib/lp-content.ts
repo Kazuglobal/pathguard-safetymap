@@ -94,6 +94,10 @@ export const LP_TRUST = {
       description: PRODUCT_FACTS.photo.adult,
     },
     {
+      title: "歩きながら見続けさせない",
+      description: `カメラの映像に危険を重ねるARは、${PRODUCT_FACTS.ar.speedSuppress}`,
+    },
+    {
       title: "すべての機能が無料",
       description: `地域の安全は、みんなで作るもの。${PRODUCT_FACTS.pricing}`,
     },

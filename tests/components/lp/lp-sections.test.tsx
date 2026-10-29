@@ -104,11 +104,13 @@ describe("LPセクションのレンダリング", () => {
     expect(screen.getByTestId("lupe")).toBeInTheDocument()
   })
 
-  it("LpTrust が安心への配慮3項目を表示する", () => {
+  it("LpTrust が安心への配慮4項目を表示する(ARの速さによるお知らせの停止を含む。UIUX改装 項目45)", () => {
     render(<LpTrust />)
     expect(screen.getByText("AIと運営スタッフの確認")).toBeInTheDocument()
     expect(screen.getByText("写真はスマホの中でぼかす")).toBeInTheDocument()
     expect(screen.getByText("すべての機能が無料")).toBeInTheDocument()
+    expect(screen.getByText("歩きながら見続けさせない")).toBeInTheDocument()
+    expect(screen.getByText(/速く移動しているとき/)).toBeInTheDocument()
   })
 
   it("LpHeader はログイン済みなら「アプリを開く」、まだなら「ログイン」「無料ではじめる」、確かめている間はどちらも出さない(項目54)", () => {
