@@ -62,6 +62,9 @@ export function PhotoMasker({ file, onConfirm, onCancel }: PhotoMaskerProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  // この端末で自動の顔検出が使えなかったとき(顔が無かったのではない)は、指で隠したことを確かめてから進める
+  const [detectionAvailable, setDetectionAvailable] = useState(true)
+  const [manualFaceCheck, setManualFaceCheck] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +74,8 @@ export function PhotoMasker({ file, onConfirm, onCancel }: PhotoMaskerProps) {
     setError(null)
     setAutoRegions([])
     setManualRegions([])
+    setDetectionAvailable(true)
+    setManualFaceCheck(false)
     imageRef.current = null
     const timeoutId = window.setTimeout(() => { if (!cancelled) setStatus("slow") }, PROCESSING_TIMEOUT_MS)
 
@@ -80,7 +85,12 @@ export function PhotoMasker({ file, onConfirm, onCancel }: PhotoMaskerProps) {
       const width = image.naturalWidth || image.width
       const height = image.naturalHeight || image.height
       void detectFaces(image, width, height)
-        .then((faces) => { if (!cancelled) setAutoRegions(buildBlurRegions(faces)) })
+        .then((result) => {
+          if (cancelled) return
+          setAutoRegions(buildBlurRegions(result.faces))
+          setDetectionAvailable(result.available)
+        })
+        .catch(() => { if (!cancelled) setDetectionAvailable(false) })
         .finally(() => {
           if (cancelled) return
           window.clearTimeout(timeoutId)
@@ -177,11 +187,17 @@ export function PhotoMasker({ file, onConfirm, onCancel }: PhotoMaskerProps) {
 
   return (
     <div className="space-y-3" data-testid="photo-masker">
-      <p className="text-sm leading-relaxed">
-        {status === "ready"
-          ? `顔は自動でぼかしました(${autoRegions.length}か所)。ナンバープレート・表札・名札など、ほかに隠したいところは、写真の上を指でなぞって四角で囲んでください。`
-          : "写真の中の顔をさがしています…(この端末の中だけで行います)"}
-      </p>
+      {status === "ready" && !detectionAvailable ? (
+        <p role="status" className="rounded-xl border px-3 py-2 text-sm font-bold leading-relaxed" style={{ borderColor: t.color.accent, background: t.color.accentSoft }} data-testid="photo-masker-detection-unavailable">
+          この端末では、顔の自動ぼかしが使えませんでした。写っている顔は、ナンバープレート・表札・名札などと同じように、写真の上を指でなぞって四角で隠してください。
+        </p>
+      ) : (
+        <p className="text-sm leading-relaxed">
+          {status === "ready"
+            ? `顔は自動でぼかしました(${autoRegions.length}か所)。ナンバープレート・表札・名札など、ほかに隠したいところは、写真の上を指でなぞって四角で囲んでください。`
+            : "写真の中の顔をさがしています…(この端末の中だけで行います)"}
+        </p>
+      )}
       <div className="relative overflow-hidden rounded-2xl border" style={{ borderColor: t.border.soft, background: t.color.paperDeep }}>
         {status !== "ready" && (
           <div className="flex min-h-48 items-center justify-center gap-2 p-6 text-sm" style={{ color: t.color.inkSoft }} role="status">
@@ -223,12 +239,23 @@ export function PhotoMasker({ file, onConfirm, onCancel }: PhotoMaskerProps) {
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" style={{ color: t.color.primaryStrong }} aria-hidden="true" />
         この加工した写真だけを保存し、AI(Google Gemini・Anthropic Claude・OpenAI)による確認にも送ります。元の写真は端末の外に出しません。
       </p>
+      {status === "ready" && !detectionAvailable && (
+        <label className="flex items-start gap-2 text-sm font-bold">
+          <input
+            type="checkbox"
+            checked={manualFaceCheck}
+            onChange={(event) => setManualFaceCheck(event.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0"
+          />
+          写っている顔は、すべて指で隠しました(顔は写っていません)
+        </label>
+      )}
       {error && <p role="alert" className="text-sm font-bold text-red-700">{error}</p>}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => { void confirm() }}
-          disabled={status !== "ready" || saving}
+          disabled={status !== "ready" || saving || (!detectionAvailable && !manualFaceCheck)}
           className={`${buttonClass} text-white disabled:opacity-50`}
           style={{ background: t.color.primaryStrong }}
         >

@@ -72,6 +72,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
   const [processingTimedOut, setProcessingTimedOut] = useState(false)
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  // この端末で自動の顔検出が使えなかったとき(顔が無かったのではない)は、指で隠したことを確かめてから進める
+  const [detectionAvailable, setDetectionAvailable] = useState(true)
+  const [manualFaceCheck, setManualFaceCheck] = useState(false)
   const [, setDisplaySize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
 
   // --- 画像ロード + 自動検出 ---
@@ -84,6 +87,8 @@ export function MaskConfirm(props: MaskConfirmProps) {
     setLoadFailed(false)
     setProcessingTimedOut(false)
     setErrorMessage(null)
+    setDetectionAvailable(true)
+    setManualFaceCheck(false)
 
     const timeoutId = window.setTimeout(() => {
       if (revoked) return
@@ -103,15 +108,17 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
       // 自動検出 (失敗しても続行)
       void detectFaces(img, naturalW, naturalH)
-        .then((faces) => {
+        .then((result) => {
           if (revoked) return
           window.clearTimeout(timeoutId)
-          setAutoRegions(buildBlurRegions(faces))
+          setAutoRegions(buildBlurRegions(result.faces))
+          setDetectionAvailable(result.available)
           // タイムアウト表示後に検出が完了した場合はUIを回復させる
           // (回復させないと、実際は準備完了なのに「やりなおしてね」で固定される)
           setProcessingTimedOut(false)
           setErrorMessage(null)
         })
+        .catch(() => { if (!revoked) setDetectionAvailable(false) })
         .finally(() => {
           if (!revoked) {
             window.clearTimeout(timeoutId)
@@ -290,6 +297,8 @@ export function MaskConfirm(props: MaskConfirmProps) {
         <SpeechBubble mood={isLoading || processingTimedOut ? "think" : "cheer"}>
           {isLoading || processingTimedOut ? (
             <>かおを さがして かくしています。しゃしんは この端末の中で じゅんびするよ。</>
+          ) : !detectionAvailable ? (
+            <>この端末では かおを じどうで かくせなかったよ。かお・なまえ・おうち・くるまの ナンバーが うつっていたら、<b>ゆびで なぞって</b> かくしてね。</>
           ) : (
             <>かおは もやもやに かくしたよ。なまえ・おうち・くるまの ナンバーが うつっていたら、<b>ゆびで なぞって</b> かくしてね。</>
           )}
@@ -433,7 +442,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
 
         {/* 自動検出の結果をやさしく知らせる */}
         <AnimatePresence>
-          {!isLoading && !loadFailed && !processingTimedOut && autoRegions.length === 0 && (
+          {!isLoading && !loadFailed && !processingTimedOut && detectionAvailable && autoRegions.length === 0 && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -445,11 +454,23 @@ export function MaskConfirm(props: MaskConfirmProps) {
             </motion.p>
           )}
         </AnimatePresence>
+        {/* 自動で顔をさがせなかったときは、指で隠したことを確かめてから進める */}
+        {!isLoading && !loadFailed && !processingTimedOut && !detectionAvailable && (
+          <label className="flex min-h-11 items-center gap-2.5 rounded-2xl border bg-white px-3 py-2 text-[14px] font-bold" style={{ color: C.ink }}>
+            <input
+              type="checkbox"
+              checked={manualFaceCheck}
+              onChange={(event) => setManualFaceCheck(event.target.checked)}
+              className="h-5 w-5 shrink-0"
+            />
+            うつっている かおは ぜんぶ ゆびで かくしたよ(かおは うつっていないよ)
+          </label>
+        )}
       </div>
 
       {/* 主ボタン(みどり: この先へ進む安心アクション)。読み込み失敗時は進ませない */}
       <BottomBar className="-mx-5 px-5">
-        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed || processingTimedOut} variant="green">
+        <PrimaryCTA onClick={handleConfirm} disabled={isLoading || loadFailed || processingTimedOut || (!detectionAvailable && !manualFaceCheck)} variant="green">
           <Sparkles className="h-5 w-5" strokeWidth={2.4} aria-hidden="true" />
           {isLoading ? "もうすこし まってね" : loadFailed || processingTimedOut ? "やりなおしてね" : "この しゃしんを つかう"}
         </PrimaryCTA>

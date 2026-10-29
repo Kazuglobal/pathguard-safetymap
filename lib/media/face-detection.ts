@@ -93,15 +93,26 @@ function hasNativeFaceDetector(): boolean {
 }
 
 /**
+ * 顔検出の結果。available が false のときは、この端末で自動の顔検出が使えなかった
+ * (顔が無かったのではない)。画面で「指で隠して」と知らせ、確かめてもらってから進める
+ */
+export interface FaceDetectionResult {
+  faces: DetectedFace[]
+  available: boolean
+}
+
+const UNAVAILABLE: FaceDetectionResult = { faces: [], available: false }
+
+/**
  * ブラウザ標準 (実験的) の FaceDetector によるフォールバック検出。
- * 無い / 失敗しても throw せず空配列を返す (手動のみで続行)。
+ * 無い / 失敗しても throw せず、使えなかったことを返す (手動のみで続行)。
  */
 async function detectFacesNative(
   source: CanvasImageSource,
   imgWidth: number,
   imgHeight: number,
-): Promise<DetectedFace[]> {
-  if (!hasNativeFaceDetector() || imgWidth <= 0 || imgHeight <= 0) return []
+): Promise<FaceDetectionResult> {
+  if (!hasNativeFaceDetector() || imgWidth <= 0 || imgHeight <= 0) return UNAVAILABLE
   try {
     // FaceDetector は実験的 API のため型定義が無い環境を考慮。
     const Ctor = (window as unknown as {
@@ -113,15 +124,18 @@ async function detectFacesNative(
     }).FaceDetector
     const detector = new Ctor({ fastMode: true, maxDetectedFaces: 10 })
     const results = await detector.detect(source)
-    return results.map((r) => ({
-      x: r.boundingBox.x / imgWidth,
-      y: r.boundingBox.y / imgHeight,
-      width: r.boundingBox.width / imgWidth,
-      height: r.boundingBox.height / imgHeight,
-    }))
+    return {
+      faces: results.map((r) => ({
+        x: r.boundingBox.x / imgWidth,
+        y: r.boundingBox.y / imgHeight,
+        width: r.boundingBox.width / imgWidth,
+        height: r.boundingBox.height / imgHeight,
+      })),
+      available: true,
+    }
   } catch {
-    // 検出失敗は許容 (手動ぼかしで続行)
-    return []
+    // 検出失敗は許容 (手動ぼかしで続行)。顔が無かったのではないので、使えなかったと返す
+    return UNAVAILABLE
   }
 }
 
@@ -129,17 +143,17 @@ async function detectFacesNative(
  * オンデバイス顔検出 (検出チェーン)。
  * 1. MediaPipe FaceDetector を第一候補 (端末内推論)。
  * 2. 失敗したら throw せず、ネイティブ FaceDetector にフォールバック。
- * 3. それも無ければ空配列 → 手動矩形のみで続行。
+ * 3. それも無ければ available: false → 画面で「指で隠して」と知らせ、手動矩形のみで続行。
  * いずれの段でも未マスク画像は外部へ送らない。
  */
 export async function detectFaces(
   source: HTMLImageElement,
   imgWidth: number,
   imgHeight: number,
-): Promise<DetectedFace[]> {
-  if (imgWidth <= 0 || imgHeight <= 0) return []
+): Promise<FaceDetectionResult> {
+  if (imgWidth <= 0 || imgHeight <= 0) return UNAVAILABLE
   try {
-    return await detectFacesMediaPipe(source, imgWidth, imgHeight)
+    return { faces: await detectFacesMediaPipe(source, imgWidth, imgHeight), available: true }
   } catch (error) {
     // MediaPipe のロード/推論失敗は許容し、ネイティブ検出へフォールバック。
     console.warn(

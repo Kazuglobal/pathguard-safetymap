@@ -40,7 +40,7 @@ beforeEach(() => {
   vi.stubGlobal("Image", FakeImage)
   Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:raw") })
   Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() })
-  mocks.detectFaces.mockResolvedValue([{ x: 0.4, y: 0.2, width: 0.1, height: 0.1, score: 0.9 }])
+  mocks.detectFaces.mockResolvedValue({ faces: [{ x: 0.4, y: 0.2, width: 0.1, height: 0.1, score: 0.9 }], available: true })
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
     clearRect: vi.fn(), drawImage: vi.fn(), save: vi.fn(), restore: vi.fn(), strokeRect: vi.fn(), setLineDash: vi.fn(),
   } as unknown as CanvasRenderingContext2D)
@@ -90,6 +90,24 @@ describe("PhotoMasker(写真を端末でぼかす)", () => {
     // 中身は canvas で描き直したもの("masked" の6バイト)。選んだ元の写真("raw" の3バイト)ではない
     expect(result.file.size).toBe(6)
     expect(mocks.applyBlurRegion).toHaveBeenCalled()
+  })
+
+  it("この端末で顔の自動ぼかしが使えないときは、そう知らせ、指で隠したと確かめるまで進めない", async () => {
+    mocks.detectFaces.mockResolvedValue({ faces: [], available: false })
+    const onConfirm = vi.fn()
+    render(<PhotoMasker file={photo()} onConfirm={onConfirm} onCancel={vi.fn()} />)
+    await loadImage()
+
+    expect(await screen.findByTestId("photo-masker-detection-unavailable")).toHaveTextContent("顔の自動ぼかしが使えませんでした")
+    // 「0か所ぼかしました」とは言わない(顔が無かったのではない)
+    expect(screen.queryByText(/顔は自動でぼかしました/)).not.toBeInTheDocument()
+    const proceed = screen.getByRole("button", { name: "この写真で進む" })
+    expect(proceed).toBeDisabled()
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /写っている顔は、すべて指で隠しました/ }))
+    expect(proceed).toBeEnabled()
+    fireEvent.click(proceed)
+    await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1))
   })
 
   it("WebP を書き出せないブラウザでは JPEG にする", async () => {
