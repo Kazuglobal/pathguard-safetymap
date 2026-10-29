@@ -54,11 +54,20 @@ export function buildRouteReportNotification(params: {
   }
 }
 
+/** 学区の名前(多くは学校名)を「〇〇小学校の学区」にする。すでに「学区・校区」で終わる名前はそのまま */
+export function districtAreaLabel(name: string): string {
+  const trimmed = name.trim()
+  return /(学区|校区)$/.test(trimmed) ? trimmed : `${trimmed}の学区`
+}
+
 export function buildDangerReportPushPayload(params: {
   reportId: string
   dangerType: string
   prefecture?: string | null
-  /** 「粗く保存」の人には、通学路ではなく小学校区の名前で知らせる(例: 第一小学校区) */
+  /**
+   * 道すじで判定できない人には、通学路ではなく小学校区で知らせる。学区のデータの名前は学校名
+   * (例: 千代田区立番町小学校)なので、「〇〇小学校の学区で」と書く(学校そのものの危険に読めないように)
+   */
   areaLabel?: string | null
 }): PushPayload {
   const dangerTypeLabels: Record<string, string> = {
@@ -71,7 +80,7 @@ export function buildDangerReportPushPayload(params: {
   }
   const dangerLabel = dangerTypeLabels[params.dangerType] ?? "通学路の危険"
   return {
-    title: params.areaLabel ? `${params.areaLabel}で危険報告` : "近隣の通学路に危険報告",
+    title: params.areaLabel ? `${districtAreaLabel(params.areaLabel)}で危険報告` : "近隣の通学路に危険報告",
     body: `${dangerLabel}に関する新しい報告が公開されました。`,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',
