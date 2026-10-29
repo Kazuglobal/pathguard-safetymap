@@ -1,6 +1,7 @@
 "use client"
 
 import { Search } from "lucide-react"
+import { Lupe } from "@/components/brand/lupe"
 import { cn } from "@/lib/utils"
 
 export function PlayerFace({ size = "md", className }: { size?: "sm" | "md" | "lg"; className?: string }) {
@@ -22,41 +23,13 @@ export function PlayerFace({ size = "md", className }: { size?: "sm" | "md" | "l
   )
 }
 
+const LUPE_MOOD = { happy: "happy", point: "cheer", jump: "wow" } as const
+
+/** セーフティクエストの相棒も、きけんハンターと同じルペにする(以前の青い盾のキャラは使わない。UIUX改装 項目15) */
 export function Mascot({ size = "md", className, pose = "happy" }: { size?: "sm" | "md" | "lg"; className?: string; pose?: "happy" | "point" | "jump" }) {
   return (
-    <div
-      className={cn(
-        "relative shrink-0",
-        size === "sm" && "h-20 w-16",
-        size === "md" && "h-28 w-24",
-        size === "lg" && "h-40 w-32",
-        className,
-      )}
-    >
-      <div className="absolute bottom-[8%] left-[5%] h-[36%] w-[24%] rotate-[-18deg] rounded-full bg-[#174b87]" />
-      <div className="absolute bottom-[8%] right-[5%] h-[36%] w-[24%] rotate-[18deg] rounded-full bg-[#174b87]" />
-      <div
-        className="absolute left-1/2 top-[8%] h-[78%] w-[76%] -translate-x-1/2 border-[4px] border-[#0f4d8c] bg-gradient-to-b from-[#5ed1ff] to-[#1f73c9] shadow-lg"
-        style={{ clipPath: "polygon(50% 0%, 91% 15%, 80% 77%, 50% 100%, 20% 77%, 9% 15%)" }}
-      />
-      <div className="absolute left-1/2 top-[25%] h-[34%] w-[50%] -translate-x-1/2 rounded-full border-2 border-[#0f4d8c] bg-[#fff3dd]">
-        <span className="absolute left-[27%] top-[40%] h-1.5 w-1.5 rounded-full bg-[#111827]" />
-        <span className="absolute right-[27%] top-[40%] h-1.5 w-1.5 rounded-full bg-[#111827]" />
-        <span className="absolute left-1/2 top-[62%] h-2 w-5 -translate-x-1/2 rounded-b-full border-b-2 border-[#ef6f6c]" />
-      </div>
-      <div
-        className={cn(
-          "absolute top-[39%] h-[9%] w-[32%] rounded-full bg-[#fff7d6] shadow",
-          pose === "point" ? "right-[-8%] -rotate-12" : "left-[-8%] rotate-12",
-        )}
-      />
-      <div
-        className={cn(
-          "absolute top-[39%] h-[9%] w-[32%] rounded-full bg-[#fff7d6] shadow",
-          pose === "point" ? "left-[4%] rotate-[35deg]" : "right-[-8%] -rotate-12",
-        )}
-      />
-      {pose === "jump" && <div className="absolute bottom-0 left-1/2 h-2 w-20 -translate-x-1/2 rounded-full bg-black/10 blur-sm" />}
+    <div className={cn("relative shrink-0", className)}>
+      <Lupe size={size} mood={LUPE_MOOD[pose]} decorative />
     </div>
   )
 }
