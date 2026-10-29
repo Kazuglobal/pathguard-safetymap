@@ -16,6 +16,8 @@ import {
 } from '../schema'
 
 export const DANGER_REPORT_NOTIFICATION_STATUSES = ['approved', 'published', 'resolved'] as const
+/** 学区の境界の矩形を広げる幅(度)。境界から 50m(lib/school-districts.ts)より広く取る */
+const DISTRICT_SEARCH_MARGIN_DEGREES = 0.001
 
 /**
  * 通知してよい報告か。公開の状態で、AI が承認したか運営(人)が承認したもの(UIUX改装 項目59)。
@@ -239,9 +241,11 @@ export function createPushRepo(db: AppDb) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       const { longitude, latitude } = report
       if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return []
+      // 境界のすぐ外の報告も、となりの学区として拾えるよう、矩形を少し広げて探す(約100m)
+      const margin = DISTRICT_SEARCH_MARGIN_DEGREES
       const predicates = [
-        lte(schoolDistrictBoundaries.minLng, longitude), gte(schoolDistrictBoundaries.maxLng, longitude),
-        lte(schoolDistrictBoundaries.minLat, latitude), gte(schoolDistrictBoundaries.maxLat, latitude),
+        lte(schoolDistrictBoundaries.minLng, longitude + margin), gte(schoolDistrictBoundaries.maxLng, longitude - margin),
+        lte(schoolDistrictBoundaries.minLat, latitude + margin), gte(schoolDistrictBoundaries.maxLat, latitude - margin),
       ]
       if (report.prefecture) predicates.push(eq(schoolDistricts.prefecture, report.prefecture))
       return db.select({

@@ -12,7 +12,7 @@ import {
 } from '@/lib/db/repos/push.repo'
 import { findDangersNearRoute } from '@/lib/geo/route-danger-finder'
 import { buildDangerReportPushPayload } from '@/lib/notifications/builders'
-import { isInsideSchoolDistrict } from '@/lib/school-districts'
+import { isWithinOrNearSchoolDistrict } from '@/lib/school-districts'
 import { sendPushToUser } from '@/lib/web-push'
 
 const NOTIFICATION_RADIUS_METERS = 300
@@ -107,7 +107,8 @@ async function listUsersInReportDistrict(report: DangerReportLocation): Promise<
     const current = districts.get(row.districtId) ?? { name: row.name, geometries: [] }
     districts.set(row.districtId, { name: current.name, geometries: [...current.geometries, row.geometry] })
   }
-  const matched = [...districts].filter(([, district]) => isInsideSchoolDistrict(report.longitude, report.latitude, district.geometries))
+  // 学区の境界の道の上の報告は、両側の学区に知らせる(境界から 50m 以内なら、その学区にも入れる)
+  const matched = [...districts].filter(([, district]) => isWithinOrNearSchoolDistrict(report.longitude, report.latitude, district.geometries))
   if (matched.length === 0) return []
   const names = new Map(matched.map(([id, district]) => [id, district.name]))
   const byUser = new Map<string, string>()

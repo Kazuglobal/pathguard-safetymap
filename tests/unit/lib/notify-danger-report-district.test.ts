@@ -49,6 +49,14 @@ describe('「粗く保存」の人には小学校区で知らせる(UIUX改装 �
     expect(mocks.sendPushToUser).not.toHaveBeenCalled()
   })
 
+  it('学区の境界の道の上(境界から 50m 以内)の報告は、境界のすぐ外でも知らせる', async () => {
+    // 学区の東の境界(139.02)の約30m外
+    await notifyUsersNearReport({ ...report, latitude: 35.01, longitude: 139.0203 })
+
+    expect(mocks.listDistrictNotificationUsers).toHaveBeenCalledWith({ kind: 'service' }, ['d1'])
+    expect(mocks.sendPushToUser).toHaveBeenCalledWith('coarse-1', expect.objectContaining({ title: '第一小学校区で危険報告' }), 'danger_reports')
+  })
+
   it('通学路の近くで知らせる人には、学区の知らせを重ねて送らない', async () => {
     mocks.listNotificationRoutes.mockResolvedValue([{ id: 'route-1', userId: 'coarse-1', name: '通学路', routeGeometry: { type: 'LineString', coordinates: [[139.0099, 35.01], [139.0101, 35.01]] } }])
 
