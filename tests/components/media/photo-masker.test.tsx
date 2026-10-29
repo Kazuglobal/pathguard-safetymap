@@ -161,6 +161,17 @@ describe("useMaskedPhotoPicker", () => {
     await waitFor(() => expect(onResult).toHaveBeenLastCalledWith(expect.objectContaining({ faces: 1 })))
   })
 
+  it("報告の全画面(/report は z-80)の上に出す(下に隠れて写真を付けられなくならない)", async () => {
+    render(<Harness onResult={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "pick" }))
+
+    const dialog = await screen.findByTestId("photo-masker-dialog")
+    expect(dialog.className).toContain("z-[90]")
+    // 背景の幕も同じ高さに上げる(本物の幕の付き方は tests/components/ui/dialog-overlay.test.tsx)
+    expect(dialog.getAttribute("data-overlay-class")).toContain("z-[90]")
+  })
+
   it("書き出しの途中でやめた写真の結果が、あとから次の写真の結果として届かない", async () => {
     let finishFirstExport: (() => void) | null = null
     vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (callback: BlobCallback, type?: string) {

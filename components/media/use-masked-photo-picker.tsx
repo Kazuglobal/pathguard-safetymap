@@ -56,7 +56,8 @@ export function useMaskedPhotoPicker(): {
 
   const photoMaskerDialog = (
     <Dialog open={request !== null} onOpenChange={(open) => { if (!open && request) finish(request.id, null) }}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg" data-testid="photo-masker-dialog">
+      {/* 報告の画面(/report の全画面は z-80)の上、通知(z-100)の下に出す */}
+      <DialogContent className="z-[90] max-h-[92dvh] overflow-y-auto sm:max-w-lg" overlayClassName="z-[90]" data-testid="photo-masker-dialog">
         <DialogHeader>
           <DialogTitle>写真の顔とナンバーを隠す</DialogTitle>
           <DialogDescription>投稿する前に、写っている人や車が分からないようにします。</DialogDescription>

@@ -107,12 +107,13 @@ export function DialogClose({
 
 export const DialogContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(function DialogContent({ children, ...props }, ref) {
+  React.HTMLAttributes<HTMLDivElement> & { overlayClassName?: string }
+>(function DialogContent({ children, overlayClassName, ...props }, ref) {
   const { open } = React.useContext(DialogContext)
   if (!open) return null
+  // 本物は背景の幕(overlay)に付ける class。ここでは幕を描かないので、確かめられるよう属性に残す
   return (
-    <div ref={ref} role="dialog" {...props}>
+    <div ref={ref} role="dialog" data-overlay-class={overlayClassName} {...props}>
       {children}
     </div>
   )
