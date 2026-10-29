@@ -4,7 +4,7 @@ import type { Actor } from '@/lib/db/authz'
 import { getDb, type AppDb } from '@/lib/db/client'
 import { dangerReports, hunterPhotos, reportImages } from '@/lib/db/schema'
 
-import type { PrivateMediaKey } from './url'
+import { isMaskedMediaKey, type PrivateMediaKey } from './url'
 
 const PUBLIC_REPORT_STATUSES = new Set(['approved', 'published', 'resolved'])
 
@@ -27,7 +27,6 @@ export function createPrivateMediaAuthorizer(db: AppDb) {
     const [report] = await db.select({
       userId: dangerReports.userId,
       status: dangerReports.status,
-      imageMasked: dangerReports.imageMasked,
       imageKey: dangerReports.imageKey,
       processedImageKey: dangerReports.processedImageKey,
       processedImageKeys: dangerReports.processedImageKeys,
@@ -39,8 +38,8 @@ export function createPrivateMediaAuthorizer(db: AppDb) {
 
     const directKeys = [report.imageKey, report.processedImageKey, ...report.processedImageKeys]
     let isPersistedKey = directKeys.includes(parsed.key)
-    // 端末でぼかした(加工済みの)写真か。加工画像(もしも画像)は元の写真から作るので、元の写真に揃える
-    let masked = report.imageMasked
+    // 端末でぼかした(加工済みの)写真か。報告ごとではなく、写真ごと(キーの印)で決める
+    let masked = isMaskedMediaKey(parsed.key)
     if (!isPersistedKey) {
       const [image] = await db.select({ id: reportImages.id, masked: reportImages.masked }).from(reportImages).where(and(
         eq(reportImages.reportId, parsed.resourceId),

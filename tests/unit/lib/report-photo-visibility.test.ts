@@ -13,8 +13,11 @@ const owner: Actor = { kind: 'user', id: 'owner-1', email: null, isAdmin: false 
 const other: Actor = { kind: 'user', id: 'other-1', email: null, isAdmin: false }
 const admin: Actor = { kind: 'user', id: 'admin-1', email: null, isAdmin: true }
 
+// ぼかしていない(既存の)写真と、端末でぼかした写真(ファイル名の頭に m-)
 const ORIGINAL = 'danger-reports/owner-1/report-1/original.webp'
 const PROCESSED = 'danger-reports/owner-1/report-1/processed.webp'
+const MASKED_ORIGINAL = 'danger-reports/owner-1/report-1/m-original.webp'
+const MASKED_PROCESSED = 'danger-reports/owner-1/report-1/m-processed.webp'
 
 let database: TestDatabase
 
@@ -54,12 +57,21 @@ describe('報告の写真はぼかしたものだけを公開する(UIUX改装 �
   })
 
   it('ぼかした写真は、公開中ならほかの人も見られる(非公開ならほかの人は見られない)', async () => {
-    await insertReport({ imageMasked: true })
-    expect(await canSee(other, ORIGINAL)).toBe(true)
-    expect(await canSee(other, PROCESSED)).toBe(true)
+    await insertReport({ imageMasked: true, imageKey: MASKED_ORIGINAL, processedImageKeys: [MASKED_PROCESSED] })
+    expect(await canSee(other, MASKED_ORIGINAL)).toBe(true)
+    expect(await canSee(other, MASKED_PROCESSED)).toBe(true)
 
     database.sqlite.prepare("update danger_reports set status = 'pending'").run()
-    expect(await canSee(other, ORIGINAL)).toBe(false)
+    expect(await canSee(other, MASKED_ORIGINAL)).toBe(false)
+  })
+
+  it('元の写真をぼかした写真に差し替えても、古い(ぼかしていない写真から作った)もしも画像は見せない', async () => {
+    await insertReport({ imageMasked: true, imageKey: MASKED_ORIGINAL, processedImageKeys: [PROCESSED, MASKED_PROCESSED] })
+
+    expect(await canSee(other, MASKED_ORIGINAL)).toBe(true)
+    expect(await canSee(other, PROCESSED)).toBe(false)
+    expect(await canSee(other, MASKED_PROCESSED)).toBe(true)
+    expect(await canSee(owner, PROCESSED)).toBe(true)
   })
 })
 
@@ -77,9 +89,11 @@ describe('見る人に合わせた報告の JSON(UIUX改装 項目61)', () => {
     expect(JSON.stringify(json)).not.toContain('owner-1')
   })
 
-  it('ぼかした写真なら、ほかの人にも写真の URL を返す', async () => {
-    await insertReport({ imageMasked: true })
-    expect(toDangerReportJsonForViewer(report(), other).image_url).toBe(`/api/media/private/${ORIGINAL}`)
+  it('ぼかした写真なら、ほかの人にも写真の URL を返す(写真ごとに決める)', async () => {
+    await insertReport({ imageMasked: true, imageKey: MASKED_ORIGINAL, processedImageKeys: [PROCESSED, MASKED_PROCESSED] })
+    const json = toDangerReportJsonForViewer(report(), other)
+    expect(json.image_url).toBe(`/api/media/private/${MASKED_ORIGINAL}`)
+    expect(json.processed_image_urls).toEqual([`/api/media/private/${MASKED_PROCESSED}`])
   })
 
   it('本人と管理者には全部を返す(写真がぼかし直し待ちかも分かる)', async () => {

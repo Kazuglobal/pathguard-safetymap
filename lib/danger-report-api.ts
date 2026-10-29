@@ -1,6 +1,6 @@
 import type { Actor } from '@/lib/db/authz'
 import type { dangerReports } from '@/lib/db/schema'
-import { privateMediaUrl } from '@/lib/media/url'
+import { isMaskedMediaKey, privateMediaUrl } from '@/lib/media/url'
 
 type DangerReportRow = typeof dangerReports.$inferSelect
 
@@ -50,15 +50,15 @@ const toDay = (value: string) => (/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice
  */
 export function toOthersDangerReportJson(report: DangerReportRow) {
   const base = toDangerReportJson(report)
-  const showImages = report.imageMasked
+  // 写真ごとに、ぼかし済みの印があるものだけを返す(元の写真を差し替えても、古いもしも画像は出さない)
   return {
     ...base,
     user_id: '',
     latitude: roundTo3(report.latitude),
     longitude: roundTo3(report.longitude),
-    image_url: showImages ? base.image_url : null,
-    processed_image_url: showImages ? base.processed_image_url : null,
-    processed_image_urls: showImages ? base.processed_image_urls : [],
+    image_url: report.imageKey && isMaskedMediaKey(report.imageKey) ? privateMediaUrl(report.imageKey) : null,
+    processed_image_url: report.processedImageKey && isMaskedMediaKey(report.processedImageKey) ? privateMediaUrl(report.processedImageKey) : null,
+    processed_image_urls: report.processedImageKeys.filter(isMaskedMediaKey).map(privateMediaUrl),
     postal_code: null,
     address_hash: null,
     geocode_source: null,

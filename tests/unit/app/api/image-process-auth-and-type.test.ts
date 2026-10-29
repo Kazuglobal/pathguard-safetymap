@@ -110,6 +110,15 @@ describe('app/api/image/process D1 + R2 upload', () => {
     expect(mocks.setImages).not.toHaveBeenCalled()
   })
 
+  it('加工画像は、ぼかした写真から作った印(masked=1)があるときだけ「ぼかし済み」のキーにする', async () => {
+    await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'processed' }))
+    await POST(requestWith({ file: imageFile(), reportId: 'report-1', imageType: 'processed', masked: '1' }))
+
+    const keys = mocks.r2Put.mock.calls.map(([key]) => key as string)
+    expect(keys[0]).toMatch(/^danger-reports\/owner-1\/report-1\/(?!m-)[\w-]+\.webp$/)
+    expect(keys[1]).toMatch(/^danger-reports\/owner-1\/report-1\/m-[\w-]+\.webp$/)
+  })
+
   it('re-encodes originals with Images, stores a private key, and updates D1', async () => {
     const response = await POST(requestWith({
       file: imageFile('photo.webp', 'image/webp'), reportId: 'report-1', imageType: 'original', masked: '1',
@@ -117,7 +126,7 @@ describe('app/api/image/process D1 + R2 upload', () => {
     expect(response.status).toBe(200)
     expect(mocks.imageInfo).toHaveBeenCalledTimes(1)
     expect(mocks.r2Put).toHaveBeenCalledWith(
-      expect.stringMatching(/^danger-reports\/owner-1\/report-1\/[\w-]+\.webp$/),
+      expect.stringMatching(/^danger-reports\/owner-1\/report-1\/m-[\w-]+\.webp$/),
       expect.anything(),
       expect.objectContaining({ httpMetadata: expect.objectContaining({ contentType: 'image/webp' }) }),
     )
