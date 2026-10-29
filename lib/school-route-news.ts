@@ -160,7 +160,15 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: true,
     verifiedAt: "2026-10-29T05:50:00+09:00",
-    actionAdvice: "自転車で渡る前に足を着いて止まる練習を、今夜いっしょに1回やってみる"
+    actionAdvice: "自転車で渡る前に足を着いて止まる練習を、今夜いっしょに1回やってみる",
+    contentImages: [
+      {
+        id: "stop-feet-down-walk-across",
+        url: "/images/school-route-news/articles/hamamatsu-hamana-hosoe-bicycle-truck-boy-20261027/stop-feet-down-walk-across.jpg",
+        description: "横断の前で自転車を止めて両足を着き、左右を見てから降りて押して渡る"
+      }
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/hamamatsu-hamana-hosoe-bicycle-truck-boy-20261027.jpg"
   },
   {
     id: "news-2026-10-29-002",
@@ -258,7 +266,15 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: true,
     verifiedAt: "2026-10-29T05:50:00+09:00",
-    actionAdvice: "細い道で車とすれ違うときは止まって先に通す、と今日ひとつ約束する"
+    actionAdvice: "細い道で車とすれ違うときは止まって先に通す、と今日ひとつ約束する",
+    contentImages: [
+      {
+        id: "narrow-road-stop-let-pass",
+        url: "/images/school-route-news/articles/yaizu-munetaka-bicycle-hitandrun-boy-20261027/narrow-road-stop-let-pass.jpg",
+        description: "センターラインのない細い道では、道の左端に寄って止まり、車が通り過ぎてから進む"
+      }
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/yaizu-munetaka-bicycle-hitandrun-boy-20261027.jpg"
   },
   {
     id: "news-2026-10-29-003",
@@ -338,7 +354,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: false,
     verifiedAt: "2026-10-29T05:50:00+09:00",
-    actionAdvice: "子どもの帰り道で人の目が切れる場所を1か所選び、今週その時間に立ってみる"
+    actionAdvice: "子どもの帰り道で人の目が切れる場所を1か所選び、今週その時間に立ってみる",
+    thumbnailUrl: "/images/school-route-news/thumbnails/ginowan-schoolway-group-commute-notice-20261023.jpg"
   },
   {
     id: "news-2026-10-28-001",
