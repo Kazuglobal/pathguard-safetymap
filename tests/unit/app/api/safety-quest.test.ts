@@ -91,26 +91,31 @@ describe('safety quest D1 API routes', () => {
     expect(response.status).toBe(401)
   })
 
-  it('builds approved report challenges without exposing coordinates or R2 keys', async () => {
+  it('問題は見本の写真だけを使い、投稿された報告の写真は使い回さない(UIUX改装 項目57)', async () => {
     mocks.listReports.mockResolvedValue([reportRow()])
     const { GET } = await import('@/app/api/safety-quest/challenges/route')
     const response = await GET(new NextRequest('http://localhost/api/safety-quest/challenges'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(mocks.listReports).toHaveBeenCalledWith(actor, {
-      statuses: ['approved', 'published', 'resolved'],
-      limit: 50,
-    })
-    expect(body.challenges[0]).toMatchObject({
-      id: 'report-report-1',
-      sourceType: 'report',
-      areaLabel: '福岡市 中央区',
-      imageUrl: '/api/media/private/danger-reports/owner-1/report-1/original.webp',
-    })
-    expect(JSON.stringify(body.challenges[0])).not.toContain('latitude')
-    expect(JSON.stringify(body.challenges[0])).not.toContain('longitude')
-    expect(JSON.stringify(body.challenges[0])).not.toContain('imageKey')
+    expect(mocks.listReports).not.toHaveBeenCalled()
+    expect(body.challenges.length).toBeGreaterThan(0)
+    expect(body.challenges.every((challenge: { sourceType?: string; id: string }) => challenge.sourceType !== 'report' && !challenge.id.startsWith('report-'))).toBe(true)
+    expect(JSON.stringify(body)).not.toContain('danger-reports/')
+  })
+
+  it('報告から作った問題の id では採点しない', async () => {
+    mocks.getReport.mockResolvedValue(reportRow())
+    const { POST } = await import('@/app/api/safety-quest/attempts/route')
+    const response = await POST(makeJsonRequest('http://localhost/api/safety-quest/attempts', {
+      challengeId: 'report-report-1',
+      mode: 'hazard',
+      userMarkers: [{ id: 'm1', x: 0.2, y: 0.2, width: 0.1, height: 0.1, label: 'hazard', category: 'hazard', timestamp: 1 }],
+    }))
+
+    expect(response.status).toBe(404)
+    expect(mocks.getReport).not.toHaveBeenCalled()
+    expect(mocks.recordAttempt).not.toHaveBeenCalled()
   })
 
   it('validates marker payloads', async () => {

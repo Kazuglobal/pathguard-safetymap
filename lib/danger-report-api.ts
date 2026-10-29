@@ -1,3 +1,4 @@
+import type { Actor } from '@/lib/db/authz'
 import type { dangerReports } from '@/lib/db/schema'
 import { privateMediaUrl } from '@/lib/media/url'
 
@@ -32,9 +33,51 @@ export function toDangerReportJson(report: DangerReportRow) {
     ai_moderation_reason: report.aiModerationReason,
     ai_moderation_checked_at: report.aiModerationCheckedAt,
     ai_moderation_score: report.aiModerationScore,
+    /** 写真が端末でぼかした(加工済みの)ものか。false の写真はほかの人には出さない */
+    image_masked: report.imageMasked,
     created_at: report.createdAt,
     updated_at: report.updatedAt,
   }
+}
+
+const roundTo3 = (value: number) => Math.round(value * 1000) / 1000
+/** 日時を日単位(YYYY-MM-DD)にする。いつ・どこに誰がいたかを細かく残さない */
+const toDay = (value: string) => (/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value)
+
+/**
+ * ほかの人の報告(UIUX改装 項目57・61)。投稿者の id・審査の結果や理由は返さず、日時は日単位、
+ * 座標は小数3桁(約100m)にする。写真は端末でぼかしたものだけ(既存の写真は管理者がぼかし直すまで出さない)
+ */
+export function toOthersDangerReportJson(report: DangerReportRow) {
+  const base = toDangerReportJson(report)
+  const showImages = report.imageMasked
+  return {
+    ...base,
+    user_id: '',
+    latitude: roundTo3(report.latitude),
+    longitude: roundTo3(report.longitude),
+    image_url: showImages ? base.image_url : null,
+    processed_image_url: showImages ? base.processed_image_url : null,
+    processed_image_urls: showImages ? base.processed_image_urls : [],
+    postal_code: null,
+    address_hash: null,
+    geocode_source: null,
+    geocoded_at: null,
+    geocode_confidence: null,
+    ai_moderation_status: null,
+    ai_moderation_reason: null,
+    ai_moderation_checked_at: null,
+    ai_moderation_score: null,
+    created_at: toDay(report.createdAt),
+    updated_at: toDay(report.updatedAt),
+  }
+}
+
+/** 見る人に合わせた報告の JSON。本人・管理者には全部、ほかの人には粗くしたもの、未ログインはプレビュー */
+export function toDangerReportJsonForViewer(report: DangerReportRow, actor: Actor) {
+  if (actor.kind === 'anon') return toPublicDangerReportPreviewJson(report)
+  if (actor.kind === 'service' || actor.isAdmin || actor.id === report.userId) return toDangerReportJson(report)
+  return toOthersDangerReportJson(report)
 }
 
 /** Match the former security-invoker public preview: coarse coordinates and no media keys. */

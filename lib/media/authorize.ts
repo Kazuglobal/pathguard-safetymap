@@ -27,6 +27,7 @@ export function createPrivateMediaAuthorizer(db: AppDb) {
     const [report] = await db.select({
       userId: dangerReports.userId,
       status: dangerReports.status,
+      imageMasked: dangerReports.imageMasked,
       imageKey: dangerReports.imageKey,
       processedImageKey: dangerReports.processedImageKey,
       processedImageKeys: dangerReports.processedImageKeys,
@@ -38,18 +39,23 @@ export function createPrivateMediaAuthorizer(db: AppDb) {
 
     const directKeys = [report.imageKey, report.processedImageKey, ...report.processedImageKeys]
     let isPersistedKey = directKeys.includes(parsed.key)
+    // 端末でぼかした(加工済みの)写真か。加工画像(もしも画像)は元の写真から作るので、元の写真に揃える
+    let masked = report.imageMasked
     if (!isPersistedKey) {
-      const [image] = await db.select({ id: reportImages.id }).from(reportImages).where(and(
+      const [image] = await db.select({ id: reportImages.id, masked: reportImages.masked }).from(reportImages).where(and(
         eq(reportImages.reportId, parsed.resourceId),
         eq(reportImages.imageKey, parsed.key),
       )).limit(1)
       isPersistedKey = Boolean(image)
+      masked = image?.masked ?? false
     }
     if (!isPersistedKey) return false
 
     if (actor.kind === 'service') return true
     if (actor.isAdmin || actor.id === report.userId) return true
-    return PUBLIC_REPORT_STATUSES.has(report.status)
+    // ほかの人には、公開中の報告の、ぼかした写真だけを見せる(UIUX改装 項目57)。
+    // 既存の(ぼかしていない)写真は、管理者がぼかし直すまで本人と管理者だけ
+    return PUBLIC_REPORT_STATUSES.has(report.status) && masked
   }
 }
 

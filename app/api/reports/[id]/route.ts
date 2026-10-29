@@ -2,7 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
 import { getActor } from '@/lib/auth/actor'
-import { toDangerReportJson, toPublicDangerReportPreviewJson } from '@/lib/danger-report-api'
+import { toDangerReportJsonForViewer } from '@/lib/danger-report-api'
 import { AuthzError } from '@/lib/db/authz'
 import { deleteDangerReport, getDangerReportById } from '@/lib/db/repos/danger-reports.repo'
 
@@ -18,9 +18,7 @@ export async function GET(_request: Request, context: RouteContext) {
     if (!id || id.length > 128) return NextResponse.json({ error: 'Invalid report id' }, { status: 400 })
     const report = await getDangerReportById(actor, id)
     return report
-      ? NextResponse.json({ report: actor.kind === 'anon'
-        ? toPublicDangerReportPreviewJson(report)
-        : toDangerReportJson(report) })
+      ? NextResponse.json({ report: toDangerReportJsonForViewer(report, actor) })
       : NextResponse.json({ error: 'Not found' }, { status: 404 })
   } catch (error) {
     if (error instanceof AuthzError) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

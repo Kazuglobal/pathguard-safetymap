@@ -221,7 +221,8 @@ export function createDangerReportsRepo(db: AppDb) {
     async setImages(
       actor: Actor,
       reportId: string,
-      input: { imageKey?: string; processedImageKeys?: string[] },
+      /** imageMasked: imageKey の写真が端末でぼかした(加工済みの)ものか。imageKey と一緒に渡す */
+      input: { imageKey?: string; imageMasked?: boolean; processedImageKeys?: string[] },
     ) {
       if (input.imageKey === undefined && input.processedImageKeys === undefined) {
         throw new RangeError('An image update is required')
@@ -255,7 +256,7 @@ export function createDangerReportsRepo(db: AppDb) {
         updatedAt: now,
       }
       const values = input.imageKey !== undefined
-        ? { ...moderationFields, imageKey: input.imageKey }
+        ? { ...moderationFields, imageKey: input.imageKey, imageMasked: input.imageMasked === true }
         : { ...moderationFields, processedImageKeys: input.processedImageKeys ?? [] }
       const [updated] = await db.update(dangerReports).set(values)
         .where(eq(dangerReports.id, reportId)).returning()
@@ -352,7 +353,7 @@ export function getDangerReportForImageUpdate(actor: Actor, reportId: string) {
   return createDangerReportsRepo(getDb()).getForImageUpdate(actor, reportId)
 }
 
-export function setDangerReportImages(actor: Actor, reportId: string, input: { imageKey?: string; processedImageKeys?: string[] }) {
+export function setDangerReportImages(actor: Actor, reportId: string, input: { imageKey?: string; imageMasked?: boolean; processedImageKeys?: string[] }) {
   return createDangerReportsRepo(getDb()).setImages(actor, reportId, input)
 }
 

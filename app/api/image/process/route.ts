@@ -91,6 +91,11 @@ export async function POST(request: Request) {
     if (Number.isNaN(replaceIndex)) return json('replaceIndex must be a non-negative integer', 400)
     const validationError = validateFile(fileValue)
     if (validationError) return json(validationError, 400)
+    // 報告の写真は、端末で顔をぼかし・ナンバーなどを隠した WebP だけを受け付ける(UIUX改装 項目57)。
+    // 元の写真は預からない(この API にも届かない)
+    if (imageType === 'original' && (formData.get('masked') !== '1' || fileValue.type !== 'image/webp')) {
+      return json('端末でぼかした写真だけを送れます。写真を選び直してください。', 400)
+    }
 
     const report = await getDangerReportForImageUpdate(actor, reportIdValue)
     if (!report) return json('Report not found', 404)
@@ -133,7 +138,7 @@ export async function POST(request: Request) {
 
     if (imageType === 'original') {
       const oldKey = report.imageKey
-      await setDangerReportImages(actor, report.id, { imageKey: uploadedKey })
+      await setDangerReportImages(actor, report.id, { imageKey: uploadedKey, imageMasked: true })
       if (oldKey && oldKey !== uploadedKey) await bucket.delete(oldKey).catch(() => undefined)
       return json('Original image uploaded and report updated successfully.', 200, {
         imageUrl: privateMediaUrl(uploadedKey),
