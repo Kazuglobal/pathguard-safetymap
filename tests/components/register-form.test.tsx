@@ -28,10 +28,29 @@ describe("RegisterForm", () => {
 
     await user.click(screen.getByRole("button", { name: "登録する" }))
 
-    expect(screen.getByLabelText(/氏名/)).toHaveFocus()
-    expect(screen.getByText("氏名を入力してください")).toBeInTheDocument()
+    expect(screen.getByLabelText(/メールアドレス/)).toHaveFocus()
+    expect(screen.getByText("メールアドレスを入力してください")).toBeInTheDocument()
     expect(screen.getByText("英字（アルファベット）を含めてください")).toBeInTheDocument()
-    expect(screen.getAllByText("必須").length).toBeGreaterThanOrEqual(4)
+    // メール・パスワード・規約への同意の3つだけ
+    expect(screen.getAllByText("必須")).toHaveLength(3)
+  })
+
+  it("氏名を聞かず、メールとパスワードだけで登録する(user_metadata に何も入れない)", async () => {
+    mocks.signUp.mockResolvedValueOnce({ data: { user: { identities: [{ id: "identity" }] } }, error: null })
+    const user = userEvent.setup()
+    render(<RegisterForm />)
+
+    expect(screen.queryByLabelText(/氏名/)).not.toBeInTheDocument()
+    expect(screen.getByText(/お名前は不要です/)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/メールアドレス/), "parent@example.com")
+    await user.type(document.getElementById("password") as HTMLInputElement, "password1")
+    await user.click(screen.getByTestId("agree-to-terms-checkbox"))
+    await user.click(screen.getByRole("button", { name: "登録する" }))
+
+    await waitFor(() => expect(mocks.signUp).toHaveBeenCalledTimes(1))
+    expect(mocks.signUp).toHaveBeenCalledWith({ email: "parent@example.com", password: "password1" })
+    expect(mocks.push).toHaveBeenCalledWith("/login")
   })
 
   it("maps an existing account to the approved inline recovery", async () => {
@@ -42,7 +61,6 @@ describe("RegisterForm", () => {
     const user = userEvent.setup()
     render(<RegisterForm />)
 
-    await user.type(screen.getByLabelText(/氏名/), "山田 太郎")
     await user.type(screen.getByLabelText(/メールアドレス/), "demo@example.com")
     await user.type(document.getElementById("password") as HTMLInputElement, "password1")
     await user.click(screen.getByTestId("agree-to-terms-checkbox"))

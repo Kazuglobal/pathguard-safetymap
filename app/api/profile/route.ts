@@ -31,9 +31,9 @@ export async function PATCH(request: Request) {
   if (actor.kind !== 'user') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const body = await request.json() as Record<string, unknown>
+    // 氏名(full_name)は預からないので、送られてきても読まない(UIUX改装 項目55)
     const profile = await upsertOwnProfile(actor, actor.email ?? '', {
       displayName: optionalNullableString(body, 'display_name'),
-      fullName: optionalNullableString(body, 'full_name'),
     })
     return NextResponse.json({ profile: toProfileJson(profile, actor.email) })
   } catch (error) {

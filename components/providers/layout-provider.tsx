@@ -18,6 +18,7 @@ import { PushPermissionPrompt } from "@/components/notifications/push-permission
 import { AppOnboardingGate } from "@/components/onboarding/app-onboarding-gate"
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar"
 import { IosInstallPrompt } from "@/components/pwa/ios-install-prompt"
+import { PrivacyUpdateNotice } from "@/components/notices/privacy-update-notice"
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js"
 
 interface LayoutProviderInnerProps {
@@ -184,6 +185,7 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
       {user && <AppOnboardingGate />}
       {user && shouldShowFloatingPrompts(pathname) && <PushPermissionPrompt />}
       {user && shouldShowFloatingPrompts(pathname) && <IosInstallPrompt />}
+      {user && shouldShowFloatingPrompts(pathname) && <PrivacyUpdateNotice />}
     </AuthContextProvider>
   )
 }

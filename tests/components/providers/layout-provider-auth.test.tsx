@@ -58,6 +58,9 @@ vi.mock("@/components/pwa/service-worker-registrar", () => ({ ServiceWorkerRegis
 vi.mock("@/components/pwa/ios-install-prompt", () => ({
   IosInstallPrompt: () => <div data-testid="ios-install-prompt" />,
 }))
+vi.mock("@/components/notices/privacy-update-notice", () => ({
+  PrivacyUpdateNotice: () => <div data-testid="privacy-update-notice" />,
+}))
 
 import { LayoutProvider } from "@/components/providers/layout-provider"
 
@@ -134,6 +137,7 @@ describe("画面下に浮かぶお願い", () => {
 
     expect(screen.queryByTestId("push-prompt")).not.toBeInTheDocument()
     expect(screen.queryByTestId("ios-install-prompt")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("privacy-update-notice")).not.toBeInTheDocument()
   })
 
   it("ふつうの画面ではログイン中の人に出す", async () => {
@@ -144,6 +148,7 @@ describe("画面下に浮かぶお願い", () => {
 
     expect(await screen.findByTestId("push-prompt")).toBeInTheDocument()
     expect(screen.getByTestId("ios-install-prompt")).toBeInTheDocument()
+    expect(screen.getByTestId("privacy-update-notice")).toBeInTheDocument()
   })
 })
 

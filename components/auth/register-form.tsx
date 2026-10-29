@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, CheckCircle2, Circle } from "lucide-react"
 import { DUPLICATE_EMAIL_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 
-type FieldErrors = Partial<Record<"fullName" | "email" | "password" | "terms" | "form", string>>
+type FieldErrors = Partial<Record<"email" | "password" | "terms" | "form", string>>
 
 const RequiredChip = () => (
   <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700">必須</span>
@@ -29,10 +29,8 @@ export default function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [fullName, setFullName] = useState("")
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [errors, setErrors] = useState<FieldErrors>({})
-  const fullNameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
@@ -45,7 +43,6 @@ export default function RegisterForm() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     const nextErrors: FieldErrors = {}
-    if (!fullName.trim()) nextErrors.fullName = "氏名を入力してください"
     if (!email.trim()) nextErrors.email = "メールアドレスを入力してください"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = "例: name@example.com の形で入力してください"
     if (!Object.values(passwordChecks).every(Boolean)) nextErrors.password = "下の3つの条件をすべて満たしてください"
@@ -53,8 +50,7 @@ export default function RegisterForm() {
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
-      if (nextErrors.fullName) fullNameRef.current?.focus()
-      else if (nextErrors.email) emailRef.current?.focus()
+      if (nextErrors.email) emailRef.current?.focus()
       else if (nextErrors.password) passwordRef.current?.focus()
       else document.getElementById("agreeToTerms")?.focus()
       return
@@ -64,13 +60,8 @@ export default function RegisterForm() {
     setIsLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-        },
-      })
+      // 氏名は預からない(UIUX改装 項目55)。user_metadata には何も入れない
+      const { data, error } = await supabase.auth.signUp({ email, password })
 
       if (error) throw error
       if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
@@ -107,7 +98,7 @@ export default function RegisterForm() {
     <Card>
       <CardHeader>
         <CardTitle>アカウント登録</CardTitle>
-        <CardDescription>必要事項を入力して新しいアカウントを作成してください。</CardDescription>
+        <CardDescription>メールアドレスとパスワードだけで登録できます(お名前は不要です)。</CardDescription>
       </CardHeader>
       <form onSubmit={handleRegister} noValidate aria-busy={isLoading}>
         <CardContent className="space-y-4">
@@ -116,21 +107,6 @@ export default function RegisterForm() {
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> {errors.form}
             </p>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="fullName">氏名 <RequiredChip /></Label>
-            <Input
-              ref={fullNameRef}
-              id="fullName"
-              placeholder="山田 太郎"
-              value={fullName}
-              onChange={(e) => { setFullName(e.target.value); setErrors((current) => ({ ...current, fullName: undefined })) }}
-              required
-              autoComplete="name"
-              aria-invalid={Boolean(errors.fullName)}
-              aria-describedby={errors.fullName ? "fullName-error" : undefined}
-            />
-            {errors.fullName && <p id="fullName-error" role="alert" className="text-sm font-bold text-red-600">{errors.fullName}</p>}
-          </div>
           <div className="space-y-2">
             <Label htmlFor="email">メールアドレス <RequiredChip /></Label>
             <Input

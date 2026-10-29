@@ -8,6 +8,7 @@ import {
   syntheticLineEmail,
 } from "@/lib/auth/line"
 import { getSafeNextPath } from "@/lib/auth/safe-next"
+import { buildPersonalMetadataScrub } from "@/lib/privacy/personal-metadata"
 
 export const dynamic = "force-dynamic"
 
@@ -66,11 +67,10 @@ export async function GET(request: Request) {
     const email = profile.email ?? syntheticLineEmail(profile.userId, credentials.channelSecret)
     const admin = getSupabaseAdmin()
 
+    // 表示名・アイコンは預からない。本人の確認に使う LINE ユーザーIDだけを持つ
     const metadata = {
       provider: "line",
       line_user_id: profile.userId,
-      ...(profile.displayName ? { name: profile.displayName, full_name: profile.displayName } : {}),
-      ...(profile.avatarUrl ? { avatar_url: profile.avatarUrl } : {}),
     }
 
     // 既存ユーザーなら email_exists で失敗する(その場合は後段で本人性を検証する)
@@ -116,11 +116,13 @@ export async function GET(request: Request) {
     })
     if (verifyError) throw verifyError
 
-    // 最新のLINEプロフィールをメタデータへ反映(失敗してもログインは成立させる)
-    if (sessionData.user) {
-      await admin.auth.admin
-        .updateUserById(sessionData.user.id, { user_metadata: metadata })
-        .catch(() => {})
+    // 以前のログインで保存していた表示名・アイコンを消す(失敗してもログインは成立させる)
+    const scrub = buildPersonalMetadataScrub(sessionData.user?.user_metadata)
+    if (sessionData.user && scrub) {
+      const { error: scrubError } = await admin.auth.admin
+        .updateUserById(sessionData.user.id, { user_metadata: { ...metadata, ...scrub } })
+        .catch((caught: unknown) => ({ error: caught }))
+      if (scrubError) console.error("LINE login: failed to remove stored profile name/icon")
     }
 
     return NextResponse.redirect(new URL(nextPath, url.origin))

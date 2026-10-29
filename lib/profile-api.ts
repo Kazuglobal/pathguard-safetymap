@@ -8,7 +8,6 @@ export function toProfileJson(profile: ProfileRow | null, fallbackEmail: string 
     id: profile?.id ?? null,
     email: profile?.email ?? fallbackEmail,
     display_name: profile?.displayName ?? null,
-    full_name: profile?.fullName ?? null,
     avatar_url: profile?.avatarKey ? publicMediaUrl(profile.avatarKey) : null,
     created_at: profile?.createdAt ?? null,
     updated_at: profile?.updatedAt ?? null,
