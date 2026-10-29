@@ -1,6 +1,7 @@
 /**
  * データの保持期間(UIUX改装 項目60)。毎日 19:00 UTC の /api/cron/retention-cleanup で消す。
- * プライバシーポリシーの保持期間の表は、この値と同じにする(tests/unit/lib/retention-policy.test.ts が確かめる)。
+ * プライバシーポリシーの保持期間の表(app/privacy/page.tsx)はこの値から作り、削除の処理(/api/cron/retention-cleanup・
+ * きけんハンターの写真の期限 /api/hunter/analyze)もこの値を使う(tests/unit/lib/retention-policy.test.ts が確かめる)。
  *
  * | データ | 保持 |
  * |---|---|

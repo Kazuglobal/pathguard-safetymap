@@ -1,4 +1,5 @@
 import { childErrorMessage } from '@/lib/children-api'
+import { MAX_CHILDREN_PER_USER } from '@/lib/children-limits'
 import type { RouteWriteInput, UserRouteWithChild } from '@/lib/db/repos/routes.repo'
 
 /**
@@ -14,7 +15,7 @@ export function routeErrorMessage(error: RangeError | SyntaxError): string {
     case 'Invalid route coordinates': return '出発地・到着地の場所を選び直してください'
     case 'Route description is too long': return 'メモは2000文字までにしてください'
     case 'Route not found': return '通学路が見つかりませんでした'
-    case 'Too many children': return 'お子さまは10人まで登録できます。設定でお子さまを整理してから、もう一度保存してください'
+    case 'Too many children': return `お子さまは${MAX_CHILDREN_PER_USER}人まで登録できます。設定でお子さまを整理してから、もう一度保存してください`
     default: return childErrorMessage(error)
   }
 }

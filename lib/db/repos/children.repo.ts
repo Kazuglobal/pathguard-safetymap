@@ -1,5 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 
+import { CHILD_NICKNAME_MAX_LENGTH, MAX_CHILDREN_PER_USER } from '@/lib/children-limits'
+
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
 import { children, routeLearningSessions, schoolDistricts, userRoutes } from '../schema'
@@ -9,8 +11,7 @@ import { children, routeLearningSessions, schoolDistricts, userRoutes } from '..
  * 本人(保護者)しか読み書きできない(管理者にも見せない)。
  */
 
-export const MAX_CHILDREN_PER_USER = 10
-export const CHILD_NICKNAME_MAX_LENGTH = 20
+export { CHILD_NICKNAME_MAX_LENGTH, MAX_CHILDREN_PER_USER }
 
 export interface ChildWriteInput {
   nickname?: string

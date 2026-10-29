@@ -52,6 +52,7 @@ import {
   resolveRouteMapView,
 } from "@/lib/map-center"
 import { tankenTokens } from "@/lib/design/tanken"
+import { CHILD_NICKNAME_MAX_LENGTH } from "@/lib/children-limits"
 
 type InputMode = "click" | "draw" | "route"
 
@@ -81,8 +82,6 @@ export function pruneComparisonRouteIds(
   return nextRouteIds.length === previousRouteIds.length ? previousRouteIds : nextRouteIds
 }
 
-/** 呼び名の上限(lib/db/repos/children.repo.ts の CHILD_NICKNAME_MAX_LENGTH と同じ) */
-const CHILD_NICKNAME_MAX_LENGTH = 20
 
 interface RouteFormFieldsProps {
   routeName: string

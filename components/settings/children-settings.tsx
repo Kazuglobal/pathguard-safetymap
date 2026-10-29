@@ -11,10 +11,10 @@ import { useCallback, useEffect, useState, type FormEvent } from "react"
 import { SchoolDistrictPicker } from "@/components/settings/school-district-picker"
 import { useSchoolDistrictPicker } from "@/hooks/use-school-district-picker"
 import type { ChildJson } from "@/lib/children-api"
+import { CHILD_NICKNAME_MAX_LENGTH } from "@/lib/children-limits"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const t = tankenTokens
-const NICKNAME_MAX_LENGTH = 20
 const GRADES = [1, 2, 3, 4, 5, 6] as const
 
 const buttonClass = `inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-bold ${t.cls.focus}`
@@ -81,7 +81,7 @@ function ChildForm({ initial, submitLabel, onSubmit, onCancel }: ChildFormProps)
           autoFocus
           value={nickname}
           onChange={(event) => { setNickname(event.target.value); setError(null) }}
-          maxLength={NICKNAME_MAX_LENGTH}
+          maxLength={CHILD_NICKNAME_MAX_LENGTH}
           placeholder="例: さくちゃん"
           autoComplete="off"
           aria-invalid={Boolean(error) || undefined}
@@ -89,7 +89,7 @@ function ChildForm({ initial, submitLabel, onSubmit, onCancel }: ChildFormProps)
           className={`min-h-11 w-full rounded-xl border bg-white px-3 text-sm ${t.cls.focus}`}
         />
         <p id={`${idPrefix}-nickname-hint`} className="text-xs" style={{ color: t.color.inkSoft }}>
-          本名ではなく、家族で使う呼び名にしてください(20文字まで)。
+          本名ではなく、家族で使う呼び名にしてください({CHILD_NICKNAME_MAX_LENGTH}文字まで)。
         </p>
       </div>
       <div className="space-y-1">

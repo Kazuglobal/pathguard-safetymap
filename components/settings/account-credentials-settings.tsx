@@ -11,6 +11,7 @@ import { useOptionalAuth } from "@/components/providers/auth-context"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { resolveAuthErrorMessage } from "@/lib/auth/error-messages"
 import { isLineAccount } from "@/lib/auth/line-email"
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/auth/password-rules"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const t = tankenTokens
@@ -40,10 +41,11 @@ export function AccountCredentialsSettings() {
   const [passwordMessage, setPasswordMessage] = useState<Message>(null)
   const [savingPassword, setSavingPassword] = useState(false)
 
+  const checks = checkPassword(password)
   const passwordChecks = [
-    { ok: password.length >= 8, label: "8文字以上" },
-    { ok: /[A-Za-z]/.test(password), label: "英字を含む" },
-    { ok: /\d/.test(password), label: "数字を含む" },
+    { ok: checks.length, label: `${PASSWORD_MIN_LENGTH}文字以上` },
+    { ok: checks.letter, label: "英字を含む" },
+    { ok: checks.number, label: "数字を含む" },
   ]
 
   const changeEmail = async (event: FormEvent) => {

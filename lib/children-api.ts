@@ -1,3 +1,4 @@
+import { CHILD_NICKNAME_MAX_LENGTH, MAX_CHILDREN_PER_USER } from '@/lib/children-limits'
 import type { ChildRow, ChildWithDistrict, ChildWriteInput } from '@/lib/db/repos/children.repo'
 
 /** 子どもの登録の API 入出力(UIUX改装 項目56)。本人にだけ返す */
@@ -50,9 +51,9 @@ export type ChildJson = ReturnType<typeof toChildJson>
 /** 入力の誤りを、画面に出せる日本語にする(英語の内部メッセージは出さない) */
 export function childErrorMessage(error: RangeError): string {
   switch (error.message) {
-    case 'Invalid child nickname': return '呼び名は1〜20文字で入力してください'
+    case 'Invalid child nickname': return `呼び名は1〜${CHILD_NICKNAME_MAX_LENGTH}文字で入力してください`
     case 'Child nickname already exists': return '同じ呼び名がすでに登録されています'
-    case 'Too many children': return '登録できるのは10人までです'
+    case 'Too many children': return `登録できるのは${MAX_CHILDREN_PER_USER}人までです`
     case 'Invalid child grade': return '学年は1〜6年生から選んでください'
     case 'Unknown school district': return '学区が見つかりませんでした。選び直してください'
     default: return '入力を確かめてください'

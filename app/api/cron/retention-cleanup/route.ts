@@ -10,20 +10,14 @@ import {
   deleteStaleSubscriptions,
   listExpiredReports,
 } from '@/lib/db/repos/retention.repo'
+import { deleteR2Keys, type DeletableBucket } from '@/lib/media/r2-batch-delete'
 import { isExpiredBackupKey } from '@/lib/retention/policy'
 
 export const runtime = 'nodejs'
 
-interface MediaBucket { delete(keys: string | string[]): Promise<void> }
+type MediaBucket = DeletableBucket
 interface BackupBucket extends MediaBucket {
   list(options: { prefix: string; cursor?: string }): Promise<{ objects: Array<{ key: string }>; truncated: boolean; cursor?: string }>
-}
-
-/** R2 は1回に1000件まで消せる */
-const R2_DELETE_BATCH = 1_000
-
-async function deleteKeys(bucket: MediaBucket, keys: readonly string[]) {
-  for (let index = 0; index < keys.length; index += R2_DELETE_BATCH) await bucket.delete(keys.slice(index, index + R2_DELETE_BATCH))
 }
 
 async function deleteExpiredBackups(bucket: BackupBucket, now: Date): Promise<number> {
@@ -34,7 +28,7 @@ async function deleteExpiredBackups(bucket: BackupBucket, now: Date): Promise<nu
     expired.push(...page.objects.map((object) => object.key).filter((key) => isExpiredBackupKey(key, now)))
     cursor = page.truncated ? page.cursor : undefined
   } while (cursor)
-  await deleteKeys(bucket, expired)
+  await deleteR2Keys(bucket, expired)
   return expired.length
 }
 
@@ -52,7 +46,7 @@ export async function GET(request: NextRequest) {
   const buckets = env as unknown as { MEDIA_PRIVATE: MediaBucket; BACKUPS: BackupBucket }
 
   const reports = await listExpiredReports(service, now)
-  await deleteKeys(buckets.MEDIA_PRIVATE, reports.flatMap((report) => report.mediaKeys))
+  await deleteR2Keys(buckets.MEDIA_PRIVATE, reports.flatMap((report) => report.mediaKeys))
   const deletedReports = await deleteExpiredReports(service, reports.map((report) => report.id))
   const deletedSubscriptions = await deleteStaleSubscriptions(service, now)
   const deletedHistory = await deleteOldReportCreateHistory(service, now)

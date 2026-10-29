@@ -8,12 +8,12 @@ import {
 } from '@/lib/account-deletion'
 import { getActor } from '@/lib/auth/actor'
 import { getDb } from '@/lib/db/client'
+import { deleteR2Keys, type DeletableBucket } from '@/lib/media/r2-batch-delete'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
 
-interface MediaBucket {
-  delete(keys: string | string[]): Promise<void>
+interface MediaBucket extends DeletableBucket {
   list(options: { prefix: string; cursor?: string }): Promise<{ objects: Array<{ key: string }>; truncated: boolean; cursor?: string }>
 }
 
@@ -22,22 +22,13 @@ const PRIVATE_MEDIA_PREFIXES = ['danger-reports', 'hunter-photos'] as const
 const PUBLIC_MEDIA_PREFIXES = ['avatars'] as const
 const USER_ID_SEGMENT = /^[A-Za-z0-9_-]{1,128}$/
 
-/** R2 は1回に1000件まで消せる */
-const R2_DELETE_BATCH = 1_000
-
-async function deleteObjects(bucket: MediaBucket, keys: readonly string[]) {
-  for (let index = 0; index < keys.length; index += R2_DELETE_BATCH) {
-    await bucket.delete(keys.slice(index, index + R2_DELETE_BATCH))
-  }
-}
-
 /** 「頭/利用者の id/」の下にある写真を、すべて消す */
 async function deleteUserFolders(bucket: MediaBucket, prefixes: readonly string[], userId: string) {
   for (const prefix of prefixes) {
     let cursor: string | undefined
     do {
       const page = await bucket.list({ prefix: `${prefix}/${userId}/`, cursor })
-      await deleteObjects(bucket, page.objects.map((object) => object.key))
+      await deleteR2Keys(bucket, page.objects.map((object) => object.key))
       cursor = page.truncated ? page.cursor : undefined
     } while (cursor)
   }
@@ -68,8 +59,8 @@ export async function DELETE(request: Request) {
     const { env } = getCloudflareContext()
     const buckets = env as unknown as { MEDIA_PRIVATE: MediaBucket; MEDIA_PUBLIC: MediaBucket }
     if (!USER_ID_SEGMENT.test(actor.id)) throw new Error('invalid user id for media folders')
-    await deleteObjects(buckets.MEDIA_PRIVATE, media.privateKeys)
-    await deleteObjects(buckets.MEDIA_PUBLIC, media.publicKeys)
+    await deleteR2Keys(buckets.MEDIA_PRIVATE, media.privateKeys)
+    await deleteR2Keys(buckets.MEDIA_PUBLIC, media.publicKeys)
     await deleteUserFolders(buckets.MEDIA_PRIVATE, PRIVATE_MEDIA_PREFIXES, actor.id)
     await deleteUserFolders(buckets.MEDIA_PUBLIC, PUBLIC_MEDIA_PREFIXES, actor.id)
     await deleteAccountRows(db, actor.id)

@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, CheckCircle2, Circle } from "lucide-react"
 import { DUPLICATE_EMAIL_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/auth/password-rules"
 
 type FieldErrors = Partial<Record<"email" | "password" | "terms" | "form", string>>
 
@@ -34,11 +35,7 @@ export default function RegisterForm() {
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
-  const passwordChecks = {
-    length: password.length >= 8,
-    letter: /[A-Za-z]/.test(password),
-    number: /\d/.test(password),
-  }
+  const passwordChecks = checkPassword(password)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -148,7 +145,7 @@ export default function RegisterForm() {
             />
             <ul id="password-checklist" className="space-y-1 text-xs font-bold" aria-label="パスワードの条件">
               {[
-                [passwordChecks.length, "8文字以上で入力してください"],
+                [passwordChecks.length, `${PASSWORD_MIN_LENGTH}文字以上で入力してください`],
                 [passwordChecks.letter, "英字（アルファベット）を含めてください"],
                 [passwordChecks.number, "数字を含めてください"],
               ].map(([passed, label]) => (
