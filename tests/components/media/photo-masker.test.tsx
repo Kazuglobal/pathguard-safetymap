@@ -117,6 +117,32 @@ describe("PhotoMasker(写真を端末でぼかす)", () => {
     expect(screen.getByTestId("photo-masker-ai-notice")).not.toHaveTextContent("端末の外に出しません")
   })
 
+  it("指でなぞりかけて取り消された(pointercancel)ときは、囲みかけの四角を足さない", async () => {
+    render(<PhotoMasker file={photo()} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    await loadImage()
+    const canvas = await screen.findByRole("img", { name: /ぼかした写真/ })
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 100, height: 100, right: 100, bottom: 100, x: 0, y: 0, toJSON: () => ({}) })
+    const pointer = (type: string, x: number, y: number) => {
+      const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y })
+      Object.defineProperty(event, "pointerId", { value: 1 })
+      fireEvent(canvas, event)
+    }
+
+    pointer("pointerdown", 10, 10)
+    pointer("pointermove", 60, 60)
+    pointer("pointercancel", 60, 60)
+    pointer("pointerup", 60, 60)
+    expect(screen.getByRole("button", { name: /ひとつ戻す/ })).toBeDisabled()
+
+    // ふつうになぞれば、四角が1つ足される
+    pointer("pointerdown", 10, 10)
+    pointer("pointermove", 60, 60)
+    pointer("pointerup", 60, 60)
+    expect(screen.getByRole("button", { name: /ひとつ戻す/ })).toBeEnabled()
+    // 画面の下に残るボタンの列
+    expect(screen.getByTestId("photo-masker-actions").className).toContain("sticky")
+  })
+
   it("WebP を書き出せないブラウザでは JPEG にする", async () => {
     webpSupported = false
     const onConfirm = vi.fn()

@@ -67,6 +67,8 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
   // この端末で自動の顔検出が使えなかったとき(顔が無かったのではない)は、指で隠したことを確かめてから進める
   const [detectionAvailable, setDetectionAvailable] = useState(true)
   const [manualFaceCheck, setManualFaceCheck] = useState(false)
+  // 縦長の写真でも画面に収まるよう、高さを画面の約55%までにする(横幅を縦横比から決める)
+  const [aspect, setAspect] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +88,7 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
       imageRef.current = image
       const width = image.naturalWidth || image.width
       const height = image.naturalHeight || image.height
+      setAspect(width > 0 && height > 0 ? width / height : null)
       void detectFaces(image, width, height)
         .then((result) => {
           if (cancelled) return
@@ -194,7 +197,7 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
           この端末では、顔の自動ぼかしが使えませんでした。写っている顔は、ナンバープレート・表札・名札などと同じように、写真の上を指でなぞって四角で隠してください。
         </p>
       ) : (
-        <p className="text-sm leading-relaxed">
+        <p className="text-sm leading-relaxed" aria-live="polite">
           {status === "ready"
             ? `顔は自動でぼかしました(${autoRegions.length}か所)。遠くの人や小さく写った顔は見つからないことがあるので、写っている顔を確かめてください。ナンバープレート・表札・名札なども、写真の上を指でなぞって四角で隠せます。`
             : "写真の中の顔をさがしています…(この端末の中だけで行います)"}
@@ -209,8 +212,10 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
         )}
         <canvas
           ref={canvasRef}
+          role="img"
           aria-label="ぼかした写真。指でなぞると、その四角の中を隠せます"
-          className={`block h-auto w-full touch-none ${status === "ready" ? "" : "hidden"}`}
+          className={`mx-auto block h-auto max-w-full touch-none ${status === "ready" ? "" : "hidden"}`}
+          style={{ width: aspect ? `min(100%, calc(55dvh * ${aspect.toFixed(4)}))` : "100%" }}
           onPointerDown={(event) => {
             if (status !== "ready") return
             event.preventDefault()
@@ -229,6 +234,11 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
             const region = dragToRegion(drag)
             setDrag(null)
             if (region.w >= MIN_DRAG_SIZE && region.h >= MIN_DRAG_SIZE) setManualRegions((current) => [...current, region])
+          }}
+          onPointerCancel={(event) => {
+            // 指が画面の外に出た・スクロールに取られたときは、囲みかけの四角を捨てる
+            event.currentTarget.releasePointerCapture?.(event.pointerId)
+            setDrag(null)
           }}
         />
       </div>
@@ -253,7 +263,8 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
         </label>
       )}
       {error && <p role="alert" className="text-sm font-bold text-red-700">{error}</p>}
-      <div className="flex flex-wrap gap-2">
+      {/* 写真が大きくても押せるよう、ボタンは画面の下に残す */}
+      <div className="sticky bottom-0 flex flex-wrap gap-2 bg-background py-2" data-testid="photo-masker-actions">
         <button
           type="button"
           onClick={() => { void confirm() }}
