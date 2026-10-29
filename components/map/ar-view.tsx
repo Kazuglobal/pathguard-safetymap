@@ -68,7 +68,6 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const reports = mode.reports
   const parentRouteId = isParentChildMode ? mode.routeId : null
   const parentChildId = isParentChildMode ? mode.childId : null
-  const parentChildName = isParentChildMode ? mode.childName : null
   const parentSessionId = isParentChildMode ? mode.sessionId : null
   const [hasSafetyAcknowledged, setHasSafetyAcknowledged] = useState(!isParentChildMode)
   const [guardianConsent, setGuardianConsent] = useState(false)
@@ -252,9 +251,10 @@ export default function ARView({ mode, onClose }: ARViewProps) {
 
   useEffect(() => {
     if (!isParentChildMode || !hasSafetyAcknowledged) return
+    // 計測(PostHog・Google アナリティクス)には子どもの id を送らない。子ども付きかどうかだけ
     trackEvent("ar_parent_mode_started", {
       route_id: parentRouteId,
-      child_id: parentChildId,
+      has_child: parentChildId !== null,
     })
   }, [hasSafetyAcknowledged, isParentChildMode, parentChildId, parentRouteId])
 
@@ -340,7 +340,6 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           route_id: parentRouteId,
           session_id: parentSessionId,
           child_id: parentChildId,
-          child_name: parentChildName,
           schema_version: payload.schemaVersion,
           started_at: learningSession.state.startedAt,
           completed_at: learningSession.state.completedAt ?? quizCompletedAt,
@@ -368,7 +367,6 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     learningSession.state.quizTotal,
     learningSession.state.startedAt,
     parentChildId,
-    parentChildName,
     parentRouteId,
     parentSessionId,
     routeProgressSummary.reviewedCount,

@@ -46,6 +46,7 @@ import {
 } from "lucide-react"
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
+import { ChildrenSettings } from "@/components/settings/children-settings"
 import { useToast } from "@/components/ui/use-toast"
 import { useDangerReportSignedImageUrls } from "@/lib/danger-report-image-access"
 
@@ -802,6 +803,18 @@ export default function MyPage() {
         {/* 通知 */}
         <motion.section {...fade(5)} id="notifications">
           <MypageNotificationCard push={push} />
+        </motion.section>
+
+        {/* 設定(お子さまの登録など。UIUX改装 項目46・56) */}
+        <motion.section {...fade(6)} id="settings" aria-labelledby="settings-title">
+          <Card className="border" style={cardStyle}>
+            <CardHeader>
+              <CardTitle id="settings-title">設定</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <ChildrenSettings />
+            </CardContent>
+          </Card>
         </motion.section>
 
         {/* 次にできること */}

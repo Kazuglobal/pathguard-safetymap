@@ -81,10 +81,15 @@ export function pruneComparisonRouteIds(
   return nextRouteIds.length === previousRouteIds.length ? previousRouteIds : nextRouteIds
 }
 
+/** 呼び名の上限(lib/db/repos/children.repo.ts の CHILD_NICKNAME_MAX_LENGTH と同じ) */
+const CHILD_NICKNAME_MAX_LENGTH = 20
+
 interface RouteFormFieldsProps {
   routeName: string
   routeDescription: string
   childName: string
+  /** すでに登録している呼び名(入力の候補に出す) */
+  childNicknameOptions: readonly string[]
   validationError: string | null
   error: string | null
   onRouteNameChange: (value: string) => void
@@ -96,6 +101,7 @@ function RouteFormFields({
   routeName,
   routeDescription,
   childName,
+  childNicknameOptions,
   validationError,
   error,
   onRouteNameChange,
@@ -127,16 +133,24 @@ function RouteFormFields({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">対象の子ども（任意）</label>
+        <label htmlFor="route-child-nickname" className="text-sm font-medium">お子さまの呼び名（任意）</label>
         <Input
+          id="route-child-nickname"
           data-testid="child-name-input"
           value={childName}
           onChange={(e) => onChildNameChange(e.target.value)}
-          placeholder="例：さくら"
-          maxLength={40}
+          placeholder="例：さくちゃん"
+          maxLength={CHILD_NICKNAME_MAX_LENGTH}
+          list={childNicknameOptions.length > 0 ? "route-child-nickname-options" : undefined}
+          aria-describedby="route-child-nickname-hint"
         />
-        <p className="text-xs text-muted-foreground">
-          空欄の場合は家族共通の通学路として扱います。
+        {childNicknameOptions.length > 0 && (
+          <datalist id="route-child-nickname-options">
+            {childNicknameOptions.map((nickname) => <option key={nickname} value={nickname} />)}
+          </datalist>
+        )}
+        <p id="route-child-nickname-hint" className="text-xs text-muted-foreground">
+          本名ではなく、家族で使う呼び名を入れてください。空欄なら家族共通の通学路になります。
         </p>
       </div>
 
@@ -216,6 +230,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     refreshRoutes,
   } = userRoutes
   const childProfiles = userRoutes.childProfiles ?? [{ id: "all", label: "すべて", routeCount: routes.length }]
+  const childNicknameOptions = useMemo(
+    () => childProfiles.filter((profile) => profile.id !== "all" && profile.id !== "shared").map((profile) => profile.label),
+    [childProfiles]
+  )
 
   const mapToken = useMemo(() => getMapboxToken(), [])
 
@@ -401,20 +419,10 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     [formatRouteDistance, formatRouteTime, formatUpdatedAtLabel]
   )
 
+  // 呼び名だけを送る。サーバーが子どもの登録(children)を探すか作り、通学路にはその id だけを持たせる
   const buildRouteChildFields = useCallback((rawChildName: string) => {
     const normalizedChildName = rawChildName.trim()
-
-    if (!normalizedChildName) {
-      return {
-        child_id: null,
-        child_name: null,
-      }
-    }
-
-    return {
-      child_id: `child-${normalizedChildName.toLowerCase()}`,
-      child_name: normalizedChildName,
-    }
+    return { child_name: normalizedChildName || null }
   }, [])
 
   const resetFormState = useCallback(() => {
@@ -467,7 +475,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
     setEditingRoute(route)
     setRouteName(route.name)
     setRouteDescription(route.description || "")
-    setChildName(route.child_name || "")
+    setChildName([...(route.child_name || "")].slice(0, CHILD_NICKNAME_MAX_LENGTH).join(""))
     setValidationError(null)
     setViewMode("edit")
   }, [])
@@ -1232,6 +1240,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               routeName={routeName}
               routeDescription={routeDescription}
               childName={childName}
+              childNicknameOptions={childNicknameOptions}
               validationError={validationError}
               error={error}
               onRouteNameChange={setRouteName}
@@ -1305,6 +1314,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               routeName={routeName}
               routeDescription={routeDescription}
               childName={childName}
+              childNicknameOptions={childNicknameOptions}
               validationError={validationError}
               error={error}
               onRouteNameChange={setRouteName}

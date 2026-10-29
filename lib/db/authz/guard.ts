@@ -11,9 +11,11 @@ const REPORT_MODERATION_FIELDS = new Set([
   'ai_moderation_checked_at',
 ])
 
+// 本人だけ(管理者にも見せない)。children は子どもの呼び名・学年・学区(UIUX改装 項目56)
 const OWNED_TABLES = new Set<Table>([
   'user_routes',
   'route_learning_sessions',
+  'children',
   'user_badges',
   'user_mission_progress',
   'safety_quest_attempts',

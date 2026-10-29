@@ -2,13 +2,19 @@ import { and, desc, eq } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
-import { routeLearningSessions, userRoutes } from '../schema'
+import { children, routeLearningSessions, userRoutes } from '../schema'
+import { createChildrenRepo, legacyChildNameToNickname } from './children.repo'
 
+/**
+ * 子どもは通学路の行に名前を書かず、children 表の id で指す(UIUX改装 項目56)。
+ * 入力欄の呼び名(childNickname)から children の行を探し、無ければ作る。
+ * child_name 列には書かない(移行前の行に残っている値は、読むときに呼び名が無ければ使う)
+ */
 export interface RouteWriteInput {
   name?: string
   description?: string | null
   childId?: string | null
-  childName?: string | null
+  childNickname?: string | null
   startLat?: number
   startLng?: number
   endLat?: number
@@ -34,22 +40,70 @@ function validateRoute(input: RouteWriteInput, create: boolean): void {
     if (value != null && (!Number.isFinite(value) || value < min || value > max)) throw new RangeError('Invalid route coordinates')
   }
   if (input.description != null && input.description.length > 2_000) throw new RangeError('Route description is too long')
-  if (input.childName != null && input.childName.length > 100) throw new RangeError('Child name is too long')
+}
+
+export type UserRouteRow = typeof userRoutes.$inferSelect
+/** 通学路の行に、その子の呼び名(children.nickname)を添えたもの */
+export type UserRouteWithChild = UserRouteRow & { childNickname: string | null }
+
+const routeWithChildColumns = { route: userRoutes, childNickname: children.nickname }
+
+function withChild(rows: Array<{ route: UserRouteRow; childNickname: string | null }>): UserRouteWithChild[] {
+  return rows.map(({ route, childNickname }) => ({ ...route, childNickname: childNickname ?? null }))
 }
 
 export function createRoutesRepo(db: AppDb) {
+  const childrenRepo = createChildrenRepo(db)
+
+  /**
+   * 書き込む child_id を決める。undefined は「変えない」。
+   * 呼び名が来ていればそれを優先し、id だけなら本人の子どもの id のときだけ使う
+   * (以前の「child-呼び名」形式の id などは捨てる)
+   */
+  async function resolveChildId(actor: Actor, input: RouteWriteInput): Promise<string | null | undefined> {
+    if (input.childNickname !== undefined) {
+      const nickname = input.childNickname?.trim()
+      if (!nickname) return null
+      return (await childrenRepo.findOrCreateByNickname(actor, nickname)).id
+    }
+    if (input.childId !== undefined) {
+      if (!input.childId) return null
+      return (await childrenRepo.getOwn(actor, input.childId))?.id ?? null
+    }
+    return undefined
+  }
+
+  /**
+   * 移行前の行(child_name に名前が残り、children の行が無い)を保存するときは、その名前を
+   * 未確認の呼び名として children へ移す。移せなければ(長さ・上限など)子どもの指定を外す
+   */
+  async function migrateLegacyChild(actor: Actor, existing: UserRouteWithChild): Promise<string | null | undefined> {
+    if (!existing.childName || existing.childNickname) return undefined
+    const nickname = legacyChildNameToNickname(existing.childName)
+    if (!nickname) return null
+    try {
+      return (await childrenRepo.findOrCreateByNickname(actor, nickname, { confirmed: false })).id
+    } catch (error) {
+      if (error instanceof RangeError) return null
+      throw error
+    }
+  }
+
   return {
-    async list(actor: Actor) {
+    async list(actor: Actor): Promise<UserRouteWithChild[]> {
       if (actor.kind !== 'user') {
         assertCan(actor, 'select', 'user_routes')
         return []
       }
       assertCan(actor, 'select', 'user_routes', { ownerId: actor.id })
-      return db.select().from(userRoutes).where(eq(userRoutes.userId, actor.id))
+      const rows = await db.select(routeWithChildColumns).from(userRoutes)
+        .leftJoin(children, and(eq(children.id, userRoutes.childId), eq(children.userId, userRoutes.userId)))
+        .where(eq(userRoutes.userId, actor.id))
         .orderBy(desc(userRoutes.isFavorite), desc(userRoutes.updatedAt)).limit(200)
+      return withChild(rows)
     },
 
-    async getById(actor: Actor, routeId: string) {
+    async getById(actor: Actor, routeId: string): Promise<UserRouteWithChild | null> {
       if (actor.kind === 'anon') {
         assertCan(actor, 'select', 'user_routes')
         return null
@@ -57,7 +111,9 @@ export function createRoutesRepo(db: AppDb) {
       const predicate = actor.kind === 'service'
         ? eq(userRoutes.id, routeId)
         : and(eq(userRoutes.id, routeId), eq(userRoutes.userId, actor.id))
-      const [route] = await db.select().from(userRoutes).where(predicate).limit(1)
+      const [route] = withChild(await db.select(routeWithChildColumns).from(userRoutes)
+        .leftJoin(children, and(eq(children.id, userRoutes.childId), eq(children.userId, userRoutes.userId)))
+        .where(predicate).limit(1))
       if (!route) return null
       assertCan(actor, 'select', 'user_routes', { ownerId: route.userId })
       return route
@@ -67,11 +123,12 @@ export function createRoutesRepo(db: AppDb) {
       if (actor.kind !== 'user') throw new Error('A user actor is required')
       assertCan(actor, 'insert', 'user_routes', { ownerId: actor.id })
       validateRoute(input, true)
+      const childId = (await resolveChildId(actor, input)) ?? null
       const now = new Date().toISOString()
       const [created] = await db.insert(userRoutes).values({
         id: crypto.randomUUID(), userId: actor.id, name: input.name!.trim(),
         description: input.description?.trim() || null,
-        childId: input.childId ?? null, childName: input.childName?.trim() || null,
+        childId, childName: null,
         startLat: input.startLat!, startLng: input.startLng!, endLat: input.endLat!, endLng: input.endLng!,
         startAddress: input.startAddress!.trim(), endAddress: input.endAddress!.trim(),
         routeGeometry: input.routeGeometry ?? null,
@@ -80,7 +137,7 @@ export function createRoutesRepo(db: AppDb) {
         isFavorite: input.isFavorite ?? false, createdAt: now, updatedAt: now,
       }).returning()
       if (!created) throw new Error('Failed to create route')
-      return created
+      return (await this.getById(actor, created.id)) ?? { ...created, childNickname: null }
     },
 
     async update(actor: Actor, routeId: string, input: RouteWriteInput) {
@@ -88,11 +145,14 @@ export function createRoutesRepo(db: AppDb) {
       if (!existing) return null
       assertCan(actor, 'update', 'user_routes', { ownerId: existing.userId })
       validateRoute(input, false)
+      const requestedChildId = await resolveChildId(actor, input)
+      const childId = requestedChildId !== undefined ? requestedChildId : await migrateLegacyChild(actor, existing)
       const [updated] = await db.update(userRoutes).set({
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),
-        ...(input.childId !== undefined ? { childId: input.childId } : {}),
-        ...(input.childName !== undefined ? { childName: input.childName?.trim() || null } : {}),
+        ...(childId !== undefined ? { childId } : {}),
+        // 移行前の行に子どもの名前が残っていれば、保存のたびに消す
+        childName: null,
         ...(input.startLat !== undefined ? { startLat: input.startLat } : {}),
         ...(input.startLng !== undefined ? { startLng: input.startLng } : {}),
         ...(input.endLat !== undefined ? { endLat: input.endLat } : {}),
@@ -105,7 +165,8 @@ export function createRoutesRepo(db: AppDb) {
         ...(input.isFavorite !== undefined ? { isFavorite: input.isFavorite } : {}),
         updatedAt: new Date().toISOString(),
       }).where(and(eq(userRoutes.id, routeId), eq(userRoutes.userId, existing.userId))).returning()
-      return updated ?? null
+      if (!updated) return null
+      return this.getById(actor, updated.id)
     },
 
     async delete(actor: Actor, routeId: string) {
@@ -134,9 +195,11 @@ export function createRoutesRepo(db: AppDb) {
       const route = await this.getById(actor, input.routeId)
       if (!route) throw new RangeError('Route not found')
       assertCan(actor, 'insert', 'route_learning_sessions', { ownerId: actor.id })
+      // 子どもの名前は持たない。id は本人の子どものものだけを残す
+      const childId = input.childId ? (await childrenRepo.getOwn(actor, input.childId))?.id ?? null : null
       const now = new Date().toISOString()
       const [row] = await db.insert(routeLearningSessions).values({
-        ...input, id: input.id || crypto.randomUUID(), updatedAt: now,
+        ...input, childId, childName: null, id: input.id || crypto.randomUUID(), updatedAt: now,
       }).onConflictDoUpdate({
         target: [routeLearningSessions.userId, routeLearningSessions.routeId, routeLearningSessions.sessionId],
         set: {

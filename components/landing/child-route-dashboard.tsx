@@ -120,7 +120,8 @@ export function ChildRouteDashboard({
       ? errorMessage
       : "時間をおいて再試行するか、マップで通学路を確認してください。"
 
-  const leadText = `${childName ? `${childName}さん向け` : "登録した通学路向け"}の注意点を毎朝3分で確認できます。`
+  // 呼び名(例: さくちゃん)には「さん」を付けない
+  const leadText = `${childName ? `${childName}向け` : "登録した通学路向け"}の注意点を毎朝3分で確認できます。`
 
   const getQuickCheckIcon = (item: ChildRouteQuickCheck) => {
     if (item.id === "share" || item.title.includes("共有")) {

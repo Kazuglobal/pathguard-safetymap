@@ -8,13 +8,14 @@ CREATE TABLE `children` (
 	`nickname` text NOT NULL,
 	`grade` integer,
 	`school_district_id` text,
+	`nickname_confirmed_at` text,
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	CONSTRAINT "children_nickname_length" CHECK(length("children"."nickname") between 1 and 20),
 	CONSTRAINT "children_grade" CHECK("children"."grade" is null or "children"."grade" between 1 and 6)
 );
 --> statement-breakpoint
-CREATE INDEX `idx_children_user` ON `children` (`user_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_children_user_nickname` ON `children` (`user_id`,`nickname`);--> statement-breakpoint
 ALTER TABLE `profiles` ADD `location_precision` text DEFAULT 'standard' NOT NULL;--> statement-breakpoint
 ALTER TABLE `danger_reports` ADD `human_approved_at` text;--> statement-breakpoint
 ALTER TABLE `danger_reports` ADD `image_masked` integer DEFAULT false NOT NULL;--> statement-breakpoint

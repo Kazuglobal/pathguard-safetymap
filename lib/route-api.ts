@@ -1,7 +1,4 @@
-import type { userRoutes } from '@/lib/db/schema'
-import type { RouteWriteInput } from '@/lib/db/repos/routes.repo'
-
-type UserRouteRow = typeof userRoutes.$inferSelect
+import type { RouteWriteInput, UserRouteWithChild } from '@/lib/db/repos/routes.repo'
 
 function optionalNullableString(body: Record<string, unknown>, key: string): string | null | undefined {
   const value = body[key]
@@ -17,7 +14,8 @@ export function parseRouteWriteInput(value: unknown): RouteWriteInput {
     name: typeof body.name === 'string' ? body.name : undefined,
     description: optionalNullableString(body, 'description'),
     childId: optionalNullableString(body, 'child_id'),
-    childName: optionalNullableString(body, 'child_name'),
+    // 入力欄の「お子さまの呼び名」。サーバーで children の行に置き換え、通学路には書かない
+    childNickname: optionalNullableString(body, 'child_name'),
     startLat: body.start_lat == null ? undefined : Number(body.start_lat),
     startLng: body.start_lng == null ? undefined : Number(body.start_lng),
     endLat: body.end_lat == null ? undefined : Number(body.end_lat),
@@ -33,14 +31,15 @@ export function parseRouteWriteInput(value: unknown): RouteWriteInput {
   }
 }
 
-export function toUserRouteJson(route: UserRouteRow) {
+export function toUserRouteJson(route: UserRouteWithChild) {
   return {
     id: route.id,
     user_id: route.userId,
     name: route.name,
     description: route.description,
     child_id: route.childId,
-    child_name: route.childName,
+    // 呼び名は children 表から。移行前の行だけ、残っている名前を本人に返す
+    child_name: route.childNickname ?? route.childName ?? null,
     start_lat: route.startLat,
     start_lng: route.startLng,
     end_lat: route.endLat,

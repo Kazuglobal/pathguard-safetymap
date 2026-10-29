@@ -504,6 +504,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "nickname_confirmed_at": {
+          "name": "nickname_confirmed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "text",
@@ -522,12 +529,13 @@
         }
       },
       "indexes": {
-        "idx_children_user": {
-          "name": "idx_children_user",
+        "uq_children_user_nickname": {
+          "name": "uq_children_user_nickname",
           "columns": [
-            "user_id"
+            "user_id",
+            "nickname"
           ],
-          "isUnique": false
+          "isUnique": true
         }
       },
       "foreignKeys": {},

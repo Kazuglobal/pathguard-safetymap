@@ -19,6 +19,7 @@ export const AUTHZ_TABLES = [
   'report_images',
   'user_routes',
   'route_learning_sessions',
+  'children',
   'user_points',
   'user_badges',
   'badges',
