@@ -45,7 +45,11 @@ const geocodedAt = new Date().toISOString()
 const statements = []
 const unresolved = []
 for (const row of rows) {
-  const address = await lookup(Number(row.latitude), Number(row.longitude))
+  // 1件の失敗で全体を捨てないよう、行ごとに失敗を記録して続ける
+  const address = await lookup(Number(row.latitude), Number(row.longitude)).catch((error) => {
+    process.stderr.write(`${row.id}  lookup failed: ${error.message}\n`)
+    return null
+  })
   if (!address) {
     unresolved.push(row.id)
     continue

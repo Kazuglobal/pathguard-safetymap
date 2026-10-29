@@ -6,6 +6,7 @@ import { AuthzError } from '@/lib/db/authz'
 import {
   createDangerReport,
   listDangerReports,
+  validateCreate,
   type CreateDangerReportInput,
   type DangerReportListInput,
 } from '@/lib/db/repos/danger-reports.repo'
@@ -129,7 +130,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
     const bodyObject = body as JsonObject
-    const input = await withGsiAddressFallback(parseInput(bodyObject))
+    const parsed = parseInput(bodyObject)
+    // 不正な投稿で外部の住所検索を呼ばないよう、先に入力を確かめる
+    validateCreate(parsed)
+    const input = await withGsiAddressFallback(parsed)
     if (!input.prefecture?.trim()) {
       console.warn('[api/reports] address lookup failed; saving without prefecture')
     }

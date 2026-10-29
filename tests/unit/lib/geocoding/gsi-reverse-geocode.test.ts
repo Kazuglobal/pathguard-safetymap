@@ -56,6 +56,18 @@ describe('reverseGeocodeGsi', () => {
     expect(await reverseGeocodeGsi(35, 139, { fetchImpl: vi.fn().mockRejectedValue(new Error('down')) })).toBeNull()
   })
 
+  it('gives up when the service does not answer in time', async () => {
+    const hang = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+    }))
+    expect(await reverseGeocodeGsi(35, 139, { fetchImpl: hang as unknown as typeof fetch, timeoutMs: 10 })).toBeNull()
+  })
+
+  it('returns null when the service answers with broken JSON', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('<html>', { status: 200 }))
+    expect(await reverseGeocodeGsi(35, 139, { fetchImpl })).toBeNull()
+  })
+
   it('does not call the service for invalid coordinates', async () => {
     const fetchImpl = gsiResponse({ results: { muniCd: '12217' } })
     expect(await reverseGeocodeGsi(Number.NaN, 139, { fetchImpl })).toBeNull()
