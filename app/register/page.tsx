@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createServerClient } from "@/lib/supabase-server"
 import RegisterForm from "@/components/auth/register-form"
+import { AuthShell } from "@/components/auth/auth-shell"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "新規登録" }
@@ -18,14 +19,8 @@ export default async function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">アカウント登録</h1>
-          <p className="mt-2 text-gray-600">通学路安全マップに登録して、安全な通学をサポートしましょう</p>
-        </div>
-        <RegisterForm />
-      </div>
-    </div>
+    <AuthShell title="新規登録" intro>
+      <RegisterForm />
+    </AuthShell>
   )
 }

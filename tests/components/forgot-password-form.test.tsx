@@ -28,6 +28,39 @@ describe("ForgotPasswordPage", () => {
     expect(mocks.resetPasswordForEmail).not.toHaveBeenCalled()
   })
 
+  it("例示は「例: name@example.com」、ロゴと紹介HPへの入口がある(項目32・35)", () => {
+    render(<ForgotPasswordPage />)
+
+    expect(screen.getByTestId("forgot-password-email")).toHaveAttribute("placeholder", "例: name@example.com")
+    expect(screen.getByTestId("forgot-password-title")).toHaveTextContent("パスワードをお忘れですか？")
+    expect(screen.getByRole("link", { name: "PathGuardianとは" })).toHaveAttribute("href", "/lp")
+  })
+
+  it("送ったあとは、登録されているアドレスなら届くことと、届かないときの案内を出す", async () => {
+    mocks.resetPasswordForEmail.mockResolvedValueOnce({ error: null })
+    const user = userEvent.setup()
+    render(<ForgotPasswordPage />)
+
+    await user.type(screen.getByTestId("forgot-password-email"), "parent@example.com")
+    await user.click(screen.getByTestId("forgot-password-submit"))
+
+    expect(await screen.findByTestId("forgot-password-success")).toHaveTextContent("登録されているメールアドレスなら")
+    expect(screen.getByRole("heading", { name: "メールが届かないとき" })).toBeInTheDocument()
+  })
+
+  it("変換できないエラーは、英語のまま出さない", async () => {
+    mocks.resetPasswordForEmail.mockResolvedValueOnce({ error: { message: "Unexpected failure, please check server logs" } })
+    const user = userEvent.setup()
+    render(<ForgotPasswordPage />)
+
+    await user.type(screen.getByTestId("forgot-password-email"), "parent@example.com")
+    await user.click(screen.getByTestId("forgot-password-submit"))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("再設定のメールを送れませんでした")
+    expect(alert).not.toHaveTextContent("Unexpected")
+  })
+
   it("distinguishes rate limiting from a generic failure", async () => {
     mocks.resetPasswordForEmail.mockResolvedValueOnce({ error: { message: "rate limit exceeded" } })
     const user = userEvent.setup()

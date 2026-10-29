@@ -16,6 +16,7 @@ vi.mock("@/components/auth/login-form", () => ({
 }))
 
 import LoginPage from "@/app/login/page"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 
 const renderPage = async (params: Record<string, string>) => {
   const ui = await LoginPage({ searchParams: Promise.resolve(params) })
@@ -49,6 +50,24 @@ describe("ログイン画面", () => {
     await renderPage({ loggedOut: "1" })
 
     expect(screen.getByRole("status")).toHaveTextContent("ログアウトしました")
+  })
+
+  it("ロゴ・「PathGuardianとは」(紹介HPへ)・1行の紹介・「無料・インストール不要」・ルペ・共通のフッターを出す(項目1・15・32)", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: "Auth session missing!" } })
+
+    await renderPage({})
+
+    expect(screen.getByRole("heading", { level: 1, name: "ログイン" })).toBeInTheDocument()
+    // ヘッダーとフッターの両方にロゴ
+    expect(screen.getAllByTestId("brand-logo")[0]).toHaveTextContent("PathGuardian")
+    expect(screen.getByRole("link", { name: "PathGuardianとは" })).toHaveAttribute("href", "/lp")
+    const intro = screen.getByTestId("auth-intro")
+    expect(intro).toHaveTextContent(PRODUCT_FACTS.tagline)
+    expect(intro).toHaveTextContent("無料・インストール不要")
+    expect(screen.getAllByTestId("lupe").length).toBeGreaterThan(0)
+    expect(screen.getByTestId("site-footer")).toHaveTextContent("利用規約")
+    // 旧名は出さない
+    expect(document.body).not.toHaveTextContent("通学路安全マップ")
   })
 
   it("Supabase の準備に失敗しても存在しない /error へは飛ばさず、その場で案内する", async () => {

@@ -583,7 +583,7 @@ export default function MyPage() {
                   <span>あと {pointsToNextLevel}pt で Lv.{safeLevel + 1}</span>
                 </div>
                 <Progress value={Math.round(levelProgress * 100)} className="h-2.5" />
-                <p className="text-xs" style={{ color: t.color.inkFaint }}>
+                <p className="text-xs" style={{ color: t.color.inkSoft }}>
                   ポイントは報告やミッション達成でたまり、レベルとバッジに反映されます。
                   {isGamificationLoading && "（更新中…）"}
                 </p>
@@ -633,8 +633,8 @@ export default function MyPage() {
                       >
                         {step.label}
                       </p>
-                      <p className="text-xs" style={{ color: t.color.inkFaint }}>
-                        {step.done ? "完了ずみ。ありがとう！" : step.hint}
+                      <p className="text-xs" style={{ color: t.color.inkSoft }}>
+                        {step.done ? "済んでいます。ありがとう！" : step.hint}
                       </p>
                     </div>
                     {step.done ? (

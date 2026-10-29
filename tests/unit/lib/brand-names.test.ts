@@ -16,10 +16,14 @@ const BANNED = [
   'AI安全マップ',
   'PathGuard Press',
   '安全マガジン',
+  '通学路ニュース',
   'v0.dev',
   '通学ルート',
   '見守りノート',
   '安全ノート',
+  // ふつうでない書き方(項目35)
+  '完了ずみ',
+  '登録ずみ',
 ]
 
 const ROOTS = ['app', 'components', 'lib', 'hooks']

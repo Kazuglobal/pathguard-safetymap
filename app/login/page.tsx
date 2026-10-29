@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createServerClient } from "@/lib/supabase-server"
 import LoginForm from "@/components/auth/login-form"
+import { AuthShell } from "@/components/auth/auth-shell"
 import { getSafeNextPath } from "@/lib/auth/safe-next"
 import { tankenTokens } from "@/lib/design/tanken"
 import type { Metadata } from "next"
@@ -23,12 +24,12 @@ export default async function LoginPage({
     // 以前は存在しない /error へ飛ばしていた。その場で日本語の案内を出す
     console.error("Failed to create Supabase server client.")
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
-        <div role="alert" className="w-full max-w-md rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+      <AuthShell title="ログイン">
+        <div role="alert" className="w-full rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
           <p className="text-base font-bold text-red-800">ログイン画面を表示できませんでした</p>
           <p className="mt-2 text-sm text-red-700">時間をおいて、このページを再読み込みしてください。</p>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
@@ -48,28 +49,23 @@ export default async function LoginPage({
     redirect(nextPath)
   }
 
+  // ロゴ・「PathGuardianとは」・1行の紹介・「無料・インストール不要」・ルペは AuthShell が出す(UIUX改装 項目1・15)
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">通学路安全マップ</h1>
-          <p className="mt-2 text-gray-600">子供たちの安全な通学をサポートします</p>
-        </div>
-        {(justLoggedOut || justDeleted) && (
-          <p
-            role="status"
-            className="mb-4 rounded-xl border px-4 py-3 text-center text-sm font-bold"
-            style={{
-              background: tankenTokens.color.primarySoft,
-              borderColor: tankenTokens.border.soft,
-              color: tankenTokens.color.primaryStrong,
-            }}
-          >
-            {justDeleted ? "アカウントを削除しました。ご利用ありがとうございました。" : "ログアウトしました"}
-          </p>
-        )}
-        <LoginForm nextPath={nextPath} />
-      </div>
-    </div>
+    <AuthShell title="ログイン" intro>
+      {(justLoggedOut || justDeleted) && (
+        <p
+          role="status"
+          className="mb-4 rounded-xl border px-4 py-3 text-center text-sm font-bold"
+          style={{
+            background: tankenTokens.color.primarySoft,
+            borderColor: tankenTokens.border.soft,
+            color: tankenTokens.color.primaryStrong,
+          }}
+        >
+          {justDeleted ? "アカウントを削除しました。ご利用ありがとうございました。" : "ログアウトしました"}
+        </p>
+      )}
+      <LoginForm nextPath={nextPath} />
+    </AuthShell>
   )
 }
