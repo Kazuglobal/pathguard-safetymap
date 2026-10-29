@@ -2,13 +2,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  actor: vi.fn(), create: vi.fn(), rate: vi.fn(), notify: vi.fn(), increment: vi.fn(), bucketDelete: vi.fn(), remove: vi.fn(),
+  actor: vi.fn(), create: vi.fn(), geocode: vi.fn(), validate: vi.fn(), rate: vi.fn(), notify: vi.fn(), increment: vi.fn(), bucketDelete: vi.fn(), remove: vi.fn(),
 }))
 vi.mock('@/lib/auth/actor', () => ({ getActor: mocks.actor }))
 vi.mock('@/lib/db/repos/danger-reports.repo', () => ({
-  createDangerReport: mocks.create, listDangerReports: vi.fn(), deleteDangerReport: mocks.remove, getDangerReportById: vi.fn(),
+  createDangerReport: mocks.create, listDangerReports: vi.fn(), validateCreate: mocks.validate, deleteDangerReport: mocks.remove, getDangerReportById: vi.fn(),
 }))
 vi.mock('@/lib/db/repos/notifications.repo', () => ({ createRouteReportNotification: mocks.notify }))
+vi.mock('@/lib/geocoding/gsi-reverse-geocode', () => ({ withGsiAddressFallback: mocks.geocode }))
 vi.mock('@/lib/db/repos/gamification.repo', () => ({ incrementPoints: mocks.increment }))
 vi.mock('@opennextjs/cloudflare', () => ({ getCloudflareContext: () => ({ env: { MEDIA_PRIVATE: { delete: mocks.bucketDelete } } }) }))
 vi.mock('@/lib/upstash-rate-limiter', async (importOriginal) => ({
@@ -29,6 +30,7 @@ describe('SEC-02 report APIs', () => {
     vi.resetAllMocks()
     mocks.actor.mockResolvedValue({ kind: 'user', id: 'owner', isAdmin: false, email: null })
     mocks.rate.mockResolvedValue({ success: true })
+    mocks.geocode.mockImplementation(async (input: unknown) => input)
     mocks.create.mockResolvedValue({ id: 'report', title: 'Crosswalk', status: 'pending', processedImageKeys: [], rewardPoints: 0 })
   })
 
@@ -41,6 +43,20 @@ describe('SEC-02 report APIs', () => {
     expect(mocks.create.mock.calls[0][1]).not.toHaveProperty('status')
     expect(mocks.create.mock.calls[0][1]).not.toHaveProperty('userId')
     expect(mocks.increment).not.toHaveBeenCalled()
+  })
+
+  it('saves the server-side address when the browser sent none', async () => {
+    mocks.geocode.mockImplementation(async (input: object) => ({ ...input, prefecture: '千葉県', city: '柏市' }))
+    expect((await POST(request({ prefecture: null, city: null }))).status).toBe(201)
+    expect(mocks.geocode.mock.calls[0][0]).toMatchObject({ latitude: 35, longitude: 139 })
+    expect(mocks.create.mock.calls[0][1]).toMatchObject({ prefecture: '千葉県', city: '柏市' })
+  })
+
+  it('rejects invalid reports before calling the address lookup', async () => {
+    mocks.validate.mockImplementation(() => { throw new RangeError('Invalid title') })
+    expect((await POST(request({ title: '' }))).status).toBe(400)
+    expect(mocks.geocode).not.toHaveBeenCalled()
+    expect(mocks.create).not.toHaveBeenCalled()
   })
 
   it('rejects unauthenticated requests before rate limiting or writes', async () => {
