@@ -9,6 +9,7 @@ const REPORT_MODERATION_FIELDS = new Set([
   'ai_moderation_reason',
   'ai_moderation_score',
   'ai_moderation_checked_at',
+  'human_approved_at',
 ])
 
 // 本人だけ(管理者にも見せない)。children は子どもの呼び名・学年・学区(UIUX改装 項目56)

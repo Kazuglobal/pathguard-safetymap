@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -6,21 +6,29 @@ import { dangerReports, localSafetyAlerts, localAlertDistricts, pushSubscription
 
 export const DANGER_REPORT_NOTIFICATION_STATUSES = ['approved', 'published', 'resolved'] as const
 
+/**
+ * 通知してよい報告か。公開の状態で、AI が承認したか運営(人)が承認したもの(UIUX改装 項目59)。
+ * 審査前・審査中のものは送らない
+ */
 export function isDangerReportNotificationReady(report: {
   status: string
   aiModerationStatus: string | null
+  humanApprovedAt?: string | null
 }): boolean {
   return DANGER_REPORT_NOTIFICATION_STATUSES.includes(
     report.status as (typeof DANGER_REPORT_NOTIFICATION_STATUSES)[number],
-  ) && report.aiModerationStatus === 'approved'
+  ) && (report.aiModerationStatus === 'approved' || Boolean(report.humanApprovedAt))
 }
 
 function dangerReportNotificationReadyPredicate() {
   return and(
     inArray(dangerReports.status, [...DANGER_REPORT_NOTIFICATION_STATUSES]),
-    eq(dangerReports.aiModerationStatus, 'approved'),
+    or(eq(dangerReports.aiModerationStatus, 'approved'), isNotNull(dangerReports.humanApprovedAt)),
   )!
 }
+
+/** 承認された時刻(人の承認 → AI の審査 → 作成の順に使う)。通知の取りこぼしを拾う範囲に使う */
+const dangerReportApprovedAt = sql<string>`coalesce(${dangerReports.humanApprovedAt}, ${dangerReports.aiModerationCheckedAt}, ${dangerReports.createdAt})`
 
 export interface LocalAlertWriteInput {
   prefecture: string
@@ -124,10 +132,11 @@ export function createPushRepo(db: AppDb) {
       await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, id))
     },
 
+    /** まだ通知していない報告のうち、since 以降に承認されたもの(作成からの時間ではなく承認からの時間で見る) */
     async listPendingReportIds(actor: Actor, since: string) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       return db.select({ id: dangerReports.id }).from(dangerReports).where(and(
-        gte(dangerReports.createdAt, since), isNull(dangerReports.pushNotifiedAt),
+        gte(dangerReportApprovedAt, since), isNull(dangerReports.pushNotifiedAt),
         dangerReportNotificationReadyPredicate(),
       )).orderBy(asc(dangerReports.createdAt)).limit(500)
     },
@@ -139,7 +148,8 @@ export function createPushRepo(db: AppDb) {
       const [existing] = await db.select({
         id: dangerReports.id, dangerType: dangerReports.dangerType,
         prefecture: dangerReports.prefecture, status: dangerReports.status,
-        aiModerationStatus: dangerReports.aiModerationStatus, latitude: dangerReports.latitude,
+        aiModerationStatus: dangerReports.aiModerationStatus, humanApprovedAt: dangerReports.humanApprovedAt,
+        latitude: dangerReports.latitude,
         longitude: dangerReports.longitude, pushNotifiedAt: dangerReports.pushNotifiedAt,
       }).from(dangerReports).where(and(...predicates)).limit(1)
       if (!existing) return { status: 'not_found' as const }

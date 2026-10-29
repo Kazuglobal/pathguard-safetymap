@@ -236,19 +236,22 @@ export function createDangerReportsRepo(db: AppDb) {
           : ['processed_image_keys'],
       })
       const now = new Date().toISOString()
+      // AI か運営(人)が承認済みなら、写真が変わったので審査をやり直す(人の承認も取り消す)
+      const reopens = sql`(${dangerReports.aiModerationStatus} = 'approved' or ${dangerReports.humanApprovedAt} is not null)`
       const moderationFields = {
-        status: sql<string>`case when ${dangerReports.aiModerationStatus} = 'approved' then 'pending' else ${dangerReports.status} end`,
-        aiModerationStatus: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then 'needs_review' else ${dangerReports.aiModerationStatus} end`,
+        status: sql<string>`case when ${reopens} then 'pending' else ${dangerReports.status} end`,
+        aiModerationStatus: sql<string | null>`case when ${reopens} then 'needs_review' else ${dangerReports.aiModerationStatus} end`,
+        humanApprovedAt: sql<string | null>`case when ${reopens} then null else ${dangerReports.humanApprovedAt} end`,
         aiModerationReason: sql<string | null>`case
-          when ${dangerReports.aiModerationStatus} = 'approved' then
+          when ${reopens} then
             case when ${dangerReports.aiModerationReason} is null or ${dangerReports.aiModerationReason} = ''
               then ${IMAGE_REOPEN_REASON}
               else ${dangerReports.aiModerationReason} || ' / ' || ${IMAGE_REOPEN_REASON}
             end
           else ${dangerReports.aiModerationReason}
         end`,
-        aiModerationCheckedAt: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then ${now} else ${dangerReports.aiModerationCheckedAt} end`,
-        pushNotifiedAt: sql<string | null>`case when ${dangerReports.aiModerationStatus} = 'approved' then null else ${dangerReports.pushNotifiedAt} end`,
+        aiModerationCheckedAt: sql<string | null>`case when ${reopens} then ${now} else ${dangerReports.aiModerationCheckedAt} end`,
+        pushNotifiedAt: sql<string | null>`case when ${reopens} then null else ${dangerReports.pushNotifiedAt} end`,
         updatedAt: now,
       }
       const values = input.imageKey !== undefined
@@ -285,12 +288,21 @@ export function createDangerReportsRepo(db: AppDb) {
       if (!['pending', 'approved', 'published', 'resolved', 'rejected'].includes(status)) {
         throw new RangeError('Invalid report status')
       }
-      assertCan(actor, 'update', 'danger_reports', { changedFields: ['status'] })
+      assertCan(actor, 'update', 'danger_reports', { changedFields: ['status', 'human_approved_at'] })
       const keepsNotificationState = ['approved', 'published', 'resolved'].includes(status)
+      const now = new Date().toISOString()
+      // 運営(管理者)が公開にしたら承認した時刻を残す(通知のゲート・取りこぼしの範囲に使う)。
+      // すでに公開中の状態どうしの変更では時刻を変えず、非公開に戻したら承認を取り消す
+      const humanApprovedAt = keepsNotificationState
+        ? actor.kind === 'user' && actor.isAdmin
+          ? { humanApprovedAt: sql<string | null>`case when ${dangerReports.status} in ('approved', 'published', 'resolved') and ${dangerReports.humanApprovedAt} is not null then ${dangerReports.humanApprovedAt} else ${now} end` }
+          : {}
+        : { humanApprovedAt: null }
       const [row] = await db.update(dangerReports).set({
         status,
+        ...humanApprovedAt,
         ...(!keepsNotificationState ? { pushNotifiedAt: null } : {}),
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       })
         .where(eq(dangerReports.id, reportId)).returning()
       if (!row) throw new Error('Danger report not found')
