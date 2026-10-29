@@ -62,6 +62,15 @@ describe('SEC-02 actual local D1 concurrency', { timeout: 30_000 }, () => {
       expect(await binding.prepare("select reward_points from danger_reports where id = 'legacy'").first()).toEqual({ reward_points: null })
       expect(await binding.prepare("select image_key from report_images where report_id = 'legacy'").first()).toEqual({ image_key: 'legacy.webp' })
       expect(await binding.prepare("select points from user_points where user_id = 'owner'").first()).toEqual({ points: 20 })
+      // このあとのマイグレーションのうち、ここで作った4表への列追加だけを流す
+      // (repo は新しい列も読み書きするため。ほかの表への変更はこのテストの対象外)
+      const presentTables = ['danger_reports', 'user_points', 'report_images', 'danger_report_moderation_log']
+      const laterAlters = fs.readdirSync(directory)
+        .filter((file) => file.endsWith('.sql') && file > migration)
+        .sort()
+        .flatMap((file) => fs.readFileSync(path.join(directory, file), 'utf8').split('--> statement-breakpoint').map((sql) => sql.trim()))
+        .filter((sql) => presentTables.some((table) => sql.startsWith(`ALTER TABLE \`${table}\``)))
+      if (laterAlters.length > 0) await binding.batch(laterAlters.map((sql) => binding.prepare(sql)))
     } finally {
       old.close()
     }

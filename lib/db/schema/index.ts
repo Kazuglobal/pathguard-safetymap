@@ -1,4 +1,5 @@
 export * from './accidents'
+export * from './children'
 export * from './gamification'
 export * from './hazard'
 export * from './hunter'
