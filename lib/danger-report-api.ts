@@ -2,6 +2,7 @@ import type { Actor } from '@/lib/db/authz'
 import type { dangerReports } from '@/lib/db/schema'
 import { reportMediaUrl } from '@/lib/media/report-media'
 import { isMaskedMediaKey, privateMediaUrl } from '@/lib/media/url'
+import { toJapanDate } from '@/lib/report-dates'
 
 type DangerReportRow = typeof dangerReports.$inferSelect
 
@@ -42,8 +43,8 @@ export function toDangerReportJson(report: DangerReportRow) {
 }
 
 const roundTo3 = (value: number) => Math.round(value * 1000) / 1000
-/** 日時を日単位(YYYY-MM-DD)にする。いつ・どこに誰がいたかを細かく残さない */
-const toDay = (value: string) => (/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value)
+/** 日時を日単位(日本時間の日付 YYYY-MM-DD)にする。いつ・どこに誰がいたかを細かく残さない */
+const toDay = (value: string) => toJapanDate(value)
 
 /**
  * ほかの人の報告(UIUX改装 項目57・61)。投稿者の id・審査の結果や理由は返さず、日時は日単位、

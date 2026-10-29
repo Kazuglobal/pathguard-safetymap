@@ -108,6 +108,12 @@ describe('見る人に合わせた報告の JSON(UIUX改装 項目61)', () => {
     expect(toDangerReportJsonForViewer(report(), admin).user_id).toBe('owner-1')
   })
 
+  it('ほかの人に見せる日付は日本時間の日付(朝の登校時間の報告が前の日にならない)', async () => {
+    // 2026-10-29 07:40(日本時間)の報告
+    await insertReport({ createdAt: '2026-10-28T22:40:00.000Z', updatedAt: '2026-10-28T22:40:00.000Z' })
+    expect(toDangerReportJsonForViewer(report(), other)).toMatchObject({ created_at: '2026-10-29', updated_at: '2026-10-29' })
+  })
+
   it('未ログインには写真なしのプレビューだけ(ログインしたほかの人に見せるものより粗くする)', async () => {
     await insertReport({ imageKey: MASKED_ORIGINAL, processedImageKeys: [MASKED_PROCESSED], imageMasked: true, postalCode: '1600023' })
     const json = toDangerReportJsonForViewer(report(), { kind: 'anon' })

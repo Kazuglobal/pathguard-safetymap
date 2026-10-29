@@ -9,6 +9,7 @@ import type { DangerReport } from "@/lib/types"
 import DangerReportDetailModal from "@/components/danger-report/danger-report-detail-modal"
 import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
 import { tankenTokens } from "@/lib/design/tanken"
+import { formatRelativeReportTime } from "@/lib/report-dates"
 import { NATIONWIDE } from "@/lib/user-region"
 import { useReportRegionFilter } from "@/hooks/use-report-region-filter"
 import { ReportRegionFilter } from "@/components/region/report-region-filter"
@@ -16,16 +17,8 @@ import { PREVIEW_COORD_SLACK_KM, SCHOOL_RADIUS_KM, latLngBoundsForRadius } from 
 
 const C = tankenTokens.color
 
-function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 60) return `${minutes}分前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}時間前`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return "昨日"
-  return `${days}日前`
-}
+// ほかの人の報告は日付だけで届くので、「今日」「昨日」「○日前」で出す(lib/report-dates.ts)
+const formatRelativeTime = (dateStr: string): string => formatRelativeReportTime(dateStr)
 
 const DANGER_TYPE_LABELS: Record<string, string> = {
   traffic: "交通危険",
