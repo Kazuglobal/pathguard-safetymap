@@ -197,8 +197,8 @@ export function ChildRouteDashboard({
           ) : state === "needs_setup" ? (
             <GuidancePanel
               tone="accent"
-              title="この通学路はまだシミュレーション準備中です"
-              body="ルートをもう一度設定すると、危険地点や見直しポイントをここで表示できます。"
+              title="この端末には、通学路の道すじがありません"
+              body="自宅と学校を守るため、短い通学路や「粗く保存」の道すじはサーバーに保存せず、作った端末にだけ残しています。作った端末で見るか、この端末でもう一度道すじを引くと、近くの危険を表示できます。"
               ctaLabel="通学路を見直す"
               ctaHref="/routes"
             />

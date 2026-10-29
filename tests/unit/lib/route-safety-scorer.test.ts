@@ -6,6 +6,18 @@ import {
 } from "@/lib/safety-scoring/route-safety-scorer"
 
 describe("buildRouteSafetySummary", () => {
+  it("道すじが無い・危険箇所を読み込めないときは、件数が0でも「安全」と言わない", () => {
+    const summary = buildRouteSafetySummary({
+      routeName: "いつもの通学路",
+      routeHazards: [],
+      routeDangers: [],
+      unavailableDetail: "作った端末で確認してください。",
+    })
+
+    expect(summary).toMatchObject({ status: "caution", label: "判定できません", detail: "作った端末で確認してください。", score: null })
+    expect(summary.headline).not.toContain("安全です")
+  })
+
   it("returns danger summary when high-risk hazards and severe danger reports exist", () => {
     const summary = buildRouteSafetySummary({
       routeName: "いつもの通学路",

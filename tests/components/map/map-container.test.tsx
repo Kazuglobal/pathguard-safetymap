@@ -294,6 +294,7 @@ vi.mock('@/hooks/use-accident-stats', () => ({
 }))
 
 vi.mock('@/hooks/use-route-dangers', () => ({
+  ROUTE_LINE_UNAVAILABLE_MESSAGE: 'この端末には通学路の道すじがありません',
   useRouteDangers: () => ({ dangers: [], isLoading: false }),
 }))
 

@@ -85,6 +85,12 @@ export function removeLocalRouteGeometry(userId: string, routeId: string): void 
   writeStore(userId, rest)
 }
 
+/** 1本の通学路に、この端末に残した元の線を重ねる(ほかの通学路の分は消さない) */
+export function withLocalRouteGeometry<T extends UserRoute>(userId: string, route: T): T {
+  const local = readStore(userId)[route.id]
+  return local ? { ...route, ...local } : route
+}
+
 /**
  * サーバーの通学路に、この端末に残した元の線を重ねる。ほかの端末で消された通学路の分は手元からも消す
  */

@@ -16,7 +16,8 @@ vi.mock("@/components/ui/use-toast", () => ({ useToast: () => ({ toast }) }))
 import { useDangerReports } from "@/hooks/use-danger-reports"
 import { useLandingReportReactions } from "@/hooks/use-landing-report-reactions"
 import { useReportComments } from "@/hooks/use-report-comments"
-import { useRouteDangers } from "@/hooks/use-route-dangers"
+import { ROUTE_LINE_UNAVAILABLE_MESSAGE, useRouteDangers } from "@/hooks/use-route-dangers"
+import { saveLocalRouteGeometry } from "@/lib/route-local-geometry"
 import { useUserRoutes } from "@/hooks/use-user-routes"
 
 const originalFetch = global.fetch
@@ -111,5 +112,37 @@ describe("D1 API backed hooks", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.dangers.map((danger) => danger.id)).toEqual(["danger-1"])
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("作った端末では、手元に残した元の線(両端を削る前)で近くの報告を探す", async () => {
+    localStorage.clear()
+    // サーバーの線は両端を削ってあり、端の近くの報告(139.0005)まで届かない
+    saveLocalRouteGeometry("user-1", "route-local", {
+      start_lat: 35, start_lng: 139, end_lat: 35, end_lng: 139.02,
+      start_address: "東京都新宿区西新宿2丁目8-1", end_address: "東京都新宿区西新宿3丁目",
+      route_geometry: { type: "LineString", coordinates: [[139, 35], [139.02, 35]] },
+    })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/routes/")
+      ? json({ route: { id: "route-local", user_id: "user-1", route_geometry: { type: "LineString", coordinates: [[139.01, 35], [139.015, 35]] } } })
+      : json({ reports: [{ id: "danger-1", latitude: 35, longitude: 139.0005, status: "approved" }] }))
+    global.fetch = fetchMock as typeof fetch
+
+    const { result } = renderHook(() => useRouteDangers("route-local", 100))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.error).toBeNull()
+    expect(result.current.dangers.map((danger) => danger.id)).toEqual(["danger-1"])
+    localStorage.clear()
+  })
+
+  it("サーバーにも手元にも道すじが無いときは、そう知らせる(短い通学路・「粗く保存」)", async () => {
+    localStorage.clear()
+    const fetchMock = vi.fn(async () => json({ route: { id: "route-short", user_id: "user-1", route_geometry: null } }))
+    global.fetch = fetchMock as typeof fetch
+
+    const { result } = renderHook(() => useRouteDangers("route-short", 100))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.error).toBe(ROUTE_LINE_UNAVAILABLE_MESSAGE)
   })
 })
