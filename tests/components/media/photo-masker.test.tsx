@@ -160,4 +160,29 @@ describe("useMaskedPhotoPicker", () => {
     fireEvent.click(await screen.findByRole("button", { name: "この写真で進む" }))
     await waitFor(() => expect(onResult).toHaveBeenLastCalledWith(expect.objectContaining({ faces: 1 })))
   })
+
+  it("書き出しの途中でやめた写真の結果が、あとから次の写真の結果として届かない", async () => {
+    let finishFirstExport: (() => void) | null = null
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (callback: BlobCallback, type?: string) {
+      finishFirstExport = () => callback(new Blob(["masked"], { type: type ?? "image/png" }))
+    })
+    const onResult = vi.fn()
+    render(<Harness onResult={onResult} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "pick" }))
+    await loadImage()
+    fireEvent.click(await screen.findByRole("button", { name: "この写真で進む" }))
+    expect(await screen.findByRole("button", { name: "書き出し中…" })).toBeInTheDocument()
+    // 書き出しの途中でやめて、次の写真を選ぶ
+    fireEvent.click(screen.getByRole("button", { name: "写真を選び直す" }))
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(null))
+    fireEvent.click(screen.getByRole("button", { name: "pick" }))
+    expect(await screen.findByTestId("photo-masker")).toBeInTheDocument()
+
+    // 前の写真の書き出しが、あとから終わる
+    await act(async () => { finishFirstExport?.() })
+
+    expect(onResult).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId("photo-masker")).toBeInTheDocument()
+  })
 })
