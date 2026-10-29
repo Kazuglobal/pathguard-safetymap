@@ -7,7 +7,8 @@ if (dsn) {
     dsn,
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
     replaysOnErrorSampleRate: 1.0,
-    replaysSessionSampleRate: process.env.NODE_ENV === 'production' ? 0.05 : 0,
+    // 通常時の画面の録画はしない。エラーが起きたときだけ、文字と画像を隠して記録する(UIUX改装 項目60・プライバシーポリシー 6.)
+    replaysSessionSampleRate: 0,
     integrations: [
       Sentry.replayIntegration({
         maskAllText: true,

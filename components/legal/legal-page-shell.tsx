@@ -77,9 +77,9 @@ export function LegalPageShell({
 }
 
 /** 各ページ内の見出し(h2相当)。 */
-export function LegalSection({ title, children }: { title: string; children: ReactNode }) {
+export function LegalSection({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
-    <section>
+    <section id={id} className={id ? "scroll-mt-24" : undefined}>
       <h2 className="text-base font-bold" style={{ color: tankenTokens.color.primaryStrong }}>
         {title}
       </h2>
