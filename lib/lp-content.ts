@@ -1,10 +1,13 @@
 // PathGuardian 紹介HP(/lp)のコピー・構成データ一元定義
 // 掲載する機能・文言はアプリの実装済み機能のみ(誇張・未実装機能の記載禁止)
 
+import { BRAND } from "./brand"
+
 export const LP_META = {
-  title: "PathGuardian | 通学路の危険を見える化する、家族の見守りアプリ",
+  // 紹介HPはホームと同じ既定のタイトル(ページ名を付けない。app/lp/page.tsx で absolute にする)
+  title: BRAND.defaultTitle,
   description:
-    "PathGuardianは、写真と地図で通学路の危険をAIが見える化し、地域のヒヤリハット報告・不審者アラート・毎日の安全ニュースで家族の安全習慣をつくる無料の見守りアプリです。",
+    "PathGuardianは、写真と地図で通学路の危険をAIが見える化し、地域のヒヤリハット報告・不審者アラート・毎日の通学路の安全ニュースで家族の安全習慣をつくる、無料の通学路みまもりアプリです。",
   ogImage: "/images/lp/og-share.png",
 } as const
 

@@ -513,7 +513,7 @@ export default function MyPage() {
         {/* ヘッダー: あいさつ + レベルチップ + 編集 */}
         <motion.header {...fade(0)} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家の見守りノート</p>
+            <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家のあんぜんノート</p>
             <h1 className="truncate text-2xl font-black tracking-tight" style={{ color: t.color.ink }}>
               {userName ? `こんにちは、${userName}さん` : "こんにちは"}
             </h1>

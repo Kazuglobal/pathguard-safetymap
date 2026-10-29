@@ -8,7 +8,7 @@ import { Mascot } from "@/components/safety-quest/hunter/theme"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
 export const metadata = {
-  title: "ランキング | 通学路安全マップ",
+  title: "ランキング",
 }
 
 export default async function LeaderboardPage() {

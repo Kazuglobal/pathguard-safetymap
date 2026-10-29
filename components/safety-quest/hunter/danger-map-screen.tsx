@@ -228,7 +228,7 @@ export function DangerMapScreen({
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[13px]">
             <Image
               src="/images/hunter/records-empty.png"
-              alt="まっしろな たんけんノートと ルペ"
+              alt="まっしろな あんぜんノートと ルペ"
               fill
               sizes="300px"
               className="object-cover"

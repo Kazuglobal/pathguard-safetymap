@@ -35,7 +35,7 @@ export default function HelpDialog({ children }: HelpDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-blue-600" />
-            通学路安全マップ 使い方
+            PathGuardian の使い方
           </DialogTitle>
         </DialogHeader>
         

@@ -3,7 +3,8 @@ import { LpPage } from "@/components/lp/lp-page"
 import { LP_META } from "@/lib/lp-content"
 
 export const metadata: Metadata = {
-  title: LP_META.title,
+  // ルートの書式(「〜 | PathGuardian」)を通さない
+  title: { absolute: LP_META.title },
   description: LP_META.description,
   openGraph: {
     title: LP_META.title,

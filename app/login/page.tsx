@@ -3,6 +3,9 @@ import { createServerClient } from "@/lib/supabase-server"
 import LoginForm from "@/components/auth/login-form"
 import { getSafeNextPath } from "@/lib/auth/safe-next"
 import { tankenTokens } from "@/lib/design/tanken"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "ログイン" }
 
 export default async function LoginPage({
   searchParams,

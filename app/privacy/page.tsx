@@ -3,7 +3,7 @@ import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shel
 import { RETENTION_DAYS } from "@/lib/retention/policy"
 
 export const metadata: Metadata = {
-  title: "プライバシーポリシー | PathGuardian",
+  title: "プライバシーポリシー",
   description: "PathGuardian(通学路みまもりアプリ)が預かる情報と、預からない情報、その使い方と保存の期間です。",
 }
 

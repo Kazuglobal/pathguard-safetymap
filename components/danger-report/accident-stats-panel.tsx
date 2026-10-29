@@ -1,7 +1,7 @@
 /**
  * accident-stats-panel.tsx
  * 交通事故統計 拡張表示パネル v4
- * PathGuardian - 通学路安全マップ
+ * PathGuardian(通学路みまもりアプリ)
  *
  * 警察庁オープンデータ（本票）から、事故の詳細状況・
  * 道路環境・当事者分析・時間帯分析をリッチUIで表示

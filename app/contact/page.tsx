@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
 
 export const metadata: Metadata = {
-  title: "お問い合わせ | PathGuardian",
-  description: "PathGuardian SafetyMapへのお問い合わせ方法のご案内です。",
+  title: "お問い合わせ",
+  description: "PathGuardian(通学路みまもりアプリ)へのお問い合わせ方法のご案内です。",
 }
 
 export default function ContactPage() {

@@ -237,9 +237,9 @@ export function RouteHazardPanel({
         {accidentHotspotSlot}
         <HazardReasonList items={evidenceItems} />
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
+          <p className="text-sm font-semibold text-slate-900">通学路のハザード</p>
           <p className="text-xs text-muted-foreground">
-            選択した通学ルートだけにハザード判定を重ねて表示します
+            選んだ通学路だけに、ハザードの判定を重ねて表示します
           </p>
         </div>
         <HazardPanelContent
@@ -291,9 +291,9 @@ export function RouteHazardPanel({
                 {accidentHotspotSlot}
                 <HazardReasonList items={evidenceItems} />
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">通学ルートハザード</p>
+                  <p className="text-sm font-semibold text-slate-900">通学路のハザード</p>
                   <p className="text-xs text-muted-foreground">
-                    選択した通学ルートだけにハザード判定を重ねて表示します
+                    選んだ通学路だけに、ハザードの判定を重ねて表示します
                   </p>
                 </div>
                 <HazardPanelContent
@@ -320,10 +320,10 @@ export function RouteHazardPanel({
       <CardHeader className="space-y-1 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <RouteIcon className="h-4 w-4 text-blue-600" />
-          通学ルートハザード
+          通学路のハザード
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          選択した通学ルートだけにハザード判定を重ねて表示します
+          選んだ通学路だけに、ハザードの判定を重ねて表示します
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

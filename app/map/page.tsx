@@ -4,6 +4,9 @@ import { createServerClient } from "@/lib/supabase-server"
 import MapPageClient from "@/components/map/map-page-client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "危険マップ" }
 
 export default async function MapPage({
   searchParams,

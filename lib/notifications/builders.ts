@@ -297,7 +297,7 @@ export function buildMagazinePushPayload(params: {
   title: string
 }): PushPayload {
   return {
-    title: '安全マガジン新着',
+    title: 'SAFE MAGAZINE の新着',
     body: params.title,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',

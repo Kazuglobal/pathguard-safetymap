@@ -37,7 +37,7 @@ export function SafeMagazine() {
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 md:h-6 md:w-6" style={{ color: C.primary }} aria-hidden="true" />
             <h2 className="text-lg font-black md:text-xl" style={{ color: C.ink }}>
-              PathGuard Press
+              SAFE MAGAZINE
             </h2>
           </div>
           <Link

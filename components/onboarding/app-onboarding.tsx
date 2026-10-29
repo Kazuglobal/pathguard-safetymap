@@ -33,9 +33,9 @@ interface Slide {
 const SLIDES: readonly Slide[] = [
   {
     image: "/images/onboarding/app-onboarding-1.png",
-    alt: "親子がテーブルで通学路の安全ノートを広げ、ルペが照らしている絵",
+    alt: "親子がテーブルで通学路のあんぜんノートを広げ、ルペが照らしている絵",
     sticker: "その1",
-    title: "かぞくでつかう つうがくろの安全ノート",
+    title: "かぞくでつかう つうがくろの あんぜんノート",
     body: "PathGuardian(パスガーディアン)は、通学路の「気をつけて」を家族で見つけて、地図にのこせるアプリ。あいぼうの ルペと いっしょに つかってね。",
     parentNote: "おうちの人へ: 準備は1分。お子さんと同じ画面で一緒に使えます。",
   },

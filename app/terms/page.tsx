@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
 
 export const metadata: Metadata = {
-  title: "利用規約 | PathGuardian",
+  title: "利用規約",
   description: "PathGuardian(通学路みまもりアプリ)の利用規約です。",
 }
 

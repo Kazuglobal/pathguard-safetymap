@@ -56,7 +56,7 @@ export default function LandingPage() {
         {/* こんやの かぞく さくせんかいぎ */}
         <FamilyTalkCard />
 
-        {/* PathGuard Press */}
+        {/* SAFE MAGAZINE */}
         <SafeMagazine />
 
         {/* みんなのヒヤリハット報告 */}

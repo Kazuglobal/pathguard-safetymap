@@ -74,7 +74,7 @@ export default function UserDashboard() {
     >
       <div className="mx-auto max-w-5xl space-y-5">
         <header>
-          <p className="text-sm font-bold" style={{ color: t.color.primaryStrong }}>きょうの安全ノート</p>
+          <p className="text-sm font-bold" style={{ color: t.color.primaryStrong }}>きょうのあんぜんノート</p>
           <h1 className="mt-1 text-2xl font-black sm:text-3xl">{name ? `${name}さんのダッシュボード` : "あなたのダッシュボード"}</h1>
           <p className="mt-2 text-sm" style={{ color: t.color.inkSoft }}>ポイント、報告のようす、次にできることをまとめました。</p>
         </header>

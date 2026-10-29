@@ -31,8 +31,8 @@ const PREFERENCE_LABELS: Record<
     description: "通学路に関するニュース記事が追加されたとき",
   },
   magazine: {
-    label: "安全マガジン",
-    description: "安全マガジンの新着記事が公開されたとき",
+    label: "SAFE MAGAZINE",
+    description: "SAFE MAGAZINE の新しい記事が公開されたとき",
   },
 }
 

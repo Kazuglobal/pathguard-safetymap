@@ -4,6 +4,7 @@
  */
 
 import type { SafeMagazineArticle } from "./safe-magazine"
+import { BRAND } from "./brand"
 
 export interface SEOMetadata {
   title: string
@@ -83,9 +84,10 @@ interface HowToSchema {
   }>
 }
 
-const SITE_NAME = "通学路安全マップ"
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com"
-const LOGO_URL = `${SITE_URL}/logo.png`
+const SITE_NAME = BRAND.name
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || BRAND.siteUrl
+// 公開フォルダにある正方形のアイコン(/logo.png は無い)
+const LOGO_URL = `${SITE_URL}/icon-512.png`
 
 /**
  * SEO最適化されたタイトルを生成

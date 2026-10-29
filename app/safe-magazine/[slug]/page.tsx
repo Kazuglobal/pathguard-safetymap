@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       url: articleUrl,
-      siteName: "通学路安全マップ",
+      siteName: "PathGuardian",
       images: [
         {
           url: imageUrl,
