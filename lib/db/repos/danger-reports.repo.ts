@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import { assertCan, AuthzError, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -111,13 +111,22 @@ export function createDangerReportsRepo(db: AppDb) {
       if (input.dangerType) predicates.push(eq(dangerReports.dangerType, input.dangerType))
       if (input.minimumDangerLevel != null) predicates.push(gte(dangerReports.dangerLevel, input.minimumDangerLevel))
       if (input.exactDangerLevel != null) predicates.push(eq(dangerReports.dangerLevel, input.exactDangerLevel))
-      if (input.createdAfter) predicates.push(gte(dangerReports.createdAt, input.createdAfter))
+      // ほかの人には座標を丸め(ログイン中は小数3桁、未ログインは2桁)、日時は日単位で見せるので、絞り込みも同じ粗さで行う
+      // (細かい値で絞り込めると、範囲を狭めながら問い合わせて、丸める前の場所と時刻を割り出せるため。UIUX改装 項目61)
+      const coarseDecimals = actor.kind === 'anon' ? 2 : actor.kind === 'user' && !actor.isAdmin ? 3 : null
+      if (input.createdAfter) {
+        predicates.push(coarseDecimals === null
+          ? gte(dangerReports.createdAt, input.createdAfter)
+          : sql`substr(${dangerReports.createdAt}, 1, 10) >= ${input.createdAfter.slice(0, 10)}`)
+      }
       if (input.bounds) {
+        const longitude = coarseDecimals === null ? sql`${dangerReports.longitude}` : sql`round(${dangerReports.longitude}, ${coarseDecimals})`
+        const latitude = coarseDecimals === null ? sql`${dangerReports.latitude}` : sql`round(${dangerReports.latitude}, ${coarseDecimals})`
         predicates.push(
-          gte(dangerReports.longitude, input.bounds.minLng),
-          lte(dangerReports.longitude, input.bounds.maxLng),
-          gte(dangerReports.latitude, input.bounds.minLat),
-          lte(dangerReports.latitude, input.bounds.maxLat),
+          sql`${longitude} >= ${input.bounds.minLng}`,
+          sql`${longitude} <= ${input.bounds.maxLng}`,
+          sql`${latitude} >= ${input.bounds.minLat}`,
+          sql`${latitude} <= ${input.bounds.maxLat}`,
         )
       }
 
@@ -259,8 +268,9 @@ export function createDangerReportsRepo(db: AppDb) {
           : ['processed_image_keys'],
       })
       const now = new Date().toISOString()
-      // AI か運営(人)が承認済みなら、写真が変わったので審査をやり直す(人の承認も取り消す)
-      const reopens = sql`(${dangerReports.aiModerationStatus} = 'approved' or ${dangerReports.humanApprovedAt} is not null)`
+      // 公開中か、AI か運営(人)が承認済みなら、写真が変わったので審査をやり直す(人の承認も取り消す)。
+      // 承認の時刻を記録する前に人が公開した報告(human_approved_at が空)も、公開中なら審査に戻す
+      const reopens = sql`(${dangerReports.status} in ('approved', 'published', 'resolved') or ${dangerReports.aiModerationStatus} = 'approved' or ${dangerReports.humanApprovedAt} is not null)`
       const moderationFields = {
         status: sql<string>`case when ${reopens} then 'pending' else ${dangerReports.status} end`,
         aiModerationStatus: sql<string | null>`case when ${reopens} then 'needs_review' else ${dangerReports.aiModerationStatus} end`,

@@ -228,6 +228,15 @@ describe('danger report push D1 repository', () => {
       expect(await push.listPendingReportIds(service, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())).toEqual([])
     })
 
+    it('承認の時刻を記録する前に人が公開した報告も、写真が変わったら審査をやり直す', async () => {
+      await insertWith('legacy-human', { status: 'published', aiModerationStatus: 'needs_review', humanApprovedAt: null, pushNotifiedAt: '2026-09-03T01:05:00.000Z' })
+      const reports = createDangerReportsRepo(database.db as unknown as AppDb)
+
+      await reports.setImages(owner, 'legacy-human', { imageKey: 'danger-reports/user-1/legacy-human/m-new.webp', imageMasked: true })
+
+      expect(row('legacy-human')).toEqual({ status: 'pending', ai_moderation_status: 'needs_review', human_approved_at: null, push_notified_at: null })
+    })
+
     it('人が承認した報告も、写真が変わったら審査をやり直す(人の承認と通知済みの印を外す)', async () => {
       await insertWith('human-image', { status: 'approved', aiModerationStatus: 'needs_review', humanApprovedAt: '2026-09-03T01:00:00.000Z', pushNotifiedAt: '2026-09-03T01:05:00.000Z' })
       const reports = createDangerReportsRepo(database.db as unknown as AppDb)
