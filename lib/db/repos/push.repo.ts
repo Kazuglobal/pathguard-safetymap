@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } fro
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
+import { chunkForD1 } from '../d1-limits'
 import {
   children,
   dangerReports,
@@ -140,6 +141,14 @@ export function createPushRepo(db: AppDb) {
     async deleteSubscriptionById(actor: Actor, id: string) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, id))
+    },
+
+    /** 配信できた購読に、配信した時刻を残す(180日、更新も配信もない購読を消すときに見る。lib/retention/policy.ts) */
+    async markSubscriptionsNotified(actor: Actor, ids: readonly string[], notifiedAt: string) {
+      if (actor.kind !== 'service') throw new Error('Service actor is required')
+      for (const chunk of chunkForD1([...new Set(ids)])) {
+        await db.update(pushSubscriptions).set({ lastNotifiedAt: notifiedAt }).where(inArray(pushSubscriptions.id, chunk))
+      }
     },
 
     /** まだ通知していない報告のうち、since 以降に承認されたもの(作成からの時間ではなく承認からの時間で見る) */
@@ -325,6 +334,9 @@ export function upsertPushSubscription(actor: Actor, input: Parameters<ReturnTyp
 export function patchPushSubscription(actor: Actor, endpoint: string, input: Parameters<ReturnType<typeof createPushRepo>['patchSubscription']>[2]) { return createPushRepo(getDb()).patchSubscription(actor, endpoint, input) }
 export function deletePushSubscription(actor: Actor, endpoint: string) { return createPushRepo(getDb()).deleteSubscription(actor, endpoint) }
 export function deletePushSubscriptionById(actor: Actor, id: string) { return createPushRepo(getDb()).deleteSubscriptionById(actor, id) }
+export function markPushSubscriptionsNotified(actor: Actor, ids: readonly string[], notifiedAt: string) {
+  return createPushRepo(getDb()).markSubscriptionsNotified(actor, ids, notifiedAt)
+}
 export function listPendingDangerReportIds(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingReportIds(actor, since) }
 export function claimDangerReport(actor: Actor, reportId: string, userId?: string) { return createPushRepo(getDb()).claimReport(actor, reportId, userId) }
 export function releaseDangerReportClaim(actor: Actor, reportId: string, claimedAt: string) { return createPushRepo(getDb()).releaseReportClaim(actor, reportId, claimedAt) }

@@ -217,4 +217,21 @@ describe('danger report push D1 repository', () => {
       expect(row('human-image')).toEqual({ status: 'pending', ai_moderation_status: 'needs_review', human_approved_at: null, push_notified_at: null })
     })
   })
+
+  describe('配信した時刻(UIUX改装 項目60)', () => {
+    it('配信できた購読にだけ時刻を残す(保持期間の掃除で、配信が続いている購読を消さないため)', async () => {
+      const insert = database.sqlite.prepare("insert into push_subscriptions (id, user_id, endpoint, p256dh, auth) values (?, 'u', ?, 'k', 'a')")
+      insert.run('s1', 'https://push/1')
+      insert.run('s2', 'https://push/2')
+      const push = createPushRepo(database.db as unknown as AppDb)
+
+      await push.markSubscriptionsNotified(service, ['s1', 's1'], '2026-10-29T00:00:00.000Z')
+
+      expect(database.sqlite.prepare('select id, last_notified_at from push_subscriptions order by id').all()).toEqual([
+        { id: 's1', last_notified_at: '2026-10-29T00:00:00.000Z' },
+        { id: 's2', last_notified_at: null },
+      ])
+      await expect(push.markSubscriptionsNotified(owner, ['s1'], '2026-10-29T00:00:00.000Z')).rejects.toThrow('Service actor is required')
+    })
+  })
 })

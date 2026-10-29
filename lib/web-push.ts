@@ -10,6 +10,7 @@ import { getServiceActor } from '@/lib/auth/service-actor'
 import {
   deletePushSubscriptionById,
   listPushSubscriptions,
+  markPushSubscriptionsNotified,
 } from '@/lib/db/repos/push.repo'
 import type { NotificationPreferences, PushPayload } from '@/lib/notifications/builders'
 
@@ -36,6 +37,19 @@ export interface PushSubscriptionRow {
 
 const PUSH_SEND_CONCURRENCY = 50
 
+/**
+ * 配信できた購読に時刻を残す(180日、更新も配信もない購読は保持期間の掃除で消すため、配信が続いている購読は残す)。
+ * 残せなくても通知そのものは届いているので、送信は失敗にしない
+ */
+async function recordDeliveries(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return
+  try {
+    await markPushSubscriptionsNotified(getServiceActor(), ids, new Date().toISOString())
+  } catch (error) {
+    console.error('[web-push] Failed to record delivery time', error instanceof Error ? error.message : 'unknown')
+  }
+}
+
 async function sendInBatches(
   subs: readonly PushSubscriptionRow[],
   payload: PushPayload,
@@ -46,11 +60,13 @@ async function sendInBatches(
     const batch = subs.slice(index, index + PUSH_SEND_CONCURRENCY)
     const results = await Promise.all(batch.map(async (sub) => {
       const prefs = sub.notification_preferences ?? {}
-      if (prefs[preferenceKey] === false) return 0
+      if (prefs[preferenceKey] === false) return null
       const result = await sendPushNotification(sub, payload)
-      return result.success ? 1 : 0
+      return result.success ? sub.id : null
     }))
-    sent += results.reduce((sum, value) => sum + value, 0)
+    const delivered = results.filter((id): id is string => id !== null)
+    sent += delivered.length
+    await recordDeliveries(delivered)
   }
   return sent
 }

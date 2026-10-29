@@ -109,6 +109,49 @@ describe('usePushSubscription', () => {
     })
   })
 
+  it('ブラウザに購読が残っていても、サーバーに無ければ unsubscribed にする(もう一度オンにできるように)', async () => {
+    mockGetRegistration.mockResolvedValueOnce({
+      pushManager: { getSubscription: mockGetSubscription, subscribe: mockSubscribe },
+    })
+    mockGetSubscription.mockResolvedValueOnce({
+      endpoint: 'https://example.com/push',
+      toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
+    })
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ subscribed: false, preferences: null }),
+    } as any)
+
+    const { usePushSubscription } = await import('@/hooks/use-push-subscription')
+    const { result } = renderHook(() => usePushSubscription())
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+    })
+
+    expect(result.current.state).toBe('unsubscribed')
+  })
+
+  it('購読の確認に失敗したときは、ブラウザの購読どおり subscribed のままにする', async () => {
+    mockGetRegistration.mockResolvedValueOnce({
+      pushManager: { getSubscription: mockGetSubscription, subscribe: mockSubscribe },
+    })
+    mockGetSubscription.mockResolvedValueOnce({
+      endpoint: 'https://example.com/push',
+      toJSON: () => ({ keys: { p256dh: 'key', auth: 'secret' } }),
+    })
+    vi.mocked(global.fetch).mockResolvedValueOnce({ ok: false, json: vi.fn() } as any)
+
+    const { usePushSubscription } = await import('@/hooks/use-push-subscription')
+    const { result } = renderHook(() => usePushSubscription())
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+    })
+
+    expect(result.current.state).toBe('subscribed')
+  })
+
   it('通知設定更新 API が失敗した場合は optimistic update をロールバックする', async () => {
     const mockSub = {
       endpoint: 'https://example.com/push',
