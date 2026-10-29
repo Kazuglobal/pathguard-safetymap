@@ -8,6 +8,7 @@
 
 - 実装計画: `3d66d74222faa117d0ee9b1291f8c33ad8646ba7` の `docs/plans/2026-10-29-ar-accident-hazard-streetview-plan.md`（第2版）。第1版を実装の基準にしない。
 - 実装の起点: `origin/main` の `9ed7ddd75`。fetchで確認済み。
+- PR作成時に更新された `origin/main` の `4a2879e91` を取り込み済み。住所取得と国土地理院への問い合わせの説明を保持した。
 - 作業ブランチ: `codex/ar-hazard-streetview`。既存の未コミット変更を持ち込まない専用worktreeで準備。
 - ユーザー選択: 修正後の3案のうち、上から1番目「カメラに重ねる水位」。別ページへ移動せず、ARのカメラ映像に水位アニメーションと人物の高さ比較を重ねる。
 - 選択画像: [AR内で水位を表示する案](../design/ar-hazard/selected-inline-water.png)。静止画モックであり、実地点の災害データや実装のスクリーンショットではない。
