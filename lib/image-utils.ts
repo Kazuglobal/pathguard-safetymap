@@ -74,11 +74,7 @@ export async function compressImage(
     let targetW = Math.max(1, Math.round(width * scale))
     let targetH = Math.max(1, Math.round(height * scale))
 
-    // Skip compression for small files that don't need resizing
-    if (scale === 1 && file.size <= targetMaxSize * 0.8) {
-      return file
-    }
-
+    // 小さい写真でも必ず描き直す(撮影場所などの EXIF を残さないため。UIUX改装 項目38・57)
     let compressedFile = await createCompressedFile(targetW, targetH, jpegQuality)
 
     // Progressive compression if still too large
@@ -118,7 +114,8 @@ export async function compressImage(
     if (canLog) {
       console.error("compressImage error:", error)
     }
-    return file
+    // 描き直せなかった写真をそのまま返すと EXIF が残ったまま送られるので、呼び出し側に失敗を知らせる
+    throw new Error("写真を読み込めませんでした。JPEG・PNG・WebP の写真で、もう一度お試しください。")
   }
 }
 

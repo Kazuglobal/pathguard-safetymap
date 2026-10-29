@@ -289,9 +289,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
       <div className="flex flex-1 flex-col gap-3.5">
         <SpeechBubble mood={isLoading || processingTimedOut ? "think" : "cheer"}>
           {isLoading || processingTimedOut ? (
-            <>かおや なまえを かくしています。しゃしんは この端末の中で じゅんびするよ。</>
+            <>かおを さがして かくしています。しゃしんは この端末の中で じゅんびするよ。</>
           ) : (
-            <>かお・なまえ・おうち・くるまの ナンバーを もやもやに かくしたよ。かくしたい ところは <b>ゆびで なぞって</b> ついかしてね。</>
+            <>かおは もやもやに かくしたよ。なまえ・おうち・くるまの ナンバーが うつっていたら、<b>ゆびで なぞって</b> かくしてね。</>
           )}
         </SpeechBubble>
 
@@ -340,7 +340,7 @@ export function MaskConfirm(props: MaskConfirmProps) {
                 )}
                 <div className="relative z-10 rounded-[18px] border bg-[#FFFDF7]/95 px-5 py-4 text-center shadow-lg" style={{ borderColor: "rgba(67,57,43,.14)" }}>
                   <p className="text-[15px] font-black" style={{ color: C.ink }}>しゃしんを じゅんび中 2/3</p>
-                  <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkSoft }}>かおや なまえを かくしています</p>
+                  <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkSoft }}>かおを さがしています</p>
                   <div className="mt-3 flex justify-center gap-3" aria-hidden="true">
                     {[1, 2, 3].map((step) => <span key={step} className="h-3 w-3 rounded-full" style={{ background: step <= 2 ? C.primary : C.inkFaint }} />)}
                   </div>

@@ -56,6 +56,19 @@ vi.mock("@/lib/image-utils", () => ({
   fileToBase64: vi.fn(async () => "data:image/png;base64,AAAA"),
 }))
 
+// 写真のぼかしの画面そのものは tests/components/media/photo-masker.test.tsx で確かめる。
+// ここでは「ぼかした写真」として、選んだ写真の名前を変えて返す(フォームがぼかした写真だけを使うかを見るため)
+const masking = vi.hoisted(() => ({
+  requestMaskedPhoto: vi.fn(async (file: File) => ({
+    file: new File([file], `masked-${file.name}`, { type: file.type }),
+    faces: 0,
+    manual: 0,
+  })),
+}))
+vi.mock("@/components/media/use-masked-photo-picker", () => ({
+  useMaskedPhotoPicker: () => ({ requestMaskedPhoto: masking.requestMaskedPhoto, photoMaskerDialog: null }),
+}))
+
 vi.mock("@/lib/disaster-scenario-prompts", async () => {
   const actual = await vi.importActual<typeof import("@/lib/disaster-scenario-prompts")>(
     "@/lib/disaster-scenario-prompts"
@@ -280,6 +293,76 @@ describe("DangerReportForm", () => {
     expect(screen.queryByText("投稿前プレビュー")).not.toBeInTheDocument()
     expect(screen.getByText("車が急に見えて、子どもが判断しづらい場所です。")).toBeInTheDocument()
     expect(screen.getByText("白線の内側を歩く")).toBeInTheDocument()
+  })
+
+  it("選んだ写真は端末でぼかしてから使い、AI の確認にもぼかした写真だけを渡す(UIUX改装 項目57)", async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ hazards: [] }), text: async () => "" })))
+    const { compressImage } = await import("@/lib/image-utils")
+
+    const { container, unmount } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-masked", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await user.click(screen.getByTestId("wizard-next"))
+    expect(screen.getByTestId("photo-requirements")).toHaveTextContent("JPEG・PNG・WebP")
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    const pngFile = new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "street.png", { type: "image/png" })
+    await user.upload(originalInput, pngFile)
+    await user.click(await screen.findByTestId("analyze-photo"))
+
+    expect(masking.requestMaskedPhoto).toHaveBeenCalledWith(pngFile)
+    await waitFor(() => expect(vi.mocked(compressImage)).toHaveBeenCalled())
+    const sentToAi = vi.mocked(compressImage).mock.calls.map(([file]) => (file as File).name)
+    expect(sentToAi.every((name) => name === "masked-street.png")).toBe(true)
+
+    unmount()
+  })
+
+  it("ぼかすのをやめたら、写真は使わない", async () => {
+    const user = userEvent.setup()
+    masking.requestMaskedPhoto.mockResolvedValueOnce(null as never)
+    const { container, unmount } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-cancel", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await user.click(screen.getByTestId("wizard-next"))
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    await user.upload(originalInput, new File([Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "street.png", { type: "image/png" }))
+
+    await waitFor(() => expect(masking.requestMaskedPhoto).toHaveBeenCalled())
+    expect(screen.queryByTestId("analyze-photo")).not.toBeInTheDocument()
+
+    unmount()
+  })
+
+  it("HEIC の写真は理由つきで断る", async () => {
+    const user = userEvent.setup()
+    const { container, unmount } = render(
+      <DangerReportForm
+        onSubmit={vi.fn(async () => ({ reportId: "report-heic", imageUrl: null }))}
+        onCancel={vi.fn()}
+        selectedLocation={[139.7004, 35.6595]}
+      />
+    )
+
+    await user.click(screen.getByTestId("wizard-next"))
+    const originalInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
+    const heic = new File([Uint8Array.from([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63])], "IMG_0001.HEIC", { type: "image/heic" })
+    await user.upload(originalInput, heic, { applyAccept: false })
+
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringContaining("HEIC 形式の写真は") })))
+    expect(masking.requestMaskedPhoto).not.toHaveBeenCalledWith(heic)
+
+    unmount()
   })
 
   it("starts the hazard analysis request after the manual analysis button is clicked", async () => {

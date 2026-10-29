@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Camera, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 
 interface ImageUploaderProps {
   onImageSelect: (file: File) => void
@@ -20,33 +21,41 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
     size: number
     type: string
   } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // 写真は端末でぼかしてから AI の確認に送る(UIUX改装 項目57)
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker()
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
+    setError(null)
     if (file && file.type.startsWith("image/")) {
       // ファイルサイズチェック（20MB制限）
       const maxSizeInBytes = 20 * 1024 * 1024
       if (file.size > maxSizeInBytes) {
-        alert(`画像サイズが大きすぎます。最大20MBまでアップロード可能です。\n現在のファイルサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+        setError(`写真が大きすぎます(${(file.size / 1024 / 1024).toFixed(1)}MB)。20MBまでの写真を選んでください。`)
         return
       }
 
-      const imageUrl = URL.createObjectURL(file)
+      const masked = await requestMaskedPhoto(file)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      if (!masked) return
+
+      const imageUrl = URL.createObjectURL(masked.file)
       setSelectedImage(imageUrl)
       setFileInfo({
-        name: file.name,
-        size: file.size,
-        type: file.type
+        name: masked.file.name,
+        size: masked.file.size,
+        type: masked.file.type
       })
-      onImageSelect(file)
+      onImageSelect(masked.file)
     } else {
-      alert("画像ファイルを選択してください。対応形式: JPEG、PNG、GIF、WebP")
+      setError("写真を選んでください(JPEG・PNG・WebP)。")
     }
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      handleFileSelect(file)
+      void handleFileSelect(file)
     }
   }
 
@@ -56,7 +65,7 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
     
     const file = event.dataTransfer.files[0]
     if (file) {
-      handleFileSelect(file)
+      void handleFileSelect(file)
     }
   }
 
@@ -100,6 +109,8 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
         className="hidden"
         disabled={disabled}
       />
+      {error && <p role="alert" className="mb-2 text-sm font-bold text-red-700">{error}</p>}
+      {photoMaskerDialog}
 
       {!selectedImage ? (
         <Card
@@ -154,7 +165,7 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
               <div className="relative w-full h-64 rounded-lg overflow-hidden">
                 <Image
                   src={selectedImage}
-                  alt="Selected"
+                  alt="選んだ写真(顔などをぼかしたもの)"
                   fill
                   className="object-cover"
                 />

@@ -19,6 +19,8 @@ describe('processed report attachments', () => {
         const imageType = String(form.get('imageType'))
         uploads.push(imageType)
         expect(form.get('file')).toBeInstanceOf(File)
+        // フォームで端末ぼかしを通した写真だけを送る印(UIUX改装 項目57)
+        expect(form.get('masked')).toBe('1')
         return new Response(JSON.stringify(imageType === 'original' ? { imageUrl: original } : { processedImageUrl: processed, updatedUrls: [processed] }))
       }
       return new Response('{}')

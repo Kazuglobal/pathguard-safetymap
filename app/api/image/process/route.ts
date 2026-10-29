@@ -93,7 +93,8 @@ export async function POST(request: Request) {
     if (validationError) return json(validationError, 400)
     // 報告の写真は、端末で顔をぼかし・ナンバーなどを隠した WebP だけを受け付ける(UIUX改装 項目57)。
     // 元の写真は預からない(この API にも届かない)
-    if (imageType === 'original' && (formData.get('masked') !== '1' || fileValue.type !== 'image/webp')) {
+    // (canvas が WebP を書き出せないブラウザでは JPEG になるので、どちらも受け付ける)
+    if (imageType === 'original' && (formData.get('masked') !== '1' || !['image/webp', 'image/jpeg'].includes(fileValue.type))) {
       return json('端末でぼかした写真だけを送れます。写真を選び直してください。', 400)
     }
 

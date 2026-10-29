@@ -33,7 +33,8 @@ describe("MaskConfirm processing state", () => {
     render(<MaskConfirm file={new File(["x"], "photo.jpg", { type: "image/jpeg" })} onConfirm={vi.fn()} onCancel={onCancel} />)
 
     expect(screen.getByText("しゃしんを じゅんび中 2/3")).toBeInTheDocument()
-    expect(screen.getByText("かおや なまえを かくしています")).toBeInTheDocument()
+    // 自動で隠せるのは顔だけ。名前・おうち・ナンバーは指で隠す(UIUX改装 項目57)
+    expect(screen.getByText("かおを さがしています")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "しゃしんの じゅんびを やりなおす" })).toBeEnabled()
     fireEvent.click(screen.getByRole("button", { name: "べつの写真をえらぶ" }))
     expect(onCancel).toHaveBeenCalledTimes(1)

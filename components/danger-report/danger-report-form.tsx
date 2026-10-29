@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/use-toast"
 import ImagePreviewDialog from "./image-preview-dialog"
 import type { DangerReport } from "@/lib/types"
 import { compressImage, fileToBase64 } from "@/lib/image-utils"
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 import { urlOrDataUrlToBlob } from "@/lib/data-url-utils"
 import { tankenTokens } from "@/lib/design/tanken"
 import {
@@ -192,13 +193,27 @@ const sniffImageMime = (bytes: Uint8Array): string | null => {
   return null
 }
 
+/** HEIC/HEIF(iPhone の高効率の写真)。多くのブラウザは開けない */
+const isHeicHeader = (bytes: Uint8Array) => {
+  if (bytes.length < 12) return false
+  const box = String.fromCharCode(bytes[4]!, bytes[5]!, bytes[6]!, bytes[7]!)
+  const brand = String.fromCharCode(bytes[8]!, bytes[9]!, bytes[10]!, bytes[11]!)
+  return box === "ftyp" && ["heic", "heix", "hevc", "heim", "heis", "mif1", "msf1"].includes(brand)
+}
+
 const validateImageFile = async (file: File) => {
   const header = await readFileHeader(file, 12)
+  if (isHeicHeader(header)) {
+    return {
+      ok: false,
+      reason: "HEIC 形式の写真は、このブラウザでは開けません。iPhone では写真アプリから選ぶと自動で JPEG になります。パソコンでは JPEG に変換してから選んでください。",
+    }
+  }
   const sniffed = sniffImageMime(header)
   if (!sniffed || !ALLOWED_IMAGE_MIME_TYPES.has(sniffed)) {
     return {
       ok: false,
-      reason: "対応していない画像形式です。JPEG/PNG/WebP/GIFのみ利用できます。",
+      reason: "対応していない画像形式です。JPEG・PNG・WebP の写真を選んでください(GIF は最初のコマだけを使います)。",
     }
   }
   return { ok: true, mime: sniffed }
@@ -215,6 +230,8 @@ export default function DangerReportForm({
 }: DangerReportFormProps) {
   const { toast } = useToast()
   const pathname = usePathname()
+  // 写真は端末でぼかしてから使う(ぼかした写真だけを AI の確認・保存に使う。UIUX改装 項目57)
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -435,15 +452,22 @@ export default function DangerReportForm({
       return
     }
 
-    setOriginalImageFile(file)
+    // 顔は自動で、ナンバーなどは指でぼかしてもらう。やめたら写真は使わない
+    const masked = await requestMaskedPhoto(file)
+    if (originalFileInputRef.current) {
+      originalFileInputRef.current.value = ""
+    }
+    if (!masked) return
+
+    setOriginalImageFile(masked.file)
     setCameraError(null) // エラーをクリア
 
-    // プレビュー用のURLを作成
+    // プレビュー用のURLを作成(ぼかした写真)
     const reader = new FileReader()
     reader.onload = (e) => {
       setOriginalImagePreview(e.target?.result as string)
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(masked.file)
   }
 
   // Utilities for auto-generation
@@ -1103,7 +1127,16 @@ export default function DangerReportForm({
         return { ok: true, file }
       })
     )
-    const validFiles = validations.filter((entry) => entry.ok).map((entry) => entry.file)
+    // 自分で選んだ加工画像も、1枚ずつぼかしてから使う(やめた写真は使わない)
+    const validFiles: File[] = []
+    for (const entry of validations) {
+      if (!entry.ok) continue
+      const masked = await requestMaskedPhoto(entry.file)
+      if (masked) validFiles.push(masked.file)
+    }
+    if (processedFileInputRef.current) {
+      processedFileInputRef.current.value = ""
+    }
 
     if (validFiles.length > 0) {
       // プレビューURLを生成して配列に追加
@@ -1498,6 +1531,9 @@ export default function DangerReportForm({
                     multiple
                   />
                 </div>
+                <p className="text-xs leading-relaxed" style={{ color: tankenTokens.color.inkSoft }} data-testid="photo-requirements">
+                  JPEG・PNG・WebP(iPhone の写真もOK)・10MBまで。大きい写真は自動で小さくします。顔は自動でぼかし、ナンバーなどは指で隠してから使います。
+                </p>
 
                 {cameraError && (
                   <PaperCard tone="danger" className="p-3">
@@ -1963,6 +1999,7 @@ export default function DangerReportForm({
       </form>
 
       <ImagePreviewDialog isOpen={isPreviewOpen} imageUrl={previewImage} onClose={() => setIsPreviewOpen(false)} />
+      {photoMaskerDialog}
     </div>
   )
 }

@@ -133,6 +133,8 @@ export function useDangerReportSubmit({
           formData.append("file", file);
           formData.append("reportId", newReportId);
           formData.append("imageType", imageType);
+          // フォームで端末ぼかしを通した写真(と、そこから作ったもしも画像)だけを送る(UIUX改装 項目57)
+          formData.append("masked", "1");
           const response = await fetch("/api/image/process", {
             method: "POST",
             body: formData,

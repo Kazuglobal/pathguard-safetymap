@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Search, MapPin, Loader2, X, UserX, ImagePlus, LocateFixed } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 import {
   ALERT_RADIUS_OPTIONS,
   DEFAULT_ALERT_RADIUS_M,
@@ -102,6 +103,8 @@ export default function SuspiciousAlertForm({
   const [memo, setMemo] = useState("")
   const [radiusM, setRadiusM] = useState<number>(DEFAULT_ALERT_RADIUS_M)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  // 写真は端末でぼかしてから使う(ぼかした写真だけを AI の確認・保存に使う。UIUX改装 項目57)
+  const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker()
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
   const [locating, setLocating] = useState(false)
@@ -196,10 +199,13 @@ export default function SuspiciousAlertForm({
       if (fileInputRef.current) fileInputRef.current.value = ""
       return
     }
-    setImageFile(file)
+    const masked = await requestMaskedPhoto(file)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    if (!masked) return
+    setImageFile(masked.file)
     setImagePreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(file)
+      return URL.createObjectURL(masked.file)
     })
   }
 
@@ -364,8 +370,8 @@ export default function SuspiciousAlertForm({
           onChange={handleImageChange}
         />
         {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
-        <p className="mt-1 text-xs text-gray-400">
-          写真を添付すると公開前に内容確認が入ります（顔・ナンバー・表札の写り込み防止のため）。
+        <p className="mt-1 text-xs text-gray-500">
+          写真は、顔を自動でぼかし、ナンバーなどを指で隠してから使います。写真つきの投稿は、公開前に運営スタッフも確認します。
         </p>
       </div>
 
@@ -382,6 +388,7 @@ export default function SuspiciousAlertForm({
           地図にアラートを表示
         </Button>
       </div>
+      {photoMaskerDialog}
     </div>
   )
 }
