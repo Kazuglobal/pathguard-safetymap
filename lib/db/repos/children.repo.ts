@@ -46,6 +46,13 @@ export function legacyChildNameToNickname(value: string): string {
   return [...normalizeChildNickname(value)].slice(0, CHILD_NICKNAME_MAX_LENGTH).join('').trim()
 }
 
+/** 一意の制約の違反か(D1 も better-sqlite3 も「UNIQUE constraint failed」。drizzle が包むときは cause を見る) */
+function isUniqueViolation(error: unknown): boolean {
+  const messages = [error, (error as { cause?: unknown } | null)?.cause]
+    .map((value) => (value instanceof Error ? value.message : ''))
+  return messages.some((message) => /UNIQUE constraint failed/i.test(message))
+}
+
 function validateNickname(nickname: string): void {
   // SQLite の length() と同じく、文字(コードポイント)の数で数える
   const length = [...nickname].length
@@ -115,7 +122,7 @@ export function createChildrenRepo(db: AppDb) {
       if (existing.some((row) => row.nickname === nickname)) throw new RangeError('Child nickname already exists')
       if (existing.length >= MAX_CHILDREN_PER_USER) throw new RangeError('Too many children')
       const now = new Date().toISOString()
-      const [row] = await db.insert(children).values({
+      const inserted = await db.insert(children).values({
         id: crypto.randomUUID(),
         userId: user.id,
         nickname,
@@ -125,7 +132,12 @@ export function createChildrenRepo(db: AppDb) {
         nicknameConfirmedAt: options.confirmed === false ? null : now,
         createdAt: now,
         updatedAt: now,
-      }).returning()
+      }).returning().catch((error: unknown) => {
+        // 同じ呼び名の同時の登録(別のタブなど)は、上の確認をすり抜けて一意の制約で止まる
+        if (isUniqueViolation(error)) throw new RangeError('Child nickname already exists')
+        throw error
+      })
+      const [row] = inserted
       if (!row) throw new Error('Failed to create child')
       return row
     },
@@ -136,10 +148,18 @@ export function createChildrenRepo(db: AppDb) {
       const nickname = normalizeChildNickname(rawNickname)
       validateNickname(nickname)
       assertCan(actor, 'select', 'children', { ownerId: user.id })
-      const [found] = await db.select().from(children)
-        .where(and(eq(children.userId, user.id), eq(children.nickname, nickname))).limit(1)
+      const findSame = async () => (await db.select().from(children)
+        .where(and(eq(children.userId, user.id), eq(children.nickname, nickname))).limit(1))[0]
+      const found = await findSame()
       if (found) return found
-      return this.create(actor, { nickname }, options)
+      try {
+        return await this.create(actor, { nickname }, options)
+      } catch (error) {
+        // 同時に同じ呼び名で登録された(別のタブなど)ときは、先にできた方を使う
+        const raced = error instanceof RangeError && error.message === 'Child nickname already exists' ? await findSame() : undefined
+        if (raced) return raced
+        throw error
+      }
     },
 
     async update(actor: Actor, childId: string, input: ChildWriteInput): Promise<ChildRow | null> {

@@ -63,7 +63,9 @@ describe('coarsen-existing-routes', () => {
     const long = row('long')
     expect(long).toMatchObject({ start_lat: 35.69, start_lng: 139.69, start_address: '東京都新宿区', end_address: '東京都新宿区' })
     expect(long.route_geometry.trimmedEndsMeters).toBe(200)
-    expect(distanceMeters(HOME, long.route_geometry.coordinates[0])).toBeCloseTo(200, 0)
+    // 端ごとに 200〜350m(乱数)を削る
+    expect(distanceMeters(HOME, long.route_geometry.coordinates[0])).toBeGreaterThanOrEqual(199.5)
+    expect(distanceMeters(HOME, long.route_geometry.coordinates[0])).toBeLessThanOrEqual(350.5)
     expect(row('short').route_geometry).toBeNull()
 
     const again = createTestDeps({ runner: createFakeWrangler(database.sqlite).runner, env })

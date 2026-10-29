@@ -42,8 +42,11 @@ describe('通学路はサーバーに粗くして保存する(UIUX改装 項目5
       start_address: '東京都新宿区', end_address: '到着地',
     })
     const [first, last] = [row.route_geometry.coordinates[0], row.route_geometry.coordinates.at(-1)]
-    expect(distanceMeters(HOME, first)).toBeCloseTo(200, 0)
-    expect(distanceMeters(SCHOOL, last)).toBeCloseTo(200, 0)
+    // 端ごとに 200〜350m(乱数)を削る
+    for (const distance of [distanceMeters(HOME, first), distanceMeters(SCHOOL, last)]) {
+      expect(distance).toBeGreaterThanOrEqual(199.5)
+      expect(distance).toBeLessThanOrEqual(350.5)
+    }
     expect(JSON.stringify(row)).not.toContain('8-1')
   })
 
@@ -58,6 +61,20 @@ describe('通学路はサーバーに粗くして保存する(UIUX改装 項目5
     expect(stored(route.id)).toMatchObject({ start_lat: 35.7, start_lng: 139.7, end_lat: 35.7, end_lng: 139.7, route_geometry: null })
   })
 
+  it('保存してある線をそのまま送り直されても、もう一度は削らない(削るたびに短くならない)', async () => {
+    const repo = createRoutesRepo(database.db as unknown as AppDb)
+    const route = await repo.create(owner, {
+      name: '登校ルート', startLat: HOME[1], startLng: HOME[0], endLat: SCHOOL[1], endLng: SCHOOL[0],
+      startAddress: '東京都新宿区', endAddress: '東京都新宿区',
+      routeGeometry: { type: 'LineString', coordinates: [HOME, SCHOOL] },
+    })
+    const saved = stored(route.id).route_geometry
+
+    await repo.update(owner, route.id, { name: '名前だけ変えた', routeGeometry: saved })
+
+    expect(stored(route.id).route_geometry).toEqual(saved)
+  })
+
   it('道すじを書き換えるときも同じように粗くする(書き換えない項目はそのまま)', async () => {
     const repo = createRoutesRepo(database.db as unknown as AppDb)
     const route = await repo.create(owner, {
@@ -70,6 +87,6 @@ describe('通学路はサーバーに粗くして保存する(UIUX改装 項目5
     const row = stored(route.id)
     expect(row.end_address).toBe('東京都渋谷区')
     expect(row.start_address).toBe('東京都新宿区')
-    expect(distanceMeters(HOME, row.route_geometry.coordinates[0])).toBeCloseTo(200, 0)
+    expect(distanceMeters(HOME, row.route_geometry.coordinates[0])).toBeGreaterThanOrEqual(199.5)
   })
 })

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, notExists, or, sql } from 'drizzle-orm'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
@@ -252,15 +252,20 @@ export function createPushRepo(db: AppDb) {
     },
 
     /**
-     * 「粗く保存」を選んだ人のうち、指定の小学校区にお子さまを登録している人(UIUX改装 項目59)。
-     * 道すじを預からないので 300m の判定はできず、学区単位で知らせる
+     * 指定の小学校区にお子さまを登録している人のうち、通学路の道すじで 300m の判定ができない人(UIUX改装 項目59):
+     * 「粗く保存」を選んだ人と、道すじを保存していない人(短くて保存できない通学路だけ・通学路が無い)。学区単位で知らせる
      */
-    async listCoarseUsersInDistricts(actor: Actor, districtIds: readonly string[]) {
+    async listDistrictNotificationUsers(actor: Actor, districtIds: readonly string[]) {
       if (actor.kind !== 'service') throw new Error('Service actor is required')
       if (districtIds.length === 0) return []
+      const routeLine = db.select({ id: userRoutes.id }).from(userRoutes)
+        .where(and(eq(userRoutes.userId, children.userId), isNotNull(userRoutes.routeGeometry)))
       const rows = await db.selectDistinct({ userId: children.userId, districtId: children.schoolDistrictId }).from(children)
-        .innerJoin(profiles, eq(profiles.id, children.userId))
-        .where(and(inArray(children.schoolDistrictId, [...districtIds]), eq(profiles.locationPrecision, 'coarse')))
+        .leftJoin(profiles, eq(profiles.id, children.userId))
+        .where(and(
+          inArray(children.schoolDistrictId, [...districtIds]),
+          or(eq(profiles.locationPrecision, 'coarse'), notExists(routeLine)),
+        ))
       return rows.flatMap((row) => (row.districtId ? [{ userId: row.userId, districtId: row.districtId }] : []))
     },
 
@@ -346,8 +351,8 @@ export function listNotificationRoutes(actor: Actor) { return createPushRepo(get
 export function listDistrictBoundariesAround(actor: Actor, report: { longitude: number; latitude: number; prefecture: string | null }) {
   return createPushRepo(getDb()).listDistrictBoundariesAround(actor, report)
 }
-export function listCoarseUsersInDistricts(actor: Actor, districtIds: readonly string[]) {
-  return createPushRepo(getDb()).listCoarseUsersInDistricts(actor, districtIds)
+export function listDistrictNotificationUsers(actor: Actor, districtIds: readonly string[]) {
+  return createPushRepo(getDb()).listDistrictNotificationUsers(actor, districtIds)
 }
 export function listPendingLocalAlerts(actor: Actor, since: string) { return createPushRepo(getDb()).listPendingAlerts(actor, since) }
 export function claimLocalAlert(actor: Actor, alertId: string) { return createPushRepo(getDb()).claimAlert(actor, alertId) }

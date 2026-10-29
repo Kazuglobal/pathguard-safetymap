@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   listNotificationRoutes: vi.fn(),
   listDistrictBoundariesAround: vi.fn(),
-  listCoarseUsersInDistricts: vi.fn(),
+  listDistrictNotificationUsers: vi.fn(),
   sendPushToUser: vi.fn(),
 }))
 
@@ -15,7 +15,7 @@ vi.mock('@/lib/db/repos/push.repo', () => ({
   releaseDangerReportClaim: vi.fn(),
   listNotificationRoutes: mocks.listNotificationRoutes,
   listDistrictBoundariesAround: mocks.listDistrictBoundariesAround,
-  listCoarseUsersInDistricts: mocks.listCoarseUsersInDistricts,
+  listDistrictNotificationUsers: mocks.listDistrictNotificationUsers,
 }))
 vi.mock('@/lib/web-push', () => ({ sendPushToUser: mocks.sendPushToUser }))
 vi.mock('@/lib/auth/service-actor', () => ({ getServiceActor: () => ({ kind: 'service' }) }))
@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.listNotificationRoutes.mockResolvedValue([])
   mocks.listDistrictBoundariesAround.mockResolvedValue([{ districtId: 'd1', name: '第一小学校区', geometry: DISTRICT_POLYGON }])
-  mocks.listCoarseUsersInDistricts.mockResolvedValue([{ userId: 'coarse-1', districtId: 'd1' }])
+  mocks.listDistrictNotificationUsers.mockResolvedValue([{ userId: 'coarse-1', districtId: 'd1' }])
   mocks.sendPushToUser.mockResolvedValue(1)
 })
 
@@ -38,14 +38,14 @@ describe('「粗く保存」の人には小学校区で知らせる(UIUX改装 �
     const notified = await notifyUsersNearReport(report)
 
     expect(notified).toBe(1)
-    expect(mocks.listCoarseUsersInDistricts).toHaveBeenCalledWith({ kind: 'service' }, ['d1'])
+    expect(mocks.listDistrictNotificationUsers).toHaveBeenCalledWith({ kind: 'service' }, ['d1'])
     expect(mocks.sendPushToUser).toHaveBeenCalledWith('coarse-1', expect.objectContaining({ title: '第一小学校区で危険報告' }), 'danger_reports')
   })
 
   it('矩形には入っても学区の外の地点なら知らせない', async () => {
     await notifyUsersNearReport({ ...report, latitude: 35.03, longitude: 139.03 })
 
-    expect(mocks.listCoarseUsersInDistricts).not.toHaveBeenCalled()
+    expect(mocks.listDistrictNotificationUsers).not.toHaveBeenCalled()
     expect(mocks.sendPushToUser).not.toHaveBeenCalled()
   })
 

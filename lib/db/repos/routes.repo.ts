@@ -133,7 +133,7 @@ export function createRoutesRepo(db: AppDb) {
       assertCan(actor, 'insert', 'user_routes', { ownerId: actor.id })
       validateRoute(input, true)
       const childId = (await resolveChildId(actor, input)) ?? null
-      // 両端200mの道すじを削り、起点・終点・住所を粗くしてから保存する(UIUX改装 項目59)
+      // 道すじの両端を200m以上削り、起点・終点・住所を粗くしてから保存する(UIUX改装 項目59)
       const located = coarsenRouteLocation(input, await locationPrecisionOf(actor.id))
       const now = new Date().toISOString()
       const [created] = await db.insert(userRoutes).values({
@@ -156,9 +156,18 @@ export function createRoutesRepo(db: AppDb) {
       if (!existing) return null
       assertCan(actor, 'update', 'user_routes', { ownerId: existing.userId })
       validateRoute(input, false)
-      const requestedChildId = await resolveChildId(actor, input)
+      // 編集画面は移行前の名前(child_name)を呼び名の欄に入れて送ってくる。同じ名前のままなら、
+      // 本人が「呼び名」として確かめたものではないので、未確認の呼び名として移す
+      const legacyNickname = existing.childName && !existing.childNickname ? legacyChildNameToNickname(existing.childName) : null
+      const sendsLegacyName = legacyNickname !== null && input.childNickname != null
+        && legacyChildNameToNickname(input.childNickname) === legacyNickname
+      const requestedChildId = sendsLegacyName ? undefined : await resolveChildId(actor, input)
       const childId = requestedChildId !== undefined ? requestedChildId : await migrateLegacyChild(actor, existing)
-      const located = coarsenRouteLocation(input, await locationPrecisionOf(existing.userId))
+      const precision = await locationPrecisionOf(existing.userId)
+      // 保存してある線をそのまま送り直されたときは、もう一度削らない(削るたびに線が短くなるため)
+      const resendsStoredLine = precision === 'standard' && input.routeGeometry != null && existing.routeGeometry != null
+        && JSON.stringify(input.routeGeometry) === JSON.stringify(existing.routeGeometry)
+      const located = coarsenRouteLocation(resendsStoredLine ? { ...input, routeGeometry: undefined } : input, precision)
       const [updated] = await db.update(userRoutes).set({
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),

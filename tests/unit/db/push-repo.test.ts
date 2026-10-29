@@ -121,14 +121,20 @@ describe('danger report push D1 repository', () => {
     })
   })
 
-  describe('「粗く保存」の人の学区の知らせ(UIUX改装 項目59)', () => {
-    it('学区にお子さまを登録している「粗く保存」の人だけを返す(ふつうの保存の人は通学路で知らせる)', async () => {
-      database.sqlite.prepare("insert into profiles (id, email, location_precision) values ('coarse-1', 'a@example.com', 'coarse'), ('standard-1', 'b@example.com', 'standard'), ('coarse-2', 'c@example.com', 'coarse')").run()
-      database.sqlite.prepare("insert into children (id, user_id, nickname, school_district_id) values ('c1', 'coarse-1', 'さく', 'd1'), ('c2', 'coarse-1', 'だい', 'd1'), ('c3', 'standard-1', 'あお', 'd1'), ('c4', 'coarse-2', 'みな', 'd2')").run()
+  describe('道すじで判定できない人の学区の知らせ(UIUX改装 項目59)', () => {
+    it('学区にお子さまを登録している「粗く保存」の人と、道すじを保存していない人を返す(道すじのある人は通学路で知らせる)', async () => {
+      database.sqlite.prepare("insert into profiles (id, email, location_precision) values ('coarse-1', 'a@example.com', 'coarse'), ('standard-1', 'b@example.com', 'standard'), ('coarse-2', 'c@example.com', 'coarse'), ('short-1', 'd@example.com', 'standard')").run()
+      database.sqlite.prepare("insert into children (id, user_id, nickname, school_district_id) values ('c1', 'coarse-1', 'さく', 'd1'), ('c2', 'coarse-1', 'だい', 'd1'), ('c3', 'standard-1', 'あお', 'd1'), ('c4', 'coarse-2', 'みな', 'd2'), ('c5', 'short-1', 'りん', 'd1')").run()
+      const insertRoute = database.sqlite.prepare("insert into user_routes (id, user_id, name, start_lat, start_lng, end_lat, end_lng, start_address, end_address, route_geometry) values (?, ?, '通学路', 35.69, 139.69, 35.69, 139.7, '東京都新宿区', '東京都新宿区', ?)")
+      // ふつうの保存で道すじがある人 / 短くて道すじを保存できなかった人
+      insertRoute.run('r-standard', 'standard-1', JSON.stringify({ type: 'LineString', coordinates: [[139.692, 35.69], [139.698, 35.69]], trimmedEndsMeters: 200 }))
+      insertRoute.run('r-short', 'short-1', null)
       const push = createPushRepo(database.db as unknown as AppDb)
 
-      expect(await push.listCoarseUsersInDistricts(service, ['d1'])).toEqual([{ userId: 'coarse-1', districtId: 'd1' }])
-      expect(await push.listCoarseUsersInDistricts(service, [])).toEqual([])
+      const rows = await push.listDistrictNotificationUsers(service, ['d1'])
+
+      expect(rows.map((row) => row.userId).sort()).toEqual(['coarse-1', 'short-1'])
+      expect(await push.listDistrictNotificationUsers(service, [])).toEqual([])
     })
 
     it('報告の地点を囲む矩形に入る学区の境界を返す(都道府県が分かればその県だけ)', async () => {

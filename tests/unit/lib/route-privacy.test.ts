@@ -5,7 +5,9 @@ import {
   coarsenAddress,
   coarsenRouteLocation,
   distanceMeters,
+  randomEndTrim,
   ROUTE_END_FALLBACK_LABEL,
+  ROUTE_END_TRIM_JITTER_METERS,
   ROUTE_END_TRIM_METERS,
   ROUTE_MAX_POINTS,
   ROUTE_START_FALLBACK_LABEL,
@@ -29,9 +31,9 @@ function length(coordinates: readonly Position[]): number {
 }
 
 describe('通学路の両端を削る(自宅・学校の前の道を残さない)', () => {
-  it('始点側・終点側からそれぞれ200mを削る', () => {
+  it('始点側・終点側から、それぞれ指定の長さを削る', () => {
     const line = eastwardLine(1_000)
-    const trimmed = trimLineEnds(line)!
+    const trimmed = trimLineEnds(line, { start: ROUTE_END_TRIM_METERS, end: ROUTE_END_TRIM_METERS })!
 
     expect(distanceMeters(line[0]!, trimmed[0]!)).toBeCloseTo(ROUTE_END_TRIM_METERS, 0)
     expect(distanceMeters(line[line.length - 1]!, trimmed[trimmed.length - 1]!)).toBeCloseTo(ROUTE_END_TRIM_METERS, 0)
@@ -46,18 +48,47 @@ describe('通学路の両端を削る(自宅・学校の前の道を残さない
     expect(trimLineEnds(eastwardLine(500))).not.toBeNull()
   })
 
-  it('点の間隔が粗くても、ちょうど200mのところで線を切る', () => {
-    const trimmed = trimLineEnds(eastwardLine(1_000, 1_000))!
+  it('削る長さは端ごとに 200〜350m の乱数で、毎回ちがう(まっすぐな道でも、残った線の端から自宅・学校を逆算できない)', () => {
+    const line = eastwardLine(2_000, 1_000)
+    const starts = new Set<number>()
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const trimmed = trimLineEnds(line)!
+      const start = distanceMeters(line[0]!, trimmed[0]!)
+      const end = distanceMeters(line[line.length - 1]!, trimmed[trimmed.length - 1]!)
+      for (const value of [start, end]) {
+        expect(value).toBeGreaterThanOrEqual(ROUTE_END_TRIM_METERS - 0.5)
+        expect(value).toBeLessThanOrEqual(ROUTE_END_TRIM_METERS + ROUTE_END_TRIM_JITTER_METERS + 0.5)
+      }
+      starts.add(Math.round(start))
+    }
+    expect(starts.size).toBeGreaterThan(1)
+  })
+
+  it('短い線では、50m 以上残るように足す長さを減らす(450m 以上の線は必ず保存する)', () => {
+    expect(randomEndTrim(2_000, () => 0)).toEqual({ start: 200, end: 200 })
+    expect(randomEndTrim(2_000, () => 0.5)).toEqual({ start: 275, end: 275 })
+    expect(randomEndTrim(500, () => 0.999_999)).toEqual({ start: expect.closeTo(225, 3), end: expect.closeTo(225, 3) })
+    for (let attempt = 0; attempt < 20; attempt += 1) expect(trimLineEnds(eastwardLine(500))).not.toBeNull()
+  })
+
+  it('点の間隔が粗くても、指定の長さのところで線を切る', () => {
+    const trimmed = trimLineEnds(eastwardLine(1_000, 1_000), { start: 200, end: 200 })!
     expect(trimmed).toHaveLength(2)
     expect(length(trimmed)).toBeCloseTo(600, 0)
   })
 })
 
 describe('保存する道すじ', () => {
-  it('LineString だけを、削った長さを書き添えて保存する', () => {
+  it('LineString だけを、両端を削った印(削った最短の長さ)を書き添えて保存する', () => {
     const geometry = sanitizeRouteGeometry({ type: 'LineString', coordinates: eastwardLine(1_000) })
     expect(geometry).toMatchObject({ type: 'LineString', trimmedEndsMeters: 200 })
     expect((geometry!.coordinates as Position[])[0]![0]).toBeGreaterThan(139.76)
+  })
+
+  it('送られてきた線に印が付いていても信じず、必ず削る', () => {
+    const line = eastwardLine(1_000)
+    const geometry = sanitizeRouteGeometry({ type: 'LineString', coordinates: line, trimmedEndsMeters: 200 })!
+    expect(distanceMeters(line[0]!, (geometry.coordinates as Position[])[0]!)).toBeGreaterThanOrEqual(ROUTE_END_TRIM_METERS - 0.5)
   })
 
   it.each([
@@ -86,6 +117,26 @@ describe('起点・終点の座標と住所を粗くする', () => {
     ['東京都町田市原町田6丁目', '東京都町田市'],
     ['京都府京都市中京区', '京都府京都市中京区'],
     ['大阪府', '大阪府'],
+    // 名前の途中に「市・郡・町・村」を含む市町村(途中で切らない・町名まではみ出さない)
+    ['奈良県大和郡山市北郡山町248-4', '奈良県大和郡山市'],
+    ['大阪府高槻市郡家新町48-1', '大阪府高槻市'],
+    ['三重県四日市市諏訪町1-5', '三重県四日市市'],
+    ['広島県廿日市市下平良1丁目', '広島県廿日市市'],
+    ['石川県野々市市三納1丁目', '石川県野々市市'],
+    ['東京都新宿区市谷本村町5-1', '東京都新宿区'],
+    ['福島県郡山市朝日1丁目', '福島県郡山市'],
+    ['千葉県市川市八幡1丁目', '千葉県市川市'],
+    ['新潟県十日町市本町', '新潟県十日町市'],
+    ['東京都東村山市本町', '東京都東村山市'],
+    ['富山県中新川郡上市町横法音寺', '富山県中新川郡上市町'],
+    ['富山県上市町横法音寺', '富山県上市町'],
+    ['北海道余市郡余市町黒川町', '北海道余市郡余市町'],
+    ['奈良県高市郡明日香村岡', '奈良県高市郡明日香村'],
+    ['北海道ニセコ町字富士見', '北海道ニセコ町'],
+    ['大阪府大阪市北区梅田1丁目', '大阪府大阪市北区'],
+    ['東京都北区王子1丁目', '東京都北区'],
+    ['静岡県浜松市中央区元城町', '静岡県浜松市中央区'],
+    ['兵庫県姫路市本町', '兵庫県姫路市'],
   ])('%s → %s(番地・郵便番号は残さない)', (address, expected) => {
     expect(coarsenAddress(address)).toBe(expected)
   })

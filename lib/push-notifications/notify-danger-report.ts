@@ -5,8 +5,8 @@ import {
   claimDangerReport,
   completeDangerReportClaim,
   confirmDangerReportClaim,
-  listCoarseUsersInDistricts,
   listDistrictBoundariesAround,
+  listDistrictNotificationUsers,
   listNotificationRoutes,
   releaseDangerReportClaim,
 } from '@/lib/db/repos/push.repo'
@@ -91,11 +91,14 @@ async function listUsersNearReport(report: DangerReportLocation): Promise<string
 interface Recipients {
   /** 通学路の 300m 以内に報告がある人 */
   readonly nearRoute: readonly string[]
-  /** 「粗く保存」で、報告の地点の小学校区にお子さまを登録している人(学区の名前つき) */
+  /**
+   * 報告の地点の小学校区にお子さまを登録していて、道すじで判定できない人(学区の名前つき):
+   * 「粗く保存」の人と、通学路が短くて道すじを保存していない人
+   */
   readonly byDistrict: ReadonlyArray<{ userId: string; districtName: string }>
 }
 
-/** 報告の地点を含む小学校区に、お子さまを登録している「粗く保存」の人(学区の名前つき) */
+/** 報告の地点を含む小学校区に、お子さまを登録している人のうち、道すじで判定できない人(学区の名前つき) */
 async function listUsersInReportDistrict(report: DangerReportLocation): Promise<Array<{ userId: string; districtName: string }>> {
   const service = getServiceActor()
   const boundaries = await listDistrictBoundariesAround(service, report)
@@ -108,7 +111,7 @@ async function listUsersInReportDistrict(report: DangerReportLocation): Promise<
   if (matched.length === 0) return []
   const names = new Map(matched.map(([id, district]) => [id, district.name]))
   const byUser = new Map<string, string>()
-  for (const row of await listCoarseUsersInDistricts(service, [...names.keys()])) {
+  for (const row of await listDistrictNotificationUsers(service, [...names.keys()])) {
     if (!byUser.has(row.userId)) byUser.set(row.userId, names.get(row.districtId) ?? '')
   }
   return [...byUser].map(([userId, districtName]) => ({ userId, districtName }))

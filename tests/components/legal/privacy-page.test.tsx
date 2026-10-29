@@ -18,7 +18,7 @@ describe("プライバシーポリシーは実際の動きと同じことを書�
     expect(text).toContain("Google(Gemini)・Anthropic(Claude)・OpenAI")
     expect(text).toContain("保存するのは、このぼかした写真だけです")
     expect(text).toContain("通常時の画面の録画はしません")
-    expect(text).toContain("両端200mの道すじは保存せず")
+    expect(text).toContain("道すじの両端それぞれ200m以上(削る長さは毎回変えます)は保存せず")
   })
 
   it("保存の期間の表は lib/retention/policy.ts の値と同じ", () => {

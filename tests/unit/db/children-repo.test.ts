@@ -180,6 +180,51 @@ describe('通学路と子ども(通学路には呼び名を書かない)', () =>
     expect(child).toMatchObject({ id: updated?.childId, nickname: 'さくら', nicknameConfirmedAt: null })
   })
 
+  it('編集画面が移行前の名前をそのまま送ってきても、確かめていない呼び名として移す(本名かもしれないため)', async () => {
+    database.sqlite.prepare(`insert into user_routes (id, user_id, name, child_id, child_name, start_lat, start_lng, end_lat, end_lng, start_address, end_address)
+      values ('legacy-form', 'user-1', '古いルート', null, '山田 太郎', 35.68, 139.76, 35.69, 139.77, '自宅', '学校')`).run()
+    const routes = createRoutesRepo(db)
+
+    // 編集画面は child_name(移行前の名前)を呼び名の欄に入れて、そのまま送る
+    const updated = await routes.update(owner, 'legacy-form', { name: '名前だけ変えた', childNickname: '山田 太郎' })
+
+    expect(updated?.childNickname).toBe('山田 太郎')
+    const [child] = await createChildrenRepo(db).list(owner)
+    expect(child).toMatchObject({ nickname: '山田 太郎', nicknameConfirmedAt: null })
+  })
+
+  it('移行前の名前を別の呼び名に書き換えたら、その呼び名は確かめたものとして登録する', async () => {
+    database.sqlite.prepare(`insert into user_routes (id, user_id, name, child_id, child_name, start_lat, start_lng, end_lat, end_lng, start_address, end_address)
+      values ('legacy-renamed', 'user-1', '古いルート', null, '山田 太郎', 35.68, 139.76, 35.69, 139.77, '自宅', '学校')`).run()
+
+    const updated = await createRoutesRepo(db).update(owner, 'legacy-renamed', { childNickname: 'たろちゃん' })
+
+    expect(updated?.childNickname).toBe('たろちゃん')
+    const [child] = await createChildrenRepo(db).list(owner)
+    expect(child?.nicknameConfirmedAt).not.toBeNull()
+  })
+
+  it('同じ呼び名を同時に登録しても(別のタブなど)失敗せず、先にできた子どもを使う', async () => {
+    let racingNickname: string | null = 'さく'
+    const racingDb = new Proxy(db, {
+      get(target, property, receiver) {
+        if (property !== 'insert') return Reflect.get(target, property, receiver)
+        return (table: Parameters<AppDb['insert']>[0]) => {
+          if (racingNickname) {
+            // こちらの確認のあと・書き込みの前に、別のタブが同じ呼び名を登録した
+            database.sqlite.prepare("insert into children (id, user_id, nickname) values (?, 'user-1', ?)").run(`raced-${racingNickname}`, racingNickname)
+            racingNickname = null
+          }
+          return target.insert(table)
+        }
+      },
+    })
+
+    await expect(createChildrenRepo(racingDb).findOrCreateByNickname(owner, 'さく')).resolves.toMatchObject({ id: 'raced-さく' })
+    racingNickname = 'だい'
+    await expect(createChildrenRepo(racingDb).create(owner, { nickname: 'だい' })).rejects.toThrow('Child nickname already exists')
+  })
+
   it('学習の記録には子どもの名前を残さず、id は本人の子どものものだけ', async () => {
     const routes = createRoutesRepo(db)
     const route = await routes.create(owner, { ...ROUTE_INPUT, childNickname: 'さくちゃん' })
