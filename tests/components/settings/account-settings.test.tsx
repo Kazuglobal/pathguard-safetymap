@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   updateUser: vi.fn(),
   email: "parent@example.com" as string | null,
+  metadata: {} as Record<string, unknown>,
 }))
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }) }))
@@ -14,7 +15,7 @@ vi.mock("@/components/providers/supabase-provider", () => ({
   useSupabase: () => ({ supabase: { auth: { signOut: mocks.signOut, updateUser: mocks.updateUser } } }),
 }))
 vi.mock("@/components/providers/auth-context", () => ({
-  useOptionalAuth: () => ({ user: { id: "user-1", email: mocks.email } }),
+  useOptionalAuth: () => ({ user: { id: "user-1", email: mocks.email, user_metadata: mocks.metadata } }),
 }))
 
 import { AccountCredentialsSettings } from "@/components/settings/account-credentials-settings"
@@ -23,6 +24,7 @@ import { AccountDeletionSettings } from "@/components/settings/account-deletion-
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.email = "parent@example.com"
+  mocks.metadata = {}
   mocks.signOut.mockResolvedValue({ error: null })
   mocks.updateUser.mockResolvedValue({ data: {}, error: null })
 })
@@ -90,6 +92,15 @@ describe("AccountCredentialsSettings(メール・パスワード。UIUX改装 �
 
   it("LINE でログインしているアカウントでは、メールとパスワードを変えさせない", () => {
     mocks.email = "line-abc@line.auth.local"
+    render(<AccountCredentialsSettings />)
+
+    expect(screen.getByText(/LINE でログインしているアカウントです/)).toBeInTheDocument()
+    expect(screen.queryByLabelText("メールアドレスを変える")).not.toBeInTheDocument()
+  })
+
+  it("LINE から本物のメールが届いた LINE のアカウントでも、メールを変えさせない(変えると次の LINE ログインで別のアカウントになる)", () => {
+    mocks.email = "taro@example.com"
+    mocks.metadata = { provider: "line", line_user_id: "U1234567890" }
     render(<AccountCredentialsSettings />)
 
     expect(screen.getByText(/LINE でログインしているアカウントです/)).toBeInTheDocument()

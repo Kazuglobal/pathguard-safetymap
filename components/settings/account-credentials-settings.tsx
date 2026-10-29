@@ -10,7 +10,7 @@ import { useState, type FormEvent } from "react"
 import { useOptionalAuth } from "@/components/providers/auth-context"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { resolveAuthErrorMessage } from "@/lib/auth/error-messages"
-import { isLineSyntheticEmail } from "@/lib/auth/line-email"
+import { isLineAccount } from "@/lib/auth/line-email"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const t = tankenTokens
@@ -31,7 +31,7 @@ export function AccountCredentialsSettings() {
   const { supabase } = useSupabase()
   const auth = useOptionalAuth()
   const currentEmail = auth?.user?.email ?? null
-  const lineAccount = isLineSyntheticEmail(currentEmail)
+  const lineAccount = isLineAccount(auth?.user)
 
   const [email, setEmail] = useState("")
   const [emailMessage, setEmailMessage] = useState<Message>(null)
