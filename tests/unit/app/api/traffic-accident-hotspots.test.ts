@@ -33,6 +33,8 @@ describe('accident hotspot routes', () => {
     ))
     expect(response.status).toBe(200)
     expect(mocks.hotspotsInBbox).toHaveBeenCalledWith(user, { minLng: 138, minLat: 34, maxLng: 140, maxLat: 36, limit: 500 })
+    // 人によって変わらない公開データの集計なので、同じ範囲の取り直しはブラウザの中で済ませる(ログインが要るので private)
+    expect(response.headers.get('Cache-Control')).toBe('private, max-age=600')
   })
 
   it('returns 400 for a malformed bbox and 401 for anonymous users', async () => {

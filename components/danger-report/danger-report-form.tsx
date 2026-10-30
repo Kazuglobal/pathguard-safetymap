@@ -28,6 +28,7 @@ import { compressImage, fileToBase64 } from "@/lib/image-utils"
 import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 import { urlOrDataUrlToBlob } from "@/lib/data-url-utils"
 import { tankenTokens } from "@/lib/design/tanken"
+import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 import {
   TankenButton,
   PaperCard,
@@ -1371,7 +1372,7 @@ export default function DangerReportForm({
       {!isMobileFullscreen && (
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[17px] font-black" style={{ color: C.ink }}>
-            危険箇所を報告
+            {REPORT_ENTRY_LABEL}
           </h2>
           <button
             type="button"

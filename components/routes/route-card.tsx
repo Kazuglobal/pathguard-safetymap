@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -121,6 +122,8 @@ export function RouteCard({
   const stop = (event: React.MouseEvent) => event.stopPropagation()
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // カードそのものにフォーカスがあるときだけ選ぶ。中のボタンやリンク(「地図で見る」)の Enter を横取りしない
+    if (e.target !== e.currentTarget) return
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       onClick(route)
@@ -308,27 +311,35 @@ export function RouteCard({
 
         {/* 主要操作は明示ボタンで。比較は控えめなチップに */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button
-            type="button"
-            className={cn("chunky-press h-10 rounded-full px-4 font-black text-white", cls.focus)}
-            style={{
-              background: color.primary,
-              boxShadow: shadow.pressGreen,
-            }}
-            onClick={(e) => runAction(e, () => onClick(route))}
-          >
-            {hasGeometry ? (
-              <>
+          {hasGeometry ? (
+            // 地図の画面で、この通学路の線・注意ポイント・安全サマリーを見る(UIUX改装 項目50)
+            <Button
+              asChild
+              className={cn("chunky-press h-10 rounded-full px-4 font-black text-white", cls.focus)}
+              style={{
+                background: color.primary,
+                boxShadow: shadow.pressGreen,
+              }}
+            >
+              <Link href={`/map?routeId=${encodeURIComponent(route.id)}`} onClick={stop} data-testid="route-open-map-link">
                 <MapIcon className="h-4 w-4" aria-hidden />
                 地図で見る
-              </>
-            ) : (
-              <>
-                <PencilLine className="h-4 w-4" aria-hidden />
-                ルートをかいてみる
-              </>
-            )}
-          </Button>
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className={cn("chunky-press h-10 rounded-full px-4 font-black text-white", cls.focus)}
+              style={{
+                background: color.primary,
+                boxShadow: shadow.pressGreen,
+              }}
+              onClick={(e) => runAction(e, () => onClick(route))}
+            >
+              <PencilLine className="h-4 w-4" aria-hidden />
+              ルートをかいてみる
+            </Button>
+          )}
 
           {showCompareToggle && onToggleCompare && (
             <Button

@@ -37,6 +37,36 @@ export function matchesSchoolCategory(categories: readonly string[]): boolean {
 // Mapbox のカテゴリ付与が無い学校 POI も拾えるよう、名称でも判定する
 const SCHOOL_NAME_PATTERN = /学校|小学|中学|高校|高等|幼稚園|保育|学園|義務教育/
 
+export function looksLikeSchoolName(name: string): boolean {
+  return SCHOOL_NAME_PATTERN.test(name)
+}
+
+/** 地図の表示範囲(経度・緯度の四隅) */
+export interface LngLatBox {
+  west: number
+  south: number
+  east: number
+  north: number
+}
+
+export function isInsideBox([lng, lat]: readonly [number, number], box: LngLatBox): boolean {
+  return lng >= box.west && lng <= box.east && lat >= box.south && lat <= box.north
+}
+
+/**
+ * 地図の検索の並び(UIUX改装 項目49): いま表示している範囲の中の学校を先に出す。
+ * ほかの候補は、検索の結果の順(近さ・一致の度合い)のまま後ろに並べる。
+ */
+export function schoolsInViewFirst<T extends { center: readonly [number, number] }>(
+  results: readonly T[],
+  view: LngLatBox | null,
+  isSchoolResult: (result: T) => boolean,
+): T[] {
+  if (!view) return [...results]
+  const inView = results.filter((result) => isSchoolResult(result) && isInsideBox(result.center, view))
+  return [...inView, ...results.filter((result) => !inView.includes(result))]
+}
+
 export interface SchoolSearchResult {
   id: string
   name: string
@@ -83,7 +113,7 @@ function toSchoolResult(feature: SearchBoxFeature): SchoolSearchResult | null {
   const properties = feature.properties ?? {}
   const name = properties.name ?? ""
   const categories = toStringArray(properties.poi_category)
-  if (!matchesSchoolCategory(categories) && !SCHOOL_NAME_PATTERN.test(name)) {
+  if (!matchesSchoolCategory(categories) && !looksLikeSchoolName(name)) {
     return null
   }
 

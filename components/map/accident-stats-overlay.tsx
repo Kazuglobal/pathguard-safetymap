@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
+import { AccidentDataLinks } from "@/components/map/accident-data-links"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
 import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
@@ -51,7 +52,9 @@ export function AccidentStatsOverlay({
     <section aria-label="周辺事故の集計" className={`absolute z-20 rounded-2xl border border-slate-200 bg-white shadow-lg ${
       isMobile
         ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] left-3 right-3 max-h-[55dvh]'
-        : 'top-24 right-4 w-96 max-h-[calc(100vh-8rem)]'
+        // パソコンでは上の列(検索・通学路チェック・くわしい表示の列まで)の下に置く。top-24 だと、幅 890px 未満では閉じるボタンが、
+        // それより広くても見出しが、上の列の下に潜っていた(lib/map-overlay-ui.ts の BELOW_MAP_TOP_ROWS の md の unfolded と同じ高さ)
+        : 'top-[calc(env(safe-area-inset-top,0px)+16.5rem)] right-4 w-96 max-h-[calc(100dvh-18rem)]'
     } overflow-y-auto`}>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white p-3">
         <div className="flex items-start justify-between gap-2">
@@ -89,6 +92,8 @@ export function AccidentStatsOverlay({
           <AccidentStatsPanel stats={stats} mode="full" onAccidentNavigate={onAccidentNavigate} />
         </div>
       )}
+      {/* 事故をくわしく調べる画面へ(UIUX改装 項目43) */}
+      {status === 'loaded' && stats && <AccidentDataLinks className="p-3" />}
       {center && <PointHazardSection center={center} locationSource={locationSource} />}
     </section>
   )

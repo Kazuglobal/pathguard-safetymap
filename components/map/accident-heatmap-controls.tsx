@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/drawer'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { AccidentDataLinks } from '@/components/map/accident-data-links'
 import {
   Select,
   SelectContent,
@@ -239,6 +240,9 @@ function HeatmapFilterBody({
           ズームアウト: ヒートマップ / ズームイン: 個別マーカー
         </p>
       </div>
+
+      {/* 事故をくわしく調べる画面へ(UIUX改装 項目43) */}
+      <AccidentDataLinks className="border-t border-gray-100 pt-2" />
     </div>
   )
 }

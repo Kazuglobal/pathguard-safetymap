@@ -4,6 +4,7 @@
  * 実装と食い違っていないかは tests/unit/lib/product-facts.test.ts が確かめる(機能の画面があるか・登録の欄の数など)。
  */
 
+import { AR_SPEED_SUPPRESS_THRESHOLD_KMH } from "./ar-safety"
 import { BRAND } from "./brand"
 
 export const PRODUCT_FACTS = {
@@ -42,6 +43,13 @@ export const PRODUCT_FACTS = {
     parent: "写真は、顔をスマホの中で自動でぼかし、ナンバーや表札は指でなぞって隠してから送ります。",
     /** ホームの安心の根拠(短い言い方。自動でぼかすものを言い切らない) */
     short: "写真はスマホの中でぼかしてから保存",
+  },
+  ar: {
+    /**
+     * AR(カメラの映像に危険を重ねる)の、速さによるお知らせの停止(項目45。lib/ar-safety.ts)。
+     * 速さを測れない端末では止まらないので、言い切らない。AR の起動時と紹介HPの「安心への配慮」で同じ文を出す
+     */
+    speedSuppress: `速く移動しているとき(時速${AR_SPEED_SUPPRESS_THRESHOLD_KMH}kmより速いとき)は、危険に近づいたお知らせを止めます(速さを測れる端末のとき)。`,
   },
   demo: {
     /** ログインの画面の「デモユーザーで試す」の説明(項目3) */

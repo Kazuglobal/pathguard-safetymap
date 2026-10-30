@@ -87,7 +87,7 @@ export function AccountCredentialsSettings() {
 
   return (
     <section aria-labelledby="account-credentials-title" className="space-y-4" data-testid="account-credentials-settings">
-      <h4 id="account-credentials-title" className="text-base font-bold">メールアドレスとパスワード</h4>
+      <h3 id="account-credentials-title" className="text-base font-bold">メールアドレスとパスワード</h3>
 
       {demoAccount ? (
         <p className="text-sm" style={{ color: t.color.inkSoft }}>

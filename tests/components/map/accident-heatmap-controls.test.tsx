@@ -27,6 +27,24 @@ describe('AccidentHeatmapControls', () => {
     expect(onToggleVisibility).toHaveBeenCalledTimes(1)
   })
 
+  // 事故レイヤーから、事故をくわしく調べる画面へ(UIUX改装 項目43)
+  it('links to the accident explorer and the road data page when visible', () => {
+    render(
+      <AccidentHeatmapControls
+        filters={DEFAULT_HEATMAP_FILTERS}
+        onFiltersChange={vi.fn()}
+        isVisible={true}
+        onToggleVisibility={vi.fn()}
+        isLoading={false}
+        featureCount={10}
+        error={null}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: /街の事故を調べる/ })).toHaveAttribute('href', '/accidents')
+    expect(screen.getByRole('link', { name: /事故の多い道/ })).toHaveAttribute('href', '/xroad')
+  })
+
   it('shows loading, count, and error states when visible', () => {
     const { rerender } = render(
       <AccidentHeatmapControls

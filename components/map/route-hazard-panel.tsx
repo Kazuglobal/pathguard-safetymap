@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { Flame, Layers, Navigation, Route as RouteIcon } from "lucide-react"
 
 import { HazardReasonList } from "@/components/map/hazard-reason-list"
@@ -33,6 +34,8 @@ const TsunamiIcon = TSUNAMI.icon
 
 interface RouteHazardPanelProps {
   routes: UserRoute[]
+  /** 通学路の一覧の読み込みのようす(渡さなければ読み込み済みとみなす) */
+  routesStatus?: RoutesStatus
   selectedRouteId: string | null
   selectedHazardsCount: number
   summary?: RouteSafetySummary
@@ -57,8 +60,52 @@ interface RouteHazardPanelProps {
   variant?: "default" | "inline"
 }
 
+/**
+ * 通学路が無い・道すじ(線)が無いときの理由と、直し方(UIUX改装 項目50)。
+ * 線が無いと、地図に通学路を引けず、道ぞいの危険も調べられない
+ */
+function RouteGeometryNotice({
+  routeCount,
+  selectedRoute,
+  routesStatus,
+}: {
+  routeCount: number
+  selectedRoute: UserRoute | null
+  routesStatus: RoutesStatus
+}) {
+  // 読み込み中・読み込めなかったときは「まだ登録されていません」と言わない(同じ通学路を二重に登録させないため)
+  if (routeCount === 0 && routesStatus !== "ready") {
+    return (
+      <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" data-testid="route-geometry-notice">
+        {routesStatus === "loading"
+          ? "通学路を読み込んでいます…"
+          : "通学路を読み込めませんでした。通信状態を確認して、地図を開き直してください。"}
+      </p>
+    )
+  }
+  const message =
+    routeCount === 0
+      ? "通学路がまだ登録されていません。登録すると、通学路の近くの危険と事故の多い場所をここで確かめられます。"
+      : selectedRoute && !selectedRoute.route_geometry?.coordinates?.length
+        ? "この通学路には道すじ(線)が無いので、地図に線を引けず、道ぞいの危険も調べられません。道すじをかかずに登録したときや、位置を粗く保存する設定で別の端末から登録したときに起きます。通学路の画面で道すじをかき直してください。"
+        : null
+  if (!message) return null
+  return (
+    <div role="status" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950" data-testid="route-geometry-notice">
+      <p>{message}</p>
+      <Link href="/routes" className="inline-flex min-h-9 items-center font-bold underline underline-offset-4">
+        {routeCount === 0 ? "通学路を登録する" : "通学路の画面へ"}
+      </Link>
+    </div>
+  )
+}
+
+/** 通学路の一覧の読み込みのようす(map-container が useUserRoutes の isLoading・error から決める) */
+export type RoutesStatus = "loading" | "error" | "ready"
+
 interface HazardPanelContentProps {
   routes: UserRoute[]
+  routesStatus: RoutesStatus
   selectedRouteId: string | null
   selectedHazardsCount: number
   toggles: Record<HazardType, boolean>
@@ -69,6 +116,7 @@ interface HazardPanelContentProps {
 
 function HazardPanelContent({
   routes,
+  routesStatus,
   selectedRouteId,
   selectedHazardsCount,
   toggles,
@@ -76,8 +124,10 @@ function HazardPanelContent({
   onRouteChange,
   onToggleChange,
 }: HazardPanelContentProps) {
+  const selectedRoute = routes.find((route) => route.id === selectedRouteId) ?? null
   return (
     <>
+      <RouteGeometryNotice routeCount={routes.length} selectedRoute={selectedRoute} routesStatus={routesStatus} />
       <div className="space-y-2">
         <Label htmlFor="route-hazard-select">対象ルート</Label>
         <Select value={selectedRouteId ?? undefined} onValueChange={onRouteChange}>
@@ -140,6 +190,7 @@ function HazardPanelContent({
 
 export function RouteHazardPanel({
   routes,
+  routesStatus = "ready",
   selectedRouteId,
   selectedHazardsCount,
   summary,
@@ -244,6 +295,7 @@ export function RouteHazardPanel({
         </div>
         <HazardPanelContent
           routes={routes}
+          routesStatus={routesStatus}
           selectedRouteId={selectedRouteId}
           selectedHazardsCount={selectedHazardsCount}
           toggles={toggles}
@@ -298,6 +350,7 @@ export function RouteHazardPanel({
                 </div>
                 <HazardPanelContent
                   routes={routes}
+                  routesStatus={routesStatus}
                   selectedRouteId={selectedRouteId}
                   selectedHazardsCount={selectedHazardsCount}
                   toggles={toggles}
@@ -333,6 +386,7 @@ export function RouteHazardPanel({
         <HazardReasonList items={evidenceItems} />
         <HazardPanelContent
           routes={routes}
+          routesStatus={routesStatus}
           selectedRouteId={selectedRouteId}
           selectedHazardsCount={selectedHazardsCount}
           toggles={toggles}

@@ -48,10 +48,16 @@ describe("MapPageClient", () => {
     mocks.usePathname.mockReturnValue("/map")
   })
 
-  it("provides an entry point to reopen the tutorial", () => {
+  // 「使い方」は地図のヘルプ。はじめての案内は、ヘルプの中から別に開く(UIUX改装 項目51)
+  it("opens the map help from 「使い方」, and the first-time guide only from inside the help", () => {
     render(<MapPageClient />)
 
     fireEvent.click(screen.getByRole("button", { name: "使い方を確認" }))
+
+    expect(screen.getByText("地図の使い方")).toBeInTheDocument()
+    expect(screen.queryByTestId("app-onboarding")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /はじめての案内をもう一度/ }))
 
     expect(screen.getByTestId("app-onboarding")).toBeInTheDocument()
   })

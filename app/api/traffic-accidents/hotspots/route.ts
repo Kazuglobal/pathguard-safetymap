@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       maxLat: requiredNumber(params, 'maxLat'),
       limit: optionalNumber(params, 'limit'),
     })
-    return NextResponse.json(result)
+    // 警察庁の公開データの集計で、人によって変わらない。同じ範囲の取り直しはブラウザの中で済ませる(ログインが要るので private)
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=600' } })
   } catch (error) {
     return routeError(error)
   }

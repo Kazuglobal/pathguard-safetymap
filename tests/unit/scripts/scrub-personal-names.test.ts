@@ -74,6 +74,9 @@ function countFullNames(): number {
 
 beforeEach(() => {
   database = createTestDatabase()
+  // テストの D1 は列を消すマイグレーション(20261029235818)まで当たっている。
+  // このスクリプトは列を消す前の本番に流したので、その形(full_name の列がある)にもどして確かめる
+  database.sqlite.exec('ALTER TABLE profiles ADD COLUMN full_name text')
   addProfile(GOOGLE_USER.id, '山田 花子')
   addProfile(EMAIL_USER.id, '鈴木 一郎')
   addProfile(CLEAN_USER.id, null)

@@ -61,7 +61,7 @@ export function AccountDeletionSettings() {
 
   return (
     <section aria-labelledby="account-deletion-title" className="space-y-2" data-testid="account-deletion-settings">
-      <h4 id="account-deletion-title" className="text-base font-bold">アカウントを削除</h4>
+      <h3 id="account-deletion-title" className="text-base font-bold">アカウントを削除</h3>
       {demoAccount ? (
         <p className="text-sm" style={{ color: t.color.inkSoft }}>
           {DEMO_ACCOUNT_LOCKED_MESSAGE}

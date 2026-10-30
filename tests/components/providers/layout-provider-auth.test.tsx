@@ -140,6 +140,17 @@ describe("画面下に浮かぶお願い", () => {
     expect(screen.queryByTestId("privacy-update-notice")).not.toBeInTheDocument()
   })
 
+  it("マイページでは通知のお願いを浮かべない(いちばん上に同じカードを出す)。お知らせ(個人情報の扱いの変更)は出す", async () => {
+    pathname = "/mypage"
+    window.history.pushState({}, "", "/mypage")
+    fakeSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u1" } }, error: null })
+    render(<LayoutProvider>本文</LayoutProvider>)
+
+    expect(await screen.findByTestId("privacy-update-notice")).toBeInTheDocument()
+    expect(screen.queryByTestId("push-prompt")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("ios-install-prompt")).not.toBeInTheDocument()
+  })
+
   it("ふつうの画面ではログイン中の人に出す", async () => {
     pathname = "/landing"
     window.history.pushState({}, "", "/landing")

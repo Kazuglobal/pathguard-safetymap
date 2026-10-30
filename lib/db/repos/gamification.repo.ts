@@ -1,13 +1,12 @@
 import { and, desc, eq, like, not, sql } from 'drizzle-orm'
 
+import { POINTS_PER_LEVEL } from '@/lib/gamification-levels'
 import { HUNTER_CHALLENGE_PREFIX } from '@/lib/hunter/rewards'
 import { excludedEmailCondition, getLeaderboardExclusions } from '@/lib/leaderboard-exclusions'
 
 import { assertCan, type Actor } from '../authz'
 import { getDb, type AppDb } from '../client'
 import { badges, missions, profiles, safetyQuestAttempts, userBadges, userMissionProgress, userPoints } from '../schema'
-
-const POINTS_PER_LEVEL = 500
 
 type SafetyQuestAttemptInput = Omit<typeof safetyQuestAttempts.$inferInsert, 'id' | 'userId'>
 

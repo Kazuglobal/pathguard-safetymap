@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HelpCircle } from "lucide-react"
 
 import AppOnboarding from "@/components/onboarding/app-onboarding"
+import HelpDialog from "@/components/map/help-dialog"
 import { Button } from "@/components/ui/button"
 import { tankenTokens } from "@/lib/design/tanken"
 // 地図を開いた直後(app/map/loading.tsx)と同じ待ち表示
@@ -18,6 +19,7 @@ const MapContainer = dynamic(() => import("@/components/map/map-container"), {
 
 export default function MapPageClient() {
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -59,13 +61,16 @@ export default function MapPageClient() {
             boxShadow: tankenTokens.shadow.float,
             backdropFilter: "blur(10px)",
           }}
-          onClick={() => setShowTutorial(true)}
+          // 「使い方」は地図のヘルプ。はじめての案内(絵本のガイド)は、ヘルプの中から別に開く(UIUX改装 項目51)
+          onClick={() => setShowHelp(true)}
           aria-label="使い方を確認"
         >
           <HelpCircle className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">使い方</span>
         </Button>
       </div>
+
+      <HelpDialog open={showHelp} onOpenChange={setShowHelp} onReplayOnboarding={() => setShowTutorial(true)} />
 
       <AppOnboarding
         open={showTutorial}

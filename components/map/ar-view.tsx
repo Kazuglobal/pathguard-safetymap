@@ -42,6 +42,7 @@ import { createKidsHazardCue, isApproachingHazard } from "@/lib/ar-learning-tour
 import { trackEvent } from "@/lib/analytics"
 import { buildRouteLearningSessionPayload } from "@/lib/route-learning-session-payload"
 import { getARSafetySuppression } from "@/lib/ar-safety"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
@@ -656,6 +657,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
                 <p id="ar-safety-description" className="mt-2 text-sm leading-6 text-slate-700">
                   歩きながら画面を見続けないでください。危険ポイントでは必ず立ち止まり、保護者が周囲を確認してから子どもと一緒に内容を見てください。
                 </p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{PRODUCT_FACTS.ar.speedSuppress}</p>
               </div>
             </div>
 
@@ -783,8 +785,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
             <div className="text-center text-white max-w-xs">
               <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent mx-auto" aria-hidden="true" />
               <p className="text-sm font-medium mb-2">{loadingStep}</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-300">
                 カメラと位置情報の許可が必要です
+              </p>
+              {/* 起動時に、速く移動しているときはお知らせを止めることを伝える(UIUX改装 項目45) */}
+              <p className="mt-2 text-xs text-gray-300" data-testid="ar-speed-suppress-note">
+                {PRODUCT_FACTS.ar.speedSuppress}
               </p>
             </div>
           </div>

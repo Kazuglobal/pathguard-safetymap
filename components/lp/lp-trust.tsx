@@ -1,9 +1,9 @@
 "use client"
 
-import { ShieldCheck, EyeOff, HeartHandshake } from "lucide-react"
+import { ShieldCheck, EyeOff, Footprints, HeartHandshake } from "lucide-react"
 import { LP_TRUST } from "@/lib/lp-content"
 
-const TRUST_ICONS = [ShieldCheck, EyeOff, HeartHandshake]
+const TRUST_ICONS = [ShieldCheck, EyeOff, Footprints, HeartHandshake]
 
 export function LpTrust() {
   return (
@@ -19,7 +19,7 @@ export function LpTrust() {
           {LP_TRUST.headline}
         </h2>
 
-        <div data-reveal-group className="mt-14 grid gap-6 md:grid-cols-3">
+        <div data-reveal-group className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {LP_TRUST.items.map((item, index) => {
             const Icon = TRUST_ICONS[index] ?? ShieldCheck
             return (

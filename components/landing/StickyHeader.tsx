@@ -3,6 +3,9 @@
 import Link from "next/link"
 
 import { BrandLogo } from "@/components/brand/brand-logo"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+import { useOptionalAuth } from "@/components/providers/auth-context"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -13,6 +16,10 @@ const C = tankenTokens.color
  * 遷移先が存在しないダミーだったため撤去した。
  */
 export function StickyHeader() {
+  // スマホのホームでもお知らせのベルを出す(ほかの画面はグローバルナビにある。UIUX改装 項目37)
+  const isLoggedIn = useOptionalAuth()?.status === "authenticated"
+  // このヘッダーはスマホのときだけ見える。パソコンでは上のナビのベルだけが通知を読む(ベルを2つ動かさない)
+  const isMobile = useIsMobile()
   return (
     <header
       className="fixed left-0 right-0 top-0 z-40 border-b md:hidden"
@@ -29,16 +36,20 @@ export function StickyHeader() {
           <BrandLogo size="md" />
         </Link>
 
-        <Link
-          href="/map"
-          className={`rounded-full px-4 py-1.5 text-sm font-bold text-white transition-transform active:translate-y-[2px] active:shadow-none ${tankenTokens.cls.focus}`}
-          style={{
-            background: C.primary,
-            boxShadow: "0 3px 0 #0C7A55",
-          }}
-        >
-          地図をみる
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/map"
+            className={`rounded-full px-4 py-1.5 text-sm font-bold text-white transition-transform active:translate-y-[2px] active:shadow-none ${tankenTokens.cls.focus}`}
+            style={{
+              background: C.primary,
+              boxShadow: "0 3px 0 #0C7A55",
+            }}
+          >
+            地図をみる
+          </Link>
+          {/* 一覧は右端を基準に開くので、ベルは右端に置く */}
+          <NotificationBell isLoggedIn={isLoggedIn && isMobile} />
+        </div>
       </div>
     </header>
   )

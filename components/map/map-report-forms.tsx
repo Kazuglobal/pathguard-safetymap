@@ -4,6 +4,7 @@ import type { ComponentProps } from "react"
 import dynamic from "next/dynamic"
 import { createPortal } from "react-dom"
 import { MapPin } from "lucide-react"
+import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
 // 報告フォーム(約2,000行)は開いたときにだけ読み込む。地図の最初の表示を重くしないため
 const DangerReportForm = dynamic(() => import("@/components/danger-report/danger-report-form"), {
@@ -89,7 +90,7 @@ export function MapReportForms({
           <MapPin className="h-4 w-4" strokeWidth={2.6} />
           地点を変更
         </button>
-        <h2 className="text-[16px] font-black" style={{ color: "#43392B" }}>危険箇所を報告</h2>
+        <h2 className="text-[16px] font-black" style={{ color: "#43392B" }}>{REPORT_ENTRY_LABEL}</h2>
         <button
           type="button"
           onClick={onMobileClose}

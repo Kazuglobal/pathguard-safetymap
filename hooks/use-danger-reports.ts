@@ -5,6 +5,7 @@ import type { DangerReport } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 import { isAbortLikeError, isTransientFetchError, sleep } from "@/lib/map/map-fetch-utils"
+import type { ReportsLoadState } from "@/lib/map/empty-area-notice"
 import { NATIONWIDE } from "@/lib/user-region"
 import { DANGER_LEVEL_MAX } from "@/lib/report-generation/danger-level-presentation"
 
@@ -104,6 +105,9 @@ export function useDangerReports({
   // 絞り込み条件の変更による再取得中フラグ。ユーザーが操作した一覧側だけで進行を伝え、
   // 地図は覆わない（地図を覆っていいのは初回取得だけ）。
   const [isFilterRefreshing, setIsFilterRefreshing] = useState(false)
+  // 最後の取得が成功したか・失敗したか(地図の「まだ報告がありません」を、取れなかったときに出さないため)。
+  // 地図を動かした取り直しの間は前の結果のまま(読み込み中にはしない)
+  const [reportsLoadState, setReportsLoadState] = useState<ReportsLoadState>("idle")
 
   useEffect(() => {
     if (!supabase || !enabled) return // Ensure supabase is initialized and caller is ready
@@ -153,6 +157,7 @@ export function useDangerReports({
             // 失敗した取得を「読み込み済み」にすると、一度もマーカーを出せていないのに
             // 以後の取得が無言になり、空の地図のまま何も知らせなくなる
             hasLoadedReportsOnceRef.current = true
+            setReportsLoadState("loaded")
             return
           } catch (attemptError: any) {
             if (abortController.signal.aborted || requestId !== reportsFetchRequestIdRef.current) return
@@ -176,6 +181,7 @@ export function useDangerReports({
         console.error("Error fetching reports stringified:", JSON.stringify(error)) // JSON文字列化
 
         toast({ title: "データ取得エラー", description: `危険箇所データの取得エラー: ${error?.message || '詳細不明'}`, variant: "destructive" }) // messageがない場合も考慮
+        setReportsLoadState("error")
         // 地図を動かしただけの更新に失敗したときに表示中のマーカー・一覧まで消すと、
         // 「地図を動かしたら危険箇所が消えた」ように見えるので、そのときは表示を保つ。
         // 逆に絞り込み変更の失敗で古い一覧を残すと、選んだ条件と矛盾した一覧が残ってしまう
@@ -197,5 +203,5 @@ export function useDangerReports({
     }
   }, [supabase, filterOptions, toast, setIsLoading, enabled])
 
-  return { dangerReports, pendingReports, setDangerReports, setPendingReports, isFilterRefreshing }
+  return { dangerReports, pendingReports, setDangerReports, setPendingReports, isFilterRefreshing, reportsLoadState }
 }
