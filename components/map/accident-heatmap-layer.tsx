@@ -5,7 +5,10 @@ import { useEventCallback } from '@/hooks/use-event-callback'
 import { showPopupInView } from '@/components/map/map-popup-in-view'
 import mapboxgl from 'mapbox-gl'
 import type { AccidentGeoJSON } from '@/lib/traffic-accident-heatmap'
-import { HEATMAP_MAX_ZOOM, CIRCLE_MIN_ZOOM, getSeverityLabel } from '@/lib/traffic-accident-heatmap'
+import { HEATMAP_MAX_ZOOM, CIRCLE_MIN_ZOOM } from '@/lib/traffic-accident-heatmap'
+import { toPopupDisplayData } from '@/lib/accident-display'
+export { toPopupDisplayData } from '@/lib/accident-display'
+import type { StreetViewTarget } from '@/lib/street-view'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -18,19 +21,6 @@ const CIRCLE_LAYER_ID = 'accident-circle-layer'
 const EMPTY_GEOJSON: GeoJSON.FeatureCollection = {
   type: 'FeatureCollection',
   features: [],
-}
-
-interface PopupDisplayData {
-  severity: number | null
-  severityLabel: string
-  year: number | null
-  type: string | null
-  weather: string | null
-  fatalities: number
-  injuries: number
-  hasChild: boolean
-  hasYoung: boolean
-  hasPedestrian: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -46,6 +36,7 @@ interface AccidentHeatmapLayerProps {
   isVisible: boolean
   /** ポップアップの「近くの報告を見る」導線。事故地点座標([lng, lat])を渡す。未指定ならボタン非表示 */
   onShowNearbyReports?: (coords: [number, number]) => void
+  onShowStreetView?: (target: StreetViewTarget) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -165,49 +156,12 @@ function removeSourceAndLayers(m: mapboxgl.Map) {
   safeRemoveSource(m, SOURCE_ID)
 }
 
-function parseBoolean(value: unknown): boolean {
-  return value === true || value === 'true' || value === 1 || value === '1'
-}
-
-function parseNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const num = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(num) ? num : null
-}
-
-function parseNonNegativeNumber(value: unknown): number {
-  const parsed = parseNullableNumber(value)
-  if (parsed === null) return 0
-  return Math.max(0, parsed)
-}
-
-function parseText(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-export function toPopupDisplayData(properties: Record<string, unknown>): PopupDisplayData {
-  const severity = parseNullableNumber(properties.severity)
-  return {
-    severity,
-    severityLabel: getSeverityLabel(severity),
-    year: parseNullableNumber(properties.year),
-    type: parseText(properties.type),
-    weather: parseText(properties.weather),
-    fatalities: parseNonNegativeNumber(properties.fatalities),
-    injuries: parseNonNegativeNumber(properties.injuries),
-    hasChild: parseBoolean(properties.hasChild),
-    hasYoung: parseBoolean(properties.hasYoung),
-    hasPedestrian: parseBoolean(properties.hasPedestrian),
-  }
-}
-
 export function buildAccidentPopupContent(
   properties: Record<string, unknown>,
   options?: {
     /** 「近くの報告を見る」ボタンを表示し、クリック時に呼ぶ */
     onShowNearbyReports?: () => void
+    onShowStreetView?: () => void
   },
 ): HTMLDivElement {
   const data = toPopupDisplayData(properties)
@@ -296,6 +250,14 @@ export function buildAccidentPopupContent(
     root.appendChild(button)
   }
 
+  if (options?.onShowStreetView) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = '現地の景色を見る'
+    button.style.cssText = 'display:block;min-height:44px;width:100%;margin-top:8px;padding:8px 12px;background:#159e72;color:white;border-radius:18px;font-weight:700;cursor:pointer'
+    button.addEventListener('click', options.onShowStreetView)
+    root.appendChild(button)
+  }
   return root
 }
 
@@ -313,7 +275,7 @@ export function buildAccidentPopupContent(
  * - Cursor change on hover
  * - Handles style changes (re-add layers after style.load)
  */
-export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyReports }: AccidentHeatmapLayerProps) {
+export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyReports, onShowStreetView }: AccidentHeatmapLayerProps) {
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const layersAddedRef = useRef(false)
   const latestGeoJSONRef = useRef<AccidentGeoJSON | null>(geoJSON)
@@ -337,14 +299,13 @@ export function AccidentHeatmapLayer({ map, geoJSON, isVisible, onShowNearbyRepo
     const props = (feature.properties ?? {}) as Record<string, unknown>
     const content = buildAccidentPopupContent(
       props,
-      onShowNearbyReports
-        ? {
-            onShowNearbyReports: () => {
+      {
+            onShowStreetView: onShowStreetView ? () => onShowStreetView({ coordinates: coords, properties: props }) : undefined,
+            onShowNearbyReports: onShowNearbyReports ? () => {
               popupRef.current?.remove()
               onShowNearbyReports(coords)
-            },
-          }
-        : undefined,
+            } : undefined,
+      },
     )
 
     // Remove previous popup

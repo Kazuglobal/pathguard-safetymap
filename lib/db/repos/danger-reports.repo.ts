@@ -56,7 +56,7 @@ function validateListInput(input: DangerReportListInput): number {
   return limit
 }
 
-function validateCreate(input: CreateDangerReportInput): void {
+export function validateCreate(input: CreateDangerReportInput): void {
   if (!input.title.trim() || input.title.length > 200) throw new RangeError('Invalid title')
   if (input.description != null && input.description.length > 5_000) throw new RangeError('Invalid description')
   if (!/^[a-z0-9_-]{1,64}$/i.test(input.dangerType)) throw new RangeError('Invalid dangerType')

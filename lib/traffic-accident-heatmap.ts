@@ -63,6 +63,7 @@ export interface AccidentFeature {
 /** GeoJSON FeatureCollection of accidents */
 export interface AccidentGeoJSON {
   type: 'FeatureCollection'
+  truncated?: boolean
   features: AccidentFeature[]
 }
 
@@ -159,6 +160,15 @@ export async function fetchAccidentsInBounds(
   filters: AccidentHeatmapFilters,
   options: FetchAccidentsOptions = {},
 ): Promise<AccidentGeoJSON> {
+  return fetchAccidentFeatures(bounds, filters, options)
+}
+
+/** Shared same-origin authenticated fetch. Does not require a Supabase browser client. */
+export async function fetchAccidentFeatures(
+  bounds: ViewportBounds,
+  filters: AccidentHeatmapFilters,
+  options: FetchAccidentsOptions = {},
+): Promise<AccidentGeoJSON> {
   const normalizedBounds = normalizeBounds(bounds)
   if (!normalizedBounds) {
     return createEmptyFeatureCollection()
@@ -223,7 +233,7 @@ export async function fetchAccidentsInBounds(
     // Validate shape
     const result = data as unknown as AccidentGeoJSON | null
     if (!result || result.type !== 'FeatureCollection' || !Array.isArray(result.features)) {
-      return createEmptyFeatureCollection()
+      throw new Error('事故データの応答を確認できません')
     }
 
     return result

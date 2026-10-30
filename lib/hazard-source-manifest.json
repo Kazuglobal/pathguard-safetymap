@@ -1,0 +1,758 @@
+{
+  "A31b-25_20_3927_GEOJSON": {
+    "region": "1次メッシュ3927",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_3928_GEOJSON": {
+    "region": "1次メッシュ3928",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4028_GEOJSON": {
+    "region": "1次メッシュ4028",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4730_GEOJSON": {
+    "region": "1次メッシュ4730",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4829_GEOJSON": {
+    "region": "1次メッシュ4829",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4830_GEOJSON": {
+    "region": "1次メッシュ4830",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4831_GEOJSON": {
+    "region": "1次メッシュ4831",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4930_GEOJSON": {
+    "region": "1次メッシュ4930",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4931_GEOJSON": {
+    "region": "1次メッシュ4931",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_4932_GEOJSON": {
+    "region": "1次メッシュ4932",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5030_GEOJSON": {
+    "region": "1次メッシュ5030",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5031_GEOJSON": {
+    "region": "1次メッシュ5031",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5032_GEOJSON": {
+    "region": "1次メッシュ5032",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5033_GEOJSON": {
+    "region": "1次メッシュ5033",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5034_GEOJSON": {
+    "region": "1次メッシュ5034",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5035_GEOJSON": {
+    "region": "1次メッシュ5035",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5036_GEOJSON": {
+    "region": "1次メッシュ5036",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5133_GEOJSON": {
+    "region": "1次メッシュ5133",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5134_GEOJSON": {
+    "region": "1次メッシュ5134",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5135_GEOJSON": {
+    "region": "1次メッシュ5135",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5136_GEOJSON": {
+    "region": "1次メッシュ5136",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5138_GEOJSON": {
+    "region": "1次メッシュ5138",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5234_GEOJSON": {
+    "region": "1次メッシュ5234",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5235_GEOJSON": {
+    "region": "1次メッシュ5235",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5236_GEOJSON": {
+    "region": "1次メッシュ5236",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5237_GEOJSON": {
+    "region": "1次メッシュ5237",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5238_GEOJSON": {
+    "region": "1次メッシュ5238",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5239_GEOJSON": {
+    "region": "1次メッシュ5239",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5240_GEOJSON": {
+    "region": "1次メッシュ5240",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5334_GEOJSON": {
+    "region": "1次メッシュ5334",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5335_GEOJSON": {
+    "region": "1次メッシュ5335",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5336_GEOJSON": {
+    "region": "1次メッシュ5336",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5337_GEOJSON": {
+    "region": "1次メッシュ5337",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5338_GEOJSON": {
+    "region": "1次メッシュ5338",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5339_GEOJSON": {
+    "region": "1次メッシュ5339",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5340_GEOJSON": {
+    "region": "1次メッシュ5340",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5436_GEOJSON": {
+    "region": "1次メッシュ5436",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5437_GEOJSON": {
+    "region": "1次メッシュ5437",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5438_GEOJSON": {
+    "region": "1次メッシュ5438",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5439_GEOJSON": {
+    "region": "1次メッシュ5439",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5440_GEOJSON": {
+    "region": "1次メッシュ5440",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5536_GEOJSON": {
+    "region": "1次メッシュ5536",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5537_GEOJSON": {
+    "region": "1次メッシュ5537",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5538_GEOJSON": {
+    "region": "1次メッシュ5538",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5539_GEOJSON": {
+    "region": "1次メッシュ5539",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5540_GEOJSON": {
+    "region": "1次メッシュ5540",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5541_GEOJSON": {
+    "region": "1次メッシュ5541",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5636_GEOJSON": {
+    "region": "1次メッシュ5636",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5637_GEOJSON": {
+    "region": "1次メッシュ5637",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5638_GEOJSON": {
+    "region": "1次メッシュ5638",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5639_GEOJSON": {
+    "region": "1次メッシュ5639",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5640_GEOJSON": {
+    "region": "1次メッシュ5640",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5738_GEOJSON": {
+    "region": "1次メッシュ5738",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5739_GEOJSON": {
+    "region": "1次メッシュ5739",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5740_GEOJSON": {
+    "region": "1次メッシュ5740",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5741_GEOJSON": {
+    "region": "1次メッシュ5741",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5840_GEOJSON": {
+    "region": "1次メッシュ5840",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5841_GEOJSON": {
+    "region": "1次メッシュ5841",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5940_GEOJSON": {
+    "region": "1次メッシュ5940",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_5941_GEOJSON": {
+    "region": "1次メッシュ5941",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6040_GEOJSON": {
+    "region": "1次メッシュ6040",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6041_GEOJSON": {
+    "region": "1次メッシュ6041",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6140_GEOJSON": {
+    "region": "1次メッシュ6140",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6141_GEOJSON": {
+    "region": "1次メッシュ6141",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6239_GEOJSON": {
+    "region": "1次メッシュ6239",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6240_GEOJSON": {
+    "region": "1次メッシュ6240",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6243_GEOJSON": {
+    "region": "1次メッシュ6243",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6339_GEOJSON": {
+    "region": "1次メッシュ6339",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6340_GEOJSON": {
+    "region": "1次メッシュ6340",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6341_GEOJSON": {
+    "region": "1次メッシュ6341",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6342_GEOJSON": {
+    "region": "1次メッシュ6342",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6343_GEOJSON": {
+    "region": "1次メッシュ6343",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6439_GEOJSON": {
+    "region": "1次メッシュ6439",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6440_GEOJSON": {
+    "region": "1次メッシュ6440",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6441_GEOJSON": {
+    "region": "1次メッシュ6441",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6442_GEOJSON": {
+    "region": "1次メッシュ6442",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6443_GEOJSON": {
+    "region": "1次メッシュ6443",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6444_GEOJSON": {
+    "region": "1次メッシュ6444",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6445_GEOJSON": {
+    "region": "1次メッシュ6445",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6540_GEOJSON": {
+    "region": "1次メッシュ6540",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6541_GEOJSON": {
+    "region": "1次メッシュ6541",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6542_GEOJSON": {
+    "region": "1次メッシュ6542",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6543_GEOJSON": {
+    "region": "1次メッシュ6543",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6544_GEOJSON": {
+    "region": "1次メッシュ6544",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6545_GEOJSON": {
+    "region": "1次メッシュ6545",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6641_GEOJSON": {
+    "region": "1次メッシュ6641",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6642_GEOJSON": {
+    "region": "1次メッシュ6642",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6643_GEOJSON": {
+    "region": "1次メッシュ6643",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6644_GEOJSON": {
+    "region": "1次メッシュ6644",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6645_GEOJSON": {
+    "region": "1次メッシュ6645",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6741_GEOJSON": {
+    "region": "1次メッシュ6741",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6742_GEOJSON": {
+    "region": "1次メッシュ6742",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6841_GEOJSON": {
+    "region": "1次メッシュ6841",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A31b-25_20_6842_GEOJSON": {
+    "region": "1次メッシュ6842",
+    "name": "国土数値情報・洪水浸水想定区域（想定最大規模）",
+    "dataYear": 2025,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html"
+  },
+  "A40-16_05_GML": {
+    "region": "秋田県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_06_GML": {
+    "region": "山形県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_22_GML": {
+    "region": "静岡県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_30_GML": {
+    "region": "和歌山県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_34_GML": {
+    "region": "広島県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_35_GML": {
+    "region": "山口県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_36_GML": {
+    "region": "徳島県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_38_GML": {
+    "region": "愛媛県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_39_GML": {
+    "region": "高知県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_40_GML": {
+    "region": "福岡県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_41_GML": {
+    "region": "佐賀県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-16_47_GML": {
+    "region": "沖縄県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2016,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-17_15_GML": {
+    "region": "新潟県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2017,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-17_17_GML": {
+    "region": "石川県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2017,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-18_28_GML": {
+    "region": "兵庫県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2018,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-18_31_GML": {
+    "region": "鳥取県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2018,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-20_14_GML": {
+    "region": "神奈川県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2020,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-20_16_GML": {
+    "region": "富山県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2020,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-20_46_GML": {
+    "region": "鹿児島県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2020,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-21_02_GML": {
+    "region": "青森県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2021,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-22_03_GML": {
+    "region": "岩手県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2022,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-22_23_GML": {
+    "region": "愛知県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2022,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-22_33_GML": {
+    "region": "岡山県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2022,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-22_43_GML": {
+    "region": "熊本県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2022,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_01_GML": {
+    "region": "北海道（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_07_GML": {
+    "region": "福島県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_08_GML": {
+    "region": "茨城県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_13_GML": {
+    "region": "東京都（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_18_GML": {
+    "region": "福井県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_21_GML": {
+    "region": "岐阜県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_27_GML": {
+    "region": "大阪府（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  },
+  "A40-23_45_GML": {
+    "region": "宮崎県（当該年度版の収録範囲）",
+    "name": "国土数値情報・津波浸水想定",
+    "dataYear": 2023,
+    "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html"
+  }
+}

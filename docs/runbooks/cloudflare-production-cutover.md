@@ -4,6 +4,8 @@
 
 ## 現在の本番状態（2026-09-03）
 
+> 2026-10-30追記: AR機能の実装前確認で、ユーザーから現在のWorkers契約は **Paid** と回答された。以下の2026-09-03時点のFreeに関する記述は履歴として保持する。現在の負荷計算にFreeの1日500万行の停止条件を適用しない。分割構成と3MiBのビルド制限は互換性維持のため継続し、契約変更や公開権限の変更はこの作業では行わない。
+
 - Workers Free の15 Worker分割構成（公開router 1 + service Worker 14）を `https://path-guardian.com` へデプロイ済み。2026-09-03の全Worker再デプロイ後、D1日次backup Workflowを含むrouter versionは `8e8ca768-0b13-486e-916f-785efa377305`。
 - Cloudflare Custom Domain/TLS/HSTSは有効。`workers.dev` とPreview URLは無効化し、公開面を本番custom domainだけに限定している。
 - 本番smoke testは `/` 307→`/lp`、`/lp`・`/safety-quest`・`/login`・`/api/local-safety-alerts` 200、`/routes` 307→`/login?next=%2Froutes`、`/api/debug-env` 404を確認済み。

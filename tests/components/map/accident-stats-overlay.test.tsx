@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AccidentStatsOverlay } from '@/components/map/accident-stats-overlay'
+vi.mock('@/components/map/point-hazard-section', () => ({ PointHazardSection: () => null }))
 
 vi.mock('@/components/danger-report/accident-stats-panel', () => ({ default: () => <div>集計の中身</div> }))
 

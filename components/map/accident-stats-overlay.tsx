@@ -7,6 +7,7 @@ import { AccidentDataLinks } from "@/components/map/accident-data-links"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
 import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
+import { PointHazardSection } from './point-hazard-section'
 
 interface AccidentStatsOverlayProps {
   status: AccidentStatsStatus
@@ -91,6 +92,7 @@ export function AccidentStatsOverlay({
       )}
       {/* 事故をくわしく調べる画面へ(UIUX改装 項目43) */}
       {status === 'loaded' && stats && <AccidentDataLinks className="p-3" />}
+      {center && <PointHazardSection center={center} locationSource={locationSource} />}
     </section>
   )
 }

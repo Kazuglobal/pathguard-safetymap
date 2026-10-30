@@ -1,0 +1,792 @@
+{
+  "sources": [
+    {
+      "preparation": {
+        "source": {
+          "id": "A31b-25_20_6140_GEOJSON",
+          "kind": "flood",
+          "year": 25,
+          "region": "6140",
+          "filename": "A31b-25_20_6140_GEOJSON.zip",
+          "size": "2.22MB",
+          "url": "https://nlftp.mlit.go.jp/ksj/gml/data/A31b/A31b-25/A31b-25_20_6140_GEOJSON.zip",
+          "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html",
+          "license": "CC-BY-4.0"
+        },
+        "archiveSha256": "176f1c202dbe303d26ce246b82a615aaf8968f41d495c9c536220f01a86e7aff",
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "sourceFeatures": 10816,
+        "polygons": 10954,
+        "ndjsonBytes": 19229185,
+        "ndjsonSha256": "e5363b8fb41ef9a432a939c36d62569ebeff5ece28977e73140fd720bbed5a0b",
+        "coverageRows": 386,
+        "coveragePolicy": "exact hazard footprint; outside not inferred",
+        "samples": [
+          {
+            "longitude": 140.317035405,
+            "latitude": 41.119058883,
+            "depth": [
+              0,
+              0.5
+            ]
+          },
+          {
+            "longitude": 140.316910405,
+            "latitude": 41.119350533,
+            "depth": [
+              0,
+              0.5
+            ]
+          },
+          {
+            "longitude": 140.316972905,
+            "latitude": 41.119392233,
+            "depth": [
+              0,
+              0.5
+            ]
+          },
+          {
+            "longitude": 140.31678540500002,
+            "latitude": 41.119517232999996,
+            "depth": [
+              0,
+              0.5
+            ]
+          }
+        ],
+        "validityRepairs": 275,
+        "areaChecks": [
+          {
+            "depth": [
+              0,
+              0.5
+            ],
+            "sourceFeatures": 6440,
+            "sourceArea": 0.0006541983983259587,
+            "outputArea": 0.0006541983983259644
+          },
+          {
+            "depth": [
+              0.5,
+              3
+            ],
+            "sourceFeatures": 3005,
+            "sourceArea": 0.0021381956484429645,
+            "outputArea": 0.002138195648442955
+          },
+          {
+            "depth": [
+              3,
+              5
+            ],
+            "sourceFeatures": 1203,
+            "sourceArea": 8.746917509846416e-05,
+            "outputArea": 8.746917509846417e-05
+          },
+          {
+            "depth": [
+              5,
+              10
+            ],
+            "sourceFeatures": 167,
+            "sourceArea": 1.382082481340309e-05,
+            "outputArea": 1.3820824813403085e-05
+          },
+          {
+            "depth": [
+              10,
+              20
+            ],
+            "sourceFeatures": 1,
+            "sourceArea": 1.3020833330903905e-08,
+            "outputArea": 1.3020833330903905e-08
+          }
+        ],
+        "elapsedSeconds": 19.61,
+        "coverageSha256": "67d49ddb2928599424a9b22ab375c4f867ee8efa71dfcf906f62899fbd3e675c"
+      },
+      "import": {
+        "source": "A31b-25_20_6140_GEOJSON",
+        "database": "pathguardian",
+        "polygons": 10954,
+        "coverageRows": 386,
+        "verifiedAt": "2026-10-29T13:55:38.121661+00:00",
+        "rows_read": 22296,
+        "rows_written": 56700,
+        "requests": 234
+      }
+    },
+    {
+      "preparation": {
+        "source": {
+          "id": "A40-21_02_GML",
+          "kind": "tsunami",
+          "year": 21,
+          "region": "02",
+          "filename": "A40-21_02_GML.zip",
+          "size": "51.1MB",
+          "url": "https://nlftp.mlit.go.jp/ksj/gml/data/A40/A40-21/A40-21_02_GML.zip",
+          "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html",
+          "license": "MLIT current A40 page: commercial use and redistribution permitted"
+        },
+        "archiveSha256": "60fa949397eb96b202c62f8d2604d0be131051e0f654d2e5e865214694796e3a",
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "sourceFeatures": 130043,
+        "polygons": 130173,
+        "ndjsonBytes": 188853722,
+        "ndjsonSha256": "89bcc860bf04388d41712cf782d3e195b95683c0b44af44dfcb1fb5410a44f99",
+        "coverageRows": 4439,
+        "coveragePolicy": "exact hazard footprint; outside not inferred",
+        "samples": [
+          {
+            "longitude": 139.93685631624749,
+            "latitude": 40.42879606750006,
+            "depth": [
+              0.3,
+              0.5
+            ]
+          },
+          {
+            "longitude": 139.93990710600002,
+            "latitude": 40.429810373000066,
+            "depth": [
+              0.3,
+              0.5
+            ]
+          },
+          {
+            "longitude": 139.94125935275082,
+            "latitude": 40.434504065000056,
+            "depth": [
+              0.3,
+              0.5
+            ]
+          },
+          {
+            "longitude": 139.94088793525586,
+            "latitude": 40.43585213500006,
+            "depth": [
+              0.3,
+              0.5
+            ]
+          }
+        ],
+        "validityRepairs": 1663,
+        "areaChecks": [
+          {
+            "depth": [
+              0,
+              0.3
+            ],
+            "sourceFeatures": 26299,
+            "sourceArea": 0.0018378671419436326,
+            "outputArea": 0.0018378671419436222
+          },
+          {
+            "depth": [
+              0.3,
+              0.5
+            ],
+            "sourceFeatures": 27775,
+            "sourceArea": 0.0012437922711455178,
+            "outputArea": 0.0012437922711455234
+          },
+          {
+            "depth": [
+              0.5,
+              1.0
+            ],
+            "sourceFeatures": 28076,
+            "sourceArea": 0.0028001556750660247,
+            "outputArea": 0.002800155675066024
+          },
+          {
+            "depth": [
+              1.0,
+              3.0
+            ],
+            "sourceFeatures": 20210,
+            "sourceArea": 0.009123693180440701,
+            "outputArea": 0.009123693180440704
+          },
+          {
+            "depth": [
+              3.0,
+              5.0
+            ],
+            "sourceFeatures": 17626,
+            "sourceArea": 0.005446689521705648,
+            "outputArea": 0.005446689521705606
+          },
+          {
+            "depth": [
+              5.0,
+              10.0
+            ],
+            "sourceFeatures": 6759,
+            "sourceArea": 0.007318790247589905,
+            "outputArea": 0.007318790247589927
+          },
+          {
+            "depth": [
+              10.0,
+              20.0
+            ],
+            "sourceFeatures": 2936,
+            "sourceArea": 0.002684166064797166,
+            "outputArea": 0.002684166064797152
+          },
+          {
+            "depth": [
+              20.0,
+              null
+            ],
+            "sourceFeatures": 362,
+            "sourceArea": 0.00017812679344501685,
+            "outputArea": 0.00017812679344501704
+          }
+        ],
+        "elapsedSeconds": 167.53,
+        "coverageSha256": "f0eafb0433fa27a9332b7fe2c859cba6990d7d7798006540a52f77be252715c3"
+      },
+      "import": {
+        "source": "A40-21_02_GML",
+        "database": "pathguardian",
+        "polygons": 130173,
+        "coverageRows": 4439,
+        "verifiedAt": "2026-10-29T22:18:55.302676+00:00",
+        "rows_read": 489420,
+        "rows_written": 195560,
+        "requests": 984
+      }
+    },
+    {
+      "preparation": {
+        "source": {
+          "id": "A31b-25_20_5841_GEOJSON",
+          "kind": "flood",
+          "year": 25,
+          "region": "5841",
+          "filename": "A31b-25_20_5841_GEOJSON.zip",
+          "size": "7.98MB",
+          "url": "https://nlftp.mlit.go.jp/ksj/gml/data/A31b/A31b-25/A31b-25_20_5841_GEOJSON.zip",
+          "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31b-2025.html",
+          "license": "CC-BY-4.0"
+        },
+        "archiveSha256": "67b7577998c62f88f3536416ed2a2ba81bbb2b376ec5a74ecef7e8a81c0576cf",
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "sourceFeatures": 54385,
+        "polygons": 54637,
+        "ndjsonBytes": 85634199,
+        "ndjsonSha256": "acbfc0cc8a05627a37a6a63a64a81cd09803a624b31806b47bed256d482b9699",
+        "coverageRows": 1830,
+        "coverageSha256": "a194e31af438415b12f7f4da572addbe1ce9bd77ee7d4bf9a58235437ef41ffa",
+        "coveragePolicy": "exact hazard footprint; outside not inferred",
+        "samples": [
+          {
+            "longitude": 141.163135532,
+            "latitude": 38.666680154999995,
+            "depth": [
+              0,
+              0.5
+            ]
+          },
+          {
+            "longitude": 141.126571774,
+            "latitude": 38.6666803515,
+            "depth": [
+              0,
+              0.5
+            ]
+          },
+          {
+            "longitude": 141.33445383625002,
+            "latitude": 38.666713628500005,
+            "depth": [
+              0,
+              0.5
+            ]
+          },
+          {
+            "longitude": 141.1683231965,
+            "latitude": 38.6667145825,
+            "depth": [
+              0,
+              0.5
+            ]
+          }
+        ],
+        "validityRepairs": 1215,
+        "areaChecks": [
+          {
+            "depth": [
+              0,
+              0.5
+            ],
+            "sourceFeatures": 34778,
+            "sourceArea": 0.001996020565288373,
+            "outputArea": 0.001996020565288422
+          },
+          {
+            "depth": [
+              0.5,
+              3
+            ],
+            "sourceFeatures": 12356,
+            "sourceArea": 0.007673613546867189,
+            "outputArea": 0.007673613546867278
+          },
+          {
+            "depth": [
+              3,
+              5
+            ],
+            "sourceFeatures": 6120,
+            "sourceArea": 0.00204556948189979,
+            "outputArea": 0.002045569481899804
+          },
+          {
+            "depth": [
+              5,
+              10
+            ],
+            "sourceFeatures": 1130,
+            "sourceArea": 0.0003570558462527318,
+            "outputArea": 0.0003570558462527319
+          },
+          {
+            "depth": [
+              10,
+              20
+            ],
+            "sourceFeatures": 1,
+            "sourceArea": 5.206249998693647e-09,
+            "outputArea": 5.206249998693647e-09
+          }
+        ],
+        "elapsedSeconds": 129.0
+      },
+      "import": {
+        "source": "A31b-25_20_5841_GEOJSON",
+        "database": "pathguardian",
+        "polygons": 54637,
+        "coverageRows": 1830,
+        "verifiedAt": "2026-10-30T02:15:49.176240+00:00",
+        "rows_read": 625790,
+        "rows_written": 2500,
+        "requests": 703
+      }
+    },
+    {
+      "preparation": {
+        "source": {
+          "id": "A40-22_03_GML",
+          "kind": "tsunami",
+          "year": 22,
+          "region": "03",
+          "filename": "A40-22_03_GML.zip",
+          "size": "91.9MB",
+          "url": "https://nlftp.mlit.go.jp/ksj/gml/data/A40/A40-22/A40-22_03_GML.zip",
+          "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A40-2024.html",
+          "license": "MLIT current A40 page: commercial use and redistribution permitted"
+        },
+        "archiveSha256": "85716ded87a5be1e480203debbfd99375bae09f6755d82719a7060d664af0d41",
+        "sourceCrs": "EPSG:6668",
+        "outputCrs": "EPSG:4326",
+        "sourceFeatures": 233714,
+        "polygons": 233834,
+        "ndjsonBytes": 315878886,
+        "ndjsonSha256": "8c1d08f11a10d6339245e0e1bbe033cae7db4e8bd240f707d913860dab8009d8",
+        "coverageRows": 5609,
+        "coverageSha256": "c5bc20d91c0ce4b1dd7cbfd230c22db5d006ec29064a7a6ba79386e92e26f58b",
+        "coveragePolicy": "exact hazard footprint; outside not inferred",
+        "samples": [
+          {
+            "longitude": 141.70349868528757,
+            "latitude": 38.93857329431888,
+            "depth": [
+              0.01,
+              0.3
+            ]
+          },
+          {
+            "longitude": 141.70332568010707,
+            "latitude": 38.93857458396735,
+            "depth": [
+              0.01,
+              0.3
+            ]
+          },
+          {
+            "longitude": 141.70222970553087,
+            "latitude": 38.938560226511996,
+            "depth": [
+              0.01,
+              0.3
+            ]
+          },
+          {
+            "longitude": 141.70182685084131,
+            "latitude": 38.938630788736944,
+            "depth": [
+              0.01,
+              0.3
+            ]
+          }
+        ],
+        "validityRepairs": 1106,
+        "areaChecks": [
+          {
+            "depth": [
+              0.01,
+              0.3
+            ],
+            "sourceFeatures": 25936,
+            "sourceArea": 0.0001929033899717483,
+            "outputArea": 0.00019290338997174844
+          },
+          {
+            "depth": [
+              0.3,
+              0.5
+            ],
+            "sourceFeatures": 23280,
+            "sourceArea": 0.00013428712114952362,
+            "outputArea": 0.0001342871211495228
+          },
+          {
+            "depth": [
+              0.5,
+              1.0
+            ],
+            "sourceFeatures": 37319,
+            "sourceArea": 0.0003345770176670611,
+            "outputArea": 0.000334577017667063
+          },
+          {
+            "depth": [
+              1.0,
+              3.0
+            ],
+            "sourceFeatures": 51930,
+            "sourceArea": 0.0014168735494899682,
+            "outputArea": 0.0014168735494899678
+          },
+          {
+            "depth": [
+              3.0,
+              5.0
+            ],
+            "sourceFeatures": 49406,
+            "sourceArea": 0.0015664392087017059,
+            "outputArea": 0.001566439208701736
+          },
+          {
+            "depth": [
+              5.0,
+              10.0
+            ],
+            "sourceFeatures": 29190,
+            "sourceArea": 0.003992296336938248,
+            "outputArea": 0.003992296336938204
+          },
+          {
+            "depth": [
+              10.0,
+              20.0
+            ],
+            "sourceFeatures": 14870,
+            "sourceArea": 0.002697976766393543,
+            "outputArea": 0.0026979767663935514
+          },
+          {
+            "depth": [
+              20.0,
+              null
+            ],
+            "sourceFeatures": 1783,
+            "sourceArea": 0.00010460242313435389,
+            "outputArea": 0.00010460242313435417
+          }
+        ],
+        "elapsedSeconds": 291.45
+      },
+      "import": {
+        "source": "A40-22_03_GML",
+        "database": "pathguardian",
+        "polygons": 233834,
+        "coverageRows": 5609,
+        "verifiedAt": "2026-10-30T02:58:22.205473+00:00",
+        "rows_read": 1018126,
+        "rows_written": 958345,
+        "requests": 4805
+      }
+    }
+  ],
+  "pointVerification": {
+    "verifiedAt": "2026-10-29T22:20:50.337578+00:00",
+    "measurements": [
+      {
+        "point": "TokyoStation",
+        "hazard": "flood",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          1,
+          1
+        ],
+        "durationMs": [
+          0.7933,
+          0.1507
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "TokyoStation",
+        "hazard": "tsunami",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          1,
+          1
+        ],
+        "durationMs": [
+          0.2623,
+          0.1693
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "AomoriCity",
+        "hazard": "flood",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          7231,
+          270
+        ],
+        "durationMs": [
+          1.2326,
+          0.1496
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "AomoriCity",
+        "hazard": "tsunami",
+        "candidates": 1,
+        "exactMatches": 1,
+        "coverageMatches": 1,
+        "rowsRead": [
+          43088,
+          2301
+        ],
+        "durationMs": [
+          7.0754,
+          0.7497
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "Rural",
+        "hazard": "flood",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          1,
+          1
+        ],
+        "durationMs": [
+          0.2355,
+          0.1338
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "Rural",
+        "hazard": "tsunami",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          1,
+          1
+        ],
+        "durationMs": [
+          0.264,
+          1.4006
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "A31b-25_20_6140_GEOJSON",
+        "hazard": "flood",
+        "candidates": 2,
+        "exactMatches": 1,
+        "coverageMatches": 1,
+        "rowsRead": [
+          273,
+          7
+        ],
+        "durationMs": [
+          0.5773,
+          2.6958
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "A31b-25_20_6140_GEOJSON",
+        "hazard": "tsunami",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          16557,
+          684
+        ],
+        "durationMs": [
+          2.6337,
+          0.3049
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "A40-21_02_GML",
+        "hazard": "flood",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          1,
+          1
+        ],
+        "durationMs": [
+          0.202,
+          0.0906
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "A40-21_02_GML",
+        "hazard": "tsunami",
+        "candidates": 2,
+        "exactMatches": 1,
+        "coverageMatches": 1,
+        "rowsRead": [
+          3652,
+          218
+        ],
+        "durationMs": [
+          0.9691,
+          0.2359
+        ],
+        "rowsWritten": 0
+      }
+    ]
+  },
+  "additionalPointVerification": {
+    "verifiedAt": "2026-10-30T03:00:00+00:00",
+    "note": "Issue #276. Bounding-box candidate queries equivalent to zonesAtPoint (tolerance 0), with exact containment checked locally against the prepared artifacts.",
+    "measurements": [
+      {
+        "point": "OfunatoStation",
+        "longitude": 141.7185,
+        "latitude": 39.06,
+        "hazard": "tsunami",
+        "candidates": 4,
+        "exactMatches": 1,
+        "exactDepth": [
+          5,
+          10
+        ],
+        "coverageMatches": 1,
+        "rowsRead": [
+          158109,
+          4660
+        ],
+        "durationMs": [
+          34.3868,
+          0.9338
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "OfunatoStation",
+        "longitude": 141.7185,
+        "latitude": 39.06,
+        "hazard": "flood",
+        "candidates": 0,
+        "exactMatches": 0,
+        "coverageMatches": 0,
+        "rowsRead": [
+          63641,
+          2167
+        ],
+        "durationMs": [
+          10.8059,
+          0.5079
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "OfunatoAkasakiFlood",
+        "longitude": 141.79489,
+        "latitude": 39.046375,
+        "hazard": "flood",
+        "candidates": 3,
+        "exactMatches": 1,
+        "exactDepth": [
+          0,
+          0.5
+        ],
+        "coverageMatches": 1,
+        "rowsRead": [
+          63968,
+          2176
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "Miyako",
+        "longitude": 141.957,
+        "latitude": 39.641,
+        "hazard": "tsunami",
+        "candidates": 1,
+        "rowsRead": [
+          294007,
+          7859
+        ],
+        "durationMs": [
+          53.6859,
+          2.0607
+        ],
+        "rowsWritten": 0
+      },
+      {
+        "point": "AomoriCity",
+        "longitude": 140.7406,
+        "latitude": 40.8246,
+        "hazard": "tsunami",
+        "candidates": 2,
+        "rowsRead": [
+          42930,
+          2300
+        ],
+        "durationMs": [
+          9.3389,
+          0.5592
+        ],
+        "rowsWritten": 0
+      }
+    ],
+    "databaseSizeBytesAfter": 1122762752
+  }
+}
