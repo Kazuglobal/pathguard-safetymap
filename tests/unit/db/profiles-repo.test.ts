@@ -22,29 +22,23 @@ afterEach(() => {
   database.sqlite.close()
 })
 
-function storedFullName(): unknown {
-  return (database.sqlite.prepare('select full_name from profiles where id = ?').get(USER_ID) as { full_name: unknown } | undefined)?.full_name
-}
-
 describe('プロフィールは氏名を預からない(UIUX改装 項目55)', () => {
-  it('アプリのスキーマは氏名(full_name)の列を読み書きしない(列は次のマイグレーションで消す)', () => {
+  it('アプリのスキーマは氏名(full_name)の列を読み書きしない', () => {
     expect(Object.keys(getTableColumns(profiles))).not.toContain('fullName')
   })
 
-  it('以前の氏名が残った行があっても、表示名とアイコンは保存でき、氏名は返さない', async () => {
-    database.sqlite.prepare('insert into profiles (id, email, display_name, full_name) values (?, ?, ?, ?)')
-      .run(USER_ID, 'parent@example.com', '前の表示名', '山田 花子')
+  it('マイグレーションのあとの profiles の表には、氏名の列そのものが無い(20261029235818)', () => {
+    const columns = (database.sqlite.prepare('pragma table_info(profiles)').all() as { name: string }[]).map((column) => column.name)
+    expect(columns).not.toContain('full_name')
+    expect(columns).toEqual(expect.arrayContaining(['display_name', 'avatar_key', 'location_precision']))
+  })
 
+  it('表示名とアイコンは保存でき、氏名は返さない', async () => {
     const row = await createProfilesRepo(database.db).upsertOwn(actor, 'parent@example.com', { displayName: 'さくらママ', avatarKey: `avatars/${USER_ID}/icon.webp` })
 
     expect(row.displayName).toBe('さくらママ')
     expect(row.avatarKey).toBe(`avatars/${USER_ID}/icon.webp`)
-    expect(JSON.stringify(row)).not.toContain('山田')
-  })
-
-  it('新しく作る行には氏名を入れない', async () => {
-    await createProfilesRepo(database.db).upsertOwn(actor, 'parent@example.com', { displayName: 'さくらママ' })
-    expect(storedFullName()).toBeNull()
+    expect(Object.keys(row)).not.toContain('fullName')
   })
 
   it('「粗く保存」にすると、保存済みの通学路からも道すじを消し、起点・終点を約10kmに丸める', async () => {
