@@ -187,6 +187,7 @@ const h = vi.hoisted(() => {
       pendingReports: [] as any[],
       setDangerReports: vi.fn(),
       setPendingReports: vi.fn(),
+      reportsLoadState: 'loaded' as 'idle' | 'loaded' | 'error',
     },
     admin: { isAdmin: false, currentUserId: null as string | null },
     fetchStats: vi.fn(),
@@ -527,6 +528,7 @@ beforeEach(() => {
   h.userRoutes.primaryRoute = null
   h.reports.dangerReports = []
   h.reports.pendingReports = []
+  h.reports.reportsLoadState = 'loaded'
   h.admin.isAdmin = false
   h.admin.currentUserId = null
   h.supabase = createSupabaseMock()
@@ -622,6 +624,16 @@ describe('MapContainer characterization', () => {
       h.reports.dangerReports = [sampleReport({ id: 'r-empty-check' })]
       fireMapLoad()
       expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+    })
+
+    it('報告の取得に失敗したとき・まだ取れていないときは「まだありません」と言わない', () => {
+      for (const state of ['error', 'idle'] as const) {
+        h.reports.reportsLoadState = state
+        const { unmount } = renderMapContainer()
+        fireMapLoad()
+        expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+        unmount()
+      }
     })
 
     it('閉じたら、この画面のあいだは出さない', () => {
@@ -884,6 +896,8 @@ describe('MapContainer characterization', () => {
       })
       expect(h.captured.mobileLocationSheet.awaitingLocationSelection).toBe(true)
       expect(h.captured.reportForms.isReportFormOpen).toBe(false)
+      // 場所を選んでいるあいだも、地図の見た目は変えられる(上の列は隠れる)
+      expect(screen.getByTestId('location-selection-style')).toBeInTheDocument()
 
       act(() => {
         h.captured.floatingControls.onAddReport()
@@ -898,6 +912,28 @@ describe('MapContainer characterization', () => {
       renderMapContainer({ autoOpenReport: true })
       fireMapLoad()
       expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+    })
+
+    // 報告の入口はすべて /map?report=open(UIUX改装 項目5)。URL の report=open は地図の準備より先に消えることがある
+    it('autoOpenReport: 地図の準備より先に URL から report=open が消えても、準備ができたらフォームを開く', () => {
+      const { rerender } = renderMapContainer({ autoOpenReport: true })
+      rerender(<MapContainer autoOpenReport={false} />)
+
+      fireMapLoad()
+
+      expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+    })
+
+    it('autoOpenReport: 一度開いたら、閉じたあとに勝手に開き直さない', () => {
+      renderMapContainer({ autoOpenReport: true })
+      fireMapLoad()
+      expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+
+      act(() => {
+        h.captured.reportForms.onDesktopCancel()
+      })
+
+      expect(h.captured.reportForms.isReportFormOpen).toBe(false)
     })
 
     it('autoOpenReport（モバイル）: 地点選択モードが開く', () => {
@@ -971,7 +1007,7 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
 
       act(() => {
-        h.captured.floatingControls.toggle3DMode()
+        h.captured.topOverlay.onToggle3D()
       })
 
       const map = lastMap()
@@ -981,7 +1017,7 @@ describe('MapContainer characterization', () => {
       expect(map.setPitch).toHaveBeenCalledWith(60)
 
       act(() => {
-        h.captured.floatingControls.toggle3DMode()
+        h.captured.topOverlay.onToggle3D()
       })
       expect(map.setTerrain).toHaveBeenCalledWith(null)
       expect(map.setPitch).toHaveBeenCalledWith(0)
@@ -1033,6 +1069,56 @@ describe('MapContainer characterization', () => {
       expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-b')
       // 通学路の「地図で見る」から来たら、その通学路の「通学路チェック」を開く(UIUX改装 項目50)
       expect(h.captured.topOverlay.activePanel).toBe('hazard')
+    })
+
+    it('お気に入りでない通学路を routeId で開いたら、地図ができたあとにその通学路へ寄せる', () => {
+      h.userRoutes.routes = [
+        { id: 'route-a', name: 'ルートA', route_geometry: { type: 'LineString', coordinates: [[139.6, 35.6], [139.61, 35.61]] } },
+        { id: 'route-b', name: 'ルートB', route_geometry: { type: 'LineString', coordinates: [[135.5, 34.7], [135.51, 34.71]] } },
+      ]
+      h.userRoutes.primaryRoute = h.userRoutes.routes[0]
+
+      renderMapContainer({ preferredRouteId: 'route-b' })
+      // 地図ができる前に寄せようとしても効かないので、load のあとに寄せ直すことを確かめる
+      lastMap().fitBounds.mockClear()
+      fireMapLoad()
+
+      expect(lastMap().fitBounds).toHaveBeenCalledTimes(1)
+      const bounds = lastMap().fitBounds.mock.calls[0][0]
+      expect(bounds.coords[0]).toEqual([135.5, 34.7])
+    })
+
+    it('地図を開いたまま別の routeId へ移ったら、その通学路を選んで通学路チェックを開き直す', () => {
+      h.userRoutes.routes = [
+        { id: 'route-a', name: 'ルートA' },
+        { id: 'route-c', name: 'ルートC' },
+      ]
+      h.userRoutes.primaryRoute = { id: 'route-a', name: 'ルートA' }
+
+      const { rerender } = renderMapContainer()
+      fireMapLoad()
+      expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-a')
+
+      rerender(<MapContainer preferredRouteId="route-c" />)
+
+      expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-c')
+      expect(h.captured.topOverlay.activePanel).toBe('hazard')
+    })
+
+    it('routeId で開いたあとにパネルで別の通学路を選んだら、引き戻さない', () => {
+      h.userRoutes.routes = [
+        { id: 'route-a', name: 'ルートA' },
+        { id: 'route-b', name: 'ルートB' },
+      ]
+      h.userRoutes.primaryRoute = { id: 'route-a', name: 'ルートA' }
+
+      renderMapContainer({ preferredRouteId: 'route-b' })
+      fireMapLoad()
+      act(() => {
+        h.captured.routeHazardPanel.onRouteChange('route-a')
+      })
+
+      expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-a')
     })
 
     it('routeId なしで開いたときは、通学路チェックのパネルを勝手に開かない', () => {

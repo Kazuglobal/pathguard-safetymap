@@ -94,7 +94,7 @@ export const LP_TRUST = {
       description: PRODUCT_FACTS.photo.adult,
     },
     {
-      title: "歩きながら見続けさせない",
+      title: "速く動いているときは知らせない",
       description: `カメラの映像に危険を重ねるARは、${PRODUCT_FACTS.ar.speedSuppress}`,
     },
     {

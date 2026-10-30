@@ -241,7 +241,9 @@ export function RouteDangerReportDialog({
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : "エクスポートに失敗しました")
+      // 部品やライブラリのエラーの文(トークンの話など)は画面に出さず、ログに残す(UIUX改装 項目53)
+      console.error("危険箇所レポートの書き出しに失敗しました", err)
+      setExportError("レポートを書き出せませんでした。時間をおいて、もう一度お試しください。")
     } finally {
       setIsExporting(false)
     }

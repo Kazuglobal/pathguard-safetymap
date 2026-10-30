@@ -10,13 +10,11 @@ import { ChildrenSettings } from "@/components/settings/children-settings"
 import { LocationPrecisionSettings } from "@/components/settings/location-precision-settings"
 import type { UsePushSubscriptionReturn } from "@/hooks/use-push-subscription"
 import { tankenTokens } from "@/lib/design/tanken"
+import { MYPAGE_NOTIFICATIONS_ID } from "@/lib/mypage-sections"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { MypageGroup, mypageCardStyle } from "./mypage-shared"
 
 const t = tankenTokens
-
-/** 通知の設定がある場所(ナビのベルの「通知の設定」もここへ来る) */
-export const MYPAGE_NOTIFICATIONS_ID = "notifications"
 
 /**
  * 通知がまだ使えるようになっていない(未設定・ブロック中・この環境では受け取れない)か。

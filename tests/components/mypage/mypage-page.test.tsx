@@ -1,5 +1,5 @@
 import React from "react"
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { PushSubscriptionState } from "@/hooks/use-push-subscription"
@@ -163,6 +163,49 @@ describe("マイページ(UIUX改装 項目6・7・37)", () => {
     await renderPage()
 
     expect(screen.getByTestId("mypage-notification-unavailable")).toHaveTextContent("このブラウザでは通知を受け取れません")
+  })
+
+  it("報告を読み込めなかったときは0件と出さず、「読み込めませんでした」ともう一度ためす道を出す", async () => {
+    let reportCalls = 0
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        if (String(input).startsWith("/api/profile")) {
+          return new Response(JSON.stringify({ profile: { display_name: "さくら" } }), { status: 200 })
+        }
+        reportCalls += 1
+        return reportCalls === 1
+          ? new Response("{}", { status: 500 })
+          : new Response(JSON.stringify({ reports: REPORTS }), { status: 200 })
+      }),
+    )
+    render(<MyPage />)
+
+    const records = await screen.findByRole("region", { name: "自分の記録" })
+    await within(records).findByText("報告を読み込めませんでした")
+    expect(within(records).getByText("確認中の報告").parentElement).toHaveTextContent("—")
+    expect(within(records).queryByText(/まだ報告はありません/)).toBeNull()
+    // 「1件報告する」が済んだか分からないので、はじめの一歩は出さない
+    expect(screen.queryByText("はじめの一歩")).toBeNull()
+
+    fireEvent.click(within(records).getByRole("button", { name: "もう一度ためす" }))
+
+    expect(await within(records).findByText("見通しの悪い交差点")).toBeInTheDocument()
+  })
+
+  it("読み込んだ報告が上限(50件)に届いたら、件数は最近の50件から数えていると書く", async () => {
+    const many = Array.from({ length: 50 }, (_, index) => ({ ...REPORTS[1], id: `r-${index}` }))
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) =>
+        String(input).startsWith("/api/profile")
+          ? new Response(JSON.stringify({ profile: { display_name: "さくら" } }), { status: 200 })
+          : new Response(JSON.stringify({ reports: many }), { status: 200 }),
+      ),
+    )
+    render(<MyPage />)
+
+    expect(await screen.findByText("報告の件数は、最近の50件から数えています。")).toBeInTheDocument()
   })
 
   it("設定に、表示名とアイコン・お子さま・位置・メールとパスワード・退会・ログアウトを並べる", async () => {

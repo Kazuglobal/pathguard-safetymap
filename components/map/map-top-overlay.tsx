@@ -138,12 +138,12 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
     setIsDetailsOpen(!showDetails)
   }
 
+  // 押してある見た目は「その表示が出ているか」(パネルを閉じても、出ているあいだは押してあるまま)
   const isAdvancedActive = (id: AdvancedPanel) =>
-    props.activePanel === id &&
-    ((id === "3d" && props.is3DEnabled) ||
-      (id === "ar" && props.isARMode) ||
-      (id === "heatmap" && props.isHeatmapVisible) ||
-      (id === "suspicious" && props.isSuspiciousVisible))
+    (id === "3d" && props.is3DEnabled) ||
+    (id === "ar" && props.isARMode) ||
+    (id === "heatmap" && props.isHeatmapVisible) ||
+    (id === "suspicious" && props.isSuspiciousVisible)
 
   const isRouteCheckActive = props.activePanel === "hazard"
 
@@ -214,7 +214,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
               })}
               {props.renderDisplayOptions?.(
                 <button type="button" aria-label="地図の見た目" className={CHIP_CLASS} style={IDLE_STYLE}>
-                  <TwoLineChipBody icon={Layers} label="地図の見た目" description="背景・洪水・津波" />
+                  <TwoLineChipBody icon={Layers} label="地図の見た目" description="背景・多発地点・浸水" />
                 </button>,
               )}
             </div>

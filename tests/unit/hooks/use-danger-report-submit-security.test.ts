@@ -11,7 +11,8 @@ describe('danger report submission notification boundary', () => {
 
     expect(source).not.toContain('/api/push/notify-danger-report')
     expect(source).toContain('/api/danger-report/moderate')
-    expect(source).toContain('承認後に20pt')
+    // ポイントは投稿の時点ではなく、承認(公開)のあとにもらえると伝える。値は D1 のトリガーと同じ定数から出す
+    expect(source).toContain('承認後に${REPORT_PUBLISHED_POINTS}ptを獲得できます')
     expect(source).not.toContain('title: "ポイント獲得"')
   })
 })

@@ -95,7 +95,7 @@ function rankForView(results: SearchResult[], map: mapboxgl.Map | null): RankedR
   const view = getMapView(map)
   return schoolsInViewFirst(results, view, isSchoolLike).map((result) => ({
     ...result,
-    isSchoolInView: Boolean(view) && isSchoolLike(result) && isInsideBox(result.center, view!),
+    isSchoolInView: view !== null && isSchoolLike(result) && isInsideBox(result.center, view),
   }))
 }
 
@@ -244,14 +244,15 @@ async function fetchGeocodingResults(query: string, map: mapboxgl.Map | null): P
     .filter((result: SearchResult | null): result is SearchResult => result !== null)
 }
 
-async function fetchInternalGeocodingResults(query: string): Promise<SearchResult[]> {
+/** 取れなかったときは null(0件の [] と見分ける) */
+async function fetchInternalGeocodingResults(query: string): Promise<SearchResult[] | null> {
   try {
     const res = await fetch(
       `/api/mapbox/geocode?query=${encodeURIComponent(query)}&language=ja&country=jp&limit=8`,
     )
-    if (!res.ok) return []
+    if (!res.ok) return null
     const data = await res.json()
-    if (!Array.isArray(data)) return []
+    if (!Array.isArray(data)) return null
     return data
       .map((item: any): SearchResult | null => {
         if (!item || !Array.isArray(item.center) || item.center.length < 2) return null
@@ -265,16 +266,21 @@ async function fetchInternalGeocodingResults(query: string): Promise<SearchResul
       })
       .filter((r): r is SearchResult => r !== null)
   } catch {
-    return []
+    return null
   }
 }
 
-async function executeSearch(query: string, map: mapboxgl.Map | null): Promise<SearchResult[]> {
+/**
+ * 3つの検索を順に試す。どれも取れなかったときは failed=true(通信の失敗を「見つからない」と言わないため)
+ */
+async function executeSearch(query: string, map: mapboxgl.Map | null): Promise<{ results: SearchResult[]; failed: boolean }> {
   let nextResults: SearchResult[] = []
+  let failures = 0
 
   try {
     nextResults = await fetchSearchBoxResults(query, map)
   } catch (error) {
+    failures += 1
     console.warn("Search Box 検索エラー:", error)
   }
 
@@ -282,19 +288,18 @@ async function executeSearch(query: string, map: mapboxgl.Map | null): Promise<S
     try {
       nextResults = await fetchGeocodingResults(query, map)
     } catch (error) {
+      failures += 1
       console.warn("Geocoding 検索エラー:", error)
     }
   }
 
   if (nextResults.length === 0) {
-    try {
-      nextResults = await fetchInternalGeocodingResults(query)
-    } catch (error) {
-      console.warn("Internal Geocoding 検索エラー:", error)
-    }
+    const internal = await fetchInternalGeocodingResults(query)
+    if (internal === null) failures += 1
+    else nextResults = internal
   }
 
-  return nextResults
+  return { results: nextResults, failed: nextResults.length === 0 && failures === 3 }
 }
 
 export default function MapSearch({
@@ -308,6 +313,8 @@ export default function MapSearch({
   const [results, setResults] = useState<RankedResult[]>([])
   // 探し終えて候補が0件だったときの言葉(案内を出す。UIUX改装 項目49)
   const [emptyQuery, setEmptyQuery] = useState<string | null>(null)
+  // 通信の失敗などで、どの検索も取れなかった(入れ方のせいにしない)
+  const [searchFailed, setSearchFailed] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -356,9 +363,11 @@ export default function MapSearch({
     debounceTimerRef.current = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const nextResults = rankForView(await executeSearch(trimmed, map), map)
+        const { results: found, failed } = await executeSearch(trimmed, map)
+        const nextResults = rankForView(found, map)
         if (requestId !== searchRequestIdRef.current) return
         setResults(nextResults)
+        setSearchFailed(failed)
         setEmptyQuery(nextResults.length === 0 ? trimmed : null)
         setShowResults(true)
       } catch (error) {
@@ -400,10 +409,12 @@ export default function MapSearch({
     setShowResults(true)
 
     try {
-      const nextResults = rankForView(await executeSearch(trimmed, map), map)
+      const { results: found, failed } = await executeSearch(trimmed, map)
+      const nextResults = rankForView(found, map)
       if (requestId !== searchRequestIdRef.current) return
 
       setResults(nextResults)
+      setSearchFailed(failed)
       setEmptyQuery(nextResults.length === 0 ? trimmed : null)
       setShowResults(true)
 
@@ -482,7 +493,7 @@ export default function MapSearch({
                 className="px-3 py-2 hover:bg-muted cursor-pointer flex items-start"
                 onClick={() => handleResultClick(result)}
               >
-                {isSchool(result) ? (
+                {isSchoolLike(result) ? (
                   <School className="h-4 w-4 mr-2 mt-0.5 shrink-0 text-blue-600" />
                 ) : (
                   <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
@@ -501,7 +512,9 @@ export default function MapSearch({
 
       {showResults && results.length === 0 && emptyQuery && !isSearching && (
         <Card role="status" className="absolute z-10 mt-1 w-full p-3 text-sm leading-relaxed" data-testid="map-search-empty">
-          「{emptyQuery}」に当てはまる場所が見つかりませんでした。学校は「〇〇小学校」、住所は「〇〇市〇〇町」のように入れてみてください。
+          {searchFailed
+            ? "検索できませんでした。通信状態を確認して、もう一度お試しください。"
+            : `「${emptyQuery}」に当てはまる場所が見つかりませんでした。学校は「〇〇小学校」、住所は「〇〇市〇〇町」のように入れてみてください。`}
         </Card>
       )}
     </div>

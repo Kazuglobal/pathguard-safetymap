@@ -23,6 +23,9 @@ export interface MypageRecordsProps {
   isGamificationLoading: boolean
   reports: MypageReport[]
   isReportsLoading: boolean
+  /** 報告を読み込めなかった(0件とは見分ける) */
+  reportsError: boolean
+  onRetryReports: () => void
   /** 読み込んだ報告が上限に届いた(件数は最近の分だけから数えている) */
   isReportListCapped: boolean
   reportListLimit: number
@@ -46,7 +49,7 @@ export function MypageRecords(props: MypageRecordsProps) {
       <WeeklyRecordCard {...props} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <UploadHistoryCard {...props} />
-        <CollectionCard collection={props.collection} isLoading={props.isReportsLoading} />
+        <CollectionCard collection={props.collection} isLoading={props.isReportsLoading} hasError={props.reportsError} />
       </div>
     </MypageGroup>
   )
@@ -79,6 +82,7 @@ function WeeklyRecordCard({
   level,
   isGamificationLoading,
   isReportsLoading,
+  reportsError,
   isReportListCapped,
   reportListLimit,
   reviewingCount,
@@ -101,8 +105,9 @@ function WeeklyRecordCard({
       <CardContent className="space-y-4 pt-0">
         <div className="flex flex-wrap gap-3">
           <SummaryTile label="ポイント" value={`${points}pt`} note={`レベル ${progress.level}`} loading={isGamificationLoading} />
-          <SummaryTile label="確認中の報告" value={`${reviewingCount}件`} note="公開の前の確認を待っています" loading={isReportsLoading} />
-          <SummaryTile label="今週の報告" value={`${reportsThisWeek}件`} loading={isReportsLoading} />
+          {/* 読み込めなかったときは「0件」と出さず「—」にする */}
+          <SummaryTile label="確認中の報告" value={reportsError ? "—" : `${reviewingCount}件`} note="公開の前の確認を待っています" loading={isReportsLoading} />
+          <SummaryTile label="今週の報告" value={reportsError ? "—" : `${reportsThisWeek}件`} loading={isReportsLoading} />
           <SummaryTile label="登録した通学路" value={`${routesCount}本`} loading={isRoutesLoading} />
         </div>
         {isReportListCapped && (
@@ -128,7 +133,7 @@ function WeeklyRecordCard({
   )
 }
 
-function UploadHistoryCard({ reports, isReportsLoading, deletingReportId, onDeleteReport }: MypageRecordsProps) {
+function UploadHistoryCard({ reports, isReportsLoading, reportsError, onRetryReports, deletingReportId, onDeleteReport }: MypageRecordsProps) {
   const recentUploads = reports.slice(0, RECENT_UPLOAD_COUNT)
   return (
     <Card className="border" style={mypageCardStyle}>
@@ -148,6 +153,18 @@ function UploadHistoryCard({ reports, isReportsLoading, deletingReportId, onDele
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-14 w-full" />
           </>
+        ) : reportsError ? (
+          <div className="rounded-xl border border-dashed p-4 text-center" style={{ borderColor: t.border.soft }} role="alert">
+            <p className="text-sm font-bold" style={{ color: t.color.ink }}>
+              報告を読み込めませんでした
+            </p>
+            <p className="mt-1 text-xs" style={{ color: t.color.inkSoft }}>
+              通信状態を確認して、もう一度お試しください。
+            </p>
+            <Button type="button" variant="outline" size="sm" className={`mt-3 ${t.cls.focus}`} onClick={onRetryReports}>
+              もう一度ためす
+            </Button>
+          </div>
         ) : recentUploads.length === 0 ? (
           <p className="text-sm" style={{ color: t.color.inkSoft }}>
             まだ報告はありません。通学路で気づいた「ヒヤリ」を1件、地図から共有してみよう。
@@ -202,7 +219,7 @@ function UploadHistoryCard({ reports, isReportsLoading, deletingReportId, onDele
   )
 }
 
-function CollectionCard({ collection, isLoading }: { collection: MypageRecordsProps["collection"]; isLoading: boolean }) {
+function CollectionCard({ collection, isLoading, hasError }: { collection: MypageRecordsProps["collection"]; isLoading: boolean; hasError: boolean }) {
   return (
     <Card className="border" style={mypageCardStyle}>
       <CardHeader className="pb-4">
@@ -221,6 +238,10 @@ function CollectionCard({ collection, isLoading }: { collection: MypageRecordsPr
               <Skeleton key={index} className="h-20 w-full" />
             ))}
           </div>
+        ) : hasError ? (
+          <p className="text-sm" style={{ color: t.color.inkSoft }}>
+            写真を読み込めませんでした。上の「もう一度ためす」で読み直せます。
+          </p>
         ) : collection.length === 0 ? (
           <p className="text-sm" style={{ color: t.color.inkSoft }}>
             報告した写真はここにコレクションされます。最初の1枚をアップロードしてみよう。

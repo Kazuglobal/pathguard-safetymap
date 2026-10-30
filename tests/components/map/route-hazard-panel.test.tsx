@@ -131,6 +131,16 @@ describe("RouteHazardPanel", () => {
     expect(screen.queryByTestId("route-geometry-notice")).not.toBeInTheDocument()
   })
 
+  it("通学路を読み込み中・読み込めなかったときは、「まだ登録されていません」と言わない", () => {
+    const { rerender } = render(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} routesStatus="loading" variant="inline" />)
+    expect(screen.getByTestId("route-geometry-notice")).toHaveTextContent("通学路を読み込んでいます")
+
+    rerender(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} routesStatus="error" variant="inline" />)
+    expect(screen.getByTestId("route-geometry-notice")).toHaveTextContent("通学路を読み込めませんでした")
+    expect(screen.queryByText(/まだ登録されていません/)).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "通学路を登録する" })).not.toBeInTheDocument()
+  })
+
   it("通学路がまだ無ければ、登録への道を出す", () => {
     render(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} variant="inline" />)
 

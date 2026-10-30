@@ -10,6 +10,7 @@ import { BRAND } from "@/lib/brand"
 import { POINTS_PER_LEVEL, REPORT_PUBLISHED_POINTS } from "@/lib/gamification-levels"
 import { HUNTER_PLAY_POINTS } from "@/lib/hunter/rewards"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
+import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
 interface HelpDialogProps {
   /** 開くボタン。渡さないときは open / onOpenChange で開け閉めする */
@@ -32,7 +33,7 @@ const VIEW_ITEMS: readonly HelpItem[] = [
   { icon: MapPin, title: "ピンを見る", text: "ピンをタップすると、報告の内容や写真が出ます。近いピンは数字の丸にまとまります。" },
   { icon: Search, title: "場所をさがす", text: "上の検索に、学校の名前や住所を入れます。いま地図に見えている学校が先に出ます。" },
   { icon: Route, title: "通学路チェック", text: "上の「通学路チェック」で、登録した通学路と、その近くの危険・事故の多い場所を確かめられます。" },
-  { icon: Layers, title: "くわしい表示", text: "「くわしい表示」をひらくと、事故ヒートマップ・不審者情報・AR・3D と、地図の見た目・洪水・津波を切り替えられます。" },
+  { icon: Layers, title: "くわしい表示", text: "「くわしい表示」をひらくと、事故ヒートマップ・不審者情報・AR・3D と、「地図の見た目」(背景・事故多発地点・洪水・津波)を切り替えられます。" },
 ]
 
 const FILTER_ITEMS: readonly HelpItem[] = [
@@ -42,7 +43,7 @@ const FILTER_ITEMS: readonly HelpItem[] = [
 ]
 
 const REPORT_STEPS: readonly { title: string; text: string }[] = [
-  { title: "「報告」を押す", text: "スマホは下の「報告」、パソコンは下の「危険箇所を報告」を押します。「現在地」からも始められます。" },
+  { title: "「報告」を押す", text: `スマホは下の「報告」、パソコンは下の「${REPORT_ENTRY_LABEL}」を押します。「現在地」からも始められます。` },
   { title: "場所を決める", text: "地図をタップして、危険な場所にピンを立てます。" },
   { title: "写真と内容を入れる", text: PRODUCT_FACTS.photo.adult },
   { title: "確かめて送る", text: PRODUCT_FACTS.moderation.adult },

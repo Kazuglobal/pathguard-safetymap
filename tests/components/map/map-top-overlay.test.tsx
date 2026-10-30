@@ -84,7 +84,17 @@ describe("MapTopOverlay", () => {
       expect(chip.textContent!.length).toBeGreaterThan(name.length + 3)
     }
     expect(within(group).getByRole("button", { name: "事故ヒートマップ" })).toHaveTextContent("事故の多い場所を色で")
-    expect(within(group).getByRole("button", { name: "地図の見た目" })).toHaveTextContent("背景・洪水・津波")
+    expect(within(group).getByRole("button", { name: "地図の見た目" })).toHaveTextContent("背景・多発地点・浸水")
+  })
+
+  it("shows a layer chip as on while that layer is visible, even with its panel closed", async () => {
+    const user = userEvent.setup()
+    renderOverlay({ isHeatmapVisible: true })
+
+    await user.click(screen.getByRole("button", { name: /くわしい表示/ }))
+
+    expect(screen.getByRole("button", { name: "事故ヒートマップ" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: "不審者情報" })).toHaveAttribute("aria-pressed", "false")
   })
 
   it("opens the route check panel from 「通学路チェック」", async () => {

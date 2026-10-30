@@ -113,6 +113,18 @@ describe("MapSearch", () => {
     expect(mockFlyTo).not.toHaveBeenCalled()
   })
 
+  it("says the search failed, instead of blaming the words, when every request fails", async () => {
+    vi.spyOn(global, "fetch").mockRejectedValue(new TypeError("Failed to fetch"))
+
+    render(<MapSearch map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never} />)
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: "〇〇小学校" } })
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
+
+    const message = await screen.findByTestId("map-search-empty")
+    expect(message).toHaveTextContent("検索できませんでした")
+    expect(message).not.toHaveTextContent("のように入れてみてください")
+  })
+
   it("renders a school icon for school POI results", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,

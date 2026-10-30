@@ -21,7 +21,8 @@ import { clearAllLocalRouteGeometry } from "@/lib/route-local-geometry"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { MypagePlay } from "./mypage-play"
 import { MypageRecords } from "./mypage-records"
-import { MYPAGE_NOTIFICATIONS_ID, MypageSettings, needsNotificationSetup } from "./mypage-settings"
+import { MYPAGE_NOTIFICATIONS_ID } from "@/lib/mypage-sections"
+import { MypageSettings, needsNotificationSetup } from "./mypage-settings"
 import { MypageSetupSteps, buildSetupSteps } from "./mypage-setup-steps"
 import { startOfThisWeek } from "./mypage-shared"
 import { MYPAGE_REPORT_LIMIT, useMypagePersonalData } from "./use-mypage-personal-data"
@@ -49,7 +50,8 @@ export default function MyPage() {
   const push = usePushSubscription()
 
   const [profileKey, setProfileKey] = useState(0)
-  const { reports, removeReport, userName, isNameLoaded, isReportsLoading } = useMypagePersonalData(profileKey)
+  const { reports, removeReport, userName, isNameLoaded, isReportsLoading, reportsError, isReportListCapped, retryReports } =
+    useMypagePersonalData(profileKey)
   const [deletingReportId, setDeletingReportId] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -108,6 +110,8 @@ export default function MyPage() {
   )
   const setupLoading = isRoutesLoading || isReportsLoading
   const allStepsDone = !setupLoading && setupSteps.every((step) => step.done)
+  // 報告を読み込めなかったときは「1件報告する」が済んだか分からないので、はじめの一歩を出さない
+  const showSetupSteps = !allStepsDone && !reportsError
 
   // ナビのベルの「通知の設定」(/mypage#notifications)から来たら、ページの中身がそろってから通知のカードへ動かす
   const isPageSettled = push.state !== "loading" && !isReportsLoading && !isRoutesLoading && !isMissionsLoading
@@ -215,7 +219,7 @@ export default function MyPage() {
         )}
 
         {/* はじめの一歩(全部すんだら出さない) */}
-        {!allStepsDone && (
+        {showSetupSteps && (
           <motion.div {...fade(1)}>
             <MypageSetupSteps steps={setupSteps} isLoading={setupLoading} />
           </motion.div>
@@ -228,7 +232,9 @@ export default function MyPage() {
             isGamificationLoading={isGamificationLoading}
             reports={reports}
             isReportsLoading={isReportsLoading}
-            isReportListCapped={reports.length >= MYPAGE_REPORT_LIMIT}
+            reportsError={reportsError}
+            onRetryReports={retryReports}
+            isReportListCapped={isReportListCapped}
             reportListLimit={MYPAGE_REPORT_LIMIT}
             reviewingCount={reviewingCount}
             reportsThisWeek={reportsThisWeek}

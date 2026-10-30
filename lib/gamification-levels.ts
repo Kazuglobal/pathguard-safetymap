@@ -1,4 +1,7 @@
-/** レベルは 500pt ごとに1つ上がる。サーバの計算(lib/db/repos/gamification.repo.ts)と画面で同じ値を使う */
+/**
+ * レベルは 500pt ごとに1つ上がる。サーバの計算(lib/db/repos/gamification.repo.ts)と画面で同じ値を使う。
+ * D1 のトリガー(lib/db/migrations/20260903155959_report_creation_rewards.sql)にも 500 が直接書いてあるので、変えるときはそちらも
+ */
 export const POINTS_PER_LEVEL = 500
 
 /**

@@ -12,6 +12,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Navigation } from '@/components/ui/navigation'
 
+const viewport = vi.hoisted(() => ({ isMobile: false }))
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => viewport.isMobile }))
+
 // Ensure ResizeObserver/IntersectionObserver are proper constructors
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
@@ -68,7 +71,7 @@ vi.mock('framer-motion', () => {
 
 // Mock notification bell
 vi.mock('@/components/notifications/notification-bell', () => ({
-  NotificationBell: () => <div data-testid="notification-bell" />,
+  NotificationBell: ({ isLoggedIn }: { isLoggedIn?: boolean }) => <div data-testid="notification-bell" data-enabled={String(isLoggedIn)} />,
 }))
 
 // Mock ReportBottomSheet
@@ -155,6 +158,26 @@ describe('Navigation Logout Functionality', () => {
     })
   })
 
+  // ホームと地図のスマホでは上のナビが隠れる。そのときはホームのヘッダーのベルだけが通知を読む(UIUX改装 項目37)
+  describe('Notification bell', () => {
+    it('does not run the hidden top-nav bell on a phone when the top nav is hidden', () => {
+      viewport.isMobile = true
+      render(<Navigation user={mockUser} onLogout={mockOnLogout} hideTopNavMobile />)
+      expect(screen.getByTestId('notification-bell')).toHaveAttribute('data-enabled', 'false')
+      viewport.isMobile = false
+    })
+
+    it('runs the top-nav bell on other screens and on wide screens', () => {
+      viewport.isMobile = true
+      const { unmount } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+      expect(screen.getByTestId('notification-bell')).toHaveAttribute('data-enabled', 'true')
+      unmount()
+      viewport.isMobile = false
+      render(<Navigation user={mockUser} onLogout={mockOnLogout} hideTopNavMobile />)
+      expect(screen.getByTestId('notification-bell')).toHaveAttribute('data-enabled', 'true')
+    })
+  })
+
   describe('Mobile bottom nav labels', () => {
     it('renders the my page tab link(「活動」から「マイページ」へ。UIUX改装 項目7)', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
@@ -165,7 +188,7 @@ describe('Navigation Logout Functionality', () => {
       expect(container.querySelector('a[aria-label="活動"]')).toBeNull()
     })
 
-    it('falls back to label when mobileLabel is not provided', () => {
+    it('shows the same label as the desktop nav in the bottom tab bar', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
       const mapBottomLink = container.querySelector('a[aria-label="マップ"]')

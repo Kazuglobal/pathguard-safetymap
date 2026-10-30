@@ -7,6 +7,7 @@ import { useGamification } from "@/hooks/use-gamification"
 import { MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
 import { MapMenuSheet } from "./map-menu-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
+import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
 const C = tankenTokens.color
 
@@ -22,34 +23,22 @@ const floatPill = {
 interface MapFloatingControlsProps {
   onAddReport: () => void
   isReportFormOpen: boolean
-  is3DEnabled: boolean
-  toggle3DMode: () => void
   isSelectingLocation?: boolean
-  onToggleAR?: () => void
-  isARMode?: boolean
   onToggleSidebar?: () => void
   isMobile?: boolean
   onReportAtCurrentLocation?: () => void
   isAcquiringGPS?: boolean
-  onToggleHeatmap?: () => void
-  isHeatmapVisible?: boolean
   isMapReady?: boolean
 }
 
 export default function MapFloatingControls({
   onAddReport,
   isReportFormOpen,
-  is3DEnabled,
-  toggle3DMode,
   isSelectingLocation,
-  onToggleAR,
-  isARMode = false,
   onToggleSidebar,
   isMobile = false,
   onReportAtCurrentLocation,
   isAcquiringGPS = false,
-  onToggleHeatmap,
-  isHeatmapVisible = false,
   isMapReady = true,
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
@@ -178,7 +167,7 @@ export default function MapFloatingControls({
                 borderColor: "rgba(67,57,43,.18)",
                 boxShadow: tankenTokens.shadow.pressAccent,
               }}
-              aria-label="危険箇所を報告する"
+              aria-label={REPORT_ENTRY_LABEL}
             >
               <PlusCircle className="h-4 w-4" strokeWidth={2.6} />
               報告
@@ -255,7 +244,7 @@ export default function MapFloatingControls({
                   }
                 : { ...floatPill, color: C.inkSoft, borderColor: "rgba(67,57,43,.14)" }
             }
-            aria-label="危険箇所を報告する"
+            aria-label={REPORT_ENTRY_LABEL}
           >
             {isSelectingLocation ? (
               <>
@@ -270,7 +259,7 @@ export default function MapFloatingControls({
             ) : (
               <>
                 <PlusCircle className="h-5 w-5" strokeWidth={2.6} />
-                危険箇所を報告
+                {REPORT_ENTRY_LABEL}
               </>
             )}
           </button>

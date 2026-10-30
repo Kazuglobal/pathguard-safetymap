@@ -22,7 +22,7 @@ describe('IosInstallPrompt', () => {
     render(<IosInstallPrompt />)
 
     expect(
-      screen.getByText('ホーム画面に追加すると通知が受け取れます')
+      screen.getByText('ホーム画面に追加すると通知を受け取れます')
     ).toBeInTheDocument()
     expect(screen.getByText(/「ホーム画面に追加」を選択/)).toBeInTheDocument()
   })

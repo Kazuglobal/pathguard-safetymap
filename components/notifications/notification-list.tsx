@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { CheckCheck, Bell, Settings, X } from "lucide-react"
 import { getNotificationTypeLabel, type Notification } from "@/hooks/use-notifications"
+import { MYPAGE_NOTIFICATIONS_PATH } from "@/lib/mypage-sections"
 
 interface NotificationListProps {
   notifications: Notification[]
@@ -155,7 +156,7 @@ export function NotificationList({
       {/* 受け取る通知の切り替えは、マイページの設定で(UIUX改装 項目37) */}
       <div className="border-t px-4 py-2 text-right">
         <Link
-          href="/mypage#notifications"
+          href={MYPAGE_NOTIFICATIONS_PATH}
           role="menuitem"
           onClick={onClose}
           className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-blue-700 hover:underline"

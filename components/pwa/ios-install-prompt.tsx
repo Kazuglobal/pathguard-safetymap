@@ -42,7 +42,7 @@ export function IosInstallPrompt() {
       <div className="flex items-start gap-3">
         <SquarePlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
         <div className="flex-1">
-          <p className="text-sm font-medium">ホーム画面に追加すると通知が受け取れます</p>
+          <p className="text-sm font-medium">ホーム画面に追加すると通知を受け取れます</p>
           <IosInstallSteps className="mt-2 space-y-1.5 text-xs text-muted-foreground" />
         </div>
       </div>

@@ -16,12 +16,18 @@ export function useMypagePersonalData(reloadKey: number) {
   const [userName, setUserName] = useState<string | null>(null)
   const [isNameLoaded, setIsNameLoaded] = useState(false)
   const [isReportsLoading, setIsReportsLoading] = useState(true)
+  // 読み込みに失敗したとき。0件と見分けて「読み込めませんでした」を出す(0件を本当の値のように出さない)
+  const [reportsError, setReportsError] = useState(false)
+  // 読み込んだ件数が上限に届いたか(削除で減っても、数えている範囲は最近の分だけのまま)
+  const [isReportListCapped, setIsReportListCapped] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     let isMounted = true
 
     const loadPersonalData = async () => {
       setIsReportsLoading(true)
+      setReportsError(false)
 
       try {
         const [profileResponse, reportsResponse] = await Promise.all([
@@ -57,6 +63,7 @@ export function useMypagePersonalData(reloadKey: number) {
           setUserName(getDisplayName(profile))
           setIsNameLoaded(true)
           setReports(reportRows ?? [])
+          setIsReportListCapped((reportRows ?? []).length >= MYPAGE_REPORT_LIMIT)
           setIsReportsLoading(false)
         }
       } catch (error) {
@@ -64,6 +71,7 @@ export function useMypagePersonalData(reloadKey: number) {
         if (isMounted) {
           // 呼び名が分からないまま「表示名を設定する」を出さない(isNameLoaded は取れたときだけ立てる)
           setReports([])
+          setReportsError(true)
           setIsReportsLoading(false)
         }
       }
@@ -74,11 +82,13 @@ export function useMypagePersonalData(reloadKey: number) {
     return () => {
       isMounted = false
     }
-  }, [reloadKey])
+  }, [reloadKey, retryKey])
 
   const removeReport = useCallback((reportId: string) => {
     setReports((prev) => prev.filter((report) => report.id !== reportId))
   }, [])
 
-  return { reports, removeReport, userName, isNameLoaded, isReportsLoading }
+  const retryReports = useCallback(() => setRetryKey((key) => key + 1), [])
+
+  return { reports, removeReport, userName, isNameLoaded, isReportsLoading, reportsError, isReportListCapped, retryReports }
 }

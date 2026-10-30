@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { motion, useReducedMotion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { isAdminUser } from "@/lib/admin"
 import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
 import { REPORT_SHEET_TITLE } from "@/lib/report-entry"
@@ -45,7 +46,6 @@ type NavItem = {
   key: string
   href: string
   label: string
-  mobileLabel?: string
   /** スマホの下部タブバーで2行に分けて出すとき(1行では幅に入らない名前) */
   mobileLabelLines?: readonly string[]
   icon: LucideIcon
@@ -110,6 +110,7 @@ export function Navigation({
   const isAdmin = isAdminUser(user)
   const [isReportOpen, setIsReportOpen] = React.useState(false)
   const reduce = useReducedMotion()
+  const isMobile = useIsMobile()
   const resolvedAuthStatus: AuthStatus = authStatus ?? (user ? "authenticated" : "unauthenticated")
 
   const mainNavItems: NavItem[] = [
@@ -132,7 +133,8 @@ export function Navigation({
       href: "#report",
       // 中央のボタンとシートの名前(UIUX改装 項目5)。中身はヒヤリハット報告・不審者アラート・きけんハンター
       label: REPORT_SHEET_TITLE,
-      mobileLabelLines: ["知らせる・", "さがす"],
+      // 1行では幅に入らないので「・」のあとで2行に分ける(名前を変えても見える名前と読み上げがずれないよう、同じ定数から作る)
+      mobileLabelLines: REPORT_SHEET_TITLE.split(/(?<=・)/),
       icon: Search,
       description: "危険を知らせる・写真で危険をさがす",
       emphasize: true,
@@ -279,7 +281,8 @@ export function Navigation({
 
             {/* 右側アクション */}
             <div className="flex items-center space-x-3">
-              {user && <NotificationBell isLoggedIn={!!user} />}
+              {/* ホームと地図のスマホでは、この上のナビは隠れている。そのときはホームのヘッダーのベルだけが通知を読む */}
+              {user && <NotificationBell isLoggedIn={!(hideTopNavMobile && isMobile)} />}
               {resolvedAuthStatus === "loading" ? (
                 // ログイン状態の確定前は「ログイン/新規登録」を出さない(確定後に差し替わるチラつき防止)
                 <div className="hidden sm:flex items-center" data-testid="auth-placeholder">
@@ -390,7 +393,7 @@ export function Navigation({
                     </span>
                   ) : (
                     <span className="mt-auto block max-w-[72px] truncate whitespace-nowrap text-center">
-                      {item.mobileLabel ?? item.label}
+                      {item.label}
                     </span>
                   )}
                 </button>
@@ -425,7 +428,7 @@ export function Navigation({
                   />
                 </span>
                 <span className="block max-w-[72px] truncate whitespace-nowrap text-center">
-                  {item.mobileLabel ?? item.label}
+                  {item.label}
                 </span>
               </Link>
             )

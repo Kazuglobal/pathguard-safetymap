@@ -1,22 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
-import type { ComponentProps, ReactNode } from 'react'
+import type { ComponentProps } from 'react'
 import MapFloatingControls from '@/components/map/map-floating-controls'
 
 vi.mock('@/hooks/use-gamification', () => ({
   useGamification: () => ({ points: 120, level: 3 }),
-}))
-
-vi.mock('@/components/map/help-dialog', () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@/components/map/map-style-selector', () => ({
-  default: ({ buttonLabel = '地図スタイル' }: { buttonLabel?: string }) => (
-    <button type="button" data-testid="map-style-selector">
-      {buttonLabel}
-    </button>
-  ),
 }))
 
 vi.mock('@/components/map/map-3d-toggle', () => ({
@@ -27,17 +15,11 @@ function renderControls(overrides: Partial<ComponentProps<typeof MapFloatingCont
   const baseProps: ComponentProps<typeof MapFloatingControls> = {
     onAddReport: vi.fn(),
     isReportFormOpen: false,
-    is3DEnabled: false,
-    toggle3DMode: vi.fn(),
     isSelectingLocation: false,
-    onToggleAR: vi.fn(),
-    isARMode: false,
     onToggleSidebar: vi.fn(),
     isMobile: true,
     onReportAtCurrentLocation: vi.fn(),
     isAcquiringGPS: false,
-    onToggleHeatmap: vi.fn(),
-    isHeatmapVisible: false,
   }
 
   return render(<MapFloatingControls {...baseProps} {...overrides} />)
@@ -61,9 +43,9 @@ describe('MapFloatingControls mobile layout', () => {
       bottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
     })
     expect(screen.getByRole('button', { name: '危険地点一覧を開く' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '危険を報告する' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toHaveTextContent('報告')
+    expect(screen.getByRole('button', { name: '危険を報告する' })).toHaveTextContent('報告')
   })
 
   it('shows a focused dock while the report form is open', () => {
@@ -74,17 +56,10 @@ describe('MapFloatingControls mobile layout', () => {
     expect(screen.getByTestId('mobile-focused-dock')).toBeInTheDocument()
     expect(screen.getByText('報告内容を入力中')).toBeInTheDocument()
     expect(screen.getByText('内容を確認して送信してね')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '危険箇所を報告する' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '危険を報告する' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '危険地点一覧を開く' })).not.toBeInTheDocument()
   })
 
-  it('keeps mobile actions available when heatmap is visible', () => {
-    renderControls({ isHeatmapVisible: true })
-
-    expect(screen.getByTestId('mobile-action-dock')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '危険箇所を報告する' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '現在地で報告' })).toBeInTheDocument()
-  })
 
   it('does not render the bottom legend on mobile', () => {
     renderControls()
@@ -96,6 +71,13 @@ describe('MapFloatingControls mobile layout', () => {
     renderControls()
 
     expect(screen.getByRole('button', { name: 'ピンの見方を表示' })).toBeInTheDocument()
+  })
+
+  // 報告の入口は、どこから入っても「危険を報告する」(UIUX改装 項目5)
+  it('names the desktop report button 「危険を報告する」, like every other entry', () => {
+    renderControls({ isMobile: false })
+
+    expect(screen.getByRole('button', { name: '危険を報告する' })).toHaveTextContent('危険を報告する')
   })
 
   it('shows the always-visible legend on desktop instead of the button', () => {

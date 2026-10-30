@@ -80,7 +80,7 @@ export default function ReportComposer() {
         <header className="safe-area-top flex items-center gap-3 border-b px-4 py-3" style={{ background: t.color.card, borderColor: t.border.faint }}>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold" style={{ color: t.color.primaryStrong }}>3ステップでかんたん</p>
-            <h2 id="report-dialog-title" className="text-lg font-black" style={{ color: t.color.ink }}>危険を報告する</h2>
+            <h2 id="report-dialog-title" className="text-lg font-black" style={{ color: t.color.ink }}>{REPORT_ENTRY_LABEL}</h2>
           </div>
           <button
             type="button"
@@ -149,7 +149,7 @@ export default function ReportComposer() {
             <Flag className="h-6 w-6" />
           </span>
           <div>
-            <h1 id="report-start-title" className="text-2xl font-black sm:text-3xl">危険を報告する</h1>
+            <h1 id="report-start-title" className="text-2xl font-black sm:text-3xl">{REPORT_ENTRY_LABEL}</h1>
             <p className="mt-1 text-sm font-bold text-white/90">3ステップでカンタンに報告できます</p>
           </div>
         </div>

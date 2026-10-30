@@ -109,7 +109,9 @@ describe("LPセクションのレンダリング", () => {
     expect(screen.getByText("AIと運営スタッフの確認")).toBeInTheDocument()
     expect(screen.getByText("写真はスマホの中でぼかす")).toBeInTheDocument()
     expect(screen.getByText("すべての機能が無料")).toBeInTheDocument()
-    expect(screen.getByText("歩きながら見続けさせない")).toBeInTheDocument()
+    // 見出しで「歩きながら見続けさせない」とは言わない(止めるのは時速15kmより速いときの接近のお知らせだけ)
+    expect(screen.getByText("速く動いているときは知らせない")).toBeInTheDocument()
+    expect(screen.queryByText(/見続けさせない/)).not.toBeInTheDocument()
     expect(screen.getByText(/速く移動しているとき/)).toBeInTheDocument()
   })
 

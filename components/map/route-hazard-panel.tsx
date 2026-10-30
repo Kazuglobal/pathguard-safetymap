@@ -34,6 +34,8 @@ const TsunamiIcon = TSUNAMI.icon
 
 interface RouteHazardPanelProps {
   routes: UserRoute[]
+  /** 通学路の一覧の読み込みのようす(渡さなければ読み込み済みとみなす) */
+  routesStatus?: RoutesStatus
   selectedRouteId: string | null
   selectedHazardsCount: number
   summary?: RouteSafetySummary
@@ -62,7 +64,25 @@ interface RouteHazardPanelProps {
  * 通学路が無い・道すじ(線)が無いときの理由と、直し方(UIUX改装 項目50)。
  * 線が無いと、地図に通学路を引けず、道ぞいの危険も調べられない
  */
-function RouteGeometryNotice({ routeCount, selectedRoute }: { routeCount: number; selectedRoute: UserRoute | null }) {
+function RouteGeometryNotice({
+  routeCount,
+  selectedRoute,
+  routesStatus,
+}: {
+  routeCount: number
+  selectedRoute: UserRoute | null
+  routesStatus: RoutesStatus
+}) {
+  // 読み込み中・読み込めなかったときは「まだ登録されていません」と言わない(同じ通学路を二重に登録させないため)
+  if (routeCount === 0 && routesStatus !== "ready") {
+    return (
+      <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" data-testid="route-geometry-notice">
+        {routesStatus === "loading"
+          ? "通学路を読み込んでいます…"
+          : "通学路を読み込めませんでした。通信状態を確認して、地図を開き直してください。"}
+      </p>
+    )
+  }
   const message =
     routeCount === 0
       ? "通学路がまだ登録されていません。登録すると、通学路の近くの危険と事故の多い場所をここで確かめられます。"
@@ -80,8 +100,12 @@ function RouteGeometryNotice({ routeCount, selectedRoute }: { routeCount: number
   )
 }
 
+/** 通学路の一覧の読み込みのようす(map-container が useUserRoutes の isLoading・error から決める) */
+export type RoutesStatus = "loading" | "error" | "ready"
+
 interface HazardPanelContentProps {
   routes: UserRoute[]
+  routesStatus: RoutesStatus
   selectedRouteId: string | null
   selectedHazardsCount: number
   toggles: Record<HazardType, boolean>
@@ -92,6 +116,7 @@ interface HazardPanelContentProps {
 
 function HazardPanelContent({
   routes,
+  routesStatus,
   selectedRouteId,
   selectedHazardsCount,
   toggles,
@@ -102,7 +127,7 @@ function HazardPanelContent({
   const selectedRoute = routes.find((route) => route.id === selectedRouteId) ?? null
   return (
     <>
-      <RouteGeometryNotice routeCount={routes.length} selectedRoute={selectedRoute} />
+      <RouteGeometryNotice routeCount={routes.length} selectedRoute={selectedRoute} routesStatus={routesStatus} />
       <div className="space-y-2">
         <Label htmlFor="route-hazard-select">対象ルート</Label>
         <Select value={selectedRouteId ?? undefined} onValueChange={onRouteChange}>
@@ -165,6 +190,7 @@ function HazardPanelContent({
 
 export function RouteHazardPanel({
   routes,
+  routesStatus = "ready",
   selectedRouteId,
   selectedHazardsCount,
   summary,
@@ -269,6 +295,7 @@ export function RouteHazardPanel({
         </div>
         <HazardPanelContent
           routes={routes}
+          routesStatus={routesStatus}
           selectedRouteId={selectedRouteId}
           selectedHazardsCount={selectedHazardsCount}
           toggles={toggles}
@@ -323,6 +350,7 @@ export function RouteHazardPanel({
                 </div>
                 <HazardPanelContent
                   routes={routes}
+                  routesStatus={routesStatus}
                   selectedRouteId={selectedRouteId}
                   selectedHazardsCount={selectedHazardsCount}
                   toggles={toggles}
@@ -358,6 +386,7 @@ export function RouteHazardPanel({
         <HazardReasonList items={evidenceItems} />
         <HazardPanelContent
           routes={routes}
+          routesStatus={routesStatus}
           selectedRouteId={selectedRouteId}
           selectedHazardsCount={selectedHazardsCount}
           toggles={toggles}

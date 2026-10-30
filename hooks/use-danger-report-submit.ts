@@ -5,6 +5,7 @@ import type { DangerReport, UserRoute } from "@/lib/types"
 import type { DangerReportSubmitPayload } from "@/components/danger-report/danger-report-form"
 import { useToast } from "@/components/ui/use-toast"
 import { isValidCoordinates } from "@/lib/coordinates"
+import { REPORT_PUBLISHED_POINTS } from "@/lib/gamification-levels"
 import { reverseGeocodeLocation } from "@/lib/map/reverse-geocode"
 import {
   buildFamilyShareAction,
@@ -198,7 +199,7 @@ export function useDangerReportSubmit({
 
       // 3. 後続処理 (トースト、プレビュー、ローカル状態更新)
       if (!options?.suppressSuccessToast) {
-        toast({ title: "報告完了", description: "危険箇所報告が送信されました。承認後に20ptを獲得できます。" }); // 最終的な完了トースト
+        toast({ title: "報告完了", description: `危険箇所報告が送信されました。承認後に${REPORT_PUBLISHED_POINTS}ptを獲得できます。` }); // 最終的な完了トースト
       }
 
       // プレビュー用のデータを設定 (selectedLocation が null でないことを確認)

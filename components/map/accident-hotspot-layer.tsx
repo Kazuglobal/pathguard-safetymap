@@ -31,6 +31,8 @@ export const HOTSPOT_MIN_FETCH_ZOOM = 10
 interface AccidentHotspotLayerProps {
   map: mapboxgl.Map | null
   isVisible: boolean
+  /** false のあいだは、丸をタップしても吹き出しを開かない(報告の場所を選んでいるときなど) */
+  isInteractive?: boolean
 }
 
 function layerExists(m: mapboxgl.Map, id: string): boolean {
@@ -184,7 +186,7 @@ export function hotspotLayerMessage(state: {
 }
 
 /** 事故多発地点の Mapbox レイヤー（表示範囲の取得・ポップアップ・スタイル変更時の再追加を含む）。 */
-export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerProps) {
+export function AccidentHotspotLayer({ map, isVisible, isInteractive = true }: AccidentHotspotLayerProps) {
   const { hotspots, truncated, error, fetchForViewport, clear } = useAccidentHotspots()
   const [isZoomedOut, setIsZoomedOut] = useState(false)
   const [minCountShown, setMinCountShown] = useState(HOTSPOT_MIN_COUNT)
@@ -193,6 +195,8 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
 
   // Mapbox に一度だけ登録するハンドラで最新の hotspots を読むため useEventCallback を使う（同期 ref を新設しない）
   const handleClick = useEventCallback((event: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+    // 報告の場所を選んでいるあいだは、丸をタップしても吹き出しを開かない(場所を決めるタップと重なるため)
+    if (!isInteractive) return
     const id = Number(event.features?.[0]?.properties?.id)
     const spot = hotspots.find((item) => item.id === id)
     if (!spot) return
@@ -251,8 +255,13 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
       clear()
       return
     }
-    addSourceAndLayers(map, hotspotsToGeoJSON([]), hotspotMinCountForZoom(map.getZoom()))
-    handleZoom()
+    // スタイルを読み込む前に足すと "Style is not done loading" になる。そのときは下の 'style.load'(handleStyleLoad)で足す
+    try {
+      addSourceAndLayers(map, hotspotsToGeoJSON([]), hotspotMinCountForZoom(map.getZoom()))
+      handleZoom()
+    } catch (error) {
+      if (!(error instanceof Error) || !/not done loading/i.test(error.message)) throw error
+    }
     map.on('click', CIRCLE_LAYER_ID, handleClick)
     map.on('mouseenter', CIRCLE_LAYER_ID, setPointer)
     map.on('mouseleave', CIRCLE_LAYER_ID, resetPointer)
@@ -289,7 +298,8 @@ export function AccidentHotspotLayer({ map, isVisible }: AccidentHotspotLayerPro
   return (
     <div
       role="status"
-      className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-xs shadow"
+      // パソコンの下の「危険を報告する」(下から6rem)に重ならない高さに出す
+      className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-xs shadow md:bottom-44"
       style={{ color: error ? tankenTokens.color.danger : tankenTokens.color.ink }}
     >
       {message}

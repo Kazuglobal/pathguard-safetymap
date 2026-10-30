@@ -69,7 +69,7 @@ import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
 import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
-import { NATIONWIDE } from "@/lib/user-region"
+import { DEFAULT_MAP_REPORT_FILTERS, shouldShowEmptyAreaNotice, type MapReportFilters } from "@/lib/map/empty-area-notice"
 
 // 最初に地図を出すのに要らない画面は別チャンクに分ける(低速端末で地図の表示が約20秒かかっていた)。
 // 詳細・プレビューは開くまで描かれないか中身が空なので、遅れて届いても見え方は変わらない
@@ -118,15 +118,8 @@ export default function MapContainer({
   const [locationSelectionSource, setLocationSelectionSource] =
     useState<LocationSelectionSource>(null)
   const [selectedReport, setSelectedReport] = useState<DangerReport | null>(null)
-  const [filterOptions, setFilterOptions] = useState({
-    dangerType: "all",
-    dangerLevel: "all",
-    dateRange: "all",
-    showPending: true,
-    // ホームやニュースで選んだ地域を地図に持ち込まない(見えないところで絞り込まれていた)。
-    // 地図は表示範囲だけで絞り、都道府県はサイドバーで選んだときだけ絞る
-    prefecture: NATIONWIDE,
-  })
+  // 初期値は全国・絞り込みなし(ホームやニュースで選んだ地域を持ち込まない。lib/map/empty-area-notice.ts)
+  const [filterOptions, setFilterOptions] = useState<MapReportFilters>(DEFAULT_MAP_REPORT_FILTERS)
   // 地図の現在の表示範囲（bbox）。大量報告時に全件取得しないための絞り込みに使う。
   const [mapBounds, setMapBounds] = useState<DangerReportBounds | null>(null)
   const boundsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -141,6 +134,7 @@ export default function MapContainer({
     setDangerReports,
     setPendingReports,
     isFilterRefreshing,
+    reportsLoadState,
   } = useDangerReports({
     supabase,
     filterOptions: dangerReportsFilterOptions,
@@ -178,6 +172,7 @@ export default function MapContainer({
     routes: userRoutes,
     primaryRoute,
     isLoading: isUserRoutesLoading,
+    error: userRoutesError,
   } = useUserRoutes()
   // 初期表示センター（登録ルート → 現在地 → 東京フォールバックの優先順で決定）
   const {
@@ -346,6 +341,7 @@ export default function MapContainer({
     mapInitializedRef: mapInitialized,
     selectedUserRoute,
     mapStyleSyncToken,
+    isMapReady: isBaseMapReady,
   })
   useHazardTileLayers({
     mapRef: map,
@@ -430,21 +426,30 @@ export default function MapContainer({
 
   // 通学路の「地図で見る」(/map?routeId=)から来たら、その通学路の「通学路チェック」
   // (線・注意ポイントの一覧・安全サマリー)を最初に1回だけ開く(UIUX改装 項目50)
-  const openedPreferredRouteRef = useRef(false)
+  // 開いたあとに地図の上で別の routeId へ移ったとき(ベルの通知など)も、その通学路で開き直す。
+  // 同じ routeId で2回は開かない(利用者がパネルで別の通学路を選んだあとに、引き戻さないため)
+  const openedPreferredRouteIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (openedPreferredRouteRef.current || !preferredRouteId || selectedUserRouteId !== preferredRouteId) return
-    openedPreferredRouteRef.current = true
+    if (!preferredRouteId || openedPreferredRouteIdRef.current === preferredRouteId) return
+    if (selectedUserRouteId !== preferredRouteId) return
+    openedPreferredRouteIdRef.current = preferredRouteId
     setActiveTopPanel("hazard")
   }, [preferredRouteId, selectedUserRouteId])
 
+  // routeId で指定された通学路は、別の通学路が選ばれていても1回だけ選ぶ。指定が無ければ、お気に入りの通学路
+  const appliedPreferredRouteIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (selectedUserRouteId) return
-
-    if (preferredRouteId && userRoutes.some((route) => route.id === preferredRouteId)) {
+    if (
+      preferredRouteId &&
+      appliedPreferredRouteIdRef.current !== preferredRouteId &&
+      userRoutes.some((route) => route.id === preferredRouteId)
+    ) {
+      appliedPreferredRouteIdRef.current = preferredRouteId
       setSelectedUserRouteId(preferredRouteId)
       return
     }
 
+    if (selectedUserRouteId) return
     if (!primaryRoute) return
     setSelectedUserRouteId(primaryRoute.id)
   }, [preferredRouteId, primaryRoute, selectedUserRouteId, userRoutes])
@@ -662,7 +667,8 @@ export default function MapContainer({
         }
 
         console.error("Mapbox error:", e.error || e)
-        setMapError(`マップエラー: ${classifiedError.message}`)
+        // ライブラリのエラーの文(英語・トークンの話など)は画面に出さず、ログに残す(UIUX改装 項目53)
+        setMapError("地図の表示でエラーが起きました。もう一度ためすか、時間をおいてお試しください。")
       });
 
       // 地名・施設名ラベルを日本語優先に(スタイル変更後も再適用。shield系は除外済み)
@@ -718,7 +724,7 @@ export default function MapContainer({
       });
     } catch (error: any) {
       console.error("Error initializing map:", error);
-      setMapError(`マップ初期化エラー: ${error.message}`);
+      setMapError("地図を準備できませんでした。もう一度ためすか、時間をおいてお試しください。");
       setIsLoading(false);
     }
 
@@ -764,16 +770,22 @@ export default function MapContainer({
     })
   }, [isMobile])
 
-  // autoOpenReport: ナビの報告CTAから遷移したとき自動でフォームを開く
+  // autoOpenReport: 報告の入口(/map?report=open)から来たとき、地図の準備ができたらフォームを開く。
+  // URL の report=open は開いた直後に消される(map-page-client)。地図の準備より先に消えても開くよう、受け取ったことを覚えておく
+  const [isAutoOpenReportPending, setIsAutoOpenReportPending] = useState(autoOpenReport)
   useEffect(() => {
-    if (!autoOpenReport || isLoading) return
+    if (autoOpenReport) setIsAutoOpenReportPending(true)
+  }, [autoOpenReport])
+  useEffect(() => {
+    if (!isAutoOpenReportPending || isLoading) return
+    setIsAutoOpenReportPending(false)
     if (isMobile) {
       setAwaitingLocationSelection(true)
     } else {
       setIsReportFormOpen(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenReport, isLoading])
+  }, [isAutoOpenReportPending, isLoading])
 
   // --- Report Form Logic ---
   useEffect(() => {
@@ -852,7 +864,7 @@ export default function MapContainer({
       });
     } catch (error: any) {
       console.error("Error changing map style:", error);
-      setMapError(`スタイル変更エラー: ${error.message}`);
+      setMapError("地図の見た目を切り替えられませんでした。もう一度ためしてください。");
       styleChangeInProgress.current = false;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1116,50 +1128,34 @@ export default function MapContainer({
   const mapDisplayOverlayOptions = useMemo(
     () =>
       buildMapDisplayOverlayOptions({
-        isHeatmapVisible: accidentHeatmap.isVisible,
         isHotspotVisible,
         isFloodVisible: hazardLayerVisibility.flood,
         isTsunamiVisible: hazardLayerVisibility.tsunami,
-        isSuspiciousVisible: isSuspiciousVisible,
-        onToggleHeatmap: accidentHeatmap.toggleVisibility,
         onToggleHotspot: () => setIsHotspotVisible((visible) => !visible),
         onToggleFlood: () => handleHazardLayerToggle("flood", !hazardLayerVisibility.flood),
         onToggleTsunami: () => handleHazardLayerToggle("tsunami", !hazardLayerVisibility.tsunami),
-        onToggleSuspicious: () => setIsSuspiciousVisible((v) => !v),
       }),
-    [
-      accidentHeatmap.isVisible,
-      accidentHeatmap.toggleVisibility,
-      isHotspotVisible,
-      handleHazardLayerToggle,
-      hazardLayerVisibility.flood,
-      hazardLayerVisibility.tsunami,
-      isSuspiciousVisible,
-    ],
+    [isHotspotVisible, handleHazardLayerToggle, hazardLayerVisibility.flood, hazardLayerVisibility.tsunami],
   )
 
-  // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)。絞り込み中は「まだない」とは言えないので出さない。
-  // 地図を動かして報告のある所へ行けば消え、閉じたらこの画面のあいだは出さない
-  const isUnfilteredView =
-    filterOptions.dangerType === "all" &&
-    filterOptions.dangerLevel === "all" &&
-    filterOptions.dateRange === "all" &&
-    filterOptions.prefecture === NATIONWIDE
-  const showEmptyAreaNotice =
-    Boolean(mapBounds) &&
-    isBaseMapReady &&
-    !isLoading &&
-    !isFilterRefreshing &&
-    !mapError &&
-    isUnfilteredView &&
-    dangerReports.length === 0 &&
-    pendingReports.length === 0 &&
-    !isEmptyAreaNoticeDismissed &&
-    !isReportFormOpen &&
-    !awaitingLocationSelection &&
-    !isARMode &&
-    activeTopPanel === null &&
-    !accidentHeatmap.isVisible
+  // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)。取得に失敗したとき・絞り込み中は「まだない」とは
+  // 言えないので出さない(lib/map/empty-area-notice.ts)。地図を動かして報告のある所へ行けば消え、閉じたらこの画面のあいだは出さない
+  const showEmptyAreaNotice = shouldShowEmptyAreaNotice({
+    isMapReady: Boolean(mapBounds) && isBaseMapReady,
+    isRefreshing: isLoading || isFilterRefreshing,
+    hasMapError: Boolean(mapError),
+    reportsLoadState,
+    filters: filterOptions,
+    reportCount: dangerReports.length + pendingReports.length,
+    isDismissed: isEmptyAreaNoticeDismissed,
+    isBusy:
+      isReportFormOpen ||
+      awaitingLocationSelection ||
+      isARMode ||
+      activeTopPanel !== null ||
+      accidentHeatmap.isVisible ||
+      accidentInspection !== null,
+  })
 
   // --- Render ---
   return (
@@ -1170,21 +1166,29 @@ export default function MapContainer({
         <MapFloatingControls
           onAddReport={handleAddReportClick}
           isReportFormOpen={isReportFormOpen}
-          is3DEnabled={is3DEnabled}
-          toggle3DMode={toggle3DMode}
           isSelectingLocation={isMobile && awaitingLocationSelection}
-          onToggleAR={toggleARMode}
-          isARMode={isARMode}
           onToggleSidebar={toggleSidebar}
           isMobile={isMobile}
           onReportAtCurrentLocation={handleReportAtCurrentLocation}
           isAcquiringGPS={isAcquiringGPS}
-          onToggleHeatmap={accidentHeatmap.toggleVisibility}
-          isHeatmapVisible={accidentHeatmap.isVisible}
           // 読み込み中のみ無効化する。mapError 時まで無効にすると、地図が開けない
           // 環境(WebGL不可等)で /map からの報告手段が恒久的に失われる
           isMapReady={isBaseMapReady || mapError !== null}
         />
+
+        {/* 報告の場所を選んでいるあいだは上の列が隠れるので、地図の見た目(衛星写真など)だけはここで変えられるようにする */}
+        {isMobile && awaitingLocationSelection && (
+          <div className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-30" data-testid="location-selection-style">
+            <MapStyleSelector
+              currentStyle={mapStyle}
+              onChange={setMapStyle}
+              isMobile
+              compactLabel={false}
+              buttonLabel="地図の見た目"
+              buttonClassName="h-10 rounded-full border bg-white/95 px-4 font-black shadow-tanken-float"
+            />
+          </div>
+        )}
 
         {!awaitingLocationSelection && (
           <MapTopOverlay
@@ -1249,6 +1253,7 @@ export default function MapContainer({
             hazardPanelSlot={
               <RouteHazardPanel
                 routes={userRoutes}
+                routesStatus={isUserRoutesLoading ? "loading" : userRoutesError ? "error" : "ready"}
                 selectedRouteId={selectedUserRouteId}
                 selectedHazardsCount={visibleRouteHazards.length}
                 summary={selectedUserRouteId ? routeSafetySummary : undefined}
@@ -1394,7 +1399,12 @@ export default function MapContainer({
         />
 
         {/* 事故多発地点レイヤー（警察庁オープンデータから事前計算） */}
-        <AccidentHotspotLayer map={map.current} isVisible={isHotspotVisible} />
+        {/* 最初から出すので、地図の load(スタイルの読み込み)が済んでから渡す */}
+        <AccidentHotspotLayer
+          map={isBaseMapReady ? map.current : null}
+          isVisible={isHotspotVisible}
+          isInteractive={!isReportFormOpen && !awaitingLocationSelection && !isSuspiciousAlertOpen}
+        />
 
         {/* 不審者アラート 危険エリア円レイヤー（「表示」パネルのトグル。入力中は常に表示してプレビュー） */}
         <SuspiciousAlertLayer

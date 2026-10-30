@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Camera, Flag, MapPin, MessageCircleQuestion } from "lucide-react"
 import { Mascot } from "@/components/safety-quest/hunter/theme"
 import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
+import { HUNTER_PLAY_POINTS } from "@/lib/hunter/rewards"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 
 export const metadata = {
@@ -46,7 +47,7 @@ export default async function LeaderboardPage() {
               {[
                 ["/map", "危険を1件見る", "+3pt", MapPin],
                 ["/route-quiz", "クイズに答える", "+3pt", MessageCircleQuestion],
-                ["/safety-quest/hunter", "写真ゲーム", "+5pt", Camera],
+                ["/safety-quest/hunter", "写真ゲーム", `+${HUNTER_PLAY_POINTS}pt`, Camera],
               ].map(([href, label, points, Icon]) => (
                 <Link key={String(href)} href={String(href)} className={`flex min-h-[108px] flex-col items-center justify-center rounded-[18px] border p-2 text-xs font-black ${t.cls.focus}`} style={{ background: t.color.paper, borderColor: t.border.soft }}>
                   <Icon className="mb-1 h-5 w-5" style={{ color: t.color.primary }} aria-hidden="true" />

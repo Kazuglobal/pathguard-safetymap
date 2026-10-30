@@ -8,6 +8,7 @@ import type { UsePushSubscriptionReturn } from "@/hooks/use-push-subscription"
 import { IosInstallSteps } from "@/components/pwa/ios-install-steps"
 import { BRAND } from "@/lib/brand"
 import { getPushUnavailableReason, type PushUnavailableReason } from "@/lib/pwa-install"
+import { mypageCardStyle } from "./mypage-shared"
 import { tankenTokens } from "@/lib/design/tanken"
 import type { NotificationPreferences } from "@/lib/notifications/builders"
 
@@ -39,12 +40,7 @@ const PREFERENCE_LABELS: Record<
   },
 }
 
-const cardStyle = {
-  background: t.color.card,
-  borderColor: t.border.soft,
-  boxShadow: t.shadow.card,
-  borderRadius: t.radius.card,
-} as const
+const cardStyle = mypageCardStyle
 
 /** 通知を受け取れない環境で出す説明(カードを消さずに理由を出す。UIUX改装 項目37) */
 const UNAVAILABLE_COPY: Record<PushUnavailableReason, { title: string; description: string }> = {
