@@ -1,6 +1,7 @@
 import type { DangerReport } from "@/lib/types"
+import type { AccidentHeatmapFilters } from '@/lib/traffic-accident-heatmap'
 
-export type ARViewMode =
+export type ARViewMode = (
   | { kind: "nearby"; reports: DangerReport[] }
   | {
       kind: "parent_child_route"
@@ -11,6 +12,7 @@ export type ARViewMode =
       reports: DangerReport[]
       sessionId: string
     }
+) & { accidentFilters?: AccidentHeatmapFilters }
 
 export interface ARViewProps {
   mode: ARViewMode

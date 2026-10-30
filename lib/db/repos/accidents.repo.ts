@@ -84,6 +84,7 @@ export interface NearbyStatsInput {
 
 export interface AccidentFeatureCollection {
   type: 'FeatureCollection'
+  truncated?: boolean
   features: Array<{
     type: 'Feature'
     geometry: { type: 'Point'; coordinates: [number, number] }
@@ -460,12 +461,13 @@ export function createAccidentsRepo(db: AppDb) {
         requestedLimit,
         input.child === true ? MAX_CHILD_BBOX_RESULTS : MAX_BBOX_RESULTS,
       )
-      const rows = (await db.select().from(trafficAccidents).where(and(...predicates)).limit(limit))
+      const rows = (await db.select().from(trafficAccidents).where(and(...predicates)).limit(limit + 1))
         .map(normalizeAccidentRow)
 
       return {
         type: 'FeatureCollection',
-        features: rows.map((row) => ({
+        truncated: rows.length > limit,
+        features: rows.slice(0, limit).map((row) => ({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [row.longitude, row.latitude] },
           properties: {

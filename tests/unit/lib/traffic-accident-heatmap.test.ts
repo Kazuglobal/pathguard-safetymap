@@ -90,16 +90,14 @@ describe('traffic-accident-heatmap', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('returns empty collection when the API returns malformed payload', async () => {
+  it('does not present malformed API payload as zero accidents', async () => {
     const { supabase } = createApiMock(async () => ({ data: { foo: 'bar' }, error: null }))
 
-    const result = await fetchAccidentsInBounds(
+    await expect(fetchAccidentsInBounds(
       supabase,
       { minLng: 139, minLat: 35, maxLng: 140, maxLat: 36 },
       DEFAULT_HEATMAP_FILTERS,
-    )
-
-    expect(result).toEqual({ type: 'FeatureCollection', features: [] })
+    )).rejects.toThrow('事故データの応答を確認できません')
   })
 
   it('retries with a lower limit when D1 reports a statement timeout', async () => {
