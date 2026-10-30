@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
+import { AccidentDataLinks } from "@/components/map/accident-data-links"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
 import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
@@ -88,6 +89,8 @@ export function AccidentStatsOverlay({
           <AccidentStatsPanel stats={stats} mode="full" onAccidentNavigate={onAccidentNavigate} />
         </div>
       )}
+      {/* 事故をくわしく調べる画面へ(UIUX改装 項目43) */}
+      {status === 'loaded' && stats && <AccidentDataLinks className="p-3" />}
     </section>
   )
 }

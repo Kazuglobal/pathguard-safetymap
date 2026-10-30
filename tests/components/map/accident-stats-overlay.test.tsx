@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AccidentStatsOverlay } from '@/components/map/accident-stats-overlay'
 
+vi.mock('@/components/danger-report/accident-stats-panel', () => ({ default: () => <div>集計の中身</div> }))
+
 const props = { status: 'loading' as const, stats: null, isMobile: true, awaitingLocationSelection: false, isReportFormOpen: false, onReset: vi.fn(), center: [139.957, 35.8983] as [number, number] }
 
 describe('AccidentStatsOverlay', () => {
@@ -21,6 +23,17 @@ describe('AccidentStatsOverlay', () => {
     expect(screen.getByText('集計: 2021〜2025年の全事故')).toBeInTheDocument()
     expect(screen.getByText(/地図のピン: 2019〜2025年/)).toBeInTheDocument()
     expect(screen.getByText(/集計期間外のピンは件数に含みません/)).toBeInTheDocument()
+  })
+  // 事故の詳細から、事故をくわしく調べる画面へ(UIUX改装 項目43)
+  it('links the loaded stats to the accident explorer and the road data page', () => {
+    const stats = { totalAccidents: 3 } as unknown as NonNullable<Parameters<typeof AccidentStatsOverlay>[0]['stats']>
+    render(<AccidentStatsOverlay {...props} status="loaded" stats={stats} />)
+    expect(screen.getByRole('link', { name: /街の事故を調べる/ })).toHaveAttribute('href', '/accidents')
+    expect(screen.getByRole('link', { name: /事故の多い道/ })).toHaveAttribute('href', '/xroad')
+  })
+  it('does not show the links before the stats are loaded', () => {
+    render(<AccidentStatsOverlay {...props} />)
+    expect(screen.queryByRole('link', { name: /街の事故を調べる/ })).not.toBeInTheDocument()
   })
   it('does not present a failed request as zero accidents', () => {
     render(<AccidentStatsOverlay {...props} status="error" />)
