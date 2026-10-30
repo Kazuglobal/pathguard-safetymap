@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { Flame, Layers, Navigation, Route as RouteIcon } from "lucide-react"
 
 import { HazardReasonList } from "@/components/map/hazard-reason-list"
@@ -57,6 +58,28 @@ interface RouteHazardPanelProps {
   variant?: "default" | "inline"
 }
 
+/**
+ * 通学路が無い・道すじ(線)が無いときの理由と、直し方(UIUX改装 項目50)。
+ * 線が無いと、地図に通学路を引けず、道ぞいの危険も調べられない
+ */
+function RouteGeometryNotice({ routeCount, selectedRoute }: { routeCount: number; selectedRoute: UserRoute | null }) {
+  const message =
+    routeCount === 0
+      ? "通学路がまだ登録されていません。登録すると、通学路の近くの危険と事故の多い場所をここで確かめられます。"
+      : selectedRoute && !selectedRoute.route_geometry?.coordinates?.length
+        ? "この通学路には道すじ(線)が無いので、地図に線を引けず、道ぞいの危険も調べられません。道すじをかかずに登録したときや、位置を粗く保存する設定で別の端末から登録したときに起きます。通学路の画面で道すじをかき直してください。"
+        : null
+  if (!message) return null
+  return (
+    <div role="status" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950" data-testid="route-geometry-notice">
+      <p>{message}</p>
+      <Link href="/routes" className="inline-flex min-h-9 items-center font-bold underline underline-offset-4">
+        {routeCount === 0 ? "通学路を登録する" : "通学路の画面へ"}
+      </Link>
+    </div>
+  )
+}
+
 interface HazardPanelContentProps {
   routes: UserRoute[]
   selectedRouteId: string | null
@@ -76,8 +99,10 @@ function HazardPanelContent({
   onRouteChange,
   onToggleChange,
 }: HazardPanelContentProps) {
+  const selectedRoute = routes.find((route) => route.id === selectedRouteId) ?? null
   return (
     <>
+      <RouteGeometryNotice routeCount={routes.length} selectedRoute={selectedRoute} />
       <div className="space-y-2">
         <Label htmlFor="route-hazard-select">対象ルート</Label>
         <Select value={selectedRouteId ?? undefined} onValueChange={onRouteChange}>

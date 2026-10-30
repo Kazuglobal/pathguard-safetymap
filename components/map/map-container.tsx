@@ -428,6 +428,15 @@ export default function MapContainer({
     [routeDangers, routeHazardsFetchedAt, visibleRouteHazards],
   )
 
+  // 通学路の「地図で見る」(/map?routeId=)から来たら、その通学路の「通学路チェック」
+  // (線・注意ポイントの一覧・安全サマリー)を最初に1回だけ開く(UIUX改装 項目50)
+  const openedPreferredRouteRef = useRef(false)
+  useEffect(() => {
+    if (openedPreferredRouteRef.current || !preferredRouteId || selectedUserRouteId !== preferredRouteId) return
+    openedPreferredRouteRef.current = true
+    setActiveTopPanel("hazard")
+  }, [preferredRouteId, selectedUserRouteId])
+
   useEffect(() => {
     if (selectedUserRouteId) return
 

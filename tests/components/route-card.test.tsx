@@ -209,6 +209,27 @@ describe('RouteCard Component', () => {
     })
   })
 
+  // 「地図で見る」は地図の画面で、この通学路の線・注意ポイント・安全サマリーを開く(UIUX改装 項目50)
+  describe('地図で見る', () => {
+    it('opens /map with this route instead of only selecting the card', async () => {
+      const onClick = vi.fn()
+      render(<RouteCard {...defaultProps} onClick={onClick} />)
+
+      const link = screen.getByRole('link', { name: /地図で見る/ })
+      expect(link).toHaveAttribute('href', `/map?routeId=${encodeURIComponent(mockSingleRoute.id)}`)
+
+      fireEvent.click(link)
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('keeps 「ルートをかいてみる」 for a route without a line', () => {
+      render(<RouteCard {...defaultProps} route={{ ...mockSingleRoute, route_geometry: null }} />)
+
+      expect(screen.queryByRole('link', { name: /地図で見る/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /ルートをかいてみる/ })).toBeInTheDocument()
+    })
+  })
+
   describe('Accessibility', () => {
     it('has correct role', () => {
       render(<RouteCard {...defaultProps} />)

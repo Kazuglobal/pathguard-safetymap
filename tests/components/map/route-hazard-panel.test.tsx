@@ -115,6 +115,29 @@ describe("RouteHazardPanel", () => {
     vi.clearAllMocks()
   })
 
+  // 道すじ(線)が無い通学路・通学路が無いときは、理由と直し方を出す(UIUX改装 項目50)
+  it("道すじの無い通学路には、線を引けない理由と、通学路の画面への道を出す", () => {
+    render(<RouteHazardPanel {...defaultProps} variant="inline" />)
+
+    const notice = screen.getByTestId("route-geometry-notice")
+    expect(notice).toHaveTextContent("道すじ(線)が無いので")
+    expect(screen.getByRole("link", { name: "通学路の画面へ" })).toHaveAttribute("href", "/routes")
+  })
+
+  it("道すじのある通学路には、その案内を出さない", () => {
+    const routeWithLine = { ...mockRoute, route_geometry: { type: "LineString" as const, coordinates: [[139.0, 35.0], [139.1, 35.1]] } }
+    render(<RouteHazardPanel {...defaultProps} routes={[routeWithLine]} variant="inline" />)
+
+    expect(screen.queryByTestId("route-geometry-notice")).not.toBeInTheDocument()
+  })
+
+  it("通学路がまだ無ければ、登録への道を出す", () => {
+    render(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} variant="inline" />)
+
+    expect(screen.getByTestId("route-geometry-notice")).toHaveTextContent("通学路がまだ登録されていません")
+    expect(screen.getByRole("link", { name: "通学路を登録する" })).toHaveAttribute("href", "/routes")
+  })
+
   it("desktop ではハザードカードを常時表示する", () => {
     render(<RouteHazardPanel {...defaultProps} />)
 

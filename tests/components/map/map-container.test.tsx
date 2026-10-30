@@ -1031,6 +1031,18 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
 
       expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-b')
+      // 通学路の「地図で見る」から来たら、その通学路の「通学路チェック」を開く(UIUX改装 項目50)
+      expect(h.captured.topOverlay.activePanel).toBe('hazard')
+    })
+
+    it('routeId なしで開いたときは、通学路チェックのパネルを勝手に開かない', () => {
+      h.userRoutes.routes = [{ id: 'route-a', name: 'ルートA' }]
+      h.userRoutes.primaryRoute = { id: 'route-a', name: 'ルートA' }
+
+      renderMapContainer()
+      fireMapLoad()
+
+      expect(h.captured.topOverlay.activePanel).toBeNull()
     })
 
     it('preferredRouteId が無ければ primaryRoute を選択する', () => {
