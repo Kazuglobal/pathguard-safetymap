@@ -106,4 +106,12 @@ describe('hazard repository spatial replacements', () => {
     expect(result.markers[0].longitude).toBeGreaterThanOrEqual(139)
     expect(result.markers[0].latitude).toBeCloseTo(35.005, 5)
   })
+
+  it('preserves separate official pilot polygons sharing a source-wide depth group', async () => {
+    database.sqlite.prepare("UPDATE hazard_zones SET id='mlit:'||id,zone_group_id='source-wide-depth' WHERE hazard_type='flood'").run()
+    const repo = createHazardRepo(database.db as unknown as AppDb)
+    const result = await repo.routeIntersections(actor, { type: 'LineString', coordinates: [[138.99, 35.005], [139.03, 35.005]] })
+    expect(result.markers).toHaveLength(2)
+    expect(new Set(result.markers.map(marker => marker.id)).size).toBe(2)
+  })
 })

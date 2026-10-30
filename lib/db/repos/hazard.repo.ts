@@ -328,8 +328,12 @@ export function createHazardRepo(db: AppDb) {
     },
 
     async hasCoverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>): Promise<boolean> {
+      return (await createHazardRepo(db).coverageAtPoint(actor, input)).length > 0
+    },
+
+    async coverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
       assertCan(actor, 'select', 'hazard_zone_coverage')
-      if (!isInJapan(input.longitude, input.latitude)) return false
+      if (!isInJapan(input.longitude, input.latitude)) return []
       const candidates = await db.select().from(hazardZoneCoverage).where(and(
         eq(hazardZoneCoverage.hazardType, input.hazardType),
         lte(hazardZoneCoverage.bboxMinLng, input.longitude),
@@ -337,7 +341,8 @@ export function createHazardRepo(db: AppDb) {
         lte(hazardZoneCoverage.bboxMinLat, input.latitude),
         gte(hazardZoneCoverage.bboxMaxLat, input.latitude),
       ))
-      return candidates.some((coverage) => pointMatchesArea(input.longitude, input.latitude, coverage.geojson))
+      return candidates.filter((coverage) => pointMatchesArea(input.longitude, input.latitude, coverage.geojson))
+        .map(row => ({ sourceLayer: row.sourceLayer, region: row.regionLabel, source: row.source, importedAt: row.importedAt }))
     },
 
     async routeIntersections(actor: Actor, route: LineString) {
@@ -356,10 +361,14 @@ export function createHazardRepo(db: AppDb) {
       for (const zone of candidates.slice(0, MAX_ROUTE_CANDIDATES)) {
         const coordinate = representativePoint(route, zone.geojson)
         if (!coordinate) continue
-        const marker = markerFromZone(zone, coordinate)
-        const existing = byGroup.get(zone.zoneGroupId)
+        // Official pilot artifacts dissolved equal depths across a whole source.
+        // Those broad group IDs are not connected regions; preserve each hit.
+        // Adjacent subdivision hits may repeat, but separate areas must not vanish.
+        const group = zone.id.startsWith('mlit:') ? zone.id : zone.zoneGroupId
+        const marker = { ...markerFromZone(zone, coordinate), id: group }
+        const existing = byGroup.get(group)
         if (!existing || marker.risk_level > existing.risk_level) {
-          byGroup.set(zone.zoneGroupId, marker)
+          byGroup.set(group, marker)
         }
       }
 
@@ -378,6 +387,10 @@ export function zonesAtPoint(actor: Actor, input: HazardPointInput) {
 
 export function hasCoverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
   return createHazardRepo(getDb()).hasCoverageAtPoint(actor, input)
+}
+
+export function coverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
+  return createHazardRepo(getDb()).coverageAtPoint(actor, input)
 }
 
 export function routeIntersections(actor: Actor, route: LineString) {

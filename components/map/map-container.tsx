@@ -16,6 +16,9 @@ import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 // AR は遅延読み込みにしない。iOS の DeviceOrientationEvent.requestPermission() はタップの直後に
 // 呼ぶ必要があり、部品の読み込みを待つとその猶予が切れて方位センサーの許可が出なくなる
 import ARView from "./ar-view"
+import { AccidentStreetView } from './accident-street-view'
+import type { StreetViewTarget } from '@/lib/street-view'
+import { DEFAULT_HEATMAP_FILTERS } from '@/lib/traffic-accident-heatmap'
 import { useCurrentLocation } from "@/hooks/use-current-location"
 import { useInitialMapView } from "@/hooks/use-initial-map-view"
 import { CURRENT_LOCATION_ZOOM, MIN_ZOOM_FOR_DEFAULT_REPORT_LOCATION } from "@/lib/map-center"
@@ -250,6 +253,7 @@ export default function MapContainer({
   } = useAccidentStats()
   const [accidentInspection, setAccidentInspection] = useState<{ center: [number, number]; source: 'map' | 'gps' } | null>(null)
   const [inspectionLocationError, setInspectionLocationError] = useState<string | null>(null)
+  const [streetViewTarget, setStreetViewTarget] = useState<StreetViewTarget | null>(null)
   const geolocateControlRef = useRef<mapboxgl.GeolocateControl | null>(null)
   const inspectGPSRef = useRef(false)
   const inspectionGPSPositionRef = useRef<GeolocationPosition | null>(null)
@@ -1333,6 +1337,7 @@ export default function MapContainer({
           map={map.current}
           geoJSON={accidentHeatmap.geoJSON}
           isVisible={accidentHeatmap.isVisible}
+          onShowStreetView={setStreetViewTarget}
           onShowNearbyReports={([lng, lat]) => {
             // 事故地点の300m以内で最寄りの危険報告を開く(相互参照導線)
             const nearby = findNearbyReports({
@@ -1557,6 +1562,7 @@ export default function MapContainer({
               activeARKind === "parent_child_route" && selectedUserRoute
                 ? {
                     kind: "parent_child_route",
+                    accidentFilters: accidentHeatmap.isVisible ? accidentHeatmap.filters : DEFAULT_HEATMAP_FILTERS,
                     routeId: selectedUserRoute.id,
                     routeName: selectedUserRoute.name,
                     childId: selectedUserRoute.child_id,
@@ -1566,12 +1572,14 @@ export default function MapContainer({
                   }
                 : {
                     kind: "nearby",
+                    accidentFilters: accidentHeatmap.isVisible ? accidentHeatmap.filters : DEFAULT_HEATMAP_FILTERS,
                     reports: combinedReports,
                   }
             }
             onClose={() => setIsARMode(false)}
           />
         )}
+        {streetViewTarget && <AccidentStreetView target={streetViewTarget} onClose={() => setStreetViewTarget(null)} />}
         <HazardImageModal
           open={isHazardModalOpen}
           marker={activeHazardMarker}

@@ -98,6 +98,7 @@ const routeGroups = {
     'app/api/hazard-game/analyze/route',
     'app/api/hazard/image/route',
     'app/api/hazard/route-risks/route',
+    'app/api/hazard/point-risks/route',
     'app/api/image/process/route',
     'app/api/vlm/analyze-hazard/route',
   ], [

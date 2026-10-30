@@ -6,6 +6,7 @@ import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
 import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
+import { PointHazardSection } from './point-hazard-section'
 
 interface AccidentStatsOverlayProps {
   status: AccidentStatsStatus
@@ -88,6 +89,7 @@ export function AccidentStatsOverlay({
           <AccidentStatsPanel stats={stats} mode="full" onAccidentNavigate={onAccidentNavigate} />
         </div>
       )}
+      {center && <PointHazardSection center={center} locationSource={locationSource} />}
     </section>
   )
 }
