@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import mapboxgl from "mapbox-gl"
-import { matchesSchoolCategory } from "@/lib/school-search"
+import { isInsideBox, looksLikeSchoolName, matchesSchoolCategory, schoolsInViewFirst, type LngLatBox } from "@/lib/school-search"
 import { getMapboxToken } from "@/lib/mapbox-config"
 
 interface MapSearchProps {
@@ -24,6 +24,11 @@ interface SearchResult {
   center: [number, number]
   feature_type?: string
   poi_category: string[]
+}
+
+interface RankedResult extends SearchResult {
+  /** 表示範囲の中の学校 */
+  isSchoolInView: boolean
 }
 
 interface SearchBoxFeatureProperties {
@@ -65,6 +70,33 @@ interface GeocodingResponse {
 
 function isSchool(result: SearchResult): boolean {
   return result.feature_type === "poi" && matchesSchoolCategory(result.poi_category)
+}
+
+/** 並べ替えでは、カテゴリの付いていない学校の POI も名前で拾う */
+function isSchoolLike(result: SearchResult): boolean {
+  return isSchool(result) || (result.feature_type === "poi" && looksLikeSchoolName(result.place_name))
+}
+
+/** いま地図に見えている範囲(取れなければ null) */
+function getMapView(map: mapboxgl.Map | null): LngLatBox | null {
+  if (!map || typeof map.getBounds !== "function") return null
+  try {
+    const bounds = map.getBounds()
+    if (!bounds) return null
+    const view = { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }
+    return Object.values(view).every(Number.isFinite) ? view : null
+  } catch {
+    return null
+  }
+}
+
+/** 表示範囲の中の学校を先に並べ、その学校に「地図の中」の印を付ける(UIUX改装 項目49) */
+function rankForView(results: SearchResult[], map: mapboxgl.Map | null): RankedResult[] {
+  const view = getMapView(map)
+  return schoolsInViewFirst(results, view, isSchoolLike).map((result) => ({
+    ...result,
+    isSchoolInView: Boolean(view) && isSchoolLike(result) && isInsideBox(result.center, view!),
+  }))
 }
 
 function toStringArray(value: unknown): string[] {
@@ -273,7 +305,9 @@ export default function MapSearch({
   dismissResultsSignal,
 }: MapSearchProps) {
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<SearchResult[]>([])
+  const [results, setResults] = useState<RankedResult[]>([])
+  // 探し終えて候補が0件だったときの言葉(案内を出す。UIUX改装 項目49)
+  const [emptyQuery, setEmptyQuery] = useState<string | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -307,6 +341,7 @@ export default function MapSearch({
     }
 
     const trimmed = query.trim()
+    setEmptyQuery(null)
     if (trimmed.length < 1) {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
       setResults([])
@@ -321,10 +356,11 @@ export default function MapSearch({
     debounceTimerRef.current = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const nextResults = await executeSearch(trimmed, map)
+        const nextResults = rankForView(await executeSearch(trimmed, map), map)
         if (requestId !== searchRequestIdRef.current) return
         setResults(nextResults)
-        setShowResults(nextResults.length > 0)
+        setEmptyQuery(nextResults.length === 0 ? trimmed : null)
+        setShowResults(true)
       } catch (error) {
         console.error("住所予測検索エラー:", error)
         if (requestId === searchRequestIdRef.current) {
@@ -364,11 +400,12 @@ export default function MapSearch({
     setShowResults(true)
 
     try {
-      const nextResults = await executeSearch(trimmed, map)
+      const nextResults = rankForView(await executeSearch(trimmed, map), map)
       if (requestId !== searchRequestIdRef.current) return
 
       setResults(nextResults)
-      setShowResults(nextResults.length > 0)
+      setEmptyQuery(nextResults.length === 0 ? trimmed : null)
+      setShowResults(true)
 
       // 検索実行時に候補があれば先頭地点へ移動する
       if (nextResults.length > 0 && map) {
@@ -450,10 +487,21 @@ export default function MapSearch({
                 ) : (
                   <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
                 )}
-                <span className="text-sm">{result.place_name}</span>
+                <span className="text-sm">
+                  {result.place_name}
+                  {result.isSchoolInView && (
+                    <span className="ml-1.5 inline-block rounded-full bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700">地図の中</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
+        </Card>
+      )}
+
+      {showResults && results.length === 0 && emptyQuery && !isSearching && (
+        <Card role="status" className="absolute z-10 mt-1 w-full p-3 text-sm leading-relaxed" data-testid="map-search-empty">
+          「{emptyQuery}」に当てはまる場所が見つかりませんでした。学校は「〇〇小学校」、住所は「〇〇市〇〇町」のように入れてみてください。
         </Card>
       )}
     </div>

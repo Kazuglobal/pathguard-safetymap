@@ -76,6 +76,43 @@ describe("MapSearch", () => {
     expect(onSelectLocation).toHaveBeenCalledWith([139.75, 35.68])
   })
 
+  // 表示範囲の中の学校を先に出す(UIUX改装 項目49)
+  it("puts schools inside the visible map area first and marks them", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          { id: "place.1", geometry: { coordinates: [139.75, 35.66] }, properties: { name: "千代田区", full_address: "東京都千代田区", feature_type: "place" } },
+          { id: "poi.far", geometry: { coordinates: [135.5, 34.7] }, properties: { name: "遠くの小学校", full_address: "遠くの小学校, 大阪府", feature_type: "poi", poi_category: ["school"] } },
+          { id: "poi.near", geometry: { coordinates: [139.76, 35.67] }, properties: { name: "近くの小学校", full_address: "近くの小学校, 東京都", feature_type: "poi" } },
+        ],
+      }),
+    } as Response)
+    const getBounds = () => ({ getWest: () => 139.7, getSouth: () => 35.6, getEast: () => 139.8, getNorth: () => 35.7 })
+
+    render(<MapSearch map={{ flyTo: mockFlyTo, getCenter: mockGetCenter, getBounds } as never} />)
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: "小学校" } })
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
+
+    await screen.findByText(/近くの小学校, 東京都/)
+    const items = screen.getAllByRole("listitem").map((item) => item.textContent)
+    // 地図の中の学校(名前で学校と分かるものも)が先頭。ほかは検索の結果の順のまま
+    expect(items).toEqual(["近くの小学校, 東京都地図の中", "東京都千代田区", "遠くの小学校, 大阪府"])
+    // 送信で先頭へ動くので、地図の中の学校へ動く
+    expect(mockFlyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [139.76, 35.67] }))
+  })
+
+  it("explains how to search again when nothing is found", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({ ok: true, json: async () => ({ features: [] }) } as Response)
+
+    render(<MapSearch map={{ flyTo: mockFlyTo, getCenter: mockGetCenter } as never} />)
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: "ないばしょ" } })
+    fireEvent.submit(screen.getByRole("button", { name: "検索する" }).closest("form")!)
+
+    expect(await screen.findByTestId("map-search-empty")).toHaveTextContent("「ないばしょ」に当てはまる場所が見つかりませんでした")
+    expect(mockFlyTo).not.toHaveBeenCalled()
+  })
+
   it("renders a school icon for school POI results", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
