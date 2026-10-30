@@ -134,6 +134,36 @@ describe("MapTopOverlay", () => {
     expect(props.onPanelChange).toHaveBeenCalledWith("hazard")
   })
 
+  it("keeps 「くわしい表示」 unfolded after closing a panel with its own chip", async () => {
+    const user = userEvent.setup()
+    const onPanelChange = vi.fn()
+    const props = {
+      is3DEnabled: false,
+      isARMode: false,
+      isHeatmapVisible: true,
+      isSuspiciousVisible: false,
+      onPanelChange,
+      onToggle3D: vi.fn(),
+      onToggleAR: vi.fn(),
+      onToggleHeatmap: vi.fn(),
+      onToggleSuspicious: vi.fn(),
+      searchSlot: <div>search-slot</div>,
+      heatmapPanelSlot: <div>heatmap-panel</div>,
+      hazardPanelSlot: <div>hazard-panel</div>,
+      threeDPanelSlot: <div>3d-panel</div>,
+      arPanelSlot: <div>ar-panel</div>,
+      suspiciousPanelSlot: <div>suspicious-panel</div>,
+    }
+    const { rerender } = render(<MapTopOverlay {...props} activePanel="heatmap" />)
+
+    await user.click(screen.getByRole("button", { name: "事故ヒートマップ" }))
+    expect(onPanelChange).toHaveBeenCalledWith(null)
+    rerender(<MapTopOverlay {...props} activePanel={null} />)
+
+    expect(screen.getByRole("button", { name: /くわしい表示/ })).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("button", { name: "事故ヒートマップ" })).toBeInTheDocument()
+  })
+
   it("folds 「くわしい表示」 again and closes its open panel", async () => {
     const user = userEvent.setup()
     const props = renderOverlay({ activePanel: "3d", is3DEnabled: true })

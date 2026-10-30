@@ -122,6 +122,8 @@ export function RouteCard({
   const stop = (event: React.MouseEvent) => event.stopPropagation()
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // カードそのものにフォーカスがあるときだけ選ぶ。中のボタンやリンク(「地図で見る」)の Enter を横取りしない
+    if (e.target !== e.currentTarget) return
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       onClick(route)

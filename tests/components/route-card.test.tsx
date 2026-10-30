@@ -222,6 +222,26 @@ describe('RouteCard Component', () => {
       expect(onClick).not.toHaveBeenCalled()
     })
 
+    it('lets the keyboard Enter on 「地図で見る」 follow the link instead of selecting the card', () => {
+      const onClick = vi.fn()
+      render(<RouteCard {...defaultProps} onClick={onClick} />)
+
+      const link = screen.getByRole('link', { name: /地図で見る/ })
+      const notPrevented = fireEvent.keyDown(link, { key: 'Enter' })
+
+      expect(notPrevented).toBe(true)
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('still selects the card when Enter is pressed on the card itself', () => {
+      const onClick = vi.fn()
+      render(<RouteCard {...defaultProps} onClick={onClick} />)
+
+      fireEvent.keyDown(screen.getByTestId('route-card'), { key: 'Enter' })
+
+      expect(onClick).toHaveBeenCalledWith(mockSingleRoute)
+    })
+
     it('keeps 「ルートをかいてみる」 for a route without a line', () => {
       render(<RouteCard {...defaultProps} route={{ ...mockSingleRoute, route_geometry: null }} />)
 

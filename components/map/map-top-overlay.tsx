@@ -106,6 +106,9 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
   const showDetails = isDetailsOpen || ADVANCED_IDS.has(props.activePanel)
 
   const handleChipClick = (panel: Exclude<MapTopOverlayPanel, null>) => {
+    // くわしい表示の中のボタンで開け閉めしたあとも、列はたたまない
+    if (ADVANCED_IDS.has(panel)) setIsDetailsOpen(true)
+
     if (props.activePanel === panel) {
       props.onPanelChange(null)
       return
