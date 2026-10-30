@@ -27,8 +27,6 @@ function renderControls(overrides: Partial<ComponentProps<typeof MapFloatingCont
   const baseProps: ComponentProps<typeof MapFloatingControls> = {
     onAddReport: vi.fn(),
     isReportFormOpen: false,
-    mapStyle: 'streets-v12',
-    setMapStyle: vi.fn(),
     is3DEnabled: false,
     toggle3DMode: vi.fn(),
     isSelectingLocation: false,
@@ -46,24 +44,14 @@ function renderControls(overrides: Partial<ComponentProps<typeof MapFloatingCont
 }
 
 describe('MapFloatingControls mobile layout', () => {
-  it('shows a lower-right display dock when not mobile', () => {
-    renderControls({ isMobile: false })
-
-    expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
-    expect(screen.getByTestId('map-display-dock')).toHaveStyle({
-      bottom: '9rem',
-    })
-    expect(screen.getByTestId('map-style-selector')).toBeInTheDocument()
-  })
-
-  it('keeps the map style selector available on mobile', () => {
-    renderControls()
-
-    expect(screen.getByTestId('map-display-dock')).toBeInTheDocument()
-    expect(screen.getByTestId('map-display-dock')).toHaveStyle({
-      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10.5rem)',
-    })
-    expect(screen.getByRole('button', { name: '表示' })).toBeInTheDocument()
+  // 地図の見た目と重ねる情報は、上の「くわしい表示」の中に移した(UIUX改装 項目9・10)
+  it('no longer shows the lower-right display dock (it moved into 「くわしい表示」)', () => {
+    for (const isMobile of [true, false]) {
+      const { unmount } = renderControls({ isMobile })
+      expect(screen.queryByTestId('map-display-dock')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('map-style-selector')).not.toBeInTheDocument()
+      unmount()
+    }
   })
 
   it('shows bottom-right mobile action dock in normal state', () => {

@@ -25,8 +25,6 @@ vi.mock("@/components/map/help-dialog", () => ({
 const defaultProps = {
   onAddReport: vi.fn(),
   isReportFormOpen: false,
-  mapStyle: "streets-v12",
-  setMapStyle: vi.fn(),
   is3DEnabled: false,
   toggle3DMode: vi.fn(),
   isSelectingLocation: false,

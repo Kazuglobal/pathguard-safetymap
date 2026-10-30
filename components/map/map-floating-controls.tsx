@@ -1,13 +1,10 @@
 "use client"
 
-import type { MapDisplayOption } from "@/lib/map-display-options"
 import { useState } from "react"
-import { MapPin, MapPinPlus, HelpCircle, Trophy, PlusCircle, List, Loader2, Menu } from "lucide-react"
-import MapStyleSelector from "./map-style-selector"
-import HelpDialog from "./help-dialog"
+import { MapPin, MapPinPlus, Trophy, PlusCircle, List, Loader2, Menu } from "lucide-react"
 import { MapLegendButton, MapLegendCompact } from "./map-legend"
 import { useGamification } from "@/hooks/use-gamification"
-import { getMapDisplayDockBottomOffset, MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
+import { MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
 import { MapMenuSheet } from "./map-menu-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
 
@@ -25,8 +22,6 @@ const floatPill = {
 interface MapFloatingControlsProps {
   onAddReport: () => void
   isReportFormOpen: boolean
-  mapStyle: string
-  setMapStyle: (style: string) => void
   is3DEnabled: boolean
   toggle3DMode: () => void
   isSelectingLocation?: boolean
@@ -38,15 +33,12 @@ interface MapFloatingControlsProps {
   isAcquiringGPS?: boolean
   onToggleHeatmap?: () => void
   isHeatmapVisible?: boolean
-  displayOverlayOptions?: MapDisplayOption[]
   isMapReady?: boolean
 }
 
 export default function MapFloatingControls({
   onAddReport,
   isReportFormOpen,
-  mapStyle,
-  setMapStyle,
   is3DEnabled,
   toggle3DMode,
   isSelectingLocation,
@@ -58,7 +50,6 @@ export default function MapFloatingControls({
   isAcquiringGPS = false,
   onToggleHeatmap,
   isHeatmapVisible = false,
-  displayOverlayOptions,
   isMapReady = true,
 }: MapFloatingControlsProps) {
   const { points, level } = useGamification()
@@ -69,9 +60,6 @@ export default function MapFloatingControls({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const ctaBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "6rem",
-  }
-  const displayDockBottomStyle = {
-    bottom: getMapDisplayDockBottomOffset(isMobile),
   }
   const legendBottomStyle = {
     bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 5rem)" : "1.5rem",
@@ -108,44 +96,14 @@ export default function MapFloatingControls({
             </div>
           </div>
 
-          {/* ヘルプボタン */}
-          {!isMobile && (
-            <HelpDialog>
-              <button
-                type="button"
-                className={`chunky-press grid h-10 w-10 place-items-center rounded-full border ${tankenTokens.cls.focus}`}
-                style={floatPill}
-                aria-label="アプリの使い方を表示"
-              >
-                <HelpCircle className="h-4 w-4" style={{ color: C.inkSoft }} strokeWidth={2.4} />
-              </button>
-            </HelpDialog>
-          )}
+          {/* ヘルプは地図の「使い方」ボタン(map-page-client.tsx)の1つにまとめた */}
         </div>
 
         {/* スマホは凡例を常時出す場所がないため、ボタンから開く */}
         {isMobile && <MapLegendButton />}
       </div>
 
-      {/* 右下: 地図表示ドック */}
-      <div
-        data-testid="map-display-dock"
-        data-map-overlay="bottom"
-        className="absolute right-3 z-20"
-        style={displayDockBottomStyle}
-      >
-        <div className="overflow-hidden rounded-full border" style={floatPill}>
-          <MapStyleSelector
-            currentStyle={mapStyle}
-            onChange={setMapStyle}
-            buttonClassName="h-11 rounded-full border-0 px-4 shadow-none bg-transparent font-black"
-            compactLabel={false}
-            buttonLabel="表示"
-            isMobile={isMobile}
-            overlayOptions={displayOverlayOptions}
-          />
-        </div>
-      </div>
+      {/* 地図の見た目と重ねる情報は、上の「くわしい表示」の中に移した(UIUX改装 項目9・10) */}
 
       {/* 下部: モバイル主要アクションドック */}
       {showMobileActionDock && (

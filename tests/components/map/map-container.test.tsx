@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act, waitFor } from '@testing-library/react'
+import { render, act, waitFor, screen, fireEvent } from '@testing-library/react'
 import MapContainer from '@/components/map/map-container'
 
 // ---- 共有ホルダー（vi.mock ファクトリから参照するため hoisted） ----
@@ -371,6 +371,14 @@ vi.mock('@/components/map/accident-heatmap-layer', () => ({
   AccidentHeatmapLayer: () => null,
 }))
 
+// 事故多発地点のレイヤーの中身は accident-hotspot-layer.test.tsx で確かめる。ここでは出すかどうかだけを見る
+vi.mock('@/components/map/accident-hotspot-layer', () => ({
+  AccidentHotspotLayer: (props: any) => {
+    h.captured.hotspotLayer = props
+    return null
+  },
+}))
+
 vi.mock('@/components/map/accident-heatmap-controls', () => ({
   AccidentHeatmapControls: () => <div data-testid="heatmap-controls" />,
 }))
@@ -575,6 +583,54 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
       // NavigationControl + GeolocateControl の2つ
       expect(lastMap().controls.length).toBe(2)
+    })
+  })
+
+  // 初期表示は「通学路チェック」: 自分の通学路・危険のピン・事故多発地点(UIUX改装 項目9)
+  describe('初期表示の「通学路チェック」', () => {
+    it('事故多発地点は最初から出し、ほかの重ねる情報は「くわしい表示」で選ぶまで出さない', () => {
+      renderMapContainer()
+
+      expect(h.captured.hotspotLayer.isVisible).toBe(true)
+      expect(h.captured.topOverlay.isHeatmapVisible).toBe(false)
+      expect(h.captured.topOverlay.isSuspiciousVisible).toBe(false)
+      expect(h.captured.topOverlay.activePanel).toBeNull()
+      // 地図の見た目・洪水・津波は「くわしい表示」の中(右下の「表示」は無くした)
+      expect(typeof h.captured.topOverlay.renderDisplayOptions).toBe('function')
+      expect(h.captured.floatingControls).not.toHaveProperty('displayOverlayOptions')
+    })
+  })
+
+  // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)
+  describe('報告が0件の地域の案内', () => {
+    it('見えている範囲に報告が無ければ、最初の1件の報告と、全国の事故データへの道を出す', () => {
+      renderMapContainer()
+      fireMapLoad()
+
+      expect(screen.getByTestId('map-empty-area-notice')).toHaveTextContent('この地域の報告はまだありません')
+
+      fireEvent.click(screen.getByRole('button', { name: /事故ヒートマップ\(全国データ\)を見る/ }))
+
+      expect(h.captured.topOverlay.activePanel).toBe('heatmap')
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+    })
+
+    it('報告がある範囲・地図の準備中には出さない', () => {
+      renderMapContainer()
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+
+      h.reports.dangerReports = [sampleReport({ id: 'r-empty-check' })]
+      fireMapLoad()
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+    })
+
+    it('閉じたら、この画面のあいだは出さない', () => {
+      renderMapContainer()
+      fireMapLoad()
+
+      fireEvent.click(screen.getByRole('button', { name: 'この案内を閉じる' }))
+
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
     })
   })
 
@@ -954,8 +1010,10 @@ describe('MapContainer characterization', () => {
       renderMapContainer()
       fireMapLoad()
 
+      // 地図の見た目は「くわしい表示」の中の「地図の見た目」から選ぶ(UIUX改装 項目9・10)
+      const styleSelector = h.captured.topOverlay.renderDisplayOptions(<button type="button" />)
       act(() => {
-        h.captured.floatingControls.setMapStyle('dark-v11')
+        styleSelector.props.onChange('dark-v11')
       })
       expect(lastMap().setStyle).toHaveBeenCalledWith('mapbox://styles/mapbox/dark-v11')
     })

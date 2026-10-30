@@ -1,7 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { Building2, Flame, ScanEye, Waves } from "lucide-react"
+import { useState, type ReactElement, type ReactNode } from "react"
+import { Building2, ChevronDown, Flame, Layers, Route, ScanEye } from "lucide-react"
 
 import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 
@@ -24,17 +24,41 @@ interface MapTopOverlayProps {
   heatmapPanelSlot: ReactNode
   hazardPanelSlot: ReactNode
   suspiciousPanelSlot: ReactNode
+  /**
+   * 「くわしい表示」の中の「地図の見た目」(背景の地図と、洪水・津波など重ねる情報)。
+   * 渡したボタン(このメニューと同じ見た目)を、開くきっかけに使って描く
+   */
+  renderDisplayOptions?: (trigger: ReactElement) => ReactNode
 }
 
-// 文字だけだと何が起きるか伝わりにくいため、各チップに絵を付ける。
-// 不審者情報は地図ピンと同じ絵(danger-type-presentation)を使う。
-const CHIP_CONFIG = [
-  { id: "3d" as const, label: "3D", icon: Building2 },
-  { id: "ar" as const, label: "AR", icon: ScanEye },
-  { id: "heatmap" as const, label: "事故ヒートマップ", icon: Flame },
-  { id: "suspicious" as const, label: "不審者情報", icon: getDangerTypePresentation("suspicious").icon },
-  { id: "hazard" as const, label: "ハザード", icon: Waves },
+type AdvancedPanel = Exclude<MapTopOverlayPanel, "hazard" | null>
+
+// 初期表示は「通学路チェック」(自分の通学路・危険のピン・事故多発地点)。そのほかの表示は「くわしい表示」に
+// たたみ、それぞれにひとことの説明を添える(UIUX改装 項目9・10)。不審者情報は地図ピンと同じ絵を使う
+const ADVANCED_CHIPS: readonly { id: AdvancedPanel; label: string; description: string; icon: typeof Flame }[] = [
+  { id: "heatmap", label: "事故ヒートマップ", description: "事故の多い場所を色で", icon: Flame },
+  { id: "suspicious", label: "不審者情報", description: "不審者の情報を円で", icon: getDangerTypePresentation("suspicious").icon },
+  { id: "ar", label: "AR", description: "カメラに危険を重ねる", icon: ScanEye },
+  { id: "3d", label: "3D", description: "建物を立体で見る", icon: Building2 },
 ]
+
+const ADVANCED_IDS = new Set<MapTopOverlayPanel>(ADVANCED_CHIPS.map((chip) => chip.id))
+
+const CHIP_CLASS = "chunky-press flex shrink-0 items-center gap-1.5 rounded-full border-2 px-3.5 py-2 text-[13px] font-black transition-colors"
+
+const ACTIVE_STYLE = {
+  background: "#159E72",
+  color: "#fff",
+  borderColor: "rgba(67,57,43,.2)",
+  boxShadow: "0 3px 0 #0C7A55",
+} as const
+
+const IDLE_STYLE = {
+  background: "rgba(255,253,247,.95)",
+  color: "#746855",
+  borderColor: "rgba(67,57,43,.12)",
+  boxShadow: "0 3px 0 rgba(67,57,43,.14)",
+} as const
 
 function getPanelSlot({
   activePanel,
@@ -63,8 +87,23 @@ function getPanelSlot({
   }
 }
 
+function TwoLineChipBody({ icon: Icon, label, description }: { icon: typeof Flame; label: string; description: string }) {
+  return (
+    <>
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+      <span className="flex flex-col items-start leading-tight">
+        <span>{label}</span>
+        <span className="text-[12px] font-bold opacity-80">{description}</span>
+      </span>
+    </>
+  )
+}
+
 export function MapTopOverlay(props: MapTopOverlayProps) {
   const activeSlot = getPanelSlot(props)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  // くわしい表示の中のパネルを開いているあいだは、たたまない
+  const showDetails = isDetailsOpen || ADVANCED_IDS.has(props.activePanel)
 
   const handleChipClick = (panel: Exclude<MapTopOverlayPanel, null>) => {
     if (props.activePanel === panel) {
@@ -91,6 +130,20 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
     props.onPanelChange(panel)
   }
 
+  const toggleDetails = () => {
+    if (showDetails && ADVANCED_IDS.has(props.activePanel)) props.onPanelChange(null)
+    setIsDetailsOpen(!showDetails)
+  }
+
+  const isAdvancedActive = (id: AdvancedPanel) =>
+    props.activePanel === id &&
+    ((id === "3d" && props.is3DEnabled) ||
+      (id === "ar" && props.isARMode) ||
+      (id === "heatmap" && props.isHeatmapVisible) ||
+      (id === "suspicious" && props.isSuspiciousVisible))
+
+  const isRouteCheckActive = props.activePanel === "hazard"
+
   return (
     <div className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.75rem)] z-30">
       <div data-map-overlay="top" className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
@@ -106,47 +159,64 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
           {props.searchSlot}
         </div>
 
-        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex min-w-max gap-2">
-            {CHIP_CONFIG.map((chip) => {
-              const isActive =
-                (chip.id === "3d" && props.is3DEnabled && props.activePanel === "3d") ||
-                (chip.id === "ar" && props.isARMode && props.activePanel === "ar") ||
-                (chip.id === "heatmap" && props.isHeatmapVisible && props.activePanel === "heatmap") ||
-                (chip.id === "suspicious" && props.isSuspiciousVisible && props.activePanel === "suspicious") ||
-                (chip.id === "hazard" && props.activePanel === "hazard")
-
-              return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  aria-label={chip.label}
-                  aria-pressed={isActive}
-                  className="chunky-press flex items-center gap-1.5 rounded-full border-2 px-3.5 py-2 text-[13px] font-black transition-colors"
-                  style={
-                    isActive
-                      ? {
-                          background: "#159E72",
-                          color: "#fff",
-                          borderColor: "rgba(67,57,43,.2)",
-                          boxShadow: "0 3px 0 #0C7A55",
-                        }
-                      : {
-                          background: "rgba(255,253,247,.95)",
-                          color: "#746855",
-                          borderColor: "rgba(67,57,43,.12)",
-                          boxShadow: "0 3px 0 rgba(67,57,43,.14)",
-                        }
-                  }
-                  onClick={() => handleChipClick(chip.id)}
-                >
-                  <chip.icon className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden="true" />
-                  {chip.label}
-                </button>
-              )
-            })}
-          </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            aria-label="通学路チェック"
+            aria-pressed={isRouteCheckActive}
+            className={CHIP_CLASS}
+            style={isRouteCheckActive ? ACTIVE_STYLE : IDLE_STYLE}
+            onClick={() => handleChipClick("hazard")}
+          >
+            <Route className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+            通学路チェック
+          </button>
+          <button
+            type="button"
+            aria-expanded={showDetails}
+            aria-controls="map-detail-layers"
+            className={CHIP_CLASS}
+            style={IDLE_STYLE}
+            onClick={toggleDetails}
+          >
+            <Layers className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden="true" />
+            くわしい表示
+            <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showDetails ? "rotate-180" : ""}`} strokeWidth={2.4} aria-hidden="true" />
+          </button>
         </div>
+
+        {showDetails && (
+          <div
+            id="map-detail-layers"
+            role="group"
+            aria-label="くわしい表示"
+            className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <div className="flex min-w-max gap-2">
+              {ADVANCED_CHIPS.map((chip) => {
+                const isActive = isAdvancedActive(chip.id)
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    aria-label={chip.label}
+                    aria-pressed={isActive}
+                    className={CHIP_CLASS}
+                    style={isActive ? ACTIVE_STYLE : IDLE_STYLE}
+                    onClick={() => handleChipClick(chip.id)}
+                  >
+                    <TwoLineChipBody icon={chip.icon} label={chip.label} description={chip.description} />
+                  </button>
+                )
+              })}
+              {props.renderDisplayOptions?.(
+                <button type="button" aria-label="地図の見た目" className={CHIP_CLASS} style={IDLE_STYLE}>
+                  <TwoLineChipBody icon={Layers} label="地図の見た目" description="背景・洪水・津波" />
+                </button>,
+              )}
+            </div>
+          </div>
+        )}
 
         {activeSlot ? (
           <div

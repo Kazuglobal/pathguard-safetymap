@@ -31,6 +31,8 @@ import { AccidentInspectionLayer } from "./accident-inspection-layer"
 import { MapReportForms } from "@/components/map/map-report-forms"
 import { MobileLocationSheet } from "@/components/map/mobile-location-sheet"
 import { MapStatusOverlays } from "@/components/map/map-status-overlays"
+import { MapEmptyAreaNotice } from "@/components/map/map-empty-area-notice"
+import MapStyleSelector from "@/components/map/map-style-selector"
 import { useMap3DMode } from "@/hooks/use-map-3d-mode"
 import { useHazardTileLayers } from "@/hooks/use-hazard-tile-layers"
 import { useSelectedRouteLayer } from "@/hooks/use-selected-route-layer"
@@ -151,6 +153,7 @@ export default function MapContainer({
   const [isARMode, setIsARMode] = useState(false)
   const [activeARKind, setActiveARKind] = useState<ActiveARKind>("nearby")
   const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
+  const [isEmptyAreaNoticeDismissed, setIsEmptyAreaNoticeDismissed] = useState(false)
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
@@ -238,7 +241,8 @@ export default function MapContainer({
 
   // --- Accident Heatmap ---
   const accidentHeatmap = useAccidentHeatmap()
-  const [isHotspotVisible, setIsHotspotVisible] = useState(false)
+  // 初期表示の「通学路チェック」は、自分の通学路・危険のピン・事故多発地点(UIUX改装 項目9)
+  const [isHotspotVisible, setIsHotspotVisible] = useState(true)
 
   // --- Accident Statistics for clicked location ---
   const {
@@ -1125,6 +1129,29 @@ export default function MapContainer({
     ],
   )
 
+  // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)。絞り込み中は「まだない」とは言えないので出さない。
+  // 地図を動かして報告のある所へ行けば消え、閉じたらこの画面のあいだは出さない
+  const isUnfilteredView =
+    filterOptions.dangerType === "all" &&
+    filterOptions.dangerLevel === "all" &&
+    filterOptions.dateRange === "all" &&
+    filterOptions.prefecture === NATIONWIDE
+  const showEmptyAreaNotice =
+    Boolean(mapBounds) &&
+    isBaseMapReady &&
+    !isLoading &&
+    !isFilterRefreshing &&
+    !mapError &&
+    isUnfilteredView &&
+    dangerReports.length === 0 &&
+    pendingReports.length === 0 &&
+    !isEmptyAreaNoticeDismissed &&
+    !isReportFormOpen &&
+    !awaitingLocationSelection &&
+    !isARMode &&
+    activeTopPanel === null &&
+    !accidentHeatmap.isVisible
+
   // --- Render ---
   return (
     <div className="fullscreen-map-container">
@@ -1134,8 +1161,6 @@ export default function MapContainer({
         <MapFloatingControls
           onAddReport={handleAddReportClick}
           isReportFormOpen={isReportFormOpen}
-          mapStyle={mapStyle}
-          setMapStyle={setMapStyle}
           is3DEnabled={is3DEnabled}
           toggle3DMode={toggle3DMode}
           isSelectingLocation={isMobile && awaitingLocationSelection}
@@ -1147,7 +1172,6 @@ export default function MapContainer({
           isAcquiringGPS={isAcquiringGPS}
           onToggleHeatmap={accidentHeatmap.toggleVisibility}
           isHeatmapVisible={accidentHeatmap.isVisible}
-          displayOverlayOptions={mapDisplayOverlayOptions}
           // 読み込み中のみ無効化する。mapError 時まで無効にすると、地図が開けない
           // 環境(WebGL不可等)で /map からの報告手段が恒久的に失われる
           isMapReady={isBaseMapReady || mapError !== null}
@@ -1165,6 +1189,15 @@ export default function MapContainer({
             onToggleAR={toggleARMode}
             onToggleHeatmap={accidentHeatmap.toggleVisibility}
             onToggleSuspicious={() => setIsSuspiciousVisible((v) => !v)}
+            renderDisplayOptions={(trigger) => (
+              <MapStyleSelector
+                currentStyle={mapStyle}
+                onChange={setMapStyle}
+                isMobile={isMobile}
+                overlayOptions={mapDisplayOverlayOptions}
+                trigger={trigger}
+              />
+            )}
             searchSlot={
               <MapSearch
                 map={map.current}
@@ -1386,6 +1419,22 @@ export default function MapContainer({
               />
             </div>
           </div>
+        )}
+
+        {/* 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10) */}
+        {showEmptyAreaNotice && (
+          <MapEmptyAreaNotice
+            onReport={() => {
+              setIsEmptyAreaNoticeDismissed(true)
+              handleAddReportClick()
+            }}
+            onShowHeatmap={() => {
+              setIsEmptyAreaNoticeDismissed(true)
+              if (!accidentHeatmap.isVisible) accidentHeatmap.toggleVisibility()
+              setActiveTopPanel("heatmap")
+            }}
+            onDismiss={() => setIsEmptyAreaNoticeDismissed(true)}
+          />
         )}
 
         {/* 各種ステータス表示（モバイルヒント・地点選択ピル・エラー・読み込み中） */}

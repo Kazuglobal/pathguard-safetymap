@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactElement } from "react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -101,6 +101,8 @@ interface MapStyleSelectorProps {
   buttonLabel?: string
   isMobile?: boolean
   overlayOptions?: MapDisplayOption[]
+  /** 開くきっかけのボタンを差し替える(地図の「くわしい表示」の中で、ほかの表示と同じ見た目にする) */
+  trigger?: ReactElement
 }
 
 export default function MapStyleSelector({
@@ -112,11 +114,12 @@ export default function MapStyleSelector({
   buttonLabel = "地図スタイル",
   isMobile = false,
   overlayOptions,
+  trigger: customTrigger,
 }: MapStyleSelectorProps) {
   const [isDisplaySheetOpen, setIsDisplaySheetOpen] = useState(false)
   const hasOverlayOptions = Boolean(overlayOptions?.length)
 
-  const trigger = (
+  const trigger = customTrigger ?? (
     <Button
       variant="outline"
       size="sm"
