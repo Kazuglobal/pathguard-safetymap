@@ -22,7 +22,8 @@ const floatPill = {
 
 // 右上のポイント表示と「ピンの見方」は、上の列(検索・通学路チェック・くわしい表示)のすぐ下に置き、「くわしい表示」の
 // 列を開いたらその下へずらす(列と重ならないように)。md〜lg 未満は上の列が画面の幅いっぱいなので、スマホと同じく列の下に置く。
-// lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない
+// lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。低い画面(横向きのスマホなど。499px は
+// lib/map/empty-area-notice.ts の SHORT_MAP_SCREEN_QUERY と同じ)では、下の操作の列にかからないよう2つを横に並べる
 const UTILITIES_TOP_CLASS = {
   folded:
     "top-[calc(env(safe-area-inset-top,0px)+8.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+12.5rem)] lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]",
@@ -83,7 +84,7 @@ export default function MapFloatingControls({
       {showUtilities && (
         <div
           data-testid="map-utilities"
-          className={`absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 ${isTopDetailsOpen ? UTILITIES_TOP_CLASS.unfolded : UTILITIES_TOP_CLASS.folded}`}
+          className={`absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 [@media(max-height:499px)]:flex-row [@media(max-height:499px)]:items-center ${isTopDetailsOpen ? UTILITIES_TOP_CLASS.unfolded : UTILITIES_TOP_CLASS.folded}`}
         >
           <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             {/* ポイント・レベル表示(スタンプらしく) */}

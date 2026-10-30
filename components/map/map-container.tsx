@@ -72,7 +72,7 @@ import { dismissTransientMapUi } from "@/lib/map-overlay-ui"
 import { buildMapDisplayOverlayOptions } from "@/lib/map-display-options"
 import { SuspiciousAlertLayer } from "./suspicious-alert-layer"
 import SuspiciousAlertForm from "../danger-report/suspicious-alert-form"
-import { DEFAULT_MAP_REPORT_FILTERS, shouldShowEmptyAreaNotice, type MapReportFilters } from "@/lib/map/empty-area-notice"
+import { DEFAULT_MAP_REPORT_FILTERS, SHORT_MAP_SCREEN_QUERY, shouldShowEmptyAreaNotice, type MapReportFilters } from "@/lib/map/empty-area-notice"
 
 // 最初に地図を出すのに要らない画面は別チャンクに分ける(低速端末で地図の表示が約20秒かかっていた)。
 // 詳細・プレビューは開くまで描かれないか中身が空なので、遅れて届いても見え方は変わらない
@@ -271,6 +271,8 @@ export default function MapContainer({
 
   // --- ▼▼▼ モバイル判定と地点選択待ち state を追加 ▼▼▼ ---
   const isMobile = useMediaQuery("(max-width: 768px)"); // md ブレークポイント (Tailwind)
+  // 横向きのスマホなど、上の列と下の操作の列のあいだに0件の案内が入らない低い画面
+  const isShortScreen = useMediaQuery(SHORT_MAP_SCREEN_QUERY);
   const [awaitingLocationSelection, setAwaitingLocationSelection] = useState(false);
 
   // ヘルプの表示状態管理
@@ -1154,6 +1156,7 @@ export default function MapContainer({
     filters: filterOptions,
     reportCount: dangerReports.length + pendingReports.length,
     isDismissed: isEmptyAreaNoticeDismissed,
+    isScreenTooShort: isShortScreen,
     isBusy:
       isReportFormOpen ||
       awaitingLocationSelection ||
@@ -1453,6 +1456,7 @@ export default function MapContainer({
         {/* 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10) */}
         {showEmptyAreaNotice && (
           <MapEmptyAreaNotice
+            isTopDetailsOpen={isTopDetailsOpen}
             onReport={() => {
               setIsEmptyAreaNoticeDismissed(true)
               handleAddReportClick()

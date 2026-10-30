@@ -16,6 +16,7 @@ const READY: EmptyAreaNoticeInput = {
   reportCount: 0,
   isDismissed: false,
   isBusy: false,
+  isScreenTooShort: false,
 }
 
 // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)。「まだない」と言えるときだけ出す
@@ -33,6 +34,7 @@ describe('shouldShowEmptyAreaNotice', () => {
     ['地図のエラー', { hasMapError: true }],
     ['閉じた', { isDismissed: true }],
     ['ほかのものを見ている', { isBusy: true }],
+    ['画面が低すぎる(横向きのスマホなど)', { isScreenTooShort: true }],
   ])('%s ときは出さない', (_label, patch) => {
     expect(shouldShowEmptyAreaNotice({ ...READY, ...patch })).toBe(false)
   })

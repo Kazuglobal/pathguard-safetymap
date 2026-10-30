@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import MapFloatingControls from '@/components/map/map-floating-controls'
+import { SHORT_MAP_SCREEN_QUERY } from '@/lib/map/empty-area-notice'
 
 vi.mock('@/hooks/use-gamification', () => ({
   useGamification: () => ({ points: 120, level: 3 }),
@@ -125,6 +126,17 @@ describe('MapFloatingControls corner badges', () => {
     renderControls({ isMobile: false, isEmptyAreaNoticeVisible: true })
 
     expect(screen.getByTestId('map-utilities')).toHaveTextContent('120')
+  })
+
+  // 横向きのスマホなど、低い画面では2つを横に並べて、下の操作の列にかからないようにする
+  it('lines the two badges up side by side on short screens, at the same height as the empty-area notice rule', () => {
+    renderControls({ isTopDetailsOpen: true })
+
+    expect(screen.getByTestId('map-utilities')).toHaveClass(
+      '[@media(max-height:499px)]:flex-row',
+      '[@media(max-height:499px)]:items-center',
+    )
+    expect(SHORT_MAP_SCREEN_QUERY).toBe('(max-height: 499px)')
   })
 })
 

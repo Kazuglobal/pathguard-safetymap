@@ -165,6 +165,7 @@ const h = vi.hoisted(() => {
     captured: {} as Record<string, any>,
     toast: vi.fn(),
     isMobile: false,
+    isShortScreen: false,
     searchParams: new URLSearchParams(),
     initialGps: null as null | {
       location: [number, number] | null
@@ -245,7 +246,8 @@ vi.mock('@/components/ui/use-toast', () => ({
 }))
 
 vi.mock('@/hooks/use-media-query', () => ({
-  useMediaQuery: () => h.isMobile,
+  // 0件の案内を出す高さの判定(SHORT_MAP_SCREEN_QUERY)だけは別に切り替える
+  useMediaQuery: (query: string) => (query.includes('max-height') ? h.isShortScreen : h.isMobile),
 }))
 
 // ---- データ系フック ----
@@ -520,6 +522,7 @@ beforeEach(() => {
   h.markers.length = 0
   h.captured = {}
   h.isMobile = false
+  h.isShortScreen = false
   h.searchParams = new URLSearchParams()
   h.gps.location = null
   h.gps.isLoading = false
@@ -657,6 +660,26 @@ describe('MapContainer characterization', () => {
       fireEvent.click(screen.getByRole('button', { name: 'この案内を閉じる' }))
 
       expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+    })
+
+    // 横向きのスマホなどでは、上の列と下の操作の列のあいだに入らない(上の列の下に潜って押せなくなる)
+    it('低すぎる画面では出さず、右上のポイント表示などもよけさせない', () => {
+      h.isShortScreen = true
+      renderMapContainer()
+      fireMapLoad()
+
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
+    })
+
+    it('「くわしい表示」の列が出ているあいだは、案内も列の下の空いた所へずらす', () => {
+      renderMapContainer()
+      fireMapLoad()
+      expect(screen.getByTestId('map-empty-area-band')).toHaveClass('top-[calc(env(safe-area-inset-top,0px)+8.5rem)]')
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(true))
+
+      expect(screen.getByTestId('map-empty-area-band')).toHaveClass('top-[calc(env(safe-area-inset-top,0px)+12.5rem)]')
     })
   })
 

@@ -20,6 +20,12 @@ export function isDefaultMapReportFilters(filters: MapReportFilters): boolean {
   )
 }
 
+/**
+ * 地図の画面が低すぎて、上の列(検索・通学路チェック・くわしい表示)と下の操作の列のあいだに0件の案内が入らない(横向きのスマホなど)。
+ * map-floating-controls の右上の部品も、同じ高さで横に並べる(クラス名の 499px と合わせる)
+ */
+export const SHORT_MAP_SCREEN_QUERY = "(max-height: 499px)"
+
 /** 報告の取得のようす。idle=まだ一度も取れていない / loaded=最後の取得が成功 / error=最後の取得が失敗 */
 export type ReportsLoadState = "idle" | "loaded" | "error"
 
@@ -36,6 +42,8 @@ export interface EmptyAreaNoticeInput {
   isDismissed: boolean
   /** 報告の入力・場所選び・AR・上のパネル・事故ヒートマップ・地点の事故の集計など、ほかのものを見ているとき */
   isBusy: boolean
+  /** 画面が低すぎて案内が入らない(SHORT_MAP_SCREEN_QUERY) */
+  isScreenTooShort: boolean
 }
 
 /**
@@ -51,6 +59,7 @@ export function shouldShowEmptyAreaNotice(input: EmptyAreaNoticeInput): boolean 
     isDefaultMapReportFilters(input.filters) &&
     input.reportCount === 0 &&
     !input.isDismissed &&
-    !input.isBusy
+    !input.isBusy &&
+    !input.isScreenTooShort
   )
 }
