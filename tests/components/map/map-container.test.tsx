@@ -245,10 +245,13 @@ vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: h.toast }),
 }))
 
-vi.mock('@/hooks/use-media-query', () => ({
+vi.mock('@/hooks/use-media-query', async () => {
   // 0件の案内を出す高さの判定(SHORT_MAP_SCREEN_QUERY)だけは別に切り替える
-  useMediaQuery: (query: string) => (query.includes('max-height') ? h.isShortScreen : h.isMobile),
-}))
+  const { SHORT_MAP_SCREEN_QUERY } = await import('@/lib/map/empty-area-notice')
+  return {
+    useMediaQuery: (query: string) => (query === SHORT_MAP_SCREEN_QUERY ? h.isShortScreen : h.isMobile),
+  }
+})
 
 // ---- データ系フック ----
 vi.mock('@/hooks/use-danger-reports', () => ({
@@ -672,14 +675,28 @@ describe('MapContainer characterization', () => {
       expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
     })
 
-    it('「くわしい表示」の列が出ているあいだは、案内も列の下の空いた所へずらす', () => {
+    // 列を開いた低い画面では、案内が下の報告のボタンを覆っていた
+    it('「くわしい表示」の列が出ているあいだは出さず、たたんだら戻す', () => {
       renderMapContainer()
       fireMapLoad()
-      expect(screen.getByTestId('map-empty-area-band')).toHaveClass('top-[calc(env(safe-area-inset-top,0px)+8.5rem)]')
+      expect(screen.getByTestId('map-empty-area-notice')).toBeInTheDocument()
 
       act(() => h.captured.topOverlay.onDetailsVisibleChange(true))
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
 
-      expect(screen.getByTestId('map-empty-area-band')).toHaveClass('top-[calc(env(safe-area-inset-top,0px)+12.5rem)]')
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(false))
+      expect(screen.getByTestId('map-empty-area-notice')).toBeInTheDocument()
+    })
+
+    it('危険地点の一覧(サイドバー)を開いているあいだは出さない', () => {
+      renderMapContainer()
+      fireMapLoad()
+      expect(screen.getByTestId('map-empty-area-notice')).toBeInTheDocument()
+
+      act(() => h.captured.floatingControls.onToggleSidebar())
+
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
     })
   })
 

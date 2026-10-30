@@ -1162,8 +1162,14 @@ export default function MapContainer({
       awaitingLocationSelection ||
       isARMode ||
       activeTopPanel !== null ||
+      // 「くわしい表示」で重ねる情報を選んでいるあいだは出さない(パソコンの低い画面で報告のボタンを覆うため)
+      isTopDetailsOpen ||
       accidentHeatmap.isVisible ||
-      accidentInspection !== null,
+      accidentInspection !== null ||
+      isSidebarOpen ||
+      isDetailModalOpen ||
+      isSuspiciousAlertOpen ||
+      isSubmittedPreviewOpen,
   })
 
   // --- Render ---
@@ -1456,7 +1462,6 @@ export default function MapContainer({
         {/* 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10) */}
         {showEmptyAreaNotice && (
           <MapEmptyAreaNotice
-            isTopDetailsOpen={isTopDetailsOpen}
             onReport={() => {
               setIsEmptyAreaNoticeDismissed(true)
               handleAddReportClick()

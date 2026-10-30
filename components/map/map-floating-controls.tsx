@@ -4,7 +4,7 @@ import { useState } from "react"
 import { MapPin, MapPinPlus, Trophy, PlusCircle, List, Loader2, Menu } from "lucide-react"
 import { MapLegendButton, MapLegendCompact } from "./map-legend"
 import { useGamification } from "@/hooks/use-gamification"
-import { MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
+import { BELOW_MAP_TOP_ROWS, MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
 import { MapMenuSheet } from "./map-menu-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
 import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
@@ -21,14 +21,12 @@ const floatPill = {
 } as const
 
 // 右上のポイント表示と「ピンの見方」は、上の列(検索・通学路チェック・くわしい表示)のすぐ下に置き、「くわしい表示」の
-// 列を開いたらその下へずらす(列と重ならないように)。md〜lg 未満は上の列が画面の幅いっぱいなので、スマホと同じく列の下に置く。
-// lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。低い画面(横向きのスマホなど。499px は
-// lib/map/empty-area-notice.ts の SHORT_MAP_SCREEN_QUERY と同じ)では、下の操作の列にかからないよう2つを横に並べる
+// 列を開いたらその下へずらす(列と重ならないように。BELOW_MAP_TOP_ROWS)。md〜lg 未満は上の列が画面の幅いっぱいなので、スマホと
+// 同じく列の下に置く。lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。低い画面(横向きのスマホなど。
+// 499px は lib/map/empty-area-notice.ts の SHORT_MAP_SCREEN_QUERY と同じ)では、下の操作の列にかからないよう2つを横に並べる
 const UTILITIES_TOP_CLASS = {
-  folded:
-    "top-[calc(env(safe-area-inset-top,0px)+8.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+12.5rem)] lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]",
-  unfolded:
-    "top-[calc(env(safe-area-inset-top,0px)+12.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+16.5rem)] lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]",
+  folded: `${BELOW_MAP_TOP_ROWS.folded} lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]`,
+  unfolded: `${BELOW_MAP_TOP_ROWS.unfolded} lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]`,
 } as const
 
 interface MapFloatingControlsProps {

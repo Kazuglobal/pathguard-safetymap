@@ -40,7 +40,10 @@ export interface EmptyAreaNoticeInput {
   /** 見えている範囲の報告(公開中と自分の審査中)の数 */
   reportCount: number
   isDismissed: boolean
-  /** 報告の入力・場所選び・AR・上のパネル・事故ヒートマップ・地点の事故の集計など、ほかのものを見ているとき */
+  /**
+   * 報告の入力・場所選び・AR・上のパネル・「くわしい表示」の列・事故ヒートマップ・地点の事故の集計・サイドバー・報告の詳細・
+   * 不審者アラートの入力など、ほかのものを見ているとき
+   */
   isBusy: boolean
   /** 画面が低すぎて案内が入らない(SHORT_MAP_SCREEN_QUERY) */
   isScreenTooShort: boolean

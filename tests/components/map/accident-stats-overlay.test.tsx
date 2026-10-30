@@ -15,6 +15,13 @@ describe('AccidentStatsOverlay', () => {
     expect(screen.getByText(/35.89830, 139.95700/)).toBeInTheDocument()
     expect(screen.queryByText(/記録はありません/)).not.toBeInTheDocument()
   })
+  // パソコンでは上の列の下に置く(top-24 だと、幅 890px 未満では閉じるボタンが、それより広くても見出しが上の列の下に潜っていた)
+  it('sits below the top rows on desktop, so its title and close button are not hidden under them', () => {
+    render(<AccidentStatsOverlay {...props} isMobile={false} />)
+    const panel = screen.getByRole('region', { name: '周辺事故の集計' })
+    expect(panel).toHaveClass('top-[calc(env(safe-area-inset-top,0px)+16.5rem)]', 'max-h-[calc(100dvh-18rem)]')
+    expect(panel).not.toHaveClass('top-24')
+  })
   it('stays hidden while the reports sidebar or another panel is open', () => {
     render(<AccidentStatsOverlay {...props} isOtherPanelOpen />)
     expect(screen.queryByRole('region', { name: '周辺事故の集計' })).not.toBeInTheDocument()

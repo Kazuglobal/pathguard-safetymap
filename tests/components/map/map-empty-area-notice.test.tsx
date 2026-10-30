@@ -3,39 +3,33 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { MapEmptyAreaNotice } from '@/components/map/map-empty-area-notice'
+import { BELOW_MAP_TOP_ROWS } from '@/lib/map-overlay-ui'
 
-function renderNotice(isTopDetailsOpen?: boolean) {
+function renderNotice() {
   const handlers = { onReport: vi.fn(), onShowHeatmap: vi.fn(), onDismiss: vi.fn() }
-  const view = render(<MapEmptyAreaNotice {...handlers} isTopDetailsOpen={isTopDetailsOpen} />)
+  const view = render(<MapEmptyAreaNotice {...handlers} />)
   return { ...handlers, ...view }
 }
 
-// 0件の案内は、上の列と下の操作の列のあいだの空いた所に出す(上の列の下に潜ると、見出しや「閉じる」が押せなくなる)
+// 0件の案内は、上の列と下の操作の列のあいだの帯に出す(上の列の下に潜ると見出しや「閉じる」が押せず、下にはみ出すと報告のボタンを覆う)
 describe('MapEmptyAreaNotice placement', () => {
-  it('sits in the space below the top rows instead of the middle of the screen', () => {
+  it('sits in the band between the top rows and the bottom controls, instead of the middle of the screen', () => {
     renderNotice()
 
     const band = screen.getByTestId('map-empty-area-band')
     expect(band).toHaveClass(
-      'top-[calc(env(safe-area-inset-top,0px)+8.5rem)]',
-      'md:top-[calc(env(safe-area-inset-top,0px)+12.5rem)]',
+      ...BELOW_MAP_TOP_ROWS.folded.split(' '),
       'bottom-[calc(env(safe-area-inset-bottom,0px)+9.5rem)]',
       'md:bottom-[13.5rem]',
     )
     expect(band).not.toHaveClass('top-1/2')
-    // 空いた所のまんなか。入りきらないときは下へはみ出す(自動の余白は足りないと 0 になる)
-    expect(screen.getByTestId('map-empty-area-notice')).toHaveClass('my-auto')
   })
 
-  it('moves below 「くわしい表示」 while that row is out', () => {
-    renderNotice(true)
+  it('stays inside the band and scrolls when it does not fit, so it never covers the report buttons', () => {
+    renderNotice()
 
-    const band = screen.getByTestId('map-empty-area-band')
-    expect(band).toHaveClass(
-      'top-[calc(env(safe-area-inset-top,0px)+12.5rem)]',
-      'md:top-[calc(env(safe-area-inset-top,0px)+16.5rem)]',
-    )
-    expect(band).not.toHaveClass('top-[calc(env(safe-area-inset-top,0px)+8.5rem)]')
+    // 帯のまんなか(自動の余白)。入りきらないときは帯の高さで止めて、中をスクロールさせる
+    expect(screen.getByTestId('map-empty-area-notice')).toHaveClass('my-auto', 'max-h-full', 'overflow-y-auto')
   })
 })
 

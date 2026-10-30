@@ -3,39 +3,34 @@
 import { Flame, PlusCircle, X } from "lucide-react"
 
 import { tankenTokens } from "@/lib/design/tanken"
+import { BELOW_MAP_TOP_ROWS } from "@/lib/map-overlay-ui"
 import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
 interface MapEmptyAreaNoticeProps {
   onReport: () => void
   onShowHeatmap: () => void
   onDismiss: () => void
-  /** 上の「くわしい表示」の列が出ている(案内はその下の空いた所に出す) */
-  isTopDetailsOpen?: boolean
 }
 
-// 案内は、上の列(検索・通学路チェック・くわしい表示)と下の操作の列のあいだの空いた所のまんなかに出す。入りきらないときは
-// 下へはみ出させる(上の列の下に潜ると、見出しや「閉じる」が押せなくなるため)。上の端は右上のポイント表示と同じ
-// (map-floating-controls の UTILITIES_TOP_CLASS)。低すぎる画面(SHORT_MAP_SCREEN_QUERY)では map-container が出さない
-const NOTICE_BAND_TOP_CLASS = {
-  folded: "top-[calc(env(safe-area-inset-top,0px)+8.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+12.5rem)]",
-  unfolded: "top-[calc(env(safe-area-inset-top,0px)+12.5rem)] md:top-[calc(env(safe-area-inset-top,0px)+16.5rem)]",
-} as const
+// 案内は、上の列(検索・通学路チェック・くわしい表示)と下の操作の列のあいだの帯のまんなかに出す。上の列の下に潜ると見出しや
+// 「閉じる」が押せなくなり、下にはみ出すと報告のボタンを覆うので、入りきらないときは帯の中でスクロールさせる。
+// 「くわしい表示」の列を開いているあいだと、低すぎる画面(SHORT_MAP_SCREEN_QUERY)では map-container が出さない
 
 /**
  * 地図に見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)。
  * 何もない地図のままにせず、最初の1件の報告と、全国の事故データ(事故ヒートマップ)へ進めるようにする。
  */
-export function MapEmptyAreaNotice({ onReport, onShowHeatmap, onDismiss, isTopDetailsOpen = false }: MapEmptyAreaNoticeProps) {
+export function MapEmptyAreaNotice({ onReport, onShowHeatmap, onDismiss }: MapEmptyAreaNoticeProps) {
   const t = tankenTokens
   return (
     <div
       data-testid="map-empty-area-band"
-      className={`pointer-events-none absolute inset-x-3 z-20 flex flex-col bottom-[calc(env(safe-area-inset-bottom,0px)+9.5rem)] md:bottom-[13.5rem] ${isTopDetailsOpen ? NOTICE_BAND_TOP_CLASS.unfolded : NOTICE_BAND_TOP_CLASS.folded}`}
+      className={`pointer-events-none absolute inset-x-3 z-20 flex flex-col bottom-[calc(env(safe-area-inset-bottom,0px)+9.5rem)] md:bottom-[13.5rem] ${BELOW_MAP_TOP_ROWS.folded}`}
     >
       <section
         role="status"
         aria-labelledby="map-empty-area-title"
-        className="pointer-events-auto relative mx-auto my-auto w-full max-w-sm rounded-[22px] border p-4 pr-12"
+        className="pointer-events-auto relative mx-auto my-auto max-h-full w-full max-w-sm overflow-y-auto rounded-[22px] border p-4 pr-12"
         style={{ background: "rgba(255,253,247,.97)", borderColor: t.border.soft, boxShadow: t.shadow.float }}
         data-testid="map-empty-area-notice"
       >
