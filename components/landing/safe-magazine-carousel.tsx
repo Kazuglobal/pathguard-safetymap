@@ -31,7 +31,7 @@ interface SafeMagazineCarouselProps {
 }
 
 /**
- * スマホ向けの PathGuard Press 自動スライド。
+ * スマホ向けの SAFE MAGAZINE 自動スライド。
  * 動くコンテンツには止める手段が要る(WCAG 2.2.2)ため、
  * 一時停止ボタンを常に出し、スワイプ・丸ボタン・矢印キー・記事へのフォーカスで止める。
  * 視差効果を減らす設定の端末では、利用者が再生を選ぶまで自動では動かさない。
@@ -133,7 +133,7 @@ export function SafeMagazineCarousel({ articles }: SafeMagazineCarouselProps) {
         setApi={setApi}
         opts={{ align: "start", loop: true }}
         plugins={plugins}
-        aria-label="PathGuard Press の新着記事"
+        aria-label="SAFE MAGAZINE の新着記事"
         className="px-4"
       >
         {/* 記事にフォーカスが入ったら(Tab・読み上げ操作)読んでいる途中で動かさない */}

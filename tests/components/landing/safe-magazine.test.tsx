@@ -16,7 +16,8 @@ describe("SafeMagazine", () => {
   it("スマホは自動スライド、PCは3列グリッドで記事を出す", () => {
     render(<SafeMagazine />)
 
-    expect(screen.getByRole("heading", { name: "PathGuard Press" })).toBeInTheDocument()
+    // マガジンの名前は SAFE MAGAZINE にそろえた(UIUX改装 項目25)
+    expect(screen.getByRole("heading", { name: "SAFE MAGAZINE" })).toBeInTheDocument()
 
     const carousel = screen.getByTestId("safe-magazine-carousel")
     expect(carousel).toHaveAttribute("data-count", String(SAFE_MAGAZINE_CAROUSEL_COUNT))
