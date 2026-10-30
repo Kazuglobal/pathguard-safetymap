@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPageShell title="利用規約" updatedAt="2026年7月4日">
+    <LegalPageShell title="利用規約" updatedAt="2026年10月30日">
       <LegalSection title="1. サービス概要">
         <p>
           PathGuardian(通学路みまもりアプリ。以下「本サービス」)は、通学路・生活道路の危険情報や不審者情報をユーザー同士で共有し、
@@ -56,6 +56,17 @@ export default function TermsPage() {
         <p>
           本規約に関するお問い合わせは、お問い合わせページをご確認ください。
         </p>
+      </LegalSection>
+
+      <LegalSection title="7. Google Maps の利用">
+        <p>
+          本サービスは、事故地点の地図・周辺の景色を表示するため、Google Maps の機能とコンテンツを利用します。
+          地図画面の「現地の景色を見る」では Maps Embed API による地図とストリートビューを表示します。
+          Google Maps の機能とコンテンツの利用には、
+          <a className="underline" href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer">Google Maps の追加利用規約</a>と
+          <a className="underline" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google のプライバシーポリシー</a>が適用されます。
+        </p>
+        <p>景色は事故当時や現在の状況を保証するものではなく、撮影位置が事故地点と異なる場合があります。</p>
       </LegalSection>
     </LegalPageShell>
   )

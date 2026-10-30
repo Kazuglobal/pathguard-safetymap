@@ -16,7 +16,7 @@ import { getMapboxToken, validateMapboxToken } from "@/lib/mapbox-config"
 // AR は遅延読み込みにしない。iOS の DeviceOrientationEvent.requestPermission() はタップの直後に
 // 呼ぶ必要があり、部品の読み込みを待つとその猶予が切れて方位センサーの許可が出なくなる
 import ARView from "./ar-view"
-import { AccidentStreetView } from './accident-street-view'
+import { AccidentSceneryDialog } from './accident-scenery-dialog'
 import type { StreetViewTarget } from '@/lib/street-view'
 import { DEFAULT_HEATMAP_FILTERS } from '@/lib/traffic-accident-heatmap'
 import { useCurrentLocation } from "@/hooks/use-current-location"
@@ -1131,7 +1131,8 @@ export default function MapContainer({
   return (
     <div className="fullscreen-map-container">
       {/* メインマップエリア */}
-      <div className="relative w-full h-full">
+      <div className="relative w-full h-full" data-testid="map-background"
+        style={{ visibility: streetViewTarget ? 'hidden' : undefined }} inert={Boolean(streetViewTarget)}>
         {/* フローティングコントロール */}
         <MapFloatingControls
           onAddReport={handleAddReportClick}
@@ -1579,7 +1580,6 @@ export default function MapContainer({
             onClose={() => setIsARMode(false)}
           />
         )}
-        {streetViewTarget && <AccidentStreetView target={streetViewTarget} onClose={() => setStreetViewTarget(null)} />}
         <HazardImageModal
           open={isHazardModalOpen}
           marker={activeHazardMarker}
@@ -1601,6 +1601,7 @@ export default function MapContainer({
           onGenerate={handleGenerateHazardImage}
         />
       </div>
+      {streetViewTarget && <AccidentSceneryDialog target={streetViewTarget} onClose={() => setStreetViewTarget(null)} />}
     </div>
   )
 }

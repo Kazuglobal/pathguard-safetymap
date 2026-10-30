@@ -74,6 +74,17 @@ test('preview build rejects local production files and removes inherited credent
   for (const name of previewSecretNames) assert.equal(buildEnv[name], 'value')
 })
 
+test('free Embed key is optional and is isolated from the existing paid viewer key', () => {
+  const env = Object.fromEntries([...previewPublicNames, ...previewSecretNames].map(name => [name, 'preview-value']))
+  assert.equal(previewBuildEnvironment(env, []).NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY, undefined)
+  assert.equal(previewBuildEnvironment({ ...env, NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY: 'embed-only' }, []).NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY, 'embed-only')
+  const workflow = readFileSync('.github/workflows/cloudflare-preview.yml', 'utf8')
+  assert.match(workflow, /secrets\.PREVIEW_NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY/)
+  assert.doesNotMatch(workflow, /secrets\.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY/)
+  const production = readFileSync('.github/workflows/cloudflare-production.yml', 'utf8')
+  assert.match(production, /secrets\.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY/)
+})
+
 test('Upstash credentials are treated as sensitive build values', () => {
   assert.equal(isSensitiveBuildVariable('UPSTASH_REDIS_REST_URL'), true)
   assert.equal(isSensitiveBuildVariable('UPSTASH_REDIS_REST_TOKEN'), true)

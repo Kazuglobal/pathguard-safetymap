@@ -255,7 +255,11 @@ export function buildAccidentPopupContent(
     button.type = 'button'
     button.textContent = '現地の景色を見る'
     button.style.cssText = 'display:block;min-height:44px;width:100%;margin-top:8px;padding:8px 12px;background:#159e72;color:white;border-radius:18px;font-weight:700;cursor:pointer'
-    button.addEventListener('click', options.onShowStreetView)
+    button.addEventListener('click', () => {
+      // Safari does not focus buttons on pointer click; retain a return target for the dialog.
+      button.focus({ preventScroll: true })
+      options.onShowStreetView?.()
+    })
     root.appendChild(button)
   }
   return root

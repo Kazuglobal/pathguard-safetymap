@@ -368,7 +368,14 @@ vi.mock('@/components/map/accident-stats-overlay', () => ({
 }))
 
 vi.mock('@/components/map/accident-heatmap-layer', () => ({
-  AccidentHeatmapLayer: () => null,
+  AccidentHeatmapLayer: (props: any) => { h.captured.accidentLayer = props; return null },
+}))
+
+vi.mock('@/components/map/accident-scenery-dialog', () => ({
+  AccidentSceneryDialog: (props: any) => {
+    h.captured.scenery = props
+    return <div data-testid="accident-scenery" />
+  },
 }))
 
 vi.mock('@/components/map/accident-heatmap-controls', () => ({
@@ -533,6 +540,29 @@ afterEach(() => {
 })
 
 describe('MapContainer characterization', () => {
+  it('opens free scenery for the selected accident and restores the existing map without reinitializing', () => {
+    const view = renderMapContainer()
+    fireMapLoad()
+    const instance = lastMap()
+    act(() => h.captured.floatingControls.setMapStyle('dark-v11'))
+    const filters = h.captured.dangerReportsArgs.filterOptions
+    const target = { coordinates: [141.716, 39.081], properties: { year: 2024, type: '追突' } }
+    expect(view.queryByTestId('accident-scenery')).not.toBeInTheDocument()
+    act(() => h.captured.accidentLayer.onShowStreetView(target))
+    expect(h.captured.scenery.target).toEqual(target)
+    const background = view.getByTestId('map-background')
+    expect(background).toHaveStyle({ visibility: 'hidden' })
+    expect(background).toHaveAttribute('inert')
+    expect(h.maps).toHaveLength(1)
+    act(() => h.captured.scenery.onClose())
+    expect(view.queryByTestId('accident-scenery')).not.toBeInTheDocument()
+    expect(background).not.toHaveStyle({ visibility: 'hidden' })
+    expect(background).not.toHaveAttribute('inert')
+    expect(lastMap()).toBe(instance)
+    expect(h.captured.floatingControls.mapStyle).toBe('dark-v11')
+    expect(h.captured.dangerReportsArgs.filterOptions).toEqual(filters)
+  })
+
   describe('報告ディープリンク', () => {
     it('一覧に含まれない本人の報告もID指定で取得して詳細を開く', async () => {
       const rejectedReport = sampleReport({ id: 'rejected-1', status: 'rejected' })
