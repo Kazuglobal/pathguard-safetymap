@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from "vitest"
 
 import { MapTopOverlay } from "@/components/map/map-top-overlay"
 
-function renderOverlay(overrides: Partial<ComponentProps<typeof MapTopOverlay>> = {}) {
-  const props: ComponentProps<typeof MapTopOverlay> = {
+function overlayProps(overrides: Partial<ComponentProps<typeof MapTopOverlay>> = {}): ComponentProps<typeof MapTopOverlay> {
+  return {
     activePanel: null,
     is3DEnabled: false,
     isARMode: false,
@@ -25,6 +25,10 @@ function renderOverlay(overrides: Partial<ComponentProps<typeof MapTopOverlay>> 
     suspiciousPanelSlot: <div>suspicious-panel</div>,
     ...overrides,
   }
+}
+
+function renderOverlay(overrides: Partial<ComponentProps<typeof MapTopOverlay>> = {}) {
+  const props = overlayProps(overrides)
   render(<MapTopOverlay {...props} />)
   return props
 }
@@ -181,5 +185,33 @@ describe("MapTopOverlay", () => {
     await user.click(screen.getByRole("button", { name: /くわしい表示/ }))
 
     expect(props.onPanelChange).toHaveBeenCalledWith(null)
+  })
+
+  // 右上のポイント表示と「ピンの見方」を、列と重ならない位置へずらせるように知らせる
+  it("tells whether the 「くわしい表示」 row is out as it unfolds and folds", async () => {
+    const user = userEvent.setup()
+    const onDetailsVisibleChange = vi.fn()
+    renderOverlay({ onDetailsVisibleChange })
+
+    expect(onDetailsVisibleChange).toHaveBeenLastCalledWith(false)
+
+    await user.click(screen.getByRole("button", { name: /くわしい表示/ }))
+    expect(onDetailsVisibleChange).toHaveBeenLastCalledWith(true)
+
+    await user.click(screen.getByRole("button", { name: /くわしい表示/ }))
+    expect(onDetailsVisibleChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it("reports the row as out while a panel inside it is open, and as gone once the overlay unmounts", () => {
+    const onDetailsVisibleChange = vi.fn()
+    const { unmount } = render(
+      <MapTopOverlay {...overlayProps({ activePanel: "heatmap", isHeatmapVisible: true, onDetailsVisibleChange })} />,
+    )
+
+    expect(onDetailsVisibleChange).toHaveBeenLastCalledWith(true)
+
+    // 報告の場所を選んでいるあいだは上の列ごと消える。右上の部品はもとの位置に戻す
+    unmount()
+    expect(onDetailsVisibleChange).toHaveBeenLastCalledWith(false)
   })
 })

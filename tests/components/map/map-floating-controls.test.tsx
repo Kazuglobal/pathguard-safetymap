@@ -88,6 +88,46 @@ describe('MapFloatingControls mobile layout', () => {
   })
 })
 
+// 右上のポイント表示と「ピンの見方」が、上の列(検索・通学路チェック・くわしい表示)と重ならないように
+describe('MapFloatingControls corner badges', () => {
+  const FOLDED = [
+    'top-[calc(env(safe-area-inset-top,0px)+8.5rem)]',
+    'md:top-[calc(env(safe-area-inset-top,0px)+12.5rem)]',
+    'lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]',
+  ]
+  const UNFOLDED = [
+    'top-[calc(env(safe-area-inset-top,0px)+12.5rem)]',
+    'md:top-[calc(env(safe-area-inset-top,0px)+16.5rem)]',
+    'lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]',
+  ]
+
+  it('sits just below the top rows, and moves below 「くわしい表示」 while that row is out', () => {
+    const { unmount } = renderControls()
+    expect(screen.getByTestId('map-utilities')).toHaveClass(...FOLDED)
+    unmount()
+
+    renderControls({ isTopDetailsOpen: true })
+    const badges = screen.getByTestId('map-utilities')
+    expect(badges).toHaveClass(...UNFOLDED)
+    expect(badges).not.toHaveClass(FOLDED[0], FOLDED[1])
+    expect(within(badges).getByRole('button', { name: 'ピンの見方を表示' })).toBeInTheDocument()
+  })
+
+  it('steps aside on phones while the empty-area notice is up, keeping the bottom dock', () => {
+    renderControls({ isEmptyAreaNoticeVisible: true })
+
+    expect(screen.queryByTestId('map-utilities')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ピンの見方を表示' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-action-dock')).toBeInTheDocument()
+  })
+
+  it('stays on wider screens, where the notice sits in the middle away from the corner', () => {
+    renderControls({ isMobile: false, isEmptyAreaNoticeVisible: true })
+
+    expect(screen.getByTestId('map-utilities')).toHaveTextContent('120')
+  })
+})
+
 describe('MapFloatingControls mobile menu (bottom tab bar is hidden on the map)', () => {
   it('opens a menu with the other screens from the action dock', async () => {
     const { default: userEvent } = await import('@testing-library/user-event')

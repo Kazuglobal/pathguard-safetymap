@@ -601,6 +601,17 @@ describe('MapContainer characterization', () => {
       expect(typeof h.captured.topOverlay.renderDisplayOptions).toBe('function')
       expect(h.captured.floatingControls).not.toHaveProperty('displayOverlayOptions')
     })
+
+    it('「くわしい表示」の列が出ているあいだは、右上のポイント表示などを列の下へずらす', () => {
+      renderMapContainer()
+      expect(h.captured.floatingControls.isTopDetailsOpen).toBe(false)
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(true))
+      expect(h.captured.floatingControls.isTopDetailsOpen).toBe(true)
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(false))
+      expect(h.captured.floatingControls.isTopDetailsOpen).toBe(false)
+    })
   })
 
   // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)
@@ -610,11 +621,14 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
 
       expect(screen.getByTestId('map-empty-area-notice')).toHaveTextContent('この地域の報告はまだありません')
+      // スマホでは案内と重ならないよう、右上のポイント表示などをよける(map-floating-controls)
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(true)
 
       fireEvent.click(screen.getByRole('button', { name: /事故ヒートマップ\(全国データ\)を見る/ }))
 
       expect(h.captured.topOverlay.activePanel).toBe('heatmap')
       expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
     })
 
     it('報告がある範囲・地図の準備中には出さない', () => {

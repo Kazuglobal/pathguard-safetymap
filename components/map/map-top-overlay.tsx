@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, type ReactElement, type ReactNode } from "react"
+import { useEffect, useState, type ReactElement, type ReactNode } from "react"
 import { Building2, ChevronDown, Flame, Layers, Route, ScanEye } from "lucide-react"
 
+import { useEventCallback } from "@/hooks/use-event-callback"
 import { getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
 
 export type MapTopOverlayPanel = "3d" | "ar" | "heatmap" | "hazard" | "suspicious" | null
@@ -29,6 +30,11 @@ interface MapTopOverlayProps {
    * 渡したボタン(このメニューと同じ見た目)を、開くきっかけに使って描く
    */
   renderDisplayOptions?: (trigger: ReactElement) => ReactNode
+  /**
+   * 「くわしい表示」の列が出ているか(開いた・たたんだ・この部品が消えた)を知らせる。
+   * 右上のポイント表示と「ピンの見方」を、列と重ならない位置へずらすのに使う
+   */
+  onDetailsVisibleChange?: (isVisible: boolean) => void
 }
 
 type AdvancedPanel = Exclude<MapTopOverlayPanel, "hazard" | null>
@@ -104,6 +110,13 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   // くわしい表示の中のパネルを開いているあいだは、たたまない
   const showDetails = isDetailsOpen || ADVANCED_IDS.has(props.activePanel)
+
+  // 列が出ているかを知らせる。この部品が消えたとき(報告の場所を選んでいるあいだなど)は「出ていない」に戻す
+  const notifyDetailsVisible = useEventCallback((isVisible: boolean) => props.onDetailsVisibleChange?.(isVisible))
+  useEffect(() => {
+    notifyDetailsVisible(showDetails)
+  }, [notifyDetailsVisible, showDetails])
+  useEffect(() => () => notifyDetailsVisible(false), [notifyDetailsVisible])
 
   const handleChipClick = (panel: Exclude<MapTopOverlayPanel, null>) => {
     // くわしい表示の中のボタンで開け閉めしたあとも、列はたたまない

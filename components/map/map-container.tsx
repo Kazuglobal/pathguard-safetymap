@@ -151,6 +151,8 @@ export default function MapContainer({
   const [activeARKind, setActiveARKind] = useState<ActiveARKind>("nearby")
   const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
   const [isEmptyAreaNoticeDismissed, setIsEmptyAreaNoticeDismissed] = useState(false)
+  // 上の「くわしい表示」の列が出ているか。右上のポイント表示などを、列と重ならない位置へずらす
+  const [isTopDetailsOpen, setIsTopDetailsOpen] = useState(false)
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
@@ -1178,6 +1180,8 @@ export default function MapContainer({
           // 読み込み中のみ無効化する。mapError 時まで無効にすると、地図が開けない
           // 環境(WebGL不可等)で /map からの報告手段が恒久的に失われる
           isMapReady={isBaseMapReady || mapError !== null}
+          isTopDetailsOpen={isTopDetailsOpen}
+          isEmptyAreaNoticeVisible={showEmptyAreaNotice}
         />
 
         {/* 報告の場所を選んでいるあいだは上の列が隠れるので、地図の見た目(衛星写真など)だけはここで変えられるようにする */}
@@ -1206,6 +1210,7 @@ export default function MapContainer({
             onToggleAR={toggleARMode}
             onToggleHeatmap={accidentHeatmap.toggleVisibility}
             onToggleSuspicious={() => setIsSuspiciousVisible((v) => !v)}
+            onDetailsVisibleChange={setIsTopDetailsOpen}
             renderDisplayOptions={(trigger) => (
               <MapStyleSelector
                 currentStyle={mapStyle}
