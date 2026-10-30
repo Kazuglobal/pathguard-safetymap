@@ -133,7 +133,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                         }
                       : {
                           background: "rgba(255,253,247,.95)",
-                          color: "#847661",
+                          color: "#746855",
                           borderColor: "rgba(67,57,43,.12)",
                           boxShadow: "0 3px 0 rgba(67,57,43,.14)",
                         }

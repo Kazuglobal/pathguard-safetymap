@@ -228,7 +228,8 @@ describe("MapStyleSelector", () => {
 
     expect(badge).toHaveClass("whitespace-nowrap")
     expect(badge).toHaveClass("px-1.5")
-    expect(badge).toHaveClass("text-[10px]")
+    // 文字は 12px 以上(UIUX改装 項目33)
+    expect(badge).toHaveClass("text-[12px]")
   })
 
   it("opens grouped desktop content in a popover instead of menu semantics", async () => {

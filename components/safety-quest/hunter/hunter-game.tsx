@@ -850,7 +850,7 @@ function HomeScreen({
                   {step.icon}
                 </span>
                 <span
-                  className="whitespace-nowrap text-[11px] font-black leading-tight"
+                  className="whitespace-nowrap text-[12px] font-black leading-tight"
                   style={{ color: C.inkSoft }}
                 >
                   {step.label}
@@ -917,7 +917,7 @@ function PhotoChoice({
         <span className="text-[15px] font-black leading-tight" style={{ color: C.ink }}>
           {label}
         </span>
-        <span className="text-[11.5px] font-bold leading-tight" style={{ color: C.inkSoft }}>
+        <span className="text-[12px] font-bold leading-tight" style={{ color: C.inkSoft }}>
           {sub}
         </span>
       </label>
@@ -1062,7 +1062,7 @@ function ConsentScreen({
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors"
             style={{
               background: saveConsent ? C.primary : "rgba(67,57,43,.08)",
-              color: saveConsent ? "#fff" : C.inkFaint,
+              color: saveConsent ? "#fff" : C.inkSoft,
             }}
           >
             {saveConsent ? <Check className="h-5 w-5" strokeWidth={3} /> : <MapIcon className="h-5 w-5" />}
@@ -1250,7 +1250,7 @@ function AnalyzingScreen({
       {/* 豆ちしきカルーセル */}
       <div className="mt-8 w-full max-w-[360px]">
         <PaperPanel tone="sun" className="px-4 py-3.5">
-          <p className="mb-1 flex items-center gap-1.5 text-[11.5px] font-black" style={{ color: C.sunDeep }}>
+          <p className="mb-1 flex items-center gap-1.5 text-[12px] font-black" style={{ color: C.sunDeep }}>
             <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
             まちの豆ちしき
           </p>
@@ -1331,7 +1331,7 @@ function ModeCard({
       </span>
       <span className="flex min-w-0 flex-col gap-0.5">
         {eyebrow ? (
-          <span className="flex items-center gap-1 text-[10.5px] font-black leading-tight opacity-90">
+          <span className="flex items-center gap-1 text-[12px] font-black leading-tight opacity-90">
             <CalendarDays className="h-3 w-3" aria-hidden="true" />
             {eyebrow}
           </span>

@@ -36,7 +36,7 @@ export function LpFeatureTour() {
     <section ref={sectionRef} className="bg-[#F3EFE4] py-24 md:py-32">
       <div className="mx-auto max-w-5xl px-5 md:px-8">
         <p data-reveal className="font-lp-display mb-4 text-center text-sm font-black tracking-[0.2em] text-[#C77E1B]">
-          FEATURE TOUR
+          {LP_FEATURE_TOUR.eyebrow}
         </p>
         <h2 data-reveal className="font-lp-display text-center text-3xl font-black text-[#2B2723] md:text-[2.8rem]">
           {LP_FEATURE_TOUR.headline}

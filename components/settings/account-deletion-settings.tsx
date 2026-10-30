@@ -8,8 +8,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+import { useOptionalAuth } from "@/components/providers/auth-context"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { ACCOUNT_DELETION_CONFIRMATION } from "@/lib/account-deletion-confirmation"
+import { DEMO_ACCOUNT_LOCKED_MESSAGE, isDemoAccountEmail } from "@/lib/auth/demo-account"
 import { tankenTokens } from "@/lib/design/tanken"
 import { clearAllLocalRouteGeometry } from "@/lib/route-local-geometry"
 
@@ -25,6 +27,8 @@ const DELETED_ITEMS = [
 export function AccountDeletionSettings() {
   const router = useRouter()
   const { supabase } = useSupabase()
+  // デモのアカウントは共用なので消させない(API も 403 を返す)
+  const demoAccount = isDemoAccountEmail(useOptionalAuth()?.user?.email)
   const [open, setOpen] = useState(false)
   const [confirmation, setConfirmation] = useState("")
   const [deleting, setDeleting] = useState(false)
@@ -58,7 +62,11 @@ export function AccountDeletionSettings() {
   return (
     <section aria-labelledby="account-deletion-title" className="space-y-2" data-testid="account-deletion-settings">
       <h4 id="account-deletion-title" className="text-base font-bold">アカウントを削除</h4>
-      {!open ? (
+      {demoAccount ? (
+        <p className="text-sm" style={{ color: t.color.inkSoft }}>
+          {DEMO_ACCOUNT_LOCKED_MESSAGE}
+        </p>
+      ) : !open ? (
         <>
           <p className="text-sm" style={{ color: t.color.inkSoft }}>
             退会すると、あなたのデータをすべて消します。元には戻せません。

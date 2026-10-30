@@ -224,7 +224,7 @@ export function HunterQuizPanel({ items, imageUrl, onComplete }: HunterQuizPanel
                 : isPicked
                   ? C.danger
                   : "#FFFFFF"
-            const color = !revealed ? C.ink : isCorrect || isPicked ? "#fff" : C.inkFaint
+            const color = !revealed ? C.ink : isCorrect || isPicked ? "#fff" : C.inkSoft
             return (
               <button
                 key={choice.id}

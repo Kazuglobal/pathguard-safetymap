@@ -125,7 +125,7 @@ describe("SafeMagazineCarousel", () => {
   it("記事をすべてスライドとして並べ、記事ページへリンクする", () => {
     render(<SafeMagazineCarousel articles={articles} />)
 
-    expect(screen.getByRole("region", { name: "PathGuard Press の新着記事" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "SAFE MAGAZINE の新着記事" })).toBeInTheDocument()
     expect(screen.getAllByRole("group")).toHaveLength(articles.length)
     expect(screen.getByRole("link", { name: new RegExp(escapeRegExp(articles[0].title)) })).toHaveAttribute(
       "href",

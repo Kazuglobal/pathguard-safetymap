@@ -1,7 +1,7 @@
 /**
  * use-accident-stats.ts
  * 交通事故統計データのReact Hook
- * PathGuardian - 通学路安全マップ
+ * PathGuardian(通学路みまもりアプリ)
  */
 
 "use client";

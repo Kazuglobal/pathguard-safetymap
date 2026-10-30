@@ -256,7 +256,7 @@ export default function SuspiciousAlertForm({
       <div className="relative">
         <label className="mb-1 block text-xs font-medium text-gray-700">場所・住所</label>
         <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2.5 focus-within:border-orange-400">
-          <Search className="h-4 w-4 shrink-0 text-gray-400" />
+          <Search className="h-4 w-4 shrink-0 text-gray-500" />
           <input
             type="text"
             value={query}
@@ -264,9 +264,9 @@ export default function SuspiciousAlertForm({
             onFocus={() => results.length > 0 && setShowDropdown(true)}
             onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
             placeholder="例: ○○町、△△小学校 付近"
-            className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+            className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-500"
           />
-          {isSearching && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gray-400" />}
+          {isSearching && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gray-500" />}
         </div>
 
         {showDropdown && results.length > 0 && (
@@ -296,7 +296,7 @@ export default function SuspiciousAlertForm({
             {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
             現在地を使う
           </button>
-          <span className={`text-xs ${hasLocation ? "text-emerald-600" : "text-gray-400"}`}>
+          <span className={`text-xs ${hasLocation ? "text-emerald-600" : "text-gray-500"}`}>
             {hasLocation ? "地点を選択済み（地図をタップして変更も可）" : "地図をタップしても選べます"}
           </span>
         </div>
@@ -311,7 +311,7 @@ export default function SuspiciousAlertForm({
           rows={2}
           maxLength={200}
           placeholder="例: 下校時間に声かけ事案。電話番号や個人名は書かないでください。"
-          className="w-full resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400 placeholder:text-gray-400"
+          className="w-full resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400 placeholder:text-gray-500"
         />
       </div>
 

@@ -3,21 +3,35 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { LayoutProvider } from "@/components/providers/layout-provider"
 import { getMaintenanceMode } from '@/lib/maintenance'
+import { BRAND } from '@/lib/brand'
 
-const metadataBase = process.env.NEXT_PUBLIC_SITE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
-  : undefined
+const metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL || BRAND.siteUrl)
 
+// 各ページはページ名だけを書く(例: "マイページ" → 「マイページ | PathGuardian」)。UIUX改装 項目1・3
 export const metadata: Metadata = {
   metadataBase,
-  title: "PathGuardian - AI安全マップ",
-  description: "AIとコミュニティの力で、安全な街づくりを支援するプラットフォーム。通学路・通勤路のリスクを可視化し、みんなで守る安心な環境を作ります。",
-  keywords: "安全マップ, AI, 防災, 通学路, コミュニティ, リスク分析",
-  authors: [{ name: "PathGuardian Team" }],
-  creator: "PathGuardian",
-  publisher: "PathGuardian",
+  title: { default: BRAND.defaultTitle, template: BRAND.titleTemplate },
+  description: BRAND.description,
+  applicationName: BRAND.name,
+  keywords: ["通学路", "見守り", "安全マップ", "ヒヤリハット", "不審者情報", "子ども", "防災"],
+  authors: [{ name: BRAND.name }],
+  creator: BRAND.name,
+  publisher: BRAND.name,
   robots: "index, follow",
-  generator: 'v0.dev',
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    siteName: BRAND.name,
+    title: BRAND.defaultTitle,
+    description: BRAND.description,
+    images: [{ url: "/images/lp/og-share.png", alt: BRAND.defaultTitle }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: BRAND.defaultTitle,
+    description: BRAND.description,
+    images: ["/images/lp/og-share.png"],
+  },
   // iOSホーム画面追加時の表示名・ステータスバー(app/manifest.ts と対で使う)
   appleWebApp: {
     capable: true,
@@ -27,7 +41,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
-  themeColor: "#0ea5e9",
+  // 紙の色(app/manifest.ts の theme_color と同じ)
+  themeColor: BRAND.themeColor,
   width: "device-width",
   initialScale: 1,
 }

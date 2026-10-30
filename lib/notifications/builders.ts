@@ -5,6 +5,8 @@
  * Web Pushペイロードの両方を構築するユーティリティ
  */
 
+import { BRAND } from '../brand'
+
 export interface NotificationPreferences {
   danger_reports: boolean
   news: boolean
@@ -182,7 +184,7 @@ export function buildNewsPushPayload(params: {
   title: string
 }): PushPayload {
   return {
-    title: '通学路ニュース',
+    title: BRAND.news,
     body: params.title,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',
@@ -297,7 +299,7 @@ export function buildMagazinePushPayload(params: {
   title: string
 }): PushPayload {
   return {
-    title: '安全マガジン新着',
+    title: `${BRAND.magazine} の新着`,
     body: params.title,
     icon: '/apple-touch-icon.png',
     badge: '/apple-touch-icon.png',

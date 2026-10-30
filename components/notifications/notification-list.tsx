@@ -117,7 +117,7 @@ export function NotificationList({
                   {getNotificationTypeLabel(notification.type) && (
                     <span
                       data-testid="notification-type-badge"
-                      className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-800"
+                      className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[12px] font-medium text-sky-800"
                     >
                       {getNotificationTypeLabel(notification.type)}
                     </span>
@@ -141,7 +141,7 @@ export function NotificationList({
                 {notification.content}
               </p>
               <p
-                className="mt-1 text-xs text-gray-400"
+                className="mt-1 text-xs text-gray-500"
                 data-testid="notification-timestamp"
               >
                 {formatTimestamp(notification.created_at)}

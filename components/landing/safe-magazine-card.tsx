@@ -21,7 +21,7 @@ interface SafeMagazineCardProps {
   article: LandingSafeMagazinePreviewItem
 }
 
-/** PathGuard Press の記事カード(PCグリッドとスマホの自動スライドで共用) */
+/** SAFE MAGAZINE の記事カード(PCグリッドとスマホの自動スライドで共用) */
 export function SafeMagazineCard({ article }: SafeMagazineCardProps) {
   const IconComponent =
     CATEGORY_ICONS[article.categoryIcon as keyof typeof CATEGORY_ICONS] ?? null

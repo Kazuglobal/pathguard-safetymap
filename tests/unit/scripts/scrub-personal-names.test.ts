@@ -162,6 +162,29 @@ describe('scrub-personal-names main', () => {
     expect(retry.updates.map((update) => update.userId)).toEqual([LINE_USER.id])
   })
 
+  it('D1 の full_name の列をマイグレーションで消したあとでも、Supabase の分だけを消せる', async () => {
+    database.sqlite.exec('ALTER TABLE profiles DROP COLUMN full_name')
+    const auth = createFakeAuth(allUsers)
+    const deps = createTestDeps({ runner: createFakeWrangler(database.sqlite).runner, env: { [NAME_SCRUB_CONFIRM_ENV]: 'yes' } })
+
+    const code = await main(['--apply'], deps, auth)
+
+    expect(code).toBe(0)
+    expect(deps.lines.join('\n')).toContain('D1 profiles.full_name: 列はもう消してあります')
+    expect(deps.lines.join('\n')).not.toContain('D1 の氏名を消します')
+    expect(auth.users.get(EMAIL_USER.id)).toEqual({})
+    expect(deps.lines.join('\n')).toContain('数え直し: Supabase Auth に残っている人 0 人 / D1 の氏名 0 件')
+  })
+
+  it('D1 に profiles の表そのものが無い(接続先の取り違えなど)ときは、「消し終えた」とせずに止まる', async () => {
+    database.sqlite.exec('DROP TABLE profiles')
+    const auth = createFakeAuth([])
+    const deps = createTestDeps({ runner: createFakeWrangler(database.sqlite).runner, env: { [NAME_SCRUB_CONFIRM_ENV]: 'yes' } })
+
+    await expect(main(['--apply'], deps, auth)).rejects.toThrow('profiles の表が見つかりません')
+    expect(deps.lines.join('\n')).not.toContain('すべて消しました')
+  })
+
   it('Supabase の接続情報が無ければ、キー名だけを示して止まる', async () => {
     const deps = createTestDeps({ runner: createFakeWrangler(database.sqlite).runner, env: {} })
 

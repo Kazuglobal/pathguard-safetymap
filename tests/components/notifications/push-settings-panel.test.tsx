@@ -103,8 +103,8 @@ describe('PushSettingsPanel', () => {
 
     render(<PushSettingsPanel />)
     expect(screen.getByText('危険レポートアラート')).toBeInTheDocument()
-    expect(screen.getByText('通学路ニュース')).toBeInTheDocument()
-    expect(screen.getByText('安全マガジン')).toBeInTheDocument()
+    expect(screen.getByText('通学路の安全ニュース')).toBeInTheDocument()
+    expect(screen.getByText('SAFE MAGAZINE')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('通知を解除する'))
     expect(mockUnsubscribe).toHaveBeenCalled()

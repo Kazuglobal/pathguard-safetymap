@@ -135,7 +135,7 @@ export function buildHotspotPopupContent(spot: AccidentHotspotSummary): HTMLDivE
     row.style.display = 'flex'
     row.style.alignItems = 'center'
     row.style.gap = '4px'
-    row.style.fontSize = '11px'
+    row.style.fontSize = '12px'
     row.style.color = tankenTokens.color.inkSoft
     const label = document.createElement('span')
     label.style.width = '36px'
@@ -153,7 +153,7 @@ export function buildHotspotPopupContent(spot: AccidentHotspotSummary): HTMLDivE
   }
   root.appendChild(chart)
 
-  root.appendChild(line(HOTSPOT_ATTRIBUTION, { fontSize: '10px', color: tankenTokens.color.inkFaint, marginTop: '6px' }))
+  root.appendChild(line(HOTSPOT_ATTRIBUTION, { fontSize: '12px', color: tankenTokens.color.inkSoft, marginTop: '6px' }))
   return root
 }
 

@@ -142,7 +142,7 @@ const childrenPrompts: DisasterPrompt[] = [
     shortName: "子ども②",
     description: "AIと地域で創る「みんなの安心」マップ",
     targetAudience: "children",
-    prompt: `# 🛡️ PathGuardian 通学路安全マップ
+    prompt: `# 🛡️ PathGuardian(通学路みまもりアプリ)の安全マップ
 
 あなたは通学路の安全を考える専門家です。入力された写真を分析し、子どもにもわかりやすい安全マップを作成してください。
 

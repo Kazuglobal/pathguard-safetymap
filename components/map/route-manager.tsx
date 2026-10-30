@@ -1362,7 +1362,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               {filteredRoutes.length > 1 && (
                 <div
                   className="rounded-[16px] border px-4 py-3 text-sm font-bold"
-                  style={{ borderColor: "rgba(67,57,43,.1)", background: "#FFFDF7", color: "#847661" }}
+                  style={{ borderColor: "rgba(67,57,43,.1)", background: "#FFFDF7", color: "#746855" }}
                 >
                   比較したいルートを2つ以上選ぶと、距離と所要時間をまとめて見比べられます。
                 </div>
@@ -1420,7 +1420,7 @@ export function RouteManager({ onRouteSelect }: RouteManagerProps) {
               style={{
                 borderColor: "rgba(67,57,43,.14)",
                 background: "#F3EAD6",
-                color: "#847661",
+                color: "#746855",
                 borderRadius: 12,
               }}
             >

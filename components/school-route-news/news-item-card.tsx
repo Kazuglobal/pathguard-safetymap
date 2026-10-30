@@ -91,12 +91,12 @@ export function NewsItemCard({ item, isRead, onRead }: NewsItemCardProps) {
               </div>
               <div className="flex items-center gap-2">
                 {isRead && (
-                  <span className="flex items-center gap-0.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                  <span className="flex items-center gap-0.5 rounded bg-gray-100 px-1.5 py-0.5 text-[12px] font-medium text-gray-500">
                     <Check className="h-3 w-3" />
                     既読
                   </span>
                 )}
-                <div className="flex items-center gap-1 text-xs text-gray-400">
+                <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Clock className="h-3.5 w-3.5" />
                   {formatNewsDate(item.publishedDate)}
                 </div>

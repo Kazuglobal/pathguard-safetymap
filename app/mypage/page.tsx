@@ -45,6 +45,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react"
+import { BRAND } from "@/lib/brand"
 import { tankenTokens } from "@/lib/design/tanken"
 import { MypageNotificationCard } from "./mypage-notification-card"
 import { ChildrenSettings } from "@/components/settings/children-settings"
@@ -513,7 +514,7 @@ export default function MyPage() {
         {/* ヘッダー: あいさつ + レベルチップ + 編集 */}
         <motion.header {...fade(0)} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家の見守りノート</p>
+            <p className="text-xs font-semibold" style={{ color: t.color.inkSoft }}>わが家の{BRAND.notebook}</p>
             <h1 className="truncate text-2xl font-black tracking-tight" style={{ color: t.color.ink }}>
               {userName ? `こんにちは、${userName}さん` : "こんにちは"}
             </h1>
@@ -583,7 +584,7 @@ export default function MyPage() {
                   <span>あと {pointsToNextLevel}pt で Lv.{safeLevel + 1}</span>
                 </div>
                 <Progress value={Math.round(levelProgress * 100)} className="h-2.5" />
-                <p className="text-xs" style={{ color: t.color.inkFaint }}>
+                <p className="text-xs" style={{ color: t.color.inkSoft }}>
                   ポイントは報告やミッション達成でたまり、レベルとバッジに反映されます。
                   {isGamificationLoading && "（更新中…）"}
                 </p>
@@ -633,8 +634,8 @@ export default function MyPage() {
                       >
                         {step.label}
                       </p>
-                      <p className="text-xs" style={{ color: t.color.inkFaint }}>
-                        {step.done ? "完了ずみ。ありがとう！" : step.hint}
+                      <p className="text-xs" style={{ color: t.color.inkSoft }}>
+                        {step.done ? "済んでいます。ありがとう！" : step.hint}
                       </p>
                     </div>
                     {step.done ? (

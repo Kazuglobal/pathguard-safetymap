@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation"
 import { Navigation } from "@/components/ui/navigation"
 import type { User } from "@supabase/supabase-js"
 import { cn } from "@/lib/utils"
-import { shouldShowMobileBottomNav } from "@/lib/navigation-visibility"
+import { shouldShowMobileBottomNav, shouldShowSiteFooter } from "@/lib/navigation-visibility"
+import { SiteFooter } from "@/components/layout/site-footer"
 import type { AuthStatus } from "@/components/providers/auth-context"
 
 interface NavigationWrapperProps {
@@ -40,6 +41,9 @@ export function NavigationWrapper({
   // マップページ以外は通常のパディング(下部タブバーは lg 未満で出るので、その高さぶん空ける)
   const mainPaddingClass = showNavigation && !isMapPage ? "pb-24 lg:pb-0" : undefined
 
+  // 共通のフッター(UIUX改装 項目32)。出す画面では、下部タブバーのための余白はフッターの側で空ける
+  const showFooter = shouldShowSiteFooter(pathname)
+
   return (
     <div className={cn(
       "min-h-screen bg-background",
@@ -62,10 +66,12 @@ export function NavigationWrapper({
       {/* メインコンテンツ（マップページは最背面） */}
       <main className={cn(
         isMapPage ? "fixed inset-0" : "flex-1",
-        mainPaddingClass
+        !showFooter && mainPaddingClass
       )}>
         {children}
       </main>
+
+      {showFooter && <SiteFooter reserveBottomNav={Boolean(mainPaddingClass)} />}
     </div>
   )
 }

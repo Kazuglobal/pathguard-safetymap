@@ -90,7 +90,7 @@ export function SchoolRouteNewsSection() {
                     )}
                     {item.isBreaking && (
                       <span
-                        className="absolute left-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        className="absolute left-1 top-1 rounded px-1.5 py-0.5 text-[12px] font-bold text-white"
                         style={{ background: C.danger }}
                       >
                         注目
@@ -103,13 +103,13 @@ export function SchoolRouteNewsSection() {
                     {/* カテゴリーと時間 */}
                     <div className="mb-1 flex items-center gap-2">
                       <span
-                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-bold text-white"
                         style={{ backgroundColor: item.categoryColor }}
                       >
                         {IconComponent && <IconComponent className="h-2.5 w-2.5" aria-hidden="true" />}
                         {item.categoryLabel}
                       </span>
-                      <span className="flex items-center gap-0.5 text-[10px]" style={{ color: C.inkFaint }}>
+                      <span className="flex items-center gap-0.5 text-[12px]" style={{ color: C.inkSoft }}>
                         <Clock className="h-2.5 w-2.5" aria-hidden="true" />
                         {formatLandingNewsDate(item.publishedDate)}
                       </span>

@@ -37,7 +37,7 @@ export function PointHazardSection({ center, locationSource }: { center: [number
             <button className="my-2 min-h-11 rounded-full bg-forest px-5 text-white" type="button" onClick={() => setSelected(type)}>浸水の深さを見る</button></>}
           {risk.kind === 'outside' && <p className="mt-1 text-xs">{HAZARD_OUTSIDE_NOTICE}</p>}
           {risk.kind === 'no_coverage' && <p className="mt-1 text-xs">この地点の公的データは未収録です。安全という意味ではありません。</p>}
-          {risk.sources.map(source => <p key={source.name + source.region} className="mt-1 text-[11px] text-ink-soft">出典：{source.url ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline">{source.name}</a> : source.name} ／ {source.region} ／ データ年度：{source.dataYear ?? '不明'}{source.importedAt ? ` ／ 取込日：${source.importedAt.slice(0, 10)}` : ''}</p>)}
+          {risk.sources.map(source => <p key={source.name + source.region} className="mt-1 text-xs text-ink-soft">出典：{source.url ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline">{source.name}</a> : source.name} ／ {source.region} ／ データ年度：{source.dataYear ?? '不明'}{source.importedAt ? ` ／ 取込日：${source.importedAt.slice(0, 10)}` : ''}</p>)}
         </div>
       })}
     {selected && data && <Dialog open onOpenChange={open => { if (!open) setSelected(null) }}>

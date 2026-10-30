@@ -50,6 +50,18 @@ beforeEach(() => {
 })
 
 describe('DELETE /api/account(UIUX改装 項目40)', () => {
+  it('デモのアカウントは、ほかの人も使うので消させない(何も消さずに 403)', async () => {
+    mocks.getActor.mockResolvedValue({ ...user, email: 'Demo@Example.com' })
+
+    const response = await DELETE(request({ confirm: 'さくじょ' }))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: 'デモのアカウントは、ほかの人も使うため削除できません。' })
+    expect(mocks.collect).not.toHaveBeenCalled()
+    expect(mocks.deleteRows).not.toHaveBeenCalled()
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+  })
+
   it('「さくじょ」の確認があれば、写真 → D1 → アカウントの順に消す', async () => {
     const response = await DELETE(request({ confirm: 'さくじょ' }))
 

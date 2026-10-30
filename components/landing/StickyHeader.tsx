@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Shield } from "lucide-react"
 
+import { BrandLogo } from "@/components/brand/brand-logo"
 import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -24,20 +24,9 @@ export function StickyHeader() {
       }}
     >
       <div className="flex h-14 items-center justify-between px-4">
-        <Link href="/landing" className={`flex items-center gap-2 rounded-full ${tankenTokens.cls.focus}`}>
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-xl border-2"
-            style={{
-              background: C.primary,
-              borderColor: "rgba(67,57,43,.2)",
-              boxShadow: "0 2px 0 rgba(12,122,85,.8)",
-            }}
-          >
-            <Shield className="h-5 w-5 text-white" strokeWidth={2.4} />
-          </div>
-          <span className="text-xl font-black" style={{ color: C.ink }}>
-            Path<span style={{ color: C.primary }}>Guardian</span>
-          </span>
+        {/* 紹介HP・ログインの画面と同じロゴ(UIUX改装 項目3) */}
+        <Link href="/landing" aria-label="PathGuardian のホーム" className={`flex items-center rounded-full ${tankenTokens.cls.focus}`}>
+          <BrandLogo size="md" />
         </Link>
 
         <Link

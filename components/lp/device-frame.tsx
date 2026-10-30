@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 
 interface PhoneFrameProps {
@@ -53,8 +54,8 @@ export function BrowserFrame({ src, alt, className }: BrowserFrameProps) {
         <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-        <div className="ml-3 hidden flex-1 rounded-md bg-white px-3 py-1 text-[11px] text-slate-400 sm:block">
-          pathguardian.app
+        <div className="ml-3 hidden flex-1 rounded-md bg-white px-3 py-1 text-[12px] text-slate-500 sm:block">
+          {new URL(BRAND.siteUrl).host}
         </div>
       </div>
       <div className="relative aspect-[1600/1000]">

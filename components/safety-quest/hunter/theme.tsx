@@ -31,6 +31,7 @@ import {
 import { ArrowLeft, Flag } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Lupe, type LupeMood } from "@/components/brand/lupe"
 
 /* ------------------------------------------------------------------ *
  * tokens
@@ -44,7 +45,7 @@ export const tokens = {
     card: "#FFFDF7",
     /** インク(文字) */
     ink: "#43392B",
-    inkSoft: "#847661",
+    inkSoft: "#746855",
     inkFaint: "#B7AB93",
     /** 森のみどり(主行動・発見) */
     primary: "#159E72",
@@ -138,173 +139,11 @@ const ENDPAPER =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340' viewBox='0 0 340 340'%3E%3Cg fill='none' stroke='%2343392B' stroke-opacity='.055' stroke-width='3' stroke-linecap='round'%3E%3Cpath stroke-dasharray='1 14' d='M20 60 Q120 20 170 90 T320 120'/%3E%3Cpath stroke-dasharray='1 14' d='M40 300 Q140 240 220 280 T330 230'/%3E%3C/g%3E%3Cg fill='%2343392B' fill-opacity='.06'%3E%3Cpath d='M84 148c0-9 7-16 16-16s16 7 16 16c0 12-16 26-16 26s-16-14-16-26zm16 5a5 5 0 100-10 5 5 0 000 10z'/%3E%3Ccircle cx='262' cy='58' r='9' fill='none' stroke='%2343392B' stroke-opacity='.07' stroke-width='4'/%3E%3Cpath d='M268 65l10 10' stroke='%2343392B' stroke-opacity='.07' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M50 215l3.5 7 7.7 1-5.6 5.4 1.4 7.6-7-3.6-7 3.6 1.4-7.6-5.6-5.4 7.7-1z'/%3E%3Cpath d='M300 320l2.6 5.2 5.8.8-4.2 4 1 5.7-5.2-2.7-5.2 2.7 1-5.7-4.2-4 5.8-.8z'/%3E%3C/g%3E%3C/svg%3E\")"
 
 /* ------------------------------------------------------------------ *
- * Mascot — ルペ(虫めがねの相棒・黄色い安全帽)
+ * Mascot — ルペ。本体は components/brand/lupe.tsx(紹介HP・ログインの画面と同じもの)
  * ------------------------------------------------------------------ */
 
-type MascotSize = "sm" | "md" | "lg" | "xl"
-type MascotMood = "happy" | "cheer" | "think" | "wow"
-
-const MASCOT_PX: Record<MascotSize, number> = { sm: 52, md: 88, lg: 132, xl: 168 }
-
-const MOOD_LABEL: Record<MascotMood, string> = {
-  happy: "にこにこの ルペ",
-  cheer: "おうえんする ルペ",
-  think: "かんがえちゅうの ルペ",
-  wow: "びっくりして よろこぶ ルペ",
-}
-
-function LupeEyes({ mood }: { mood: MascotMood }) {
-  const ink = C.ink
-  if (mood === "think") {
-    // 目は開けたまま少し上を見る(居眠りに見せない)
-    return (
-      <g fill={ink}>
-        <circle cx={52} cy={58.5} r={5} />
-        <circle cx={72} cy={58.5} r={5} />
-        <circle cx={51} cy={56.5} r={1.7} fill="#fff" />
-        <circle cx={71} cy={56.5} r={1.7} fill="#fff" />
-        <path d="M45 50 q6 -4 13 -2" stroke={ink} strokeWidth={2.6} strokeLinecap="round" fill="none" />
-        <path d="M66 48 q7 -2 13 2" stroke={ink} strokeWidth={2.6} strokeLinecap="round" fill="none" />
-      </g>
-    )
-  }
-  if (mood === "cheer") {
-    return (
-      <g>
-        <path d="M46 60 q6 -6 12 0" stroke={ink} strokeWidth={3.6} strokeLinecap="round" fill="none" />
-        <circle cx={72} cy={60} r={5.4} fill={ink} />
-        <circle cx={70.2} cy={58} r={1.8} fill="#fff" />
-      </g>
-    )
-  }
-  if (mood === "wow") {
-    return (
-      <g fill={ink}>
-        <SmallStar cx={52} cy={60} r={6.6} />
-        <SmallStar cx={72} cy={60} r={6.6} />
-      </g>
-    )
-  }
-  return (
-    <g fill={ink}>
-      <circle cx={52} cy={60} r={5.4} />
-      <circle cx={72} cy={60} r={5.4} />
-      <circle cx={50.2} cy={58} r={1.8} fill="#fff" />
-      <circle cx={70.2} cy={58} r={1.8} fill="#fff" />
-    </g>
-  )
-}
-
-function LupeMouth({ mood }: { mood: MascotMood }) {
-  if (mood === "wow") return <ellipse cx={62} cy={74} rx={5.6} ry={6.6} fill={C.accentStrong} />
-  if (mood === "think") {
-    return <path d="M57 74 q5 2.5 10 0" stroke={C.ink} strokeWidth={3.2} strokeLinecap="round" fill="none" />
-  }
-  return (
-    <path d="M52 71 q10 10 20 0" stroke={C.ink} strokeWidth={3.6} strokeLinecap="round" fill="none" />
-  )
-}
-
-function SmallStar({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const pts: string[] = []
-  for (let i = 0; i < 10; i += 1) {
-    const a = (Math.PI / 5) * i - Math.PI / 2
-    const rr = i % 2 === 0 ? r : r * 0.46
-    pts.push(`${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`)
-  }
-  return <polygon points={pts.join(" ")} />
-}
-
-/**
- * ルペ本体。虫めがねのレンズが顔・上に黄色い安全帽・右下に木のもち手。
- * ふわふわ浮遊(reduced 時は静止)。
- */
-export function Mascot({
-  size = "md",
-  mood = "happy",
-}: {
-  size?: MascotSize
-  mood?: MascotMood
-}) {
-  const reduce = useReducedMotion()
-  const px = MASCOT_PX[size]
-
-  return (
-    <motion.svg
-      width={px}
-      height={px}
-      viewBox="0 0 124 124"
-      role="img"
-      aria-label={MOOD_LABEL[mood]}
-      animate={reduce ? undefined : { y: [0, -4, 0], rotate: [0, -1.4, 0] }}
-      transition={reduce ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-      style={{ transformOrigin: "50% 60%" }}
-    >
-      {/* 接地影 */}
-      <ellipse cx={60} cy={116} rx={26} ry={4.5} fill="rgba(67,57,43,.14)" />
-
-      {/* もち手(木) */}
-      <g transform="rotate(43 88 88)">
-        <rect x={83} y={80} width={13} height={34} rx={6.5} fill="#C98A4B" stroke={C.ink} strokeWidth={3} />
-        <rect x={86.4} y={84} width={2.6} height={24} rx={1.3} fill="#A96D33" opacity={0.7} />
-      </g>
-
-      {/* レンズ外輪(みどり) */}
-      <circle cx={62} cy={62} r={34} fill={C.primary} stroke={C.ink} strokeWidth={3.4} />
-      {/* レンズ面(クリーム) */}
-      <circle cx={62} cy={62} r={26.5} fill="#FFF9EC" stroke={C.ink} strokeWidth={2} />
-      {/* レンズのつや */}
-      <path d="M44 50 q6 -10 18 -12" stroke="#fff" strokeWidth={5} strokeLinecap="round" fill="none" opacity={0.75} />
-
-      {/* ほっぺ */}
-      <circle cx={47} cy={68} r={4.6} fill={C.berry} opacity={0.4} />
-      <circle cx={77} cy={68} r={4.6} fill={C.berry} opacity={0.4} />
-
-      <LupeEyes mood={mood} />
-      <LupeMouth mood={mood} />
-
-      {/* 安全帽(黄) — レンズの上にちょこん */}
-      <g>
-        <path
-          d="M40 36 Q42 18 62 18 Q82 18 84 36 L84 39 Q62 32 40 39 Z"
-          fill={C.sun}
-          stroke={C.ink}
-          strokeWidth={3.2}
-          strokeLinejoin="round"
-        />
-        {/* つば */}
-        <path
-          d="M36 38.5 Q62 30 88 38.5 Q90 43 86 43.5 Q62 37 38 43.5 Q34 43 36 38.5 Z"
-          fill={C.sunDeep}
-          stroke={C.ink}
-          strokeWidth={3}
-          strokeLinejoin="round"
-        />
-        {/* 帽章(みどりの盾) */}
-        <path
-          d="M58 24 h8 q1.6 0 1.6 1.6 v4 q0 4 -5.6 6.4 q-5.6 -2.4 -5.6 -6.4 v-4 q0 -1.6 1.6 -1.6 Z"
-          fill={C.primaryStrong}
-          stroke={C.ink}
-          strokeWidth={2}
-        />
-      </g>
-
-      {/* キラキラ */}
-      <g fill={C.sun} stroke={C.ink} strokeWidth={1.2}>
-        <SmallStar cx={22} cy={46} r={mood === "wow" || mood === "cheer" ? 5.4 : 4} />
-        <SmallStar cx={103} cy={40} r={mood === "wow" ? 5.6 : 4} />
-        {(mood === "wow" || mood === "cheer") && <SmallStar cx={104} cy={78} r={4.4} />}
-      </g>
-
-      {/* think の「?」 */}
-      {mood === "think" && (
-        <text x={98} y={30} fontSize={22} fontWeight={900} fill={C.accentStrong} aria-hidden="true">
-          ?
-        </text>
-      )}
-    </motion.svg>
-  )
-}
+export const Mascot = Lupe
+type MascotMood = LupeMood
 
 /* ------------------------------------------------------------------ *
  * HunterShell — 紙のノート面 + ヘッダー + トレイル進捗
@@ -352,7 +191,7 @@ function TrailProgress({ current, total }: { current: number; total: number }) {
           transition={reduce ? { duration: 0 } : tokens.spring}
         />
       </div>
-      <Flag className="h-4 w-4 shrink-0" style={{ color: pct >= 100 ? C.accent : C.inkFaint }} aria-hidden="true" />
+      <Flag className="h-4 w-4 shrink-0" style={{ color: pct >= 100 ? C.accent : C.inkSoft }} aria-hidden="true" />
     </div>
   )
 }
@@ -605,7 +444,7 @@ export function StatPill({
       )}
       <span className="flex flex-col leading-none" aria-hidden={ariaLabel ? "true" : undefined}>
         {label && (
-          <span className="text-[11px] font-bold" style={{ color: C.inkSoft }}>
+          <span className="text-[12px] font-bold" style={{ color: C.inkSoft }}>
             {label}
           </span>
         )}

@@ -1,9 +1,11 @@
 import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
+import { BRAND } from "@/lib/brand"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { RETENTION_DAYS } from "@/lib/retention/policy"
 
 export const metadata: Metadata = {
-  title: "プライバシーポリシー | PathGuardian",
+  title: "プライバシーポリシー",
   description: "PathGuardian(通学路みまもりアプリ)が預かる情報と、預からない情報、その使い方と保存の期間です。",
 }
 
@@ -61,7 +63,8 @@ export default function PrivacyPage() {
         <p>
           投稿内容と写真は、公開してよいかの確認や危険の解析のため、Google(Gemini)・Anthropic(Claude)・OpenAI の AI サービスへ送ります。
           送るのはぼかした写真だけですが、ぼかしは完全ではないため、写っている人や車が分かりにくい写真をお選びください。
-          写真つきの投稿や判断がむずかしい投稿は、運営スタッフも確認します。
+          {/* 紹介HP・よくある質問と同じ説明(lib/product-facts.ts) */}
+          {PRODUCT_FACTS.moderation.adult}
         </p>
         <p>以前に投稿された(ぼかしていない)写真は、運営がぼかし直すまで、ほかの利用者には表示しません。</p>
       </LegalSection>
@@ -84,6 +87,8 @@ export default function PrivacyPage() {
           <li>国土地理院(Mapbox で住所が分からなかった報告の都道府県・市区町村を調べるため。約100mの粗さに丸めた場所だけを送ります)</li>
           <li>Sentry(不具合の記録)。通常時の画面の録画はしません。エラーが起きたときだけ、その前後の画面を、文字と画像を隠した状態で記録します。通信の記録からは、住所の検索語や地図の範囲などが入る URL の後半(「?」から後ろ)を消して送ります</li>
           <li>ブラウザの通知サービス(通知を受け取る設定をした場合)</li>
+          {/* お問い合わせのフォーム(lib/brand.ts の contactFormUrl)を公開したら、預け先として自動で載る */}
+          {BRAND.contactFormUrl && <li>Google フォーム(お問い合わせの内容と、返信のために書いていただいた連絡先)</li>}
         </ul>
         <p>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</p>
       </LegalSection>

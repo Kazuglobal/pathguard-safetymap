@@ -95,7 +95,7 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
         </div>
       })}
       {(data.accidentError || data.hazardError) && <button type="button" className="flex items-center gap-2 text-sm text-forest-strong" onClick={data.retry}><RotateCw size={16} />再試行</button>}
-      <p className="text-[10px] text-ink-soft">事故出典：警察庁 交通事故統計オープンデータを加工</p>
+      <p className="text-xs text-ink-soft">事故出典：警察庁 交通事故統計オープンデータを加工</p>
     </section>}
   </>
 }

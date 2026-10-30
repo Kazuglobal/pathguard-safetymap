@@ -49,7 +49,7 @@ export function MobileLocationSheet({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15.5px] font-black" style={{ color: "#43392B" }}>ここに ピンを たてたよ！</p>
-                  <p className="text-[12px] font-bold" style={{ color: "#847661" }}>
+                  <p className="text-[12px] font-bold" style={{ color: "#746855" }}>
                     この ばしょで よければ すすんでね
                   </p>
                 </div>
@@ -59,7 +59,7 @@ export function MobileLocationSheet({
                   type="button"
                   onClick={onCancelWithLocation}
                   className="chunky-press h-[52px] flex-1 rounded-full border-2 bg-white text-[14px] font-black"
-                  style={{ borderColor: "rgba(67,57,43,.14)", color: "#847661", boxShadow: "0 3px 0 rgba(67,57,43,.16)" }}
+                  style={{ borderColor: "rgba(67,57,43,.14)", color: "#746855", boxShadow: "0 3px 0 rgba(67,57,43,.16)" }}
                 >
                   やめる
                 </button>
@@ -79,13 +79,13 @@ export function MobileLocationSheet({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: "#F4801F" }}></span>
-                  <p className="text-[13px] font-bold" style={{ color: "#847661" }}>ちずを タップして ばしょを えらんでね</p>
+                  <p className="text-[13px] font-bold" style={{ color: "#746855" }}>ちずを タップして ばしょを えらんでね</p>
                 </div>
                 <button
                   type="button"
                   onClick={onCancelWaiting}
                   className="h-10 rounded-full px-4 text-[13px] font-black"
-                  style={{ color: "#847661" }}
+                  style={{ color: "#746855" }}
                 >
                   やめる
                 </button>

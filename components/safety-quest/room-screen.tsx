@@ -37,7 +37,7 @@ export function RoomScreen({ onBack, onExplore }: { onBack: () => void; onExplor
               <h3 className="whitespace-nowrap text-base font-black sm:text-xl">そうた</h3>
               <p className="text-sm font-bold text-[#31516f]">安全マスター見習い</p>
             </div>
-            <span className="ml-auto shrink-0 rounded-[14px] bg-[#0d66c4] px-2 py-1 text-center text-[10px] font-black text-white">レベル<br /><span className="text-lg">12</span></span>
+            <span className="ml-auto shrink-0 rounded-[14px] bg-[#0d66c4] px-2 py-1 text-center text-[12px] font-black text-white">レベル<br /><span className="text-lg">12</span></span>
           </div>
         </section>
 

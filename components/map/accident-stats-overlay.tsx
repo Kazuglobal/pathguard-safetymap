@@ -59,9 +59,9 @@ export function AccidentStatsOverlay({
             <h2 className="text-sm font-bold text-slate-900">{locationSource === 'gps' ? '現在地の周辺事故' : '選択地点の周辺事故'}</h2>
             <p className="mt-1 text-xs text-slate-600">青い破線の円内・中心から半径300m</p>
             <p className="mt-1 text-xs font-medium text-slate-800">集計: {formatAccidentYearWindow(window)}の全事故</p>
-            {mapYearWindow && <p className="mt-1 text-[11px] text-slate-600">地図のピン: {formatAccidentYearWindow(mapYearWindow)}・地図のフィルターを適用。集計期間外のピンは件数に含みません。</p>}
+            {mapYearWindow && <p className="mt-1 text-[12px] text-slate-600">地図のピン: {formatAccidentYearWindow(mapYearWindow)}・地図のフィルターを適用。集計期間外のピンは件数に含みません。</p>}
             {locationSource === 'map' && <p className="mt-1 text-xs font-medium text-slate-700">地図で選択した地点の集計です。現在地とは別です。</p>}
-            {center && <p className="mt-1 text-[11px] text-slate-500">中心: {center[1].toFixed(5)}, {center[0].toFixed(5)}</p>}
+            {center && <p className="mt-1 text-[12px] text-slate-500">中心: {center[1].toFixed(5)}, {center[0].toFixed(5)}</p>}
           </div>
           <Button variant="ghost" size="sm" aria-label="事故集計を閉じる" onClick={onReset} className="h-8 w-8 shrink-0 p-0"><X className="h-4 w-4" /></Button>
         </div>

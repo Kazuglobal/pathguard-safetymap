@@ -7,7 +7,7 @@ import { HunterGame } from "@/components/safety-quest/hunter/hunter-game"
 import { HunterAuthRetry } from "./hunter-auth-retry"
 
 export const metadata = {
-  title: "きけんハンター | 通学路の危険をさがそう",
+  title: "きけんハンター",
 }
 
 const HUNTER_PATH = "/safety-quest/hunter"

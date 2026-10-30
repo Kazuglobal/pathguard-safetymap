@@ -305,9 +305,9 @@ export default function SafetyQuestClient() {
               <Shield className="h-7 w-7 fill-white/20 text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#1586a2]">PathGuardian</p>
+              <p className="text-xs font-black tracking-[0.18em] text-[#1586a2]">きけんハンター</p>
               <h1 className="text-2xl font-black leading-tight sm:text-3xl">
-                SafetyMap <span className="text-[#12a7a2]">Safety Quest</span>
+                セーフティ<span className="text-[#12a7a2]">クエスト</span>
               </h1>
             </div>
           </div>
@@ -347,7 +347,7 @@ export default function SafetyQuestClient() {
               const content = (
                 <>
                   <Icon className="h-4 w-4" />
-                  <span className="text-[10px] opacity-75">{item.concept}</span>
+                  <span className="text-[12px] opacity-75">{item.concept}</span>
                   {item.label}
                 </>
               )

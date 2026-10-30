@@ -53,7 +53,7 @@ const config = {
         },
         ink: {
           DEFAULT: "#43392B",
-          soft: "#847661",
+          soft: "#746855",
           faint: "#B7AB93",
         },
         forest: {

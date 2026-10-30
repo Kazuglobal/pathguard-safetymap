@@ -380,7 +380,7 @@ export function LocationPinPicker({
                       </span>
                       {s.sublabel && (
                         <span
-                          className="block truncate text-[11.5px] font-bold leading-snug"
+                          className="block truncate text-[12px] font-bold leading-snug"
                           style={{ color: C.inkSoft }}
                         >
                           {s.sublabel}

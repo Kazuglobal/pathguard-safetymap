@@ -6,7 +6,10 @@ import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { loginPathFor } from "@/lib/auth/login-path";
+
+export const metadata: Metadata = { title: "バッジ" };
 
 export default async function BadgePage() {
   const actor = await getActor();

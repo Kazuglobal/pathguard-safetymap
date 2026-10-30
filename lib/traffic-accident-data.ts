@@ -1,7 +1,7 @@
 /**
  * traffic-accident-data.ts
  * 交通事故統計データ クライアントライブラリ v3
- * PathGuardian - 通学路安全マップ
+ * PathGuardian(通学路みまもりアプリ)
  *
  * 拡張版 get_nearby_accident_stats v2 対応
  * - 道路環境分析（道路形状・歩車道区分・交差点率・歩道なし率）

@@ -82,7 +82,7 @@ export function LoadingAnimation({ pipelineProgress }: LoadingAnimationProps) {
                 <ChevronRight
                   className={`h-4 w-4 flex-shrink-0 ${
                     state === "done" || state === "active"
-                      ? "text-gray-400"
+                      ? "text-gray-500"
                       : "text-gray-200"
                   }`}
                 />
@@ -94,7 +94,7 @@ export function LoadingAnimation({ pipelineProgress }: LoadingAnimationProps) {
                       ? `${stage.bgDone} text-white`
                       : state === "active"
                         ? `${stage.bgActive} ${stage.color} animate-pulse`
-                        : "bg-gray-100 text-gray-300"
+                        : "bg-gray-100 text-gray-500"
                   }`}
                 >
                   {state === "done" ? (
@@ -114,7 +114,7 @@ export function LoadingAnimation({ pipelineProgress }: LoadingAnimationProps) {
                       ? "text-gray-700"
                       : state === "active"
                         ? "text-gray-900"
-                        : "text-gray-400"
+                        : "text-gray-500"
                   }`}
                 >
                   {stage.label}

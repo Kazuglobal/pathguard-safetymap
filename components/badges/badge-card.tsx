@@ -89,7 +89,7 @@ export function BadgeCard({ badge, className }: BadgeCardProps) {
         {isOwned && acquiredAt ? (
           <span>{formatDateUtc(acquiredAt)} 取得</span>
         ) : (
-          <span className="text-gray-400">未取得</span>
+          <span className="text-gray-500">未取得</span>
         )}
       </div>
     </div>

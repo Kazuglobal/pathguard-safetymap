@@ -82,7 +82,7 @@ export function MapLegendCompact() {
             title={`${level.stars} ${level.kidLabel}`}
           />
         ))}
-        <span className="text-[10px] font-bold" style={{ color: C.inkFaint }}>
+        <span className="text-[12px] font-bold" style={{ color: C.inkSoft }}>
           高
         </span>
       </div>
@@ -113,7 +113,7 @@ export function MapLegendDetails() {
                   <span className="block text-xs font-black leading-tight" style={{ color: C.ink }}>
                     {type.label}
                   </span>
-                  <span className="block text-[10px] font-bold leading-tight" style={{ color: C.inkSoft }}>
+                  <span className="block text-[12px] font-bold leading-tight" style={{ color: C.inkSoft }}>
                     {type.hint}
                   </span>
                 </span>
@@ -132,7 +132,7 @@ export function MapLegendDetails() {
             <li key={level.level} className="flex items-center gap-1.5">
               <MiniPin colorHex={level.colorHex} />
               <span className="min-w-0">
-                <span className="block text-[10px] font-bold leading-tight" style={{ color: C.inkSoft }}>
+                <span className="block text-[12px] font-bold leading-tight" style={{ color: C.inkSoft }}>
                   {level.stars}
                 </span>
                 <span className="block text-xs font-black leading-tight" style={{ color: C.ink }}>
@@ -155,7 +155,7 @@ export function MapLegendDetails() {
           </li>
           <li className="flex items-center gap-1.5">
             <span
-              className="grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-white text-[9px] font-black"
+              className="grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-white text-[12px] font-black"
               style={{ background: DANGER_LEVELS[2].colorHex, color: "#fff" }}
               aria-hidden="true"
             >

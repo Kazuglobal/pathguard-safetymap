@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { shouldShowFloatingPrompts, shouldShowMobileBottomNav } from '@/lib/navigation-visibility'
+import { shouldShowFloatingPrompts, shouldShowMobileBottomNav, shouldShowSiteFooter } from '@/lib/navigation-visibility'
 
 describe('shouldShowMobileBottomNav', () => {
   it('hides the bottom tab bar on the map so the map gets the full height', () => {
@@ -24,6 +24,20 @@ describe('shouldShowFloatingPrompts', () => {
   it('shows them on regular screens (and does not match look-alike prefixes)', () => {
     for (const path of ['/landing', '/routes', '/mypage', '/map-guide', '/lpx']) {
       expect(shouldShowFloatingPrompts(path)).toBe(true)
+    }
+  })
+})
+
+describe('shouldShowSiteFooter(共通のフッター。UIUX改装 項目32)', () => {
+  it('ふつうの画面と、ログイン系の画面には出す(ログイン系はナビを出さないが、フッターは出す)', () => {
+    for (const path of ['/landing', '/routes', '/mypage', '/report', '/terms', '/privacy', '/contact', '/safety-quest', '/school-route-news', '/map-guide', '/login', '/register', '/forgot-password', '/reset-password']) {
+      expect(shouldShowSiteFooter(path)).toBe(true)
+    }
+  })
+
+  it('全画面の地図・ゲームの画面・自分のフッターを持つ紹介HPには出さない', () => {
+    for (const path of ['/map', '/3d-route-poc', '/safety-quest/hunter', '/lp']) {
+      expect(shouldShowSiteFooter(path)).toBe(false)
     }
   })
 })

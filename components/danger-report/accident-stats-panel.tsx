@@ -1,7 +1,7 @@
 /**
  * accident-stats-panel.tsx
  * 交通事故統計 拡張表示パネル v4
- * PathGuardian - 通学路安全マップ
+ * PathGuardian(通学路みまもりアプリ)
  *
  * 警察庁オープンデータ（本票）から、事故の詳細状況・
  * 道路環境・当事者分析・時間帯分析をリッチUIで表示
@@ -294,7 +294,7 @@ function RiskScoreBar({ score }: { score: number }) {
         <span className="text-xs text-gray-500">事故リスクスコア</span>
         <span className="text-2xl font-bold leading-none" style={{ color: risk.color }}>
           {score}
-          <span className="text-xs text-gray-400 font-normal ml-0.5">/100</span>
+          <span className="text-xs text-gray-500 font-normal ml-0.5">/100</span>
         </span>
       </div>
       {/* ゾーンカラー背景 + ポインター */}
@@ -385,7 +385,7 @@ function StatCard({
       }`}
     >
       {icon && (
-        <span className={`shrink-0 ${highlight ? "text-red-400" : "text-gray-400"}`}>
+        <span className={`shrink-0 ${highlight ? "text-red-400" : "text-gray-500"}`}>
           {icon}
         </span>
       )}
@@ -399,7 +399,7 @@ function StatCard({
         </div>
         <div className="text-xs text-gray-500 mt-0.5 truncate">{label}</div>
         {sub && (
-          <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>
+          <div className="text-[12px] text-gray-500 mt-0.5">{sub}</div>
         )}
       </div>
     </div>
@@ -483,7 +483,7 @@ function DangerFactorsPanel({
 
           {shapeEntries.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">道路形状別</p>
+              <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">道路形状別</p>
               {shapeEntries.map(([label, count]) => {
                 const pct = shapeTotal > 0 ? Math.round((count / shapeTotal) * 100) : 0;
                 const isIntersection = label.includes("交差点");
@@ -494,7 +494,7 @@ function DangerFactorsPanel({
                         {isIntersection && <CircleAlert size={11} className="text-orange-500" />}
                         {label}
                       </span>
-                      <span className="text-gray-400">{count}件 ({pct}%)</span>
+                      <span className="text-gray-500">{count}件 ({pct}%)</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-gray-100">
                       <div
@@ -513,7 +513,7 @@ function DangerFactorsPanel({
 
           {sidewalkEntries.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">歩車道区分別</p>
+              <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">歩車道区分別</p>
               {sidewalkEntries.map(([label, count]) => {
                 const pct = sidewalkTotal > 0 ? Math.round((count / sidewalkTotal) * 100) : 0;
                 const noSidewalk = label.includes("区分なし") || label.includes("区別なし");
@@ -524,7 +524,7 @@ function DangerFactorsPanel({
                         {noSidewalk && <CircleAlert size={11} className="text-red-500" />}
                         {label}
                       </span>
-                      <span className="text-gray-400">{count}件 ({pct}%)</span>
+                      <span className="text-gray-500">{count}件 ({pct}%)</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-gray-100">
                       <div
@@ -583,7 +583,7 @@ function DangerFactorsPanel({
 
           {ageEntries.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">年齢層分布</p>
+              <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">年齢層分布</p>
               {ageEntries.map(([label, count]) => {
                 const pct = Math.round((count / maxAge) * 100);
                 const isElderly = label.includes("65") || label.includes("75");
@@ -606,7 +606,7 @@ function DangerFactorsPanel({
                         }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400 w-8 shrink-0">{count}</span>
+                    <span className="text-xs text-gray-500 w-8 shrink-0">{count}</span>
                   </div>
                 );
               })}
@@ -624,7 +624,7 @@ function DangerFactorsPanel({
 
         {Object.keys(injury.by_injury_level).length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">
               損傷程度（重傷以上: {injury.severe_ratio}%）
             </p>
             {Object.entries(injury.by_injury_level)
@@ -660,7 +660,7 @@ function DangerFactorsPanel({
 
         {Object.keys(partyTypes).length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">当事者種別（TOP5）</p>
+            <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">当事者種別（TOP5）</p>
             {Object.entries(partyTypes)
               .sort(([, a], [, b]) => b - a)
               .slice(0, 5)
@@ -681,7 +681,7 @@ function DangerFactorsPanel({
 
         {Object.keys(roadSurface).length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">路面状態</p>
+            <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">路面状態</p>
             {Object.entries(roadSurface)
               .sort(([, a], [, b]) => b - a)
               .map(([label, count]) => {
@@ -708,14 +708,14 @@ function DangerFactorsPanel({
 
         {Object.keys(terrain).length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">地形区分</p>
+            <p className="text-[12px] font-medium text-gray-500 uppercase tracking-wide">地形区分</p>
             <div className="flex gap-2 flex-wrap">
               {Object.entries(terrain)
                 .sort(([, a], [, b]) => b - a)
                 .map(([label, count]) => (
                   <span
                     key={label}
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] bg-gray-100 text-gray-700"
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] bg-gray-100 text-gray-700"
                   >
                     {label}: {count}件
                   </span>
@@ -824,7 +824,7 @@ function TimeAnalysisPanel({
               );
             })}
           </div>
-          <div className="flex justify-between text-[10px] text-gray-400 px-0.5">
+          <div className="flex justify-between text-[12px] text-gray-500 px-0.5">
             <span>0</span>
             <span>6</span>
             <span className="text-orange-500 font-bold">7-8</span>
@@ -835,7 +835,7 @@ function TimeAnalysisPanel({
           </div>
           <div className="flex items-center gap-1.5 justify-center">
             <span className="w-3 h-3 rounded-sm bg-orange-400 shrink-0" />
-            <span className="text-[10px] text-gray-400">通学・下校時間帯</span>
+            <span className="text-[12px] text-gray-500">通学・下校時間帯</span>
           </div>
         </div>
       )}
@@ -858,7 +858,7 @@ function TimeAnalysisPanel({
                   className="flex-1 flex flex-col items-center gap-0.5"
                   title={`${m + 1}月: ${count}件`}
                 >
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[12px] text-gray-500">
                     {count > 0 ? count : ""}
                   </span>
                   <div
@@ -871,7 +871,7 @@ function TimeAnalysisPanel({
                           : "#93c5fd",
                     }}
                   />
-                  <span className="text-[10px] text-gray-400">{m + 1}</span>
+                  <span className="text-[12px] text-gray-500">{m + 1}</span>
                 </div>
               );
             })}
@@ -928,7 +928,7 @@ function AccidentDetailList({
 
   if (!accidents || accidents.length === 0) {
     return (
-      <p className="text-xs text-gray-400 text-center py-4">
+      <p className="text-xs text-gray-500 text-center py-4">
         近隣に事故データはありません
       </p>
     );
@@ -961,7 +961,7 @@ function AccidentDetailList({
                 className="w-full flex items-center gap-2 px-3 py-2 text-left"
                 onClick={() => setExpanded(isOpen ? null : i)}
               >
-                <span className="font-mono text-[10px] text-gray-400 w-10 shrink-0">
+                <span className="font-mono text-[12px] text-gray-500 w-10 shrink-0">
                   {acc.distance_m}m
                 </span>
                 <span className="text-xs text-gray-700 flex-1 truncate flex items-center gap-1">
@@ -969,19 +969,19 @@ function AccidentDetailList({
                   {isPed && !isFatal && <PersonStanding size={11} className="text-orange-500 shrink-0" />}
                   {acc.type || "不明"}
                 </span>
-                <span className="text-[10px] text-gray-400 shrink-0">
+                <span className="text-[12px] text-gray-500 shrink-0">
                   {acc.occurred_at?.slice(0, 10) || `${acc.year}年`}
                 </span>
                 <ChevronDown
                   size={12}
-                  className={`text-gray-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  className={`text-gray-500 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
                 />
               </button>
 
               {/* 展開時の詳細 */}
               {isOpen && (
                 <div className="px-3 pb-2.5 pt-0 border-t border-gray-100">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] mt-2">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] mt-2">
                     <Detail label="発生日時" value={acc.occurred_at || `${acc.year}年`} />
                     <Detail
                       label="重傷度"
@@ -1012,19 +1012,19 @@ function AccidentDetailList({
                   {/* タグ */}
                   <div className="flex flex-wrap gap-1 mt-2">
                     {acc.involved_pedestrian && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-[10px] font-medium">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-[12px] font-medium">
                         <PersonStanding size={10} />
                         歩行者関与
                       </span>
                     )}
                     {acc.involved_child && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[12px] font-medium">
                         <Baby size={10} />
                         子ども関与
                       </span>
                     )}
                     {isFatal && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[10px] font-medium">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[12px] font-medium">
                         <AlertOctagon size={10} />
                         死亡事故
                       </span>
@@ -1051,7 +1051,7 @@ function Detail({
 }) {
   return (
     <div>
-      <span className="text-gray-400">{label}: </span>
+      <span className="text-gray-500">{label}: </span>
       <span className={highlight ? "text-red-600 font-semibold" : "text-gray-700"}>
         {value}
       </span>
@@ -1176,7 +1176,7 @@ function OverviewPanel({
                   key={year}
                   className="flex-1 flex flex-col items-center gap-0.5"
                 >
-                  <span className="text-[10px] text-gray-500 font-medium">
+                  <span className="text-[12px] text-gray-500 font-medium">
                     {count}
                   </span>
                   <div
@@ -1186,8 +1186,8 @@ function OverviewPanel({
                       background: "linear-gradient(180deg, #3b82f6, #60a5fa)",
                     }}
                   />
-                  <span className="text-[10px] text-gray-400">
-                    {year.slice(2)}'
+                  <span className="text-[12px] text-gray-500">
+                    {`${year.slice(2)}'`}
                   </span>
                 </div>
               );
@@ -1254,7 +1254,7 @@ function CompactPanel({ stats }: { stats: AccidentStats }) {
           )}
         </div>
       )}
-      <p className="text-xs text-gray-400 text-center">
+      <p className="text-xs text-gray-500 text-center">
         半径{stats.search_params.radius_meters}m / 過去
         {stats.search_params.years}年{statsYearRangeSuffix(stats.search_params)} ・出典: 警察庁オープンデータ
       </p>
@@ -1280,7 +1280,7 @@ function RiskStamp({
       <span className="text-lg font-bold leading-none" style={{ color: accent.text }}>
         {score}
       </span>
-      <span className="text-[8px] text-gray-400">/100</span>
+      <span className="text-[12px] leading-none text-gray-600">/100</span>
     </div>
   );
 }
@@ -1305,7 +1305,7 @@ function SummaryChip({
       >
         {value}
       </div>
-      <div className="mt-1 text-[11px]" style={{ color: tankenTokens.color.inkSoft }}>
+      <div className="mt-1 text-[12px]" style={{ color: tankenTokens.color.inkSoft }}>
         {label}
       </div>
     </div>
@@ -1319,7 +1319,7 @@ function AdviceCard({ text }: { text: string }) {
       style={{ backgroundColor: tankenTokens.color.accentSoft }}
     >
       <span
-        className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+        className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold text-white"
         style={{ backgroundColor: tankenTokens.color.accentStrong }}
       >
         そなえ
@@ -1350,7 +1350,7 @@ function DetailsAccordion({ children }: { children: React.ReactNode }) {
         <ChevronDown
           size={14}
           className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-          style={{ color: tankenTokens.color.inkFaint }}
+          style={{ color: tankenTokens.color.inkSoft }}
         />
       </button>
       {open && <div className="px-3 pb-3 pt-2">{children}</div>}
@@ -1500,7 +1500,7 @@ function AccidentStatsPanelContent({
                 <RiskStamp score={stats.risk_score} accent={tankenAccent} />
                 <div className="min-w-0">
                   <p className="text-sm font-bold leading-snug" style={{ color: tankenTokens.color.ink }}>{headline}</p>
-                  <p className="mt-0.5 text-[11px] font-bold" style={{ color: tankenAccent.text }}>警戒レベル・{risk.label}</p>
+                  <p className="mt-0.5 text-[12px] font-bold" style={{ color: tankenAccent.text }}>警戒レベル・{risk.label}</p>
                 </div>
               </div>
               <AdviceCard text={actionAdvice} />
@@ -1535,7 +1535,7 @@ function AccidentStatsPanelContent({
           </div>
 
           {/* フッター */}
-          <div className="border-t px-4 py-2 text-xs text-gray-400 text-center space-y-0.5">
+          <div className="border-t px-4 py-2 text-xs text-gray-500 text-center space-y-0.5">
             <p>
               半径{stats.search_params.radius_meters}m以内 / 過去
               {stats.search_params.years}年間{statsYearRangeSuffix(stats.search_params)} / {stats.total_accidents}件

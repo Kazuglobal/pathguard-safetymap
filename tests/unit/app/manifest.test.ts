@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import manifest from '@/app/manifest'
+import { BRAND } from '@/lib/brand'
 
 describe('app/manifest.ts (PWAマニフェスト)', () => {
   const m = manifest()
@@ -16,8 +17,10 @@ describe('app/manifest.ts (PWAマニフェスト)', () => {
     expect(m.short_name).toBeTruthy()
   })
 
-  it('theme_color が app/layout.tsx の viewport.themeColor と一致している', () => {
-    expect(m.theme_color).toBe('#0ea5e9')
+  it('theme_color が app/layout.tsx の viewport.themeColor と一致している(どちらもブランドの紙の色。UIUX改装 項目33)', () => {
+    expect(m.theme_color).toBe(BRAND.themeColor)
+    expect(BRAND.themeColor).toBe('#FBF5E9')
+    expect(readFileSync(resolve(__dirname, '../../../app/layout.tsx'), 'utf8')).toContain('themeColor: BRAND.themeColor')
   })
 
   it('192/512 の any と maskable のアイコンが揃っている', () => {

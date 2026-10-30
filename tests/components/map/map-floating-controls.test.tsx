@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import type { ComponentProps, ReactNode } from 'react'
 import MapFloatingControls from '@/components/map/map-floating-controls'
 
@@ -126,13 +126,22 @@ describe('MapFloatingControls mobile menu (bottom tab bar is hidden on the map)'
 
     await user.click(screen.getByRole('button', { name: 'メニューを開く' }))
 
-    const links = await screen.findAllByRole('link')
+    const screens = await screen.findByRole('navigation', { name: 'ほかの画面' })
+    const links = within(screens).getAllByRole('link')
     expect(links.map((link) => [link.getAttribute('aria-label'), link.getAttribute('href')])).toEqual([
       ['ホーム', '/landing'],
       ['きけんハンター', '/safety-quest/hunter'],
       ['通学路', '/routes'],
       ['活動', '/mypage'],
       ['報告一覧', '/report'],
+    ])
+    // 全画面の地図には共通のフッターが無いので、規約などのリンクをメニューに出す(UIUX改装 項目32)
+    const siteInfo = screen.getByRole('navigation', { name: 'サイトの情報' })
+    expect(within(siteInfo).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/terms',
+      '/privacy',
+      '/contact',
+      'https://www.instagram.com/kiken_hunter_jp/',
     ])
   })
 

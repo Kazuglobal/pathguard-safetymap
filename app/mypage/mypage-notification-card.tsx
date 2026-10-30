@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardIcon } from "@/components/ui/card"
 import type { UsePushSubscriptionReturn } from "@/hooks/use-push-subscription"
+import { BRAND } from "@/lib/brand"
 import { tankenTokens } from "@/lib/design/tanken"
 import type { NotificationPreferences } from "@/lib/notifications/builders"
 
@@ -27,12 +28,12 @@ const PREFERENCE_LABELS: Record<
     description: "登録通学路300m圏内に危険報告が投稿されたとき",
   },
   news: {
-    label: "通学路ニュース",
+    label: BRAND.news,
     description: "通学路に関するニュース記事が追加されたとき",
   },
   magazine: {
-    label: "安全マガジン",
-    description: "安全マガジンの新着記事が公開されたとき",
+    label: BRAND.magazine,
+    description: `${BRAND.magazine} の新しい記事が公開されたとき`,
   },
 }
 

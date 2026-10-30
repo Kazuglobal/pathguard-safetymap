@@ -89,7 +89,7 @@ function MetricPill({ testId, icon, children, tone = "ink", muted = false }: Met
         border: `1px solid ${border.faint}`,
       }}
     >
-      <span aria-hidden className="inline-flex" style={{ color: muted ? color.inkFaint : toneColor }}>
+      <span aria-hidden className="inline-flex" style={{ color: muted ? color.inkSoft : toneColor }}>
         {icon}
       </span>
       {children}

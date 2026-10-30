@@ -2,6 +2,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { MapPin, Route as RouteIcon, ShieldCheck, ScanFace, Landmark } from "lucide-react"
 
+import { BRAND } from "@/lib/brand"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { tankenTokens, ENDPAPER } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
@@ -33,7 +35,8 @@ export function LandingHero() {
             }}
           >
             <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            小学生の家族のための 通学路あんぜんノート
+            {/* ここが PathGuardian のホームだと分かる表記にする(UIUX改装 項目1) */}
+            {BRAND.name} のホーム<span aria-hidden="true">・</span>{BRAND.descriptor}
           </span>
 
           <h1
@@ -85,11 +88,11 @@ export function LandingHero() {
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs" style={{ color: C.inkSoft }}>
             <li className="flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5" style={{ color: C.primary }} aria-hidden="true" />
-              みんなの報告は承認制
+              みんなの報告は公開前に確認
             </li>
             <li className="flex items-center gap-1.5">
               <ScanFace className="h-3.5 w-3.5" style={{ color: C.primary }} aria-hidden="true" />
-              顔・ナンバーは加工して共有
+              {PRODUCT_FACTS.photo.short}
             </li>
             <li className="flex items-center gap-1.5">
               <Landmark className="h-3.5 w-3.5" style={{ color: C.primary }} aria-hidden="true" />
