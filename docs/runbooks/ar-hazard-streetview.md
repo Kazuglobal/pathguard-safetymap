@@ -2,7 +2,7 @@
 
 ## 利用する画面
 
-- 地図の事故レイヤーを表示し、事故の丸を押すと「現地の景色を見る」が出る。景色は不透明な全画面で開き、閉じると元の位置へ戻る。
+- 地図の事故レイヤーを表示し、事故の丸を押すと「現地の景色を見る」が出る。Google 地図とストリートビューを不透明な全画面に並べ、閉じると元の地図の位置と吹き出しへ戻る。
 - 地図の「タップして事故を調べる」には、同じ中心点の洪水・津波の想定を表示する。「地図で選んだ地点」と「現在地」を区別する。
 - ARの「実事故・浸水」で、実事故の方向・距離と公的な浸水想定を確認できる。「投稿の学習」へ切り替えると既存の親子学習を使える。実事故は学習ツアー・クイズに混ぜない。
 - 区域内の判定が続いた地点で「深さを見る」から開き、安全な場所で立ち止まったことを確認してから再生する。自動再生しない。洪水は水位の上昇、津波は深さの強調と避難行動を示す。到達する波は描かない。
@@ -17,7 +17,23 @@
 
 既存のルート検索では、初期データの同じ出典・深さに含まれる別々の区域を落とさないため、ポリゴン単位でマーカーを保持する。細分化された隣接区域でマーカーが重複する場合がある。候補上限に達した場合は既存のtruncatedを維持する。
 
-## Googleの設定と公開前確認
+## 地図の景色: 無料の Maps Embed API
+
+`/map` の個別事故の入口は Maps Embed API のみを呼ぶ。PCは左右、スマホは上下にGoogle地図とストリートビューを並べる。景色の中を移動しても事故地点のピンは固定。撮影年月・撮影位置との正確な距離はアプリ独自では取得しない。画像なし・認証エラーはGoogleの枠内に表示されるため、iframeのloadを成功判定に使わない。両枠の再読み込みは画面のボタンから行える。
+
+1. Google Cloudで請求先を確認したプロジェクトのMaps Embed APIを有効にする。利用料は現行の料金では無料だが、課金アカウントの設定は必要。課金の変更は所有者が確認して行う。
+2. 本番・プレビュー用の専用キーを別々に作り、API restrictionsは **Maps Embed APIのみ**、Application restrictionsはWebsitesにする。
+3. 本番の参照元は `https://path-guardian.com/*`。プレビューは実際のPRのURLだけを許可する。`workers.dev` 全体を許可しない。ローカルの接続確認が必要ならプレビューキーに対象のlocalhostポートだけを追加する。
+4. 本番のGitHub Actions設定へ `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY`、`cloudflare-preview` Environmentへ `PREVIEW_NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY` を登録する。値をチャット・コード・ログに載せない。
+5. クライアント用のビルド入力なので、登録後はCIで新しくビルドする。未設定でも他機能のビルドを継続し、景色画面は設定確認中の案内だけを表示する。既存の `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` へはフォールバックしない。
+
+公開前には、実キーを設定したプレビューで両枠の実画像と地点ピン、Googleの権利表示、画像なしの地点、CSP・参照元制限を確認する。ネットワークで `/maps/embed/v1/place` と `/maps/embed/v1/streetview` を使い、アプリが Maps JavaScript API や Street View Static API を呼ばないことを確認する。Googleのiframe自身の内部通信とは区別する。
+
+公式: [Embedの料金](https://developers.google.com/maps/documentation/embed/usage-and-billing)、[設定手順](https://developers.google.com/maps/documentation/embed/get-api-key)、[埋め込み方法](https://developers.google.com/maps/documentation/embed/embedding-map)。
+
+## ARの従来ビューアのGoogle設定と公開前確認
+
+以下は今回変更しないAR側のMaps JavaScript API方式の手順。地図側の無料Embed方式には適用しない。地図の無料化がAR側の料金・設定まで変更することを意味しない。
 
 本番用とプレビュー用のGoogle Cloudキーを分け、Maps JavaScript APIを有効にする。キーは参照元URLとAPIを制限し、課金・使用量をGoogle Cloud側で確認する。
 

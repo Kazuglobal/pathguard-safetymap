@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest"
 import { buildContentSecurityPolicy } from "@/lib/content-security-policy.mjs"
 
 describe("buildContentSecurityPolicy", () => {
+  it("allows the official Google Embed frame without allowing arbitrary frame origins", () => {
+    const frames = buildContentSecurityPolicy().split('; ').find(directive => directive.startsWith('frame-src '))
+    expect(frames).toBe("frame-src 'self' https://www.google.com")
+  })
   it("allows MLIT hazard tiles in connect-src and img-src", () => {
     const policy = buildContentSecurityPolicy()
 
