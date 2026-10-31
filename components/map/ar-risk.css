@@ -1,0 +1,54 @@
+.ar-inundation{--hazard:#0891b2;position:absolute;inset:0;z-index:24;pointer-events:none;color:#43392b;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif}
+.ar-inundation--tsunami{--hazard:#7e22ce}
+.ar-inundation-tabs{pointer-events:auto;position:absolute;top:78px;left:50%;transform:translateX(-50%);display:flex;padding:3px;background:#fffdf7;border:1px solid #e2dbcf;border-radius:32px;width:min(290px,calc(100% - 100px));box-shadow:0 2px 12px #43392b14}
+.ar-depth-close{pointer-events:auto;position:absolute;top:81px;left:4px;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#fffdf7;color:#43392b}
+.ar-inundation-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;flex:1;border-radius:28px;font-weight:700;color:#746855}
+.ar-inundation-tabs button[aria-pressed=true]{background:var(--hazard);color:#fff}
+.ar-inundation-tabs button:disabled{opacity:.5;cursor:not-allowed}
+.ar-inundation-sheet{pointer-events:auto;position:absolute;bottom:0;left:0;right:0;background:#fffdf7;border-radius:24px 24px 0 0;padding:18px 22px max(16px,env(safe-area-inset-bottom));max-height:51%;overflow:auto;box-shadow:0 -4px 30px #43392b14}
+.ar-depth-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ar-depth-heading p{font-size:14px;font-weight:700;color:var(--hazard);margin:0 0 2px}
+.ar-depth-heading strong{font-size:clamp(26px,8vw,34px);line-height:1.2;color:var(--hazard);font-weight:800}
+.ar-depth-back{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#f3ead6;flex-shrink:0}
+.ar-depth-controls,.ar-depth-start{margin-top:12px;display:flex;gap:10px;align-items:center}
+.ar-depth-controls button,.ar-depth-start button{display:flex;gap:8px;align-items:center;justify-content:center;min-height:46px;padding:8px 18px;border-radius:28px;background:var(--hazard);color:#fff;font-weight:700;flex:1;font-size:15px}
+.ar-depth-controls .ar-depth-replay{flex:0 0 auto;font-size:12px;background:#f3ead6;color:#43392b;padding:8px 12px}
+.ar-depth-controls button{white-space:nowrap}.ar-depth-controls button svg{flex-shrink:0}
+.ar-inundation-sheet--active{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center}
+.ar-inundation-sheet--active>.ar-depth-heading{grid-column:1;grid-row:1}
+.ar-inundation-sheet--active>.ar-depth-controls{grid-column:2;grid-row:1;margin-top:0;gap:4px}
+.ar-inundation-sheet--active>.ar-depth-controls button{font-size:12px;padding:8px 10px;gap:5px}
+.ar-inundation-sheet--active>.ar-depth-controls .ar-depth-replay{flex-direction:column;background:transparent;font-size:12px;padding:4px 5px;gap:2px}
+.ar-inundation-sheet--active>.ar-depth-heading strong{font-size:30px;white-space:nowrap}
+.ar-inundation-sheet--active>:not(.ar-depth-heading):not(.ar-depth-controls){grid-column:1 / -1}
+@media(max-width:350px){.ar-inundation-sheet--active{grid-template-columns:1fr}.ar-inundation-sheet--active>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active>.ar-depth-controls .ar-depth-replay{flex-direction:row;font-size:12px}}
+.ar-depth-start{flex-direction:column;align-items:stretch}.ar-depth-start p{font-size:13px;line-height:1.6;margin:0}
+.ar-inundation button:disabled{opacity:.55;cursor:not-allowed}.ar-inundation button:focus-visible{outline:3px solid #f4801f;outline-offset:2px}
+.ar-depth-notice{display:flex;gap:8px;font-size:12px;line-height:1.6;margin:14px 0 8px;padding-top:12px;border-top:1px solid #e2dbcf}.ar-depth-notice svg{flex-shrink:0;margin-top:2px}
+.ar-depth-source{font-size:12px;line-height:1.6;color:#746855;margin:6px 0}
+.ar-depth-accident{border-top:1px solid #e2dbcf;margin-top:10px;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}
+.ar-tsunami-action{font-size:12px;line-height:1.6;color:#7e22ce;margin-top:10px}
+.ar-depth-visual{position:absolute;left:0;right:0;bottom:325px;height:250px;isolation:isolate;overflow:visible}
+.ar-depth-caption{position:absolute;top:-25px;left:22px;background:#fffdf7;border-radius:18px;padding:6px 12px;font-size:12px;font-weight:700;z-index:3}
+.ar-depth-water-clip{position:absolute;bottom:0;width:100%;overflow:hidden;opacity:.55;pointer-events:none}
+.ar-depth-water{position:absolute;bottom:-40%;width:100%;height:180%;max-width:none;object-fit:fill;animation:ar-water-rise 7s ease-in-out infinite alternate}
+.ar-depth-water--tsunami{filter:hue-rotate(65deg) saturate(.6)}
+@keyframes ar-water-rise{from{transform:translateY(28%)}to{transform:translateY(-8%)}}
+@keyframes ar-depth-emphasis{from{opacity:.65}to{opacity:1}}
+.ar-depth-person{position:absolute;left:24%;bottom:0;z-index:2}
+.ar-depth-person img{height:100%;width:auto;object-fit:contain}
+.ar-depth-person span{position:absolute;right:calc(100% + 8px);top:35%;font-size:12px;font-weight:700;white-space:nowrap;color:#fff;text-shadow:0 1px 3px #43392b}
+.ar-depth-ruler{position:absolute;right:28px;width:74px;min-height:18px;border-left:2px solid white;border-top:2px dashed white;border-bottom:2px dashed white;color:white;font-weight:700;text-shadow:0 1px 3px #43392b}
+.ar-depth-endpoint{position:absolute;right:0;font-size:15px;background:#0891b2e0;padding:2px 5px;border-radius:5px}.ar-inundation--tsunami .ar-depth-endpoint{background:#7e22cee0}
+.ar-depth-endpoint--top{top:-12px}.ar-depth-endpoint--bottom{bottom:-12px}
+.ar-depth-range{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#fffdf7;color:var(--hazard);text-shadow:none;border-radius:14px;padding:7px 10px;font-size:13px;white-space:nowrap;box-shadow:0 1px 8px #43392b14}.ar-depth-range small{display:block;text-align:center;font-size:12px}
+.ar-risk-dock{position:absolute;z-index:23;bottom:0;left:0;right:0;max-height:48%;overflow:auto;background:#fffdf7;border-radius:24px 24px 0 0;padding:18px 22px max(18px,env(safe-area-inset-bottom));color:#43392b}
+.ar-risk-dock h3{font-size:18px;font-weight:800;margin:5px 0}.ar-risk-dock p{font-size:13px;line-height:1.6}.ar-risk-dock button,.ar-risk-dock a{min-height:44px}
+.ar-risk-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:#159e72;color:white;border-radius:28px;min-height:46px;padding:10px 16px;font-size:14px;font-weight:700;width:100%;margin:10px 0}
+.ar-risk-hazard-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e2dbcf;padding:12px 0;font-size:13px}.ar-risk-hazard-row button{color:#0891b2;font-weight:700}
+.ar-accident-markers{position:absolute;inset:0;pointer-events:none;z-index:22}.ar-accident-marker{pointer-events:auto;position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;min-width:78px;min-height:48px;background:#fffdf7;color:#43392b;border:2px solid #f4801f;border-radius:20px;padding:7px 10px;box-shadow:0 3px 15px #43392b24;font-size:13px;font-weight:700}
+.ar-accident-marker svg{color:#f4801f}.ar-accident-marker[aria-pressed=true]{background:#f4801f;color:white}.ar-accident-marker[aria-pressed=true] svg{color:white}
+.ar-accident-list{max-height:150px;overflow:auto}.ar-accident-list button{display:flex;justify-content:space-between;width:100%;padding:10px 0;border-bottom:1px solid #e2dbcf;text-align:left;font-size:13px}
+@media(min-width:700px){.ar-inundation-sheet,.ar-risk-dock{max-width:430px;left:50%;right:auto;width:430px;transform:translateX(-50%)}.ar-depth-visual{max-width:600px;left:50%;right:auto;width:600px;transform:translateX(-50%)}}
+@media(max-height:720px){.ar-depth-visual{bottom:300px;transform:scale(.75);transform-origin:bottom center}.ar-inundation-sheet{padding:12px 18px;max-height:50%}.ar-depth-heading strong{font-size:26px}.ar-depth-notice{font-size:12px;margin-top:8px;padding-top:8px}.ar-depth-source{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.ar-depth-water{animation:none}}

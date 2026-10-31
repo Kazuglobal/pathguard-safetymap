@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactElement } from "react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -101,6 +101,8 @@ interface MapStyleSelectorProps {
   buttonLabel?: string
   isMobile?: boolean
   overlayOptions?: MapDisplayOption[]
+  /** 開くきっかけのボタンを差し替える(地図の「くわしい表示」の中で、ほかの表示と同じ見た目にする) */
+  trigger?: ReactElement
 }
 
 export default function MapStyleSelector({
@@ -112,11 +114,12 @@ export default function MapStyleSelector({
   buttonLabel = "地図スタイル",
   isMobile = false,
   overlayOptions,
+  trigger: customTrigger,
 }: MapStyleSelectorProps) {
   const [isDisplaySheetOpen, setIsDisplaySheetOpen] = useState(false)
   const hasOverlayOptions = Boolean(overlayOptions?.length)
 
-  const trigger = (
+  const trigger = customTrigger ?? (
     <Button
       variant="outline"
       size="sm"
@@ -168,7 +171,7 @@ export default function MapStyleSelector({
                     </span>
                   </span>
                   {isSelected ? (
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-600 px-1.5 py-1 text-[12px] font-semibold text-white">
                       <Check className="h-3 w-3" />
                       表示中
                     </span>
@@ -215,7 +218,7 @@ export default function MapStyleSelector({
                   </span>
                 </span>
                 {option.selected ? (
-                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-1.5 py-1 text-[12px] font-semibold text-white">
                     <Check className="h-3 w-3" />
                     表示中
                   </span>

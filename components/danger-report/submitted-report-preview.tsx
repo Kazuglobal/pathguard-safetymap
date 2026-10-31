@@ -211,7 +211,7 @@ export default function SubmittedReportPreview({
                           </div>
                         ) : (
                           <div className="flex h-48 flex-col items-center justify-center bg-gray-100 sm:h-64">
-                            <ImageIcon className="h-8 w-8 text-gray-400" />
+                            <ImageIcon className="h-8 w-8 text-gray-500" />
                             <p className="text-xs text-gray-500 mt-1">
                               読み込み失敗
                             </p>

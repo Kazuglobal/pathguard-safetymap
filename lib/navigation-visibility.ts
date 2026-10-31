@@ -19,3 +19,24 @@ export function shouldShowFloatingPrompts(pathname: string): boolean {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 }
+
+/**
+ * 通知のお願い(通知の許可・ホーム画面への追加)を浮かべてよい画面か。
+ * マイページは、通知が未設定ならいちばん上に同じ内容のカードを出すので、浮かべて二重にしない(UIUX改装 項目37)。
+ */
+export function shouldShowPushPrompts(pathname: string): boolean {
+  return shouldShowFloatingPrompts(pathname) && pathname !== '/mypage' && !pathname.startsWith('/mypage/')
+}
+
+/**
+ * 共通のフッター(components/layout/site-footer.tsx)を画面の下に出すか(UIUX改装 項目32)。
+ * 全画面の地図(フッターの代わりにメニューに同じリンクを出す)・きけんハンターのゲーム画面と、
+ * 自分のフッターを持つ紹介HPでは出さない。ログイン系の画面にも出す(ナビは出さないが、フッターは出す)。
+ */
+const PREFIXES_WITHOUT_SITE_FOOTER = ['/map', '/3d-route-poc', '/safety-quest/hunter', '/lp']
+
+export function shouldShowSiteFooter(pathname: string): boolean {
+  return !PREFIXES_WITHOUT_SITE_FOOTER.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}

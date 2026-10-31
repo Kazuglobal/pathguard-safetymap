@@ -44,6 +44,10 @@ export const previewPublicNames = [
   'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN', 'NEXT_PUBLIC_MEDIA_BASE_URL', 'NEXT_PUBLIC_SITE_URL',
 ]
 
+// Optional public build input. Missing Google configuration disables only the
+// viewer; it must not make unrelated previews require a new credential.
+export const previewOptionalPublicNames = ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
+
 // Values must be provisioned specifically for the cloudflare-preview GitHub
 // Environment. Production server credentials remain excluded.
 export const previewSecretNames = [
@@ -57,7 +61,10 @@ export function previewSecrets(env) {
   for (const name of allowedNames) {
     if (!env[name]?.trim()) throw new Error(`Preview requires ${name}`)
   }
-  return Object.fromEntries(allowedNames.map((name) => [name, env[name].trim()]))
+  return Object.fromEntries([
+    ...allowedNames.map((name) => [name, env[name].trim()]),
+    ...previewOptionalPublicNames.filter(name => env[name]?.trim()).map(name => [name, env[name].trim()]),
+  ])
 }
 
 export const forbiddenBuildFiles = ['.env', '.env.local', '.env.production', '.env.production.local', 'env.defaults.json']

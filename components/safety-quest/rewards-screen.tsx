@@ -44,7 +44,7 @@ export function RewardsScreen({ onMap, onNext }: { onMap: () => void; onNext: ()
                 ["スキン", "まもるんキャップ", User],
               ].map(([kind, name, Icon]) => (
                 <div key={name as string} className="rounded-[18px] border-2 border-[#d8e8f7] bg-[#f8fbff] p-3 text-center shadow-sm">
-                  <p className="text-[11px] font-black text-[#52708f]">{kind as string}</p>
+                  <p className="text-[12px] font-black text-[#52708f]">{kind as string}</p>
                   <div className="mx-auto my-2 grid h-16 w-16 place-items-center rounded-[16px] bg-[#e0f2fe]">
                     <Icon className="h-9 w-9 text-[#0d66c4]" />
                   </div>

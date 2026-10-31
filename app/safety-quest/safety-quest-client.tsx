@@ -22,6 +22,7 @@ import {
   Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
 import { SAMPLE_SAFETY_QUEST_CHALLENGES, type SafetyQuestChallenge } from "@/lib/safety-quest"
 import { HAZARD_TARGET_COUNT, getDailyMissions, type DailyProgress } from "@/lib/safety-quest-daily-missions"
 import { buildSafetyQuestAttemptMarkers } from "@/lib/safety-quest-hazard-points"
@@ -46,28 +47,27 @@ import type { Screen } from "@/components/safety-quest/screen-types"
 type ModeItem = {
   screen?: Screen
   href?: string
-  concept: "UI 01" | "UI 02" | "UI 03"
   label: string
   icon: React.ComponentType<{ className?: string }>
 }
 
 const modeItems: ModeItem[] = [
-  { screen: "map", concept: "UI 01", label: "ぼうけんマップ", icon: Map },
-  { href: "/safety-quest/hunter", concept: "UI 03", label: "きけんハンター", icon: Camera },
-  { screen: "challenge", concept: "UI 01", label: "危険さがし", icon: Target },
-  { screen: "patrol", concept: "UI 01", label: "パトロール", icon: Shield },
-  { screen: "team", concept: "UI 01", label: "協力ミッション", icon: Users },
-  { screen: "rewards", concept: "UI 01", label: "クリア報酬", icon: Gift },
-  { screen: "daily", concept: "UI 02", label: "デイリーたんけん", icon: Check },
-  { screen: "quiz", concept: "UI 02", label: "クイズバトル", icon: Zap },
-  { screen: "mystery", concept: "UI 02", label: "なぞとき", icon: Search },
-  { screen: "collection", concept: "UI 02", label: "ガチャ・コレクション", icon: Award },
-  { screen: "ranking", concept: "UI 02", label: "ランキング", icon: Trophy },
-  { screen: "avatar", concept: "UI 03", label: "アバター", icon: User },
-  { screen: "defend", concept: "UI 03", label: "まちをまもろう", icon: Shield },
-  { screen: "ar", concept: "UI 03", label: "ARフォト", icon: Camera },
-  { screen: "encyclopedia", concept: "UI 03", label: "ヒーロー図鑑", icon: BookOpen },
-  { screen: "room", concept: "UI 03", label: "マイルーム", icon: Home },
+  { screen: "map", label: "ぼうけんマップ", icon: Map },
+  { href: "/safety-quest/hunter", label: "きけんハンター", icon: Camera },
+  { screen: "challenge", label: "危険さがし", icon: Target },
+  { screen: "patrol", label: "パトロール", icon: Shield },
+  { screen: "team", label: "協力ミッション", icon: Users },
+  { screen: "rewards", label: "クリア報酬", icon: Gift },
+  { screen: "daily", label: "デイリーたんけん", icon: Check },
+  { screen: "quiz", label: "クイズバトル", icon: Zap },
+  { screen: "mystery", label: "なぞとき", icon: Search },
+  { screen: "collection", label: "ガチャ・コレクション", icon: Award },
+  { screen: "ranking", label: "ランキング", icon: Trophy },
+  { screen: "avatar", label: "アバター", icon: User },
+  { screen: "defend", label: "まちをまもろう", icon: Shield },
+  { screen: "ar", label: "ARフォト", icon: Camera },
+  { screen: "encyclopedia", label: "ヒーロー図鑑", icon: BookOpen },
+  { screen: "room", label: "マイルーム", icon: Home },
 ]
 
 export default function SafetyQuestClient() {
@@ -305,9 +305,9 @@ export default function SafetyQuestClient() {
               <Shield className="h-7 w-7 fill-white/20 text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#1586a2]">PathGuardian</p>
+              <KidsUmbrellaLabel />
               <h1 className="text-2xl font-black leading-tight sm:text-3xl">
-                SafetyMap <span className="text-[#12a7a2]">Safety Quest</span>
+                セーフティ<span className="text-[#12a7a2]">クエスト</span>
               </h1>
             </div>
           </div>
@@ -347,7 +347,6 @@ export default function SafetyQuestClient() {
               const content = (
                 <>
                   <Icon className="h-4 w-4" />
-                  <span className="text-[10px] opacity-75">{item.concept}</span>
                   {item.label}
                 </>
               )

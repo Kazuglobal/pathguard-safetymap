@@ -23,7 +23,7 @@ export function ReportMetadataBar({ report }: ReportMetadataBarProps) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-600 py-3 border-y border-gray-100">
         {/* Date */}
         <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-gray-400" />
+          <Calendar className="h-3.5 w-3.5 text-gray-500" />
           <span>{formatDate(report.created_at)}</span>
         </div>
 
@@ -31,7 +31,7 @@ export function ReportMetadataBar({ report }: ReportMetadataBarProps) {
 
         {/* Coordinates */}
         <div className="flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+          <MapPin className="h-3.5 w-3.5 text-gray-500" />
           <span className="font-mono text-xs">
             {formatCoordinates(report.latitude, report.longitude)}
           </span>

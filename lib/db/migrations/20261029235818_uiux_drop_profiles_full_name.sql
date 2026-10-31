@@ -1,0 +1,11 @@
+-- UIUX改装 項目55: 氏名(profiles.full_name)は預からないので、列ごと消す。表の作り直しは無い(DROP COLUMN だけ)。
+-- 本番に適用してよいのは、グループ3(PR #271。アプリのスキーマから full_name を外した)が本番にデプロイされたあと。
+-- それより前のコードは profiles を読むときに full_name も選ぶので、先に消すとプロフィールの読み書き(/api/profile など)が 500 になる。
+-- 当てる前に必ず確かめること:
+--   1. `pnpm db:migrate:remote` は、未適用のマイグレーションを全部まとめて当てる(1本だけ外せない)。
+--      グループ3が本番に出る前に、このファイルを含むブランチ(グループ4以降)から流さない。
+--   2. 「デプロイされた」は Worker ごとに確かめる(profiles を読む USER などの Worker が、グループ3以降の版で動いていること)。
+--   3. 当てたあとは、Worker をグループ3より前の版へロールバックしない(同じ 500 になる)。
+--   4. 先に D1 の export を取る。Time Travel でも戻せるが、DB 全体が戻るので、その間の書き込みも消える。
+-- 中身は scripts/ops/scrub-personal-names.ts で空にしてある(2026-10-30)。
+ALTER TABLE `profiles` DROP COLUMN `full_name`;

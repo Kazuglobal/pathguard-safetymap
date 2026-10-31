@@ -104,7 +104,7 @@ export function CareCard({
                 />
               ) : null}
             </div>
-            <p className="mt-2.5 text-[11.5px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
+            <p className="mt-2.5 text-[12px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
               ※ AIは あぶないところを 見のがすことが あります。表示が なくても 安全とは
               かぎりません。おうちの人と いっしょに たしかめてください。
             </p>

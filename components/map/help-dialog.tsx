@@ -1,211 +1,172 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
+import { Filter, Flag, HelpCircle, Layers, List, MapPin, Move, Route, Search, Sparkles, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  HelpCircle, 
-  MapPin, 
-  MousePointer, 
-  Search, 
-  Filter, 
-  Plus, 
-  Eye, 
-  Trophy,
-} from "lucide-react"
 import { MapLegendDetails } from "@/components/map/map-legend"
-import { DANGER_TYPE_ORDER, getDangerTypePresentation } from "@/lib/map/danger-type-presentation"
+import { BRAND } from "@/lib/brand"
+import { POINTS_PER_LEVEL, REPORT_PUBLISHED_POINTS } from "@/lib/gamification-levels"
+import { HUNTER_PLAY_POINTS } from "@/lib/hunter/rewards"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
+import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
 interface HelpDialogProps {
-  children: React.ReactNode
+  /** 開くボタン。渡さないときは open / onOpenChange で開け閉めする */
+  children?: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** 「はじめての案内をもう一度」。はじめての案内(絵本のガイド)は、このヘルプとは別に開く(UIUX改装 項目51) */
+  onReplayOnboarding?: () => void
 }
 
-export default function HelpDialog({ children }: HelpDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
+interface HelpItem {
+  icon: typeof HelpCircle
+  title: string
+  text: string
+}
+
+/** 地図の見かた(スマホのタッチ操作を前提に書く) */
+const VIEW_ITEMS: readonly HelpItem[] = [
+  { icon: Move, title: "地図を動かす", text: "指でなぞると動き、2本の指で広げると大きく、つまむと小さくなります。" },
+  { icon: MapPin, title: "ピンを見る", text: "ピンをタップすると、報告の内容や写真が出ます。近いピンは数字の丸にまとまります。" },
+  { icon: Search, title: "場所をさがす", text: "上の検索に、学校の名前や住所を入れます。いま地図に見えている学校が先に出ます。" },
+  { icon: Route, title: "通学路チェック", text: "上の「通学路チェック」で、登録した通学路と、その近くの危険・事故の多い場所を確かめられます。" },
+  { icon: Layers, title: "くわしい表示", text: "「くわしい表示」をひらくと、事故ヒートマップ・不審者情報・AR・3D と、「地図の見た目」(背景・事故多発地点・洪水・津波)を切り替えられます。" },
+]
+
+const FILTER_ITEMS: readonly HelpItem[] = [
+  { icon: List, title: "一覧で見る", text: "スマホは下の「一覧」、パソコンは画面の横の一覧で、報告を並べて見られます。" },
+  { icon: Filter, title: "しぼりこむ", text: "一覧の「フィルター」で、危険の種類・あぶなさ・期間でしぼりこめます。" },
+  { icon: MapPin, title: "見えている範囲だけ", text: "地図と一覧に出るのは、いま地図に見えている範囲の報告です。地図を動かすと入れかわります。" },
+]
+
+const REPORT_STEPS: readonly { title: string; text: string }[] = [
+  { title: "「報告」を押す", text: `スマホは下の「報告」、パソコンは下の「${REPORT_ENTRY_LABEL}」を押します。「現在地」からも始められます。` },
+  { title: "場所を決める", text: "地図をタップして、危険な場所にピンを立てます。" },
+  { title: "写真と内容を入れる", text: PRODUCT_FACTS.photo.adult },
+  { title: "確かめて送る", text: PRODUCT_FACTS.moderation.adult },
+]
+
+const POINT_ITEMS: readonly string[] = [
+  `報告が公開されると +${REPORT_PUBLISHED_POINTS}pt`,
+  `${BRAND.kidsUmbrella}で危険を見つけると +${HUNTER_PLAY_POINTS}pt(遊びかたごとに1日1回)`,
+  "ミッションを達成すると、そのミッションに書いてあるポイント",
+  `${POINTS_PER_LEVEL}ptごとに、レベルが1つ上がります`,
+]
+
+function HelpItemList({ items }: { items: readonly HelpItem[] }) {
+  return (
+    <ul className="space-y-3">
+      {items.map(({ icon: Icon, title, text }) => (
+        <li key={title} className="flex items-start gap-3">
+          <Icon className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" aria-hidden="true" />
+          <div>
+            <h4 className="font-bold text-slate-900">{title}</h4>
+            <p className="text-sm leading-relaxed text-slate-700">{text}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** 地図のヘルプ(UIUX改装 項目51)。レイヤー・パネル・しぼりこみ・ピンの色と★・報告のしかた・ポイント */
+export default function HelpDialog({ children, open, onOpenChange, onReplayOnboarding }: HelpDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open ?? internalOpen
+  const setOpen = (next: boolean) => {
+    if (open === undefined) setInternalOpen(next)
+    onOpenChange?.(next)
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <HelpCircle className="h-5 w-5 text-blue-600" />
-            通学路安全マップ 使い方
+            <HelpCircle className="h-5 w-5 text-emerald-700" aria-hidden="true" />
+            地図の使い方
           </DialogTitle>
+          <DialogDescription>知りたいことを選んでください。</DialogDescription>
         </DialogHeader>
-        
-        <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="basic">基本操作</TabsTrigger>
-            <TabsTrigger value="report">報告方法</TabsTrigger>
-            <TabsTrigger value="filter">フィルター</TabsTrigger>
+
+        <Tabs defaultValue="view" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="view">見かた</TabsTrigger>
+            <TabsTrigger value="pins">ピン</TabsTrigger>
+            <TabsTrigger value="filter">しぼりこみ</TabsTrigger>
+            <TabsTrigger value="report">報告</TabsTrigger>
             <TabsTrigger value="points">ポイント</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="basic" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">マップの基本操作</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <MousePointer className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium">マップの操作</h4>
-                    <p className="text-sm text-gray-600">
-                      マウスでドラッグしてマップを移動、スクロールでズームイン・アウトできます
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium">危険箇所の確認</h4>
-                    <p className="text-sm text-gray-600">
-                      マップ上の色付きマーカーをクリックすると詳細情報が表示されます
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Search className="h-5 w-5 text-purple-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium">場所の検索</h4>
-                    <p className="text-sm text-gray-600">
-                      検索バーで住所や施設名を検索して特定の場所に移動できます
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">ピンの見方</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* 地図の凡例と同じ定義(絵=種類 / 色=あぶなさ / かたち)を表示する */}
-                <MapLegendDetails />
-              </CardContent>
-            </Card>
+          <TabsContent value="view" className="pt-2">
+            <HelpItemList items={VIEW_ITEMS} />
           </TabsContent>
-          
-          <TabsContent value="report" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">危険箇所の報告方法</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-600">1</div>
-                    <div>
-                      <h4 className="font-medium">「危険箇所を報告」ボタンをクリック</h4>
-                      <p className="text-sm text-gray-600">ヘッダーの青いボタンをクリックします</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-600">2</div>
-                    <div>
-                      <h4 className="font-medium">地図で位置を選択</h4>
-                      <p className="text-sm text-gray-600">危険箇所の正確な位置を地図上でクリックして選択します</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-600">3</div>
-                    <div>
-                      <h4 className="font-medium">詳細情報を入力</h4>
-                      <p className="text-sm text-gray-600">タイトル、説明、危険度、危険タイプを選択します</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-600">4</div>
-                    <div>
-                      <h4 className="font-medium">写真を添付（任意）</h4>
-                      <p className="text-sm text-gray-600">危険箇所の写真がある場合は添付できます</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-600">5</div>
-                    <div>
-                      <h4 className="font-medium">報告を送信</h4>
-                      <p className="text-sm text-gray-600">「報告を送信」ボタンをクリックして送信します</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+
+          <TabsContent value="pins" className="space-y-3 pt-2">
+            <p className="text-sm leading-relaxed text-slate-700">ピンの絵は危険の種類、色と★の数はあぶなさです。</p>
+            {/* 地図の凡例と同じ定義(絵=種類 / 色=あぶなさ / かたち)を表示する */}
+            <MapLegendDetails />
           </TabsContent>
-          
-          <TabsContent value="filter" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">フィルター機能</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Filter className="h-5 w-5 text-purple-600 mt-0.5" />
+
+          <TabsContent value="filter" className="pt-2">
+            <HelpItemList items={FILTER_ITEMS} />
+          </TabsContent>
+
+          <TabsContent value="report" className="pt-2">
+            <ol className="space-y-3">
+              {REPORT_STEPS.map((step, index) => (
+                <li key={step.title} className="flex items-start gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-100 text-sm font-bold text-orange-800" aria-hidden="true">
+                    {index + 1}
+                  </span>
                   <div>
-                    <h4 className="font-medium">フィルターの使い方</h4>
-                    <p className="text-sm text-gray-600">
-                      サイドバーの「フィルター」タブで危険タイプ、危険度、期間で絞り込めます
-                    </p>
+                    <h4 className="flex items-center gap-1.5 font-bold text-slate-900">
+                      {index === 0 && <Flag className="h-4 w-4" aria-hidden="true" />}
+                      {step.title}
+                    </h4>
+                    <p className="text-sm leading-relaxed text-slate-700">{step.text}</p>
                   </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <h4 className="font-medium">危険タイプ</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DANGER_TYPE_ORDER.map((id) => {
-                      const type = getDangerTypePresentation(id)
-                      const Icon = type.icon
-                      return (
-                        <div key={id} className="flex items-center gap-2">
-                          <Icon className="h-4 w-4 text-slate-700" />
-                          <span className="text-sm">{type.label}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </li>
+              ))}
+            </ol>
           </TabsContent>
-          
-          <TabsContent value="points" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
-                  ポイントシステム
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-yellow-800 mb-2">ポイントの獲得方法</h4>
-                  <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• 危険箇所を報告: +10ポイント</li>
-                    <li>• 写真付き報告: +5ポイント（ボーナス）</li>
-                    <li>• 詳細な説明: +3ポイント（ボーナス）</li>
-                    <li>• 報告が承認される: +20ポイント</li>
-                  </ul>
-                </div>
-                
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-800 mb-2">ポイントの使い方</h4>
-                  <p className="text-sm text-blue-700">
-                    ポイントは現在、報告の品質評価に使用されています。
-                    将来的には特別な機能のアンロックに使用される予定です。
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+
+          <TabsContent value="points" className="space-y-3 pt-2">
+            <h4 className="flex items-center gap-2 font-bold text-slate-900">
+              <Trophy className="h-5 w-5 text-amber-600" aria-hidden="true" />
+              ポイントのもらいかた
+            </h4>
+            <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-700">
+              {POINT_ITEMS.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <p className="text-sm leading-relaxed text-slate-700">
+              ポイント・レベル・バッジは、マイページの「自分の記録」と「あそぶ」で見られます。
+            </p>
           </TabsContent>
         </Tabs>
+
+        {onReplayOnboarding && (
+          <div className="border-t pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setOpen(false)
+                onReplayOnboarding()
+              }}
+            >
+              <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+              はじめての案内をもう一度
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

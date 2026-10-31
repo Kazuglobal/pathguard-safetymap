@@ -57,7 +57,7 @@ export function AdventureMapScreen({
                 今日のミッションをクリアして、次のステージをひらこう。
               </p>
               <div className="mt-3 rounded-[18px] border-2 border-[#9bd8d3] bg-[#f0fffd] px-4 py-3 shadow-sm">
-                <p className="text-[11px] font-black text-[#087c78]">今日の投稿チャレンジ</p>
+                <p className="text-[12px] font-black text-[#087c78]">今日の投稿チャレンジ</p>
                 <p className="mt-1 text-sm font-black leading-tight text-[#0b2b62]">{selectedChallenge.title}</p>
                 <p className="mt-1 text-xs font-bold text-[#52708f]">{selectedChallenge.areaLabel}</p>
               </div>

@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Share, SquarePlus, X } from "lucide-react"
+import { SquarePlus, X } from "lucide-react"
 import { shouldShowIosInstallGuide } from "@/lib/pwa-install"
+import { IosInstallSteps } from "@/components/pwa/ios-install-steps"
 
 const DISMISSED_KEY = "ios_install_prompt_dismissed"
 
@@ -41,23 +42,8 @@ export function IosInstallPrompt() {
       <div className="flex items-start gap-3">
         <SquarePlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
         <div className="flex-1">
-          <p className="text-sm font-medium">ホーム画面に追加すると通知が受け取れます</p>
-          <ol className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-            <li className="flex items-center gap-1.5">
-              <span className="font-medium">1.</span>
-              ブラウザの共有ボタン
-              <Share className="inline h-3.5 w-3.5" aria-label="共有アイコン" />
-              をタップ
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span className="font-medium">2.</span>
-              「ホーム画面に追加」を選択
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span className="font-medium">3.</span>
-              追加したアイコンからアプリを開く
-            </li>
-          </ol>
+          <p className="text-sm font-medium">ホーム画面に追加すると通知を受け取れます</p>
+          <IosInstallSteps className="mt-2 space-y-1.5 text-xs text-muted-foreground" />
         </div>
       </div>
     </div>

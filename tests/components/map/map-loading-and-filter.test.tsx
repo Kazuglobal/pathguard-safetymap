@@ -7,7 +7,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
-import { MapLoadingPlaceholder } from "@/components/map/map-page-client"
+import { MapLoadingPlaceholder } from "@/components/map/map-loading-placeholder"
 import MapSidebar from "@/components/map/map-sidebar"
 import { MapReportForms } from "@/components/map/map-report-forms"
 

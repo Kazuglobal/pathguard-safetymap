@@ -61,7 +61,7 @@ export default function TrafficSafetyPage() {
               </span>
               <div>
                 <h2 className="text-[16px] font-black leading-none">交通のちず</h2>
-                <p className="mt-1 text-[12px] font-bold leading-none" style={{ color: C.inkFaint }}>
+                <p className="mt-1 text-[12px] font-bold leading-none" style={{ color: C.inkSoft }}>
                   地図をうごかして 通学路のまわりを見てみましょう
                 </p>
               </div>
@@ -135,7 +135,7 @@ export default function TrafficSafetyPage() {
         </div>
 
         {/* 出典表記 */}
-        <footer className="mt-6 border-t pt-4 text-[12px] font-bold leading-relaxed" style={{ borderColor: T.border.faint, color: C.inkFaint }}>
+        <footer className="mt-6 border-t pt-4 text-[12px] font-bold leading-relaxed" style={{ borderColor: T.border.faint, color: C.inkSoft }}>
           出典: 国土交通省 xROAD（道路データプラットフォーム）。
           表示される情報は参考であり、国土交通省が内容を保証するものではありません。
         </footer>
@@ -197,7 +197,7 @@ function ToggleChip({ pressed, onClick, label }: { pressed: boolean; onClick: ()
     >
       <span
         aria-hidden="true"
-        className="grid h-4 w-4 place-items-center rounded-full text-[10px]"
+        className="grid h-4 w-4 place-items-center rounded-full text-[12px]"
         style={{ background: pressed ? 'rgba(255,255,255,.9)' : C.inkFaint, color: pressed ? C.primaryStrong : '#fff' }}
       >
         {pressed ? '✓' : ''}
@@ -232,7 +232,7 @@ function Accordion({ summary, icon, children }: { summary: string; icon: ReactNo
         <span
           aria-hidden="true"
           className="text-[13px] font-black transition-transform duration-200 group-open:rotate-180"
-          style={{ color: C.inkFaint }}
+          style={{ color: C.inkSoft }}
         >
           ▾
         </span>

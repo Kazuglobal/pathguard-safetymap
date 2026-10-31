@@ -28,6 +28,7 @@ import { compressImage, fileToBase64 } from "@/lib/image-utils"
 import { useMaskedPhotoPicker } from "@/components/media/use-masked-photo-picker"
 import { urlOrDataUrlToBlob } from "@/lib/data-url-utils"
 import { tankenTokens } from "@/lib/design/tanken"
+import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 import {
   TankenButton,
   PaperCard,
@@ -58,6 +59,7 @@ import {
   type BatchSimulationImage,
 } from "./simulation-generation-panel"
 import { enrichReportWithAccidents } from "@/lib/traffic-accident-data"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { handleError } from "@/lib/error-handler"
 import {
   appendImageGenerationContext,
@@ -1370,7 +1372,7 @@ export default function DangerReportForm({
       {!isMobileFullscreen && (
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[17px] font-black" style={{ color: C.ink }}>
-            危険箇所を報告
+            {REPORT_ENTRY_LABEL}
           </h2>
           <button
             type="button"
@@ -1424,7 +1426,7 @@ export default function DangerReportForm({
                       <p className="text-[14px] font-black leading-tight" style={{ color: C.ink }}>
                         ちずに ピンを たてたよ
                       </p>
-                      <p className="mt-0.5 text-[11.5px] font-bold leading-snug" style={{ color: C.inkSoft }}>
+                      <p className="mt-0.5 text-[12px] font-bold leading-snug" style={{ color: C.inkSoft }}>
                         ばしょを かえたいときは「地点を変更」からね
                       </p>
                     </div>
@@ -1465,7 +1467,7 @@ export default function DangerReportForm({
                       <span className="block text-[13.5px] font-black leading-tight" style={{ color: C.ink }}>
                         いまいる ばしょで OK！
                       </span>
-                      <span className="mt-0.5 block text-[11.5px] font-bold leading-snug" style={{ color: C.inkSoft }}>
+                      <span className="mt-0.5 block text-[12px] font-bold leading-snug" style={{ color: C.inkSoft }}>
                         GPSの ばしょは すこし ずれることがあるよ。ちずの ピンを みてね。
                       </span>
                     </span>
@@ -1538,7 +1540,7 @@ export default function DangerReportForm({
                 {cameraError && (
                   <PaperCard tone="danger" className="p-3">
                     <p className="text-[12.5px] font-bold" style={{ color: C.danger }}>{cameraError}</p>
-                    <p className="mt-1 text-[11.5px] font-bold" style={{ color: C.inkSoft }}>
+                    <p className="mt-1 text-[12px] font-bold" style={{ color: C.inkSoft }}>
                       アルバムから えらぶことも できるよ
                     </p>
                   </PaperCard>
@@ -1608,8 +1610,8 @@ export default function DangerReportForm({
                 ) : (
                   <PaperCard className="flex h-32 items-center justify-center">
                     <div className="text-center">
-                      <ImageIcon className="mx-auto h-8 w-8" style={{ color: C.inkFaint }} />
-                      <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkFaint }}>
+                      <ImageIcon className="mx-auto h-8 w-8" style={{ color: C.inkSoft }} />
+                      <p className="mt-1 text-[12.5px] font-bold" style={{ color: C.inkSoft }}>
                         まだ しゃしんが ないよ
                       </p>
                     </div>
@@ -1786,7 +1788,7 @@ export default function DangerReportForm({
 
                 {/* まとめカード */}
                 <PaperCard className="space-y-2.5 p-3.5">
-                  <p className="text-[13px] font-black" style={{ color: C.inkFaint }}>
+                  <p className="text-[13px] font-black" style={{ color: C.inkSoft }}>
                     おくる ないよう
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1829,7 +1831,7 @@ export default function DangerReportForm({
                   <div>
                     {accidentStatsStatus === "loading" && <AccidentStatsLoading />}
                     {accidentStatsStatus === "error" && (
-                      <p className="text-[11.5px] font-bold" style={{ color: C.accentStrong }}>
+                      <p className="text-[12px] font-bold" style={{ color: C.accentStrong }}>
                         事故統計の取得に失敗しました（報告には影響しません）
                       </p>
                     )}
@@ -1839,10 +1841,10 @@ export default function DangerReportForm({
                   </div>
                 )}
 
-                <p className="text-[11px] font-bold leading-relaxed" style={{ color: C.inkFaint }}>
+                <p className="text-[12px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
                   住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
                   投稿した写真は危険度のAI分析のため、外部AIサービス（Anthropic Claude / Google Gemini）へ送信されます。
-                  おくった ないようは おとなの かくにんの あとに ちずへ のるよ。
+                  {PRODUCT_FACTS.moderation.kidsBeforeSend}
                 </p>
               </div>
             )}
@@ -1882,7 +1884,7 @@ export default function DangerReportForm({
                     className="mt-1.5 max-w-[300px] text-[13px] font-bold leading-relaxed"
                     style={{ color: C.inkSoft }}
                   >
-                    ありがとう！ おとなの かくにんが おわると、ちずに のるよ。
+                    {PRODUCT_FACTS.moderation.kidsAfterSend}
                   </motion.p>
                   {submittedReportId && (
                     <div

@@ -1,20 +1,11 @@
 import ThreeDRoutePocClient from './3d-route-poc-client'
-import { redirect } from 'next/navigation'
-import { loginPathFor } from '@/lib/auth/login-path'
-import { createServerClient } from '@/lib/supabase-server'
+import { requireAdminPage } from '@/lib/admin-auth'
 
-export const metadata = { title: '3D通学路 PoC - PathGuardian' }
+export const metadata = { title: '3D通学路(試作・管理者用)' }
 
+// 試作の画面なので、管理者だけが開ける(判定はサーバで。UIUX改装 項目53)
 export default async function ThreeDRoutePocPage() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    redirect(loginPathFor('/3d-route-poc'))
-  }
+  await requireAdminPage('/3d-route-poc')
 
   return <ThreeDRoutePocClient />
 }

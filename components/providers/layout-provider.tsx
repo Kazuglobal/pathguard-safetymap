@@ -7,7 +7,7 @@ import { AuthContextProvider, type AuthStatus } from "@/components/providers/aut
 import { isProtectedPath } from "@/lib/auth/protected-paths"
 import { LOGGED_OUT_PATH, loginPathFor } from "@/lib/auth/login-path"
 import { getDisplayName } from "@/lib/user-display-name"
-import { shouldShowFloatingPrompts } from "@/lib/navigation-visibility"
+import { shouldShowFloatingPrompts, shouldShowPushPrompts } from "@/lib/navigation-visibility"
 import { clearAllLocalRouteGeometry, clearOtherUsersLocalRouteGeometry } from "@/lib/route-local-geometry"
 import {
   SupabaseProvider,
@@ -190,8 +190,8 @@ function LayoutProviderInner({ children }: LayoutProviderInnerProps) {
       <Toaster />
       <ServiceWorkerRegistrar />
       {user && <AppOnboardingGate />}
-      {user && shouldShowFloatingPrompts(pathname) && <PushPermissionPrompt />}
-      {user && shouldShowFloatingPrompts(pathname) && <IosInstallPrompt />}
+      {user && shouldShowPushPrompts(pathname) && <PushPermissionPrompt />}
+      {user && shouldShowPushPrompts(pathname) && <IosInstallPrompt />}
       {user && shouldShowFloatingPrompts(pathname) && <PrivacyUpdateNotice />}
     </AuthContextProvider>
   )

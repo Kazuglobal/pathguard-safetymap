@@ -391,7 +391,7 @@
   background: rgba(255, 253, 247, 0.96);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
   color: #43392b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
   white-space: nowrap;
@@ -399,14 +399,13 @@
   pointer-events: none;
 }
 
+/* 文字の大きさは親の .map-marker-label(12px)のまま */
 .danger-pin-label-stars {
-  font-size: 9px;
   letter-spacing: 0.5px;
 }
 
 .danger-pin-label-pending {
-  color: #847661;
-  font-size: 10px;
+  color: #746855;
 }
 
 .danger-marker:hover,

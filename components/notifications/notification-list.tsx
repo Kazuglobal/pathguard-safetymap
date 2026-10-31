@@ -1,9 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { CheckCheck, Bell, X } from "lucide-react"
+import { CheckCheck, Bell, Settings, X } from "lucide-react"
 import { getNotificationTypeLabel, type Notification } from "@/hooks/use-notifications"
+import { MYPAGE_NOTIFICATIONS_PATH } from "@/lib/mypage-sections"
 
 interface NotificationListProps {
   notifications: Notification[]
@@ -49,7 +51,7 @@ export function NotificationList({
 
   return (
     <div
-      className="absolute right-0 top-full mt-2 w-80 rounded-lg border bg-white shadow-lg z-50 notification-dropdown"
+      className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-white shadow-lg z-50 notification-dropdown"
       data-testid="notification-dropdown"
       role="menu"
       aria-label="通知一覧"
@@ -117,7 +119,7 @@ export function NotificationList({
                   {getNotificationTypeLabel(notification.type) && (
                     <span
                       data-testid="notification-type-badge"
-                      className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-800"
+                      className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[12px] font-medium text-sky-800"
                     >
                       {getNotificationTypeLabel(notification.type)}
                     </span>
@@ -141,7 +143,7 @@ export function NotificationList({
                 {notification.content}
               </p>
               <p
-                className="mt-1 text-xs text-gray-400"
+                className="mt-1 text-xs text-gray-500"
                 data-testid="notification-timestamp"
               >
                 {formatTimestamp(notification.created_at)}
@@ -149,6 +151,20 @@ export function NotificationList({
             </button>
           ))
         )}
+      </div>
+
+      {/* 受け取る通知の切り替えは、マイページの設定で(UIUX改装 項目37) */}
+      <div className="border-t px-4 py-2 text-right">
+        <Link
+          href={MYPAGE_NOTIFICATIONS_PATH}
+          role="menuitem"
+          onClick={onClose}
+          className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-blue-700 hover:underline"
+          data-testid="notification-settings-link"
+        >
+          <Settings className="h-4 w-4" aria-hidden="true" />
+          通知の設定
+        </Link>
       </div>
     </div>
   )

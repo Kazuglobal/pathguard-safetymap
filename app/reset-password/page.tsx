@@ -1,14 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createBrowserClient } from "@supabase/ssr"
+import { AuthShell } from "@/components/auth/auth-shell"
+import { BackToLogin } from "@/components/auth/back-to-login"
+import { PasswordChecklist } from "@/components/auth/password-checklist"
+import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Lock, CheckCircle, ArrowLeft } from "lucide-react"
+import { CheckCircle } from "lucide-react"
+import { isSessionMissingAuthError, LINK_EXPIRED_MESSAGE, resolveAuthErrorMessage } from "@/lib/auth/error-messages"
+import { isPasswordValid, PASSWORD_MIN_LENGTH, PASSWORD_RULES_ERROR } from "@/lib/auth/password-rules"
 
 export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("")
@@ -17,33 +22,24 @@ export default function ResetPasswordPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [generalError, setGeneralError] = useState<string | null>(null)
+  /** 再設定のリンクの期限が切れていたら、メールを送りなおす画面への導線を出す */
+  const [linkExpired, setLinkExpired] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
 
+  // 再設定のリンクの中の情報は、クライアントを作るときに読み取られる(一時的にログインした状態になる)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  useEffect(() => {
-    // Listen for password recovery event
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        // User has clicked the password recovery link
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase])
-
   const validatePassword = (): boolean => {
     setPasswordError(null)
     setConfirmError(null)
 
-    if (newPassword.length < 8) {
-      setPasswordError("パスワードは8文字以上で入力してください")
+    // 新規登録と同じ決まり(lib/auth/password-rules.ts)
+    if (!isPasswordValid(newPassword)) {
+      setPasswordError(PASSWORD_RULES_ERROR)
       return false
     }
 
@@ -58,6 +54,7 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setGeneralError(null)
+    setLinkExpired(false)
 
     if (!validatePassword()) {
       return
@@ -71,18 +68,23 @@ export default function ResetPasswordPage() {
       })
 
       if (updateError) {
-        setGeneralError(updateError.message)
+        if (isSessionMissingAuthError(updateError)) {
+          setLinkExpired(true)
+          setGeneralError(LINK_EXPIRED_MESSAGE)
+        } else {
+          setGeneralError(resolveAuthErrorMessage(updateError, "パスワードを変えられませんでした。時間をおいて、もう一度お試しください。"))
+        }
         return
       }
 
       setIsSuccess(true)
 
-      // Redirect to login after a short delay
+      // 少し待ってからログインの画面へ
       setTimeout(() => {
         router.push("/login")
       }, 3000)
-    } catch {
-      setGeneralError("エラーが発生しました。もう一度お試しください。")
+    } catch (caught) {
+      setGeneralError(resolveAuthErrorMessage(caught, "パスワードを変えられませんでした。もう一度お試しください。"))
     } finally {
       setIsLoading(false)
     }
@@ -90,121 +92,95 @@ export default function ResetPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md space-y-6 text-center">
-          <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-          <h1
-            className="text-2xl font-bold text-gray-900"
-            data-testid="reset-password-title"
-          >
-            パスワードを変更しました
-          </h1>
-          <p className="text-sm text-gray-600">
+      <AuthShell title="パスワードを変更しました" titleTestId="reset-password-title">
+        <div className="text-center">
+          <CheckCircle className="mx-auto h-12 w-12 text-green-600" aria-hidden="true" />
+          <p className="mt-3 text-sm text-gray-700">
             新しいパスワードでログインできます。自動的にログインページに移動します...
           </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center text-sm text-blue-600 hover:underline"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            今すぐログインする
-          </Link>
         </div>
-      </div>
+        <BackToLogin label="今すぐログインする" />
+      </AuthShell>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <Lock className="mx-auto h-12 w-12 text-gray-400" />
-          <h1
-            className="mt-4 text-2xl font-bold text-gray-900"
-            data-testid="reset-password-title"
-          >
-            新しいパスワードを設定
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            新しいパスワードを入力してください。
-          </p>
-        </div>
+    <AuthShell title="新しいパスワードを設定" titleTestId="reset-password-title">
+      <p className="text-sm text-gray-700">新しいパスワードを入力してください。</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {generalError && (
-            <Alert variant="destructive">
-              <AlertDescription>{generalError}</AlertDescription>
-            </Alert>
-          )}
+      {/* 長さなどは画面の決まりの文で知らせる(ブラウザの標準の吹き出しにしない) */}
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate aria-busy={isLoading}>
+        {generalError && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {generalError}
+              {linkExpired && (
+                <>
+                  {" "}
+                  <Link href="/forgot-password" className="font-bold underline underline-offset-4">
+                    再設定のメールを送りなおす
+                  </Link>
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="new-password">新しいパスワード</Label>
-            <Input
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => {
-                setNewPassword(e.target.value)
-                setPasswordError(null)
-              }}
-              placeholder="8文字以上で入力"
-              disabled={isLoading}
-              data-testid="new-password"
-            />
-            {passwordError && (
-              <p
-                className="text-sm text-red-500"
-                data-testid="password-error"
-              >
-                {passwordError}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirm-password">パスワードを確認</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value)
-                setConfirmError(null)
-              }}
-              placeholder="もう一度入力"
-              disabled={isLoading}
-              data-testid="confirm-password"
-            />
-            {confirmError && (
-              <p
-                className="text-sm text-red-500"
-                data-testid="confirm-password-error"
-              >
-                {confirmError}
-              </p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full"
+        <div className="space-y-2">
+          <Label htmlFor="new-password">新しいパスワード</Label>
+          <PasswordInput
+            id="new-password"
+            value={newPassword}
+            onChange={(e) => {
+              setNewPassword(e.target.value)
+              setPasswordError(null)
+            }}
             disabled={isLoading}
-            data-testid="reset-password-submit"
-          >
-            {isLoading ? "変更中..." : "パスワードを変更"}
-          </Button>
-        </form>
-
-        <div className="text-center">
-          <Link
-            href="/login"
-            className="inline-flex items-center text-sm text-blue-600 hover:underline"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            ログインに戻る
-          </Link>
+            autoComplete="new-password"
+            minLength={PASSWORD_MIN_LENGTH}
+            aria-describedby="new-password-checklist"
+            data-testid="new-password"
+          />
+          <PasswordChecklist id="new-password-checklist" password={newPassword} />
+          {passwordError && (
+            <p role="alert" className="text-sm font-bold text-red-600" data-testid="password-error">
+              {passwordError}
+            </p>
+          )}
         </div>
-      </div>
-    </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirm-password">パスワードを確認</Label>
+          <PasswordInput
+            id="confirm-password"
+            value={confirmPassword}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value)
+              setConfirmError(null)
+            }}
+            placeholder="もう一度入力"
+            disabled={isLoading}
+            autoComplete="new-password"
+            data-testid="confirm-password"
+          />
+          {confirmError && (
+            <p role="alert" className="text-sm font-bold text-red-600" data-testid="confirm-password-error">
+              {confirmError}
+            </p>
+          )}
+        </div>
+
+        <Button
+          type="submit"
+          className="min-h-11 w-full"
+          disabled={isLoading}
+          data-testid="reset-password-submit"
+        >
+          {isLoading ? "変更中..." : "パスワードを変更"}
+        </Button>
+      </form>
+
+      <BackToLogin />
+    </AuthShell>
   )
 }

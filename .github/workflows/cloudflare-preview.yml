@@ -13,6 +13,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ar-hazard-regressions:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - name: Verify AR, selected points, official viewer and D1 contracts
+        run: pnpm exec vitest run tests/unit/lib/ar-risk-data.test.ts tests/unit/hooks/use-ar-risk-data.test.tsx tests/unit/app/api/hazard-point-risks.test.ts tests/components/map/ar-inundation-overlay.test.tsx tests/components/map/accident-street-view.test.tsx tests/components/map/ar-real-risks.test.tsx tests/components/map/point-hazard-section.test.tsx tests/unit/db/hazard-repo.test.ts tests/unit/db/accidents-repo.test.ts tests/unit/lib/hazard-zone-gate-d1.test.ts tests/unit/lib/traffic-accident-heatmap.test.ts tests/components/map/accident-heatmap-layer-popup.test.tsx tests/components/map/accident-stats-overlay.test.tsx tests/components/map/ar-view-learning-tour.test.tsx tests/unit/lib/content-security-policy.test.ts tests/unit/cloudflare --maxWorkers=2
+      - name: Verify isolated preview configuration
+        run: node --test scripts/cloudflare/preview-config.test.mjs
+      - name: Install official geometry readers
+        run: python -m pip install -r scripts/migrate/requirements-hazards.txt
+      - name: Verify additive official hazard preparation and resume guards offline
+        run: python -m unittest discover -s tests/scripts -p test_official_hazards.py
+
   accident-regressions:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -70,6 +96,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.PREVIEW_NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_MEDIA_BASE_URL: ${{ secrets.NEXT_PUBLIC_MEDIA_BASE_URL }}

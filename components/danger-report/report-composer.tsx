@@ -9,6 +9,7 @@ import { useDangerReportSubmit } from "@/hooks/use-danger-report-submit"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { tankenTokens } from "@/lib/design/tanken"
+import { REPORT_ENTRY_LABEL, REPORT_PATH } from "@/lib/report-entry"
 
 export default function ReportComposer() {
   const { supabase } = useSupabase()
@@ -79,7 +80,7 @@ export default function ReportComposer() {
         <header className="safe-area-top flex items-center gap-3 border-b px-4 py-3" style={{ background: t.color.card, borderColor: t.border.faint }}>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold" style={{ color: t.color.primaryStrong }}>3ステップでかんたん</p>
-            <h2 id="report-dialog-title" className="text-lg font-black" style={{ color: t.color.ink }}>危険を報告する</h2>
+            <h2 id="report-dialog-title" className="text-lg font-black" style={{ color: t.color.ink }}>{REPORT_ENTRY_LABEL}</h2>
           </div>
           <button
             type="button"
@@ -107,7 +108,7 @@ export default function ReportComposer() {
               {gpsStatus === "loading" ? "現在地をさがしています…" : "現在地を使う"}
             </button>
             <Link
-              href="/map?report=open"
+              href={REPORT_PATH}
               className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 font-black ${t.cls.focus}`}
               style={{ background: t.color.card, borderColor: t.border.soft, boxShadow: t.shadow.pressPaper }}
             >
@@ -148,7 +149,7 @@ export default function ReportComposer() {
             <Flag className="h-6 w-6" />
           </span>
           <div>
-            <h1 id="report-start-title" className="text-2xl font-black sm:text-3xl">危険を報告する</h1>
+            <h1 id="report-start-title" className="text-2xl font-black sm:text-3xl">{REPORT_ENTRY_LABEL}</h1>
             <p className="mt-1 text-sm font-bold text-white/90">3ステップでカンタンに報告できます</p>
           </div>
         </div>
@@ -169,19 +170,15 @@ export default function ReportComposer() {
           ))}
         </ol>
 
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedLocation(null)
-            setLocationSource(null)
-            setOpen(true)
-          }}
+        {/* 報告の入口は、どこから入っても地図つきの報告フォームにそろえる(UIUX改装 項目5) */}
+        <Link
+          href={REPORT_PATH}
           className={`mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-white px-6 text-lg font-black ${t.cls.focus}`}
           style={{ color: t.color.accentStrong, boxShadow: "0 4px 0 rgba(122,58,4,.35)" }}
         >
           <Flag className="h-5 w-5" aria-hidden="true" />
-          危険を報告する
-        </button>
+          {REPORT_ENTRY_LABEL}
+        </Link>
         <button
           type="button"
           onClick={chooseCurrentLocation}

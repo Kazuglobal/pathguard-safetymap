@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/drawer'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { AccidentDataLinks } from '@/components/map/accident-data-links'
 import {
   Select,
   SelectContent,
@@ -123,7 +124,7 @@ function HeatmapFilterBody({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-xs text-gray-400">〜</span>
+          <span className="text-xs text-gray-500">〜</span>
           <Select
             value={String(filters.maxYear)}
             onValueChange={(v) => onFiltersChange({ maxYear: Number(v) })}
@@ -193,7 +194,7 @@ function HeatmapFilterBody({
           className="scale-90"
         />
       </div>
-      <p className="text-[10px] leading-tight text-gray-400 -mt-2">
+      <p className="text-[12px] leading-tight text-gray-500 -mt-2">
         ※ 子ども関与は補充票確認分で判定
       </p>
 
@@ -211,11 +212,11 @@ function HeatmapFilterBody({
           className="scale-90"
         />
       </div>
-      <p className="text-[10px] leading-tight text-gray-400 -mt-2">
+      <p className="text-[12px] leading-tight text-gray-500 -mt-2">
         ※ 若年者関与は警察庁オープンデータの年齢区分コードで判定
       </p>
 
-      <p className="text-[10px] leading-tight text-gray-400 -mt-2">
+      <p className="text-[12px] leading-tight text-gray-500 -mt-2">
         ※ 同時選択時は両方の条件に一致する事故のみ表示
       </p>
 
@@ -235,10 +236,13 @@ function HeatmapFilterBody({
       </div>
 
       <div className="border-t border-gray-100 pt-1">
-        <p className="text-[10px] leading-tight text-gray-400">
+        <p className="text-[12px] leading-tight text-gray-500">
           ズームアウト: ヒートマップ / ズームイン: 個別マーカー
         </p>
       </div>
+
+      {/* 事故をくわしく調べる画面へ(UIUX改装 項目43) */}
+      <AccidentDataLinks className="border-t border-gray-100 pt-2" />
     </div>
   )
 }
@@ -346,7 +350,7 @@ export function AccidentHeatmapControls({
           className="flex items-center gap-2 text-left"
           aria-label="事故ヒートマップ表示切替"
         >
-          <Flame className={`h-4 w-4 ${isVisible ? 'text-red-500' : 'text-gray-400'}`} />
+          <Flame className={`h-4 w-4 ${isVisible ? 'text-red-500' : 'text-gray-500'}`} />
           <span className="text-sm font-medium text-gray-700">事故ヒートマップ</span>
         </button>
         <Switch

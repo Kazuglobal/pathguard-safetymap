@@ -282,7 +282,7 @@ export function ChildRouteDashboard({
                           style={{ color: C.ink }}
                         >
                           <span
-                            className="inline-flex flex-shrink-0 items-center gap-1.5 text-[10px] font-bold"
+                            className="inline-flex flex-shrink-0 items-center gap-1.5 text-[12px] font-bold"
                             style={{ color: C.inkSoft }}
                           >
                             <span

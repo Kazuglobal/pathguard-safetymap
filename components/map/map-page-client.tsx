@@ -6,42 +6,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HelpCircle } from "lucide-react"
 
 import AppOnboarding from "@/components/onboarding/app-onboarding"
+import HelpDialog from "@/components/map/help-dialog"
 import { Button } from "@/components/ui/button"
 import { tankenTokens } from "@/lib/design/tanken"
-
-/**
- * 地図の部品が届くまでの表示。サーバの HTML に含まれるので、低速の端末でもすぐに出る。
- * 以前は無地のグレーのままで「壊れている」ように見えていた(低速端末で約20秒)。
- */
-export function MapLoadingPlaceholder() {
-  const t = tankenTokens
-  return (
-    <div className="fullscreen-map-container">
-      <div
-        className="relative flex h-full min-h-[500px] w-full items-center justify-center p-4"
-        style={{ background: t.color.paperDeep }}
-        role="status"
-        aria-live="polite"
-        data-testid="map-loading-placeholder"
-      >
-        <div
-          className="w-full max-w-sm rounded-[22px] border p-5"
-          style={{ background: t.color.card, borderColor: t.border.soft, boxShadow: t.shadow.card }}
-        >
-          <p className="font-black" style={{ color: t.color.ink }}>
-            地図を準備しています
-          </p>
-          <p className="mt-2 text-sm font-bold" style={{ color: t.color.inkSoft }}>
-            地図の部品を読み込んでいます。このあと地図がひらき、危険マーカーがならびます。
-          </p>
-          <p className="mt-2 text-sm" style={{ color: t.color.inkSoft }}>
-            通信が遅いと少し時間がかかります。このままお待ちください。
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
+// 地図を開いた直後(app/map/loading.tsx)と同じ待ち表示
+import { MapLoadingPlaceholder } from "@/components/map/map-loading-placeholder"
 
 const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   ssr: false,
@@ -50,6 +19,7 @@ const MapContainer = dynamic(() => import("@/components/map/map-container"), {
 
 export default function MapPageClient() {
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -91,13 +61,16 @@ export default function MapPageClient() {
             boxShadow: tankenTokens.shadow.float,
             backdropFilter: "blur(10px)",
           }}
-          onClick={() => setShowTutorial(true)}
+          // 「使い方」は地図のヘルプ。はじめての案内(絵本のガイド)は、ヘルプの中から別に開く(UIUX改装 項目51)
+          onClick={() => setShowHelp(true)}
           aria-label="使い方を確認"
         >
           <HelpCircle className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">使い方</span>
         </Button>
       </div>
+
+      <HelpDialog open={showHelp} onOpenChange={setShowHelp} onReplayOnboarding={() => setShowTutorial(true)} />
 
       <AppOnboarding
         open={showTutorial}

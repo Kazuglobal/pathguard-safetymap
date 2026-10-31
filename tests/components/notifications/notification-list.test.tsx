@@ -12,6 +12,14 @@ vi.mock("next/navigation", () => ({
   }),
 }))
 
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}))
+
 describe("NotificationList", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -51,5 +59,26 @@ describe("NotificationList", () => {
       expect(pushMock).toHaveBeenCalledWith("/map?routeId=route-1")
       expect(onClose).toHaveBeenCalled()
     })
+  })
+
+  // ベルから、受け取る通知の切り替え(マイページの設定)へ行ける(UIUX改装 項目37)
+  it("links to the notification settings on the my page and closes itself", async () => {
+    const onClose = vi.fn()
+
+    render(
+      <NotificationList
+        notifications={[]}
+        isLoading={false}
+        onNotificationClick={vi.fn(async () => undefined)}
+        onMarkAllAsRead={vi.fn(async () => undefined)}
+        onClose={onClose}
+      />
+    )
+
+    const link = screen.getByRole("menuitem", { name: "通知の設定" })
+    expect(link).toHaveAttribute("href", "/mypage#notifications")
+
+    await userEvent.click(link)
+    expect(onClose).toHaveBeenCalled()
   })
 })

@@ -12,6 +12,7 @@ import type { DangerReport } from "@/lib/types"
 import { canStartRouteQuiz, selectNextQuizPoint } from "@/lib/route-quiz-selection"
 import { useEventCallback } from "@/hooks/use-event-callback"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
+import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
 import { PUBLIC_DANGER_REPORT_STATUSES } from "@/lib/danger-report-status"
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
@@ -310,8 +311,9 @@ export default function RouteQuizPage() {
   return (
     <div className="flex h-[100dvh] min-h-[640px] flex-col" style={{ backgroundColor: t.color.paper, backgroundImage: PAPER_NOISE, color: t.color.ink }}>
       {/* ヘッダー */}
-      <header className="flex-none border-b px-4 py-3 text-center text-lg font-black" style={{ background: t.color.card, borderColor: t.border.faint }}>
-        つうがくろ クイズ
+      <header className="flex-none border-b px-4 py-3 text-center" style={{ background: t.color.card, borderColor: t.border.faint }}>
+        <KidsUmbrellaLabel />
+        <h1 className="text-lg font-black">つうがくろ クイズ</h1>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">

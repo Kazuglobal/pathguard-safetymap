@@ -32,7 +32,7 @@ function ReportCommentItem({ comment }: { comment: ReportComment }) {
             {getAuthorDisplayName(comment.profiles)}
           </span>
           {comment.is_edited && (
-            <span className="text-xs text-gray-400">(編集済み)</span>
+            <span className="text-xs text-gray-500">(編集済み)</span>
           )}
         </div>
         <span
@@ -135,7 +135,7 @@ export function ReportCommentSection({ reportId }: ReportCommentSectionProps) {
       {/* Comment input */}
       {isCheckingAuth ? (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+          <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
         </div>
       ) : isLoggedIn ? (
         <div className="space-y-2">
@@ -192,7 +192,7 @@ export function ReportCommentSection({ reportId }: ReportCommentSectionProps) {
       <div className="space-y-3" data-testid="comment-list">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
           </div>
         ) : comments.length === 0 ? (
           <div

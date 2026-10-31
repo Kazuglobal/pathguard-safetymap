@@ -2,7 +2,17 @@
 
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { MapPinned, MessageSquareWarning, BellRing, Flame, Waves, Newspaper } from "lucide-react"
+import {
+  MapPinned,
+  MessageSquareWarning,
+  BellRing,
+  Flame,
+  Waves,
+  Newspaper,
+  ScanSearch,
+  MessageCircleQuestion,
+  FileText,
+} from "lucide-react"
 import { LP_FEATURES } from "@/lib/lp-content"
 
 const FEATURE_ICONS = {
@@ -12,6 +22,9 @@ const FEATURE_ICONS = {
   report: MessageSquareWarning,
   alerts: BellRing,
   news: Newspaper,
+  hunter: ScanSearch,
+  quiz: MessageCircleQuestion,
+  "report-pdf": FileText,
 } as const
 
 export function LpFeatures() {
@@ -61,8 +74,8 @@ export function LpFeatures() {
           </div>
         </div>
 
-        {/* 残り5機能のカードグリッド */}
-        <div data-reveal-group className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* 残りの機能のカードグリッド */}
+        <div data-reveal-group className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {rest.map((feature) => {
             const Icon = FEATURE_ICONS[feature.key as keyof typeof FEATURE_ICONS] ?? MapPinned
             return (
@@ -73,7 +86,7 @@ export function LpFeatures() {
                 className="rounded-[1.6rem] border-2 border-[#2B2723] bg-[#FFFDF8] p-7 shadow-[7px_7px_0_rgba(43,39,35,0.85)]"
               >
                 <div className="flex h-12 w-12 -rotate-3 items-center justify-center rounded-2xl border-2 border-[#2B2723] bg-[#E8A33D]">
-                  <Icon className="h-6 w-6 text-[#2B2723]" />
+                  <Icon className="h-6 w-6 text-[#2B2723]" aria-hidden="true" />
                 </div>
                 <p className="mt-5 text-xs font-bold tracking-wide text-[#2FA36B]">{feature.kicker}</p>
                 <h3 className="font-lp-display mt-2 text-lg font-black text-[#2B2723]">{feature.title}</h3>

@@ -112,6 +112,13 @@ describe('accidents repository', () => {
     })
   })
 
+  it('flags a truncated bbox without claiming the arbitrary subset is nearest', async () => {
+    const repo = createAccidentsRepo(database.db as unknown as AppDb)
+    const bounds = { minLng: 138.99, minLat: 34.99, maxLng: 139.01, maxLat: 35.01, minYear: 2025, maxYear: 2025 }
+    expect((await repo.accidentsInBbox(actor, { ...bounds, limit: 1 })).truncated).toBe(true)
+    expect((await repo.accidentsInBbox(actor, { ...bounds, limit: 2 })).truncated).toBe(false)
+  })
+
   it('uses a bbox prefilter and haversine distance before aggregating nearby stats', async () => {
     const repo = createAccidentsRepo(database.db as unknown as AppDb)
 

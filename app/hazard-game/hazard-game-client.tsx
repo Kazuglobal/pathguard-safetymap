@@ -15,6 +15,7 @@ import { LoadingAnimation } from "@/components/hazard-game/loading-animation"
 import { InteractiveCanvas } from "@/components/hazard-game/interactive-canvas"
 import { useHazardGame } from "@/hooks/use-hazard-game"
 import Link from "next/link"
+import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
 import type { PromptType, UserMarker, UserMarkingResult } from "@/lib/hazard-game-types"
 
 type GameState = "intro" | "upload" | "marking" | "analyzing" | "results"
@@ -248,7 +249,7 @@ export default function HazardGameClient() {
               disabled={isAnalyzing}
               variant="ghost"
               size="sm"
-              className="text-xs text-gray-400 hover:text-gray-600 underline"
+              className="text-xs text-gray-500 hover:text-gray-600 underline"
             >
               {isAnalyzing ? "分析中..." : "マーキングをスキップして直接分析"}
             </Button>
@@ -323,16 +324,20 @@ export default function HazardGameClient() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
               <Gamepad2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-              <h1 className="text-base sm:text-xl font-semibold text-gray-900 truncate">
-                写真危険発見ゲーム
-              </h1>
+              <div className="min-w-0">
+                <KidsUmbrellaLabel />
+                <h1 className="text-base sm:text-xl font-semibold text-gray-900 truncate">
+                  写真危険発見ゲーム
+                </h1>
+              </div>
             </div>
-            <Link href="/dashboard" className="flex-shrink-0">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">ダッシュボード</span>
-              </Button>
-            </Link>
+            {/* ダッシュボードはマイページにまとめた(UIUX改装 項目6) */}
+            <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+              <Link href="/mypage" aria-label="マイページへもどる">
+                <ArrowLeft className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+                <span className="hidden sm:inline">マイページ</span>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

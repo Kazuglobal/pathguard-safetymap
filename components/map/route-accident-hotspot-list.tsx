@@ -52,7 +52,7 @@ export function RouteAccidentHotspotList({ hotspots, isLoading, error, onSelect 
           )
         })}
       </div>
-      <p className="text-[10px] text-muted-foreground">{HOTSPOT_ATTRIBUTION}</p>
+      <p className="text-[12px] text-muted-foreground">{HOTSPOT_ATTRIBUTION}</p>
     </div>
   )
 }

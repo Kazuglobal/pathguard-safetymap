@@ -12,6 +12,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Navigation } from '@/components/ui/navigation'
 
+const viewport = vi.hoisted(() => ({ isMobile: false }))
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => viewport.isMobile }))
+
 // Ensure ResizeObserver/IntersectionObserver are proper constructors
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
@@ -39,7 +42,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('framer-motion', () => {
   const strip =
     (Tag: any) =>
-    ({
+    function MotionStub({
       children,
       layoutId,
       initial,
@@ -51,7 +54,9 @@ vi.mock('framer-motion', () => {
       variants,
       custom,
       ...props
-    }: any) => <Tag {...props}>{children}</Tag>
+    }: any) {
+      return <Tag {...props}>{children}</Tag>
+    }
   return {
     motion: {
       div: strip('div'),
@@ -66,7 +71,7 @@ vi.mock('framer-motion', () => {
 
 // Mock notification bell
 vi.mock('@/components/notifications/notification-bell', () => ({
-  NotificationBell: () => <div data-testid="notification-bell" />,
+  NotificationBell: ({ isLoggedIn }: { isLoggedIn?: boolean }) => <div data-testid="notification-bell" data-enabled={String(isLoggedIn)} />,
 }))
 
 // Mock ReportBottomSheet
@@ -153,16 +158,37 @@ describe('Navigation Logout Functionality', () => {
     })
   })
 
-  describe('Mobile bottom nav labels', () => {
-    it('renders the activity tab link', () => {
-      const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
-
-      const activityBottomLink = container.querySelector('a[aria-label="活動"]')
-      expect(activityBottomLink).toBeInTheDocument()
-      expect(activityBottomLink).toHaveTextContent('活動')
+  // ホームと地図のスマホでは上のナビが隠れる。そのときはホームのヘッダーのベルだけが通知を読む(UIUX改装 項目37)
+  describe('Notification bell', () => {
+    it('does not run the hidden top-nav bell on a phone when the top nav is hidden', () => {
+      viewport.isMobile = true
+      render(<Navigation user={mockUser} onLogout={mockOnLogout} hideTopNavMobile />)
+      expect(screen.getByTestId('notification-bell')).toHaveAttribute('data-enabled', 'false')
+      viewport.isMobile = false
     })
 
-    it('falls back to label when mobileLabel is not provided', () => {
+    it('runs the top-nav bell on other screens and on wide screens', () => {
+      viewport.isMobile = true
+      const { unmount } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+      expect(screen.getByTestId('notification-bell')).toHaveAttribute('data-enabled', 'true')
+      unmount()
+      viewport.isMobile = false
+      render(<Navigation user={mockUser} onLogout={mockOnLogout} hideTopNavMobile />)
+      expect(screen.getByTestId('notification-bell')).toHaveAttribute('data-enabled', 'true')
+    })
+  })
+
+  describe('Mobile bottom nav labels', () => {
+    it('renders the my page tab link(「活動」から「マイページ」へ。UIUX改装 項目7)', () => {
+      const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
+
+      const activityBottomLink = container.querySelector('a[aria-label="マイページ"]')
+      expect(activityBottomLink).toBeInTheDocument()
+      expect(activityBottomLink).toHaveTextContent('マイページ')
+      expect(container.querySelector('a[aria-label="活動"]')).toBeNull()
+    })
+
+    it('shows the same label as the desktop nav in the bottom tab bar', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
       const mapBottomLink = container.querySelector('a[aria-label="マップ"]')
@@ -173,18 +199,21 @@ describe('Navigation Logout Functionality', () => {
     it('applies one-line truncation styles to bottom nav labels', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const activityBottomLink = container.querySelector('a[aria-label="活動"]')
+      const activityBottomLink = container.querySelector('a[aria-label="マイページ"]')
       const label = activityBottomLink?.querySelector('span:last-child')
       expect(label).toBeInTheDocument()
       expect(activityBottomLink).toHaveClass('min-w-0')
       expect(label).toHaveClass('block', 'max-w-[72px]', 'truncate', 'whitespace-nowrap', 'text-center')
     })
 
-    it('renders report action button (not a link) in bottom nav', () => {
+    it('renders the 「知らせる・さがす」 action button (not a link) in bottom nav, in two lines(UIUX改装 項目5)', () => {
       const { container } = render(<Navigation user={mockUser} onLogout={mockOnLogout} />)
 
-      const reportButton = container.querySelector('button[aria-label="きけんハンター"]')
+      const reportButton = container.querySelector('button[aria-label="知らせる・さがす"]')
       expect(reportButton).toBeInTheDocument()
+      // 1行では幅に入らないので2行に分ける(読み上げは aria-label の1つの名前)
+      expect(reportButton).toHaveTextContent('知らせる・さがす')
+      expect(reportButton?.querySelectorAll('span.whitespace-nowrap')).toHaveLength(2)
     })
   })
 })

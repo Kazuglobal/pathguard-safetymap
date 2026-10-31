@@ -7,13 +7,42 @@ import type { ViewportBounds } from '@/lib/traffic-accident-heatmap'
 
 const FETCH_DEBOUNCE_MS = 300
 
+/**
+ * 事故多発地点は地図の初期表示で全員に出す(UIUX改装 項目9)。少し動かしただけで取り直さないよう、
+ * 範囲をこの幅(約2km)の格子まで外へ広げてそろえ、同じ範囲の結果はしばらく使い回す
+ */
+const BOUNDS_GRID_DEG = 0.02
+const RESULT_CACHE_SIZE = 24
+const resultCache = new Map<string, AccidentHotspotList>()
+
+export function snapBoundsToGrid(bounds: ViewportBounds): ViewportBounds {
+  const round = (value: number) => Number(value.toFixed(4))
+  const down = (value: number) => round(Math.floor(value / BOUNDS_GRID_DEG) * BOUNDS_GRID_DEG)
+  const up = (value: number) => round(Math.ceil(value / BOUNDS_GRID_DEG) * BOUNDS_GRID_DEG)
+  return {
+    minLng: Math.max(-180, down(Math.min(bounds.minLng, bounds.maxLng))),
+    minLat: Math.max(-90, down(Math.min(bounds.minLat, bounds.maxLat))),
+    maxLng: Math.min(180, up(Math.max(bounds.minLng, bounds.maxLng))),
+    maxLat: Math.min(90, up(Math.max(bounds.minLat, bounds.maxLat))),
+  }
+}
+
+/** テスト用: 覚えておいた結果を消す */
+export function clearHotspotResultCache(): void {
+  resultCache.clear()
+}
+
 export async function fetchHotspotsInBounds(bounds: ViewportBounds, signal?: AbortSignal): Promise<AccidentHotspotList> {
+  const snapped = snapBoundsToGrid(bounds)
   const query = new URLSearchParams({
-    minLng: String(Math.max(-180, Math.min(bounds.minLng, bounds.maxLng))),
-    minLat: String(Math.max(-90, Math.min(bounds.minLat, bounds.maxLat))),
-    maxLng: String(Math.min(180, Math.max(bounds.minLng, bounds.maxLng))),
-    maxLat: String(Math.min(90, Math.max(bounds.minLat, bounds.maxLat))),
+    minLng: String(snapped.minLng),
+    minLat: String(snapped.minLat),
+    maxLng: String(snapped.maxLng),
+    maxLat: String(snapped.maxLat),
   })
+  const cacheKey = query.toString()
+  const cached = resultCache.get(cacheKey)
+  if (cached) return cached
   const response = await fetch(`/api/traffic-accidents/hotspots?${query.toString()}`, {
     credentials: 'same-origin',
     headers: { Accept: 'application/json' },
@@ -23,7 +52,11 @@ export async function fetchHotspotsInBounds(bounds: ViewportBounds, signal?: Abo
   if (!response.ok || !body || !Array.isArray(body.hotspots)) {
     throw new Error(body?.error ?? '事故多発地点の取得に失敗しました')
   }
-  return { hotspots: body.hotspots, truncated: Boolean(body.truncated) }
+  const result = { hotspots: body.hotspots, truncated: Boolean(body.truncated) }
+  resultCache.set(cacheKey, result)
+  // いちばん古いものから捨てる(Map は入れた順)
+  if (resultCache.size > RESULT_CACHE_SIZE) resultCache.delete(resultCache.keys().next().value as string)
+  return result
 }
 
 export interface UseAccidentHotspotsReturn {

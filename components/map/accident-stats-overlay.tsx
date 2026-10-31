@@ -3,9 +3,11 @@
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import AccidentStatsPanel from "@/components/danger-report/accident-stats-panel"
+import { AccidentDataLinks } from "@/components/map/accident-data-links"
 import type { AccidentStats } from "@/lib/traffic-accident-data"
 import type { AccidentStatsStatus } from "@/hooks/use-accident-stats"
 import { accidentYearWindow, formatAccidentYearWindow, type AccidentYearWindow } from '@/lib/accident-stats-year-window'
+import { PointHazardSection } from './point-hazard-section'
 
 interface AccidentStatsOverlayProps {
   status: AccidentStatsStatus
@@ -50,7 +52,9 @@ export function AccidentStatsOverlay({
     <section aria-label="周辺事故の集計" className={`absolute z-20 rounded-2xl border border-slate-200 bg-white shadow-lg ${
       isMobile
         ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] left-3 right-3 max-h-[55dvh]'
-        : 'top-24 right-4 w-96 max-h-[calc(100vh-8rem)]'
+        // パソコンでは上の列(検索・通学路チェック・くわしい表示の列まで)の下に置く。top-24 だと、幅 890px 未満では閉じるボタンが、
+        // それより広くても見出しが、上の列の下に潜っていた(lib/map-overlay-ui.ts の BELOW_MAP_TOP_ROWS の md の unfolded と同じ高さ)
+        : 'top-[calc(env(safe-area-inset-top,0px)+16.5rem)] right-4 w-96 max-h-[calc(100dvh-18rem)]'
     } overflow-y-auto`}>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white p-3">
         <div className="flex items-start justify-between gap-2">
@@ -58,9 +62,9 @@ export function AccidentStatsOverlay({
             <h2 className="text-sm font-bold text-slate-900">{locationSource === 'gps' ? '現在地の周辺事故' : '選択地点の周辺事故'}</h2>
             <p className="mt-1 text-xs text-slate-600">青い破線の円内・中心から半径300m</p>
             <p className="mt-1 text-xs font-medium text-slate-800">集計: {formatAccidentYearWindow(window)}の全事故</p>
-            {mapYearWindow && <p className="mt-1 text-[11px] text-slate-600">地図のピン: {formatAccidentYearWindow(mapYearWindow)}・地図のフィルターを適用。集計期間外のピンは件数に含みません。</p>}
+            {mapYearWindow && <p className="mt-1 text-[12px] text-slate-600">地図のピン: {formatAccidentYearWindow(mapYearWindow)}・地図のフィルターを適用。集計期間外のピンは件数に含みません。</p>}
             {locationSource === 'map' && <p className="mt-1 text-xs font-medium text-slate-700">地図で選択した地点の集計です。現在地とは別です。</p>}
-            {center && <p className="mt-1 text-[11px] text-slate-500">中心: {center[1].toFixed(5)}, {center[0].toFixed(5)}</p>}
+            {center && <p className="mt-1 text-[12px] text-slate-500">中心: {center[1].toFixed(5)}, {center[0].toFixed(5)}</p>}
           </div>
           <Button variant="ghost" size="sm" aria-label="事故集計を閉じる" onClick={onReset} className="h-8 w-8 shrink-0 p-0"><X className="h-4 w-4" /></Button>
         </div>
@@ -88,6 +92,9 @@ export function AccidentStatsOverlay({
           <AccidentStatsPanel stats={stats} mode="full" onAccidentNavigate={onAccidentNavigate} />
         </div>
       )}
+      {/* 事故をくわしく調べる画面へ(UIUX改装 項目43) */}
+      {status === 'loaded' && stats && <AccidentDataLinks className="p-3" />}
+      {center && <PointHazardSection center={center} locationSource={locationSource} />}
     </section>
   )
 }

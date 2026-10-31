@@ -173,8 +173,8 @@ export function WizardTrail({
                 {done ? <Check className="h-4 w-4" strokeWidth={3.4} /> : i + 1}
               </motion.span>
               <span
-                className="text-[10px] font-black leading-none"
-                style={{ color: active ? C.ink : C.inkFaint }}
+                className="text-[12px] font-black leading-none"
+                style={{ color: active ? C.ink : C.inkSoft }}
               >
                 {label}
               </span>
@@ -266,7 +266,7 @@ export const DANGER_TYPES = [
     label: "そのほか",
     sub: "きになる こと",
     icon: getDangerTypePresentation("other").icon,
-    color: "#847661",
+    color: "#746855",
     soft: "#F3EAD6",
   },
 ] as const
@@ -319,7 +319,7 @@ export function DangerTypePicker({
             <span className="text-[14px] font-black leading-none" style={{ color: C.ink }}>
               {t.label}
             </span>
-            <span className="text-[10.5px] font-bold leading-none" style={{ color: C.inkSoft }}>
+            <span className="text-[12px] font-bold leading-none" style={{ color: C.inkSoft }}>
               {t.sub}
             </span>
           </motion.button>
@@ -368,7 +368,7 @@ export function DangerLevelPicker({
               whileTap={reduce ? undefined : { scale: 0.94 }}
               transition={tankenTokens.spring}
               className={cn(
-                "flex flex-1 items-end justify-center rounded-[12px] border-2 pb-1 text-[11px] font-black",
+                "flex flex-1 items-end justify-center rounded-[12px] border-2 pb-1 text-[12px] font-black",
                 tankenTokens.cls.focus,
               )}
               style={{
@@ -376,7 +376,7 @@ export function DangerLevelPicker({
                 background: filled ? l.color : "#F6EFDF",
                 borderColor: filled ? "rgba(67,57,43,.2)" : "rgba(67,57,43,.14)",
                 boxShadow: active ? `0 3px 0 rgba(67,57,43,.3)` : "none",
-                color: filled ? (l.v === 3 ? "rgba(67,57,43,.75)" : "rgba(255,255,255,.9)") : "#B7AB93",
+                color: filled ? (l.v === 3 ? "rgba(67,57,43,.75)" : "rgba(255,255,255,.9)") : C.inkSoft,
               }}
             >
               {l.v}
@@ -385,7 +385,7 @@ export function DangerLevelPicker({
         })}
       </div>
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-[11px] font-bold" style={{ color: C.inkFaint }}>
+        <span className="text-[12px] font-bold" style={{ color: C.inkSoft }}>
           レベル {value} / 5
         </span>
         <motion.span

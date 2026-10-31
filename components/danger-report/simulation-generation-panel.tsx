@@ -172,7 +172,7 @@ export function SimulationGenerationPanel({
                 <button
                   key={category.id}
                   type="button"
-                  className={`rounded-full border-2 px-2.5 py-1 text-[11.5px] font-black ${tankenTokens.cls.focus}`}
+                  className={`rounded-full border-2 px-2.5 py-1 text-[12px] font-black ${tankenTokens.cls.focus}`}
                   style={{
                     background: selectedCategory === category.id ? C.primarySoft : "#fff",
                     color: selectedCategory === category.id ? C.primaryStrong : C.inkSoft,
@@ -207,7 +207,7 @@ export function SimulationGenerationPanel({
 
             {selectedPrompt && (
               <div
-                className="rounded-[12px] border bg-white p-2 text-[11.5px] font-bold"
+                className="rounded-[12px] border bg-white p-2 text-[12px] font-bold"
                 style={{ borderColor: tankenTokens.border.faint, color: C.inkSoft }}
               >
                 <button
@@ -257,7 +257,7 @@ export function SimulationGenerationPanel({
               <div className="border-t pt-2" style={{ borderColor: tankenTokens.border.faint }}>
                 <button
                   type="button"
-                  className="mb-2 flex items-center gap-1 text-[11.5px] font-black"
+                  className="mb-2 flex items-center gap-1 text-[12px] font-black"
                   style={{ color: C.inkSoft }}
                   onClick={() => onShowBatchResultsChange(!showBatchResults)}
                 >
@@ -275,7 +275,7 @@ export function SimulationGenerationPanel({
                       if (categoryImages.length === 0) return null
                       return (
                         <div key={category.id}>
-                          <p className="mb-1 text-[11px] font-bold" style={{ color: C.inkFaint }}>
+                          <p className="mb-1 text-[12px] font-bold" style={{ color: C.inkSoft }}>
                             {category.name}
                           </p>
                           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -296,7 +296,7 @@ export function SimulationGenerationPanel({
                                     <span className="text-xs font-black text-white">ついか</span>
                                   </div>
                                 </div>
-                                <p className="mt-0.5 truncate text-[10.5px] font-bold" style={{ color: C.inkFaint }}>
+                                <p className="mt-0.5 truncate text-[12px] font-bold" style={{ color: C.inkSoft }}>
                                   {image.shortName}
                                 </p>
                               </div>

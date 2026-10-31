@@ -16,11 +16,11 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
+      "kobe-higashinada-mikage-hitandrun-girl-20261029",
+      "national-junior-high-bicycle-accident-not-told-20261028",
       "ichinoseki-kawasaki-monzaki-bicycle-collision-20261027",
       "isehara-all-elementary-watch-terminal-20261030",
       "national-school-safety-subcommittee-safety-education-20261019",
-      "hamamatsu-hamana-hosoe-bicycle-truck-boy-20261027",
-      "yaizu-munetaka-bicycle-hitandrun-boy-20261027",
     ]))
     expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "matsumoto-arigasaki-hitandrun-referral-20261019",
@@ -28,6 +28,8 @@ describe("school route news release readiness regressions", () => {
       "matsuyama-jobomen-crosswalk-girl-hit-20261019",
     ]))
     expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
+      "hamamatsu-hamana-hosoe-bicycle-truck-boy-20261027",
+      "yaizu-munetaka-bicycle-hitandrun-boy-20261027",
       "ginowan-schoolway-group-commute-notice-20261023",
       "fukuroi-asaoka-left-turn-truck-girl-20261027",
       "minamialps-dodo-candy-lure-arm-grabbed-20261023",

@@ -9,53 +9,33 @@ export interface MapDisplayOption {
 }
 
 interface BuildMapDisplayOverlayOptionsParams {
-  isHeatmapVisible: boolean
   isHotspotVisible: boolean
   isFloodVisible: boolean
   isTsunamiVisible: boolean
-  isSuspiciousVisible: boolean
-  onToggleHeatmap: () => void
   onToggleHotspot: () => void
   onToggleFlood: () => void
   onToggleTsunami: () => void
-  onToggleSuspicious: () => void
 }
 
+/**
+ * 「くわしい表示」の中の「地図の見た目」で重ねる情報(UIUX改装 項目9・10)。
+ * 事故ヒートマップと不審者情報は「くわしい表示」に自分のボタンがあるので、ここには並べない(切り替える場所を1つにする)
+ */
 export function buildMapDisplayOverlayOptions({
-  isHeatmapVisible,
   isHotspotVisible,
   isFloodVisible,
   isTsunamiVisible,
-  isSuspiciousVisible,
-  onToggleHeatmap,
   onToggleHotspot,
   onToggleFlood,
   onToggleTsunami,
-  onToggleSuspicious,
 }: BuildMapDisplayOverlayOptionsParams): MapDisplayOption[] {
   return [
-    {
-      id: "heatmap",
-      label: "事故ヒートマップ",
-      description: "事故の集中地点を重ねて表示します",
-      selected: isHeatmapVisible,
-      onSelect: onToggleHeatmap,
-      previewImage: "/images/map-style-previews/heat-map.png",
-      previewAlt: "事故ヒートマップのプレビュー",
-    },
     {
       id: "hotspot",
       label: "事故多発地点",
       description: "半径30m以内で5年に5件以上の事故がある地点を表示します",
       selected: isHotspotVisible,
       onSelect: onToggleHotspot,
-    },
-    {
-      id: "suspicious",
-      label: "不審者情報",
-      description: "不審者目撃エリアを半径つきの円で表示します",
-      selected: isSuspiciousVisible,
-      onSelect: onToggleSuspicious,
     },
     {
       id: "flood",

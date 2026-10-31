@@ -2,6 +2,9 @@
 # 依存パッケージ
 # -----------------------------------------
 /node_modules
+/.venv-hazards/
+/artifacts/ar-*.log
+__pycache__/
 /.pnpm-store/
 # pnpm 管理のため npm の lockfile は追跡しない(正は pnpm-lock.yaml)
 package-lock.json

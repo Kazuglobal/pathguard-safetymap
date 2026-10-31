@@ -53,6 +53,15 @@ test('only explicit public values and preview-only server secrets are propagated
   assert.throws(() => previewSecrets({}))
 })
 
+test('Google Maps preview key is optional and uses the supplied preview value only', () => {
+  const env = Object.fromEntries([...previewPublicNames, ...previewSecretNames].map((name) => [name, 'preview-value']))
+  assert.equal(previewSecrets(env).NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, undefined)
+  assert.equal(previewSecrets({ ...env, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: 'preview-google' }).NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, 'preview-google')
+  const workflow = readFileSync('.github/workflows/cloudflare-preview.yml', 'utf8')
+  assert.match(workflow, /secrets\.PREVIEW_NEXT_PUBLIC_GOOGLE_MAPS_API_KEY/)
+  assert.doesNotMatch(workflow, /secrets\.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY/)
+})
+
 test('preview build rejects local production files and removes inherited credentials', () => {
   const env = Object.fromEntries([...previewPublicNames, ...previewSecretNames].map((name) => [name, 'value']))
   for (const file of forbiddenBuildFiles) assert.throws(() => previewBuildEnvironment(env, [file]))

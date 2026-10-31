@@ -6,7 +6,11 @@ import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { loginPathFor } from "@/lib/auth/login-path";
+import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label";
+
+export const metadata: Metadata = { title: "バッジ" };
 
 export default async function BadgePage() {
   const actor = await getActor();
@@ -55,7 +59,8 @@ export default async function BadgePage() {
   // 9) 画面描画
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* ページタイトル */}
+      {/* ページタイトル(子ども向けの遊びの傘「きけんハンター」の仲間。UIUX改装 項目8) */}
+      <KidsUmbrellaLabel />
       <h1 data-testid="badges-title" className="text-2xl font-bold mb-2">
         バッジ一覧
       </h1>

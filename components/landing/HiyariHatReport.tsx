@@ -14,6 +14,7 @@ import { NATIONWIDE } from "@/lib/user-region"
 import { useReportRegionFilter } from "@/hooks/use-report-region-filter"
 import { ReportRegionFilter } from "@/components/region/report-region-filter"
 import { PREVIEW_COORD_SLACK_KM, SCHOOL_RADIUS_KM, latLngBoundsForRadius } from "@/lib/region-filter"
+import { REPORT_ENTRY_LABEL, REPORT_PATH } from "@/lib/report-entry"
 
 const C = tankenTokens.color
 
@@ -219,7 +220,7 @@ export function HiyariHatReport() {
                     >
                       {dangerLabel}
                     </span>
-                    <span className="text-xs" style={{ color: C.inkFaint }}>
+                    <span className="text-xs" style={{ color: C.inkSoft }}>
                       {timeLabel}
                     </span>
                   </div>
@@ -270,7 +271,7 @@ export function HiyariHatReport() {
                         tankenTokens.cls.focus,
                         reactions[report.id]?.helpful
                           ? "bg-blue-100 text-blue-600"
-                          : "bg-[#F3EAD6] text-[#847661] hover:bg-[#EDE2C8]"
+                          : "bg-[#F3EAD6] text-[#746855] hover:bg-[#EDE2C8]"
                       )}
                     >
                       <ThumbsUp className="h-4 w-4" aria-hidden="true" />
@@ -284,7 +285,7 @@ export function HiyariHatReport() {
                         tankenTokens.cls.focus,
                         reactions[report.id]?.caution
                           ? "bg-orange-100 text-orange-600"
-                          : "bg-[#F3EAD6] text-[#847661] hover:bg-[#EDE2C8]"
+                          : "bg-[#F3EAD6] text-[#746855] hover:bg-[#EDE2C8]"
                       )}
                     >
                       <AlertCircle className="h-4 w-4" aria-hidden="true" />
@@ -300,11 +301,11 @@ export function HiyariHatReport() {
         {/* 投稿ボタン */}
         <div className="mt-4 px-4 text-center md:mt-6">
           <Link
-            href="/map"
+            href={REPORT_PATH}
             className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-8 py-3 text-base font-bold text-white transition-transform active:translate-y-1 active:shadow-none md:w-auto ${tankenTokens.cls.focus}`}
             style={{ background: C.accent, boxShadow: tankenTokens.shadow.pressAccent }}
           >
-            ヒヤリハットを報告する
+            {REPORT_ENTRY_LABEL}
           </Link>
         </div>
       </div>

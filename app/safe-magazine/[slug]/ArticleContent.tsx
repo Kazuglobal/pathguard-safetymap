@@ -64,7 +64,7 @@ export function ArticleContent({ article }: ArticleContentProps) {
             {IconComponent && <IconComponent className="w-4 h-4" />}
             {article.categoryLabel}
           </div>
-          <div className="flex items-center gap-1 text-sm text-gray-400">
+          <div className="flex items-center gap-1 text-sm text-gray-500">
             <Clock className="w-4 h-4" />
             {formatDate(article.publishedDate)}
           </div>

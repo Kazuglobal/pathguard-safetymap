@@ -115,10 +115,43 @@ describe("RouteHazardPanel", () => {
     vi.clearAllMocks()
   })
 
+  // 道すじ(線)が無い通学路・通学路が無いときは、理由と直し方を出す(UIUX改装 項目50)
+  it("道すじの無い通学路には、線を引けない理由と、通学路の画面への道を出す", () => {
+    render(<RouteHazardPanel {...defaultProps} variant="inline" />)
+
+    const notice = screen.getByTestId("route-geometry-notice")
+    expect(notice).toHaveTextContent("道すじ(線)が無いので")
+    expect(screen.getByRole("link", { name: "通学路の画面へ" })).toHaveAttribute("href", "/routes")
+  })
+
+  it("道すじのある通学路には、その案内を出さない", () => {
+    const routeWithLine = { ...mockRoute, route_geometry: { type: "LineString" as const, coordinates: [[139.0, 35.0], [139.1, 35.1]] } }
+    render(<RouteHazardPanel {...defaultProps} routes={[routeWithLine]} variant="inline" />)
+
+    expect(screen.queryByTestId("route-geometry-notice")).not.toBeInTheDocument()
+  })
+
+  it("通学路を読み込み中・読み込めなかったときは、「まだ登録されていません」と言わない", () => {
+    const { rerender } = render(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} routesStatus="loading" variant="inline" />)
+    expect(screen.getByTestId("route-geometry-notice")).toHaveTextContent("通学路を読み込んでいます")
+
+    rerender(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} routesStatus="error" variant="inline" />)
+    expect(screen.getByTestId("route-geometry-notice")).toHaveTextContent("通学路を読み込めませんでした")
+    expect(screen.queryByText(/まだ登録されていません/)).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "通学路を登録する" })).not.toBeInTheDocument()
+  })
+
+  it("通学路がまだ無ければ、登録への道を出す", () => {
+    render(<RouteHazardPanel {...defaultProps} routes={[]} selectedRouteId={null} variant="inline" />)
+
+    expect(screen.getByTestId("route-geometry-notice")).toHaveTextContent("通学路がまだ登録されていません")
+    expect(screen.getByRole("link", { name: "通学路を登録する" })).toHaveAttribute("href", "/routes")
+  })
+
   it("desktop ではハザードカードを常時表示する", () => {
     render(<RouteHazardPanel {...defaultProps} />)
 
-    expect(screen.getByText("通学ルートハザード")).toBeInTheDocument()
+    expect(screen.getByText("通学路のハザード")).toBeInTheDocument()
     expect(screen.getByText("いつもの通学路は注意が必要です")).toBeInTheDocument()
     expect(screen.getByText("冠水しやすい交差点")).toBeInTheDocument()
     expect(screen.getByText("情報源: 洪水浸水想定区域")).toBeInTheDocument()
@@ -158,7 +191,7 @@ describe("RouteHazardPanel", () => {
   it("inline variant では絶対配置やドロワートリガーなしで設定内容を埋め込める", () => {
     const { container } = render(<RouteHazardPanel {...defaultProps} variant="inline" />)
 
-    expect(screen.getByText("通学ルートハザード")).toBeInTheDocument()
+    expect(screen.getByText("通学路のハザード")).toBeInTheDocument()
     expect(screen.getByText("洪水浸水想定")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "通学路の注意点を開く" })).not.toBeInTheDocument()
     expect(screen.queryByTestId("map-style-selector")).not.toBeInTheDocument()

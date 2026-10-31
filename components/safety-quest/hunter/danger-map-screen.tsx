@@ -228,7 +228,7 @@ export function DangerMapScreen({
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[13px]">
             <Image
               src="/images/hunter/records-empty.png"
-              alt="まっしろな たんけんノートと ルペ"
+              alt="まっしろな あんぜんノートと ルペ"
               fill
               sizes="300px"
               className="object-cover"
@@ -414,7 +414,7 @@ function PhotoRow({
               draggable={false}
             />
           ) : (
-            <span className="grid h-full w-full place-items-center" style={{ color: C.inkFaint }}>
+            <span className="grid h-full w-full place-items-center" style={{ color: C.inkSoft }}>
               <ImageOff className="h-6 w-6" aria-hidden="true" />
             </span>
           )}
@@ -424,11 +424,11 @@ function PhotoRow({
           <span className="truncate text-[13.5px] font-black" style={{ color: C.ink }}>
             {dateText}
           </span>
-          <span className="flex items-center gap-1 text-[11.5px] font-bold" style={{ color: C.inkSoft }}>
+          <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: C.inkSoft }}>
             <MapPin
               className="h-3.5 w-3.5"
               aria-hidden="true"
-              style={{ color: hasPin ? C.primary : C.inkFaint }}
+              style={{ color: hasPin ? C.primary : C.inkSoft }}
             />
             {hasPin ? "ばしょ あり" : "ばしょ なし"}
           </span>
@@ -437,7 +437,7 @@ function PhotoRow({
               {photo.dangers.map((d, i) => (
                 <span
                   key={i}
-                  className="rounded-full px-2 py-0.5 text-[10.5px] font-black text-white"
+                  className="rounded-full px-2 py-0.5 text-[12px] font-black text-white"
                   style={{ background: severityColor(photo.topSeverity) }}
                 >
                   {/* 極小ルビは読めないため、タグ内はかなに開く */}
@@ -448,7 +448,7 @@ function PhotoRow({
               ))}
             </span>
           ) : null}
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] font-bold" style={{ color: C.inkSoft }}>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] font-bold" style={{ color: C.inkSoft }}>
             {/* plays が無い(未プレイ/取得失敗)ときは何も断定しない */}
             {photo.plays ? (
               <span>

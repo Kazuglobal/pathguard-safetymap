@@ -608,7 +608,7 @@ export default function ReportHubPage() {
                           <p className="text-sm font-semibold">{category.label}</p>
                           <p className="text-xs text-white/80">{category.count} 件</p>
                           {category.lastReportedAt && (
-                            <p className="mt-1 text-[10px] text-white/70">最終更新 {formatDate(category.lastReportedAt)}</p>
+                            <p className="mt-1 text-[12px] text-white/70">最終更新 {formatDate(category.lastReportedAt)}</p>
                           )}
                         </div>
                       </button>

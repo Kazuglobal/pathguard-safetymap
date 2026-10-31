@@ -59,7 +59,7 @@ export function ImageWithLongPress({
           onError={onError}
         />
       )}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-white text-[10px] pointer-events-none">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-white text-[12px] pointer-events-none">
         長押しで拡大
       </div>
     </div>

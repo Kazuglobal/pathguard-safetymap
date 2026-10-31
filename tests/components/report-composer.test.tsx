@@ -39,8 +39,7 @@ describe("ReportComposer", () => {
     })
   })
 
-  it("shows the approved three-step hierarchy and opens the shared wizard", async () => {
-    const user = userEvent.setup()
+  it("shows the approved three-step hierarchy and sends 「危険を報告する」 to the map report form(UIUX改装 項目5)", () => {
     render(<ReportComposer />)
 
     expect(screen.getByText("1", { selector: "span" })).toBeInTheDocument()
@@ -48,7 +47,17 @@ describe("ReportComposer", () => {
     expect(screen.getByText("写真・内容", { selector: "span" })).toBeInTheDocument()
     expect(screen.getByText("確認", { selector: "span" })).toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: "危険を報告する" }))
+    // 報告の入口は、どこから入っても地図つきの報告フォーム
+    expect(screen.getByRole("link", { name: "危険を報告する" })).toHaveAttribute("href", "/map?report=open")
+    expect(screen.queryByRole("button", { name: "危険を報告する" })).toBeNull()
+  })
+
+  it("opens the shared wizard from 「現在地からはじめる」, with a way back to the map form", async () => {
+    mocks.getCurrentPosition.mockImplementationOnce(() => {})
+    const user = userEvent.setup()
+    render(<ReportComposer />)
+
+    await user.click(screen.getByRole("button", { name: "現在地からはじめる" }))
 
     expect(screen.getByRole("dialog", { name: "危険を報告する" })).toBeInTheDocument()
     expect(screen.getByTestId("report-wizard")).toHaveAttribute("data-location", "none")

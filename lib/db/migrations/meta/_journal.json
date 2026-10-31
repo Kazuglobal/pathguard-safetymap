@@ -43,6 +43,13 @@
       "when": 1793233427657,
       "tag": "20261029002347_uiux_privacy_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793318298597,
+      "tag": "20261029235818_uiux_drop_profiles_full_name",
+      "breakpoints": true
     }
   ]
 }

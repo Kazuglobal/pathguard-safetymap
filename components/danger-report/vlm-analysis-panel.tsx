@@ -242,9 +242,9 @@ function CompletedView({ result }: { result: VlmAnalysisResult }) {
             {getRiskLevelLabel(result.overall_risk_level)}
           </Badge>
           {isExpanded ? (
-            <ChevronUp className="h-5 w-5 text-gray-400 flex-shrink-0" />
+            <ChevronUp className="h-5 w-5 text-gray-500 flex-shrink-0" />
           ) : (
-            <ChevronDown className="h-5 w-5 text-gray-400 flex-shrink-0" />
+            <ChevronDown className="h-5 w-5 text-gray-500 flex-shrink-0" />
           )}
         </div>
       </button>

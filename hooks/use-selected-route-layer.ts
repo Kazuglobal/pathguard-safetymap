@@ -15,6 +15,8 @@ interface UseSelectedRouteLayerParams {
   mapInitializedRef: MutableRefObject<boolean>
   selectedUserRoute: UserRoute | null
   mapStyleSyncToken: number
+  /** 地図の load が済んだか。選んだ通学路へ寄せるのは、地図ができてから */
+  isMapReady: boolean
 }
 
 /**
@@ -27,6 +29,7 @@ export function useSelectedRouteLayer({
   mapInitializedRef,
   selectedUserRoute,
   mapStyleSyncToken,
+  isMapReady,
 }: UseSelectedRouteLayerParams) {
   const fitRouteBounds = useCallback((route: UserRoute) => {
     if (!mapRef.current || !route.route_geometry?.coordinates?.length) return
@@ -86,8 +89,10 @@ export function useSelectedRouteLayer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyleSyncToken, selectedUserRoute])
 
+  // 通学路が地図より先に選ばれたとき(/map?routeId= で、お気に入りでない通学路を開いたとき)も、
+  // 地図ができたらその通学路へ寄せる(UIUX改装 項目50)
   useEffect(() => {
-    if (!selectedUserRoute) return
+    if (!selectedUserRoute || !isMapReady) return
     fitRouteBounds(selectedUserRoute)
-  }, [fitRouteBounds, selectedUserRoute])
+  }, [fitRouteBounds, selectedUserRoute, isMapReady])
 }

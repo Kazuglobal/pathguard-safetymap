@@ -99,7 +99,7 @@ export function CollectionScreen({ unlockedRewards, onBack }: { unlockedRewards:
                     ) : (
                       <Mascot size="sm" className="scale-90" />
                     )}
-                    {!locked && <span className="absolute left-1 top-1 rounded bg-[#ef4444] px-1 text-[10px] font-black text-white">NEW!</span>}
+                    {!locked && <span className="absolute left-1 top-1 rounded bg-[#ef4444] px-1 text-[12px] font-black text-white">NEW!</span>}
                   </div>
                   <p className="text-xs font-black">{item.name}</p>
                   <p className="text-xs font-black text-[#eab308]">{item.rarity}</p>

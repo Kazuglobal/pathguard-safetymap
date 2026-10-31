@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act, waitFor } from '@testing-library/react'
+import { render, act, waitFor, screen, fireEvent } from '@testing-library/react'
 import MapContainer from '@/components/map/map-container'
 
 // ---- 共有ホルダー（vi.mock ファクトリから参照するため hoisted） ----
@@ -165,6 +165,7 @@ const h = vi.hoisted(() => {
     captured: {} as Record<string, any>,
     toast: vi.fn(),
     isMobile: false,
+    isShortScreen: false,
     searchParams: new URLSearchParams(),
     initialGps: null as null | {
       location: [number, number] | null
@@ -187,6 +188,7 @@ const h = vi.hoisted(() => {
       pendingReports: [] as any[],
       setDangerReports: vi.fn(),
       setPendingReports: vi.fn(),
+      reportsLoadState: 'loaded' as 'idle' | 'loaded' | 'error',
     },
     admin: { isAdmin: false, currentUserId: null as string | null },
     fetchStats: vi.fn(),
@@ -243,9 +245,13 @@ vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: h.toast }),
 }))
 
-vi.mock('@/hooks/use-media-query', () => ({
-  useMediaQuery: () => h.isMobile,
-}))
+vi.mock('@/hooks/use-media-query', async () => {
+  // 0件の案内を出す高さの判定(SHORT_MAP_SCREEN_QUERY)だけは別に切り替える
+  const { SHORT_MAP_SCREEN_QUERY } = await import('@/lib/map/empty-area-notice')
+  return {
+    useMediaQuery: (query: string) => (query === SHORT_MAP_SCREEN_QUERY ? h.isShortScreen : h.isMobile),
+  }
+})
 
 // ---- データ系フック ----
 vi.mock('@/hooks/use-danger-reports', () => ({
@@ -369,6 +375,14 @@ vi.mock('@/components/map/accident-stats-overlay', () => ({
 
 vi.mock('@/components/map/accident-heatmap-layer', () => ({
   AccidentHeatmapLayer: () => null,
+}))
+
+// 事故多発地点のレイヤーの中身は accident-hotspot-layer.test.tsx で確かめる。ここでは出すかどうかだけを見る
+vi.mock('@/components/map/accident-hotspot-layer', () => ({
+  AccidentHotspotLayer: (props: any) => {
+    h.captured.hotspotLayer = props
+    return null
+  },
 }))
 
 vi.mock('@/components/map/accident-heatmap-controls', () => ({
@@ -511,6 +525,7 @@ beforeEach(() => {
   h.markers.length = 0
   h.captured = {}
   h.isMobile = false
+  h.isShortScreen = false
   h.searchParams = new URLSearchParams()
   h.gps.location = null
   h.gps.isLoading = false
@@ -519,6 +534,7 @@ beforeEach(() => {
   h.userRoutes.primaryRoute = null
   h.reports.dangerReports = []
   h.reports.pendingReports = []
+  h.reports.reportsLoadState = 'loaded'
   h.admin.isAdmin = false
   h.admin.currentUserId = null
   h.supabase = createSupabaseMock()
@@ -575,6 +591,112 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
       // NavigationControl + GeolocateControl の2つ
       expect(lastMap().controls.length).toBe(2)
+    })
+  })
+
+  // 初期表示は「通学路チェック」: 自分の通学路・危険のピン・事故多発地点(UIUX改装 項目9)
+  describe('初期表示の「通学路チェック」', () => {
+    it('事故多発地点は最初から出し、ほかの重ねる情報は「くわしい表示」で選ぶまで出さない', () => {
+      renderMapContainer()
+
+      expect(h.captured.hotspotLayer.isVisible).toBe(true)
+      expect(h.captured.topOverlay.isHeatmapVisible).toBe(false)
+      expect(h.captured.topOverlay.isSuspiciousVisible).toBe(false)
+      expect(h.captured.topOverlay.activePanel).toBeNull()
+      // 地図の見た目・洪水・津波は「くわしい表示」の中(右下の「表示」は無くした)
+      expect(typeof h.captured.topOverlay.renderDisplayOptions).toBe('function')
+      expect(h.captured.floatingControls).not.toHaveProperty('displayOverlayOptions')
+    })
+
+    it('「くわしい表示」の列が出ているあいだは、右上のポイント表示などを列の下へずらす', () => {
+      renderMapContainer()
+      expect(h.captured.floatingControls.isTopDetailsOpen).toBe(false)
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(true))
+      expect(h.captured.floatingControls.isTopDetailsOpen).toBe(true)
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(false))
+      expect(h.captured.floatingControls.isTopDetailsOpen).toBe(false)
+    })
+  })
+
+  // 見えている範囲に報告が1件もないときの案内(UIUX改装 項目10)
+  describe('報告が0件の地域の案内', () => {
+    it('見えている範囲に報告が無ければ、最初の1件の報告と、全国の事故データへの道を出す', () => {
+      renderMapContainer()
+      fireMapLoad()
+
+      expect(screen.getByTestId('map-empty-area-notice')).toHaveTextContent('この地域の報告はまだありません')
+      // スマホでは案内と重ならないよう、右上のポイント表示などをよける(map-floating-controls)
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(true)
+
+      fireEvent.click(screen.getByRole('button', { name: /事故ヒートマップ\(全国データ\)を見る/ }))
+
+      expect(h.captured.topOverlay.activePanel).toBe('heatmap')
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
+    })
+
+    it('報告がある範囲・地図の準備中には出さない', () => {
+      renderMapContainer()
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+
+      h.reports.dangerReports = [sampleReport({ id: 'r-empty-check' })]
+      fireMapLoad()
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+    })
+
+    it('報告の取得に失敗したとき・まだ取れていないときは「まだありません」と言わない', () => {
+      for (const state of ['error', 'idle'] as const) {
+        h.reports.reportsLoadState = state
+        const { unmount } = renderMapContainer()
+        fireMapLoad()
+        expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+        unmount()
+      }
+    })
+
+    it('閉じたら、この画面のあいだは出さない', () => {
+      renderMapContainer()
+      fireMapLoad()
+
+      fireEvent.click(screen.getByRole('button', { name: 'この案内を閉じる' }))
+
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+    })
+
+    // 横向きのスマホなどでは、上の列と下の操作の列のあいだに入らない(上の列の下に潜って押せなくなる)
+    it('低すぎる画面では出さず、右上のポイント表示などもよけさせない', () => {
+      h.isShortScreen = true
+      renderMapContainer()
+      fireMapLoad()
+
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
+    })
+
+    // 列を開いた低い画面では、案内が下の報告のボタンを覆っていた
+    it('「くわしい表示」の列が出ているあいだは出さず、たたんだら戻す', () => {
+      renderMapContainer()
+      fireMapLoad()
+      expect(screen.getByTestId('map-empty-area-notice')).toBeInTheDocument()
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(true))
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
+      expect(h.captured.floatingControls.isEmptyAreaNoticeVisible).toBe(false)
+
+      act(() => h.captured.topOverlay.onDetailsVisibleChange(false))
+      expect(screen.getByTestId('map-empty-area-notice')).toBeInTheDocument()
+    })
+
+    it('危険地点の一覧(サイドバー)を開いているあいだは出さない', () => {
+      renderMapContainer()
+      fireMapLoad()
+      expect(screen.getByTestId('map-empty-area-notice')).toBeInTheDocument()
+
+      act(() => h.captured.floatingControls.onToggleSidebar())
+
+      expect(screen.queryByTestId('map-empty-area-notice')).not.toBeInTheDocument()
     })
   })
 
@@ -828,6 +950,8 @@ describe('MapContainer characterization', () => {
       })
       expect(h.captured.mobileLocationSheet.awaitingLocationSelection).toBe(true)
       expect(h.captured.reportForms.isReportFormOpen).toBe(false)
+      // 場所を選んでいるあいだも、地図の見た目は変えられる(上の列は隠れる)
+      expect(screen.getByTestId('location-selection-style')).toBeInTheDocument()
 
       act(() => {
         h.captured.floatingControls.onAddReport()
@@ -842,6 +966,28 @@ describe('MapContainer characterization', () => {
       renderMapContainer({ autoOpenReport: true })
       fireMapLoad()
       expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+    })
+
+    // 報告の入口はすべて /map?report=open(UIUX改装 項目5)。URL の report=open は地図の準備より先に消えることがある
+    it('autoOpenReport: 地図の準備より先に URL から report=open が消えても、準備ができたらフォームを開く', () => {
+      const { rerender } = renderMapContainer({ autoOpenReport: true })
+      rerender(<MapContainer autoOpenReport={false} />)
+
+      fireMapLoad()
+
+      expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+    })
+
+    it('autoOpenReport: 一度開いたら、閉じたあとに勝手に開き直さない', () => {
+      renderMapContainer({ autoOpenReport: true })
+      fireMapLoad()
+      expect(h.captured.reportForms.isReportFormOpen).toBe(true)
+
+      act(() => {
+        h.captured.reportForms.onDesktopCancel()
+      })
+
+      expect(h.captured.reportForms.isReportFormOpen).toBe(false)
     })
 
     it('autoOpenReport（モバイル）: 地点選択モードが開く', () => {
@@ -915,7 +1061,7 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
 
       act(() => {
-        h.captured.floatingControls.toggle3DMode()
+        h.captured.topOverlay.onToggle3D()
       })
 
       const map = lastMap()
@@ -925,7 +1071,7 @@ describe('MapContainer characterization', () => {
       expect(map.setPitch).toHaveBeenCalledWith(60)
 
       act(() => {
-        h.captured.floatingControls.toggle3DMode()
+        h.captured.topOverlay.onToggle3D()
       })
       expect(map.setTerrain).toHaveBeenCalledWith(null)
       expect(map.setPitch).toHaveBeenCalledWith(0)
@@ -954,8 +1100,10 @@ describe('MapContainer characterization', () => {
       renderMapContainer()
       fireMapLoad()
 
+      // 地図の見た目は「くわしい表示」の中の「地図の見た目」から選ぶ(UIUX改装 項目9・10)
+      const styleSelector = h.captured.topOverlay.renderDisplayOptions(<button type="button" />)
       act(() => {
-        h.captured.floatingControls.setMapStyle('dark-v11')
+        styleSelector.props.onChange('dark-v11')
       })
       expect(lastMap().setStyle).toHaveBeenCalledWith('mapbox://styles/mapbox/dark-v11')
     })
@@ -973,6 +1121,68 @@ describe('MapContainer characterization', () => {
       fireMapLoad()
 
       expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-b')
+      // 通学路の「地図で見る」から来たら、その通学路の「通学路チェック」を開く(UIUX改装 項目50)
+      expect(h.captured.topOverlay.activePanel).toBe('hazard')
+    })
+
+    it('お気に入りでない通学路を routeId で開いたら、地図ができたあとにその通学路へ寄せる', () => {
+      h.userRoutes.routes = [
+        { id: 'route-a', name: 'ルートA', route_geometry: { type: 'LineString', coordinates: [[139.6, 35.6], [139.61, 35.61]] } },
+        { id: 'route-b', name: 'ルートB', route_geometry: { type: 'LineString', coordinates: [[135.5, 34.7], [135.51, 34.71]] } },
+      ]
+      h.userRoutes.primaryRoute = h.userRoutes.routes[0]
+
+      renderMapContainer({ preferredRouteId: 'route-b' })
+      // 地図ができる前に寄せようとしても効かないので、load のあとに寄せ直すことを確かめる
+      lastMap().fitBounds.mockClear()
+      fireMapLoad()
+
+      expect(lastMap().fitBounds).toHaveBeenCalledTimes(1)
+      const bounds = lastMap().fitBounds.mock.calls[0][0]
+      expect(bounds.coords[0]).toEqual([135.5, 34.7])
+    })
+
+    it('地図を開いたまま別の routeId へ移ったら、その通学路を選んで通学路チェックを開き直す', () => {
+      h.userRoutes.routes = [
+        { id: 'route-a', name: 'ルートA' },
+        { id: 'route-c', name: 'ルートC' },
+      ]
+      h.userRoutes.primaryRoute = { id: 'route-a', name: 'ルートA' }
+
+      const { rerender } = renderMapContainer()
+      fireMapLoad()
+      expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-a')
+
+      rerender(<MapContainer preferredRouteId="route-c" />)
+
+      expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-c')
+      expect(h.captured.topOverlay.activePanel).toBe('hazard')
+    })
+
+    it('routeId で開いたあとにパネルで別の通学路を選んだら、引き戻さない', () => {
+      h.userRoutes.routes = [
+        { id: 'route-a', name: 'ルートA' },
+        { id: 'route-b', name: 'ルートB' },
+      ]
+      h.userRoutes.primaryRoute = { id: 'route-a', name: 'ルートA' }
+
+      renderMapContainer({ preferredRouteId: 'route-b' })
+      fireMapLoad()
+      act(() => {
+        h.captured.routeHazardPanel.onRouteChange('route-a')
+      })
+
+      expect(h.captured.routeHazardPanel.selectedRouteId).toBe('route-a')
+    })
+
+    it('routeId なしで開いたときは、通学路チェックのパネルを勝手に開かない', () => {
+      h.userRoutes.routes = [{ id: 'route-a', name: 'ルートA' }]
+      h.userRoutes.primaryRoute = { id: 'route-a', name: 'ルートA' }
+
+      renderMapContainer()
+      fireMapLoad()
+
+      expect(h.captured.topOverlay.activePanel).toBeNull()
     })
 
     it('preferredRouteId が無ければ primaryRoute を選択する', () => {

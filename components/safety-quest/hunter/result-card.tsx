@@ -223,7 +223,7 @@ export function ResultCard(props: ResultCardProps) {
               <StarIcon className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden="true" />
               <span className="text-left leading-tight">
                 <span className="block text-[13.5px] font-black">{badge.label}</span>
-                <span className="block text-[11px] font-bold opacity-85">{badge.caption}</span>
+                <span className="block text-[12px] font-bold opacity-85">{badge.caption}</span>
               </span>
             </motion.div>
           </div>
@@ -324,7 +324,7 @@ export function ResultCard(props: ResultCardProps) {
                     </span>
                     {h.accidentLink ? (
                       <span
-                        className="rounded-full px-2 py-0.5 text-[10.5px] font-black text-white"
+                        className="rounded-full px-2 py-0.5 text-[12px] font-black text-white"
                         style={{ background: C.accent }}
                       >
                         {toKana(h.accidentLink)}

@@ -1,9 +1,11 @@
 import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
+import { BRAND } from "@/lib/brand"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { RETENTION_DAYS } from "@/lib/retention/policy"
 
 export const metadata: Metadata = {
-  title: "プライバシーポリシー | PathGuardian",
+  title: "プライバシーポリシー",
   description: "PathGuardian(通学路みまもりアプリ)が預かる情報と、預からない情報、その使い方と保存の期間です。",
 }
 
@@ -22,7 +24,7 @@ const RETENTION_ROWS: ReadonlyArray<[string, string]> = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年10月29日">
+    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年10月30日">
       <LegalSection title="1. 基本の考え方">
         <p>
           PathGuardian(通学路みまもりアプリ)は、通学路の安全を見守るために必要な情報だけを預かり、
@@ -61,7 +63,8 @@ export default function PrivacyPage() {
         <p>
           投稿内容と写真は、公開してよいかの確認や危険の解析のため、Google(Gemini)・Anthropic(Claude)・OpenAI の AI サービスへ送ります。
           送るのはぼかした写真だけですが、ぼかしは完全ではないため、写っている人や車が分かりにくい写真をお選びください。
-          写真つきの投稿や判断がむずかしい投稿は、運営スタッフも確認します。
+          {/* 紹介HP・よくある質問と同じ説明(lib/product-facts.ts) */}
+          {PRODUCT_FACTS.moderation.adult}
         </p>
         <p>以前に投稿された(ぼかしていない)写真は、運営がぼかし直すまで、ほかの利用者には表示しません。</p>
       </LegalSection>
@@ -80,8 +83,12 @@ export default function PrivacyPage() {
           <li>Cloudflare(サイトの配信・データベース・写真の保存)</li>
           <li>Google・Anthropic・OpenAI(AI による確認と解析。上記4.)</li>
           <li>Mapbox(地図の表示と住所の検索)</li>
+          <li>Google Maps(「現地の景色」を押したときのストリートビュー表示)。選んだ事故地点の座標や IP アドレスなどが Google に送られます。<a className="underline" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google のプライバシーポリシー</a>と<a className="underline" href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer">Google Maps の利用規約</a>が適用されます</li>
+          <li>国土地理院(Mapbox で住所が分からなかった報告の都道府県・市区町村を調べるため。約100mの粗さに丸めた場所だけを送ります)</li>
           <li>Sentry(不具合の記録)。通常時の画面の録画はしません。エラーが起きたときだけ、その前後の画面を、文字と画像を隠した状態で記録します。通信の記録からは、住所の検索語や地図の範囲などが入る URL の後半(「?」から後ろ)を消して送ります</li>
           <li>ブラウザの通知サービス(通知を受け取る設定をした場合)</li>
+          {/* お問い合わせのフォーム(lib/brand.ts の contactFormUrl)を公開したら、預け先として自動で載る */}
+          {BRAND.contactFormUrl && <li>Google フォーム(お問い合わせの内容と、返信のために書いていただいた連絡先)</li>}
         </ul>
         <p>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</p>
       </LegalSection>
@@ -129,6 +136,11 @@ export default function PrivacyPage() {
 
       <LegalSection title="11. 改定の履歴" id="revisions">
         <ul className="list-disc space-y-1 pl-5">
+          <li>2026年10月29日: ストリートビュー表示時に Google Maps に送る情報と関連ポリシーを追記しました。</li>
+          <li>
+            2026年10月30日: 報告の場所から都道府県・市区町村が分からなかったとき、国土地理院に問い合わせるようにしました
+            (約100mの粗さに丸めた場所だけを送ります)。
+          </li>
           <li>
             2026年10月29日: 氏名を預からないようにしました(登録の氏名欄をなくし、既存の氏名と LINE・Google のお名前・アイコンを削除)。
             写真は端末でぼかしてから保存し、AI にもぼかした写真だけを送るようにしました。通学路の位置の保存を粗くし、

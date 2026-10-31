@@ -110,7 +110,7 @@ function CategorySection({
       {expanded && (
         <CardContent className="pt-3">
           {items.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-2">検出なし</p>
+            <p className="text-sm text-gray-500 text-center py-2">検出なし</p>
           ) : (
             <div className="space-y-0">
               {items.map((item, i) => (
@@ -141,7 +141,7 @@ export function DetectionCategories({ vision }: DetectionCategoriesProps) {
         ))}
       </div>
       {vision.inferenceTimeMs > 0 && (
-        <p className="text-xs text-gray-400 text-right">
+        <p className="text-xs text-gray-500 text-right">
           推論時間: {(vision.inferenceTimeMs / 1000).toFixed(1)}秒
         </p>
       )}

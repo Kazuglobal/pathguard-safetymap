@@ -26,9 +26,30 @@ describe("ReportBottomSheet", () => {
     vi.clearAllMocks()
   })
 
-  // ReportBottomSheet は「きけんハンター」ショートカットシートへ全面刷新され、
-  // 旧「地図から報告 / 写真付きで報告」導線は廃止された。テストは現行のハンター/
-  // 不審者アラート導線に合わせて検証する。
+  // 中央のボタンのシート「知らせる・さがす」(UIUX改装 項目5): ヒヤリハット報告・不審者アラート・きけんハンター
+  it("「知らせる・さがす」の名前で、「危険を報告する」を先頭に3つ並べる", () => {
+    render(<ReportBottomSheet open={true} onOpenChange={vi.fn()} />)
+
+    expect(screen.getByRole("heading", { name: "知らせる・さがす" })).toBeInTheDocument()
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      expect.stringContaining("危険を報告する"),
+      expect.stringContaining("不審者アラートを地図化"),
+      expect.stringContaining("きけんハンターを はじめる"),
+    ])
+  })
+
+  it("routes the report action into the map report form", async () => {
+    const onOpenChange = vi.fn()
+    const user = userEvent.setup()
+
+    render(<ReportBottomSheet open={true} onOpenChange={onOpenChange} />)
+
+    await user.click(screen.getByRole("button", { name: /危険を報告する/ }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(router.push).toHaveBeenCalledWith("/map?report=open")
+  })
+
   it("routes the hunter action into the hunter flow", async () => {
     const onOpenChange = vi.fn()
     const user = userEvent.setup()
@@ -60,7 +81,7 @@ describe("ReportBottomSheet", () => {
 
   // きけんハンターはログイン確認つきの動的ページ(本番は専用 Worker)。押してから取りに行くと
   // 起動待ちの数秒間なにも起きないように見えたため、シートを開いた時点で両方を先読みする。
-  it("prefetches both destinations as soon as the sheet opens", () => {
+  it("prefetches every destination as soon as the sheet opens", () => {
     const onOpenChange = vi.fn()
     const { rerender } = render(<ReportBottomSheet open={false} onOpenChange={onOpenChange} />)
 
@@ -68,7 +89,8 @@ describe("ReportBottomSheet", () => {
 
     rerender(<ReportBottomSheet open={true} onOpenChange={onOpenChange} />)
 
-    expect(router.prefetch).toHaveBeenCalledTimes(2)
+    expect(router.prefetch).toHaveBeenCalledTimes(3)
+    expect(router.prefetch).toHaveBeenCalledWith("/map?report=open")
     expect(router.prefetch).toHaveBeenCalledWith("/safety-quest/hunter")
     expect(router.prefetch).toHaveBeenCalledWith("/map?suspiciousAlert=1")
     expect(router.push).not.toHaveBeenCalled()
@@ -76,10 +98,10 @@ describe("ReportBottomSheet", () => {
 
   it("does not prefetch again on re-render while the sheet stays open", () => {
     const { rerender } = render(<ReportBottomSheet open={true} onOpenChange={vi.fn()} />)
-    expect(router.prefetch).toHaveBeenCalledTimes(2)
+    expect(router.prefetch).toHaveBeenCalledTimes(3)
 
     rerender(<ReportBottomSheet open={true} onOpenChange={vi.fn()} />)
 
-    expect(router.prefetch).toHaveBeenCalledTimes(2)
+    expect(router.prefetch).toHaveBeenCalledTimes(3)
   })
 })

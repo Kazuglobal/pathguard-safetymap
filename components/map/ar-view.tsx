@@ -42,10 +42,15 @@ import { createKidsHazardCue, isApproachingHazard } from "@/lib/ar-learning-tour
 import { trackEvent } from "@/lib/analytics"
 import { buildRouteLearningSessionPayload } from "@/lib/route-learning-session-payload"
 import { getARSafetySuppression } from "@/lib/ar-safety"
+import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
 import { ARLearningReviewCard } from "./ar-learning-review"
+import { ARRealRisks } from './ar-real-risks'
+import { AccidentStreetView } from './accident-street-view'
+import { DEFAULT_HEATMAP_FILTERS } from '@/lib/traffic-accident-heatmap'
+import type { StreetViewTarget } from '@/lib/street-view'
 
 function calculateEstimatedTime(distance: number): number {
   return Math.round((distance / 1000 / WALKING_SPEED_KMH) * 60)
@@ -73,6 +78,9 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const [guardianConsent, setGuardianConsent] = useState(false)
   const [manualLocationMode, setManualLocationMode] = useState(false)
   const sensorsEnabled = !isParentChildMode || hasSafetyAcknowledged
+  const [showRealRisks, setShowRealRisks] = useState(!isParentChildMode)
+  const [isInundationLearning, setIsInundationLearning] = useState(false)
+  const [streetViewTarget, setStreetViewTarget] = useState<StreetViewTarget | null>(null)
 
   // フック
   const {
@@ -85,7 +93,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     error: cameraError,
     stopCamera,
     retry: retryCamera,
-  } = useARCamera({ enabled: sensorsEnabled })
+  } = useARCamera({ enabled: sensorsEnabled && !streetViewTarget })
   const { userLocation, locationPermission, error: locationError, retry: retryLocation } = useARLocation({
     enabled: sensorsEnabled && !manualLocationMode,
   })
@@ -423,7 +431,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         return
       }
 
-      drawHazardOverlay(ctx, arHazards, canvas.width, canvas.height, fov, maxDistance)
+      if (!showRealRisks) drawHazardOverlay(ctx, arHazards, canvas.width, canvas.height, fov, maxDistance)
 
       animationFrameRef.current = requestAnimationFrame(draw)
     }
@@ -436,7 +444,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isCameraActive, arHazards, fov, maxDistance, videoRef, handleCanvasError])
+  }, [isCameraActive, arHazards, fov, maxDistance, videoRef, handleCanvasError, showRealRisks])
 
   // イベントハンドラー
   const handleClose = useCallback(() => {
@@ -449,6 +457,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
 
   // Escapeキーハンドラ + フォーカストラップ
   useEffect(() => {
+    if (streetViewTarget) return
     lastActiveElementRef.current = document.activeElement as HTMLElement
 
     // ダイアログ内の最初のフォーカス可能要素にフォーカス
@@ -494,7 +503,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         lastActiveElementRef.current.focus()
       }
     }
-  }, [handleClose])
+  }, [handleClose, streetViewTarget])
 
   const handleRetry = useCallback(() => {
     if (!arError) return
@@ -598,11 +607,11 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       className="fixed inset-0 z-50 flex flex-col bg-black"
     >
       {/* ヘッダー */}
-      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
+      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between bg-paper-card px-4 py-3 text-ink">
         <div className="flex items-center gap-2">
-          <Navigation className="h-5 w-5 text-white" />
-          <h2 id="ar-view-title" className="text-lg font-semibold text-white">
-            {isParentChildMode ? "親子で通学路確認" : "AR危険個所ビュー"}
+          <Navigation className="h-5 w-5 text-forest" />
+          <h2 id="ar-view-title" className="text-base font-bold text-ink">
+            {isInundationLearning ? 'ARで浸水を学ぶ' : isParentChildMode ? "親子で通学路確認" : "AR危険個所ビュー"}
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -610,7 +619,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
             variant="ghost"
             size="icon"
             onClick={() => setShowSettings(!showSettings)}
-            className="text-white hover:bg-white/20"
+            className="text-ink hover:bg-paper-deep"
             aria-label="AR設定"
             aria-expanded={showSettings}
             aria-controls="ar-settings-panel"
@@ -621,7 +630,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
             variant="ghost"
             size="icon"
             onClick={handleClose}
-            className="text-white hover:bg-white/20"
+            className="text-ink hover:bg-paper-deep"
             aria-label="ARビューを閉じる"
           >
             <X className="h-5 w-5" />
@@ -648,6 +657,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
                 <p id="ar-safety-description" className="mt-2 text-sm leading-6 text-slate-700">
                   歩きながら画面を見続けないでください。危険ポイントでは必ず立ち止まり、保護者が周囲を確認してから子どもと一緒に内容を見てください。
                 </p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{PRODUCT_FACTS.ar.speedSuppress}</p>
               </div>
             </div>
 
@@ -685,6 +695,11 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         </div>
       )}
 
+      {sensorsEnabled && !arError && !isInundationLearning && <div className="absolute left-1/2 top-[72px] z-30 flex -translate-x-1/2 gap-1 rounded-full bg-paper-card p-1 text-xs font-bold text-ink" role="group" aria-label="ARで見る情報">
+        <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${showRealRisks ? 'bg-forest text-white' : ''}`} aria-pressed={showRealRisks} onClick={() => setShowRealRisks(true)}>実事故・浸水</button>
+        <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${!showRealRisks ? 'bg-forest text-white' : ''}`} aria-pressed={!showRealRisks} onClick={() => setShowRealRisks(false)}>投稿の学習</button>
+      </div>}
+
       {/* 設定パネル */}
       {showSettings && (
         <ARSettingsPanel
@@ -698,7 +713,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
 
       {/* 方向インジケーター */}
       {sensorsEnabled && isCameraActive && userLocation && !arError && (
-        <div className="absolute top-16 left-4 z-20">
+        <div className="absolute top-32 left-4 z-20">
           <div className="bg-black/60 backdrop-blur-sm rounded-lg p-2 text-white text-xs">
             <div className="flex items-center gap-2">
               <Compass className="h-3 w-3" aria-hidden="true" />
@@ -709,7 +724,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       )}
 
       {isParentChildMode && !arError && hasSafetyAcknowledged && (
-        <div className="absolute right-4 top-16 z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm">
+        <div className="absolute right-4 top-[132px] z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm">
           <p className="text-xs font-semibold tracking-wide text-amber-200">選択中の通学路</p>
           <p className="mt-1 text-sm font-bold">{mode.routeName}</p>
           {mode.childName && <p className="mt-1 text-xs text-slate-200">{mode.childName}</p>}
@@ -727,7 +742,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       {/* 通常モードの安全抑制インジケータ(親子モードは上のパネル内に表示) */}
       {!isParentChildMode && !arError && (isLocationAccuracyLow || isMovingTooFast) && (
         <div
-          className="absolute right-4 top-16 z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm"
+          className="absolute right-4 top-[132px] z-20 max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-black/70 p-3 text-white shadow-lg backdrop-blur-sm"
           role="status"
         >
           <ARSafetySuppressionNotice
@@ -740,7 +755,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
 
       {/* スクリーンリーダー向け危険個所数通知 */}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {canRenderHazardContent && (
+        {canRenderHazardContent && !showRealRisks && (
           arHazards.length > 0
             ? `${arHazards.length}件の危険個所が検出されました`
             : "近くに危険個所はありません"
@@ -770,8 +785,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
             <div className="text-center text-white max-w-xs">
               <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent mx-auto" aria-hidden="true" />
               <p className="text-sm font-medium mb-2">{loadingStep}</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-300">
                 カメラと位置情報の許可が必要です
+              </p>
+              {/* 起動時に、速く移動しているときはお知らせを止めることを伝える(UIUX改装 項目45) */}
+              <p className="mt-2 text-xs text-gray-300" data-testid="ar-speed-suppress-note">
+                {PRODUCT_FACTS.ar.speedSuppress}
               </p>
             </div>
           </div>
@@ -823,7 +842,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         )}
 
         {/* 主要危険地点カード */}
-        {canRenderHazardContent && activeStop && (
+        {canRenderHazardContent && !showRealRisks && activeStop && (
           <ARPrimaryHazardCard
             hazard={activeStop.hazard}
             estimatedTimeMinutes={calculateEstimatedTime(activeStop.hazard.distance)}
@@ -840,12 +859,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         )}
 
         {/* 次の危険地点カード */}
-        {canRenderHazardContent && nextStop && !isTourComplete && (
+        {canRenderHazardContent && !showRealRisks && nextStop && !isTourComplete && (
           <ARSecondaryHazardCard hazard={nextStop.hazard} />
         )}
 
         {/* 危険地点がない場合 */}
-        {canRenderHazardContent && arHazards.length === 0 && (
+        {canRenderHazardContent && !showRealRisks && arHazards.length === 0 && (
           <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
             <Card className="bg-white/95 backdrop-blur-sm rounded-t-3xl shadow-2xl m-4 pointer-events-auto">
               <div className="p-6 text-center">
@@ -856,7 +875,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           </div>
         )}
 
-        {canRenderHazardContent && isTourComplete && (
+        {canRenderHazardContent && !showRealRisks && isTourComplete && (
           <ARLearningReviewCard
             isParentChildMode={isParentChildMode}
             routeId={parentRouteId}
@@ -877,13 +896,21 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         )}
 
         {/* 中央の十字線 */}
-        {sensorsEnabled && !arError && isCameraActive && (
+        {sensorsEnabled && !arError && isCameraActive && !showRealRisks && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
             <div className="h-1 w-16 border-t-2 border-white/50" />
             <div className="absolute h-16 w-1 border-l-2 border-white/50" />
           </div>
         )}
+        <div hidden={!showRealRisks || !canRenderHazardContent}>
+          <ARRealRisks enabled={sensorsEnabled && showRealRisks && !manualLocationMode && !arError && Boolean(userLocation)}
+            point={userLocation} heading={userHeading} orientation={orientationPermission} distance={maxDistance} fov={fov}
+            filters={mode.accidentFilters ?? DEFAULT_HEATMAP_FILTERS}
+            suppressed={isLocationAccuracyLow || isMovingTooFast} onStreetView={setStreetViewTarget} onLearningChange={setIsInundationLearning} />
+        </div>
+        {showRealRisks && manualLocationMode && <p className="absolute bottom-0 left-0 right-0 bg-paper-card p-6 text-sm text-ink">位置が取れないため、事故と浸水は表示しません。地図のタップで調べられます。</p>}
       </div>
+      {streetViewTarget && <AccidentStreetView target={streetViewTarget} onClose={() => setStreetViewTarget(null)} />}
     </div>
   )
 }
