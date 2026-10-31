@@ -149,7 +149,15 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: true,
     verifiedAt: "2026-10-31T05:45:00+09:00",
-    actionAdvice: "車とぶつかったら謝らずその場に立ち、近くの大人を必ず呼ぶと今夜約束する"
+    actionAdvice: "車とぶつかったら謝らずその場に立ち、近くの大人を必ず呼ぶと今夜約束する",
+    contentImages: [
+      {
+        id: "stand-still-call-adult",
+        url: "/images/school-route-news/articles/kobe-higashinada-mikage-hitandrun-girl-20261029/stand-still-call-adult.jpg",
+        description: "ぶつかったらその場に立ち止まる → 大きな声で近くの大人を呼ぶ → 車の色と走って行った方向を覚える"
+      }
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/kobe-higashinada-mikage-hitandrun-girl-20261029.jpg"
   },
   {
     id: "news-2026-10-31-002",
@@ -241,7 +249,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: false,
     verifiedAt: "2026-10-31T05:45:00+09:00",
-    actionAdvice: "今日あった「ひやり」を1つだけ聞く時間を、夕食の最初の1分に決める"
+    actionAdvice: "今日あった「ひやり」を1つだけ聞く時間を、夕食の最初の1分に決める",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-junior-high-bicycle-accident-not-told-20261028.jpg"
   },
   {
     id: "news-2026-10-30-001",
@@ -324,7 +333,15 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: false,
     verifiedAt: "2026-10-30T05:40:00+09:00",
-    actionAdvice: "子どもが自転車で通る交差点を1つ選び、足をつけて止まる位置を今日いっしょに決める"
+    actionAdvice: "子どもが自転車で通る交差点を1つ選び、足をつけて止まる位置を今日いっしょに決める",
+    contentImages: [
+      {
+        id: "stop-feet-down-at-crossing",
+        url: "/images/school-route-news/articles/ichinoseki-kawasaki-monzaki-bicycle-collision-20261027/stop-feet-down-at-crossing.jpg",
+        description: "交差点の手前で自転車を止める → 両足を地面につける → 左右を見てから渡る"
+      }
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/ichinoseki-kawasaki-monzaki-bicycle-collision-20261027.jpg"
   },
   {
     id: "news-2026-10-30-002",
@@ -405,7 +422,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: false,
     verifiedAt: "2026-10-30T05:40:00+09:00",
-    actionAdvice: "学校から届く見守りサービスの案内を今夜開き、申し込むかどうかを家族で決める"
+    actionAdvice: "学校から届く見守りサービスの案内を今夜開き、申し込むかどうかを家族で決める",
+    thumbnailUrl: "/images/school-route-news/thumbnails/isehara-all-elementary-watch-terminal-20261030.jpg"
   },
   {
     id: "news-2026-10-30-003",
@@ -488,7 +506,8 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     ],
     isBreaking: false,
     verifiedAt: "2026-10-30T05:40:00+09:00",
-    actionAdvice: "「止まって」と言う代わりに「ここで止まる理由は何か」を子どもに一度言わせてみる"
+    actionAdvice: "「止まって」と言う代わりに「ここで止まる理由は何か」を子どもに一度言わせてみる",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-school-safety-subcommittee-safety-education-20261019.jpg"
   },
   {
     id: "news-2026-10-29-001",
