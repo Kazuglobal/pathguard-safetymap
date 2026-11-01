@@ -13,8 +13,10 @@
 export interface DepthGuideMark {
   /** 目盛りの深さ（m） */
   depthMeters: number
-  /** 画面に出す短い説明 */
+  /** 説明（出典の言い回しに沿う） */
   label: string
+  /** 比較図の線の上に出す短い表記 */
+  shortLabel: string
   sourceName: string
   sourceUrl: string
 }
@@ -32,9 +34,9 @@ const EDOGAWA_SOURCE = {
 
 /** 洪水・津波に共通で使う、建物の階との対応の目安。 */
 export const DEPTH_GUIDE_MARKS: DepthGuideMark[] = [
-  { depthMeters: 0.5, label: '建物1階の床上まで浸水するおそれ', ...EDOGAWA_SOURCE },
-  { depthMeters: 3, label: '建物2階の床面まで浸水するおそれ', ...EDOGAWA_SOURCE },
-  { depthMeters: 5, label: '建物3階の床面まで浸水するおそれ', ...EDOGAWA_SOURCE },
+  { depthMeters: 0.5, label: '建物1階の床上まで浸水するおそれ', shortLabel: '1階の床上', ...EDOGAWA_SOURCE },
+  { depthMeters: 3, label: '建物2階の床面まで浸水するおそれ', shortLabel: '2階の床面', ...EDOGAWA_SOURCE },
+  { depthMeters: 5, label: '建物3階の床面まで浸水するおそれ', shortLabel: '3階の床面', ...EDOGAWA_SOURCE },
 ]
 
 /** 目安であることの注意。人物・建物の高さは利用者やカメラに映る建物の計測結果ではない。 */
@@ -57,6 +59,47 @@ export const TSUNAMI_FACTS: HazardFact[] = [
     sourceUrl: 'https://www.cbr.mlit.go.jp/3.11wasurenai/kako/4-19.pdf',
   },
 ]
+
+export interface PlacedDepthGuideMark extends DepthGuideMark {
+  /** 比較図の下端からの位置（px） */
+  bottomPx: number
+}
+
+export interface DepthGuideLayout {
+  /** 1mあたりの画素数 */
+  scalePxPerMeter: number
+  /** 比較用人物の高さ（px）。人物の説明は頭の上に出る。 */
+  personHeightPx: number
+  /** 目盛りのラベル1行の高さ（px） */
+  labelHeightPx?: number
+  /** 人物の説明の高さ（px）。既定は「大人／約170cm」の2行分。 */
+  personLabelHeightPx?: number
+  /** 比較図の中でラベルを置ける高さ（px）。上端の見出しと重ねない。 */
+  availableHeightPx?: number
+}
+
+/**
+ * 目盛りのラベルが、人物の説明や別の目盛りと重ならないように間引く。
+ * 縮尺が圧縮される深い区域では、読める本数だけを残す。
+ */
+export function layoutDepthGuideMarks(marks: DepthGuideMark[], layout: DepthGuideLayout): PlacedDepthGuideMark[] {
+  const labelHeight = layout.labelHeightPx ?? 22
+  const personTop = layout.personHeightPx
+  const personBottom = personTop + (layout.personLabelHeightPx ?? 42)
+  const overlaps = (aTop: number, aBottom: number, bTop: number, bBottom: number) => aTop < bBottom && bTop < aBottom
+  const placed: PlacedDepthGuideMark[] = []
+  for (const mark of [...marks].sort((a, b) => a.depthMeters - b.depthMeters)) {
+    const bottomPx = mark.depthMeters * layout.scalePxPerMeter
+    const top = bottomPx
+    const bottom = bottomPx + labelHeight
+    if (overlaps(top, bottom, personTop, personBottom)) continue
+    if (layout.availableHeightPx !== undefined && bottom > layout.availableHeightPx) continue
+    const previous = placed[placed.length - 1]
+    if (previous && overlaps(top, bottom, previous.bottomPx, previous.bottomPx + labelHeight)) continue
+    placed.push({ ...mark, bottomPx })
+  }
+  return placed
+}
 
 /** 表示する深さの範囲に収まる目盛りだけを返す。範囲外の目盛りは出さない。 */
 export function depthGuideMarksWithin(maxMeters: number | null): DepthGuideMark[] {

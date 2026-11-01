@@ -11,8 +11,8 @@ import {
   HAZARD_WATER_SCENE_NOTICE,
   type HazardPointRisk,
 } from '@/lib/hazard-point'
-import { buildDepthTimeline, type DeviceTilt } from '@/lib/ar-water-geometry'
-import { depthGuideMarksWithin, DEPTH_GUIDE_CAVEAT } from '@/lib/hazard-depth-guide'
+import { AR_ASSUMED_CAMERA_HEIGHT_M, buildDepthTimeline, type DeviceTilt } from '@/lib/ar-water-geometry'
+import { depthGuideMarksWithin, layoutDepthGuideMarks, DEPTH_GUIDE_CAVEAT } from '@/lib/hazard-depth-guide'
 import { DEFAULT_FOV } from '@/lib/ar-constants'
 import './ar-risk.css'
 
@@ -57,6 +57,7 @@ export function ARInundationOverlay({
   const [reducedMotion, setReducedMotion] = useState(false)
   const [visible, setVisible] = useState(true)
   const [sceneError, setSceneError] = useState<string | null>(null)
+  const [submerged, setSubmerged] = useState(false)
   const sheet = useRef<HTMLDivElement>(null)
   const [sheetHeight, setSheetHeight] = useState(325)
   const zone = risk.kind === 'inside' ? risk.zone : undefined
@@ -74,7 +75,7 @@ export function ARInundationOverlay({
     return () => observer.disconnect()
   }, [])
   useEffect(() => {
-    setAcknowledged(false); setPlaying(false); setSceneError(null)
+    setAcknowledged(false); setPlaying(false); setSceneError(null); setSubmerged(false)
   }, [zoneKey, selected, suppressed])
   useEffect(() => {
     const query = matchMedia('(prefers-reduced-motion: reduce)')
@@ -96,7 +97,12 @@ export function ARInundationOverlay({
   const scale = 230 / scaleMax
   const lower = (zone?.depthMinMeters ?? 0) * scale
   const upper = (zone?.depthMaxMeters ?? scaleMax) * scale
-  const guideMarks = depthGuideMarksWithin(zone?.depthMaxMeters ?? zone?.depthMinMeters ?? null)
+  const guideMarks = layoutDepthGuideMarks(
+    depthGuideMarksWithin(zone?.depthMaxMeters ?? zone?.depthMinMeters ?? null),
+    { scalePxPerMeter: scale, personHeightPx: 1.7 * scale, availableHeightPx: 236 },
+  )
+  // 目盛りが短いときは、範囲の吹き出しが上下の数値と重なるので外へ出す。
+  const rulerTight = upper - lower < 90
 
   // カメラ映像へ水面を重ねるのは、現地AR・区域内・深さあり・有効な傾き・WebGL正常のときだけ。
   const showScene = Boolean(live && canShow && acknowledged && knownDepth && timeline && videoRef && tiltRef && tiltReady && !sceneError)
@@ -116,7 +122,12 @@ export function ARInundationOverlay({
 
     {showScene && timeline && videoRef && tiltRef && <ARWaterScene videoRef={videoRef} tiltRef={tiltRef} timeline={timeline}
       hazard={selected} playing={playing} reducedMotion={reducedMotion} replayKey={replay}
-      sourceHorizontalFovDeg={sourceHorizontalFovDeg} onFailure={setSceneError} />}
+      sourceHorizontalFovDeg={sourceHorizontalFovDeg} onFailure={setSceneError} onSubmergedChange={setSubmerged} />}
+
+    {showScene && submerged && <div className="ar-depth-submerged" role="status">
+      <strong>仮想視点（水面下）</strong>
+      <span>仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深いため、水面の下から見た表示にしています。あなたや端末が実際に水没する高さを判定したものではありません。</span>
+    </div>}
 
     {canShow && acknowledged && knownDepth && <div className="ar-depth-visual" style={{ bottom: sheetHeight + 16 }} aria-label="人物と想定浸水深の高さ比較">
       <span className="ar-depth-caption">高さの比較イメージ</span>
@@ -131,10 +142,10 @@ export function ARInundationOverlay({
         <img src="/images/ar/height-reference-adult.png" alt="高さ約170cmの比較用人物" />
         <span>大人<br />約170cm</span>
       </div>
-      {guideMarks.map(mark => <div key={mark.depthMeters} className="ar-depth-guide" style={{ bottom: mark.depthMeters * scale }}>
-        <span>{mark.depthMeters}m・{mark.label}</span>
+      {guideMarks.map(mark => <div key={mark.depthMeters} className="ar-depth-guide" style={{ bottom: mark.bottomPx }}>
+        <span>{mark.depthMeters}m・{mark.shortLabel}</span>
       </div>)}
-      <div className="ar-depth-ruler" style={{ height: upper - lower, bottom: lower, borderTop: openUpper ? 'none' : undefined }}>
+      <div className={`ar-depth-ruler ${rulerTight ? 'ar-depth-ruler--tight' : ''}`} style={{ height: upper - lower, bottom: lower, borderTop: openUpper ? 'none' : undefined }}>
         <span className="ar-depth-endpoint ar-depth-endpoint--top">{openUpper ? '上限なし' : `${zone?.depthMaxMeters?.toFixed(1)}m`}</span>
         <span className="ar-depth-range">{zone && hazardDepthLabel(zone)}<small>の範囲</small></span>
         {zone?.depthMinMeters !== null && <span className="ar-depth-endpoint ar-depth-endpoint--bottom">{zone?.depthMinMeters?.toFixed(1)}m</span>}
@@ -161,7 +172,9 @@ export function ARInundationOverlay({
       </div>}
       {live && knownDepth && acknowledged && <p className="ar-depth-scene-notice">{HAZARD_WATER_SCENE_NOTICE}</p>}
       {sceneFallbackReason && <p className="ar-depth-scene-notice" role="status">{sceneFallbackReason}</p>}
-      {guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">{DEPTH_GUIDE_CAVEAT}
+      {guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">
+        {guideMarks.map(mark => <span key={mark.depthMeters}>{mark.depthMeters}m：{mark.label}</span>)}
+        {DEPTH_GUIDE_CAVEAT}
         <span>出典：{[...new Set(guideMarks.map(mark => mark.sourceName))].join('、')}</span></p>}
       {selected === 'tsunami' && <p className="ar-tsunami-action">津波警報が出たら、海や川から離れて高い場所へ避難しましょう。</p>}
       <p className="ar-depth-notice"><Info size={18} aria-hidden="true" /><span>{HAZARD_LEARNING_NOTICE}</span></p>

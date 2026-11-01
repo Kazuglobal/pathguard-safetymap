@@ -13,6 +13,7 @@ vi.mock('next/dynamic', () => ({
       playing: boolean
       reducedMotion: boolean
       onFailure: (reason: string) => void
+      onSubmergedChange?: (submerged: boolean) => void
     }) {
       return (
         <div
@@ -23,6 +24,9 @@ vi.mock('next/dynamic', () => ({
         >
           <button type="button" onClick={() => props.onFailure('WebGLの描画が中断されました')}>
             fail-scene
+          </button>
+          <button type="button" onClick={() => props.onSubmergedChange?.(true)}>
+            submerge
           </button>
         </div>
       )
@@ -105,6 +109,18 @@ describe('inundation learning water scene', () => {
     expect(screen.queryByTestId('water-scene')).not.toBeInTheDocument()
   })
 
+  it('names the submerged view as a virtual viewpoint, not the user being underwater', () => {
+    setup({ max: 3 })
+    start()
+    expect(screen.queryByText('仮想視点（水面下）')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'submerge' }))
+    expect(screen.getByText('仮想視点（水面下）')).toBeInTheDocument()
+    expect(screen.getByText(/あなたや端末が実際に水没する高さを判定したものではありません/)).toBeInTheDocument()
+    // 退避したら水面下の表示も残さない
+    fireEvent.click(screen.getByRole('button', { name: 'fail-scene' }))
+    expect(screen.queryByText('仮想視点（水面下）')).not.toBeInTheDocument()
+  })
+
   it('keeps the scene out when the depth is unknown', () => {
     setup({ min: null, max: null })
     start()
@@ -123,7 +139,10 @@ describe('inundation learning water scene', () => {
   it('shows the official depth guide with its source and caveat', () => {
     setup()
     start()
-    expect(screen.getByText(/建物2階の床面まで浸水するおそれ/)).toBeInTheDocument()
+    // 比較図に収まる目盛りだけを出す（0.5〜3.0m では 0.5m の目盛り）
+    expect(screen.getByText('0.5m・1階の床上')).toBeInTheDocument()
+    expect(screen.getByText(/建物1階の床上まで浸水するおそれ/)).toBeInTheDocument()
+    expect(screen.queryByText(/建物2階の床面まで浸水するおそれ/)).not.toBeInTheDocument()
     expect(screen.getByText(/あなた自身を測った値ではありません/)).toBeInTheDocument()
     expect(screen.getByText(/江戸川河川事務所/)).toBeInTheDocument()
   })

@@ -34,6 +34,8 @@ export interface ARWaterSceneProps {
   /** 元映像全体の水平FOV（度・推定値を含む） */
   sourceHorizontalFovDeg: number
   onDepthChange?: (depthMeters: number, submerged: boolean) => void
+  /** 仮想視点が水面下に入った・出たときだけ呼ぶ（毎フレームは呼ばない）。 */
+  onSubmergedChange?: (submerged: boolean) => void
   /** WebGLの初期化失敗・描画エラー・コンテキスト喪失。人物の比較図へ退避する。 */
   onFailure: (reason: string) => void
 }
@@ -88,14 +90,16 @@ void main() {
   float depthMix = clamp(distance / 14.0, 0.0, 1.0);
   vec3 water = mix(uShallowColor, uDeepColor, depthMix);
   float fresnel = clamp(0.25 + depthMix * 0.55, 0.0, 1.0);
-  vec3 color = mix(behind, water, clamp(uTurbidity + fresnel * 0.45, 0.0, 0.95));
+  vec3 color = mix(behind, water, clamp(uTurbidity + fresnel * 0.5, 0.0, 0.97));
 
-  float foam = smoothstep(0.55, 1.0, abs(vWave.x) + abs(vWave.y) * 0.6) * uFoam;
-  color += foam * 0.35;
+  float foam = smoothstep(0.5, 1.0, abs(vWave.x) + abs(vWave.y) * 0.6) * uFoam;
+  color += foam * 0.4;
+  // 水際（手前）を少し明るく、遠くを濃くして、水面であることが分かるようにする。
+  color *= mix(1.12, 0.82, depthMix);
   if (uUnderwater > 0.5) {
-    color = mix(color, uDeepColor, 0.45);
+    color = mix(color, uDeepColor, 0.5);
   }
-  gl_FragColor = vec4(color, clamp(0.62 + uTurbidity * 0.3, 0.0, 0.95));
+  gl_FragColor = vec4(color, clamp(0.8 + uTurbidity * 0.18, 0.0, 0.97));
 }
 `
 
@@ -112,18 +116,18 @@ const debrisDummy = new THREE.Object3D()
 
 const PALETTE: Record<'flood' | 'tsunami', PaletteEntry> = {
   flood: {
-    shallow: new THREE.Color('#8a7a4f'),
-    deep: new THREE.Color('#5d5333'),
-    turbidity: 0.34,
-    foam: 0.15,
+    shallow: new THREE.Color('#9d8441'),
+    deep: new THREE.Color('#4f4526'),
+    turbidity: 0.55,
+    foam: 0.22,
     waveAmplitude: 0.035,
     refraction: 0.012,
   },
   tsunami: {
-    shallow: new THREE.Color('#4b4a52'),
-    deep: new THREE.Color('#24222b'),
-    turbidity: 0.55,
-    foam: 0.55,
+    shallow: new THREE.Color('#514f58'),
+    deep: new THREE.Color('#1d1b23'),
+    turbidity: 0.7,
+    foam: 0.6,
     waveAmplitude: 0.075,
     refraction: 0.022,
   },
@@ -139,11 +143,15 @@ function WaterPlane({
   replayKey,
   sourceHorizontalFovDeg,
   onDepthChange,
+  onSubmergedChange,
   onFailure,
 }: ARWaterSceneProps) {
   const { camera, size, gl } = useThree()
   const meshRef = useRef<THREE.Mesh>(null)
   const debrisRef = useRef<THREE.InstancedMesh>(null)
+  // 仮想視点が水面下に入ったときの全体の濁り。視線に合わせてカメラの前に置く。
+  const murkRef = useRef<THREE.Mesh>(null)
+  const submergedRef = useRef(false)
   const smoother = useMemo(() => createTiltSmoother(), [])
   const animationMsRef = useRef(0)
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null)
@@ -184,6 +192,13 @@ function WaterPlane({
     animationMsRef.current = 0
     smoother.reset()
   }, [replayKey, timeline, smoother])
+
+  useEffect(() => () => {
+    if (submergedRef.current) {
+      submergedRef.current = false
+      onSubmergedChange?.(false)
+    }
+  }, [onSubmergedChange])
 
   // コンテキスト喪失は回復を待たずに退避する。
   useEffect(() => {
@@ -266,6 +281,27 @@ function WaterPlane({
     uniforms.uTime.value = reducedMotion ? 0 : animationMsRef.current / 1000
     mesh.position.y = -AR_ASSUMED_CAMERA_HEIGHT_M + depth
 
+    // 水面下では、視線に追従する板で全体を濁らせる。水面の裏側は同じ平面を両面で描く。
+    const murk = murkRef.current
+    if (murk) {
+      murk.visible = submerged
+      if (submerged) {
+        const perspective = camera as THREE.PerspectiveCamera
+        const distance = Math.max((perspective.near ?? 0.05) * 2, 0.12)
+        const height = 2 * distance * Math.tan(THREE.MathUtils.degToRad((perspective.fov ?? 60) / 2))
+        murk.scale.set(height * (perspective.aspect ?? 1) * 1.2, height * 1.2, 1)
+        murk.position.set(0, 0, -distance)
+        const material = murk.material as THREE.MeshBasicMaterial
+        material.color.copy(palette.deep)
+        // 深いほど濃くする。上限を置き、比較図と数値が読めなくならないようにする。
+        material.opacity = Math.min(0.82, 0.5 + (depth - AR_ASSUMED_CAMERA_HEIGHT_M) * 0.04)
+      }
+    }
+    if (submergedRef.current !== submerged) {
+      submergedRef.current = submerged
+      onSubmergedChange?.(submerged)
+    }
+
     const debris = debrisRef.current
     if (debris) {
       debris.visible = hazard === 'tsunami' && !reducedMotion
@@ -303,6 +339,12 @@ function WaterPlane({
           depthWrite={false}
         />
       </mesh>
+      <primitive object={camera}>
+        <mesh ref={murkRef} visible={false} frustumCulled={false} renderOrder={2}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial color={palette.deep} transparent opacity={0.6} depthWrite={false} depthTest={false} />
+        </mesh>
+      </primitive>
       <instancedMesh ref={debrisRef} args={[undefined, undefined, 14]} frustumCulled={false}>
         <planeGeometry args={[0.32, 0.12]} />
         <meshBasicMaterial color="#2f2b25" transparent opacity={0.85} side={THREE.DoubleSide} />
