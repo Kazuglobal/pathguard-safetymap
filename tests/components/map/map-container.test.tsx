@@ -577,7 +577,7 @@ describe('MapContainer characterization', () => {
     expect(background).not.toHaveStyle({ visibility: 'hidden' })
     expect(background).not.toHaveAttribute('inert')
     expect(lastMap()).toBe(instance)
-        expect(styleProps().currentStyle).toBe('dark-v11')
+    expect(styleProps().currentStyle).toBe('dark-v11')
     expect(h.captured.dangerReportsArgs.filterOptions).toEqual(filters)
   })
 
