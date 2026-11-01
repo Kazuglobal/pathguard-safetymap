@@ -5,6 +5,17 @@ import {
 } from '@/components/map/accident-heatmap-layer'
 
 describe('AccidentHeatmapLayer popup helpers', () => {
+  it('focuses the scenery trigger before opening so pointer users can return to it', () => {
+    let focusedAtOpen: Element | null = null
+    const onScene = vi.fn(() => { focusedAtOpen = document.activeElement })
+    const content = buildAccidentPopupContent({ severity: 2 }, { onShowStreetView: onScene })
+    document.body.appendChild(content)
+    const scene = content.querySelector('button')!
+    scene.click()
+    expect(onScene).toHaveBeenCalledOnce()
+    expect(focusedAtOpen).toBe(scene)
+    content.remove()
+  })
   it('opens Street View with one click without changing the existing report action', () => {
     const onScene = vi.fn(), onReports = vi.fn()
     const content = buildAccidentPopupContent({ severity: 2 }, { onShowStreetView: onScene, onShowNearbyReports: onReports })

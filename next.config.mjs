@@ -92,6 +92,7 @@ const nextConfig = {
     // 3D Route PoC
     NEXT_PUBLIC_CESIUM_ION_TOKEN: resolveEnv('NEXT_PUBLIC_CESIUM_ION_TOKEN', ''),
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: resolveEnv('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', ''),
+    NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY: resolveEnv('NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY', ''),
   },
   
   // Allow the public R2 media origin and editorial Unsplash assets.

@@ -46,7 +46,7 @@ export const previewPublicNames = [
 
 // Optional public build input. Missing Google configuration disables only the
 // viewer; it must not make unrelated previews require a new credential.
-export const previewOptionalPublicNames = ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
+export const previewOptionalPublicNames = ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', 'NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY']
 
 // Values must be provisioned specifically for the cloudflare-preview GitHub
 // Environment. Production server credentials remain excluded.
