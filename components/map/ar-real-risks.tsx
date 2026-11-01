@@ -8,14 +8,20 @@ import { hazardDepthLabel, hazardStatusLabel, HAZARD_OUTSIDE_NOTICE } from '@/li
 import type { AccidentHeatmapFilters } from '@/lib/traffic-accident-heatmap'
 import type { HazardType } from '@/lib/types'
 import type { StreetViewTarget } from '@/lib/street-view'
+import type { DeviceTilt } from '@/lib/ar-water-geometry'
 import { AccidentFacts } from './accident-facts'
 import { ARInundationOverlay } from './ar-inundation-overlay'
 import './ar-risk.css'
 
-export function ARRealRisks({ enabled, point, heading, orientation, distance, fov, filters, suppressed, onStreetView, onLearningChange }: {
+export function ARRealRisks({ enabled, point, heading, orientation, distance, fov, filters, suppressed, onStreetView, onLearningChange,
+  videoRef, tiltRef, tiltReady = false }: {
   enabled: boolean; point: ARPoint | null; heading: number; orientation: boolean; distance: number; fov: number
   filters: AccidentHeatmapFilters; suppressed: boolean; onStreetView: (target: StreetViewTarget) => void
   onLearningChange?: (open: boolean) => void
+  /** カメラ映像と端末の傾き。現地ARで水面を重ねるときだけ渡す。 */
+  videoRef?: React.RefObject<HTMLVideoElement | null>
+  tiltRef?: React.RefObject<DeviceTilt | null>
+  tiltReady?: boolean
 }) {
   const data = useARRiskData({ enabled, point, distance, filters })
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -62,7 +68,8 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
       })}
     </div>}
     {showAnimation && hazard && data.hazards ? <ARInundationOverlay risks={data.hazards.hazards} selected={hazard}
-      onSelect={setHazard} onClose={() => setHazard(null)} suppressed={suppressed}>
+      onSelect={setHazard} onClose={() => setHazard(null)} suppressed={suppressed}
+      live videoRef={videoRef} tiltRef={tiltRef} tiltReady={tiltReady} sourceHorizontalFovDeg={fov}>
       {selected && <><span className="font-bold text-safety-strong">実事故 {selected.feature.properties.year}年・{Math.round(selected.distance)}m</span>
         <button type="button" className="min-h-11 font-bold text-forest-strong" onClick={openScene}>現地の景色を見る</button></>}
     </ARInundationOverlay> : <section className="ar-risk-dock" aria-label="実事故と浸水想定">
