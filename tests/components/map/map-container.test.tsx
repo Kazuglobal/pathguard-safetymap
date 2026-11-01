@@ -560,7 +560,9 @@ describe('MapContainer characterization', () => {
     const view = renderMapContainer()
     fireMapLoad()
     const instance = lastMap()
-    act(() => h.captured.floatingControls.setMapStyle('dark-v11'))
+    // 地図の見た目は「くわしい表示」の中へ移った(UIUX W4 IA)
+    const styleProps = () => h.captured.topOverlay.renderDisplayOptions(null).props
+    act(() => styleProps().onChange('dark-v11'))
     const filters = h.captured.dangerReportsArgs.filterOptions
     const target = { coordinates: [141.716, 39.081], properties: { year: 2024, type: '追突' } }
     expect(view.queryByTestId('accident-scenery')).not.toBeInTheDocument()
@@ -575,7 +577,7 @@ describe('MapContainer characterization', () => {
     expect(background).not.toHaveStyle({ visibility: 'hidden' })
     expect(background).not.toHaveAttribute('inert')
     expect(lastMap()).toBe(instance)
-    expect(h.captured.floatingControls.mapStyle).toBe('dark-v11')
+        expect(styleProps().currentStyle).toBe('dark-v11')
     expect(h.captured.dangerReportsArgs.filterOptions).toEqual(filters)
   })
 
