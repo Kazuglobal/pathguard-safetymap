@@ -9,6 +9,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useAROrientation } from "@/hooks/use-ar-orientation"
+import { TILT_STALE_MS } from "@/lib/ar-water-geometry"
+
+const TILT_CHECK_INTERVAL_MS = 250
 
 // toast モック
 const toastMock = vi.hoisted(() => {
@@ -221,6 +224,81 @@ describe("useAROrientation", () => {
           title: "方向検出が利用できません",
         })
       )
+    })
+  })
+
+  describe("傾き(浸水学習)", () => {
+    const fireTilt = (beta: number | null, gamma: number | null) => {
+      act(() => {
+        const event = new Event("deviceorientation") as Event & { alpha: number | null; beta: number | null; gamma: number | null }
+        Object.defineProperty(event, "alpha", { value: 10 })
+        Object.defineProperty(event, "beta", { value: beta })
+        Object.defineProperty(event, "gamma", { value: gamma })
+        capturedOrientationHandler?.(event)
+      })
+    }
+
+    it("有効な beta / gamma を受け取ったときだけ利用可能にすること", () => {
+      const { result } = renderHook(() => useAROrientation())
+      expect(result.current.tiltReady).toBe(false)
+      expect(result.current.tiltRef.current).toBeNull()
+
+      fireTilt(85, -4)
+
+      expect(result.current.tiltReady).toBe(true)
+      expect(result.current.tiltRef.current).toMatchObject({ beta: 85, gamma: -4 })
+      expect(typeof result.current.tiltRef.current?.screenAngle).toBe("number")
+    })
+
+    it("許可されていても beta / gamma が null なら利用不可にすること", () => {
+      const { result } = renderHook(() => useAROrientation())
+      fireTilt(null, null)
+      expect(result.current.orientationPermission).toBe(true)
+      expect(result.current.tiltReady).toBe(false)
+      expect(result.current.tiltRef.current).toBeNull()
+    })
+
+    it("有効値のあとに無効値を受け取ったら利用不可へ戻すこと", () => {
+      const { result } = renderHook(() => useAROrientation())
+      fireTilt(85, -4)
+      expect(result.current.tiltReady).toBe(true)
+      fireTilt(Number.NaN, -4)
+      expect(result.current.tiltReady).toBe(false)
+      expect(result.current.tiltRef.current).toBeNull()
+    })
+
+    it("イベントが来なくなったら期限切れで利用不可にし、新しい有効値で復旧すること", async () => {
+      vi.useFakeTimers()
+      try {
+        const { result } = renderHook(() => useAROrientation())
+        fireTilt(85, -4)
+        expect(result.current.tiltReady).toBe(true)
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(TILT_STALE_MS + TILT_CHECK_INTERVAL_MS + 10)
+        })
+        expect(result.current.tiltReady).toBe(false)
+        expect(result.current.tiltRef.current).toBeNull()
+
+        fireTilt(80, 2)
+        expect(result.current.tiltReady).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("無効化とアンマウントで傾きをリセットすること", () => {
+      const { result, rerender, unmount } = renderHook(({ enabled }) => useAROrientation({ enabled }), {
+        initialProps: { enabled: true },
+      })
+      fireTilt(85, -4)
+      expect(result.current.tiltReady).toBe(true)
+
+      rerender({ enabled: false })
+      expect(result.current.tiltReady).toBe(false)
+      expect(result.current.tiltRef.current).toBeNull()
+
+      unmount()
     })
   })
 })
