@@ -33,7 +33,15 @@ export function hazardStatusLabel(kind: HazardPointState): string {
 }
 
 export const HAZARD_LEARNING_NOTICE = '浸水想定を理解するためのイメージです。実際の水位・到達時間・流れではありません。'
+/** 説明をたたんだときの短い表記。限界の要点は落とさない。 */
+export const HAZARD_LEARNING_NOTICE_SHORT = '実際の水位・到達時間・流れではありません。'
 export const HAZARD_OUTSIDE_NOTICE = '区域外であることは安全を保証するものではありません。'
+/** カメラ映像に水面を重ねるときの限界。再生前と表示中の両方に出す。 */
+export const HAZARD_WATER_SCENE_NOTICE = '仮定した平面に水面を重ねた学習イメージです。実際の道路・建物の浸水位置を示すものではありません。'
+/** 説明をたたんだときの短い表記。仮定した平面であることと、現地の浸水位置ではないことは残す。 */
+export const HAZARD_WATER_SCENE_NOTICE_SHORT = '仮定した平面の学習イメージです。実際の浸水位置ではありません。'
+/** 画面の名称。現地の再現精度を約束する文言は使わない。 */
+export const HAZARD_LEARNING_TITLE = '浸水深の学習イメージ'
 
 /** Only identify source metadata which we actually inspected, never infer publication dates. */
 export function hazardSourceMetadata(layer: string) {

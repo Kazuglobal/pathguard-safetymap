@@ -100,6 +100,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const {
     userHeading,
     orientationPermission,
+    tiltRef,
+    tiltReady,
     error: orientationError,
     retry: retryOrientation,
   } = useAROrientation({ enabled: sensorsEnabled })
@@ -391,7 +393,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
 
   // キャンバスへの描画
   useEffect(() => {
-    if (!canvasRef.current || !videoRef.current || !isCameraActive) {
+    // 実事故・浸水の表示では背景を <video> に統一し、2D Canvasの映像コピーを止める。
+    if (!canvasRef.current || !videoRef.current || !isCameraActive || showRealRisks) {
       return
     }
 
@@ -775,7 +778,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         <canvas
           ref={canvasRef}
           className="absolute inset-0 h-full w-full"
-          style={{ pointerEvents: "none" }}
+          style={{ pointerEvents: "none", display: showRealRisks ? "none" : undefined }}
           aria-hidden="true"
         />
 
@@ -906,7 +909,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           <ARRealRisks enabled={sensorsEnabled && showRealRisks && !manualLocationMode && !arError && Boolean(userLocation)}
             point={userLocation} heading={userHeading} orientation={orientationPermission} distance={maxDistance} fov={fov}
             filters={mode.accidentFilters ?? DEFAULT_HEATMAP_FILTERS}
-            suppressed={isLocationAccuracyLow || isMovingTooFast} onStreetView={setStreetViewTarget} onLearningChange={setIsInundationLearning} />
+            suppressed={isLocationAccuracyLow || isMovingTooFast} onStreetView={setStreetViewTarget} onLearningChange={setIsInundationLearning}
+            videoRef={videoRef} tiltRef={tiltRef} tiltReady={tiltReady ?? false} />
         </div>
         {showRealRisks && manualLocationMode && <p className="absolute bottom-0 left-0 right-0 bg-paper-card p-6 text-sm text-ink">位置が取れないため、事故と浸水は表示しません。地図のタップで調べられます。</p>}
       </div>
