@@ -56,6 +56,36 @@ void main() {
 }
 `
 
+const MURK_VERTEX = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`
+
+const MURK_FRAGMENT = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity;
+uniform float uTime;
+varying vec2 vUv;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453);
+}
+
+void main() {
+  // 水中に漂う細かい粒。水の中にいることの手がかりにする。
+  vec2 grid = vUv * vec2(26.0, 46.0);
+  grid.y += uTime * 0.35;
+  vec2 cell = floor(grid);
+  vec2 local = fract(grid) - 0.5;
+  float speck = smoothstep(0.42, 0.0, length(local) + hash(cell) * 0.35);
+  float shade = 1.0 + speck * 0.5;
+  gl_FragColor = vec4(uColor * shade, uOpacity);
+}
+`
+
 const WATER_FRAGMENT = /* glsl */ `
 uniform sampler2D uVideo;
 uniform float uHasVideo;
@@ -90,13 +120,23 @@ void main() {
   // 遠くの細かい波は潰れるので弱める。
   float detail = uWaveAmplitude / (1.0 + distance * 0.5);
 
-  float phaseA = p.x * 3.1 + uTime * 1.6;
-  float phaseB = p.y * 2.7 - uTime * 1.1;
-  float phaseC = (p.x * 1.7 - p.y * 2.3) + uTime * 2.2;
-  vec2 slope = vec2(
-    3.1 * cos(phaseA) * cos(phaseB) + 0.85 * cos(phaseC),
-    -2.7 * sin(phaseA) * sin(phaseB) - 1.15 * cos(phaseC)
+  // 向きと周期をそろえない4つの波を重ねる。1つの式の繰り返しだと、
+  // 同心円や格子のような模様が水面に出てしまう。
+  vec2 dirA = vec2(0.98, 0.21);
+  vec2 dirB = vec2(-0.42, 0.91);
+  vec2 dirC = vec2(0.63, -0.77);
+  vec2 dirD = vec2(-0.86, -0.51);
+  float waveA = sin(dot(dirA, p) * 2.3 + uTime * 1.1);
+  float waveB = sin(dot(dirB, p) * 3.7 + uTime * 1.6);
+  float waveC = sin(dot(dirC, p) * 5.9 - uTime * 2.3);
+  float waveD = sin(dot(dirD, p) * 8.9 + uTime * 3.1);
+  vec2 slope = (
+    dirA * 2.3 * cos(dot(dirA, p) * 2.3 + uTime * 1.1) * 1.0 +
+    dirB * 3.7 * cos(dot(dirB, p) * 3.7 + uTime * 1.6) * 0.6 +
+    dirC * 5.9 * cos(dot(dirC, p) * 5.9 - uTime * 2.3) * 0.32 +
+    dirD * 8.9 * cos(dot(dirD, p) * 8.9 + uTime * 3.1) * 0.16
   ) * detail;
+  float crest = waveA * 1.0 + waveB * 0.6 + waveC * 0.32 + waveD * 0.16;
   vec3 normal = normalize(vec3(-slope.x, 1.0, -slope.y));
 
   vec3 view = normalize(vWorldPosition - cameraPosition);
@@ -127,7 +167,7 @@ void main() {
   // 日差しのきらめきと泡。水面であることの手がかりにする。
   float glint = pow(max(dot(reflected, normalize(vec3(0.25, 0.75, -0.6))), 0.0), 90.0);
   color += glint * 0.55 * (1.0 - depthMix * 0.5);
-  float foam = smoothstep(0.75, 1.0, abs(slope.x) + abs(slope.y)) * uFoam;
+  float foam = smoothstep(1.25, 2.0, crest) * uFoam;
   color += foam * 0.3;
 
   if (uUnderwater > 0.5) {
@@ -280,6 +320,11 @@ function WaterPlane({
     return THREE.MathUtils.clamp(Math.ceil(needed * 2) / 2 + 0.5, 1, GAUGE_MAX_M)
   }, [timeline])
 
+  const murkUniforms = useMemo(
+    () => ({ uColor: { value: palette.deep.clone() }, uOpacity: { value: 0.6 }, uTime: { value: 0 } }),
+    [palette],
+  )
+
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
@@ -419,10 +464,11 @@ function WaterPlane({
         const height = 2 * distance * Math.tan(THREE.MathUtils.degToRad((perspective.fov ?? 60) / 2))
         murk.scale.set(height * (perspective.aspect ?? 1) * 1.2, height * 1.2, 1)
         murk.position.set(0, 0, -distance)
-        const material = murk.material as THREE.MeshBasicMaterial
-        material.color.copy(palette.deep)
-        // 深いほど濃くする。上限を置き、比較図と数値が読めなくならないようにする。
-        material.opacity = Math.min(0.82, 0.5 + (depth - AR_ASSUMED_CAMERA_HEIGHT_M) * 0.04)
+        murkUniforms.uColor.value.copy(palette.deep)
+        // 深いほど濃くする。上限を置き、数値と目盛りが読めなくならないようにする。
+        murkUniforms.uOpacity.value = Math.min(0.82, 0.5 + (depth - AR_ASSUMED_CAMERA_HEIGHT_M) * 0.04)
+        // 動きを減らす設定では粒を流さない。
+        murkUniforms.uTime.value = reducedMotion ? 0 : animationMsRef.current / 1000
       }
     }
     if (submergedRef.current !== submerged) {
@@ -472,7 +518,8 @@ function WaterPlane({
       <primitive object={camera}>
         <mesh ref={murkRef} visible={false} frustumCulled={false} renderOrder={2}>
           <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial color={palette.deep} transparent opacity={0.6} depthWrite={false} depthTest={false} />
+          <shaderMaterial vertexShader={MURK_VERTEX} fragmentShader={MURK_FRAGMENT} uniforms={murkUniforms}
+            transparent depthWrite={false} depthTest={false} />
         </mesh>
       </primitive>
       <instancedMesh ref={debrisRef} args={[undefined, undefined, 14]} frustumCulled={false}>

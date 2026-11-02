@@ -134,7 +134,7 @@ export function ARInundationOverlay({
 
     {showScene && submerged && <div className="ar-depth-submerged" role="status">
       <strong>仮想視点（水面下）</strong>
-      <span>仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深いため、水面の下から見た表示にしています。あなたや端末が実際に水没する高さを判定したものではありません。</span>
+      <span>仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深いため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。あなたや端末が実際に水没する高さを判定したものではありません。</span>
     </div>}
 
     {canShow && acknowledged && knownDepth && !showScene && <div className="ar-depth-visual" style={{ bottom: sheetHeight + 16 }} aria-label="人物と想定浸水深の高さ比較">
