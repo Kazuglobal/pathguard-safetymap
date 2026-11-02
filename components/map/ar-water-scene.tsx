@@ -44,16 +44,12 @@ export interface ARWaterSceneProps {
 const WATER_VERTEX = /* glsl */ `
 uniform float uTime;
 uniform float uWaveAmplitude;
-uniform float uWaveFrequency;
 varying vec3 vWorldPosition;
-varying vec2 vWave;
 
 void main() {
   vec3 transformed = position;
-  float a = sin(position.x * uWaveFrequency + uTime * 1.1) * cos(position.y * uWaveFrequency * 0.8 - uTime * 0.7);
-  float b = sin((position.x + position.y) * uWaveFrequency * 1.7 - uTime * 1.6);
-  transformed.z += (a * 0.7 + b * 0.3) * uWaveAmplitude;
-  vWave = vec2(a, b);
+  // ゆるやかなうねりだけを頂点で動かす。細かい波は面で法線として作る。
+  transformed.z += sin(position.x * 0.35 + uTime * 0.6) * cos(position.y * 0.3 - uTime * 0.45) * uWaveAmplitude * 2.0;
   vec4 world = modelMatrix * vec4(transformed, 1.0);
   vWorldPosition = world.xyz;
   gl_Position = projectionMatrix * viewMatrix * world;
@@ -61,7 +57,6 @@ void main() {
 `
 
 const WATER_FRAGMENT = /* glsl */ `
-precision mediump float;
 uniform sampler2D uVideo;
 uniform float uHasVideo;
 uniform vec2 uVisibleFraction;
@@ -74,38 +69,71 @@ uniform float uRefraction;
 uniform float uUnderwater;
 uniform float uTime;
 uniform float uDepth;
+uniform float uWaveAmplitude;
+uniform mat4 uViewProjection;
 varying vec3 vWorldPosition;
-varying vec2 vWave;
 
 // 画面座標 → 元映像のUV。lib/ar-water-geometry.ts の screenToVideoUv と同じ式。
 vec2 screenToVideoUv(vec2 screenUv) {
   return (screenUv - 0.5) * uVisibleFraction + 0.5;
 }
 
+vec3 sampleScene(vec2 screenUv, vec3 fallback) {
+  if (uHasVideo < 0.5) return fallback;
+  return texture2D(uVideo, screenToVideoUv(clamp(screenUv, 0.0, 1.0))).rgb;
+}
+
 void main() {
   vec2 screenUv = gl_FragCoord.xy / uResolution;
-  vec2 distortion = vec2(vWave.x, vWave.y) * uRefraction;
-  vec2 videoUv = screenToVideoUv(clamp(screenUv + distortion, 0.0, 1.0));
-  vec3 behind = uHasVideo > 0.5 ? texture2D(uVideo, videoUv).rgb : uDeepColor;
+  vec2 p = vWorldPosition.xz;
+  float distance = length(vWorldPosition.xz - cameraPosition.xz);
+  // 遠くの細かい波は潰れるので弱める。
+  float detail = uWaveAmplitude / (1.0 + distance * 0.5);
 
-  float distance = length(vWorldPosition.xz);
-  float depthMix = clamp(distance / 14.0, 0.0, 1.0);
-  vec3 water = mix(uShallowColor, uDeepColor, depthMix);
-  float fresnel = clamp(0.25 + depthMix * 0.55, 0.0, 1.0);
-  vec3 color = mix(behind, water, clamp(uTurbidity + fresnel * 0.5, 0.0, 0.97));
+  float phaseA = p.x * 3.1 + uTime * 1.6;
+  float phaseB = p.y * 2.7 - uTime * 1.1;
+  float phaseC = (p.x * 1.7 - p.y * 2.3) + uTime * 2.2;
+  vec2 slope = vec2(
+    3.1 * cos(phaseA) * cos(phaseB) + 0.85 * cos(phaseC),
+    -2.7 * sin(phaseA) * sin(phaseB) - 1.15 * cos(phaseC)
+  ) * detail;
+  vec3 normal = normalize(vec3(-slope.x, 1.0, -slope.y));
 
-  float foam = smoothstep(0.5, 1.0, abs(vWave.x) + abs(vWave.y) * 0.6) * uFoam;
-  color += foam * 0.4;
-  // 水際（手前）を少し明るく、遠くを濃くして、水面であることが分かるようにする。
-  color *= mix(1.12, 0.82, depthMix);
+  vec3 view = normalize(vWorldPosition - cameraPosition);
+  // 水の中（屈折）。画面の歪みとして扱い、現実の奥行きは使わない。
+  vec2 refractUv = screenUv + normal.xz * uRefraction;
+  vec3 behind = sampleScene(refractUv, uDeepColor);
+
+  // 水面に映る景色（平面反射）。カメラ映像をそのまま映すので、実際の背景と合う。
+  vec3 reflected = reflect(view, normal);
+  vec4 clip = uViewProjection * vec4(vWorldPosition + reflected * 30.0, 1.0);
+  vec3 skyFallback = sampleScene(vec2(screenUv.x, 0.96), uShallowColor);
+  vec3 mirror = clip.w > 0.0
+    ? sampleScene(clip.xy / clip.w * 0.5 + 0.5, skyFallback)
+    : skyFallback;
+
+  // 深さと見通し距離で濁る。浅いときは路面が透ける。
+  float depthMix = clamp(distance / 16.0, 0.0, 1.0);
+  vec3 tint = mix(uShallowColor, uDeepColor, depthMix);
+  float muddiness = clamp(uTurbidity * (0.3 + uDepth * 0.3) + depthMix * 0.4, 0.0, 0.93);
+  vec3 underwater = mix(behind, tint, muddiness);
+
+  // 浅い角度ほど映り込みが強い（フレネル）。真下を見るほど水の中が見える。
+  float fresnel = pow(1.0 - clamp(dot(-view, normal), 0.0, 1.0), 4.0);
+  // 濁った水ほど、景色をきれいには映さない（津波は黒く濁る想定）。
+  float reflectivity = clamp(0.06 + fresnel * 1.15, 0.06, 0.92) * (1.0 - uTurbidity * 0.5);
+  vec3 color = mix(underwater, mirror, reflectivity);
+
+  // 日差しのきらめきと泡。水面であることの手がかりにする。
+  float glint = pow(max(dot(reflected, normalize(vec3(0.25, 0.75, -0.6))), 0.0), 90.0);
+  color += glint * 0.55 * (1.0 - depthMix * 0.5);
+  float foam = smoothstep(0.75, 1.0, abs(slope.x) + abs(slope.y)) * uFoam;
+  color += foam * 0.3;
+
   if (uUnderwater > 0.5) {
     color = mix(color, uDeepColor, 0.5);
   }
-  // 浅いほど路面が透ける。深いほど濁って見通せなくなる。
-  float depthAlpha = clamp(0.3 + uDepth * 0.16 + uTurbidity * 0.12, 0.3, 0.92);
-  // 遠いほど濃く見えるのは、水を斜めに長く見通すため。
-  float alpha = clamp(depthAlpha + depthMix * 0.25, 0.0, 0.95);
-  gl_FragColor = vec4(color, alpha);
+  gl_FragColor = vec4(color, clamp(0.88 + uTurbidity * 0.08, 0.0, 0.97));
 }
 `
 
@@ -205,17 +233,17 @@ const PALETTE: Record<'flood' | 'tsunami', PaletteEntry> = {
   flood: {
     shallow: new THREE.Color('#9d8441'),
     deep: new THREE.Color('#4f4526'),
-    turbidity: 0.55,
+    turbidity: 0.42,
     foam: 0.22,
-    waveAmplitude: 0.035,
+    waveAmplitude: 0.028,
     refraction: 0.012,
   },
   tsunami: {
     shallow: new THREE.Color('#514f58'),
     deep: new THREE.Color('#1d1b23'),
-    turbidity: 0.7,
+    turbidity: 0.78,
     foam: 0.6,
-    waveAmplitude: 0.075,
+    waveAmplitude: 0.06,
     refraction: 0.022,
   },
 }
@@ -256,7 +284,6 @@ function WaterPlane({
     () => ({
       uTime: { value: 0 },
       uWaveAmplitude: { value: palette.waveAmplitude },
-      uWaveFrequency: { value: 1.1 },
       uVideo: { value: null as THREE.VideoTexture | null },
       uHasVideo: { value: 0 },
       uVisibleFraction: { value: new THREE.Vector2(1, 1) },
@@ -268,6 +295,7 @@ function WaterPlane({
       uRefraction: { value: palette.refraction },
       uUnderwater: { value: 0 },
       uDepth: { value: 0 },
+      uViewProjection: { value: new THREE.Matrix4() },
     }),
     [palette],
   )
@@ -376,6 +404,8 @@ function WaterPlane({
     const submerged = isVirtualViewSubmerged(depth)
     uniforms.uUnderwater.value = submerged ? 1 : 0
     uniforms.uDepth.value = depth
+    // 映り込みを画面座標へ投影するために、毎フレームの視点行列を渡す。
+    uniforms.uViewProjection.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     uniforms.uTime.value = reducedMotion ? 0 : animationMsRef.current / 1000
     mesh.position.y = -AR_ASSUMED_CAMERA_HEIGHT_M + depth
 
