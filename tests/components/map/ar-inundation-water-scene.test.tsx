@@ -82,9 +82,10 @@ describe('inundation learning water scene', () => {
     const scene = screen.getByTestId('water-scene')
     expect(scene).toHaveAttribute('data-hazard', 'flood')
     expect(scene).toHaveAttribute('data-playing', 'true')
-    // 画面を重ねている間は、2Dの水画像を二重に出さない。比較図と範囲は残す。
+    // 水面を重ねている間は、縮尺の違う2Dの比較図を二重に出さない
+    // （身長の目安と深さの目盛りは、水面と同じ3D空間に置く）。範囲の数値は残す。
     expect(document.querySelector('.ar-depth-water')).toBeNull()
-    expect(screen.getByLabelText('人物と想定浸水深の高さ比較')).toBeInTheDocument()
+    expect(screen.queryByLabelText('人物と想定浸水深の高さ比較')).not.toBeInTheDocument()
     expect(screen.getAllByText('0.5〜3.0m').length).toBeGreaterThan(0)
   })
 
@@ -93,7 +94,10 @@ describe('inundation learning water scene', () => {
     start()
     expect(screen.queryByTestId('water-scene')).not.toBeInTheDocument()
     expect(screen.getByText(/端末の傾きを取得できないため/)).toBeInTheDocument()
+    expect(screen.getByLabelText('人物と想定浸水深の高さ比較')).toBeInTheDocument()
     expect(document.querySelector('.ar-depth-water')).not.toBeNull()
+    // 退避した2Dの比較図では、目盛りの短い表記を出す
+    expect(screen.getByText('0.5m・1階の床上')).toBeInTheDocument()
   })
 
   it('does not overlay the current camera for a point chosen on the map', () => {
@@ -167,9 +171,7 @@ describe('inundation learning water scene', () => {
   it('shows the official depth guide with its source and caveat', () => {
     setup()
     start()
-    // 比較図に収まる目盛りだけを出す（0.5〜3.0m では 0.5m の目盛り）
-    // 比較図の目盛りはたたんでも残る
-    expect(screen.getByText('0.5m・1階の床上')).toBeInTheDocument()
+    // 水面を重ねている間、目安の全文と出典はシートで読める（0.5〜3.0m では 0.5m の目盛り）
     openSheet()
     expect(screen.getByText(/建物1階の床上まで浸水するおそれ/)).toBeInTheDocument()
     expect(screen.queryByText(/建物2階の床面まで浸水するおそれ/)).not.toBeInTheDocument()

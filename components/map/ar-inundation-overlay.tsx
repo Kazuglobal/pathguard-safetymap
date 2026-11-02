@@ -137,7 +137,7 @@ export function ARInundationOverlay({
       <span>仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深いため、水面の下から見た表示にしています。あなたや端末が実際に水没する高さを判定したものではありません。</span>
     </div>}
 
-    {canShow && acknowledged && knownDepth && <div className="ar-depth-visual" style={{ bottom: sheetHeight + 16 }} aria-label="人物と想定浸水深の高さ比較">
+    {canShow && acknowledged && knownDepth && !showScene && <div className="ar-depth-visual" style={{ bottom: sheetHeight + 16 }} aria-label="人物と想定浸水深の高さ比較">
       <span className="ar-depth-caption">高さの比較イメージ</span>
       {!showScene && <div className="ar-depth-water-clip" style={{ height: upper }}>
         {/* This is an educational screen overlay; it is not a terrain model. */}
