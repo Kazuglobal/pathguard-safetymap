@@ -26,3 +26,46 @@ describe('AR record selection', () => {
     expect(screen.queryByRole('button', { name: '現地の景色を見る' })).not.toBeInTheDocument()
   })
 })
+
+describe('AR accident dock visibility', () => {
+  const hazards = {
+    flood: { kind: 'outside' as const, sources: [] },
+    tsunami: { kind: 'no_coverage' as const, sources: [] },
+  }
+  function setup() {
+    mocks.data.mockReturnValue({
+      accidents: { type: 'FeatureCollection', features: [
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 35.001] }, properties: { id: 1, year: 2024, type: '追突', severity: 2 } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 35.0012] }, properties: { id: 2, year: 2022, type: '出会い頭', severity: 2 } },
+      ] },
+      hazards: { point: { latitude: 35, longitude: 139 }, hazards }, retry: vi.fn(),
+    })
+    return render(<ARRealRisks {...props} />)
+  }
+
+  it('folds the details away but keeps the record, the scene action and the hazard state', () => {
+    setup()
+    expect(screen.getByRole('heading', { name: '追突' })).toBeInTheDocument()
+    expect(screen.getByText(/近くの実事故/)).toBeInTheDocument()
+    expect(screen.getByText(/事故出典/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '詳細をたたむ' }))
+
+    // たたむ: 事故の詳細・近くの一覧・出典は隠す
+    expect(screen.queryByRole('heading', { name: '追突' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/近くの実事故/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/事故出典/)).not.toBeInTheDocument()
+    // たたんでも: 条件・選んだ事故の要点・景色を見る操作・浸水の状態と注意文は残す
+    expect(screen.getByText(/表示距離500m/)).toBeInTheDocument()
+    expect(screen.getByText(/実事故 2024年・追突/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '現地の景色を見る' })).toBeInTheDocument()
+    expect(screen.getByText(/想定区域外/)).toBeInTheDocument()
+    // たたんだときは短い表記で残す
+    expect(screen.getByText(/（安全の保証ではありません）/)).toBeInTheDocument()
+    expect(screen.getByText(/（安全という意味ではありません）/)).toBeInTheDocument()
+    expect(screen.getAllByText(/未収録/).length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: '詳細をひらく' }))
+    expect(screen.getByRole('heading', { name: '追突' })).toBeInTheDocument()
+  })
+})

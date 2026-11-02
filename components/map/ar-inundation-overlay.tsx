@@ -177,7 +177,7 @@ export function ARInundationOverlay({
           <button type="button" className="ar-depth-replay" aria-label="もう一度" disabled={!canShow || reducedMotion}
             onClick={() => { setReplay(value => value + 1); setPlaying(true) }}><RotateCw aria-hidden="true" size={20} />
             <span className="ar-depth-replay-label">もう一度</span></button>
-          <button type="button" className="ar-depth-sheet-toggle" aria-expanded={expanded}
+          <button type="button" className="ar-sheet-toggle" aria-expanded={expanded}
             aria-label={expanded ? '説明をたたむ' : '説明をひらく'} onClick={() => setExpanded(value => !value)}>
             {expanded ? <ChevronDown size={20} aria-hidden="true" /> : <ChevronUp size={20} aria-hidden="true" />}</button>
         </> : <p>この地点には深さの情報がないため、高さの比較は表示できません。</p>}

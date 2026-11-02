@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Car, ImageIcon, Droplets, Waves, RotateCw } from 'lucide-react'
+import { Car, ImageIcon, Droplets, Waves, RotateCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useARRiskData } from '@/hooks/use-ar-risk-data'
 import { projectARAccidents, accidentFilterLabel, type ARPoint } from '@/lib/ar-risk-data'
 import { hazardDepthLabel, hazardStatusLabel, HAZARD_OUTSIDE_NOTICE } from '@/lib/hazard-point'
@@ -26,6 +26,9 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
   const data = useARRiskData({ enabled, point, distance, filters })
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [hazard, setHazard] = useState<HazardType | null>(null)
+  // 浸水学習のシートと同じく、詳細をたたんでカメラを広く見せる。
+  // 条件・選んだ事故・景色を見る操作・浸水の状態は、たたんでも隠さない。
+  const [expanded, setExpanded] = useState(true)
   const accidents = useMemo(() => point ? projectARAccidents(data.accidents?.features ?? [], point, heading, distance, orientation, fov) : [],
     [point, data.accidents, heading, distance, orientation, fov])
   // Cards retain the chosen factual record when the camera turns away. Only
@@ -72,15 +75,23 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
       live videoRef={videoRef} tiltRef={tiltRef} tiltReady={tiltReady} sourceHorizontalFovDeg={fov}>
       {selected && <><span className="font-bold text-safety-strong">実事故 {selected.feature.properties.year}年・{Math.round(selected.distance)}m</span>
         <button type="button" className="min-h-11 font-bold text-forest-strong" onClick={openScene}>現地の景色を見る</button></>}
-    </ARInundationOverlay> : <section className="ar-risk-dock" aria-label="実事故と浸水想定">
-      <p className="text-xs text-ink-soft">{accidentFilterLabel(filters)} ／ 表示距離{distance}m</p>
-      {!orientation && <p>方角を取得できないため、近い順に表示しています。</p>}
+    </ARInundationOverlay> : <section className={`ar-risk-dock ${expanded ? '' : 'ar-risk-dock--collapsed'}`} aria-label="実事故と浸水想定">
+      <div className="ar-risk-dock-head">
+        <p className="text-xs text-ink-soft">{accidentFilterLabel(filters)} ／ 表示距離{distance}m</p>
+        <button type="button" className="ar-sheet-toggle" aria-expanded={expanded}
+          aria-label={expanded ? '詳細をたたむ' : '詳細をひらく'} onClick={() => setExpanded(value => !value)}>
+          {expanded ? <ChevronDown size={20} aria-hidden="true" /> : <ChevronUp size={20} aria-hidden="true" />}</button>
+      </div>
+      {expanded && !orientation && <p>方角を取得できないため、近い順に表示しています。</p>}
       {data.accidentError ? <p role="status">{data.accidentError}</p> : !data.accidents ? <p role="status">実事故を確認しています…</p> :
         selected ? <>
-          <AccidentFacts properties={{ ...selected.feature.properties }} compact />
-          <p>約{Math.round(selected.distance)}m先 ／ 過去に事故が記録された地点です</p>
+          {expanded ? <>
+            <AccidentFacts properties={{ ...selected.feature.properties }} compact />
+            <p>約{Math.round(selected.distance)}m先 ／ 過去に事故が記録された地点です</p>
+          </> : <p className="ar-risk-summary">実事故 {selected.feature.properties.year}年・{selected.feature.properties.type ?? '種類不明'}
+            ／約{Math.round(selected.distance)}m先</p>}
           <button type="button" className="ar-risk-cta" onClick={openScene}><ImageIcon size={19} aria-hidden="true" />現地の景色を見る</button>
-          {(!orientation || accidents.length > 1) && <details><summary className="cursor-pointer py-2 text-xs">近くの実事故（表示中 {accidents.length}件）</summary>
+          {expanded && (!orientation || accidents.length > 1) && <details><summary className="cursor-pointer py-2 text-xs">近くの実事故（表示中 {accidents.length}件）</summary>
             <div className="ar-accident-list">{accidents.map(item => <button key={item.feature.properties.id} type="button" onClick={() => setSelectedId(item.feature.properties.id)}>
               <span>{item.feature.properties.year}年・{item.feature.properties.type ?? '種類不明'}</span><span>{Math.round(item.distance)}m</span>
             </button>)}</div></details>}
@@ -90,19 +101,23 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
       {(['flood', 'tsunami'] as const).map(type => {
         const risk = data.hazards?.hazards[type]
         const Icon = type === 'flood' ? Droplets : Waves
+        // たたんだときは1行にまとめる。区域外・未収録の注意は短い表記で必ず残す。
         return <div key={type}>
           <div className="ar-risk-hazard-row"><span className="flex items-center gap-2"><Icon size={18} aria-hidden="true" />
-            {type === 'flood' ? '洪水' : '津波'}：{risk ? hazardStatusLabel(risk.kind) : data.hazardError ? '取得不能' : '確認中'}</span>
+            {type === 'flood' ? '洪水' : '津波'}：{risk ? hazardStatusLabel(risk.kind) : data.hazardError ? '取得不能' : '確認中'}
+            {!expanded && risk?.kind === 'inside' && risk.zone && <span className="font-bold">{hazardDepthLabel(risk.zone)}</span>}
+            {!expanded && risk?.kind === 'outside' && <span className="text-xs">（安全の保証ではありません）</span>}
+            {!expanded && risk?.kind === 'no_coverage' && <span className="text-xs">（安全という意味ではありません）</span>}</span>
             {risk?.kind === 'inside' && <button type="button" disabled={suppressed || risk.confirmed === false} onClick={() => setHazard(type)}>
               {risk.confirmed === false ? '位置を確認中' : '深さを見る'}</button>}
           </div>
-          {risk?.kind === 'inside' && risk.zone && <p className="mb-2">想定浸水深 {hazardDepthLabel(risk.zone)}</p>}
-          {risk?.kind === 'outside' && <p className="mb-2 text-xs">{HAZARD_OUTSIDE_NOTICE}</p>}
-          {risk?.kind === 'no_coverage' && <p className="mb-2 text-xs">この地点の公的データは未収録です。安全という意味ではありません。</p>}
+          {expanded && risk?.kind === 'inside' && risk.zone && <p className="mb-2">想定浸水深 {hazardDepthLabel(risk.zone)}</p>}
+          {expanded && risk?.kind === 'outside' && <p className="mb-2 text-xs">{HAZARD_OUTSIDE_NOTICE}</p>}
+          {expanded && risk?.kind === 'no_coverage' && <p className="mb-2 text-xs">この地点の公的データは未収録です。安全という意味ではありません。</p>}
         </div>
       })}
       {(data.accidentError || data.hazardError) && <button type="button" className="flex items-center gap-2 text-sm text-forest-strong" onClick={data.retry}><RotateCw size={16} />再試行</button>}
-      <p className="text-xs text-ink-soft">事故出典：警察庁 交通事故統計オープンデータを加工</p>
+      {expanded && <p className="text-xs text-ink-soft">事故出典：警察庁 交通事故統計オープンデータを加工</p>}
     </section>}
   </>
 }
