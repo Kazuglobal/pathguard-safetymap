@@ -201,6 +201,32 @@ export function depthAtMs(timeline: DepthTimeline, elapsedMs: number): number {
   return last.depthMeters
 }
 
+/** 比較用の人物と目盛りを置く距離（m）。仮想シーン内の位置で、現地の地面を測った結果ではない。 */
+export const REFERENCE_DISTANCE_M = 5
+
+export interface ReferencePlacement {
+  /** カメラからの距離（m） */
+  distanceM: number
+  /** 画面の中心からの横のずれ（m） */
+  offsetXM: number
+}
+
+/**
+ * 比較用の人物・目盛りの置き場所。
+ *
+ * 距離は固定にする。見かけの大きさを画面の割合にそろえると、実景の遠近と切り離れて
+ * 「約170cm」に見えなくなるため、大きさは投影の結果に委ねる。
+ * 横は画角に合わせ、狭い画角でも画面から外れないようにする（置き場所の調整であり、
+ * 大きさは変えない）。
+ */
+export function referencePlacement(horizontalFovDeg: number, distanceM: number = REFERENCE_DISTANCE_M): ReferencePlacement {
+  if (!Number.isFinite(horizontalFovDeg) || horizontalFovDeg <= 0) {
+    return { distanceM, offsetXM: 0 }
+  }
+  const halfAngle = (Math.min(horizontalFovDeg, 170) * Math.PI) / 360
+  return { distanceM, offsetXM: Math.tan(halfAngle * 0.55) * distanceM }
+}
+
 export interface VideoProjectionInput {
   videoWidth: number
   videoHeight: number

@@ -14,7 +14,7 @@ import {
   type HazardPointRisk,
 } from '@/lib/hazard-point'
 import { AR_ASSUMED_CAMERA_HEIGHT_M, buildDepthTimeline, type DeviceTilt } from '@/lib/ar-water-geometry'
-import { depthGuideMarksWithin, layoutDepthGuideMarks, DEPTH_GUIDE_CAVEAT } from '@/lib/hazard-depth-guide'
+import { depthGuideMarksWithin, layoutDepthGuideMarks, DEPTH_GUIDE_CAVEAT, REFERENCE_SCALE_CAVEAT } from '@/lib/hazard-depth-guide'
 import { DEFAULT_FOV } from '@/lib/ar-constants'
 import './ar-risk.css'
 

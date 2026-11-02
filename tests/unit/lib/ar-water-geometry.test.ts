@@ -9,6 +9,8 @@ import {
   isTiltFresh,
   isValidTilt,
   isVirtualViewSubmerged,
+  referencePlacement,
+  REFERENCE_DISTANCE_M,
   screenToVideoUv,
   tiltToAttitude,
   TILT_STALE_MS,
@@ -153,5 +155,28 @@ describe('video projection', () => {
     expect(projection.visibleFractionY).toBeCloseTo(512 / 720, 5)
     const top = screenToVideoUv(projection, 0.5, 0)
     expect(top.v).toBeCloseTo(0.5 - 512 / 720 / 2, 5)
+  })
+})
+
+describe('reference placement', () => {
+  it('keeps the distance fixed so the apparent size follows the projection', () => {
+    const narrow = referencePlacement(17)
+    const wide = referencePlacement(62)
+    expect(narrow.distanceM).toBe(REFERENCE_DISTANCE_M)
+    expect(wide.distanceM).toBe(REFERENCE_DISTANCE_M)
+    // 横の位置だけを画角に合わせる（狭い画角では中央寄りに置く）
+    expect(narrow.offsetXM).toBeLessThan(wide.offsetXM)
+    expect(narrow.offsetXM).toBeGreaterThan(0)
+  })
+  it('stays inside the frame', () => {
+    for (const fov of [12, 30, 60, 90]) {
+      const { distanceM, offsetXM } = referencePlacement(fov)
+      const halfWidthAtDistance = Math.tan((fov * Math.PI) / 360) * distanceM
+      expect(offsetXM).toBeLessThan(halfWidthAtDistance)
+    }
+  })
+  it('falls back to the centre when the field of view is unknown', () => {
+    expect(referencePlacement(Number.NaN).offsetXM).toBe(0)
+    expect(referencePlacement(0).offsetXM).toBe(0)
   })
 })

@@ -12,6 +12,8 @@ import {
   depthAtMs,
   isTiltFresh,
   isVirtualViewSubmerged,
+  referencePlacement,
+  REFERENCE_DISTANCE_M,
   type DepthTimeline,
   type DeviceTilt,
 } from '@/lib/ar-water-geometry'
@@ -191,42 +193,28 @@ const debrisDummy = new THREE.Object3D()
 
 /** 比較用の人物の身長（m）。一般的な目安で、利用者本人の計測値ではない。 */
 const REFERENCE_PERSON_HEIGHT_M = 1.7
-/** 人物と目盛りを置く距離（m）の範囲。仮想シーン内の位置で、現地の地面を測った結果ではない。 */
-const REFERENCE_DISTANCE_MIN_M = 4
-const REFERENCE_DISTANCE_MAX_M = 14
-/** 人物の見かけの高さを、画面の縦の画角のどれくらいに収めるか。 */
-const REFERENCE_PERSON_SCREEN_RATIO = 0.42
+
 const GAUGE_BAND_M = 0.5
 const GAUGE_MAX_M = 6
 
 /** 水面と同じ投影で見える、身長の目安と深さの目盛り。 */
-function DepthReference({ hazard, gaugeTopM, openUpper, horizontalFovRef, verticalFovRef }: {
+function DepthReference({ hazard, gaugeTopM, openUpper, horizontalFovRef }: {
   hazard: 'flood' | 'tsunami'
   gaugeTopM: number
   /** 上限のない区分。有限の上端を作らず、上向きの表示にとどめる。 */
   openUpper: boolean
   horizontalFovRef: React.RefObject<number>
-  verticalFovRef: React.RefObject<number>
 }) {
   const personRef = useRef<THREE.Group>(null)
   const gaugeRef = useRef<THREE.Group>(null)
   useFrame(() => {
     const horizontalFov = horizontalFovRef.current
-    const verticalFov = verticalFovRef.current
-    if (!horizontalFov || !verticalFov) return
-    // 映像の切り抜きで画角は狭くなる。人物が画面の約4割に収まる距離へ置き、
-    // 左右は画角の55%の位置にする（狭い画角でも画面から外れない）。
-    const targetHalfAngle = THREE.MathUtils.degToRad(verticalFov * REFERENCE_PERSON_SCREEN_RATIO) / 2
-    const distance = THREE.MathUtils.clamp(
-      REFERENCE_PERSON_HEIGHT_M / 2 / Math.tan(targetHalfAngle),
-      REFERENCE_DISTANCE_MIN_M,
-      REFERENCE_DISTANCE_MAX_M,
-    )
-    const offset = Math.tan(THREE.MathUtils.degToRad(horizontalFov / 2) * 0.55) * distance
-    if (personRef.current) personRef.current.position.set(offset, 0, -distance)
-    // 目盛りは少し奥に置く。3mまでの柱が画面の上で切れにくくなる。
-    const gaugeDistance = distance * 1.45
-    if (gaugeRef.current) gaugeRef.current.position.set(-offset * 1.45, 0, -gaugeDistance)
+    if (!horizontalFov) return
+    // 距離は固定。見かけの大きさは投影の結果に任せる（画面の割合にそろえない）。
+    const { distanceM, offsetXM } = referencePlacement(horizontalFov)
+    if (personRef.current) personRef.current.position.set(offsetXM, 0, -distanceM)
+    // 目盛りは少し奥に置く。深い区分の柱が画面の上で切れにくくなる。
+    if (gaugeRef.current) gaugeRef.current.position.set(-offsetXM * 1.4, 0, -distanceM * 1.4)
   })
   const texture = useMemo(() => {
     const loaded = new THREE.TextureLoader().load('/images/ar/height-reference-adult.png')
@@ -239,16 +227,16 @@ function DepthReference({ hazard, gaugeTopM, openUpper, horizontalFovRef, vertic
   const ground = -AR_ASSUMED_CAMERA_HEIGHT_M
   return (
     <group>
-      <group ref={personRef} position={[0.95, 0, -REFERENCE_DISTANCE_MIN_M]}>
+      <group ref={personRef} position={[0.95, 0, -REFERENCE_DISTANCE_M]}>
         <mesh position={[0, ground + REFERENCE_PERSON_HEIGHT_M / 2, 0]} renderOrder={0}>
           <planeGeometry args={[REFERENCE_PERSON_HEIGHT_M * 0.5, REFERENCE_PERSON_HEIGHT_M]} />
           <meshBasicMaterial map={texture} transparent alphaTest={0.4} toneMapped={false} />
         </mesh>
         <Html position={[0, ground + REFERENCE_PERSON_HEIGHT_M + 0.25, 0]} center zIndexRange={[1, 0]}>
-          <span className="ar-scene-chip">大人 約170cm</span>
+          <span className="ar-scene-chip">大人の目安 約170cm</span>
         </Html>
       </group>
-      <group ref={gaugeRef} position={[-0.95, 0, -REFERENCE_DISTANCE_MIN_M]}>
+      <group ref={gaugeRef} position={[-0.95, 0, -REFERENCE_DISTANCE_M]}>
         {Array.from({ length: bands }, (_, index) => (
           <mesh key={index} position={[0, ground + GAUGE_BAND_M * (index + 0.5), 0]} renderOrder={0}>
             <boxGeometry args={[0.16, GAUGE_BAND_M, 0.16]} />
@@ -307,7 +295,6 @@ function WaterPlane({
   // 仮想視点が水面下に入ったときの全体の濁り。視線に合わせてカメラの前に置く。
   const murkRef = useRef<THREE.Mesh>(null)
   const horizontalFovRef = useRef<number>(0)
-  const verticalFovRef = useRef<number>(0)
   const submergedRef = useRef(false)
   const smoother = useMemo(() => createTiltSmoother(), [])
   const animationMsRef = useRef(0)
@@ -406,7 +393,6 @@ function WaterPlane({
       if (projection) {
         uniforms.uHasVideo.value = 1
         horizontalFovRef.current = projection.horizontalFovDeg
-        verticalFovRef.current = projection.verticalFovDeg
         uniforms.uVisibleFraction.value.set(projection.visibleFractionX, projection.visibleFractionY)
         const perspective = camera as THREE.PerspectiveCamera
         if (perspective.isPerspectiveCamera) {
@@ -502,7 +488,7 @@ function WaterPlane({
           depthWrite={false}
         />
       </mesh>
-      <DepthReference hazard={hazard} horizontalFovRef={horizontalFovRef} verticalFovRef={verticalFovRef}
+      <DepthReference hazard={hazard} horizontalFovRef={horizontalFovRef}
         gaugeTopM={gaugeTopM} openUpper={timeline.openUpper} />
       <primitive object={camera}>
         <mesh ref={murkRef} visible={false} frustumCulled={false} renderOrder={2}>
