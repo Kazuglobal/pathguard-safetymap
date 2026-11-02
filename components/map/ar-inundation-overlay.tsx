@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Droplets, Waves, Pause, Play, RotateCw, Info, ArrowLeft } from 'lucide-react'
+import { Droplets, Waves, Pause, Play, RotateCw, Info, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import type { HazardType } from '@/lib/types'
 import {
   hazardDepthLabel,
@@ -58,6 +58,9 @@ export function ARInundationOverlay({
   const [visible, setVisible] = useState(true)
   const [sceneError, setSceneError] = useState<string | null>(null)
   const [submerged, setSubmerged] = useState(false)
+  // 地図アプリのシートと同じように、説明をたたんでカメラを広く見せる。
+  // 学習イメージの限界と注意文は、たたんでも隠さない。
+  const [expanded, setExpanded] = useState(true)
   const sheet = useRef<HTMLDivElement>(null)
   const [sheetHeight, setSheetHeight] = useState(325)
   const zone = risk.kind === 'inside' ? risk.zone : undefined
@@ -75,7 +78,7 @@ export function ARInundationOverlay({
     return () => observer.disconnect()
   }, [])
   useEffect(() => {
-    setAcknowledged(false); setPlaying(false); setSceneError(null); setSubmerged(false)
+    setAcknowledged(false); setPlaying(false); setSceneError(null); setSubmerged(false); setExpanded(true)
   }, [zoneKey, selected, suppressed])
   useEffect(() => {
     const query = matchMedia('(prefers-reduced-motion: reduce)')
@@ -152,14 +155,19 @@ export function ARInundationOverlay({
       </div>
     </div>}
 
-    <div className={`ar-inundation-sheet ${acknowledged && knownDepth ? 'ar-inundation-sheet--active' : ''}`} ref={sheet}>
+    <div className={`ar-inundation-sheet ${acknowledged && knownDepth ? 'ar-inundation-sheet--active' : ''} ${expanded ? '' : 'ar-inundation-sheet--collapsed'}`} ref={sheet}>
+      <button type="button" className="ar-depth-sheet-toggle" aria-expanded={expanded}
+        onClick={() => setExpanded(value => !value)}>
+        {expanded ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronUp size={18} aria-hidden="true" />}
+        {expanded ? '説明をたたむ' : '説明をひらく'}
+      </button>
       <div className="ar-depth-heading"><div><p>{selected === 'flood' ? '洪水' : '津波'}の想定浸水深</p>
         <strong>{zone ? hazardDepthLabel(zone) : '確認できません'}</strong></div>
       </div>
       {!acknowledged ? <div className="ar-depth-start">
         <p>{suppressed ? '位置精度や移動速度のため表示を停止しています。' : risk.confirmed === false ? '位置の判定を確認しています。' : '安全な場所で立ち止まって確認してください。'}</p>
         {live && knownDepth && <p className="ar-depth-scene-notice">{HAZARD_WATER_SCENE_NOTICE}</p>}
-        <button type="button" disabled={!canShow} onClick={() => { setAcknowledged(true); setPlaying(true) }}>
+        <button type="button" disabled={!canShow} onClick={() => { setAcknowledged(true); setPlaying(true); setExpanded(false) }}>
           <Play size={20} aria-hidden="true" />立ち止まって{knownDepth ? '再生する' : '説明を見る'}</button>
       </div> : <div className="ar-depth-controls">
         {knownDepth ? <>
@@ -172,15 +180,15 @@ export function ARInundationOverlay({
       </div>}
       {live && knownDepth && acknowledged && <p className="ar-depth-scene-notice">{HAZARD_WATER_SCENE_NOTICE}</p>}
       {sceneFallbackReason && <p className="ar-depth-scene-notice" role="status">{sceneFallbackReason}</p>}
-      {guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">
+      {expanded && guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">
         {guideMarks.map(mark => <span key={mark.depthMeters}>{mark.depthMeters}m：{mark.label}</span>)}
         {DEPTH_GUIDE_CAVEAT}
         <span>出典：{[...new Set(guideMarks.map(mark => mark.sourceName))].join('、')}</span></p>}
       {selected === 'tsunami' && <p className="ar-tsunami-action">津波警報が出たら、海や川から離れて高い場所へ避難しましょう。</p>}
       <p className="ar-depth-notice"><Info size={18} aria-hidden="true" /><span>{HAZARD_LEARNING_NOTICE}</span></p>
-      <p className="ar-depth-source">{sample ? 'デザイン用サンプル・実地点の想定ではありません' :
-        `出典：${risk.sources.map(source => `${source.name}／${source.region}／${source.dataYear ?? '対象年不明'}${source.dataYear ? '年版' : ''}`).join('、') || '公的な浸水想定データ'}`}</p>
-      {children && <div className="ar-depth-accident">{children}</div>}
+      {expanded && <p className="ar-depth-source">{sample ? 'デザイン用サンプル・実地点の想定ではありません' :
+        `出典：${risk.sources.map(source => `${source.name}／${source.region}／${source.dataYear ?? '対象年不明'}${source.dataYear ? '年版' : ''}`).join('、') || '公的な浸水想定データ'}`}</p>}
+      {expanded && children && <div className="ar-depth-accident">{children}</div>}
     </div>
   </section>
 }

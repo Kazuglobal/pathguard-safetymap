@@ -58,6 +58,8 @@ function setup({ live = true, tiltReady = true, min = 0.5 as number | null, max 
 }
 
 const start = () => fireEvent.click(screen.getByRole('button', { name: /立ち止まって/ }))
+// 再生を始めるとシートは自動でたたまれる。全文を見るときだけ開く。
+const openSheet = () => fireEvent.click(screen.getByRole('button', { name: '説明をひらく' }))
 
 describe('inundation learning water scene', () => {
   it('states the assumed-plane limit before playing and while showing', () => {
@@ -121,6 +123,26 @@ describe('inundation learning water scene', () => {
     expect(screen.queryByText('仮想視点（水面下）')).not.toBeInTheDocument()
   })
 
+  it('folds the details away but never the limits of the learning image', () => {
+    setup()
+    start()
+    // 再生を始めた直後はたたまれている
+    expect(screen.queryByText(/建物1階の床上まで浸水するおそれ/)).not.toBeInTheDocument()
+    openSheet()
+    expect(screen.getByText(/建物1階の床上まで浸水するおそれ/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '説明をたたむ' }))
+    // たたむ: 目安の全文・出典は隠す
+    expect(screen.queryByText(/建物1階の床上まで浸水するおそれ/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/公的な浸水想定データ/)).not.toBeInTheDocument()
+    // たたんでも: 学習イメージの限界・注意文・深さの範囲・再生操作は残す
+    expect(screen.getAllByText(HAZARD_WATER_SCENE_NOTICE).length).toBeGreaterThan(0)
+    expect(screen.getByText(/浸水想定を理解するためのイメージ/)).toBeInTheDocument()
+    expect(screen.getAllByText('0.5〜3.0m').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: '一時停止' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '説明をひらく' }))
+    expect(screen.getByText(/建物1階の床上まで浸水するおそれ/)).toBeInTheDocument()
+  })
+
   it('keeps the scene out when the depth is unknown', () => {
     setup({ min: null, max: null })
     start()
@@ -140,7 +162,9 @@ describe('inundation learning water scene', () => {
     setup()
     start()
     // 比較図に収まる目盛りだけを出す（0.5〜3.0m では 0.5m の目盛り）
+    // 比較図の目盛りはたたんでも残る
     expect(screen.getByText('0.5m・1階の床上')).toBeInTheDocument()
+    openSheet()
     expect(screen.getByText(/建物1階の床上まで浸水するおそれ/)).toBeInTheDocument()
     expect(screen.queryByText(/建物2階の床面まで浸水するおそれ/)).not.toBeInTheDocument()
     expect(screen.getByText(/あなた自身を測った値ではありません/)).toBeInTheDocument()
