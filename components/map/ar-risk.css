@@ -6,8 +6,11 @@
 .ar-inundation-tabs button[aria-pressed=true]{background:var(--hazard);color:#fff}
 .ar-inundation-tabs button:disabled{opacity:.5;cursor:not-allowed}
 .ar-inundation-sheet{pointer-events:auto;position:absolute;bottom:0;left:0;right:0;background:#fffdf7;border-radius:24px 24px 0 0;padding:18px 22px max(16px,env(safe-area-inset-bottom));max-height:51%;overflow:auto;box-shadow:0 -4px 30px #43392b14}
-.ar-depth-sheet-toggle{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;min-height:34px;margin:-8px 0 4px;font-size:12px;font-weight:700;color:#746855}
-.ar-depth-sheet-toggle svg{flex-shrink:0}
+.ar-depth-controls .ar-depth-sheet-toggle{flex:0 0 auto;display:grid;place-items:center;width:44px;min-width:44px;min-height:44px;padding:0;border-radius:50%;background:#f3ead6;color:#43392b}
+.ar-inundation-sheet--collapsed .ar-depth-heading strong{font-size:20px}
+.ar-inundation-sheet--collapsed .ar-depth-heading{min-width:0;overflow:hidden}
+.ar-inundation-sheet--collapsed .ar-depth-replay-label{display:none}
+.ar-inundation-sheet--collapsed .ar-depth-controls .ar-depth-replay{width:44px;min-width:44px;padding:0;display:grid;place-items:center}
 .ar-inundation-sheet--collapsed{max-height:42%}
 .ar-inundation-sheet--collapsed .ar-tsunami-action{margin-top:6px}
 .ar-inundation-sheet--collapsed .ar-depth-notice{margin:8px 0 2px;padding-top:8px}
@@ -20,13 +23,13 @@
 .ar-depth-controls .ar-depth-replay{flex:0 0 auto;font-size:12px;background:#f3ead6;color:#43392b;padding:8px 12px}
 .ar-depth-controls button{white-space:nowrap}.ar-depth-controls button svg{flex-shrink:0}
 .ar-inundation-sheet--active{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center}
-.ar-inundation-sheet--active>.ar-depth-sheet-toggle{grid-column:1 / -1;grid-row:1}
-.ar-inundation-sheet--active>.ar-depth-heading{grid-column:1;grid-row:2}
-.ar-inundation-sheet--active>.ar-depth-controls{grid-row:2}
+.ar-inundation-sheet--active>.ar-depth-heading{grid-column:1;grid-row:1}
+.ar-inundation-sheet--active>.ar-depth-controls{grid-row:1}
 .ar-inundation-sheet--active>.ar-depth-controls{grid-column:2;margin-top:0;gap:4px}
 .ar-inundation-sheet--active>.ar-depth-controls button{font-size:12px;padding:8px 10px;gap:5px}
 .ar-inundation-sheet--active>.ar-depth-controls .ar-depth-replay{flex-direction:column;background:transparent;font-size:12px;padding:4px 5px;gap:2px}
 .ar-inundation-sheet--active>.ar-depth-heading strong{font-size:30px;white-space:nowrap}
+.ar-inundation-sheet--active.ar-inundation-sheet--collapsed>.ar-depth-heading strong{font-size:20px}
 .ar-inundation-sheet--active>:not(.ar-depth-heading):not(.ar-depth-controls){grid-column:1 / -1}
 @media(max-width:350px){.ar-inundation-sheet--active{grid-template-columns:1fr}.ar-inundation-sheet--active>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active>.ar-depth-controls .ar-depth-replay{flex-direction:row;font-size:12px}}
 .ar-depth-start{flex-direction:column;align-items:stretch}.ar-depth-start p{font-size:13px;line-height:1.6;margin:0}

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ARInundationOverlay } from '@/components/map/ar-inundation-overlay'
-import { HAZARD_WATER_SCENE_NOTICE } from '@/lib/hazard-point'
+import { HAZARD_WATER_SCENE_NOTICE, HAZARD_WATER_SCENE_NOTICE_SHORT, HAZARD_LEARNING_NOTICE_SHORT } from '@/lib/hazard-point'
 import type { HazardPointRisk } from '@/lib/hazard-point'
 import type { DeviceTilt } from '@/lib/ar-water-geometry'
 
@@ -64,8 +64,13 @@ const openSheet = () => fireEvent.click(screen.getByRole('button', { name: '説�
 describe('inundation learning water scene', () => {
   it('states the assumed-plane limit before playing and while showing', () => {
     setup()
+    // 再生前は全文
     expect(screen.getAllByText(HAZARD_WATER_SCENE_NOTICE).length).toBeGreaterThan(0)
     start()
+    // 表示中(たたんだ状態)は短い表記、ひらくと全文
+    expect(screen.getByText(HAZARD_WATER_SCENE_NOTICE_SHORT)).toBeInTheDocument()
+    expect(screen.getByText(HAZARD_LEARNING_NOTICE_SHORT)).toBeInTheDocument()
+    openSheet()
     expect(screen.getAllByText(HAZARD_WATER_SCENE_NOTICE).length).toBeGreaterThan(0)
     expect(screen.getByText(/浸水想定を理解するためのイメージ/)).toBeInTheDocument()
   })
@@ -96,6 +101,7 @@ describe('inundation learning water scene', () => {
     start()
     expect(screen.queryByTestId('water-scene')).not.toBeInTheDocument()
     expect(screen.queryByText(HAZARD_WATER_SCENE_NOTICE)).not.toBeInTheDocument()
+    expect(screen.queryByText(HAZARD_WATER_SCENE_NOTICE_SHORT)).not.toBeInTheDocument()
     expect(document.querySelector('.ar-depth-water')).not.toBeNull()
   })
 
@@ -134,9 +140,9 @@ describe('inundation learning water scene', () => {
     // たたむ: 目安の全文・出典は隠す
     expect(screen.queryByText(/建物1階の床上まで浸水するおそれ/)).not.toBeInTheDocument()
     expect(screen.queryByText(/公的な浸水想定データ/)).not.toBeInTheDocument()
-    // たたんでも: 学習イメージの限界・注意文・深さの範囲・再生操作は残す
-    expect(screen.getAllByText(HAZARD_WATER_SCENE_NOTICE).length).toBeGreaterThan(0)
-    expect(screen.getByText(/浸水想定を理解するためのイメージ/)).toBeInTheDocument()
+    // たたんでも: 学習イメージの限界・注意文・深さの範囲・再生操作は残す（短い表記）
+    expect(screen.getByText(HAZARD_WATER_SCENE_NOTICE_SHORT)).toBeInTheDocument()
+    expect(screen.getByText(HAZARD_LEARNING_NOTICE_SHORT)).toBeInTheDocument()
     expect(screen.getAllByText('0.5〜3.0m').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: '一時停止' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '説明をひらく' }))

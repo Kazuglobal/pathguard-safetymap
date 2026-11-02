@@ -9,6 +9,8 @@ import {
   HAZARD_LEARNING_NOTICE,
   HAZARD_LEARNING_TITLE,
   HAZARD_WATER_SCENE_NOTICE,
+  HAZARD_WATER_SCENE_NOTICE_SHORT,
+  HAZARD_LEARNING_NOTICE_SHORT,
   type HazardPointRisk,
 } from '@/lib/hazard-point'
 import { AR_ASSUMED_CAMERA_HEIGHT_M, buildDepthTimeline, type DeviceTilt } from '@/lib/ar-water-geometry'
@@ -106,6 +108,9 @@ export function ARInundationOverlay({
   )
   // 目盛りが短いときは、範囲の吹き出しが上下の数値と重なるので外へ出す。
   const rulerTight = upper - lower < 90
+  // たたんだときは短い表記にする。限界と注意は、たたんでも必ず出す。
+  const sceneNoticeText = expanded ? HAZARD_WATER_SCENE_NOTICE : HAZARD_WATER_SCENE_NOTICE_SHORT
+  const learningNoticeText = expanded ? HAZARD_LEARNING_NOTICE : HAZARD_LEARNING_NOTICE_SHORT
 
   // カメラ映像へ水面を重ねるのは、現地AR・区域内・深さあり・有効な傾き・WebGL正常のときだけ。
   const showScene = Boolean(live && canShow && acknowledged && knownDepth && timeline && videoRef && tiltRef && tiltReady && !sceneError)
@@ -156,11 +161,6 @@ export function ARInundationOverlay({
     </div>}
 
     <div className={`ar-inundation-sheet ${acknowledged && knownDepth ? 'ar-inundation-sheet--active' : ''} ${expanded ? '' : 'ar-inundation-sheet--collapsed'}`} ref={sheet}>
-      <button type="button" className="ar-depth-sheet-toggle" aria-expanded={expanded}
-        onClick={() => setExpanded(value => !value)}>
-        {expanded ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronUp size={18} aria-hidden="true" />}
-        {expanded ? '説明をたたむ' : '説明をひらく'}
-      </button>
       <div className="ar-depth-heading"><div><p>{selected === 'flood' ? '洪水' : '津波'}の想定浸水深</p>
         <strong>{zone ? hazardDepthLabel(zone) : '確認できません'}</strong></div>
       </div>
@@ -174,18 +174,22 @@ export function ARInundationOverlay({
           <button type="button" disabled={!canShow || reducedMotion} onClick={() => setPlaying(value => !value)}>
             {playing && !reducedMotion ? <Pause aria-hidden="true" size={22} /> : <Play aria-hidden="true" size={22} />}
             {reducedMotion ? '静止画で表示中' : playing ? '一時停止' : '再生する'}</button>
-          <button type="button" className="ar-depth-replay" disabled={!canShow || reducedMotion}
-            onClick={() => { setReplay(value => value + 1); setPlaying(true) }}><RotateCw aria-hidden="true" size={20} />もう一度</button>
+          <button type="button" className="ar-depth-replay" aria-label="もう一度" disabled={!canShow || reducedMotion}
+            onClick={() => { setReplay(value => value + 1); setPlaying(true) }}><RotateCw aria-hidden="true" size={20} />
+            <span className="ar-depth-replay-label">もう一度</span></button>
+          <button type="button" className="ar-depth-sheet-toggle" aria-expanded={expanded}
+            aria-label={expanded ? '説明をたたむ' : '説明をひらく'} onClick={() => setExpanded(value => !value)}>
+            {expanded ? <ChevronDown size={20} aria-hidden="true" /> : <ChevronUp size={20} aria-hidden="true" />}</button>
         </> : <p>この地点には深さの情報がないため、高さの比較は表示できません。</p>}
       </div>}
-      {live && knownDepth && acknowledged && <p className="ar-depth-scene-notice">{HAZARD_WATER_SCENE_NOTICE}</p>}
+      {live && knownDepth && acknowledged && <p className="ar-depth-scene-notice">{sceneNoticeText}</p>}
       {sceneFallbackReason && <p className="ar-depth-scene-notice" role="status">{sceneFallbackReason}</p>}
       {expanded && guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">
         {guideMarks.map(mark => <span key={mark.depthMeters}>{mark.depthMeters}m：{mark.label}</span>)}
         {DEPTH_GUIDE_CAVEAT}
         <span>出典：{[...new Set(guideMarks.map(mark => mark.sourceName))].join('、')}</span></p>}
       {selected === 'tsunami' && <p className="ar-tsunami-action">津波警報が出たら、海や川から離れて高い場所へ避難しましょう。</p>}
-      <p className="ar-depth-notice"><Info size={18} aria-hidden="true" /><span>{HAZARD_LEARNING_NOTICE}</span></p>
+      <p className="ar-depth-notice"><Info size={18} aria-hidden="true" /><span>{learningNoticeText}</span></p>
       {expanded && <p className="ar-depth-source">{sample ? 'デザイン用サンプル・実地点の想定ではありません' :
         `出典：${risk.sources.map(source => `${source.name}／${source.region}／${source.dataYear ?? '対象年不明'}${source.dataYear ? '年版' : ''}`).join('、') || '公的な浸水想定データ'}`}</p>}
       {expanded && children && <div className="ar-depth-accident">{children}</div>}
