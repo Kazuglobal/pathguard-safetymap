@@ -11,6 +11,16 @@ describe('hazard depth guide', () => {
   it('keeps tsunami facts explicit about height versus inundation depth', () => {
     expect(TSUNAMI_FACTS.some(fact => fact.text.includes('浸水深とは別'))).toBe(true)
   })
+  it('uses the current JMA advisory and warning criteria instead of the old 0.5m threshold', () => {
+    const fact = TSUNAMI_FACTS.find(entry => entry.text.includes('津波注意報'))!
+    expect(fact.text).toContain('0.2m以上1m以下')
+    expect(fact.text).toContain('災害のおそれがある場合')
+    expect(fact.text).toContain('1mを超え3m以下')
+    expect(fact.text).toContain('3mを超える場合')
+    expect(fact.text).not.toContain('0.5m')
+    expect(fact.sourceName).toContain('気象庁')
+    expect(fact.sourceUrl).toBe('https://www.jma.go.jp/jma/kishou/know/jishin/joho/tsunamiinfo.html')
+  })
   it('only offers marks inside the displayed range', () => {
     expect(depthGuideMarksWithin(3).map(mark => mark.depthMeters)).toEqual([0.5, 3])
     expect(depthGuideMarksWithin(0.4)).toEqual([])

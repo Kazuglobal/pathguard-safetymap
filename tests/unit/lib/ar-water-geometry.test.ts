@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { Euler, Quaternion, Vector3 } from 'three'
 import {
   AR_ASSUMED_CAMERA_HEIGHT_M,
   buildDepthTimeline,
@@ -28,12 +29,48 @@ describe('tilt handling', () => {
     expect(isTiltFresh(value, TILT_STALE_MS + 1)).toBe(false)
     expect(isTiltFresh(null, 0)).toBe(false)
   })
-  it('maps tilt to pitch and roll for each screen angle', () => {
-    expect(tiltToAttitude(tilt(90, 0, 0))).toEqual({ pitchDeg: 0, rollDeg: 0 })
-    expect(tiltToAttitude(tilt(80, 5, 0))).toEqual({ pitchDeg: -10, rollDeg: 5 })
-    expect(tiltToAttitude(tilt(80, 5, 90))).toEqual({ pitchDeg: 5, rollDeg: 10 })
-    expect(tiltToAttitude(tilt(80, 5, 180))).toEqual({ pitchDeg: 10, rollDeg: -5 })
-    expect(tiltToAttitude(tilt(80, 5, 270))).toEqual({ pitchDeg: -5, rollDeg: -10 })
+  it.each([
+    [90, 0, 0],
+    [0, -90, 90],
+    [-90, 0, 180],
+    [0, 90, 270],
+  ])('keeps a level rear camera level at beta=%s gamma=%s screen=%s', (beta, gamma, angle) => {
+    const attitude = tiltToAttitude(tilt(beta, gamma, angle))
+    expect(attitude.pitchDeg).toBeCloseTo(0, 8)
+    expect(attitude.rollDeg).toBeCloseTo(0, 8)
+  })
+  it.each([
+    [60, 0, 0],
+    [0, -60, 90],
+    [-60, 0, 180],
+    [0, 60, 270],
+  ])('preserves a 30 degree downward view across screen orientations (%s, %s, %s)', (beta, gamma, angle) => {
+    const attitude = tiltToAttitude(tilt(beta, gamma, angle))
+    expect(attitude.pitchDeg).toBeCloseTo(-30, 8)
+    expect(attitude.rollDeg).toBeCloseTo(0, 8)
+  })
+  it.each([0, 90, 180, 270])('matches composed 3D rotations for compound tilt at screen=%s', angle => {
+    const radians = Math.PI / 180
+    // Independent quaternion reference: device orientation, rear-camera axis, then screen rotation.
+    const reference = new Quaternion().setFromEuler(new Euler(60 * radians, 0, -30 * radians, 'YXZ'))
+      .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2))
+      .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), -angle * radians))
+    const attitude = tiltToAttitude(tilt(60, 30, angle))
+    const actual = new Quaternion().setFromEuler(new Euler(attitude.pitchDeg * radians, 0, -attitude.rollDeg * radians, 'YXZ'))
+    // Heading is intentionally omitted, but all camera axes must have the same elevation.
+    for (const axis of [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, -1)]) {
+      expect(axis.clone().applyQuaternion(actual).y).toBeCloseTo(axis.clone().applyQuaternion(reference).y, 8)
+    }
+  })
+  it('handles the horizontal landscape pose from the W3C example without pitching upward', () => {
+    const attitude = tiltToAttitude(tilt(0, 89.9, 90))
+    expect(attitude.pitchDeg).toBeCloseTo(-0.1, 8)
+    expect(Math.abs(attitude.rollDeg)).toBeCloseTo(180, 8)
+  })
+  it.each([0, 180])('returns a finite attitude when looking straight down or up (beta=%s)', beta => {
+    const attitude = tiltToAttitude(tilt(beta, 0, 0))
+    expect(Math.abs(attitude.pitchDeg)).toBeCloseTo(90, 8)
+    expect(Number.isFinite(attitude.rollDeg)).toBe(true)
   })
   it('smooths towards new values and resets', () => {
     const smoother = createTiltSmoother(100)
@@ -44,7 +81,14 @@ describe('tilt handling', () => {
     expect(moved.pitchDeg).toBeLessThan(30)
     smoother.reset()
     expect(smoother.current()).toBeNull()
-    expect(smoother.push({ beta: 120, gamma: 0, screenAngle: 0, timestamp: 500 }).pitchDeg).toBe(30)
+    expect(smoother.push({ beta: 120, gamma: 0, screenAngle: 0, timestamp: 500 }).pitchDeg).toBeCloseTo(30)
+  })
+  it('smooths roll across the 180 degree boundary via the shortest rotation', () => {
+    const smoother = createTiltSmoother(100)
+    const before = smoother.push(tilt(-90, -5, 0))
+    const after = smoother.push({ ...tilt(-90, 5, 0), timestamp: 100 })
+    expect(Math.abs(after.rollDeg - before.rollDeg)).toBeLessThan(10)
+    expect(Math.abs(after.rollDeg)).toBeGreaterThan(170)
   })
   it('treats the virtual viewpoint as submerged only past the assumed height', () => {
     expect(isVirtualViewSubmerged(AR_ASSUMED_CAMERA_HEIGHT_M)).toBe(false)

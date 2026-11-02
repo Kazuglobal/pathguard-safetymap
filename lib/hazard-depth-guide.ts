@@ -4,10 +4,8 @@
  * 各項目に出典名とURLを必須にし、出典のない文は置かない
  * （tests/unit/lib/hazard-depth-guide.test.ts で強制）。
  *
- * 2026-11-01時点の作業環境では mlit.go.jp への直接アクセスが
- * ネットワーク設定で許可されていないため、本文の表現は検索結果で
- * 確認した範囲にとどめている。公開前に、下記URLの一次資料で
- * 文言・数値（とくに波の高さと陸上の浸水深の区別）を再確認する。
+ * 出典本文を2026-11-02に確認。警報・注意報の基準は、過去の解説資料ではなく
+ * 気象庁の現行の発表基準を参照する。波の高さと陸上の浸水深は区別する。
  */
 
 export interface DepthGuideMark {
@@ -54,9 +52,9 @@ export const TSUNAMI_FACTS: HazardFact[] = [
     sourceUrl: 'https://www.cbr.mlit.go.jp/3.11wasurenai/kako/4-19.pdf',
   },
   {
-    text: '気象庁は、予想される津波の高さが0.5mを超える場合に津波注意報、1m程度を超える場合に津波警報、3m程度を超える場合に大津波警報を発表します（津波の高さであり、陸上の浸水深とは別の値です）。',
-    sourceName: '国土交通省 中部地方整備局「3.11 伝えたい、あの日のこと」資料',
-    sourceUrl: 'https://www.cbr.mlit.go.jp/3.11wasurenai/kako/4-19.pdf',
+    text: '気象庁は、予想される津波の最大波の高さが高いところで0.2m以上1m以下で、津波による災害のおそれがある場合に津波注意報、1mを超え3m以下の場合に津波警報、3mを超える場合に大津波警報を発表します（津波の高さであり、陸上の浸水深とは別の値です）。',
+    sourceName: '気象庁「津波警報・注意報、津波情報、津波予報について」',
+    sourceUrl: 'https://www.jma.go.jp/jma/kishou/know/jishin/joho/tsunamiinfo.html',
   },
 ]
 

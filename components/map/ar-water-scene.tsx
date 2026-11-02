@@ -1,9 +1,10 @@
 'use client'
 
 import { Html } from '@react-three/drei'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Component, useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { Component, useCallback, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { ARWaterCanvas } from './ar-water-canvas'
 import {
   AR_ASSUMED_CAMERA_HEIGHT_M,
   computeVideoProjection,
@@ -299,7 +300,6 @@ function WaterPlane({
   sourceHorizontalFovDeg,
   onDepthChange,
   onSubmergedChange,
-  onFailure,
 }: ARWaterSceneProps) {
   const { camera, size, gl } = useThree()
   const meshRef = useRef<THREE.Mesh>(null)
@@ -368,17 +368,6 @@ function WaterPlane({
     }
   }, [onSubmergedChange])
 
-  // コンテキスト喪失は回復を待たずに退避する。
-  useEffect(() => {
-    const canvas = gl.domElement
-    const handleLost = (event: Event) => {
-      event.preventDefault()
-      onFailure('WebGLの描画が中断されました')
-    }
-    canvas.addEventListener('webglcontextlost', handleLost)
-    return () => canvas.removeEventListener('webglcontextlost', handleLost)
-  }, [gl, onFailure])
-
   // 映像のメタデータとフレームが使えるようになってから VideoTexture を作る。
   useEffect(() => {
     return () => {
@@ -437,7 +426,7 @@ function WaterPlane({
     const tilt = tiltRef.current
     if (tilt && isTiltFresh(tilt, typeof performance !== 'undefined' ? performance.now() : Date.now())) {
       const attitude = smoother.push(tilt)
-      camera.rotation.set(THREE.MathUtils.degToRad(attitude.pitchDeg), 0, THREE.MathUtils.degToRad(-attitude.rollDeg), 'ZYX')
+      camera.rotation.set(THREE.MathUtils.degToRad(attitude.pitchDeg), 0, THREE.MathUtils.degToRad(-attitude.rollDeg), 'YXZ')
     }
 
     // アニメーション時刻は描画時刻と独立。停止中と動きを減らす設定では進めない。
@@ -544,56 +533,23 @@ class WaterErrorBoundary extends Component<{ onError: (reason: string) => void; 
   }
 }
 
-/** WebGLが使えるかを、Canvasを作る前に確かめる。 */
-function hasWebGL(): boolean {
-  if (typeof document === 'undefined') return false
-  try {
-    const canvas = document.createElement('canvas')
-    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'))
-  } catch {
-    return false
-  }
-}
-
 export function ARWaterScene(props: ARWaterSceneProps) {
   const { onFailure } = props
-  const [supported, setSupported] = useState<boolean | null>(null)
   const failedRef = useRef(false)
 
-  const fail = (reason: string) => {
+  const fail = useCallback((reason: string) => {
     if (failedRef.current) return
     failedRef.current = true
     onFailure(reason)
-  }
-
-  useEffect(() => {
-    setSupported(hasWebGL())
-  }, [])
-
-  useEffect(() => {
-    if (supported === false) fail('この端末では水面の表示を利用できません')
-    // 失敗したシーンを自動で繰り返し起動しない
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supported])
-
-  if (supported !== true) return null
+  }, [onFailure])
 
   return (
     <div className="ar-water-canvas" aria-hidden="true">
-      <WaterErrorBoundary onError={fail}>
-      <Canvas
-        dpr={[1, 1.5]}
-        frameloop="always"
-        gl={{ alpha: true, antialias: false, powerPreference: 'low-power' }}
-        camera={{ fov: 60, near: 0.05, far: 200, position: [0, 0, 0] }}
-        onCreated={({ gl }) => {
-          gl.setClearAlpha(0)
-        }}
-        fallback={null}
-      >
-        <WaterPlane {...props} onFailure={fail} />
-      </Canvas>
-      </WaterErrorBoundary>
+      <ARWaterCanvas onFailure={fail}>
+        <WaterErrorBoundary onError={fail}>
+          <WaterPlane {...props} onFailure={fail} />
+        </WaterErrorBoundary>
+      </ARWaterCanvas>
     </div>
   )
 }

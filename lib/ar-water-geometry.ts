@@ -56,17 +56,28 @@ function normalizeScreenAngle(angle: number): number {
  * 端末の傾きを、画面の向きに合わせたカメラのピッチ・ロールに変換する。
  *
  * 画面角0°（縦持ち）で、背面カメラが水平線を向く姿勢を pitch 0 とする。
- * 画面角は 0 / 90 / 180 / 270 に丸めて、画面平面での回転として扱う。
+ * W3C の Z-X'-Y'' 回転から、端末座標での鉛直上向きベクトルを求める。
+ * 背面カメラの軸と画面の回転を合成し、そのベクトルから仰角とロールを取り出す。
+ * alpha（鉛直軸まわりの方位）は鉛直ベクトルを変えないため不要。
+ * https://www.w3.org/TR/orientation-event/#device-orientation-model
  */
 export function tiltToAttitude(tilt: DeviceTilt): CameraAttitude {
-  const pitchBase = tilt.beta - 90
-  const rollBase = tilt.gamma
-  const radians = (normalizeScreenAngle(tilt.screenAngle) * Math.PI) / 180
-  const cos = Math.round(Math.cos(radians))
-  const sin = Math.round(Math.sin(radians))
+  const beta = tilt.beta * Math.PI / 180
+  const gamma = tilt.gamma * Math.PI / 180
+  const screen = normalizeScreenAngle(tilt.screenAngle) * Math.PI / 180
+  // Rz(alpha) * Rx(beta) * Ry(gamma) の第3行（端末各軸の鉛直成分）。
+  const upX = -Math.cos(beta) * Math.sin(gamma)
+  const upY = Math.sin(beta)
+  const upZ = Math.cos(beta) * Math.cos(gamma)
+  const rightUp = upX * Math.cos(screen) - upY * Math.sin(screen)
+  const screenUp = upX * Math.sin(screen) + upY * Math.cos(screen)
+  const horizontal = Math.hypot(rightUp, screenUp)
+  const pitchDeg = Math.atan2(-upZ, horizontal) * 180 / Math.PI
+  // 真上・真下ではロールが不定になるため、数値誤差で反転させない。
+  const rollDeg = horizontal < 1e-10 ? 0 : Math.atan2(-rightUp, screenUp) * 180 / Math.PI
   return {
-    pitchDeg: pitchBase * cos + rollBase * sin,
-    rollDeg: -pitchBase * sin + rollBase * cos,
+    pitchDeg: Math.abs(pitchDeg) < 1e-10 ? 0 : pitchDeg,
+    rollDeg: Math.abs(rollDeg) < 1e-10 ? 0 : rollDeg,
   }
 }
 
@@ -93,9 +104,10 @@ export function createTiltSmoother(timeConstantMs = 120): TiltSmoother {
       }
       const dt = Math.max(0, tilt.timestamp - lastAt)
       const factor = timeConstantMs > 0 ? 1 - Math.exp(-dt / timeConstantMs) : 1
+      const rollDelta = ((next.rollDeg - value.rollDeg + 180) % 360 + 360) % 360 - 180
       value = {
         pitchDeg: value.pitchDeg + (next.pitchDeg - value.pitchDeg) * factor,
-        rollDeg: value.rollDeg + (next.rollDeg - value.rollDeg) * factor,
+        rollDeg: value.rollDeg + rollDelta * factor,
       }
       lastAt = tilt.timestamp
       return value
