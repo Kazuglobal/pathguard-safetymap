@@ -204,3 +204,57 @@ describe("ARView parent-child route mode", () => {
     ).toBeInTheDocument()
   })
 })
+
+describe("ARView の情報切り替えタブ", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.useARCamera.mockReturnValue({
+      videoRef: { current: null }, isCameraActive: true, isLoading: false, loadingStep: "",
+      estimatedFov: null, cameraPermission: true, error: null, stopCamera: vi.fn(), retry: vi.fn(),
+    })
+    mocks.useARLocation.mockReturnValue({
+      userLocation: { lat: 35.6895, lon: 139.6917, accuracy: 12 }, locationPermission: true, error: null, retry: vi.fn(),
+    })
+    mocks.useAROrientation.mockReturnValue({
+      userHeading: 0, orientationPermission: true, error: null, retry: vi.fn(),
+    })
+  })
+
+  it("通常モードでは中身が読める名前と、近くの報告の件数を出す", () => {
+    render(
+      <ARView
+        mode={{
+          kind: "nearby",
+          reports: [
+            createMockDangerReport({ id: "r1", title: "フェンスの倒壊", latitude: 35.6896, longitude: 139.6917 }),
+            createMockDangerReport({ id: "r2", title: "見通しの悪い交差点", latitude: 35.68955, longitude: 139.6918 }),
+          ],
+        }}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "事故と浸水の公的データ" })).toBeInTheDocument()
+    const reports = screen.getByRole("button", { name: "みんなの報告（近くに2件）" })
+    expect(reports).toBeInTheDocument()
+    expect(reports).toHaveTextContent("2")
+    expect(screen.queryByRole("button", { name: "投稿の学習" })).not.toBeInTheDocument()
+  })
+
+  it("親子モードでは学習であることが分かる名前にする", async () => {
+    const user = userEvent.setup()
+    render(
+      <ARView
+        mode={{
+          kind: "parent_child_route", routeId: "route-1", routeName: "通学路A",
+          childId: "child-sakura", childName: "さくら", sessionId: "session-1",
+          reports: [createMockDangerReport({ id: "r1", latitude: 35.6896, longitude: 139.6917 })],
+        }}
+        onClose={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "同意して開始" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "通学路の学習" })).toBeInTheDocument())
+  })
+})
