@@ -699,8 +699,15 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       )}
 
       {sensorsEnabled && !arError && !isInundationLearning && <div className="absolute left-1/2 top-[72px] z-30 flex -translate-x-1/2 gap-1 rounded-full bg-paper-card p-1 text-xs font-bold text-ink" role="group" aria-label="ARで見る情報">
-        <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${showRealRisks ? 'bg-forest text-white' : ''}`} aria-pressed={showRealRisks} onClick={() => setShowRealRisks(true)}>実事故・浸水</button>
-        <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${!showRealRisks ? 'bg-forest text-white' : ''}`} aria-pressed={!showRealRisks} onClick={() => setShowRealRisks(false)}>投稿の学習</button>
+        {/* 中身がそのまま読める名前にする。「投稿の学習」では何が出るか分からない。 */}
+        <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${showRealRisks ? 'bg-forest text-white' : ''}`}
+          aria-pressed={showRealRisks} aria-label="事故と浸水の公的データ" onClick={() => setShowRealRisks(true)}>事故・浸水</button>
+        <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${!showRealRisks ? 'bg-forest text-white' : ''}`}
+          aria-pressed={!showRealRisks}
+          aria-label={isParentChildMode ? '通学路の学習' : `みんなの報告${arHazards.length > 0 ? `（近くに${arHazards.length}件）` : ''}`}
+          onClick={() => setShowRealRisks(false)}>
+          {isParentChildMode ? '通学路の学習' : <>みんなの報告{arHazards.length > 0 && <span className="ml-1 rounded-full bg-safety px-1.5 py-0.5 text-xs text-white">{arHazards.length}</span>}</>}
+        </button>
       </div>}
 
       {/* 設定パネル */}

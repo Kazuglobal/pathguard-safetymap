@@ -6,7 +6,7 @@
 .ar-inundation-tabs button[aria-pressed=true]{background:var(--hazard);color:#fff}
 .ar-inundation-tabs button:disabled{opacity:.5;cursor:not-allowed}
 .ar-inundation-sheet{pointer-events:auto;position:absolute;bottom:0;left:0;right:0;background:#fffdf7;border-radius:24px 24px 0 0;padding:18px 22px max(16px,env(safe-area-inset-bottom));max-height:51%;overflow:auto;box-shadow:0 -4px 30px #43392b14}
-.ar-depth-controls .ar-depth-sheet-toggle{flex:0 0 auto;display:grid;place-items:center;width:44px;min-width:44px;min-height:44px;padding:0;border-radius:50%;background:#f3ead6;color:#43392b}
+.ar-sheet-toggle{flex:0 0 auto;display:grid;place-items:center;width:44px;min-width:44px;min-height:44px;padding:0;border-radius:50%;background:#f3ead6;color:#43392b}
 .ar-inundation-sheet--collapsed .ar-depth-heading strong{font-size:20px}
 .ar-inundation-sheet--collapsed .ar-depth-heading{min-width:0;overflow:hidden}
 .ar-inundation-sheet--collapsed .ar-depth-replay-label{display:none}
@@ -64,6 +64,13 @@
 .ar-depth-endpoint--top{top:-12px}.ar-depth-endpoint--bottom{bottom:-12px}
 .ar-depth-ruler--tight .ar-depth-range{top:auto;bottom:-64px;transform:none}
 .ar-depth-range{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#fffdf7;color:var(--hazard);text-shadow:none;border-radius:14px;padding:7px 10px;font-size:13px;white-space:nowrap;box-shadow:0 1px 8px #43392b14}.ar-depth-range small{display:block;text-align:center;font-size:12px}
+.ar-risk-dock-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ar-risk-dock-head p{margin:0}
+.ar-risk-summary{font-size:14px;font-weight:700;margin:6px 0 2px}
+.ar-risk-dock.ar-risk-dock--collapsed{max-height:42%}
+.ar-risk-dock--collapsed .ar-risk-hazard-row{flex-wrap:wrap}
+.ar-risk-dock--collapsed .ar-risk-cta{margin:8px 0}
+.ar-risk-dock--collapsed .ar-risk-hazard-row{padding:9px 0}
 .ar-risk-dock{position:absolute;z-index:23;bottom:0;left:0;right:0;max-height:48%;overflow:auto;background:#fffdf7;border-radius:24px 24px 0 0;padding:18px 22px max(18px,env(safe-area-inset-bottom));color:#43392b}
 .ar-risk-dock h3{font-size:18px;font-weight:800;margin:5px 0}.ar-risk-dock p{font-size:13px;line-height:1.6}.ar-risk-dock button,.ar-risk-dock a{min-height:44px}
 .ar-risk-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:#159e72;color:white;border-radius:28px;min-height:46px;padding:10px 16px;font-size:14px;font-weight:700;width:100%;margin:10px 0}
