@@ -137,6 +137,10 @@ def tsunami_depth(value):
     if len(nums)==1 and 'm' in text:
         if '未満' in text or '以下' in text: return (0,nums[0])
         if '以上' in text: return (nums[0],None)
+        # Open ranges written with a wave dash, e.g. '～0.3m' (Fukui) or '5m～'.
+        dashed=text.strip().replace('～','~').replace('〜','~')
+        if dashed.startswith('~'): return (0,nums[0])
+        if dashed.endswith('~'): return (nums[0],None)
     raise ValueError('Unknown official tsunami depth class: '+repr(text))
 
 def risk(depth):
@@ -150,7 +154,7 @@ def prepare(entry,root):
     if (directory/'receipt.json').exists():
         print(compact(dict(event='already_prepared',id=entry['id'])),flush=True); return
     started=time.monotonic(); src=download(entry,root); sha=digest(src)
-    grouped={}; partial={}; counts={}; areas={}; samples=[]; repairs=0
+    grouped={}; partial={}; counts={}; areas={}; samples=[]; repairs=0; degenerate=0
     with zipfile.ZipFile(src) as z:
         names=[n for n in z.namelist() if n.lower().endswith('.geojson')]
         if entry['kind']=='flood': names=[n for n in names if re.search(r'(^|/)A31b-20-',n)]
@@ -176,6 +180,9 @@ def prepare(entry,root):
                 if g.is_empty: raise ValueError('Empty source polygon')
                 if not g.is_valid:
                     fixed=union_all(list(polygon_parts(make_valid(g))))
+                    if fixed.is_empty and abs(g.area)<=1e-14:
+                        # A ring with too few distinct points encloses no area; nothing to keep.
+                        degenerate+=1; continue
                     if fixed.is_empty or not fixed.is_valid or not math.isclose(fixed.area,g.area,rel_tol=1e-8,abs_tol=1e-14):
                         raise ValueError('Source repair changes area; manual source inspection required')
                     g=fixed; repairs+=1
@@ -224,7 +231,7 @@ def prepare(entry,root):
     receipt=dict(source=entry,archiveSha256=sha,sourceCrs=source_crs.to_string(),outputCrs='EPSG:4326',
         sourceFeatures=sum(counts.values()),polygons=count,ndjsonBytes=output.stat().st_size,ndjsonSha256=digest(output),
         coverageRows=len(cover),coverageSha256=digest(directory/'coverage.json'),
-        coveragePolicy='exact hazard footprint; outside not inferred',samples=samples,validityRepairs=repairs,
+        coveragePolicy='exact hazard footprint; outside not inferred',samples=samples,validityRepairs=repairs,degenerateFeaturesDropped=degenerate,
         areaChecks=checks,elapsedSeconds=round(time.monotonic()-started,2))
     save(directory/'receipt.json',receipt)
     print(compact(dict(event='prepared',id=entry['id'],polygons=count,bytes=receipt['ndjsonBytes'],seconds=receipt['elapsedSeconds'])),flush=True)

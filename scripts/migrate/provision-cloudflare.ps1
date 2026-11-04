@@ -30,7 +30,7 @@ if ($null -eq $database) {
 $databaseId = if ($database.uuid) { $database.uuid } elseif ($database.id) { $database.id } else { $database.database_id }
 if ([string]::IsNullOrWhiteSpace($databaseId)) { throw "D1 create/list output did not contain a database id." }
 
-$bucketNames = @("pg-media-public", "pg-media-private", "pg-backups", "pg-next-cache")
+$bucketNames = @("pg-media-public", "pg-media-private", "pg-backups", "pg-next-cache", "pg-hazard-grid")
 foreach ($bucketName in $bucketNames) {
   $null = & wrangler r2 bucket info $bucketName --json 2>$null
   if ($LASTEXITCODE -ne 0) {
