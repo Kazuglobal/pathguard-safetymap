@@ -81,32 +81,41 @@ export function isValidImageUrl(url: string): boolean {
  * @param report 危険報告
  * @returns 画像URLの配列（重複なし、検証済み）
  */
-export function getReportImages(report: DangerReport): string[] {
-  const images: string[] = []
+export type ARImageKind = "original" | "processed"
 
-  // image_url があれば追加（検証付き）
-  if (report.image_url && isValidImageUrl(report.image_url)) {
-    images.push(report.image_url)
-  }
-
-  // processed_image_url（単数形）があれば追加（検証付き）
-  // DBには単数形カラムも存在するため、両方を読み取る
-  if (report.processed_image_url && isValidImageUrl(report.processed_image_url)) {
-    images.push(report.processed_image_url)
-  }
-
-  // processed_image_urls（複数形）があれば追加（検証付き）
-  if (report.processed_image_urls && Array.isArray(report.processed_image_urls)) {
-    for (const url of report.processed_image_urls) {
-      if (isValidImageUrl(url)) {
-        images.push(url)
-      }
-    }
-  }
-
-  // 重複を除去して返す
-  return [...new Set(images)]
+export interface ARReportImage {
+  url: string
+  /** 加工画像は生成AIで作られる。元の写真と区別して表示する。 */
+  kind: ARImageKind
 }
+
+/**
+ * ARで表示する画像を、元の写真と加工画像の区別つきで返す。
+ * 同じURLが両方に現れた場合は、先に現れた区分を保つ。
+ */
+export function getReportImageEntries(report: DangerReport): ARReportImage[] {
+  const entries: ARReportImage[] = []
+  const seen = new Set<string>()
+  const push = (url: string | null | undefined, kind: ARImageKind) => {
+    if (!url || !isValidImageUrl(url) || seen.has(url)) return
+    seen.add(url)
+    entries.push({ url, kind })
+  }
+
+  push(report.image_url, "original")
+  // DBには単数形カラムも存在するため、両方を読み取る
+  push(report.processed_image_url, "processed")
+  if (Array.isArray(report.processed_image_urls)) {
+    for (const url of report.processed_image_urls) push(url, "processed")
+  }
+
+  return entries
+}
+
+export function getReportImages(report: DangerReport): string[] {
+  return getReportImageEntries(report).map((entry) => entry.url)
+}
+
 
 /**
  * 複数のレポートから全ての画像を取得する
