@@ -6,6 +6,8 @@ import {
   type ARError,
   createARError,
   LOCATION_MAX_AGE_MS,
+  LOCATION_FIRST_FIX_MAX_AGE_MS,
+  LOCATION_FIRST_FIX_TIMEOUT_MS,
   LOCATION_TIMEOUT_MS,
 } from "@/lib/ar-constants"
 
@@ -35,6 +37,8 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
   const [error, setError] = useState<ARError | null>(null)
   const [timedOut, setTimedOut] = useState(false)
   const watchIdRef = useRef<number | null>(null)
+  // 高精度の測位が一度でも来たか。粗い初回の位置で上書きしないために持つ。
+  const hasPreciseFixRef = useRef(false)
   const { toast } = useToast()
   const toastRef = useRef(toast)
   toastRef.current = toast
@@ -52,6 +56,7 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
     stopWatch()
     setError(null)
     setTimedOut(false)
+    hasPreciseFixRef.current = false
 
     if (!navigator.geolocation) {
       setError(createARError("location_unavailable"))
@@ -60,6 +65,7 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
+        hasPreciseFixRef.current = true
         setUserLocation({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
@@ -97,6 +103,31 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
         maximumAge: LOCATION_MAX_AGE_MS,
         timeout: LOCATION_TIMEOUT_MS,
       }
+    )
+
+    // 高精度の測位は屋内や夜間だと数十秒かかることがある。その間に画面を空にしない
+    // ため、端末が持っている粗い位置を先に一度だけ使う。高精度の測位が来たら
+    // 置き換える。粗い位置は精度の値がそのまま入るので、既存の安全抑制
+    // (精度50m超で接近の強調を止める)がそのまま効く。
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (hasPreciseFixRef.current) return
+        setUserLocation({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed: position.coords.speed,
+        })
+        setLocationPermission(true)
+      },
+      () => {
+        // 粗い取得の失敗は監視側で扱う。ここでは何もしない。
+      },
+      {
+        enableHighAccuracy: false,
+        maximumAge: LOCATION_FIRST_FIX_MAX_AGE_MS,
+        timeout: LOCATION_FIRST_FIX_TIMEOUT_MS,
+      },
     )
   }, [enabled, stopWatch])
 
