@@ -33,7 +33,7 @@ jobs:
       - name: Verify AR, selected points, official viewer and D1 contracts
         run: pnpm exec vitest run tests/unit/lib/ar-risk-data.test.ts tests/unit/hooks/use-ar-risk-data.test.tsx tests/unit/app/api/hazard-point-risks.test.ts tests/components/map/ar-inundation-overlay.test.tsx tests/components/map/accident-street-view.test.tsx tests/components/map/ar-real-risks.test.tsx tests/components/map/point-hazard-section.test.tsx tests/unit/db/hazard-repo.test.ts tests/unit/db/accidents-repo.test.ts tests/unit/lib/hazard-zone-gate-d1.test.ts tests/unit/lib/traffic-accident-heatmap.test.ts tests/components/map/accident-heatmap-layer-popup.test.tsx tests/components/map/accident-stats-overlay.test.tsx tests/components/map/ar-view-learning-tour.test.tsx tests/unit/lib/content-security-policy.test.ts tests/unit/cloudflare tests/unit/lib/ar-water-geometry.test.ts tests/unit/lib/hazard-depth-guide.test.ts tests/unit/hooks/use-ar-orientation.test.ts tests/components/map/ar-inundation-water-scene.test.tsx tests/components/map/ar-water-scene-init.test.tsx tests/components/map/ar-water-canvas-unavailable.test.tsx --maxWorkers=2
       - name: Verify isolated preview configuration
-        run: node --test scripts/cloudflare/preview-config.test.mjs
+        run: node --test scripts/cloudflare/preview-config.test.mjs scripts/cloudflare/deploy-retry.test.mjs
       - name: Verify free accident scenery and map restoration
         run: pnpm exec vitest run tests/unit/lib/google-maps-embed.test.ts tests/components/map/accident-scenery-dialog.test.tsx tests/components/map/map-container.test.tsx --maxWorkers=2
       - name: Install official geometry readers
@@ -123,7 +123,7 @@ jobs:
       - name: Check preview configuration
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Set CLOUDFLARE_API_TOKEN in the cloudflare-preview environment'; exit 1; }
-          node --test scripts/cloudflare/preview-config.test.mjs
+          node --test scripts/cloudflare/preview-config.test.mjs scripts/cloudflare/deploy-retry.test.mjs
       - name: Build and deploy isolated preview Workers
         id: deploy
         run: pnpm deploy:cloudflare-preview -- --preview=pr-${{ github.event.pull_request.number }}
