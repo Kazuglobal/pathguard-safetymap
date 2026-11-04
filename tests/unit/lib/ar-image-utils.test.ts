@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  getReportImageEntries,
   getReportImages,
   getAllReportImages,
   hasMultipleImages,
@@ -350,5 +351,40 @@ describe('ar-image-utils', () => {
       expect(images).toContain('https://abc.supabase.co/storage/image.jpg')
       expect(images).toContain('data:image/png;base64,validBase64')
     })
+  })
+})
+
+describe('getReportImageEntries', () => {
+  const report = (overrides: Record<string, unknown>) => ({
+    id: 'r1', title: 't', image_url: null, processed_image_url: null, processed_image_urls: null, ...overrides,
+  }) as never
+
+  it('元の写真と加工画像を区別して返す', () => {
+    const entries = getReportImageEntries(report({
+      image_url: 'https://example.supabase.co/original.jpg',
+      processed_image_url: 'https://example.supabase.co/processed-1.jpg',
+      processed_image_urls: ['https://example.supabase.co/processed-2.jpg'],
+    }))
+    expect(entries).toEqual([
+      { url: 'https://example.supabase.co/original.jpg', kind: 'original' },
+      { url: 'https://example.supabase.co/processed-1.jpg', kind: 'processed' },
+      { url: 'https://example.supabase.co/processed-2.jpg', kind: 'processed' },
+    ])
+  })
+
+  it('同じURLが両方に現れたら先の区分を残す', () => {
+    const entries = getReportImageEntries(report({
+      image_url: 'https://example.supabase.co/same.jpg',
+      processed_image_urls: ['https://example.supabase.co/same.jpg'],
+    }))
+    expect(entries).toEqual([{ url: 'https://example.supabase.co/same.jpg', kind: 'original' }])
+  })
+
+  it('安全でないURLは落とす', () => {
+    const entries = getReportImageEntries(report({
+      image_url: 'javascript:alert(1)',
+      processed_image_urls: ['https://example.supabase.co/ok.jpg'],
+    }))
+    expect(entries).toEqual([{ url: 'https://example.supabase.co/ok.jpg', kind: 'processed' }])
   })
 })

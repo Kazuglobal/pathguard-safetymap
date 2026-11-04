@@ -28,8 +28,14 @@ type ImageLoadState = "loading" | "loaded" | "error"
 
 const MAX_RETRIES = 3
 
+/** 加工画像（生成AI）を元の写真と区別するための注意書き。詳細画面と同じ文言。 */
+export const AR_PROCESSED_IMAGE_NOTICE =
+  "注: 加工画像は生成AIによって作成されており、実際の状況と異なる場合があります。"
+
 interface ARImageGalleryProps {
   images: string[]
+  /** images と同じ並びの区分。渡すと「加工画像 / 元の写真」を表示する。 */
+  kinds?: Array<"original" | "processed">
   alt: string
   className?: string
   onChange?: (index: number, imageUrl: string) => void
@@ -38,6 +44,7 @@ interface ARImageGalleryProps {
 
 export function ARImageGallery({
   images,
+  kinds,
   alt,
   className,
   onChange,
@@ -56,6 +63,9 @@ export function ARImageGallery({
   const hasMultipleImages = images.length > 1
   const currentImage = hasImages ? images[currentIndex] : null
   const currentState: ImageLoadState = imageStates[currentIndex] ?? "loading"
+  const currentKind = kinds?.[currentIndex]
+  const kindLabel = currentKind === "processed" ? "加工画像" : currentKind === "original" ? "元の写真" : null
+  const hasProcessedImage = Boolean(kinds?.includes("processed"))
 
   useEffect(() => {
     const previousImages = previousImagesRef.current
@@ -168,7 +178,7 @@ export function ARImageGallery({
     )
   }
 
-  return (
+  const gallery = (
     <div
       data-testid="ar-image-gallery"
       className={cn("relative h-48 w-full overflow-hidden", className)}
@@ -229,8 +239,8 @@ export function ARImageGallery({
         </div>
       )}
 
-      {/* 画像カウンター */}
-      {hasMultipleImages && (
+      {/* 画像カウンター（区分が分かるときは「加工画像」「元の写真」を付ける） */}
+      {hasImages && (hasMultipleImages || kindLabel) && (
         <div
           data-testid="ar-image-counter"
           className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full"
@@ -238,7 +248,7 @@ export function ARImageGallery({
           aria-live="polite"
           aria-atomic="true"
         >
-          {currentIndex + 1} / {images.length}
+          {kindLabel ? `${kindLabel} ` : ""}{currentIndex + 1} / {images.length}
         </div>
       )}
 
@@ -305,6 +315,15 @@ export function ARImageGallery({
         isOpen={!!zoomImageUrl}
         onClose={() => setZoomImageUrl(null)}
       />
+    </div>
+  )
+
+  if (!hasProcessedImage) return gallery
+
+  return (
+    <div>
+      {gallery}
+      <p className="px-4 pt-2 text-xs text-gray-500">{AR_PROCESSED_IMAGE_NOTICE}</p>
     </div>
   )
 }
