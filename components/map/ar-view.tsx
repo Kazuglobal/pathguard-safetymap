@@ -727,7 +727,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           {locationTimedOut ? (
             <>
               <p className="text-sm font-bold">位置情報を取得できません</p>
-              <p className="mt-1 text-xs leading-6">GPSの電波が弱い可能性があります。空が見える場所で少し待つか、もう一度お試しください。事故・浸水・みんなの報告は、現在地が分かるまで表示できません。</p>
+              <p className="mt-1 text-xs leading-6">GPSの電波が弱いか、端末の位置情報が切れている可能性があります。iPhoneは「設定 → プライバシーとセキュリティ → 位置情報サービス」でSafariのWebサイトを「このAppの使用中」にし、正確な位置情報をオンにしてください。空が見える場所で試すのも有効です。事故・浸水・みんなの報告は、現在地が分かるまで表示できません。</p>
               <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-forest px-4 font-bold text-white" onClick={retryLocation}>
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />位置情報をもう一度取得する
               </button>

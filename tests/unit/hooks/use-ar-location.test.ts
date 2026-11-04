@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useARLocation } from "@/hooks/use-ar-location"
+import { LOCATION_WATCHDOG_MS } from "@/lib/ar-constants"
 
 // toast モック
 const toastMock = vi.hoisted(() => {
@@ -360,5 +361,47 @@ describe("最初の1点を早く出す", () => {
 
     act(() => { coarseSuccess?.(createMockPosition(35.86, 139.97, 800)) })
     expect(result.current.userLocation).toMatchObject({ lat: 35.8676, lon: 139.9759, accuracy: 8 })
+  })
+})
+
+describe("端末が何も返さないとき", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    capturedSuccessCallback = null
+    toastMock.state.current = vi.fn()
+    Object.defineProperty(navigator, "geolocation", {
+      value: { watchPosition: mockWatchPosition, clearWatch: mockClearWatch, getCurrentPosition: vi.fn() },
+      writable: true,
+      configurable: true,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("成功も失敗も返らないまま時間が過ぎたら、待ち続けずに伝える", async () => {
+    const { result } = renderHook(() => useARLocation())
+    expect(result.current.timedOut).toBe(false)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LOCATION_WATCHDOG_MS + 100)
+    })
+
+    expect(result.current.timedOut).toBe(true)
+    expect(result.current.userLocation).toBeNull()
+  })
+
+  it("時間内に位置が取れたら打ち切らない", async () => {
+    const { result } = renderHook(() => useARLocation())
+
+    act(() => { capturedSuccessCallback?.(createMockPosition(35.68, 139.69, 10)) })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LOCATION_WATCHDOG_MS + 100)
+    })
+
+    expect(result.current.timedOut).toBe(false)
+    expect(result.current.userLocation).toMatchObject({ lat: 35.68 })
   })
 })

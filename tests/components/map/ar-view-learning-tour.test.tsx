@@ -290,7 +290,7 @@ describe("ARView の位置情報待ちの案内", () => {
     render(<ARView mode={{ kind: "nearby", reports: [] }} onClose={vi.fn()} />)
 
     expect(screen.getByText("位置情報を取得できません")).toBeInTheDocument()
-    expect(screen.getByText(/GPSの電波が弱い可能性があります/)).toBeInTheDocument()
+    expect(screen.getByText(/位置情報サービス/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "位置情報をもう一度取得する" }))
     expect(retry).toHaveBeenCalled()
   })
