@@ -38,6 +38,8 @@ export const LOCATION_MAX_AGE_MS = 15000
 /** 最初の1点だけは粗くても早く出す。高精度の測位が来たら置き換える。 */
 export const LOCATION_FIRST_FIX_MAX_AGE_MS = 120000
 export const LOCATION_FIRST_FIX_TIMEOUT_MS = 8000
+/** 端末から成功も失敗も返らないときに、待ち続けずに打ち切るまでの時間。 */
+export const LOCATION_WATCHDOG_MS = 12000
 export const LOCATION_TIMEOUT_MS = 10000
 
 // AR表示

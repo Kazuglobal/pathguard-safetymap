@@ -8,6 +8,7 @@ import {
   LOCATION_MAX_AGE_MS,
   LOCATION_FIRST_FIX_MAX_AGE_MS,
   LOCATION_FIRST_FIX_TIMEOUT_MS,
+  LOCATION_WATCHDOG_MS,
   LOCATION_TIMEOUT_MS,
 } from "@/lib/ar-constants"
 
@@ -39,14 +40,30 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
   const watchIdRef = useRef<number | null>(null)
   // 高精度の測位が一度でも来たか。粗い初回の位置で上書きしないために持つ。
   const hasPreciseFixRef = useRef(false)
+  // iOS では、位置情報サービスが切られていると成功も失敗も返らないことがある。
+  // プラットフォームの応答を当てにせず、自前で打ち切る。
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 粗い位置でも一度でも取れたか。見張りの判定に使う。
+  const hasAnyFixRef = useRef(false)
   const { toast } = useToast()
   const toastRef = useRef(toast)
   toastRef.current = toast
 
   const stopWatch = useCallback(() => {
+    if (watchdogRef.current !== null) {
+      clearTimeout(watchdogRef.current)
+      watchdogRef.current = null
+    }
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
+    }
+  }, [])
+
+  const clearWatchdog = useCallback(() => {
+    if (watchdogRef.current !== null) {
+      clearTimeout(watchdogRef.current)
+      watchdogRef.current = null
     }
   }, [])
 
@@ -57,6 +74,7 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
     setError(null)
     setTimedOut(false)
     hasPreciseFixRef.current = false
+    hasAnyFixRef.current = false
 
     if (!navigator.geolocation) {
       setError(createARError("location_unavailable"))
@@ -66,6 +84,8 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         hasPreciseFixRef.current = true
+        hasAnyFixRef.current = true
+        clearWatchdog()
         setUserLocation({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
@@ -112,6 +132,8 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
     navigator.geolocation.getCurrentPosition(
       (position) => {
         if (hasPreciseFixRef.current) return
+        hasAnyFixRef.current = true
+        clearWatchdog()
         setUserLocation({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
@@ -129,7 +151,34 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
         timeout: LOCATION_FIRST_FIX_TIMEOUT_MS,
       },
     )
-  }, [enabled, stopWatch])
+
+    // 端末から成功も失敗も返らないまま時間が過ぎたら、待ち続けずに利用者へ伝える。
+    clearWatchdog()
+    watchdogRef.current = setTimeout(() => {
+      watchdogRef.current = null
+      if (!hasAnyFixRef.current) setTimedOut(true)
+    }, LOCATION_WATCHDOG_MS)
+  }, [clearWatchdog, enabled, stopWatch])
+
+  // 拒否されていることが分かる端末では、応答を待たずに伝える。
+  // iOS では位置情報サービスが切られていると、成功も失敗も返らないことがある。
+  useEffect(() => {
+    if (!enabled) return
+    const permissions = typeof navigator !== "undefined" ? navigator.permissions : undefined
+    if (!permissions?.query) return
+    let cancelled = false
+    permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((status) => {
+        if (!cancelled && status.state === "denied") setError(createARError("location_denied"))
+      })
+      .catch(() => {
+        // 問い合わせに対応しない端末では何もしない。監視側の結果で判断する。
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [enabled])
 
   useEffect(() => {
     if (!enabled) {
