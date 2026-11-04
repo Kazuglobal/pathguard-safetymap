@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import dotenv from 'dotenv'
 import { createPreviewConfig, previewName, previewSecrets, forbiddenBuildFiles, previewBuildEnvironment } from './preview-config.mjs'
+import { isTransientDeployFailure, transientRetryDelayMs, MAX_TRANSIENT_RETRIES } from './deploy-retry.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2).filter((arg) => arg !== '--')
@@ -24,7 +25,11 @@ const run = (command, commandArgs, options = {}) => {
   if (result.error) throw result.error
   if (result.stdout) process.stdout.write(result.stdout)
   if (result.stderr) process.stderr.write(result.stderr)
-  if (result.status !== 0) throw new Error(`Command failed with exit code ${result.status}`)
+  if (result.status !== 0) {
+    const failure = new Error(`Command failed with exit code ${result.status}`)
+    failure.output = `${result.stdout ?? ''}${result.stderr ?? ''}`
+    throw failure
+  }
   return result.stdout ?? ''
 }
 const readConfig = (name) => {
@@ -62,8 +67,22 @@ try {
     run(process.execPath, [path.join(root, 'scripts/cloudflare/build-free-workers.mjs')], { env: buildEnv, stdio: 'inherit' })
     const secretFile = path.join(dir, 'secrets.json')
     writeFileSync(secretFile, JSON.stringify(secrets), { mode: 0o600 })
-    const deploy = (config) => run(process.execPath, [wrangler, 'deploy', '--config', config,
+    const deployOnce = (config) => run(process.execPath, [wrangler, 'deploy', '--config', config,
       ...(dryRun ? ['--dry-run'] : ['--secrets-file', secretFile])], { env })
+    // Cloudflare は、アップロード直後の subdomain 設定で一時的に失敗を返すことがある
+    // (PR #288 で 10013 と 10007 を観測)。その形に一致したときだけ待って試し直す。
+    const deploy = async (config) => {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          return deployOnce(config)
+        } catch (error) {
+          if (attempt >= MAX_TRANSIENT_RETRIES || !isTransientDeployFailure(error?.output)) throw error
+          const wait = transientRetryDelayMs(attempt)
+          console.log(`Cloudflare の反映待ちで配備が失敗した。${wait / 1000}秒待って試し直す (${attempt + 1}/${MAX_TRANSIENT_RETRIES})`)
+          await new Promise((resolve) => setTimeout(resolve, wait))
+        }
+      }
+    }
     if (!dryRun) {
       // Break the initial router -> servers -> router service-binding cycle.
       // Returning 503 also avoids mixed frontend/server versions during updates.
@@ -72,15 +91,15 @@ try {
         main: path.join(root, 'cloudflare/preview-bootstrap.mjs'),
         compatibility_date: router.compatibility_date, workers_dev: true, preview_urls: false,
       })
-      deploy(bootstrap)
+      await deploy(bootstrap)
     }
     for (const name of serverNames) {
       const config = createPreviewConfig({ ...serverBase, name,
         main: `cloudflare/workers/server-${name.slice('pathguardian-'.length)}.ts`,
       }, resources, id, root)
-      deploy(writeConfig(name, config))
+      await deploy(writeConfig(name, config))
     }
-    const output = deploy(routerConfig)
+    const output = await deploy(routerConfig)
     if (!dryRun) {
       const url = output.match(new RegExp(`https://${router.name}\\.[a-z0-9-]+\\.workers\\.dev`))?.[0]
       if (!url) throw new Error('Wrangler did not report the PR router URL')
