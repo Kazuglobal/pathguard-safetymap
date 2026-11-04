@@ -19,6 +19,8 @@ export interface UserLocation {
 export interface UseARLocationReturn {
   userLocation: UserLocation | null
   locationPermission: boolean
+  /** 位置が一度も取れないまま取得が時間切れになった。エラーにはしないが、画面には出す。 */
+  timedOut: boolean
   error: ARError | null
   retry: () => void
 }
@@ -31,6 +33,7 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
   const [locationPermission, setLocationPermission] = useState(false)
   const [error, setError] = useState<ARError | null>(null)
+  const [timedOut, setTimedOut] = useState(false)
   const watchIdRef = useRef<number | null>(null)
   const { toast } = useToast()
   const toastRef = useRef(toast)
@@ -48,6 +51,7 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
 
     stopWatch()
     setError(null)
+    setTimedOut(false)
 
     if (!navigator.geolocation) {
       setError(createARError("location_unavailable"))
@@ -64,6 +68,7 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
         })
         setLocationPermission(true)
         setError(null)
+        setTimedOut(false)
       },
       (err) => {
         switch (err.code) {
@@ -74,6 +79,9 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
             setError(createARError("location_unavailable"))
             break
           case err.TIMEOUT:
+            // watchPosition は時間切れのあとも監視を続ける。エラー扱いにはしないが、
+            // 画面が無言のままにならないよう状態として持ち上げる。
+            setTimedOut(true)
             toastRef.current({
               title: "位置情報の取得に時間がかかっています",
               description: "GPS信号が弱い可能性があります",
@@ -121,5 +129,5 @@ export function useARLocation({ enabled = true }: UseARLocationInput = {}): UseA
     }
   }, [enabled, startWatch, stopWatch])
 
-  return { userLocation, locationPermission, error, retry: startWatch }
+  return { userLocation, locationPermission, timedOut, error, retry: startWatch }
 }

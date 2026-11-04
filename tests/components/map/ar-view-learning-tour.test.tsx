@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
@@ -256,5 +256,52 @@ describe("ARView の情報切り替えタブ", () => {
     await user.click(screen.getByRole("checkbox"))
     await user.click(screen.getByRole("button", { name: "同意して開始" }))
     await waitFor(() => expect(screen.getByRole("button", { name: "通学路の学習" })).toBeInTheDocument())
+  })
+})
+
+describe("ARView の位置情報待ちの案内", () => {
+  const camera = {
+    videoRef: { current: null }, isCameraActive: true, isLoading: false, loadingStep: "",
+    estimatedFov: null, cameraPermission: true, error: null, stopCamera: vi.fn(), retry: vi.fn(),
+  }
+  const orientation = { userHeading: 0, orientationPermission: true, error: null, retry: vi.fn() }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.useARCamera.mockReturnValue(camera)
+    mocks.useAROrientation.mockReturnValue(orientation)
+  })
+
+  it("位置が取れるまでは、黙って空にせず取得中だと伝える", () => {
+    mocks.useARLocation.mockReturnValue({
+      userLocation: null, locationPermission: false, timedOut: false, error: null, retry: vi.fn(),
+    })
+    render(<ARView mode={{ kind: "nearby", reports: [] }} onClose={vi.fn()} />)
+
+    expect(screen.getByText("位置情報を取得しています…")).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "実事故と浸水想定" })).not.toBeInTheDocument()
+  })
+
+  it("時間切れのときは理由と再取得の操作を出す", () => {
+    const retry = vi.fn()
+    mocks.useARLocation.mockReturnValue({
+      userLocation: null, locationPermission: false, timedOut: true, error: null, retry,
+    })
+    render(<ARView mode={{ kind: "nearby", reports: [] }} onClose={vi.fn()} />)
+
+    expect(screen.getByText("位置情報を取得できません")).toBeInTheDocument()
+    expect(screen.getByText(/GPSの電波が弱い可能性があります/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "位置情報をもう一度取得する" }))
+    expect(retry).toHaveBeenCalled()
+  })
+
+  it("位置が取れたら案内を消す", () => {
+    mocks.useARLocation.mockReturnValue({
+      userLocation: { lat: 35.6895, lon: 139.6917, accuracy: 12 }, locationPermission: true, timedOut: false, error: null, retry: vi.fn(),
+    })
+    render(<ARView mode={{ kind: "nearby", reports: [] }} onClose={vi.fn()} />)
+
+    expect(screen.queryByText("位置情報を取得しています…")).not.toBeInTheDocument()
+    expect(screen.queryByText("位置情報を取得できません")).not.toBeInTheDocument()
   })
 })
