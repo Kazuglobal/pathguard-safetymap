@@ -77,6 +77,27 @@ class OfficialHazardsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(ValueError,'changes area'): self._prepare_flood(folder,[bowtie])
 
+    def test_tsunami_shapefile_only_archive_is_read(self):
+        import io,json,tempfile,zipfile,shapefile
+        shp,shx,dbf=io.BytesIO(),io.BytesIO(),io.BytesIO()
+        w=shapefile.Writer(shp=shp,shx=shx,dbf=dbf,shapeType=shapefile.POLYGON,encoding='cp932')
+        for name in ('A40_001','A40_002','A40_003'): w.field(name,'C',40)
+        w.poly([[[130,33],[130,33.001],[130.001,33.001],[130.001,33],[130,33]]])
+        w.record('福岡県','40','0.01m以上 ～ 0.3m未満'); w.close()
+        prj='GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]'
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder); (root/'raw').mkdir()
+            with zipfile.ZipFile(root/'raw'/'t.zip','w') as z:
+                for ext,buf in (('.shp',shp),('.shx',shx),('.dbf',dbf)): z.writestr('A40-16_40'+ext,buf.getvalue())
+                z.writestr('A40-16_40.prj',prj)
+            entry=dict(id='A40-16_40_GML',kind='tsunami',year=16,region='40',filename='t.zip',size='0MB',
+                       url='https://nlftp.mlit.go.jp/x.zip',page='https://nlftp.mlit.go.jp/p.html',license='x')
+            hazards.prepare(entry,root)
+            receipt=json.loads((root/'prepared'/entry['id']/'receipt.json').read_text(encoding='utf-8'))
+            row=json.loads((root/'prepared'/entry['id']/'zones.ndjson').read_text(encoding='utf-8').splitlines()[0])
+        self.assertEqual(receipt['sourceFeatures'],1)
+        self.assertEqual((row['depth_min_m'],row['depth_max_m']),(.01,.3))
+
 grid_spec=importlib.util.spec_from_file_location('build_hazard_grid',Path(__file__).resolve().parents[2]/'scripts/migrate/build-hazard-grid.py')
 grid=importlib.util.module_from_spec(grid_spec); grid_spec.loader.exec_module(grid)
 upload_spec=importlib.util.spec_from_file_location('upload_hazard_grid',Path(__file__).resolve().parents[2]/'scripts/migrate/upload-hazard-grid.py')

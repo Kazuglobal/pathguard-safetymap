@@ -6,6 +6,7 @@ artifacts/migration directory. No simplification, no invented survey coverage.
 from __future__ import annotations
 import argparse
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
@@ -18,6 +19,7 @@ import zipfile
 
 import ijson
 from pyproj import CRS, Transformer
+import shapefile
 from shapely import get_num_coordinates, make_valid, union_all
 from shapely.geometry import box, mapping, shape
 from shapely.ops import transform
@@ -143,6 +145,34 @@ def tsunami_depth(value):
         if dashed.endswith('~'): return (nums[0],None)
     raise ValueError('Unknown official tsunami depth class: '+repr(text))
 
+def open_features(z, entry):
+    """Return (source CRS, features) from the archive's one GeoJSON.
+
+    Some older tsunami editions (Fukuoka 2016) ship only a Shapefile; read it
+    with its own .prj and the official Shift_JIS attribute encoding instead.
+    """
+    names=[n for n in z.namelist() if n.lower().endswith('.geojson')]
+    if entry['kind']=='flood': names=[n for n in names if re.search(r'(^|/)A31b-20-',n)]
+    if len(names)==1:
+        with z.open(names[0]) as f: header=f.read(2048).decode('utf-8-sig')
+        crs_match=re.search(r'EPSG::?(\d+)',header)
+        if not crs_match: raise ValueError('Missing source CRS')
+        def geojson_features():
+            with z.open(names[0]) as f: yield from ijson.items(f,'features.item',use_float=True)
+        return CRS.from_epsg(int(crs_match[1])),geojson_features()
+    shapes=[n for n in z.namelist() if n.lower().endswith('.shp')]
+    if names or entry['kind']!='tsunami' or len(shapes)!=1:
+        raise ValueError('Expected exactly one applicable GeoJSON')
+    base=shapes[0][:-4]
+    reader=shapefile.Reader(shp=io.BytesIO(z.read(base+'.shp')),shx=io.BytesIO(z.read(base+'.shx')),
+                            dbf=io.BytesIO(z.read(base+'.dbf')),encoding='cp932',encodingErrors='strict')
+    if reader.shapeType!=shapefile.POLYGON: raise ValueError('Expected a polygon Shapefile')
+    source_crs=CRS.from_wkt(z.read(base+'.prj').decode('ascii'))
+    def shapefile_features():
+        for item in reader.iterShapeRecords():
+            yield dict(properties=item.record.as_dict(),geometry=item.shape.__geo_interface__)
+    return source_crs,shapefile_features()
+
 def risk(depth):
     low,high=depth
     if low>=10 or (high is not None and high>10): return 5
@@ -156,45 +186,38 @@ def prepare(entry,root):
     started=time.monotonic(); src=download(entry,root); sha=digest(src)
     grouped={}; partial={}; counts={}; areas={}; samples=[]; repairs=0; degenerate=0
     with zipfile.ZipFile(src) as z:
-        names=[n for n in z.namelist() if n.lower().endswith('.geojson')]
-        if entry['kind']=='flood': names=[n for n in names if re.search(r'(^|/)A31b-20-',n)]
-        if len(names)!=1: raise ValueError('Expected exactly one applicable GeoJSON')
-        with z.open(names[0]) as f: header=f.read(2048).decode('utf-8-sig')
-        crs_match=re.search(r'EPSG::?(\d+)',header)
-        if not crs_match: raise ValueError('Missing source CRS')
-        source_crs=CRS.from_epsg(int(crs_match[1]))
+        source_crs,features=open_features(z,entry)
         if not source_crs.is_geographic: raise ValueError('Expected geographic source CRS')
         converter=Transformer.from_crs(source_crs,4326,always_xy=True)
-        with z.open(names[0]) as f:
-            for feature in ijson.items(f,'features.item',use_float=True):
-                p=feature['properties']
-                if entry['kind']=='flood':
-                    code=p.get('A31b_201')
-                    if code not in DEPTHS: raise ValueError('Unknown maximum-scale depth code')
-                    depth=DEPTHS[code]
-                else:
-                    if str(p.get('A40_002','')).zfill(2)!=entry['region']:
-                        raise ValueError('Unexpected tsunami prefecture')
-                    depth=tsunami_depth(p.get('A40_003'))
-                g=transform(converter.transform,shape(feature['geometry']))
-                if g.is_empty: raise ValueError('Empty source polygon')
-                if not g.is_valid:
-                    fixed=union_all(list(polygon_parts(make_valid(g))))
-                    if fixed.is_empty and abs(g.area)<=1e-14:
-                        # A ring with too few distinct points encloses no area; nothing to keep.
-                        degenerate+=1; continue
-                    if fixed.is_empty or not fixed.is_valid or not math.isclose(fixed.area,g.area,rel_tol=1e-8,abs_tol=1e-14):
-                        raise ValueError('Source repair changes area; manual source inspection required')
-                    g=fixed; repairs+=1
-                w,s,e,n=g.bounds
-                if not all(math.isfinite(x) for x in g.bounds) or not (122<=w<=e<=154 and 20<=s<=n<=46):
-                    raise ValueError('Geometry is outside Japan coordinate bounds')
-                grouped.setdefault(depth,[]).append(g); counts[depth]=counts.get(depth,0)+1
-                areas[depth]=areas.get(depth,0)+g.area
-                if len(samples)<4:
-                    point=g.representative_point(); samples.append(dict(longitude=point.x,latitude=point.y,depth=depth))
-                if len(grouped[depth])>=2000:
-                    partial.setdefault(depth,[]).append(union_all(grouped[depth])); grouped[depth]=[]
+        for feature in features:
+            p=feature['properties']
+            if entry['kind']=='flood':
+                code=p.get('A31b_201')
+                if code not in DEPTHS: raise ValueError('Unknown maximum-scale depth code')
+                depth=DEPTHS[code]
+            else:
+                if str(p.get('A40_002','')).zfill(2)!=entry['region']:
+                    raise ValueError('Unexpected tsunami prefecture')
+                depth=tsunami_depth(p.get('A40_003'))
+            g=transform(converter.transform,shape(feature['geometry']))
+            if g.is_empty: raise ValueError('Empty source polygon')
+            if not g.is_valid:
+                fixed=union_all(list(polygon_parts(make_valid(g))))
+                if fixed.is_empty and abs(g.area)<=1e-14:
+                    # A ring with too few distinct points encloses no area; nothing to keep.
+                    degenerate+=1; continue
+                if fixed.is_empty or not fixed.is_valid or not math.isclose(fixed.area,g.area,rel_tol=1e-8,abs_tol=1e-14):
+                    raise ValueError('Source repair changes area; manual source inspection required')
+                g=fixed; repairs+=1
+            w,s,e,n=g.bounds
+            if not all(math.isfinite(x) for x in g.bounds) or not (122<=w<=e<=154 and 20<=s<=n<=46):
+                raise ValueError('Geometry is outside Japan coordinate bounds')
+            grouped.setdefault(depth,[]).append(g); counts[depth]=counts.get(depth,0)+1
+            areas[depth]=areas.get(depth,0)+g.area
+            if len(samples)<4:
+                point=g.representative_point(); samples.append(dict(longitude=point.x,latitude=point.y,depth=depth))
+            if len(grouped[depth])>=2000:
+                partial.setdefault(depth,[]).append(union_all(grouped[depth])); grouped[depth]=[]
     output=directory/'zones.ndjson'; pending=output.with_suffix('.ndjson.pending')
     count=0; coverage=[]; checks=[]
     with pending.open('w',encoding='utf-8',newline='\n') as target:

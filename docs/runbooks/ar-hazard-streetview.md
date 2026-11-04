@@ -83,6 +83,28 @@ python scripts/migrate/import-official-hazards.py --directory artifacts/migratio
 
 津波の条件付き利用地域はカタログで保留する。京都府・長崎県の事前連絡などは行っていない。追加の出典や利用条件を推測で許可しない。
 
+### 全国の格子（R2）
+
+D1は1データベース10GBが上限で、全国分（推定約700万区域・約10GB）は入らない。さらに区域検索の索引が経度の片側しか効かない（#277）。そのため全国分は、区域と収録範囲を0.01度（約1km）の格子で正確に切り分け、種類と格子ごとに1つのJSONとしてR2バケット `pg-hazard-grid`（割り当て名 `HAZARD_GRID`）に置く。地点の判定は周りの格子のファイルだけを読む。格子の切り分けは簡略化も丸めもしない。出典ごとに面積の一致を確かめる。
+
+アプリが格子を使うのは、割り当てがあり、かつ `hazard-grid/v1/manifest.json` が `complete: true` で公開されているときだけ。それ以外はD1を読む。プレビューには割り当てがない（本番バケットを禁止する許可リストのため）ので、D1を読む。R2の読み取り失敗は「取得不能」で、「未収録」にはしない。格子ファイルがない場所は「未収録」。格子の `importedAt` は、出典を取り込んだ時刻ではなく格子を作った時刻。
+
+```powershell
+python scripts/migrate/prepare-official-hazards.py --prepare all
+python scripts/migrate/build-hazard-grid.py --out artifacts/migration/hazards/grid-<日付>
+python scripts/migrate/upload-hazard-grid.py --grid artifacts/migration/hazards/grid-<日付>
+```
+
+最後のコマンドはローカル照合だけを行う。公開は `--remote` を付ける。条件は次の3つ。
+
+- 格子は準備済みの全出典から作る。`--only` で作った格子は拒否する。
+- 公開済みのマニフェストにある出典が欠けていれば拒否する。格子のファイルは上書きになるため、県境の格子で隣県の区域が消えるのを防ぐ。
+- オブジェクトは追加・同じキーの上書きだけで、削除しない。マニフェストは全オブジェクトの後に置く。
+
+**順序**: バケット作成 → アップロード → `HAZARD_GRID` を含むPRのマージ。バケットがないとWorkerのデプロイが失敗する。
+
+前処理の除外: 点が足りず面積ゼロの元データの区域は、`degenerateFeaturesDropped` に件数を記録して除く。面積が変わる修復は従来どおり停止する。福井県の津波の「～0.3m」「5m～」は、「0.3m未満」「5m以上」として読む。GeoJSONが配布されていない津波の版（福岡県2016年度版）は、同梱のShapefileを、その `.prj` の座標系とShift_JISの属性で読む。
+
 ## 検証の区別
 
 ローカルのブラウザ検証は実際のUI部品と架空のfixtureを使う。本番の認証を回避するページは作っていない。Googleの正常応答・50m超・古い応答・認証失敗はモックを使うテストで確認し、Google実接続と実機カメラは公開前ゲートとして残す。
