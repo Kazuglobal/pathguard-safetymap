@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDistance, formatBearing, type ARHazardData } from "@/lib/ar-utils"
-import { getReportImages } from "@/lib/ar-image-utils"
+import { getReportImageEntries } from "@/lib/ar-image-utils"
 import {
   translateDangerType,
   getDangerLevelLabel,
@@ -42,6 +42,7 @@ export function ARPrimaryHazardCard({
   onMarkReviewed,
   onSaveForLater,
 }: ARPrimaryHazardCardProps) {
+  const images = getReportImageEntries(hazard.report)
   const readableDistance = distanceLabel ?? `${formatDistance(hazard.distance)}先`
   const readableTime = estimatedTimeLabel ?? `${estimatedTimeMinutes}分`
 
@@ -56,7 +57,8 @@ export function ARPrimaryHazardCard({
       >
         <Card className="max-h-[calc(100vh-8rem)] overflow-x-hidden overflow-y-auto rounded-3xl bg-white shadow-2xl pointer-events-auto">
           <ARImageGallery
-            images={getReportImages(hazard.report)}
+            images={images.map((image) => image.url)}
+            kinds={images.map((image) => image.kind)}
             alt={hazard.report.title}
           />
 

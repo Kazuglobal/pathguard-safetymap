@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { ARImageGallery } from '@/components/map/ar-image-gallery'
+import { ARImageGallery, AR_PROCESSED_IMAGE_NOTICE } from '@/components/map/ar-image-gallery'
 
 describe('ARImageGallery', () => {
   describe('rendering', () => {
@@ -640,5 +640,36 @@ describe('ARImageGallery', () => {
       const container = screen.getByTestId('ar-image-gallery')
       expect(container).not.toHaveAttribute('tabIndex')
     })
+  })
+})
+
+describe('ARImageGallery 加工画像の区別', () => {
+  const images = ['https://example.supabase.co/a.jpg', 'https://example.supabase.co/b.jpg']
+
+  it('加工画像が含まれるときだけ生成AIの注意書きを出す', () => {
+    const { rerender } = render(<ARImageGallery images={images} kinds={['original', 'original']} alt="テスト" />)
+    expect(screen.queryByText(AR_PROCESSED_IMAGE_NOTICE)).not.toBeInTheDocument()
+
+    rerender(<ARImageGallery images={images} kinds={['original', 'processed']} alt="テスト" />)
+    expect(screen.getByText(AR_PROCESSED_IMAGE_NOTICE)).toBeInTheDocument()
+  })
+
+  it('いま見ている画像が元の写真か加工画像かを出す', () => {
+    render(<ARImageGallery images={images} kinds={['original', 'processed']} alt="テスト" />)
+    expect(screen.getByTestId('ar-image-counter')).toHaveTextContent('元の写真 1 / 2')
+    fireEvent.click(screen.getByTestId('ar-image-next-button'))
+    expect(screen.getByTestId('ar-image-counter')).toHaveTextContent('加工画像 2 / 2')
+  })
+
+  it('1枚だけの加工画像にも区分と注意書きを出す', () => {
+    render(<ARImageGallery images={[images[0]]} kinds={['processed']} alt="テスト" />)
+    expect(screen.getByTestId('ar-image-counter')).toHaveTextContent('加工画像 1 / 1')
+    expect(screen.getByText(AR_PROCESSED_IMAGE_NOTICE)).toBeInTheDocument()
+  })
+
+  it('区分を渡さない従来の呼び出しでは表示を変えない', () => {
+    render(<ARImageGallery images={images} alt="テスト" />)
+    expect(screen.getByTestId('ar-image-counter')).toHaveTextContent('1 / 2')
+    expect(screen.queryByText(AR_PROCESSED_IMAGE_NOTICE)).not.toBeInTheDocument()
   })
 })
