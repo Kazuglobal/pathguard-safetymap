@@ -10,15 +10,28 @@
  */
 export const TRANSIENT_SUBDOMAIN_CODES = [10007, 10013]
 
+/**
+ * 反映待ちの最中に再配備すると、wrangler が直前の配備を読み取れずに落ちることがある
+ * (PR #289 で観測)。アプリのコードではなく wrangler 内部の失敗なので、同じく待って
+ * 試し直す。
+ */
+const TRANSIENT_WRANGLER_CRASH = /Cannot read properties of null \(reading 'tag'\)/
+
 export function isTransientSubdomainFailure(output) {
   if (typeof output !== 'string' || output === '') return false
   const pattern = new RegExp(`/subdomain[\\s\\S]{0,400}?code: (${TRANSIENT_SUBDOMAIN_CODES.join('|')})\\b`)
   return pattern.test(output)
 }
 
-/** 再試行までの待ち時間。反映を待つだけなので、短く数回に留める。 */
-export function transientRetryDelayMs(attempt) {
-  return 5000 * (attempt + 1)
+/** 配備をやり直してよい一時的な失敗か。 */
+export function isTransientDeployFailure(output) {
+  if (typeof output !== 'string' || output === '') return false
+  return isTransientSubdomainFailure(output) || TRANSIENT_WRANGLER_CRASH.test(output)
 }
 
-export const MAX_TRANSIENT_RETRIES = 2
+/** 再試行までの待ち時間。反映に数十秒かかることがあるので、回ごとに伸ばす。 */
+export function transientRetryDelayMs(attempt) {
+  return 10000 * (attempt + 1)
+}
+
+export const MAX_TRANSIENT_RETRIES = 3

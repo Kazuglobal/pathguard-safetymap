@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import dotenv from 'dotenv'
 import { createPreviewConfig, previewName, previewSecrets, forbiddenBuildFiles, previewBuildEnvironment } from './preview-config.mjs'
-import { isTransientSubdomainFailure, transientRetryDelayMs, MAX_TRANSIENT_RETRIES } from './deploy-retry.mjs'
+import { isTransientDeployFailure, transientRetryDelayMs, MAX_TRANSIENT_RETRIES } from './deploy-retry.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2).filter((arg) => arg !== '--')
@@ -76,9 +76,9 @@ try {
         try {
           return deployOnce(config)
         } catch (error) {
-          if (attempt >= MAX_TRANSIENT_RETRIES || !isTransientSubdomainFailure(error?.output)) throw error
+          if (attempt >= MAX_TRANSIENT_RETRIES || !isTransientDeployFailure(error?.output)) throw error
           const wait = transientRetryDelayMs(attempt)
-          console.log(`Cloudflare が subdomain の設定で一時的に失敗した。${wait / 1000}秒待って試し直す (${attempt + 1}/${MAX_TRANSIENT_RETRIES})`)
+          console.log(`Cloudflare の反映待ちで配備が失敗した。${wait / 1000}秒待って試し直す (${attempt + 1}/${MAX_TRANSIENT_RETRIES})`)
           await new Promise((resolve) => setTimeout(resolve, wait))
         }
       }
