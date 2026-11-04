@@ -209,8 +209,10 @@ def main() -> None:
         sources.append(add_source(directory, writer, built_at))
     writer.flush()
     objects = finalize_cells(fragments, args.out / 'objects')
+    # Each cell object replaces the stored one, so only a build from every
+    # prepared source may be published; --only builds are for local checks.
     manifest = dict(schemaVersion=SCHEMA_VERSION, keyPrefix=KEY_PREFIX, cellsPerDegree=CELLS_PER_DEGREE,
-                    builtAt=built_at, sources=sources, objectCount=len(objects),
+                    complete=not args.only, builtAt=built_at, sources=sources, objectCount=len(objects),
                     totalBytes=sum(o['bytes'] for o in objects),
                     maxObjectBytes=max(o['bytes'] for o in objects))
     (args.out / 'objects.json').write_text(compact(objects), encoding='utf-8')

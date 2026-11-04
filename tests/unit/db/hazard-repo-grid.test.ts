@@ -7,6 +7,9 @@ import { createHazardRepo } from '@/lib/db/repos/hazard.repo'
 import {
   createHazardGridReader,
   gridCellsAlongRoute,
+  HAZARD_GRID_MANIFEST_KEY,
+  MAX_ROUTE_GRID_CHARS,
+  publishedHazardGrid,
   hazardGridKey,
   MAX_ROUTE_GRID_CELLS,
   type GridCellIndex,
@@ -143,6 +146,43 @@ describe('hazard repository with the R2 grid', () => {
     ])
   })
 
+  it('does not let many flood pieces crowd tsunami markers off a route', async () => {
+    // 600 flood pieces of 5 zones spread over 120 cells, plus one tsunami zone at the far end.
+    const cells: Array<[HazardType, GridCellIndex, CellContent]> = []
+    for (let x = 0; x < 120; x += 1) {
+      const lng = 139 + x / 100
+      cells.push(['flood', [3500, 13900 + x], {
+        zones: [0, 1, 2, 3, 4].map((n) => zone(`mlit:f${n}`, square(lng, 35.004 + n * 0.0002, lng + 0.01, 35.0055 + n * 0.0002))),
+      }])
+    }
+    cells.push(['tsunami', [3500, 14019], {
+      zones: [zone('mlit:t', square(140.191, 35.004, 140.195, 35.006), { source: 'A40-test', risk: 3, context: 'coastal' })],
+    }])
+    const repo = createHazardRepo(unusedDb, createHazardGridReader(bucketWith(cells).bucket))
+
+    const result = await repo.routeIntersections(actor, {
+      type: 'LineString', coordinates: [[139.0005, 35.005], [140.199, 35.005]],
+    })
+
+    expect(result.markers.map((marker) => marker.id).sort()).toEqual(['mlit:f0', 'mlit:f1', 'mlit:f2', 'mlit:f3', 'mlit:f4', 'mlit:t'])
+    expect(result.markers.find((marker) => marker.id === 'mlit:t')?.hazard_type).toBe('tsunami')
+  })
+
+  it('stops reading route cells at the size budget', async () => {
+    const big = 'x'.repeat(Math.ceil(MAX_ROUTE_GRID_CHARS / 10))
+    const get = vi.fn(async (key: string) => {
+      const [, , type, y, x] = key.replace('.json', '').split('/')
+      const text = JSON.stringify({ schemaVersion: 1, hazardType: type, cellsPerDegree: 100, cell: [Number(y), Number(x)], zones: [], coverage: [], pad: big })
+      return { text: async () => text }
+    })
+    const repo = createHazardRepo(unusedDb, createHazardGridReader({ get }))
+
+    const result = await repo.routeIntersections(actor, { type: 'LineString', coordinates: [[139.0005, 35.005], [139.3, 35.005]] })
+
+    expect(result.truncated).toBe(true)
+    expect(get.mock.calls.length).toBeLessThanOrEqual(24)
+  })
+
   it('marks long routes as truncated instead of reading every cell', async () => {
     const { bucket, get } = bucketWith([])
     const repo = createHazardRepo(unusedDb, createHazardGridReader(bucket))
@@ -171,6 +211,19 @@ describe('hazard grid reader', () => {
     expect(get).toHaveBeenCalledTimes(2)
   })
 
+  it('shares one R2 request between concurrent reads of the same cell', async () => {
+    const { bucket, get } = bucketWith(splitZone)
+    const reader = createHazardGridReader(bucket)
+
+    const [left, right] = await Promise.all([
+      reader.readCell('flood', [3500, 13900]), reader.readCell('flood', [3500, 13900]),
+    ])
+    await reader.readCell('flood', [3500, 13900])
+
+    expect(left).toBe(right)
+    expect(get).toHaveBeenCalledTimes(1)
+  })
+
   it('lists only the cells a diagonal route passes through', () => {
     const cells = gridCellsAlongRoute({ type: 'LineString', coordinates: [[139.001, 35.001], [139.039, 35.039]] })
 
@@ -178,5 +231,35 @@ describe('hazard grid reader', () => {
     expect(cells.at(-1)).toEqual([3503, 13903])
     expect(cells).not.toContainEqual([3500, 13903])
     expect(cells).not.toContainEqual([3503, 13900])
+  })
+})
+
+describe('published hazard grid gate', () => {
+  const manifestBucket = (manifest: unknown) => {
+    const get = vi.fn(async (key: string) => (key === HAZARD_GRID_MANIFEST_KEY && manifest !== undefined
+      ? { text: async () => JSON.stringify(manifest) }
+      : null))
+    return { get }
+  }
+
+  it('keeps D1 until a complete manifest is published', async () => {
+    let now = 0
+    await expect(publishedHazardGrid(undefined)).resolves.toBeNull()
+    await expect(publishedHazardGrid(manifestBucket(undefined), () => now)).resolves.toBeNull()
+    await expect(publishedHazardGrid(manifestBucket({ schemaVersion: 1, cellsPerDegree: 100, complete: false }), () => now))
+      .resolves.toBeNull()
+    const ready = manifestBucket({ schemaVersion: 1, cellsPerDegree: 100, complete: true })
+    const reader = await publishedHazardGrid(ready, () => now)
+    expect(reader).not.toBeNull()
+    await expect(publishedHazardGrid(ready, () => now)).resolves.toBe(reader)
+    expect(ready.get).toHaveBeenCalledTimes(1)
+    now = 11 * 60 * 1000
+    await publishedHazardGrid(ready, () => now)
+    expect(ready.get).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports an R2 failure instead of silently falling back', async () => {
+    const failing = { get: vi.fn(async () => { throw new Error('R2 down') }) }
+    await expect(publishedHazardGrid(failing)).rejects.toThrow('R2 down')
   })
 })

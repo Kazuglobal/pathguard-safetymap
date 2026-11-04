@@ -115,4 +115,13 @@ class HazardGridTests(unittest.TestCase):
             (root/'objects.json').write_text(json.dumps([dict(key='hazard-grid/v1/../media/x.json',bytes=0,md5='')]),encoding='utf-8')
             with self.assertRaisesRegex(ValueError,'outside'): uploader.load_objects(root)
 
+    def test_upload_refuses_partial_or_shrinking_grids(self):
+        new=dict(complete=True,cellsPerDegree=100,sources=[dict(id='a'),dict(id='b')])
+        uploader.check_publishable(new,dict(cellsPerDegree=100,sources=[dict(id='a')]))
+        with self.assertRaisesRegex(ValueError,'subset'): uploader.check_publishable(dict(new,complete=False),None)
+        with self.assertRaisesRegex(ValueError,'lacks'):
+            uploader.check_publishable(new,dict(cellsPerDegree=100,sources=[dict(id='a'),dict(id='c')]))
+        with self.assertRaisesRegex(ValueError,'cell size'):
+            uploader.check_publishable(new,dict(cellsPerDegree=50,sources=[]))
+
 if __name__=='__main__': unittest.main()

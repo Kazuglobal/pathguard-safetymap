@@ -77,7 +77,7 @@ class R2Client:
         self.base = f'https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets/{bucket}/objects/'
         self.token = token
 
-    def request(self, method: str, key: str, body: bytes | None = None) -> bytes:
+    def request(self, method: str, key: str, body: bytes | None = None, missing_ok: bool = False) -> bytes | None:
         for attempt in range(6):
             headers = {'Authorization': 'Bearer ' + self.token}
             if body is not None:
@@ -87,6 +87,8 @@ class R2Client:
                 with urllib.request.urlopen(req, timeout=120) as response:
                     return response.read()
             except urllib.error.HTTPError as error:
+                if missing_ok and error.code == 404:
+                    return None
                 if error.code in (429, 500, 502, 503, 504) and attempt < 5:
                     time.sleep(2 ** attempt)
                     continue
@@ -103,13 +105,30 @@ def read_receipt(path: Path) -> dict[str, str]:
     done = {}
     if path.exists():
         for line in path.read_text(encoding='utf-8').splitlines():
-            if line.strip():
+            try:
                 row = json.loads(line)
-                done[row['key']] = row['md5']
+            except ValueError:
+                continue  # a line cut off by an interrupted run; that object is re-sent
+            done[row['key']] = row['md5']
     return done
 
 
+def check_publishable(manifest: dict, remote_manifest: dict | None) -> None:
+    """Cell objects replace stored ones; never publish a build that drops a source."""
+    if manifest.get('complete') is not True:
+        raise ValueError('Grid was built from a subset (--only); rebuild from every prepared source')
+    if remote_manifest is None:
+        return
+    if remote_manifest.get('cellsPerDegree') != manifest['cellsPerDegree']:
+        raise ValueError('Published grid uses a different cell size; use a new key prefix')
+    missing = {s['id'] for s in remote_manifest['sources']} - {s['id'] for s in manifest['sources']}
+    if missing:
+        raise ValueError('New grid lacks published sources: ' + ', '.join(sorted(missing)))
+
+
 def upload(grid: Path, manifest: dict, objects: list[dict], client: R2Client) -> dict:
+    remote = client.request('GET', manifest['keyPrefix'] + '/' + MANIFEST_KEY_SUFFIX, missing_ok=True)
+    check_publishable(manifest, json.loads(remote) if remote else None)
     receipt_path = grid / 'upload-receipt.ndjson'
     done = read_receipt(receipt_path)
     pending = [o for o in objects if done.get(o['key']) != o['md5']]
@@ -149,6 +168,7 @@ def main() -> None:
     parser.add_argument('--node', default='node')
     args = parser.parse_args()
     manifest, objects = load_objects(args.grid)
+    check_publishable(manifest, None)
     verify_local(args.grid, objects)
     account, bucket = target_bucket()
     summary = dict(objects=len(objects), totalBytes=manifest['totalBytes'], bucket=bucket,

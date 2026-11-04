@@ -13,6 +13,10 @@ export const HAZARD_GRID_CELLS_PER_DEGREE = 100
 export const HAZARD_GRID_SCHEMA_VERSION = 1
 export const HAZARD_GRID_KEY_PREFIX = `hazard-grid/v${HAZARD_GRID_SCHEMA_VERSION}`
 export const MAX_ROUTE_GRID_CELLS = 120
+/** Route reads stop once this much cell JSON is loaded and report truncation. */
+export const MAX_ROUTE_GRID_CHARS = 16_000_000
+export const HAZARD_GRID_MANIFEST_KEY = `${HAZARD_GRID_KEY_PREFIX}/manifest.json`
+const ROUTE_READ_CONCURRENCY = 8
 
 const EDGE_EPSILON_DEGREES = 1e-9
 const CACHE_MAX_ENTRIES = 48
@@ -50,6 +54,8 @@ export interface HazardGridCoverage {
 export interface HazardGridCell {
   zones: HazardGridZone[]
   coverage: HazardGridCoverage[]
+  /** Size of the stored JSON; 0 for a cell with no published object. */
+  chars: number
 }
 
 export interface HazardGridBounds {
@@ -61,7 +67,7 @@ export interface HazardGridBounds {
 
 export type GridCellIndex = readonly [latitudeIndex: number, longitudeIndex: number]
 
-const EMPTY_CELL: HazardGridCell = Object.freeze({ zones: [], coverage: [] }) as HazardGridCell
+const EMPTY_CELL: HazardGridCell = Object.freeze({ zones: [], coverage: [], chars: 0 }) as HazardGridCell
 
 export function hazardGridKey(hazardType: HazardType, cell: GridCellIndex): string {
   return `${HAZARD_GRID_KEY_PREFIX}/${hazardType}/${cell[0]}/${cell[1]}.json`
@@ -136,12 +142,11 @@ function parseCell(text: string, hazardType: HazardType, cell: GridCellIndex): H
     || !coverage.every((row) => typeof row.source === 'string' && isPolygon(row.geometry))) {
     throw new Error('hazard grid object contains an invalid record')
   }
-  return { zones, coverage }
+  return { zones, coverage, chars: text.length }
 }
 
 interface CacheEntry {
   cell: HazardGridCell
-  chars: number
   expiresAt: number
 }
 
@@ -151,51 +156,119 @@ export interface HazardGridReader {
 
 /**
  * Reads cells with a small per-isolate LRU cache. AR re-checks the same spot
- * every few seconds; the cache keeps those repeats off R2. Read failures throw
- * so callers report "unavailable" rather than "no coverage".
+ * every few seconds, and a point check reads zones and coverage of the same
+ * cell in parallel; concurrent reads of one key share a single R2 request.
+ * Read failures throw so callers report "unavailable" rather than "no coverage".
  */
 export function createHazardGridReader(bucket: HazardGridBucket, now: () => number = Date.now): HazardGridReader {
   const cache = new Map<string, CacheEntry>()
+  const inFlight = new Map<string, Promise<HazardGridCell>>()
   let cachedChars = 0
 
+  const forget = (key: string) => {
+    const entry = cache.get(key)
+    if (!entry) return
+    cache.delete(key)
+    cachedChars -= entry.cell.chars
+  }
+
   const remember = (key: string, entry: CacheEntry) => {
+    forget(key)
     cache.set(key, entry)
-    cachedChars += entry.chars
-    for (const [oldest, old] of cache) {
+    cachedChars += entry.cell.chars
+    for (const oldest of cache.keys()) {
       if (cache.size <= CACHE_MAX_ENTRIES && cachedChars <= CACHE_MAX_CHARS) break
-      cache.delete(oldest)
-      cachedChars -= old.chars
+      forget(oldest)
     }
   }
 
+  const fetchCell = async (key: string, hazardType: HazardType, cell: GridCellIndex) => {
+    const object = await bucket.get(key)
+    const parsed = object ? parseCell(await object.text(), hazardType, cell) : EMPTY_CELL
+    remember(key, { cell: parsed, expiresAt: now() + CACHE_TTL_MS })
+    return parsed
+  }
+
   return {
-    async readCell(hazardType, cell) {
+    readCell(hazardType, cell) {
       const key = hazardGridKey(hazardType, cell)
       const cached = cache.get(key)
-      if (cached) {
-        cache.delete(key)
-        cachedChars -= cached.chars
-        if (cached.expiresAt > now()) {
-          remember(key, cached)
-          return cached.cell
-        }
+      if (cached && cached.expiresAt > now()) {
+        remember(key, cached)
+        return Promise.resolve(cached.cell)
       }
-      const object = await bucket.get(key)
-      const text = object ? await object.text() : ''
-      const parsed = object ? parseCell(text, hazardType, cell) : EMPTY_CELL
-      remember(key, { cell: parsed, chars: text.length, expiresAt: now() + CACHE_TTL_MS })
-      return parsed
+      const pending = inFlight.get(key)
+      if (pending) return pending
+      const request = fetchCell(key, hazardType, cell).finally(() => inFlight.delete(key))
+      inFlight.set(key, request)
+      return request
     },
   }
 }
 
-let sharedReader: { bucket: HazardGridBucket; reader: HazardGridReader } | null = null
-
-/** One reader per bound bucket so the cache survives across requests in an isolate. */
-export function hazardGridReaderFor(bucket: HazardGridBucket | null | undefined): HazardGridReader | null {
-  if (!bucket) return null
-  if (sharedReader?.bucket !== bucket) {
-    sharedReader = { bucket, reader: createHazardGridReader(bucket) }
+/**
+ * Reads route cells a few at a time and stops at the size budget, so a long
+ * route cannot load hundreds of cells into one isolate at once.
+ */
+export async function readRouteCells(
+  reader: HazardGridReader,
+  hazardTypes: readonly HazardType[],
+  cells: readonly GridCellIndex[],
+): Promise<{ cells: Array<{ hazardType: HazardType; cell: HazardGridCell }>; truncated: boolean }> {
+  const jobs = cells.slice(0, MAX_ROUTE_GRID_CELLS)
+    .flatMap((cell) => hazardTypes.map((hazardType) => ({ hazardType, cell })))
+  const loaded: Array<{ hazardType: HazardType; cell: HazardGridCell }> = []
+  let chars = 0
+  for (let start = 0; start < jobs.length; start += ROUTE_READ_CONCURRENCY) {
+    if (chars > MAX_ROUTE_GRID_CHARS) return { cells: loaded, truncated: true }
+    const batch = jobs.slice(start, start + ROUTE_READ_CONCURRENCY)
+    const results = await Promise.all(batch.map((job) => reader.readCell(job.hazardType, job.cell)))
+    results.forEach((cell, index) => {
+      loaded.push({ hazardType: batch[index].hazardType, cell })
+      chars += cell.chars
+    })
   }
-  return sharedReader.reader
+  return { cells: loaded, truncated: cells.length > MAX_ROUTE_GRID_CELLS }
+}
+
+interface PublishedGrid {
+  bucket: HazardGridBucket
+  reader: HazardGridReader | null
+  checkedAt: number
+}
+
+let published: PublishedGrid | null = null
+let manifestCheck: { bucket: HazardGridBucket; request: Promise<HazardGridReader | null> } | null = null
+
+function isCompleteManifest(text: string): boolean {
+  const manifest = JSON.parse(text) as Record<string, unknown>
+  return manifest.schemaVersion === HAZARD_GRID_SCHEMA_VERSION
+    && manifest.cellsPerDegree === HAZARD_GRID_CELLS_PER_DEGREE
+    && manifest.complete === true
+}
+
+/**
+ * The grid is used only after its manifest is published (the uploader writes it
+ * last, after every cell). An unbound bucket or a bucket without a complete
+ * manifest returns null so the caller keeps using D1; an R2 error throws.
+ * One reader per bucket so the cell cache survives across requests.
+ */
+export async function publishedHazardGrid(
+  bucket: HazardGridBucket | null | undefined,
+  now: () => number = Date.now,
+): Promise<HazardGridReader | null> {
+  if (!bucket) return null
+  if (published?.bucket === bucket && now() - published.checkedAt < CACHE_TTL_MS) return published.reader
+  if (manifestCheck?.bucket === bucket) return manifestCheck.request
+  const request = (async () => {
+    const object = await bucket.get(HAZARD_GRID_MANIFEST_KEY)
+    const ready = object ? isCompleteManifest(await object.text()) : false
+    const reader = ready
+      ? (published?.bucket === bucket && published.reader) || createHazardGridReader(bucket, now)
+      : null
+    published = { bucket, reader, checkedAt: now() }
+    return reader
+  })().finally(() => { manifestCheck = null })
+  manifestCheck = { bucket, request }
+  return request
 }
