@@ -94,7 +94,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     stopCamera,
     retry: retryCamera,
   } = useARCamera({ enabled: sensorsEnabled && !streetViewTarget })
-  const { userLocation, locationPermission, error: locationError, retry: retryLocation } = useARLocation({
+  const { userLocation, locationPermission, timedOut: locationTimedOut, error: locationError, retry: retryLocation } = useARLocation({
     enabled: sensorsEnabled && !manualLocationMode,
   })
   const {
@@ -719,6 +719,26 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           onFovChange={setFov}
           permissions={permissions}
         />
+      )}
+
+      {/* 位置がまだ取れていないとき。黙って空にしない。 */}
+      {sensorsEnabled && !arError && isCameraActive && !hasPositionContext && !isInundationLearning && (
+        <div className="absolute left-1/2 top-[132px] z-30 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl bg-paper-card p-4 text-ink shadow-lg" role="status" aria-live="polite">
+          {locationTimedOut ? (
+            <>
+              <p className="text-sm font-bold">位置情報を取得できません</p>
+              <p className="mt-1 text-xs leading-6">GPSの電波が弱い可能性があります。空が見える場所で少し待つか、もう一度お試しください。事故・浸水・みんなの報告は、現在地が分かるまで表示できません。</p>
+              <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-forest px-4 font-bold text-white" onClick={retryLocation}>
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />位置情報をもう一度取得する
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-bold">位置情報を取得しています…</p>
+              <p className="mt-1 text-xs leading-6">現在地が分かると、近くの事故・浸水の想定・みんなの報告を表示します。</p>
+            </>
+          )}
+        </div>
       )}
 
       {/* 方向インジケーター */}
