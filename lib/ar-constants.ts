@@ -32,7 +32,12 @@ export const CAMERA_IDEAL_WIDTH = 1280
 export const CAMERA_IDEAL_HEIGHT = 720
 
 // 位置情報
-export const LOCATION_MAX_AGE_MS = 2000
+// 2秒だと、端末が持っている直前の位置を使えず、毎回新しい測位を待つことになる。
+// 歩く速さ(4km/h)なら15秒で約17m。安全抑制のしきい値(50m)の内側に収まる。
+export const LOCATION_MAX_AGE_MS = 15000
+/** 最初の1点だけは粗くても早く出す。高精度の測位が来たら置き換える。 */
+export const LOCATION_FIRST_FIX_MAX_AGE_MS = 120000
+export const LOCATION_FIRST_FIX_TIMEOUT_MS = 8000
 export const LOCATION_TIMEOUT_MS = 10000
 
 // AR表示

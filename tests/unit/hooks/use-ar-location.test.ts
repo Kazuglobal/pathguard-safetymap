@@ -316,3 +316,49 @@ describe("useARLocation", () => {
     })
   })
 })
+
+describe("最初の1点を早く出す", () => {
+  let coarseSuccess: SuccessCallback | null = null
+  let coarseOptions: PositionOptions | null = null
+  const mockGetCurrentPosition = vi.fn(
+    (success: SuccessCallback, _error: ErrorCallback, options?: PositionOptions) => {
+      coarseSuccess = success
+      coarseOptions = options ?? null
+    }
+  )
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    coarseSuccess = null
+    coarseOptions = null
+    capturedSuccessCallback = null
+    toastMock.state.current = vi.fn()
+    Object.defineProperty(navigator, "geolocation", {
+      value: { watchPosition: mockWatchPosition, clearWatch: mockClearWatch, getCurrentPosition: mockGetCurrentPosition },
+      writable: true,
+      configurable: true,
+    })
+  })
+
+  it("粗い位置でも先に表示し、精度の値をそのまま渡す", async () => {
+    const { result } = renderHook(() => useARLocation())
+    expect(mockGetCurrentPosition).toHaveBeenCalled()
+    expect(coarseOptions).toMatchObject({ enableHighAccuracy: false })
+
+    act(() => { coarseSuccess?.(createMockPosition(35.86, 139.97, 800)) })
+
+    await waitFor(() => {
+      expect(result.current.userLocation).toMatchObject({ lat: 35.86, lon: 139.97, accuracy: 800 })
+    })
+  })
+
+  it("高精度の測位が来たら置き換え、あとから届く粗い位置で上書きしない", async () => {
+    const { result } = renderHook(() => useARLocation())
+
+    act(() => { capturedSuccessCallback?.(createMockPosition(35.8676, 139.9759, 8)) })
+    await waitFor(() => expect(result.current.userLocation?.accuracy).toBe(8))
+
+    act(() => { coarseSuccess?.(createMockPosition(35.86, 139.97, 800)) })
+    expect(result.current.userLocation).toMatchObject({ lat: 35.8676, lon: 139.9759, accuracy: 8 })
+  })
+})
