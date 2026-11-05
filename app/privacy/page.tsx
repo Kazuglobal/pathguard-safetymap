@@ -3,6 +3,7 @@ import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shel
 import { BRAND } from "@/lib/brand"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { RETENTION_DAYS } from "@/lib/retention/policy"
+import { GA_MEASUREMENT_ID } from "@/lib/google-analytics"
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
@@ -90,6 +91,16 @@ export default function PrivacyPage() {
           <li>Resend(お問い合わせ・サービス改善要望の内容と、返信のために書いていただいた連絡先を、運営者のメールへ転送します)</li>
           {/* お問い合わせのフォーム(lib/brand.ts の contactFormUrl)を公開したら、預け先として自動で載る */}
           {BRAND.contactFormUrl && <li>Google フォーム(お問い合わせの内容と、返信のために書いていただいた連絡先)</li>}
+          {/* アクセス解析(lib/google-analytics.ts の測定IDを設定したときだけ読み込み、ここにも載る) */}
+          {GA_MEASUREMENT_ID && (
+            <li>
+              Google アナリティクス(サイトの利用状況の把握と改善のため)。見たページの URL、参照元、おおよその地域、端末とブラウザの種類、
+              操作の記録が、Cookie などの識別子とともに Google に送られます。お名前・メールアドレス・写真・通学路の位置は送りません。
+              広告のためには使わず、Google シグナルと広告のパーソナライズは切っています。
+              <a className="underline" href="https://policies.google.com/technologies/partner-sites?hl=ja" target="_blank" rel="noopener noreferrer">Google によるデータの使い方</a>、
+              送信を止める方法は<a className="underline" href="https://tools.google.com/dlpage/gaoptout?hl=ja" target="_blank" rel="noopener noreferrer">オプトアウト アドオン</a>をご覧ください
+            </li>
+          )}
         </ul>
         <p>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</p>
       </LegalSection>
@@ -137,6 +148,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="11. 改定の履歴" id="revisions">
         <ul className="list-disc space-y-1 pl-5">
+          {GA_MEASUREMENT_ID && <li>2026年11月6日: アクセス解析(Google アナリティクス)と、送る情報・送信を止める方法を追記しました。</li>}
           <li>2026年10月30日: 事故地点の Google 地図とストリートビューの埋め込み表示、送信する情報を追記しました。</li>
           <li>2026年10月29日: ストリートビュー表示時に Google Maps に送る情報と関連ポリシーを追記しました。</li>
           <li>

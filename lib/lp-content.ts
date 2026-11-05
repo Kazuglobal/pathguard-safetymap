@@ -2,14 +2,16 @@
 // 掲載する機能・文言はアプリの実装済み機能のみ(誇張・未実装機能の記載禁止)
 // 登録・審査・料金・写真の扱い・機能の一覧は lib/product-facts.ts から読む(ログイン・登録の画面と同じ約束にする)
 
+import { ACCIDENT_DATA_MIN_YEAR } from "./accident-stats-year-window"
 import { BRAND } from "./brand"
+import { HOTSPOT_MAX_YEAR, HOTSPOT_MIN_COUNT, HOTSPOT_RADIUS_METERS, HOTSPOT_YEARS } from "./traffic-accident/hotspot-config"
 import { PRODUCT_FACTS, PRODUCT_FEATURES, type ProductFeature } from "./product-facts"
 
 export const LP_META = {
-  // 紹介HPはホームと同じ既定のタイトル(ページ名を付けない。app/lp/page.tsx で absolute にする)
-  title: BRAND.defaultTitle,
+  // 検索で「通学路 危険」「通学路 安全マップ」などに当たるよう、言葉をタイトルの前に置く(app/lp/page.tsx で absolute にする)
+  title: `通学路の危険(キケン)が分かる安全マップ・見守りアプリ｜${BRAND.name}(無料)`,
   description:
-    "PathGuardianは、写真と地図で通学路の危険をAIが見える化し、地域のヒヤリハット報告・不審者アラート・毎日の通学路の安全ニュースで家族の安全習慣をつくる、無料の通学路みまもりアプリです。",
+    "通学路の危険箇所を地図で見える化する無料の見守りアプリ。地域のヒヤリハット報告、警察庁データの事故多発地点、洪水・津波のハザードマップ、不審者アラート、ARで見る通学路のキケン、子どもと遊べる危険さがしまで。インストール不要で今日から使えます。",
   ogImage: "/images/lp/og-share.png",
 } as const
 
@@ -18,7 +20,7 @@ export const LP_SIGNUP = { label: "無料ではじめる", href: "/register" } a
 export const LP_LOGIN = { label: "ログイン", href: "/login" } as const
 
 export const LP_HERO = {
-  eyebrow: "通学路みまもりアプリ",
+  eyebrow: "通学路の危険を見える化する見守りアプリ",
   headline: ["「いってらっしゃい」に、", "確かな安心を。"],
   sub: "PathGuardian は、子どもの通学路にひそむ危険を地図で見える化し、地域の目と AI で家族の安全習慣をつくる見守りアプリです。",
   ctaPrimary: LP_SIGNUP,
@@ -168,6 +170,14 @@ export const LP_FAQ = [
   {
     q: "写真に写った顔やナンバーはどうなりますか？",
     a: PRODUCT_FACTS.photo.adult,
+  },
+  {
+    q: "通学路の危険箇所(キケンな場所)は、どうやって調べられますか？",
+    a: "地図でお子さんの通学路をえがくと、道の近くで報告されたヒヤリハットと、警察庁のデータから分かる事故の多い場所をまとめて確認できます。洪水・津波のハザードマップも同じ地図に重ねられます。",
+  },
+  {
+    q: "通学路で交通事故が多い場所は分かりますか？",
+    a: `はい。警察庁の交通事故オープンデータ(${ACCIDENT_DATA_MIN_YEAR}〜${HOTSPOT_MAX_YEAR}年)をもとに、半径${HOTSPOT_RADIUS_METERS}m以内で直近${HOTSPOT_YEARS}年に${HOTSPOT_MIN_COUNT}件以上の事故があった地点を「事故多発地点」として地図に表示します。`,
   },
   {
     q: "どの地域で使えますか？",
