@@ -134,17 +134,29 @@ export function verticalFovFromHorizontal(horizontalFovDeg: number, aspectHeight
 export interface ARScreenPin { left: number; top: number }
 
 /**
- * 画面上で重なるピンを1つにまとめる。入力は近い順を想定し、各グループの先頭（最寄り）を基準に
- * 横 dx%・縦 dy% 以内に入ったものを同じグループにする。記録自体は統合しない（件数と選択の巡回に使う）。
+ * 画面上で重なるピンを1つにまとめる。横 dx%・縦 dy% 以内のピンを連鎖的にたどって同じグループにする
+ * （30%・47%・49% のように、隣どうしが重なれば全部まとめる）。
+ * こうすると別グループのピンは必ず互いに離れているため、グループ内のどの事故を選んで表示位置を
+ * 動かしても、他のグループのピンを覆わない。記録自体は統合しない（件数と選択の巡回に使う）。
+ * グループ内・グループ間の順序は入力順（近い順を想定）を保つ。
  */
 export function groupOverlappingPins<T extends ARScreenPin>(pins: T[], { dx = 18, dy = 10 } = {}): T[][] {
-  const groups: T[][] = []
-  for (const pin of pins) {
-    const group = groups.find(list => Math.abs(list[0].left - pin.left) < dx && Math.abs(list[0].top - pin.top) < dy)
-    if (group) group.push(pin)
-    else groups.push([pin])
+  const parent = pins.map((_, index) => index)
+  const find = (index: number): number => parent[index] === index ? index : (parent[index] = find(parent[index]))
+  for (let a = 0; a < pins.length; a++) {
+    for (let b = a + 1; b < pins.length; b++) {
+      if (Math.abs(pins[a].left - pins[b].left) < dx && Math.abs(pins[a].top - pins[b].top) < dy) {
+        const ra = find(a); const rb = find(b)
+        if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb)
+      }
+    }
   }
-  return groups
+  const groups = new Map<number, T[]>()
+  pins.forEach((pin, index) => {
+    const root = find(index)
+    groups.set(root, [...(groups.get(root) ?? []), pin])
+  })
+  return [...groups.values()]
 }
 
 /** 重なったピンをタップしたときに次に選ぶ記録。選択中がグループ外なら先頭（最寄り）。 */

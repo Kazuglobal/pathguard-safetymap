@@ -93,6 +93,16 @@ describe('AR accident pins on screen', () => {
     expect(groups).toHaveLength(1)
     expect(groups[0].map(pin => pin.id)).toEqual([1, 2, 3])
   })
+  it('chains overlaps so switching the selection never covers another group', () => {
+    // 先頭(30%)とだけ比べると [30,47] と [49] に分かれ、47% を選ぶと 49% のピンを覆っていた。
+    const pins = [{ id: 1, left: 30, top: 45 }, { id: 2, left: 47, top: 45 }, { id: 3, left: 49, top: 45 }, { id: 4, left: 80, top: 45 }]
+    const groups = groupOverlappingPins(pins)
+    expect(groups.map(group => group.map(pin => pin.id))).toEqual([[1, 2, 3], [4]])
+    // どのメンバーを表示位置に選んでも、別グループのどのピンとも重ならない。
+    for (const group of groups) for (const shown of group) for (const other of groups.filter(g => g !== group).flat()) {
+      expect(Math.abs(shown.left - other.left) >= 18 || Math.abs(shown.top - other.top) >= 10).toBe(true)
+    }
+  })
   it('keeps pins apart when they are far apart on screen', () => {
     expect(groupOverlappingPins([{ left: 20, top: 45 }, { left: 70, top: 45 }])).toHaveLength(2)
   })
