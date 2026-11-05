@@ -31,3 +31,18 @@ export const apiBudgetSettings = sqliteTable('api_budget_settings', {
   check('api_budget_amount', sql`${table.monthlyBudgetUsd} is null or ${table.monthlyBudgetUsd} >= 0`),
   check('api_budget_threshold', sql`${table.alertThresholdPercent} is null or ${table.alertThresholdPercent} between 0 and 100`),
 ])
+
+export const contactMessages = sqliteTable('contact_messages', {
+  id: text('id').primaryKey(),
+  kind: text('kind', { enum: ['inquiry', 'improvement'] }).notNull(),
+  message: text('message').notNull(),
+  replyEmail: text('reply_email'),
+  deliveryStatus: text('delivery_status', { enum: ['pending', 'sent', 'failed', 'skipped'] }).notNull().default('pending'),
+  deliveryError: text('delivery_error'),
+  createdAt: createdAt(),
+}, (table) => [
+  index('idx_contact_messages_created').on(table.createdAt),
+  index('idx_contact_messages_delivery').on(table.deliveryStatus, table.createdAt),
+  check('contact_messages_kind', sql`${table.kind} in ('inquiry','improvement')`),
+  check('contact_messages_message_length', sql`length(${table.message}) between 1 and 2000`),
+])

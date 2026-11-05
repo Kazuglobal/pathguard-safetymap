@@ -1,43 +1,32 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
-import { BRAND } from "@/lib/brand"
+import { ContactForm } from "@/components/contact/contact-form"
+import { contactKindFromParam } from "@/lib/contact/contact-schema"
 
 export const metadata: Metadata = {
   title: "お問い合わせ",
-  description: "PathGuardian(通学路みまもりアプリ)へのお問い合わせ方法と、アカウントの削除のご案内です。",
+  description: "PathGuardian(通学路みまもりアプリ)へのお問い合わせ・サービス改善要望の送信フォームと、アカウントの削除のご案内です。",
 }
 
 /**
- * お問い合わせ(UIUX改装 項目4・40)。公開の場(GitHub など)には誘導しない。
- * フォームの URL は lib/brand.ts の contactFormUrl。受け取るまでは「準備中」と出す。
+ * お問い合わせ・サービス改善要望(UIUX改装 項目4・40)。公開の場(GitHub など)には誘導しない。
+ * フォームから送られた内容は /api/contact が保存し、運営者のメールへ転送する。
+ * /contact?type=improvement で「サービス改善要望」を最初から選んだ状態で開く。
  */
-export default function ContactPage() {
-  const formUrl = BRAND.contactFormUrl
+export default async function ContactPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const params = searchParams ? await searchParams : {}
 
   return (
-    <LegalPageShell title="お問い合わせ" updatedAt="2026年10月29日">
-      <LegalSection title="お問い合わせの方法">
-        {formUrl ? (
-          <>
-            <p>ご質問・不具合のご報告・ご意見は、お問い合わせフォーム(Google フォーム)からお送りください。</p>
-            <p>
-              <a
-                href={formUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold underline underline-offset-4"
-              >
-                お問い合わせフォームを開く(新しいタブで開きます)
-              </a>
-            </p>
-          </>
-        ) : (
-          <p role="status" data-testid="contact-form-preparing">
-            お問い合わせフォーム(Google フォーム)は準備中です。公開まで、しばらくお待ちください。
-          </p>
-        )}
-        <p>フォームに書いた内容は、ほかの利用者には公開されません。</p>
+    <LegalPageShell title="お問い合わせ・ご要望" updatedAt="2026年11月5日">
+      <LegalSection title="お問い合わせ・サービス改善要望">
+        <p>ご質問・不具合のご報告・「こうなったら使いやすい」というご要望は、下のフォームからお送りください。ログインしなくても送れます。</p>
+        <ContactForm initialKind={contactKindFromParam(params.type)} />
+        <p>フォームに書いた内容は、ほかの利用者には公開されません。運営者のメールにだけ届きます。</p>
       </LegalSection>
 
       <LegalSection title="アカウントとデータの削除">

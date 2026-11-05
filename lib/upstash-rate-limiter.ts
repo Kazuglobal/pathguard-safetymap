@@ -135,6 +135,11 @@ export async function checkApiRateLimit(identifier: string): Promise<RateLimitRe
   return checkLimit('api', identifier, 60, 60)
 }
 
+/** お問い合わせ: 5件/10分(未ログインでも送れるので、IP ごとに厳しめに制限する) */
+export async function checkContactRateLimit(identifier: string): Promise<RateLimitResult> {
+  return checkLimit('contact', identifier, 5, 600)
+}
+
 /** Gemini API: 10リクエスト/分 */
 export async function checkGeminiRateLimit(identifier: string): Promise<RateLimitResult> {
   return checkLimit('gemini', identifier, 10, 60)
