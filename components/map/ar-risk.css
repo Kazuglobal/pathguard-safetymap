@@ -79,6 +79,7 @@
 .ar-accident-pin{--pin-scale:1;pointer-events:auto;position:absolute;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%) scale(var(--pin-scale));transform-origin:50% 100%;background:none;padding:0;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif}
 .ar-accident-pin-chip{display:flex;align-items:center;gap:5px;min-height:44px;min-width:64px;justify-content:center;background:#fffdf7;color:#43392b;border:2px solid #f4801f;border-radius:22px;padding:6px 11px;box-shadow:0 3px 15px #43392b40;font-size:14px;font-weight:800;white-space:nowrap}
 .ar-accident-pin-chip svg{color:#f4801f}
+.ar-accident-pin-chip small{font-size:12px;font-weight:700;margin-left:1px}
 .ar-accident-pin-stem{width:3px;height:30px;background:linear-gradient(#f4801f,#f4801fcc);border-radius:2px}
 .ar-accident-pin-ground{width:30px;height:10px;margin-top:-5px;border-radius:50%;background:#f4801f99;border:2px solid #fff;box-shadow:0 0 0 3px #f4801f55;animation:ar-pin-pulse 1.8s ease-out infinite}
 .ar-accident-pin--near .ar-accident-pin-chip{border-width:3px}

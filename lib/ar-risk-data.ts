@@ -130,3 +130,30 @@ export function verticalFovFromHorizontal(horizontalFovDeg: number, aspectHeight
   const ratio = Number.isFinite(aspectHeightOverWidth) && aspectHeightOverWidth > 0 ? aspectHeightOverWidth : 16 / 9
   return Math.atan(half * ratio) * 360 / Math.PI
 }
+
+export interface ARScreenPin { left: number; top: number }
+
+/**
+ * 画面上で重なるピンを1つにまとめる。入力は近い順を想定し、各グループの先頭（最寄り）を基準に
+ * 横 dx%・縦 dy% 以内に入ったものを同じグループにする。記録自体は統合しない（件数と選択の巡回に使う）。
+ */
+export function groupOverlappingPins<T extends ARScreenPin>(pins: T[], { dx = 18, dy = 10 } = {}): T[][] {
+  const groups: T[][] = []
+  for (const pin of pins) {
+    const group = groups.find(list => Math.abs(list[0].left - pin.left) < dx && Math.abs(list[0].top - pin.top) < dy)
+    if (group) group.push(pin)
+    else groups.push([pin])
+  }
+  return groups
+}
+
+/** 重なったピンをタップしたときに次に選ぶ記録。選択中がグループ外なら先頭（最寄り）。 */
+export function nextIdInGroup(ids: number[], selectedId: number | null): number {
+  const index = selectedId === null ? -1 : ids.indexOf(selectedId)
+  return ids[index < 0 ? 0 : (index + 1) % ids.length]
+}
+
+/** 画角内の事故の、画面上の横位置（%）。切り抜き後の水平画角で求めた x をそのまま使う。 */
+export function pinLeftPercent(x: number): number {
+  return Math.max(8, Math.min(92, 50 + x * 50))
+}

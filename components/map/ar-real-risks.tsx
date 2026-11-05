@@ -10,7 +10,7 @@ import type { HazardType } from '@/lib/types'
 import type { StreetViewTarget } from '@/lib/street-view'
 import type { DeviceTilt } from '@/lib/ar-water-geometry'
 import { AccidentFacts } from './accident-facts'
-import { ARAccidentMarkers, ARAccidentRadar } from './ar-accident-markers'
+import { ARAccidentMarkers, ARAccidentRadar, useARVideoView } from './ar-accident-markers'
 import { ARInundationOverlay } from './ar-inundation-overlay'
 import './ar-risk.css'
 
@@ -31,8 +31,11 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
   // 条件・選んだ事故・景色を見る操作・浸水の状態は、たたんでも隠さない。
   const [expanded, setExpanded] = useState(true)
   // 画角の外の事故も捨てない。画面上のピンは inView だけ、パネル・一覧・端の案内は全件から出す。
-  const accidents = useMemo(() => point ? locateARAccidents(data.accidents?.features ?? [], point, heading, distance, orientation, fov) : [],
-    [point, data.accidents, heading, distance, orientation, fov])
+  // 画面内の判定と横位置は、object-cover で切り抜かれたあとに実際に映っている画角で行う。
+  const view = useARVideoView(videoRef, fov, enabled && orientation)
+  const viewFov = view.horizontalFovDeg
+  const accidents = useMemo(() => point ? locateARAccidents(data.accidents?.features ?? [], point, heading, distance, orientation, viewFov) : [],
+    [point, data.accidents, heading, distance, orientation, viewFov])
   // 選んだ記録は、カメラの向きが変わっても保持する。位置・条件が変わって表示距離外になったら外す。
   const pinned = accidents.find(item => item.feature.properties.id === selectedId)
   const selected = pinned ?? accidents.find(item => item.inView) ?? accidents[0]
@@ -47,7 +50,7 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
 
   return <>
     {orientation && <ARAccidentMarkers items={accidents} selectedId={selected?.feature.properties.id ?? null}
-      distance={distance} fov={fov} suppressed={suppressed} tiltRef={tiltRef} tiltReady={tiltReady}
+      distance={distance} verticalFovDeg={view.verticalFovDeg} suppressed={suppressed} tiltRef={tiltRef} tiltReady={tiltReady}
       onSelect={setSelectedId} />}
     {showAnimation && hazard && data.hazards ? <ARInundationOverlay risks={data.hazards.hazards} selected={hazard}
       onSelect={setHazard} onClose={() => setHazard(null)} suppressed={suppressed}
@@ -56,7 +59,7 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
         <button type="button" className="min-h-11 font-bold text-forest-strong" onClick={openScene}>現地の景色を見る</button></>}
     </ARInundationOverlay> : <section className={`ar-risk-dock ${expanded ? '' : 'ar-risk-dock--collapsed'}`} aria-label="実事故と浸水想定">
       <div className="ar-risk-dock-head">
-        {orientation && accidents.length > 0 && <ARAccidentRadar items={accidents} selectedId={selected?.feature.properties.id ?? null} distance={distance} fov={fov} />}
+        {orientation && accidents.length > 0 && <ARAccidentRadar items={accidents} selectedId={selected?.feature.properties.id ?? null} distance={distance} fov={viewFov} />}
         <p className="text-xs text-ink-soft">{accidentFilterLabel(filters)} ／ 表示距離{distance}m</p>
         <button type="button" className="ar-sheet-toggle" aria-expanded={expanded}
           aria-label={expanded ? '詳細をたたむ' : '詳細をひらく'} onClick={() => setExpanded(value => !value)}>

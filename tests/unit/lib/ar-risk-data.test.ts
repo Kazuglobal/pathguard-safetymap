@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { arAccidentBounds, compassLabel, groundScreenYPercent, locateARAccidents, projectARAccidents, relativeDirectionLabel,
-  shouldRefreshARPoint, summarizeOffscreen, verticalFovFromHorizontal } from '@/lib/ar-risk-data'
+  shouldRefreshARPoint, summarizeOffscreen, verticalFovFromHorizontal, groupOverlappingPins, nextIdInGroup, pinLeftPercent } from '@/lib/ar-risk-data'
+import { computeVideoProjection } from '@/lib/ar-water-geometry'
 import { hazardDepthLabel } from '@/lib/hazard-point'
 import { streetViewLocationInfo } from '@/lib/street-view'
 import type { AccidentFeature } from '@/lib/traffic-accident-heatmap'
@@ -79,5 +80,38 @@ describe('AR accident locating (outside the camera view too)', () => {
     // UIに隠れない範囲に収める。
     expect(groundScreenYPercent(2, 30, vfov)).toBe(50)
     expect(groundScreenYPercent(400, -60, vfov)).toBe(38)
+  })
+})
+
+describe('AR accident pins on screen', () => {
+  const here = { lat: 35, lon: 139 }
+  it('merges pins that land on the same spot even when their distances differ (level phone)', () => {
+    // 同じ方向の30m・150m・400m。水平に構えると、どれも地平線付近の同じ高さに投影される。
+    const items = locateARAccidents([feature(1, 35.00027), feature(2, 35.00135), feature(3, 35.0036)], here, 0, 500, true, 21)
+    const pins = items.map(item => ({ id: item.feature.properties.id, left: pinLeftPercent(item.x), top: groundScreenYPercent(item.distance, 0, 36) }))
+    const groups = groupOverlappingPins(pins)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].map(pin => pin.id)).toEqual([1, 2, 3])
+  })
+  it('keeps pins apart when they are far apart on screen', () => {
+    expect(groupOverlappingPins([{ left: 20, top: 45 }, { left: 70, top: 45 }])).toHaveLength(2)
+  })
+  it('cycles through overlapped records so far ones stay selectable', () => {
+    expect(nextIdInGroup([1, 2, 3], null)).toBe(1)
+    expect(nextIdInGroup([1, 2, 3], 1)).toBe(2)
+    expect(nextIdInGroup([1, 2, 3], 3)).toBe(1)
+    expect(nextIdInGroup([1, 2, 3], 99)).toBe(1)
+  })
+  it('uses the cropped (object-cover) field of view, not the source FOV times the window ratio', () => {
+    const projection = computeVideoProjection({ videoWidth: 1280, videoHeight: 720, displayWidth: 375, displayHeight: 667, sourceHorizontalFovDeg: 60 })!
+    expect(projection.verticalFovDeg).toBeCloseTo(36, 0)
+    expect(projection.horizontalFovDeg).toBeLessThan(22)
+    expect(verticalFovFromHorizontal(60, 667 / 375)).toBeGreaterThan(90)
+    // 切り抜き後の画角で判定すると、正面から15°ずれた事故は画面の外になる。
+    const angled = feature(1, 35 + .001 * Math.cos(15 * Math.PI / 180), 139 + .001 * Math.sin(15 * Math.PI / 180) / Math.cos(35 * Math.PI / 180))
+    expect(locateARAccidents([angled], here, 0, 500, true, 60)[0].inView).toBe(true)
+    expect(locateARAccidents([angled], here, 0, 500, true, projection.horizontalFovDeg)[0].inView).toBe(false)
+    expect(pinLeftPercent(0)).toBe(50)
+    expect(pinLeftPercent(1)).toBe(92)
   })
 })

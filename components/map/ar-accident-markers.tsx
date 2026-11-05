@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Car, ChevronLeft, ChevronRight, Undo2 } from 'lucide-react'
-import { groundScreenYPercent, summarizeOffscreen, verticalFovFromHorizontal, type ARAccidentAround } from '@/lib/ar-risk-data'
-import { isTiltFresh, isValidTilt, tiltToAttitude, type DeviceTilt } from '@/lib/ar-water-geometry'
+import { groundScreenYPercent, groupOverlappingPins, nextIdInGroup, pinLeftPercent, summarizeOffscreen,
+  verticalFovFromHorizontal, type ARAccidentAround } from '@/lib/ar-risk-data'
+import { computeVideoProjection, isTiltFresh, isValidTilt, tiltToAttitude, type DeviceTilt } from '@/lib/ar-water-geometry'
 
 /** 端末の傾きから仰角を読む。取れないときは null（ピンは水平の高さに置く）。 */
 function useCameraPitch(tiltRef: React.RefObject<DeviceTilt | null> | undefined, active: boolean): number | null {
@@ -25,49 +26,76 @@ function useCameraPitch(tiltRef: React.RefObject<DeviceTilt | null> | undefined,
   return pitch
 }
 
-function viewportAspect(): number {
-  if (typeof window === 'undefined' || !window.innerWidth) return 16 / 9
-  return window.innerHeight / window.innerWidth
+export interface ARVideoView {
+  /** 画面に実際に映っている範囲の画角（度）。object-fit: cover の切り抜き後。 */
+  horizontalFovDeg: number
+  verticalFovDeg: number
+  /** 映像の実寸から求めたか（false は推定）。 */
+  measured: boolean
 }
 
-/** 距離の帯（0〜25m, 25〜50m, 50〜100m, …）。同じ方向でも距離が大きく違えば別のピンにする。 */
-function distanceBand(meters: number): number {
-  return Math.max(0, Math.floor(Math.log2(Math.max(1, meters) / 25)) + 1)
+function fallbackView(fov: number): ARVideoView {
+  const aspect = typeof window !== 'undefined' && window.innerWidth ? window.innerHeight / window.innerWidth : 16 / 9
+  return { horizontalFovDeg: fov, verticalFovDeg: verticalFovFromHorizontal(fov, aspect), measured: false }
 }
 
-export function ARAccidentMarkers({ items, selectedId, distance, fov, suppressed, tiltRef, tiltReady, onSelect }: {
-  items: ARAccidentAround[]; selectedId: number | null; distance: number; fov: number; suppressed: boolean
+/**
+ * カメラ映像の実寸と表示領域から、切り抜き後に画面に映っている画角を求める。
+ * 背景の <video> は object-cover なので、元映像の水平FOVを画面比率で直接変換しない
+ * （浸水シーンと同じ computeVideoProjection を使う）。メタデータ未取得のあいだは推定値。
+ */
+export function useARVideoView(videoRef: React.RefObject<HTMLVideoElement | null> | undefined, fov: number, active: boolean): ARVideoView {
+  const [view, setView] = useState<ARVideoView>(() => fallbackView(fov))
+  useEffect(() => {
+    if (!active) return
+    const read = () => {
+      const video = videoRef?.current
+      const projection = video ? computeVideoProjection({ videoWidth: video.videoWidth, videoHeight: video.videoHeight,
+        displayWidth: video.clientWidth, displayHeight: video.clientHeight, sourceHorizontalFovDeg: fov }) : null
+      const next = projection
+        ? { horizontalFovDeg: projection.horizontalFovDeg, verticalFovDeg: projection.verticalFovDeg, measured: true }
+        : fallbackView(fov)
+      setView(previous => Math.abs(previous.horizontalFovDeg - next.horizontalFovDeg) < .1
+        && Math.abs(previous.verticalFovDeg - next.verticalFovDeg) < .1 && previous.measured === next.measured ? previous : next)
+    }
+    read()
+    // 映像のメタデータ取得・画面回転・リサイズに追従する。
+    const timer = setInterval(read, 500)
+    return () => clearInterval(timer)
+  }, [videoRef, fov, active])
+  return view
+}
+
+export function ARAccidentMarkers({ items, selectedId, distance, verticalFovDeg, suppressed, tiltRef, tiltReady, onSelect }: {
+  items: ARAccidentAround[]; selectedId: number | null; distance: number; verticalFovDeg: number; suppressed: boolean
   tiltRef?: React.RefObject<DeviceTilt | null>; tiltReady: boolean; onSelect: (id: number) => void
 }) {
   const pitch = useCameraPitch(tiltRef, tiltReady)
-  const verticalFov = verticalFovFromHorizontal(fov, viewportAspect())
-  const visible = useMemo(() => items.filter(item => item.inView), [items])
   const offscreen = useMemo(() => summarizeOffscreen(items), [items])
-  const groups = useMemo(() => {
-    const map = new Map<string, ARAccidentAround[]>()
-    for (const item of visible) {
-      const key = `${Math.round(item.x * 4)}:${distanceBand(item.distance)}`
-      map.set(key, [...(map.get(key) ?? []), item])
-    }
-    return [...map.values()]
-  }, [visible])
+  // 画面に投影した位置で重なりをまとめる。水平に構えると遠近の違う事故が同じ高さに並ぶため、
+  // 距離帯ではなく実際の画面上の重なりで判定する。items は近い順なので各グループの先頭が最寄り。
+  const groups = useMemo(() => groupOverlappingPins(items.filter(item => item.inView).map(item => ({
+    item, left: pinLeftPercent(item.x), top: groundScreenYPercent(item.distance, pitch ?? 0, verticalFovDeg),
+  }))), [items, pitch, verticalFovDeg])
 
   return <div className="ar-accident-markers" aria-label="実事故の方向">
     {groups.map(group => {
-      const item = group.find(value => value.feature.properties.id === selectedId) ?? group[0]
+      const ids = group.map(pin => pin.item.feature.properties.id)
+      const shown = group.find(pin => pin.item.feature.properties.id === selectedId) ?? group[0]
+      const { item } = shown
       const near = Math.min(item.distance / Math.max(1, distance), 1)
       const scale = 1.15 - near * 0.4
-      const top = groundScreenYPercent(item.distance, pitch ?? 0, verticalFov)
-      const pressed = group.some(value => value.feature.properties.id === selectedId)
-      return <button key={group[0].feature.properties.id} type="button"
+      const pressed = ids.includes(selectedId ?? NaN)
+      const others = group.length > 1 ? `・ほか${group.length - 1}件` : ''
+      return <button key={ids[0]} type="button"
         className={`ar-accident-pin${item.distance <= 50 && !suppressed ? ' ar-accident-pin--near' : ''}`}
-        aria-label={`実事故 約${Math.round(item.distance)}m${group.length > 1 ? `・${group.length}件` : ''}`}
-        aria-pressed={pressed} data-ground-top={top.toFixed(1)}
-        style={{ left: `${50 + item.x * 36}%`, top: `${top}%`, zIndex: 100 - Math.round(near * 50),
+        aria-label={`実事故 約${Math.round(item.distance)}m${group.length > 1 ? `・この方向に${group.length}件（タップで次の事故）` : ''}`}
+        aria-pressed={pressed} data-ground-top={shown.top.toFixed(1)}
+        style={{ left: `${shown.left}%`, top: `${shown.top}%`, zIndex: 100 - Math.round(near * 50),
           ['--pin-scale' as string]: scale.toFixed(2) }}
-        onClick={() => onSelect(item.feature.properties.id)}>
+        onClick={() => onSelect(nextIdInGroup(ids, selectedId))}>
         <span className="ar-accident-pin-chip"><Car size={20} aria-hidden="true" />
-          <span>{Math.round(item.distance)}m{group.length > 1 ? `・${group.length}件` : ''}</span></span>
+          <span>{Math.round(item.distance)}m{others && <small>{others}</small>}</span></span>
         <span className="ar-accident-pin-stem" aria-hidden="true" />
         <span className="ar-accident-pin-ground" aria-hidden="true" />
       </button>

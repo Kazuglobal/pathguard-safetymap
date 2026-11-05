@@ -89,3 +89,33 @@ describe('AR accidents outside the camera view', () => {
     expect(dock.getByText(/500m以内 2件・近い順/)).toBeInTheDocument()
   })
 })
+
+describe('AR pins that overlap on screen', () => {
+  it('shows the count and lets the far records be chosen by tapping again', () => {
+    mocks.data.mockReturnValue({ accidents: { type: 'FeatureCollection', features: [
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 35.00027] }, properties: { id: 1, year: 2024, type: '追突', severity: 2 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 35.00135] }, properties: { id: 2, year: 2023, type: '出会い頭', severity: 2 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 35.0036] }, properties: { id: 3, year: 2022, type: '人対車両', severity: 2 } },
+    ] }, hazards: null, retry: vi.fn() })
+    render(<ARRealRisks {...props} />)
+    const dock = within(screen.getByRole('region', { name: '実事故と浸水想定' }))
+    // 最寄り(30m)は最初からパネルに出ている。タップするたびに次の(遠い)事故へ進む。
+    expect(dock.getByRole('heading', { name: '追突' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /実事故 約30m・この方向に3件/ }))
+    expect(dock.getByRole('heading', { name: '出会い頭' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /この方向に3件/ }))
+    expect(dock.getByRole('heading', { name: '人対車両' })).toBeInTheDocument()
+  })
+  it('judges "on screen" with the cropped camera view when the video size is known', () => {
+    // 正面から15°右の事故。元映像60°なら画面内だが、1280×720を375×667に切り抜くと約21°しか映らない。
+    const lat = 35 + .001 * Math.cos(15 * Math.PI / 180)
+    const lon = 139 + .001 * Math.sin(15 * Math.PI / 180) / Math.cos(35 * Math.PI / 180)
+    mocks.data.mockReturnValue({ accidents: { type: 'FeatureCollection', features: [
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { id: 5, year: 2025, type: '追突', severity: 2 } },
+    ] }, hazards: null, retry: vi.fn() })
+    const video = { videoWidth: 1280, videoHeight: 720, clientWidth: 375, clientHeight: 667 } as unknown as HTMLVideoElement
+    render(<ARRealRisks {...props} videoRef={{ current: video }} />)
+    expect(screen.queryByRole('button', { name: /^実事故 約111m/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /右に実事故1件/ })).toBeInTheDocument()
+  })
+})
