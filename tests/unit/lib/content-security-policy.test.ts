@@ -24,3 +24,14 @@ describe("buildContentSecurityPolicy", () => {
     expect(buildContentSecurityPolicy("http://media.example.com")).not.toContain("http://media.example.com")
   })
 })
+
+describe("buildContentSecurityPolicy: Google アナリティクス(GA4)", () => {
+  const directive = (name: string) => buildContentSecurityPolicy().split("; ").find((d) => d.startsWith(`${name} `)) ?? ""
+
+  it("gtag.js の読み込みと計測の送信先を許可する", () => {
+    expect(directive("script-src")).toContain("https://www.googletagmanager.com")
+    expect(directive("connect-src")).toContain("https://*.google-analytics.com")
+    expect(directive("connect-src")).toContain("https://*.analytics.google.com")
+    expect(directive("img-src")).toContain("https://*.google-analytics.com")
+  })
+})

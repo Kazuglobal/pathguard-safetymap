@@ -14,7 +14,7 @@ export type RouteBinding =
   | 'OPERATIONS'
 
 const ROUTE_BINDINGS = [
-  { binding: 'EDITORIAL', prefixes: ['/landing', '/lp', '/safe-magazine', '/school-route-news'] },
+  { binding: 'EDITORIAL', prefixes: ['/landing', '/lp', '/safe-magazine', '/school-route-news', '/sitemap.xml'] },
   { binding: 'MAP_3D', prefixes: ['/3d-route-poc'] },
   { binding: 'MAP_UI', prefixes: ['/map', '/xroad', '/accidents'] },
   { binding: 'ROUTE_QUIZ', prefixes: ['/route-quiz'] },
