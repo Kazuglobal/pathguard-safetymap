@@ -12,16 +12,19 @@ const ease = [0.22, 1, 0.36, 1] as const
 export function LpHero() {
   return (
     <section className="relative min-h-[100svh] overflow-hidden bg-[#2B2723]">
-      {/* 背景: 生成した朝の通学路 + 暗めのグラデーション */}
+      {/* 背景: 朝の通学路(桜の住宅街を歩く子ども) + 暗めのグラデーション */}
       <div className="absolute inset-0">
-        <Image
-          src="/images/lp/hero-morning-route.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[70%_center]"
-        />
+        {/* PC では写真を右へ広げ、歩く子どもがスマホの画面の右に見えるようにする(スマホ幅は 70% 位置で子どもを残す) */}
+        <div className="absolute inset-y-0 left-0 right-0 md:-right-[34%]">
+          <Image
+            src="/images/lp/hero-spring-route.webp"
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 134vw"
+            className="object-cover object-[70%_center] md:object-center"
+          />
+        </div>
         <div className="absolute inset-0 bg-[#26221E]/55 md:hidden" />
         <div className="absolute inset-0 hidden bg-gradient-to-r from-[#26221E]/95 via-[#26221E]/72 to-[#26221E]/25 md:block" />
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[#26221E]/75 to-transparent" />
