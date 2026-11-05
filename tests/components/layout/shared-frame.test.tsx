@@ -72,14 +72,21 @@ describe("見つからないページ・エラーの画面は日本語で、戻�
   })
 })
 
-describe("お問い合わせ(項目4・40)", () => {
-  it("公開の場(GitHub)に誘導せず、フォームは準備中と出し、削除は設定から自分でできると案内する", () => {
-    const { container } = render(<ContactPage />)
+describe("お問い合わせ・サービス改善要望(項目4・40)", () => {
+  it("公開の場(GitHub)に誘導せず、送信フォームを出し、削除は設定から自分でできると案内する", async () => {
+    const { container } = render(await ContactPage({}))
 
     expect(container.innerHTML).not.toContain("github.com")
     expect(container.textContent).not.toContain("GitHub")
-    expect(screen.getByTestId("contact-form-preparing")).toHaveTextContent("準備中")
+    expect(screen.getByTestId("contact-form")).toBeInTheDocument()
+    expect(screen.queryByTestId("contact-form-preparing")).not.toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: /^お問い合わせ/ })).toBeChecked()
     expect(container.textContent).toContain("「アカウントを削除」")
     expect(screen.getByRole("link", { name: "マイページを開く" })).toHaveAttribute("href", "/mypage")
+  })
+
+  it("?type=improvement なら「サービス改善要望」を最初から選んだ状態で開く", async () => {
+    render(await ContactPage({ searchParams: Promise.resolve({ type: "improvement" }) }))
+    expect(screen.getByRole("radio", { name: /^サービス改善要望/ })).toBeChecked()
   })
 })

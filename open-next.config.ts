@@ -167,6 +167,7 @@ const routeGroups = {
   community: splitFunction([
     'app/report/page',
     'app/api/abuse-report/route',
+    'app/api/contact/route',
     'app/api/danger-report/moderate/route',
     'app/api/media/private/[...key]/route',
     'app/api/media/report/[id]/[slot]/route',
@@ -181,6 +182,7 @@ const routeGroups = {
   ], [
     'report*',
     'api/abuse-report*',
+    'api/contact*',
     'api/danger-report/*',
     'api/media/*',
     'api/reactions*',
