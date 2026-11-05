@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Car, ImageIcon, Droplets, Waves, RotateCw, ChevronDown, ChevronUp } from 'lucide-react'
+import { ImageIcon, Droplets, Waves, RotateCw, ChevronDown, ChevronUp, Navigation } from 'lucide-react'
 import { useARRiskData } from '@/hooks/use-ar-risk-data'
-import { projectARAccidents, accidentFilterLabel, type ARPoint } from '@/lib/ar-risk-data'
+import { locateARAccidents, accidentFilterLabel, compassLabel, relativeDirectionLabel, type ARAccidentAround, type ARPoint } from '@/lib/ar-risk-data'
 import { hazardDepthLabel, hazardStatusLabel, HAZARD_OUTSIDE_NOTICE } from '@/lib/hazard-point'
 import type { AccidentHeatmapFilters } from '@/lib/traffic-accident-heatmap'
 import type { HazardType } from '@/lib/types'
 import type { StreetViewTarget } from '@/lib/street-view'
 import type { DeviceTilt } from '@/lib/ar-water-geometry'
 import { AccidentFacts } from './accident-facts'
+import { ARAccidentMarkers, ARAccidentRadar } from './ar-accident-markers'
 import { ARInundationOverlay } from './ar-inundation-overlay'
 import './ar-risk.css'
 
@@ -29,24 +30,12 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
   // 浸水学習のシートと同じく、詳細をたたんでカメラを広く見せる。
   // 条件・選んだ事故・景色を見る操作・浸水の状態は、たたんでも隠さない。
   const [expanded, setExpanded] = useState(true)
-  const accidents = useMemo(() => point ? projectARAccidents(data.accidents?.features ?? [], point, heading, distance, orientation, fov) : [],
+  // 画角の外の事故も捨てない。画面上のピンは inView だけ、パネル・一覧・端の案内は全件から出す。
+  const accidents = useMemo(() => point ? locateARAccidents(data.accidents?.features ?? [], point, heading, distance, orientation, fov) : [],
     [point, data.accidents, heading, distance, orientation, fov])
-  // Cards retain the chosen factual record when the camera turns away. Only
-  // direction markers follow the current FOV. Position/filter changes still
-  // remove records that are no longer part of the fetched/displayed distance.
-  const selectedFeature = data.accidents?.features.find(feature => feature.properties.id === selectedId)
-  const pinned = selectedFeature && point
-    ? projectARAccidents([selectedFeature], point, heading, distance, false, fov)[0] : undefined
-  const selected = pinned ?? accidents[0]
-  // Collapse overlapping screen positions, without merging the factual records.
-  const markerGroups = useMemo(() => {
-    const groups = new Map<number, typeof accidents>()
-    for (const item of accidents) {
-      const bucket = Math.round(item.x * 3)
-      groups.set(bucket, [...(groups.get(bucket) ?? []), item])
-    }
-    return [...groups.values()]
-  }, [accidents])
+  // 選んだ記録は、カメラの向きが変わっても保持する。位置・条件が変わって表示距離外になったら外す。
+  const pinned = accidents.find(item => item.feature.properties.id === selectedId)
+  const selected = pinned ?? accidents.find(item => item.inView) ?? accidents[0]
   const openScene = () => { if (selected) {
     setSelectedId(selected.feature.properties.id)
     onStreetView({ coordinates: selected.feature.geometry.coordinates, properties: { ...selected.feature.properties } })
@@ -57,19 +46,9 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
   if (!enabled) return null
 
   return <>
-    {orientation && <div className="ar-accident-markers" aria-label="実事故の方向">
-      {markerGroups.map(group => {
-        const item = group.find(value => value.feature.properties.id === selectedId) ?? group[0]
-        return <button key={group[0].feature.properties.id} type="button" className="ar-accident-marker"
-          aria-label={`実事故 約${Math.round(item.distance)}m${group.length > 1 ? `・${group.length}件` : ''}`}
-          aria-pressed={selected?.feature.properties.id === item.feature.properties.id}
-          style={{ left: `${50 + item.x * 36}%`, top: `${25 + Math.min(item.distance / distance, 1) * 8}%`,
-            ...(item.distance <= 50 && !suppressed ? { borderWidth: 3 } : {}) }}
-          onClick={() => setSelectedId(item.feature.properties.id)}>
-          <Car size={23} aria-hidden="true" /><span>実事故・{Math.round(item.distance)}m{group.length > 1 ? `（${group.length}件）` : ''}</span>
-        </button>
-      })}
-    </div>}
+    {orientation && <ARAccidentMarkers items={accidents} selectedId={selected?.feature.properties.id ?? null}
+      distance={distance} fov={fov} suppressed={suppressed} tiltRef={tiltRef} tiltReady={tiltReady}
+      onSelect={setSelectedId} />}
     {showAnimation && hazard && data.hazards ? <ARInundationOverlay risks={data.hazards.hazards} selected={hazard}
       onSelect={setHazard} onClose={() => setHazard(null)} suppressed={suppressed}
       live videoRef={videoRef} tiltRef={tiltRef} tiltReady={tiltReady} sourceHorizontalFovDeg={fov}>
@@ -77,6 +56,7 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
         <button type="button" className="min-h-11 font-bold text-forest-strong" onClick={openScene}>現地の景色を見る</button></>}
     </ARInundationOverlay> : <section className={`ar-risk-dock ${expanded ? '' : 'ar-risk-dock--collapsed'}`} aria-label="実事故と浸水想定">
       <div className="ar-risk-dock-head">
+        {orientation && accidents.length > 0 && <ARAccidentRadar items={accidents} selectedId={selected?.feature.properties.id ?? null} distance={distance} fov={fov} />}
         <p className="text-xs text-ink-soft">{accidentFilterLabel(filters)} ／ 表示距離{distance}m</p>
         <button type="button" className="ar-sheet-toggle" aria-expanded={expanded}
           aria-label={expanded ? '詳細をたたむ' : '詳細をひらく'} onClick={() => setExpanded(value => !value)}>
@@ -87,13 +67,15 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
         selected ? <>
           {expanded ? <>
             <AccidentFacts properties={{ ...selected.feature.properties }} compact />
-            <p>約{Math.round(selected.distance)}m先 ／ 過去に事故が記録された地点です</p>
+            <ARAccidentWhere item={selected} orientation={orientation} />
           </> : <p className="ar-risk-summary">実事故 {selected.feature.properties.year}年・{selected.feature.properties.type ?? '種類不明'}
-            ／約{Math.round(selected.distance)}m先</p>}
+            ／{orientation ? `${relativeDirectionLabel(selected.relativeAngle)}・` : ''}約{Math.round(selected.distance)}m先</p>}
           <button type="button" className="ar-risk-cta" onClick={openScene}><ImageIcon size={19} aria-hidden="true" />現地の景色を見る</button>
-          {expanded && (!orientation || accidents.length > 1) && <details><summary className="cursor-pointer py-2 text-xs">近くの実事故（表示中 {accidents.length}件）</summary>
-            <div className="ar-accident-list">{accidents.map(item => <button key={item.feature.properties.id} type="button" onClick={() => setSelectedId(item.feature.properties.id)}>
-              <span>{item.feature.properties.year}年・{item.feature.properties.type ?? '種類不明'}</span><span>{Math.round(item.distance)}m</span>
+          {expanded && accidents.length > 1 && <details><summary className="cursor-pointer py-2 text-xs">近くの実事故（{distance}m以内 {accidents.length}件・近い順）</summary>
+            <div className="ar-accident-list">{accidents.map(item => <button key={item.feature.properties.id} type="button"
+              aria-pressed={item.feature.properties.id === selected.feature.properties.id} onClick={() => setSelectedId(item.feature.properties.id)}>
+              <span>{item.feature.properties.year}年・{item.feature.properties.type ?? '種類不明'}</span>
+              <span>{orientation ? `${relativeDirectionLabel(item.relativeAngle)}・` : ''}{compassLabel(item.bearing)} {Math.round(item.distance)}m</span>
             </button>)}</div></details>}
         </> : <p>現在の表示範囲・条件で記録を確認できた実事故はありません。</p>}
       {data.accidents?.truncated && <p role="status">件数が多いため一部だけ表示しています。最寄りの全件を保証するものではありません。</p>}
@@ -120,4 +102,19 @@ export function ARRealRisks({ enabled, point, heading, orientation, distance, fo
       {expanded && <p className="text-xs text-ink-soft">事故出典：警察庁 交通事故統計オープンデータを加工</p>}
     </section>}
   </>
+}
+
+/** どこにある事故か。方向・方位・距離・道路形状（記録にあるときだけ）と、画角外なら向き直しの案内。 */
+function ARAccidentWhere({ item, orientation }: { item: ARAccidentAround; orientation: boolean }) {
+  const { roadShape } = item.feature.properties
+  const turn = Math.round(Math.abs(item.relativeAngle) / 5) * 5
+  return <div className="ar-accident-where">
+    <p className="ar-accident-where-main"><Navigation size={16} aria-hidden="true"
+      style={{ transform: `rotate(${orientation ? item.relativeAngle : item.bearing}deg)` }} />
+      {orientation ? `${relativeDirectionLabel(item.relativeAngle)}・` : ''}{compassLabel(item.bearing)}の方角・約{Math.round(item.distance)}m先</p>
+    {roadShape && <p className="text-xs">道路形状：{roadShape}</p>}
+    {orientation && !item.inView && <p className="ar-accident-turn" role="status">
+      画面の外です。{item.relativeAngle > 0 ? '右' : '左'}へ約{turn}°向くと見えます</p>}
+    <p className="text-xs text-ink-soft">過去に事故が記録された地点です（位置は記録の座標で、ずれることがあります）</p>
+  </div>
 }

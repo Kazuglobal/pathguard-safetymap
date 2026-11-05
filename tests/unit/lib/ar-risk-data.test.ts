@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { arAccidentBounds, projectARAccidents, shouldRefreshARPoint } from '@/lib/ar-risk-data'
+import { arAccidentBounds, compassLabel, groundScreenYPercent, locateARAccidents, projectARAccidents, relativeDirectionLabel,
+  shouldRefreshARPoint, summarizeOffscreen, verticalFovFromHorizontal } from '@/lib/ar-risk-data'
 import { hazardDepthLabel } from '@/lib/hazard-point'
 import { streetViewLocationInfo } from '@/lib/street-view'
 import type { AccidentFeature } from '@/lib/traffic-accident-heatmap'
@@ -35,5 +36,48 @@ describe('AR actual risk projection', () => {
     const info = streetViewLocationInfo([139, 35.0001], { lat: 35, lng: 139 })
     expect(info.distance).toBeCloseTo(11.12, 1)
     expect(info.heading).toBeCloseTo(0)
+  })
+})
+
+describe('AR accident locating (outside the camera view too)', () => {
+  const here = { lat: 35, lon: 139 }
+  it('keeps records behind and beside the camera, marking only the FOV ones as in view', () => {
+    const points = [feature(1, 35.001), feature(2, 34.9995), feature(3, 35, 139.001), feature(4, 35.01)]
+    const result = locateARAccidents(points, here, 0, 500, true, 60)
+    expect(result.map(x => x.feature.properties.id)).toEqual([2, 3, 1])
+    expect(result.find(x => x.feature.properties.id === 1)?.inView).toBe(true)
+    expect(result.find(x => x.feature.properties.id === 2)?.inView).toBe(false)
+    const off = summarizeOffscreen(result)
+    expect(off.back.map(x => x.feature.properties.id)).toEqual([2])
+    expect(off.right.map(x => x.feature.properties.id)).toEqual([3])
+    expect(off.left).toHaveLength(0)
+  })
+  it('treats nothing as in view without a compass', () => {
+    const result = locateARAccidents([feature(1, 35.001)], here, 0, 500, false)
+    expect(result[0].inView).toBe(false)
+  })
+  it('labels directions in words', () => {
+    expect(relativeDirectionLabel(0)).toBe('正面')
+    expect(relativeDirectionLabel(40)).toBe('右前')
+    expect(relativeDirectionLabel(-90)).toBe('左')
+    expect(relativeDirectionLabel(150)).toBe('右後ろ')
+    expect(relativeDirectionLabel(-179)).toBe('後ろ')
+    expect(compassLabel(0)).toBe('北')
+    expect(compassLabel(200)).toBe('南南西')
+    expect(compassLabel(-90)).toBe('西')
+  })
+  it('places nearer accidents lower on the screen, and follows the camera tilt', () => {
+    const vfov = verticalFovFromHorizontal(60, 16 / 9)
+    expect(vfov).toBeGreaterThan(60)
+    const near = groundScreenYPercent(5, -10, vfov)
+    const far = groundScreenYPercent(400, -10, vfov)
+    expect(near).toBeGreaterThan(far)
+    // 端末を下に向けると、同じ地点は画面の上側へ動く。
+    expect(groundScreenYPercent(30, -20, vfov)).toBeLessThan(groundScreenYPercent(30, 0, vfov))
+    // 水平に構えると遠い地点はほぼ画面の中央の高さ。
+    expect(groundScreenYPercent(442, 0, vfov)).toBeCloseTo(50, 0)
+    // UIに隠れない範囲に収める。
+    expect(groundScreenYPercent(2, 30, vfov)).toBe(50)
+    expect(groundScreenYPercent(400, -60, vfov)).toBe(38)
   })
 })

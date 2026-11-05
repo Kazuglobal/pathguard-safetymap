@@ -69,3 +69,23 @@ describe('AR accident dock visibility', () => {
     expect(screen.getByRole('heading', { name: '追突' })).toBeInTheDocument()
   })
 })
+
+describe('AR accidents outside the camera view', () => {
+  it('shows records behind the camera in the dock, the edge guide and the turn hint', () => {
+    mocks.data.mockReturnValue({ accidents: { type: 'FeatureCollection', features: [
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 34.9993] }, properties: { id: 7, year: 2025, type: '人対車両', severity: 2, roadShape: '交差点' } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [139, 35.004] }, properties: { id: 8, year: 2021, type: '追突', severity: 2 } },
+    ] }, hazards: null, retry: vi.fn() })
+    render(<ARRealRisks {...props} heading={0} />)
+    // 正面(北)の事故はピンとして出る
+    expect(screen.getByRole('button', { name: /実事故 約445m/ })).toBeInTheDocument()
+    // 後ろ(南)のもっと近い事故は端の案内に出る
+    fireEvent.click(screen.getByRole('button', { name: /後ろに実事故1件・最寄り約78m/ }))
+    const dock = within(screen.getByRole('region', { name: '実事故と浸水想定' }))
+    expect(dock.getByRole('heading', { name: '人対車両' })).toBeInTheDocument()
+    expect(dock.getByText(/後ろ・南の方角・約78m先/)).toBeInTheDocument()
+    expect(dock.getByText('道路形状：交差点')).toBeInTheDocument()
+    expect(dock.getByText(/画面の外です。.へ約180°向くと見えます/)).toBeInTheDocument()
+    expect(dock.getByText(/500m以内 2件・近い順/)).toBeInTheDocument()
+  })
+})

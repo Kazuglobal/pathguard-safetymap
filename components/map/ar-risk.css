@@ -64,7 +64,7 @@
 .ar-depth-endpoint--top{top:-12px}.ar-depth-endpoint--bottom{bottom:-12px}
 .ar-depth-ruler--tight .ar-depth-range{top:auto;bottom:-64px;transform:none}
 .ar-depth-range{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#fffdf7;color:var(--hazard);text-shadow:none;border-radius:14px;padding:7px 10px;font-size:13px;white-space:nowrap;box-shadow:0 1px 8px #43392b14}.ar-depth-range small{display:block;text-align:center;font-size:12px}
-.ar-risk-dock-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ar-risk-dock-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.ar-risk-dock-head>p{flex:1}
 .ar-risk-dock-head p{margin:0}
 .ar-risk-summary{font-size:14px;font-weight:700;margin:6px 0 2px}
 .ar-risk-dock.ar-risk-dock--collapsed{max-height:42%}
@@ -75,8 +75,29 @@
 .ar-risk-dock h3{font-size:18px;font-weight:800;margin:5px 0}.ar-risk-dock p{font-size:13px;line-height:1.6}.ar-risk-dock button,.ar-risk-dock a{min-height:44px}
 .ar-risk-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:#159e72;color:white;border-radius:28px;min-height:46px;padding:10px 16px;font-size:14px;font-weight:700;width:100%;margin:10px 0}
 .ar-risk-hazard-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e2dbcf;padding:12px 0;font-size:13px}.ar-risk-hazard-row button{color:#0891b2;font-weight:700}
-.ar-accident-markers{position:absolute;inset:0;pointer-events:none;z-index:22}.ar-accident-marker{pointer-events:auto;position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;min-width:78px;min-height:48px;background:#fffdf7;color:#43392b;border:2px solid #f4801f;border-radius:20px;padding:7px 10px;box-shadow:0 3px 15px #43392b24;font-size:13px;font-weight:700}
-.ar-accident-marker svg{color:#f4801f}.ar-accident-marker[aria-pressed=true]{background:#f4801f;color:white}.ar-accident-marker[aria-pressed=true] svg{color:white}
+.ar-accident-markers{position:absolute;inset:0;pointer-events:none;z-index:22;overflow:hidden}
+.ar-accident-pin{--pin-scale:1;pointer-events:auto;position:absolute;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%) scale(var(--pin-scale));transform-origin:50% 100%;background:none;padding:0;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif}
+.ar-accident-pin-chip{display:flex;align-items:center;gap:5px;min-height:44px;min-width:64px;justify-content:center;background:#fffdf7;color:#43392b;border:2px solid #f4801f;border-radius:22px;padding:6px 11px;box-shadow:0 3px 15px #43392b40;font-size:14px;font-weight:800;white-space:nowrap}
+.ar-accident-pin-chip svg{color:#f4801f}
+.ar-accident-pin-stem{width:3px;height:30px;background:linear-gradient(#f4801f,#f4801fcc);border-radius:2px}
+.ar-accident-pin-ground{width:30px;height:10px;margin-top:-5px;border-radius:50%;background:#f4801f99;border:2px solid #fff;box-shadow:0 0 0 3px #f4801f55;animation:ar-pin-pulse 1.8s ease-out infinite}
+.ar-accident-pin--near .ar-accident-pin-chip{border-width:3px}
+.ar-accident-pin[aria-pressed=true] .ar-accident-pin-chip{background:#f4801f;color:#fff}.ar-accident-pin[aria-pressed=true] .ar-accident-pin-chip svg{color:#fff}
+.ar-accident-pin:focus-visible{outline:none}.ar-accident-pin:focus-visible .ar-accident-pin-chip{outline:3px solid #159e72;outline-offset:2px}
+@keyframes ar-pin-pulse{0%{box-shadow:0 0 0 0 #f4801f88}100%{box-shadow:0 0 0 14px #f4801f00}}
+.ar-accident-edge{pointer-events:auto;position:absolute;z-index:120;top:27%;display:flex;align-items:center;gap:1px;min-height:48px;min-width:44px;padding:6px 5px;background:#43392be6;color:#fff;font-size:12px;font-weight:700;line-height:1.2;box-shadow:0 2px 10px #43392b40}
+.ar-accident-edge>span{display:flex;flex-direction:column;align-items:center}.ar-accident-edge b{font-size:13px}
+.ar-accident-edge small{display:block;font-size:12px;font-weight:600;opacity:.9}
+.ar-accident-edge--left{left:0;border-radius:0 18px 18px 0}.ar-accident-edge--right{right:0;border-radius:18px 0 0 18px}
+.ar-accident-edge--back{top:auto;bottom:calc(52% + 10px);left:50%;transform:translateX(-50%);border-radius:18px;padding:4px 12px;gap:6px}.ar-accident-edge--back>span{flex-direction:row;gap:5px;align-items:baseline}
+.ar-accident-radar{flex-shrink:0}
+.ar-accident-radar-bg{fill:#fffdf7e6;stroke:#e2dbcf}.ar-accident-radar-ring{fill:none;stroke:#e2dbcf;stroke-dasharray:2 2}
+.ar-accident-radar-fov{fill:#159e7233;stroke:#159e72aa}.ar-accident-radar-dot{fill:#f4801f}.ar-accident-radar-dot--selected{fill:#c2410c;stroke:#fff;stroke-width:1.5}.ar-accident-radar-me{fill:#159e72;stroke:#fff;stroke-width:1.5}
+.ar-accident-where{margin:4px 0}.ar-accident-where p{margin:2px 0}
+.ar-accident-where-main{display:flex;align-items:center;gap:6px;font-size:14px!important;font-weight:800;color:#43392b}.ar-accident-where-main svg{color:#f4801f;flex-shrink:0}
+.ar-accident-turn{font-size:13px!important;font-weight:700;color:#c2410c}
+.ar-accident-list button[aria-pressed=true]{font-weight:800;color:#c2410c}
+@media(prefers-reduced-motion:reduce){.ar-accident-pin-ground{animation:none}}
 .ar-accident-list{max-height:150px;overflow:auto}.ar-accident-list button{display:flex;justify-content:space-between;width:100%;padding:10px 0;border-bottom:1px solid #e2dbcf;text-align:left;font-size:13px}
 @media(min-width:700px){.ar-inundation-sheet,.ar-risk-dock{max-width:430px;left:50%;right:auto;width:430px;transform:translateX(-50%)}.ar-water-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
