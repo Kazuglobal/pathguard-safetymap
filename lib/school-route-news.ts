@@ -147,6 +147,14 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "10月29日午後5時すぎ、神戸市東灘区御影の信号機のない交差点で8歳の女子児童が乗用車と接触。運転者は声をかけたが救護せず立ち去り、帰宅後の母親の通報ではじめて事故として扱われた",
       "車とぶつかったら謝らずその場に立ち、近くの大人を必ず呼ぶと今夜約束する",
     ],
+    contentImages: [
+      {
+        id: "stand-still-call-adult",
+        url: "/images/school-route-news/articles/kobe-higashinada-mikage-hitandrun-girl-20261029/stand-still-call-adult.jpg",
+        description: "車とぶつかったら謝らずにその場に立ち止まり、近くの大人を呼ぶ"
+      }
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/kobe-higashinada-mikage-hitandrun-girl-20261029.jpg",
     isBreaking: true,
     verifiedAt: "2026-10-31T05:45:00+09:00",
     actionAdvice: "車とぶつかったら謝らずその場に立ち、近くの大人を必ず呼ぶと今夜約束する"
@@ -239,6 +247,14 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "関東の中学校3校の生徒1,249人のうち148人（12%）が中学生になってから自転車利用中の事故を経験し、そのうち56人（37.8%）は保護者に話していなかった（同社の自主調査）",
       "今日あった「ひやり」を1つだけ聞く時間を、夕食の最初の1分に決める",
     ],
+    contentImages: [
+      {
+        id: "dinner-one-minute-hiyari",
+        url: "/images/school-route-news/articles/national-junior-high-bicycle-accident-not-told-20261028/dinner-one-minute-hiyari.jpg",
+        description: "夕食の最初の1分に、今日あった「ひやり」を1つだけ聞く"
+      }
+    ],
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-junior-high-bicycle-accident-not-told-20261028.jpg",
     isBreaking: false,
     verifiedAt: "2026-10-31T05:45:00+09:00",
     actionAdvice: "今日あった「ひやり」を1つだけ聞く時間を、夕食の最初の1分に決める"
@@ -538,6 +554,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
     keyPoints: [
       "宜野湾市教育委員会が10月23日に市内の各学校へ児童・生徒の安全確保の徹底を通知し、現場周辺では集団登下校が当面の間続けられる",
       "子どもの帰り道で人の目が切れる場所を1か所選び、今週その時間に立ってみる",
+    ],
+    contentImages: [
+      {
+        id: "parent-stand-blind-spot",
+        url: "/images/school-route-news/articles/ginowan-schoolway-group-commute-notice-20261023/parent-stand-blind-spot.jpg",
+        description: "帰り道で人の目が切れる場所を選び、その時間に保護者が立って見守る"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-29T05:50:00+09:00",
@@ -942,6 +965,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "10月27日、大和郡山市で来年春に小学校へ入学する子どもたちが警察官といっしょに通学路を歩いて安全を確認する「通学路点検」が行われた。市は学校・園・PTA・道路管理者・警察などによる合同点検の対応状況も公開している",
       "入学前のうちに、親子で通学路を歩いて「止まる場所」を1か所決めておく"
     ],
+    contentImages: [
+      {
+        id: "preschool-walk-stop-point",
+        url: "/images/school-route-news/articles/yamatokoriyama-preschool-schoolway-inspection-20261027/preschool-walk-stop-point.jpg",
+        description: "入学前に親子で通学路を歩き、「止まる場所」を1か所決める"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-28T05:40:00+09:00",
     actionAdvice: "入学前のうちに、親子で通学路を歩いて「止まる場所」を1か所決めておく",
@@ -1254,6 +1284,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "稲城市は市立全12小学校の1〜6年生のうち希望する児童に見守り端末を無償配付する事業を令和8年10月から開始するとしている。端末は見守りスポットや見守り人の近くを通ると位置情報が記録される仕組みで、位置情報の開示は保護者の捜索依頼を受けて警察署が必要と判断した場合に限られる",
       "学校からの見守りサービスの案内を今夜確認し、申し込みの期限を家族の予定に書く"
     ],
+    contentImages: [
+      {
+        id: "watch-service-check-deadline",
+        url: "/images/school-route-news/articles/inagi-all-elementary-watch-service-20261001/watch-service-check-deadline.jpg",
+        description: "見守りサービスの案内を確認し、申し込み期限を家族の予定に書く"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-27T05:50:00+09:00",
     actionAdvice: "学校からの見守りサービスの案内を今夜確認し、申し込みの期限を家族の予定に書く",
@@ -1455,6 +1492,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "10月15日、静岡県議会9月定例会で自転車条例の改正案が可決。自転車通学時のヘルメット着用義務の対象が、幼児と小中学生から公立・私立を問わず県内の高校生まで広がる。罰則はなく、2027年4月の施行を見込む",
       "自転車通学の子と、今の自転車に合うヘルメットのサイズを今週いっしょに測る"
     ],
+    contentImages: [
+      {
+        id: "helmet-size-measure",
+        url: "/images/school-route-news/articles/shizuoka-highschool-bicycle-helmet-ordinance-20261015/helmet-size-measure.jpg",
+        description: "自転車に乗る前に、頭に合うヘルメットのサイズをいっしょに測る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-26T06:10:00+09:00",
     thumbnailUrl: "/images/school-route-news/thumbnails/shizuoka-highschool-bicycle-helmet-ordinance-20261015.jpg"
@@ -1544,6 +1588,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "10月23日午後3時ごろ、徳島市応神町東貞方の信号機のない交差点で、姉と下校中の7歳の女子児童が76歳の女性が運転する乗用車にはねられ、顔から出血・左下腿部の骨折の疑い",
       "横断歩道のない道は、いったん止まって左右を見てから渡ると今日の帰りに練習する"
     ],
+    contentImages: [
+      {
+        id: "no-crosswalk-stop-look",
+        url: "/images/school-route-news/articles/tokushima-oshin-higashisadakata-schoolway-girl-hit-20261023/no-crosswalk-stop-look.jpg",
+        description: "横断歩道のない道では、いったん止まって左右を見てから渡る"
+      }
+    ],
     isBreaking: true,
     verifiedAt: "2026-10-25T05:50:00+09:00",
     actionAdvice: "横断歩道のない道は、いったん止まって左右を見てから渡ると今日の帰りに練習する"
@@ -1627,6 +1678,13 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
       "10月23日午後3時10分ごろに糸魚川市横町2丁目（自転車の男・50〜60歳代・緑色のかご付き自転車）、翌24日午後4時20分ごろに横町4丁目（40〜50歳代・170センチくらい・上下黒色・グレーの帽子）で、男子小学生への声かけが2日続けて発生した",
       "こわい言葉をかけられたら立ち止まらず走って店か家に入ると今日決める"
     ],
+    contentImages: [
+      {
+        id: "run-into-shop-or-home",
+        url: "/images/school-route-news/articles/itoigawa-yokomachi-two-voice-calls-20261023/run-into-shop-or-home.jpg",
+        description: "こわい言葉をかけられたら立ち止まらず、走って店か家に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-26T06:10:00+09:00",
     actionAdvice: "こわい言葉をかけられたら立ち止まらず走って店か家に入ると今日決める"
@@ -1706,6 +1764,13 @@ ottaは**2026年9月4日**、**太陽生命保険**と連携し、同社の営�
       "岐阜市は2026年4月から市立の全47校の希望する児童に約8グラムの見守り端末を無償配布し、通学路を中心に市内約900か所へ固定型見守りスポットの設置を進めている",
       "見守り端末や防犯ブザーが動くか、今日いっしょに電池と音を確かめる"
     ],
+    contentImages: [
+      {
+        id: "check-device-battery-sound",
+        url: "/images/school-route-news/articles/gifu-city-watch-network-expansion-20261022/check-device-battery-sound.jpg",
+        description: "見守り端末や防犯ブザーの電池と音を、家でいっしょに確かめる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-25T05:50:00+09:00",
     actionAdvice: "見守り端末や防犯ブザーが動くか、今日いっしょに電池と音を確かめる"
@@ -1783,6 +1848,13 @@ ottaは**2026年9月4日**、**太陽生命保険**と連携し、同社の営�
     keyPoints: [
       "10月22日午後4時20分ごろ、いわき市常磐下湯長谷町の県道で、押しボタン式信号機のある横断歩道を渡っていた10代の男子中学生が軽乗用車にはねられ、右眼窩底骨折や右腕の骨折などの重傷。運転していたのは78歳の男性で、信号がどちら側に青だったかは発表されていない",
       "押しボタンを押して信号が青になっても、車が止まるまで待つと今日の帰りに練習する",
+    ],
+    contentImages: [
+      {
+        id: "push-button-wait-car-stop",
+        url: "/images/school-route-news/articles/iwaki-jobanshimoyunagaya-crosswalk-juniorhigh-20261022/push-button-wait-car-stop.jpg",
+        description: "押しボタン式信号が青になっても、車が止まるまで待ってから渡る"
+      }
     ],
     isBreaking: true,
     verifiedAt: "2026-10-24T06:05:00+09:00",
@@ -1863,6 +1935,13 @@ ottaは**2026年9月4日**、**太陽生命保険**と連携し、同社の営�
       "10月22日午前7時10分ごろ、川口市芝樋ノ爪1丁目の路上で、登校時間帯の女子児童が黒色の自転車に乗った男から「パンツ見えてるよ」「おいで」と声をかけられた。男は40歳位・170センチ位・中肉・パーマ、肩に青色と黄色の線が入ったクリーム色のジャンパーと緑色のジャージ姿",
       "知らない人に呼ばれても近づかず、そのまま走って家か店に入ると今朝決めておく",
     ],
+    contentImages: [
+      {
+        id: "do-not-approach-run-home",
+        url: "/images/school-route-news/articles/kawaguchi-shibahinotsume-voice-call-20261022/do-not-approach-run-home.jpg",
+        description: "知らない人に呼ばれても近づかず、そのまま走って家か店に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-24T06:05:00+09:00",
     actionAdvice: "知らない人に呼ばれても近づかず、そのまま走って家か店に入ると今朝決めておく"
@@ -1942,6 +2021,13 @@ ottaは**2026年9月4日**、**太陽生命保険**と連携し、同社の営�
       "10月20日、大分県警が夕暮れ時と夜間の事故防止活動「Sunset（サンセット）に3セット」を開始。車・自転車・歩行者それぞれに3つの行動を呼びかけ、11月末まで街頭活動を続ける",
       "下校に使うかばんや上着に反射材をつけ、今日の帰りから光るかを確かめる",
     ],
+    contentImages: [
+      {
+        id: "reflector-bag-jacket",
+        url: "/images/school-route-news/articles/oita-sunset-3set-campaign-20261020/reflector-bag-jacket.jpg",
+        description: "下校に使うかばんや上着に反射材をつけ、光るかを確かめる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-24T06:05:00+09:00",
     actionAdvice: "下校に使うかばんや上着に反射材をつけ、今日の帰りから光るかを確かめる"
@@ -2017,6 +2103,13 @@ ottaは**2026年9月4日**、**太陽生命保険**と連携し、同社の営�
       "長野県警は10月19日、8月26日に松本市蟻ケ崎で横断歩道の8歳男子児童をはねて立ち去ったとして24歳の女性会社員を過失運転致傷・ひき逃げの疑いで書類送検した。防犯カメラから特定され、本人は「はねた認識はない」と否認している",
       "横断歩道でも「車が止まったのを目で確かめてから渡る」を今日の登校前に1回練習する"
     ],
+    contentImages: [
+      {
+        id: "crosswalk-confirm-car-stopped",
+        url: "/images/school-route-news/articles/matsumoto-arigasaki-hitandrun-referral-20261019/crosswalk-confirm-car-stopped.jpg",
+        description: "横断歩道でも、車が止まったのを目で確かめてから渡る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-23T05:40:00+09:00",
     actionAdvice: "横断歩道でも「車が止まったのを目で確かめてから渡る」を今日の登校前に1回練習する"
@@ -2084,6 +2177,13 @@ ottaは**2026年9月4日**、**太陽生命保険**と連携し、同社の営�
     keyPoints: [
       "佐賀県警は10月21日に上峰町で児童が男にスマートフォンを向けられる事案、22日に武雄市で女子学生が走って追いかけられる事案が起きたと発表した。2件の関連は発表されておらず、いずれも下校・帰宅の時間帯である",
       "追われたら家ではなくお店や「子ども110番の家」へ逃げ込む、と道順を決めておく"
+    ],
+    contentImages: [
+      {
+        id: "escape-to-shop-110-house",
+        url: "/images/school-route-news/articles/saga-kamimine-takeo-voice-call-chase-20261022/escape-to-shop-110-house.jpg",
+        description: "追われたら、お店や「子ども110番の家」へ逃げ込む道順を決めておく"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-23T05:45:00+09:00",
@@ -2158,6 +2258,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
     keyPoints: [
       "長崎県警の防犯情報によると、10月15日に長崎市内で下校中の子どもへの事案が2件（午後1時30分ごろ宝栄町でカメラのようなものを向けられる、午後7時10分ごろ新戸町3丁目で声かけと卑わいな言葉）発生した。同一人物とは発表されていない",
       "カメラやスマホを向けられたら、その場を離れて帰ったらすぐ家で話すと約束する"
+    ],
+    contentImages: [
+      {
+        id: "leave-and-tell-at-home",
+        url: "/images/school-route-news/articles/nagasaki-hoei-shindo-camera-voice-call-20261015/leave-and-tell-at-home.jpg",
+        description: "カメラやスマホを向けられたらその場を離れ、帰ったらすぐ家で話す"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-23T05:50:00+09:00",
@@ -2239,6 +2346,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
     keyPoints: [
       "群馬県館林市の自動車教習所で10月20日、高校生が自転車事故の危険な状況を体験する講習会が開かれた。自転車の安全利用促進委員会の2025年データでは群馬県の高校生の通学時自転車事故は生徒1万人あたり98.70件で12年連続の全国ワースト1位である",
       "交差点では「止まる・左右を見る・もう一度右」を、今週の通学で毎回声に出す"
+    ],
+    contentImages: [
+      {
+        id: "stop-left-right-right-again",
+        url: "/images/school-route-news/articles/tatebayashi-highschool-bicycle-safety-class-20261020/stop-left-right-right-again.jpg",
+        description: "自転車で交差点に来たら「止まる・左右を見る・もう一度右」"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-23T05:55:00+09:00",
@@ -2326,6 +2440,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
       "10月21日午前7時40分ごろ、周南市大河内の信号機のない横断歩道で10代の女子高校生が軽乗用車にはねられ、21日時点で意識不明の重体。運転していた86歳の男が過失運転致傷の疑いで現行犯逮捕された",
       "信号のない横断歩道では、手を上げて運転手と目が合ってから渡ると決める"
     ],
+    contentImages: [
+      {
+        id: "raise-hand-eye-contact",
+        url: "/images/school-route-news/articles/shunan-ogochi-crosswalk-highschool-girl-20261021/raise-hand-eye-contact.jpg",
+        description: "信号のない横断歩道では、手を上げて運転手と目が合ってから渡る"
+      }
+    ],
     isBreaking: true,
     verifiedAt: "2026-10-22T05:45:00+09:00",
     actionAdvice: "信号のない横断歩道では、手を上げて運転手と目が合ってから渡ると決める"
@@ -2402,6 +2523,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
     keyPoints: [
       "10月19日午前7時15分ごろ、松山市常保免の信号機のある横断歩道で登校中の10歳の女子児童がはねられ右足骨折の重傷。警察は車側が赤信号だったとみており、運転していた26歳の男が現行犯逮捕された",
       "青信号でも、渡る前に車が止まったかを目で確かめると今夜いっしょに決める"
+    ],
+    contentImages: [
+      {
+        id: "green-light-confirm-stop",
+        url: "/images/school-route-news/articles/matsuyama-jobomen-crosswalk-girl-hit-20261019/green-light-confirm-stop.jpg",
+        description: "青信号でも、渡る前に車が止まったかを目で確かめる"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-22T05:45:00+09:00",
@@ -2495,6 +2623,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
       "10月15日午後4時前、諏訪市中洲の信号機も横断歩道もない県道交差点で下校中の8歳男児がはねられ右腕骨折の重傷。車は救護せず立ち去り、県警が愛知県の30代公務員男性を割り出して任意で聴取している",
       "横断歩道のない道は、車が完全に止まるまで待つと今夜いっしょに練習する"
     ],
+    contentImages: [
+      {
+        id: "wait-until-car-stops",
+        url: "/images/school-route-news/articles/suwa-nakasu-schoolway-hitandrun-20261015/wait-until-car-stops.jpg",
+        description: "横断歩道のない道では、車が完全に止まるまで待つ"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-22T05:45:00+09:00",
     actionAdvice: "横断歩道のない道は、車が完全に止まるまで待つと今夜いっしょに練習する"
@@ -2563,6 +2698,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
     keyPoints: [
       "10月17日（土）午後3時ごろ、松山市畑寺4丁目の路上で男子小学生が60〜70歳くらいの男（黒の長袖Tシャツ・キャップ帽）につきまとわれた。愛媛県警が10月20日に発表。土曜日のため下校中の事案ではない",
       "つけられたと感じたら、道を変えて開いている店に入ると今日決めておく"
+    ],
+    contentImages: [
+      {
+        id: "change-route-enter-shop",
+        url: "/images/school-route-news/articles/matsuyama-hatadera-following-20261017/change-route-enter-shop.jpg",
+        description: "つけられたと感じたら道を変えて、開いている店に入る"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-22T05:45:00+09:00",
@@ -2646,6 +2788,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
       "10月20日の「県民自転車安全利用の日」に香川県庁で街頭キャンペーンが行われ、小学生や警察官など約40人が自転車の安全利用を呼びかけた。同日、県警は漫才コンビをヘルメットかぶり大使に委嘱。県の着用率は14.7%で全国平均を下回る",
       "自転車のヘルメットが頭に合っているか、今夜いっしょにあごひもを確かめる"
     ],
+    contentImages: [
+      {
+        id: "helmet-chin-strap-check",
+        url: "/images/school-route-news/articles/kagawa-bicycle-safety-day-20261020/helmet-chin-strap-check.jpg",
+        description: "自転車のヘルメットが頭に合っているか、あごひもを確かめる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-22T05:45:00+09:00",
     actionAdvice: "自転車のヘルメットが頭に合っているか、今夜いっしょにあごひもを確かめる"
@@ -2725,6 +2874,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
       "10月14日午後4時ごろ（北区西梶尾町）と15日午後3時30分ごろ（北区飛田1丁目）に、下校中の女子児童が男につきまとわれる事案が2日連続で発生。2件は別の事案で、男の特徴も一致していない",
       "つきまとわれたら立ち止まらず、明るい道へ出て店や「こども110番の家」に入る"
     ],
+    contentImages: [
+      {
+        id: "bright-road-110-house",
+        url: "/images/school-route-news/articles/kumamoto-kita-two-days-stalking-20261015/bright-road-110-house.jpg",
+        description: "つきまとわれたら明るい道へ出て、店や「こども110番の家」に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-16T05:45:00+09:00",
     actionAdvice: "つきまとわれたら立ち止まらず、明るい道へ出て店や「こども110番の家」に入る"
@@ -2803,6 +2959,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
       "10月11日午後1時50分ごろ、大船渡市末崎町の主要地方道で自転車の男児（11）が白色の軽トラックと衝突して右鎖骨を折る重傷。車は現場を離れ、大船渡警察署がひき逃げ事件として捜査している",
       "見通しの悪いカーブは自転車を降りて押す。この一つを今夜の約束にする"
     ],
+    contentImages: [
+      {
+        id: "blind-curve-get-off-push",
+        url: "/images/school-route-news/articles/ofunato-masaki-bicycle-hitandrun-20261011/blind-curve-get-off-push.jpg",
+        description: "見通しの悪いカーブでは自転車を降りて押して歩く"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-16T05:45:00+09:00",
     actionAdvice: "見通しの悪いカーブは自転車を降りて押す。この一つを今夜の約束にする"
@@ -2874,6 +3037,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
       "10月8日午後5時ごろ、旭川市東光9条7丁目付近の路上で、下校中の小学生男児が70〜80歳ぐらい・小太り・白髪の男から「こんにちは」と2回声をかけられた。声をかけた目的は分かっていない",
       "声をかけられたら返事をせず、立ち止まらないで家か店に入ると決めておく"
     ],
+    contentImages: [
+      {
+        id: "no-reply-keep-walking",
+        url: "/images/school-route-news/articles/asahikawa-higashikou-voice-call-20261008/no-reply-keep-walking.jpg",
+        description: "声をかけられたら返事をせず、立ち止まらないで家か店に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-16T05:45:00+09:00",
     actionAdvice: "声をかけられたら返事をせず、立ち止まらないで家か店に入ると決めておく"
@@ -2943,6 +3113,13 @@ No.124の事案は、**声をかけられてもいない**。すれ違いざま�
     keyPoints: [
       "10月2日午後2時20分ごろ、天童市駅西二丁目の道路上で、女子児童が20〜30歳代くらい・身長175cmくらいの男から「お菓子あげるからおいで」などと声をかけられた",
       "「お菓子あげる」と言われたら受け取らず、その場を離れて家族に電話する"
+    ],
+    contentImages: [
+      {
+        id: "refuse-sweets-call-family",
+        url: "/images/school-route-news/articles/tendo-ekinishi-candy-lure-voice-call-20261002/refuse-sweets-call-family.jpg",
+        description: "お菓子をあげると言われても受け取らず、その場を離れて家族に電話する"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-16T05:45:00+09:00",
@@ -3023,6 +3200,13 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
       "10月15日に本巣市の本巣小学校で1・2年生が声かけを想定した防犯訓練を実施。10月2日には土岐市の妻木小学校で「SOSカード」を使った侵入対応訓練が行われた",
       "帰り道で駆け込める店を1か所、今日いっしょに指差して決めておく"
     ],
+    contentImages: [
+      {
+        id: "point-safe-shop",
+        url: "/images/school-route-news/articles/gifu-schools-intruder-drill-20261015/point-safe-shop.jpg",
+        description: "帰り道で駆け込める店を1か所、指差して決めておく"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-16T05:45:00+09:00",
     actionAdvice: "帰り道で駆け込める店を1か所、今日いっしょに指差して決めておく"
@@ -3100,6 +3284,13 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
       "10月13日午前7時15分ごろ、御前崎市佐倉の県道で、集団登校の集合場所へ向かっていた9歳の男児が乗用車にはねられ重傷。命に別状はなく、運転していた市内小学校の25歳の常勤講師にけがはない",
       "集合場所までの道も通学路。今朝いっしょに歩いて、渡る位置と止まる場所を決める"
     ],
+    contentImages: [
+      {
+        id: "meeting-point-route-check",
+        url: "/images/school-route-news/articles/omaezaki-sakura-schoolway-boy-hit-20261013/meeting-point-route-check.jpg",
+        description: "集合場所までの道もいっしょに歩き、渡る位置と止まる場所を決める"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-15T05:45:00+09:00",
     actionAdvice: "集合場所までの道も通学路。今朝いっしょに歩いて、渡る位置と止まる場所を決める"
@@ -3175,6 +3366,13 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
       "2025年7月に鈴鹿市の信号のない交差点の横断歩道で下校中の当時7歳の男児がはねられ全治6か月の大けがを負ったひき逃げ事件で、2026年10月14日に34歳の男が無免許過失運転傷害などの疑いで逮捕された",
       "信号のない横断歩道では、車が完全に止まったのを目で確かめてから渡ると練習する"
     ],
+    contentImages: [
+      {
+        id: "unsignalled-crosswalk-confirm",
+        url: "/images/school-route-news/articles/suzuka-schoolway-crosswalk-hitandrun-arrest-20261014/unsignalled-crosswalk-confirm.jpg",
+        description: "信号のない横断歩道では、車が完全に止まったのを確かめてから渡る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-15T05:45:00+09:00",
     actionAdvice: "信号のない横断歩道では、車が完全に止まったのを目で確かめてから渡ると練習する"
@@ -3249,6 +3447,13 @@ NHKによると、15日、本巣市の本巣小学校の体育館で防犯訓練
       "広島市の防災情報メールが、10月7日〜10日に市内4区（西区・東区・南区・安佐南区）で子どもへの声かけ・容姿撮影の計4件を配信した。平日の3件は16時30分〜17時30分に集中しており、同一人物によるものとは公表されていない",
       "スマホを向けられたらその場を離れ、今日あったことを必ず家で話すと決める"
     ],
+    contentImages: [
+      {
+        id: "leave-and-tell-today",
+        url: "/images/school-route-news/articles/hiroshima-city-october-voice-calls-20261009/leave-and-tell-today.jpg",
+        description: "スマホを向けられたらその場を離れ、その日のうちに家で話す"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-15T05:45:00+09:00",
     actionAdvice: "スマホを向けられたらその場を離れ、今日あったことを必ず家で話すと決める"
@@ -3313,6 +3518,13 @@ NHKなどの報道によると、**島根県隠岐の島町**で、子どもが�
     keyPoints: [
       "島根県隠岐の島町で、地元の防犯協力会から寄贈された防犯カメラが小中学校の通学路に設置され、2026年10月1日に運用が始まった。2台1組で広範囲を見渡し、記録は1週間ほど保存される",
       "記録の保存は1週間ほど。カメラを機能させるのは「その日のうちに話す」ことである"
+    ],
+    contentImages: [
+      {
+        id: "tell-same-day",
+        url: "/images/school-route-news/articles/okinoshima-schoolway-security-camera-20261001/tell-same-day.jpg",
+        description: "気になることがあったら、その日のうちに家族や学校に話す"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-15T05:45:00+09:00"
@@ -3384,6 +3596,13 @@ NHKなどの報道によると、**島根県隠岐の島町**で、子どもが�
     keyPoints: [
       "文部科学省が2026年度の学校保健及び学校安全表彰の被表彰者を決定し、通学時の保護・誘導などを行う地域団体に贈られる「学校安全ボランティア活動奨励賞」に17団体が選ばれた。表彰式は11月19日に愛知県で行われる",
       "今朝、通学路に立っている人に挨拶をする。表彰の対象は特別な装置ではなく、毎日続けられてきた活動である"
+    ],
+    contentImages: [
+      {
+        id: "greet-watch-volunteer",
+        url: "/images/school-route-news/articles/national-school-safety-volunteer-award-20261013/greet-watch-volunteer.jpg",
+        description: "朝の通学路で、見守りに立つ人にあいさつをする"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-15T05:45:00+09:00"
@@ -3461,6 +3680,13 @@ RKC高知放送は、**現場周辺で他の女子生徒からも同様の被害
       "高知東警察署は10月7日、9月4日午後4時40分ごろに高知市内のアパート前で徒歩で下校中の10代の女子生徒に下半身を見せつけたとして、南国市の48歳の男を公然わいせつの疑いで逮捕した。男は容疑を認めており、現場周辺では同様の被害相談が複数寄せられている",
       "「見せつけ」に遭ったら見ずに走って離れ、すぐ大人に伝えると今夜約束する"
     ],
+    contentImages: [
+      {
+        id: "look-away-run-tell-adult",
+        url: "/images/school-route-news/articles/kochi-city-schoolway-indecent-exposure-arrest-20261007/look-away-run-tell-adult.jpg",
+        description: "いやなものを見せられたら見ずに走って離れ、すぐ大人に伝える"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-09T06:00:00+09:00",
     actionAdvice: "「見せつけ」に遭ったら見ずに走って離れ、すぐ大人に伝えると今夜約束する",
@@ -3534,6 +3760,13 @@ RKC高知放送は、**現場周辺で他の女子生徒からも同様の被害
     keyPoints: [
       "相模原南署は10月6日、10月5日午後4時55分ごろに相模原市南区下溝の路上で男子児童2人を乗用車に乗せ自宅まで監禁したとして、77歳の男を監禁の疑いで逮捕した。男は車内にあった農業用の鎌を持って子どもたちを追いかけたとされ、容疑を一部否認している",
       "「知らない車に乗ってと言われても乗らない」を今夜ロールプレイで確かめる"
+    ],
+    contentImages: [
+      {
+        id: "never-get-in-car",
+        url: "/images/school-route-news/articles/sagamihara-minami-shimomizo-children-confinement-20261005/never-get-in-car.jpg",
+        description: "知らない人の車には、誘われても乗らない"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-09T06:00:00+09:00",
@@ -3616,6 +3849,13 @@ RKC高知放送は、**現場周辺で他の女子生徒からも同様の被害
     keyPoints: [
       "島根県警によると、10月6日午後4時30分ごろ、松江市東津田町地内を下校中の女子児童が後ろから歩いてきた男に「ねえ。」と言われ手首をつかまれた。男は50歳代くらい・身長160〜170センチくらい・水色の半袖Tシャツ・八分丈の黒色ズボン・黒色のキャップとマスク・有線イヤホン",
       "手をつかまれたら腕を回して振りほどき大声を出す動きを今夜一緒に試す"
+    ],
+    contentImages: [
+      {
+        id: "twist-free-shout",
+        url: "/images/school-route-news/articles/matsue-higashitsuda-wrist-grabbed-20261006/twist-free-shout.jpg",
+        description: "手をつかまれたら腕を回して振りほどき、大きな声を出す"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-09T06:00:00+09:00",
@@ -3701,6 +3941,13 @@ UTYテレビ山梨の報道によると、**2026年10月6日（火）、山梨�
       "10月6日、都留市内の小学校の通学路8か所で学校・警察・市の担当者が歩いて合同点検を実施。禾生第二小学校の通学路ではグリーンベルト設置の要望が出ていたが、歩いて確認したところ白線が消えかかっていることが分かり、市は改善を検討する",
       "通学路で白線やグリーンベルトが消えている場所を一枚撮って学校に伝える"
     ],
+    contentImages: [
+      {
+        id: "photo-faded-line-report",
+        url: "/images/school-route-news/articles/tsuru-schoolway-joint-inspection-20261006/photo-faded-line-report.jpg",
+        description: "消えかけた白線やグリーンベルトを写真に撮り、学校に伝える"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-09T06:00:00+09:00",
     actionAdvice: "通学路で白線やグリーンベルトが消えている場所を一枚撮って学校に伝える",
@@ -3773,6 +4020,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "滑川市では10月7日から、市内に7校ある小学校の教員のほか警察や市の担当者などが、登下校時の児童の安全を確保するため通学路の安全点検を行っている",
       "通学路で「ここが危ない」と思う場所を子どもに1つ挙げてもらう"
+    ],
+    contentImages: [
+      {
+        id: "child-points-danger-spot",
+        url: "/images/school-route-news/articles/namerikawa-schoolway-safety-inspection-20261007/child-points-danger-spot.jpg",
+        description: "通学路で「ここが危ない」と思う場所を、子どもに指差してもらう"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-09T06:00:00+09:00",
@@ -3852,6 +4106,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月18日午前10時ごろ、十日町市川原町の主要地方道で、車庫に止めてあった軽自動車が無人のまま約6メートル動き出し、散歩中の園児の列に衝突。園児5人が手足の擦り傷などの軽傷で搬送された（9月18日の報道時点）",
       "通学路にある車庫や駐車場の出入り口を、今日いっしょに歩いて1か所確かめる"
+    ],
+    contentImages: [
+      {
+        id: "garage-exit-check",
+        url: "/images/school-route-news/articles/tokamachi-kawaharacho-runaway-car-20260918/garage-exit-check.jpg",
+        description: "通学路にある車庫や駐車場の出入り口を、いっしょに歩いて確かめる"
+      }
     ],
     isBreaking: true,
     verifiedAt: "2026-09-18T18:30:00+09:00",
@@ -3944,6 +4205,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月17日午後3時40分ごろ熊本市中央区帯山3丁目で歩いていた男児が「おじさんの家に行こう」と声をかけられ、約20分後の午後4時ごろには東区戸島西で帰宅中の男児が車の男から「車に乗らないか」と声をかけられた。前日16日朝には北区清水万石4丁目付近で登校中の女児が男に怒鳴られている",
       "「行かない」と言って走って戻る練習を、今夜おうちで3回やってみる"
     ],
+    contentImages: [
+      {
+        id: "say-no-run-back",
+        url: "/images/school-route-news/articles/kumamoto-city-boys-approach-cluster-20260917/say-no-run-back.jpg",
+        description: "「行かない」と言って、走って戻る練習をする"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-18T18:30:00+09:00",
     actionAdvice: "「行かない」と言って走って戻る練習を、今夜おうちで3回やってみる"
@@ -4012,6 +4280,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月17日午後3時40分ごろから45分ごろにかけて、さいたま市見沼区大字蓮沼の路上で女子中学生らが自動車に乗った男にカメラを向けられたとの情報が複数寄せられた。15日午後6時20分ごろには丸ケ崎町で男子中学生らが男に追いかけられる事案も発生している（男の特徴は公表されていない）",
       "撮られたと感じたら追わずに人のいる店へ入る、と今日ルールを決める"
     ],
+    contentImages: [
+      {
+        id: "enter-shop-do-not-chase",
+        url: "/images/school-route-news/articles/saitama-minuma-hasunuma-camera-20260917/enter-shop-do-not-chase.jpg",
+        description: "撮られたと感じたら追いかけず、人のいる店に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-18T18:30:00+09:00",
     actionAdvice: "撮られたと感じたら追わずに人のいる店へ入る、と今日ルールを決める"
@@ -4079,6 +4354,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "10月1日午後3時50分ごろ、佐賀県鳥栖市永吉町の路上で、児童が知らない男性から後をつけられた。男は50歳代くらい・身長170センチくらいの小太り・白髪交じりの黒色短髪・白色半袖Tシャツに黒色長ズボンで、鳥栖警察署が警戒を呼びかけている",
       "帰り道に「ここで一度振り返る」地点を決めて、今日いっしょに歩いて確かめる"
+    ],
+    contentImages: [
+      {
+        id: "look-back-checkpoint",
+        url: "/images/school-route-news/articles/tosu-nagayoshi-child-followed-20261001/look-back-checkpoint.jpg",
+        description: "帰り道に「ここで一度振り返る」地点を決めておく"
+      }
     ],
     isBreaking: true,
     verifiedAt: "2026-10-02T05:45:00+09:00",
@@ -4155,6 +4437,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月25日午後3時ごろ、島根県出雲市小山町で下校中の児童が赤色の自転車に乗った女から「家はどこ？」「シュークリームあげる。」と声をかけられた。女は40〜50歳くらい・身長160センチくらい・茶色と黒色の短髪で、出雲警察署が警戒を呼びかけている",
       "「何かあげる」と言われたらその場で受け取らず走って離れる、と今夜いっしょに決める"
     ],
+    contentImages: [
+      {
+        id: "refuse-gift-run-away",
+        url: "/images/school-route-news/articles/izumo-oyamacho-voice-call-20260925/refuse-gift-run-away.jpg",
+        description: "何かをあげると言われても受け取らず、走って離れる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-02T05:45:00+09:00",
     actionAdvice: "「何かあげる」と言われたらその場で受け取らず走って離れる、と今夜決める"
@@ -4230,6 +4519,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "10月7日午前7時15分過ぎ〜7時20分ごろ、伊勢崎市波志江町の信号機のない市道交差点で、自転車通学中の16歳の男子高校生が左から来た乗用車と出合い頭に衝突し、10月7日の報道時点で意識不明の重体。自転車側に一時停止の標識があった",
       "一時停止の標識がある交差点で足をつけて止まれるか、今夜いっしょに通学路の地図で確かめる"
     ],
+    contentImages: [
+      {
+        id: "stop-sign-feet-down",
+        url: "/images/school-route-news/articles/isesaki-hashie-bicycle-commute-collision-20261007/stop-sign-feet-down.jpg",
+        description: "一時停止の交差点では、自転車を止めて両足を地面につける"
+      }
+    ],
     isBreaking: true,
     verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "一時停止の標識がある交差点で足をつけて止まれるか、今夜いっしょに通学路の地図で確かめる",
@@ -4304,6 +4600,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "10月1日午後3時半〜3時35分ごろ、印西市木刈の信号機のない丁字路交差点の横断歩道で6歳の女の子が乗用車にはねられ右足を骨折する重傷。車は逃走し、印西署が10月3日に過失傷害・ひき逃げの疑いで43歳の男を逮捕。目撃者の110番通報と防犯カメラが特定の起点になった",
       "横断歩道では車が完全に止まったのを目で確かめてから渡る、と今夜いっしょに練習する"
+    ],
+    contentImages: [
+      {
+        id: "crosswalk-full-stop-check",
+        url: "/images/school-route-news/articles/inzai-kikari-crosswalk-hitandrun-20261001/crosswalk-full-stop-check.jpg",
+        description: "横断歩道では、車が完全に止まったのを目で確かめてから渡る"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-08T06:40:00+09:00",
@@ -4381,6 +4684,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "10月2日午後4時20分ごろ、生駒市俵口町の北側路上で下校中の小学生らがきらめく刃物のような細長い物を携帯する男を目撃。男は40〜50歳くらい・やせ型・上下とも黒い服装。奈良県警の公表では10月1〜3日に下校時間帯の事案が3件続いている",
       "刃物のような物を持つ人を見たら近づかず、来た道を戻って家か店に入ると今夜決める"
     ],
+    contentImages: [
+      {
+        id: "turn-back-go-home-shop",
+        url: "/images/school-route-news/articles/ikoma-tawaraguchi-knife-sighting-20261002/turn-back-go-home-shop.jpg",
+        description: "あやしい物を持つ人を見たら近づかず、来た道を戻って家か店に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-08T06:40:00+09:00",
     actionAdvice: "刃物のような物を持つ人を見たら近づかず、来た道を戻って家か店に入ると今夜決める",
@@ -4449,6 +4759,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "10月1日午後3時ごろ、徳島市国府町日開付近の路上で下校中の男子児童2人が自転車を押していた男性から「お菓子あげるけん、こっちきい」と声をかけられ、走って逃げて無事。男性は20歳くらい・身長170センチくらい・白色Tシャツに黒色ズボン",
       "知らない人に食べ物を差し出されたら受け取らず走って離れる、と今夜声に出して練習する"
+    ],
+    contentImages: [
+      {
+        id: "refuse-food-run-away",
+        url: "/images/school-route-news/articles/tokushima-kokufu-hiraki-voice-call-20261001/refuse-food-run-away.jpg",
+        description: "知らない人に食べ物を差し出されても受け取らず、走って離れる"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-08T06:40:00+09:00",
@@ -4527,6 +4844,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "10月6日午後4時ごろ、熊本市東区長嶺南4丁目の公園前路上で帰宅中の中学生が男に声をかけられ追いかけられた。男は60歳代・身長160センチくらい・小太り・黄緑色の上衣・ベージュ色の長ズボン・白髪の長髪・メガネ着用。同管内では9月29日にも帰宅中の女児へのつきまといが公表されている",
       "追いかけられたら曲がり角で振り返らず、明かりのある店に飛び込むと今夜いっしょに決める"
+    ],
+    contentImages: [
+      {
+        id: "run-into-lit-shop",
+        url: "/images/school-route-news/articles/kumamoto-higashi-nagamineminami-following-20261006/run-into-lit-shop.jpg",
+        description: "追いかけられたら振り返らず、明かりのある店に飛び込む"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-08T06:40:00+09:00",
@@ -4738,6 +5062,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "松阪市立松江小学校が9月25日、地域の交通安全ボランティア「とまとーず」による交通安全教室を実施。1年生は横断歩道で右・左・後ろを確かめて手を挙げて渡る手順を、3年生は自転車の安全な乗り方とヘルメットの正しいかぶり方を学んだ",
       "横断歩道の前で止まり、右・左・後ろを見る手順を通学路で一度やってみる"
     ],
+    contentImages: [
+      {
+        id: "stop-right-left-behind",
+        url: "/images/school-route-news/articles/matsusaka-tomatoes-traffic-safety-class-20260925/stop-right-left-behind.jpg",
+        description: "横断歩道の前で止まり、右・左・後ろを見る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-27T06:10:00+09:00",
     actionAdvice: "横断歩道の前で止まり、右・左・後ろを見る手順を通学路で一度やってみる"
@@ -4809,6 +5140,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月27日午後6時20分ごろ、千葉市花見川区幕張町の国道14号の横断歩道を歩いていた8歳の小学生の男の子が、乗用車とワゴン車に相次いではねられ死亡した。千葉西署が運転していた2人から事情を聴いている（9月28日の報道時点）",
       "横断歩道で1台目が止まっても、2台目が来ないか指をさして確かめる練習をする"
     ],
+    contentImages: [
+      {
+        id: "point-check-second-car",
+        url: "/images/school-route-news/articles/chiba-hanamigawa-makuhari-route14-fatal-20260927/point-check-second-car.jpg",
+        description: "1台目の車が止まっても、2台目が来ないか指をさして確かめる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-10-01T06:00:00+09:00",
     actionAdvice: "横断歩道で1台目が止まっても、2台目が来ないか指をさして確かめる練習をする"
@@ -4875,6 +5213,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月30日午後3時前、岐阜市西鶉4丁目の県道で、下校中の小学生の男の子（10歳）が後ろを向いて歩いていて、背後から来た路線バスと接触した。右手の甲の痛みを訴えたが救急搬送はされず軽傷とみられる",
       "帰り道でふざけて後ろ向きに歩かないと約束し、バスが通る道を一緒に歩いて確かめる"
+    ],
+    contentImages: [
+      {
+        id: "walk-facing-forward",
+        url: "/images/school-route-news/articles/gifu-nishiuzura-route-bus-contact-20260930/walk-facing-forward.jpg",
+        description: "バスが通る道では、ふざけずに前を向いて歩く"
+      }
     ],
     isBreaking: true,
     verifiedAt: "2026-10-01T06:00:00+09:00",
@@ -4947,6 +5292,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月26日午後4時20分ごろ、白山市相木町の信号のない交差点の横断歩道で8歳の男の子が軽自動車に衝突され救護されず、白山署が27日に79歳の男をひき逃げ疑いで逮捕。一緒にいた友だちが親に伝えたことがドライブレコーダーによる特定につながった",
       "車と少しでも当たったら、けがが軽くてもその場で大人に伝えると約束する"
+    ],
+    contentImages: [
+      {
+        id: "tell-adult-even-minor",
+        url: "/images/school-route-news/articles/hakusan-aigimachi-crosswalk-hitandrun-20260926/tell-adult-even-minor.jpg",
+        description: "車と少しでも当たったら、けがが軽くてもその場で大人に伝える"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-01T06:00:00+09:00",
@@ -5030,6 +5382,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月30日の「交通事故死ゼロを目指す日」に合わせ、警察が全国一斉街頭指導日として朝夕の通学路で街頭活動を強化した。香川県警は県内105カ所、山形県警は県内49カ所で実施したと各社が報じている",
       "登校時間に通学路の交差点で1回だけ一緒に立ち、車の動きを見て危ない所を決める"
+    ],
+    contentImages: [
+      {
+        id: "stand-at-crossing-together",
+        url: "/images/school-route-news/articles/national-traffic-death-zero-day-street-guidance-20260930/stand-at-crossing-together.jpg",
+        description: "登校時間に親子で交差点に立ち、車の動きを見て危ない所を決める"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-10-01T06:00:00+09:00",
@@ -5116,6 +5475,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月25日午前6時20分ごろ、久留米市上津の点滅信号がある市道交差点で、自転車で通学中の16歳男子高校生と乗用車が出合い頭に衝突し意識不明の重体（9月25日の報道時点）。ヘルメットは着用していたが衝撃で外れたとみられ、53歳の運転者は無傷で110番通報した",
       "ヘルメットのあごひもが指1本分で締まっているか今夜いっしょに確かめる"
     ],
+    contentImages: [
+      {
+        id: "chin-strap-one-finger",
+        url: "/images/school-route-news/articles/kurume-agetsu-bicycle-commute-collision-20260925/chin-strap-one-finger.jpg",
+        description: "ヘルメットのあごひもは、指1本が入るくらいに締める"
+      }
+    ],
     isBreaking: true,
     verifiedAt: "2026-09-26T05:50:00+09:00",
     actionAdvice: "ヘルメットのあごひもが指1本分で締まっているか今夜いっしょに確かめる"
@@ -5196,6 +5562,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月24日から25日の2日間で、徒歩で帰宅中の女子児童への声かけ事案が熊本県内で3件公表された（あさぎり町免田東・熊本市中央区東子飼町の子飼橋・熊本市中央区京町本丁）。3件の男の特徴はいずれも異なり、同一人物かどうかは公表されていない",
       "「家はどこ」と聞かれたら答えず走って戻る練習を、今夜3回いっしょにやる"
     ],
+    contentImages: [
+      {
+        id: "do-not-answer-run-back",
+        url: "/images/school-route-news/articles/kumamoto-late-september-girl-approach-cluster-20260924/do-not-answer-run-back.jpg",
+        description: "「家はどこ」と聞かれても答えず、走って戻る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-26T05:50:00+09:00",
     actionAdvice: "「家はどこ」と聞かれたら答えず走って戻る練習を、今夜3回いっしょにやる"
@@ -5264,6 +5637,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月24日午後3時30分ごろ、さいたま市岩槻区加倉1丁目の路上で、小学生の女児が「こんにちは」などと声をかけられたうえでつきまとわれた。男は50〜60歳くらい・身長180センチくらい・黒色の半袖に長ズボンで、岩槻警察署が警戒している",
       "あいさつだけの相手にも歩き続ける、と今日の帰り道で約束しておく"
     ],
+    contentImages: [
+      {
+        id: "keep-walking-after-greeting",
+        url: "/images/school-route-news/articles/saitama-iwatsuki-kakura-stalking-20260924/keep-walking-after-greeting.jpg",
+        description: "あいさつだけの相手にも、立ち止まらず歩き続ける"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-26T05:50:00+09:00",
     actionAdvice: "あいさつだけの相手にも歩き続ける、と今日の帰り道で約束しておく"
@@ -5328,6 +5708,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月16日午後3時ごろ、広島市佐伯区石内北1丁目で下校中の女子小学生が60〜70代の男から何度も「家どこ？」と声をかけられた。男は白髪でオレンジ色のベスト・黒色ズボン・帽子を着用。広島市の防災情報メールで9月24日に配信された",
       "同じ人に2回声をかけられたら、その場を離れて大人に伝える約束を今日する"
+    ],
+    contentImages: [
+      {
+        id: "second-time-leave-tell",
+        url: "/images/school-route-news/articles/hiroshima-saiki-ishiuchikita-voice-call-20260916/second-time-leave-tell.jpg",
+        description: "同じ人に2回声をかけられたら、その場を離れて大人に伝える"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-09-26T05:50:00+09:00",
@@ -5402,6 +5789,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "警視庁高井戸警察署の発表によると2026年9月22日午前10時15分ごろ、杉並区高井戸西3丁目の路上で帰宅途中の女子児童が自転車の男（60歳くらい・160〜165センチ・黒色半袖・黒色キャップ帽）から「一緒に行こう」「ちょっと待って」と声をかけられた",
       "「一緒に行こう」と誘われたら、返事をせず来た道を戻る練習を今夜する"
+    ],
+    contentImages: [
+      {
+        id: "no-reply-go-back",
+        url: "/images/school-route-news/articles/suginami-takaidonishi-voice-call-20260922/no-reply-go-back.jpg",
+        description: "「一緒に行こう」と誘われても返事をせず、来た道を戻る"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-09-25T05:50:00+09:00",
@@ -5480,6 +5874,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "福岡県警の防犯メール（八幡東警察署）によると2026年9月11日午後4時20分ごろ、北九州市八幡東区中央3丁目の路上で徒歩で帰宅中の女児が男（50歳くらい・165センチ・黒色長袖Tシャツ・青色短パン・白色靴下・黒色スリッパ）から「さっきはありがとう」と声をかけられ、つきまとわれた",
       "知らない人に「さっき」と言われても立ち止まらず歩き続ける約束をする"
+    ],
+    contentImages: [
+      {
+        id: "do-not-stop-keep-walking",
+        url: "/images/school-route-news/articles/kitakyushu-yahatahigashi-chuo-stalking-20260911/do-not-stop-keep-walking.jpg",
+        description: "知らない人に話しかけられても、立ち止まらず歩き続ける"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-09-25T05:50:00+09:00",
@@ -5562,6 +5963,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "福岡県警の防犯メール（折尾警察署）によると2026年9月7日午後2時45分ごろ、遠賀郡水巻町えぶり1丁目付近の路上で下校中の小学生男児が男（50歳くらい・170センチくらい・水色と白色のストライプ柄の長袖上着・長ズボン）につきまとわれた",
       "後ろをついて来る人に気づいたら、こども110番の家に入る道順を確認する"
     ],
+    contentImages: [
+      {
+        id: "route-to-110-house",
+        url: "/images/school-route-news/articles/mizumaki-eburi-stalking-20260907/route-to-110-house.jpg",
+        description: "後ろをついて来る人に気づいたら、こども110番の家に入る"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-25T05:50:00+09:00",
     actionAdvice: "後ろをついて来る人に気づいたら、こども110番の家に入る道順を確認する"
@@ -5643,6 +6051,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "8月27日午後2時30分ごろ大牟田市一浦町で帰宅中の小学生が白色の車に乗った3人組から「名前は？」「どこの小学校？」と尋ねられ、翌28日午後4時35分ごろには福岡市南区三宅3丁目で女児が男に声をかけられた",
       "学校名や名前を聞かれても答えずにその場を離れる練習を、今日おうちでやってみる"
     ],
+    contentImages: [
+      {
+        id: "do-not-tell-name-school",
+        url: "/images/school-route-news/articles/fukuoka-late-august-child-approach-cluster-20260828/do-not-tell-name-school.jpg",
+        description: "学校名や名前を聞かれても答えず、その場を離れる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-12T06:40:00+09:00",
     actionAdvice: "学校名や名前を聞かれても答えずにその場を離れる練習を、今日おうちでやってみる"
@@ -5721,6 +6136,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "警察庁の5年間集計（2021〜2025年・幅員5.5メートル未満の生活道路）で死者・重傷者は3万4262人。うち小学生と65歳以上の高齢者が計1万4945人と4割超を占め、小学生の半数近くは歩行中だった",
       "通学路のうち「中央線がない道路」がどこかを、子どもと歩いて1か所だけ確かめておく"
+    ],
+    contentImages: [
+      {
+        id: "find-no-centerline-road",
+        url: "/images/school-route-news/articles/national-living-road-casualty-analysis-20260910/find-no-centerline-road.jpg",
+        description: "通学路の中で「中央線がない道路」を、子どもと歩いて確かめる"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-09-12T06:50:00+09:00",
@@ -5928,6 +6350,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月8日と9日の2日続けて、熊本市北区清水亀井町付近で下校中の女子児童がつきまとわれた。人物は男女不明で黒っぽい上着・黒色の帽子・白色のマスク着用（熊本北合志警察署）",
       "同じ人を2日見たら日時と服装をメモして学校と警察にその日に伝える"
     ],
+    contentImages: [
+      {
+        id: "memo-and-report-same-day",
+        url: "/images/school-route-news/articles/kumamoto-kita-shimizukamei-stalking-20260909/memo-and-report-same-day.jpg",
+        description: "気になる人を見たら日時と服装をメモし、その日に学校と警察に伝える"
+      }
+    ],
     isBreaking: true,
     verifiedAt: "2026-09-11T06:40:00+09:00",
     actionAdvice: "同じ人を2日見たら日時と服装をメモして学校と警察にその日に伝える"
@@ -6015,6 +6444,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月2日午後4時20分ごろ安芸区中野7丁目で帰宅中の女子小学生が軽トラックから降りてきた70歳代くらいの女に学年を尋ねられ、9月3日午後3時15分ごろ安佐南区長束西3丁目の公園で女子小学生が20歳代くらいの男に「一緒に遊ぼう」と誘われた（広島市防犯情報メール）",
       "車から降りてきた大人に話しかけられたら2歩下がって離れる練習をする"
     ],
+    contentImages: [
+      {
+        id: "step-back-two-steps",
+        url: "/images/school-route-news/articles/hiroshima-city-september-voice-calls-20260903/step-back-two-steps.jpg",
+        description: "車から降りてきた大人に話しかけられたら、2歩下がって離れる"
+      }
+    ],
     isBreaking: false,
     verifiedAt: "2026-09-11T06:40:00+09:00",
     actionAdvice: "車から降りてきた大人に話しかけられたら2歩下がって離れる練習をする"
@@ -6080,6 +6516,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "8月28日の夏休み明け登校初日、岐阜市の加納小学校の通学路に地域ボランティアと岐阜南警察署員ら約50人が立ち、児童を見守るとともに9月1日施行の生活道路30キロ規制をドライバーに周知した",
       "通学路で見守りの大人がどこに立っているかを、子どもと歩いて確かめる"
+    ],
+    contentImages: [
+      {
+        id: "find-watch-points",
+        url: "/images/school-route-news/articles/gifu-kano-schoolguard-watch-20260828/find-watch-points.jpg",
+        description: "通学路で見守りの大人が立っている場所を、子どもと歩いて確かめる"
+      }
     ],
     isBreaking: false,
     verifiedAt: "2026-09-11T06:40:00+09:00",
@@ -6148,6 +6591,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "8月27日午前11時ごろ、川西市多田院の小学校敷地内・正門付近で下校中の7歳男児が車にはねられ頭の骨と右鎖骨を折る重傷。児童指導員の女（53）がひき逃げなどの疑いで逮捕された",
       "校門を出た直後の数十メートルも車が通る場所として、今日いっしょに歩いて確認する"
     ],
+    contentImages: [
+      {
+        id: "school-gate-car-zone",
+        url: "/images/school-route-news/articles/kawanishi-tadain-schoolgate-hitandrun-20260827/school-gate-car-zone.jpg",
+        description: "校門を出てすぐの道も車が通る。いっしょに歩いて確かめる"
+      }
+    ],
     thumbnailUrl: "/images/school-route-news/thumbnails/kawanishi-tadain-schoolgate-hitandrun-20260827.jpg",
     isBreaking: false,
     verifiedAt: "2026-09-04T06:30:00+09:00",
@@ -6210,6 +6660,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "8月27日午後1時40分ごろ、札幌市西区発寒4条2丁目の信号機のある横断歩道で1人で渡っていた10歳未満の女児が左から来た軽乗用車にはねられ鎖骨を骨折（8月27日時点で命に別条なし）",
       "青信号でも渡り始める前に、左から来る車が止まったか目で見る練習を今夜やってみる"
+    ],
+    contentImages: [
+      {
+        id: "green-light-check-left",
+        url: "/images/school-route-news/articles/sapporo-nishi-hassamu-crosswalk-20260827/green-light-check-left.jpg",
+        description: "青信号でも、渡り始める前に左から来る車が止まったか見る"
+      }
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/sapporo-nishi-hassamu-crosswalk-20260827.jpg",
     isBreaking: false,
@@ -6280,6 +6737,13 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月3日午後2時10分ごろ、仙台市泉区向陽台5丁目の路上で2人で下校途中の女子中学生らが男にしつこくつきまとわれ、追い越されて顔をのぞき込まれた（男は30〜40歳くらい・黒色短髪・黒色半袖Tシャツ・茶色長ズボン）",
       "後ろから人が近づいたら立ち止まって振り返り、コンビニや店に入る手順を今夜決める"
+    ],
+    contentImages: [
+      {
+        id: "turn-around-enter-store",
+        url: "/images/school-route-news/articles/sendai-izumi-koyodai-stalking-20260903/turn-around-enter-store.jpg",
+        description: "後ろから人が近づいたら振り返って確かめ、コンビニや店に入る"
+      }
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/sendai-izumi-koyodai-stalking-20260903.jpg",
     isBreaking: true,
