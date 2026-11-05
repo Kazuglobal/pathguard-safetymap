@@ -46,6 +46,63 @@ Technical specifications:
 // 記事ごとの画像設定（高品質プロンプト）
 const ARTICLE_IMAGES: ImageConfig[] = [
   {
+    articleId: "2026-09-26-community-safety-campaign-2026",
+    articleSlug: "community-safety-campaign-2026",
+    category: "policy-update",
+    title: "全国地域安全運動と「犯罪に加担させない」対策",
+    thumbnailPrompt: `Create a warm Japanese editorial illustration about a neighbourhood crime-prevention campaign protecting children on their way home from school.
+
+Scene elements (Japanese specific):
+- A Japanese residential street (住宅街) with tile-roofed houses in early autumn, late afternoon
+- Two elementary school children wearing yellow school safety caps (黄色い通学帽) and red and black randoseru backpacks (ランドセル) walking home along a green belt road edge marking (グリーンベルト)
+- A guardrail (ガードレール) and a school zone warning sign (スクールゾーン標識) at the roadside, a marked crosswalk (横断歩道) further down the street
+- Two neighbourhood watch volunteers (見守りボランティア) with plain armbands standing at a corner, one greeting the children with a raised hand
+- A house near the children has a simple round invented sticker design in its front window marking it as a safe house children can run to; the sticker is an abstract shield-and-house shape with no lettering
+- In the middle distance, a junior high school student in uniform walking alone, turned slightly away, suggesting the older age group the campaign also addresses
+
+Mood: Reassuring and community-minded, the adults and the safe-house sticker are the hero elements. Calm, not frightening, no crime or threat depicted.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines, warm autumn light
+Color palette: Warm amber and autumn green with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, any depiction of a crime, violence, a suspicious adult approaching a child, real brand logos, real organisation logos, police uniforms, text overlays
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "recruitment-route-comparison",
+        prompt: `Create a clean Japanese educational infographic comparing how teenagers get drawn into criminal "part-time job" recruitment, contrasting a wide route and a narrow route.
+
+Layout: two arrows of clearly different widths converging from the left onto a single warning zone on the right.
+
+UPPER ROUTE - THE WIDE ARROW (dominant, roughly six tenths of the visual weight): a broad arrow starting from a small cluster of three generic teenage silhouettes standing close together, one with an arm around another's shoulder, to represent an introduction from a friend, a senior student or an acquaintance. The arrow is drawn thick and in a strong amber tone. Place a large numeral 6 inside this arrow.
+LOWER ROUTE - THE NARROW ARROW (clearly thinner): a slim arrow starting from a simple smartphone icon showing a generic chat bubble and a money symbol, representing a social media advert. Drawn thin and in a muted grey-purple tone.
+RIGHT SIDE - THE WARNING ZONE: a red-outlined hexagonal caution shape containing a simple icon set of an envelope of cash being handed over and a pair of handcuffs, drawn flat and non-graphic.
+
+Style: Flat Japanese infographic design on a light neutral background, bold clear arrows with obvious thickness contrast, amber for the dominant route and muted grey-purple for the minor route, red only for the warning zone, educational aesthetic, generic faceless silhouettes
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, real app icons, violence or injury, garbled text, any lettering other than the numeral 6
+${QUALITY_SUFFIX}`,
+        description: "少年が「受け子」等になった経緯——知人等紹介が約6割で最多、SNSは成人より小さい割合"
+      },
+      {
+        id: "kodomo110-checkpoint",
+        prompt: `Create a warm Japanese educational illustration showing a parent and child checking one safe-refuge house on the quietest stretch of a school route.
+
+Scene elements (Japanese specific):
+- A narrow Japanese residential back street (住宅街の細い道) in the late afternoon, long shadows, few people, conveying a stretch with little foot traffic
+- A parent crouching beside an elementary school child who wears a yellow school safety cap (黄色い通学帽) and a randoseru backpack (ランドセル); the parent is pointing towards a nearby house
+- The house has a simple round invented sticker in its front window and a small plate by its gate, marking it as a house a child can run into for help; both use an abstract shield-and-house shape with no lettering
+- A green belt road edge marking (グリーンベルト), a guardrail (ガードレール) and a low block wall along the street
+- A dotted guide line drawn on the illustration from the child's feet to the house entrance, showing the escape route, in a purple accent tone
+- Warm low autumn sunlight, one lit window
+
+Mood: Calm, practical, reassuring. The message is preparation, not fear. Nobody is being threatened or pursued.
+Style: Japanese manga/anime inspired illustration, soft shading, clean lines
+Color palette: Warm amber and dusk blue with a purple accent for the guide line
+Avoid (negative prompt): photographic realistic faces, identifiable real people, a suspicious adult, anyone being chased or grabbed, real brand logos, real organisation logos, text overlays, garbled text
+${QUALITY_SUFFIX}`,
+        description: "通学路で人通りが少ない区間と、そこから一番近い「子ども110番の家」を1か所だけ親子で確認する"
+      }
+    ]
+  },
+  {
     articleId: "2026-09-11-autumn-campaign-bicycle-rules",
     articleSlug: "autumn-campaign-bicycle-rules",
     category: "policy-update",
