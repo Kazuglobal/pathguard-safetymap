@@ -43,6 +43,13 @@ describe('school district queries on actual local D1', { timeout: 30000 }, () =>
     const rows = await createPushRepo(db).listAlerts(anon, { since: '2026-10-09T00:00:00.000Z', schoolDistrictId: 'a', limit: 50 })
     expect(rows.map(row => row.id)).toEqual(['alert-0'])
   })
+  it('lists alerts received within the window even if they occurred earlier (same basis as the push)', async () => {
+    // 通知は「保存から24時間以内」で送る。発生が古くても、届いたばかりのアラートは通知から開いた一覧に出す
+    await db.insert(schema.localSafetyAlerts).values({ id: 'late-arrival', prefecture: '大阪府', city: '大阪市', category: 'voice_call', description: '事案情報', occurredAt: '2026-10-07T00:00:00.000Z', createdAt: '2026-10-09T12:00:00.000Z' })
+    await db.insert(schema.localSafetyAlerts).values({ id: 'old', prefecture: '大阪府', city: '堺市', category: 'voice_call', description: '事案情報', occurredAt: '2026-10-07T00:00:00.000Z', createdAt: '2026-10-07T01:00:00.000Z' })
+    const rows = await createPushRepo(db).listAlerts(anon, { since: '2026-10-09T00:00:00.000Z', prefecture: '大阪府', limit: 50 })
+    expect(rows.map(row => row.id)).toEqual(['late-arrival'])
+  })
   it('matches overlap then atomically clears matches when location becomes unknown', async () => {
     const repo = createSchoolDistrictRepo(db)
     const location = { address: '新宿区1-2-3', evidence: '原文', sourceUrl: 'https://city.example.lg.jp', longitude: 139.01, latitude: 35.01, status: 'verified' }

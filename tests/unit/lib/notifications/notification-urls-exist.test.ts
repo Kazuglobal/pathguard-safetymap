@@ -18,7 +18,8 @@ import { readRegionFromSearch } from "@/lib/user-region"
 // 以前、不審者アラートの通知が存在しない /local-alerts を開いて 404 になっていた。
 const APP_DIR = path.resolve(__dirname, "../../../../app")
 
-function pageExists(pathname: string): boolean {
+/** 遷移先のページがあるか。動的セグメント([slug])に当ててよいのは、記事ごとの通知(allowDynamic)だけ */
+function pageExists(pathname: string, allowDynamic: boolean): boolean {
   const segments = pathname.split("/").filter(Boolean)
   let dir = APP_DIR
   for (const segment of segments) {
@@ -27,9 +28,8 @@ function pageExists(pathname: string): boolean {
       dir = exact
       continue
     }
-    // 動的セグメント([slug] など)に当てる
     const dynamic = path.join(dir, "[slug]")
-    if (existsSync(dynamic)) {
+    if (allowDynamic && existsSync(dynamic)) {
       dir = dynamic
       continue
     }
@@ -37,6 +37,9 @@ function pageExists(pathname: string): boolean {
   }
   return existsSync(path.join(dir, "page.tsx"))
 }
+
+// 記事ごとのページ(app/<name>/[slug])を開く通知
+const DYNAMIC_PAYLOADS = new Set(["news", "magazine"])
 
 function pathnameOf(url: string): string {
   return new URL(url, "https://example.test").pathname
@@ -72,10 +75,15 @@ const PAYLOADS = {
 }
 
 describe("通知の遷移先", () => {
-  it.each(Object.entries(PAYLOADS))("%s の遷移先ページが app/ にある", (_name, payload) => {
+  it.each(Object.entries(PAYLOADS))("%s の遷移先ページが app/ にある", (name, payload) => {
     const url = payload.data.url
     expect(url.startsWith("/")).toBe(true)
-    expect(pageExists(pathnameOf(url))).toBe(true)
+    expect(pageExists(pathnameOf(url), DYNAMIC_PAYLOADS.has(name))).toBe(true)
+  })
+
+  it("記事でない遷移先は [slug] に当てない(以前の /local-alerts のような誤りを見逃さない)", () => {
+    expect(pageExists("/school-route-news/local-alerts", false)).toBe(false)
+    expect(pageExists("/local-alerts", false)).toBe(false)
   })
 
   it("不審者アラートの通知は、その都道府県のアラート一覧を開く", () => {
