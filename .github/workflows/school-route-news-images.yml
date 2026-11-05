@@ -12,10 +12,16 @@
 # 参照が書かれていない記事は生成対象にならないため、前段で
 # scripts/ensure-news-image-refs.ts が欠落した参照を規約どおりに埋める。
 #
-# 注意: ここでの push は GITHUB_TOKEN で行うため、GitHub の仕様により
-# 他のワークフロー（Cloudflare Preview 等）は再実行されない。これは
-# このワークフロー自身の無限ループを防ぐ仕組みでもある。プレビューに
-# 画像を反映したい場合は、PR に空でない変更を1つ push するか手動で再実行する。
+# 注意: 既定の GITHUB_TOKEN による push では、GitHub の仕様により他の
+# ワークフロー（Cloudflare Preview 等）が再実行されない。これはこのワーク
+# フロー自身の無限ループを防ぐ仕組みでもあるが、画像コミットが PR の
+# 先頭になると、その commit には CI の結果が付かない状態になる。
+#
+# 自動で CI を回し直したい場合は、repo スコープの PAT を
+# NEWS_IMAGES_PUSH_TOKEN として登録する。登録されていればそちらで push し、
+# 通常どおり他のワークフローが起動する（ループ防止は paths フィルタが担う。
+# このワークフローは public/images/** の変更では起動しない）。
+# 未登録なら GITHUB_TOKEN で push し、CI は次の push まで付かない。
 #
 name: School Route News Images
 
@@ -53,6 +59,8 @@ jobs:
         with:
           # push では detached HEAD になるため、押し戻せるようブランチとして取得する
           ref: ${{ github.ref_name }}
+          # PAT があればそれで push する（ヘッダの注意を参照）。無ければ GITHUB_TOKEN。
+          token: ${{ secrets.NEWS_IMAGES_PUSH_TOKEN || github.token }}
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
