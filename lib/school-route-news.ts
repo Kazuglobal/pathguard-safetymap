@@ -6206,13 +6206,6 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "2026年8月24日の「学校交通安全関係者の情報交換会」に相模原市中央区の見守りボランティア22人が参加し、団体同士の「横のつながり」強化を要望した",
       "相模原市の見守りは有償の学童通学安全指導員（8月3日時点で226人登録）と、PTA・地域主体の見守り隊の二つで担われている"
     ],
-    contentImages: [
-      {
-        id: "watch-volunteers-connect",
-        url: "/images/school-route-news/articles/sagamihara-watch-volunteer-exchange-20260824/watch-volunteers-connect.jpg",
-        description: "通学路の見守りに立つ人どうしが、気づいたことを伝え合う"
-      }
-    ],
     isBreaking: false,
     verifiedAt: "2026-09-12T06:55:00+09:00"
   },
@@ -6286,13 +6279,6 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "9月10日午後3時15分ごろ、一宮市富士の信号機のない交差点で自転車の8歳男児と乗用車が衝突し意識不明の重体（9月10日の報道時点）。現場は9月1日から法定速度が時速30キロになった生活道路で、77歳の男が過失運転致傷の疑いで現行犯逮捕された",
       "中央線のない交差点では自転車を降りて左右を見る練習を今日やってみる"
-    ],
-    contentImages: [
-      {
-        id: "get-off-look-both-ways",
-        url: "/images/school-route-news/articles/ichinomiya-fuji-bicycle-collision-20260910/get-off-look-both-ways.jpg",
-        description: "中央線のない交差点では、自転車を降りて左右を見る"
-      }
     ],
     isBreaking: true,
     verifiedAt: "2026-09-11T06:40:00+09:00",
@@ -6830,13 +6816,6 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
       "9月1日午後3時30分ごろ、松山市平田町の商業施設で小学生の女児2人が男に声をかけられた後に服をめくり上げられた（男は65〜70歳くらい・黒色長髪・黒色長袖パーカー・マスク着用・自転車使用）",
       "お店の中でも「体や服にさわられたらすぐ離れて店員に言う」を今日いっしょに練習する"
     ],
-    contentImages: [
-      {
-        id: "in-store-tell-staff",
-        url: "/images/school-route-news/articles/matsuyama-hirata-store-touch-20260901/in-store-tell-staff.jpg",
-        description: "お店の中でもいやなことをされたら、すぐ離れて店員に言う"
-      }
-    ],
     thumbnailUrl: "/images/school-route-news/thumbnails/matsuyama-hirata-store-touch-20260901.jpg",
     isBreaking: true,
     verifiedAt: "2026-09-04T06:30:00+09:00",
@@ -6900,13 +6879,6 @@ NHK富山の報道によると、**2026年10月7日（水）から、富山県�
     keyPoints: [
       "令和8年秋の全国交通安全運動は9月21日（月）〜30日（水）の10日間。全国重点は歩行者の安全確保と反射材着用促進、夕暮れ時の早めのライト点灯とながらスマホ根絶、自転車のルール遵守とヘルメット着用",
       "夕方の下校時間に合わせて、ランドセルや靴に反射材を1つ足しておく"
-    ],
-    contentImages: [
-      {
-        id: "reflector-on-shoes-bag",
-        url: "/images/school-route-news/articles/national-autumn-traffic-safety-campaign-20260921/reflector-on-shoes-bag.jpg",
-        description: "夕方の下校に合わせて、ランドセルや靴に反射材を1つ足す"
-      }
     ],
     thumbnailUrl: "/images/school-route-news/thumbnails/national-autumn-traffic-safety-campaign-20260921.jpg",
     isBreaking: false,
