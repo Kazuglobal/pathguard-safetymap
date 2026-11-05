@@ -101,6 +101,7 @@ Rules:
 - Never depict any threatening person, stranger, silhouette, injury or incident; show only the safe action
 - The figure description above is a brief for you, NOT text to draw: never render it, its step numbers, circled numerals or any English/Japanese captions in the image
 - Purely pictorial: no text, no letters, no kanji, no katakana, no numbers anywhere (the caption is added separately)
+- This includes step titles, panel labels, headings, speech-bubble words, signs, the word STOP or CHECK, and English words of any kind: every panel and the area below it must contain only drawings, never writing in any language
 ${QUALITY_SUFFIX}`
 }
 
