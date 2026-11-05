@@ -5,7 +5,7 @@
 // 条件や年を変えたら dataset_version が変わり、D1 の accident_hotspots は新しい版を入れ直す。
 // =============================================
 
-import { ACCIDENT_DATA_MAX_YEAR } from '@/lib/accident-stats-year-window'
+import { ACCIDENT_DATA_MAX_YEAR } from '../accident-stats-year-window'
 
 export const HOTSPOT_RADIUS_METERS = 30
 export const HOTSPOT_MIN_COUNT = 5

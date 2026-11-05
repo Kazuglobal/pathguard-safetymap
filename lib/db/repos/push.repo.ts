@@ -57,7 +57,9 @@ export function createPushRepo(db: AppDb) {
     async listAlerts(actor: Actor, input: { since: string; prefecture?: string; schoolDistrictId?: string; limit?: number }) {
       assertCan(actor, 'select', 'local_safety_alerts')
       const limit = Math.min(100, Math.max(1, Math.trunc(input.limit ?? 50)))
-      const predicates = [gte(localSafetyAlerts.occurredAt, input.since)]
+      // 発生が時間内か、届いた(保存した)のが時間内のもの。通知は保存から24時間以内で送るので(listPendingAlerts)、
+      // 発生が古くても届いたばかりのアラートは、通知から開いた一覧に出す
+      const predicates = [or(gte(localSafetyAlerts.occurredAt, input.since), gte(localSafetyAlerts.createdAt, input.since))!]
       if (input.prefecture) predicates.push(eq(localSafetyAlerts.prefecture, input.prefecture))
       if (input.schoolDistrictId) predicates.push(sql`exists (select 1 from ${localAlertDistricts} where ${localAlertDistricts.alertId} = ${localSafetyAlerts.id} and ${localAlertDistricts.districtId} = ${input.schoolDistrictId})`)
       return db.select().from(localSafetyAlerts).where(and(...predicates))

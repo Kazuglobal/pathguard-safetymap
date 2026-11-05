@@ -1,54 +1,49 @@
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion"
-import { theme, TITLE_FRAMES } from "../theme"
+import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion"
+import { Sticker } from "../components/sticker"
+import { EASE, theme } from "../theme"
 
-export const TitleScene: React.FC = () => {
+const ease = (frame: number, start: number, length: number) =>
+  interpolate(frame, [start, start + length], [0, 1], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+
+/** タイトル: 紙の上にピンが「ぽん」と押され(accent 1)、見出しが文節ごとに出る */
+export const TitleScene: React.FC<{ featureCount: number }> = ({ featureCount }) => {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
-
-  const brandIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 30 })
-  const badgeIn = spring({ frame: frame - 14, fps, config: { damping: 11, stiffness: 140 }, durationInFrames: 36 })
-  const fadeOut = interpolate(frame, [TITLE_FRAMES - 12, TITLE_FRAMES], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  })
-
+  const phrases = ["通学路の「ヒヤリ」に、", "印をつける。"]
+  const badge = ease(frame, 40, 9)
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: theme.charcoal,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: fadeOut,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: theme.fontDisplay,
-          fontWeight: 900,
-          fontSize: 76,
-          color: theme.white,
-          opacity: brandIn,
-          transform: `translateY(${(1 - brandIn) * 30}px)`,
-        }}
-      >
-        Path<span style={{ color: theme.amber }}>Guardian</span>
+    <AbsoluteFill style={{ backgroundColor: theme.paper, alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+        <Sticker kind="pins" from={0} size={170} />
+        <div>
+          {phrases.map((phrase, i) => {
+            const p = ease(frame, 14 + i * 6, 9)
+            return (
+              <div key={phrase} style={{ overflow: "hidden" }}>
+                <div style={{ fontFamily: theme.fontDisplay, fontWeight: 900, fontSize: 64, lineHeight: 1.3, color: theme.ink, transform: `translateY(${(1 - p) * 105}%)` }}>
+                  {phrase}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
       <div
         style={{
+          marginTop: 30,
           fontFamily: theme.fontDisplay,
           fontWeight: 900,
-          fontSize: 30,
+          fontSize: 28,
           color: theme.ink,
           backgroundColor: theme.amber,
-          padding: "12px 34px",
+          padding: "10px 30px",
           borderRadius: 999,
           border: `3px solid ${theme.ink}`,
           boxShadow: theme.stickerShadow,
-          marginTop: 34,
-          transform: `rotate(-3deg) scale(${badgeIn})`,
+          opacity: badge,
+          transform: `rotate(-3deg) translateY(${(1 - badge) * 16}px)`,
         }}
       >
-        60秒でわかる 機能ツアー
+        PathGuardian ・ 約1分でわかる {featureCount}の機能
       </div>
     </AbsoluteFill>
   )

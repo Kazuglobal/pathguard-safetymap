@@ -25,7 +25,7 @@ export const BRAND = {
     handle: '@kiken_hunter_jp',
     url: 'https://www.instagram.com/kiken_hunter_jp/',
   },
-  /** お問い合わせの Google フォーム(項目4)。URL を受け取るまでは null(画面には「準備中」と出す) */
+  /** 外部の Google フォーム(項目4)。今はアプリ内の /contact フォームを使うので null。外部フォームに切り替えるときだけ URL を入れる */
   contactFormUrl: null as string | null,
   /** 運営者の表記(受け取るまでは準備中) */
   operator: null as string | null,

@@ -121,6 +121,7 @@
     "input-otp": "1.4.1",
     "jspdf": "^4.2.1",
     "lodash.shuffle": "^4.2.0",
+    "lottie-web": "5.12.2",
     "lucide-react": "^0.454.0",
     "mapbox-gl": "latest",
     "next": "16.3.2",

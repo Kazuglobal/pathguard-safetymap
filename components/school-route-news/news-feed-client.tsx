@@ -40,6 +40,7 @@ import {
   NATIONWIDE,
   getRegionChipOptions,
   getStoredRegion,
+  readRegionFromSearch,
   setStoredRegion,
 } from "@/lib/user-region"
 import { syncPushSubscriptionRegion } from "@/hooks/use-push-subscription"
@@ -75,7 +76,8 @@ export function NewsFeedClient({ items }: NewsFeedClientProps) {
 
   React.useEffect(() => {
     setMounted(true)
-    setSelectedPrefecture(getStoredRegion())
+    // 通知から開いたときは、通知の地域(?region=)を先に見せる。保存済みの地域は書き換えない
+    setSelectedPrefecture(readRegionFromSearch(window.location.search) ?? getStoredRegion())
   }, [])
 
   React.useEffect(() => {

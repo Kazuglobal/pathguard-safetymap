@@ -12,6 +12,8 @@ import {
   ScanSearch,
   MessageCircleQuestion,
   FileText,
+  ScanEye,
+  ImagePlus,
 } from "lucide-react"
 import { LP_FEATURES } from "@/lib/lp-content"
 
@@ -19,7 +21,9 @@ const FEATURE_ICONS = {
   "danger-map": MapPinned,
   heatmap: Flame,
   hazard: Waves,
+  ar: ScanEye,
   report: MessageSquareWarning,
+  "what-if": ImagePlus,
   alerts: BellRing,
   news: Newspaper,
   hunter: ScanSearch,

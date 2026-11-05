@@ -31,6 +31,20 @@ export function isKnownRegion(value: string): boolean {
   return value === NATIONWIDE || (ALL_PREFECTURES as readonly string[]).includes(value)
 }
 
+/** 地域の一覧(安全ニュースの「あなたの地域」)をその地域で開くURL。通知の遷移先に使う */
+export const REGION_SEARCH_PARAM = "region"
+
+export function buildRegionNewsUrl(prefecture: string | null | undefined): string {
+  if (!prefecture || !isKnownRegion(prefecture)) return "/school-route-news"
+  return `/school-route-news?${REGION_SEARCH_PARAM}=${encodeURIComponent(prefecture)}`
+}
+
+/** URL の検索文字列から地域を読む。知らない値は null(保存済みの地域を使わせる) */
+export function readRegionFromSearch(search: string): string | null {
+  const value = new URLSearchParams(search).get(REGION_SEARCH_PARAM)
+  return value && isKnownRegion(value) ? value : null
+}
+
 /** 保存済みの地域を返す。未保存・不正値・SSR時は「全国」 */
 export function getStoredRegion(): string {
   if (typeof window === "undefined") return NATIONWIDE

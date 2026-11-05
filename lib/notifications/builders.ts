@@ -6,6 +6,7 @@
  */
 
 import { BRAND } from '../brand'
+import { buildRegionNewsUrl } from '../user-region'
 
 export interface NotificationPreferences {
   danger_reports: boolean
@@ -227,7 +228,8 @@ export function buildLocalAlertPushPayload(params: {
     badge: '/apple-touch-icon.png',
     tag: `local-alert-${params.alertId}`,
     data: {
-      url: `/local-alerts?id=${params.alertId}`,
+      // アラートは地域ごとの一覧(安全ニュースの「あなたの地域」)で見られる。個別のページはない
+      url: buildRegionNewsUrl(params.prefecture),
       type: 'local_alerts',
     },
   }
@@ -249,7 +251,7 @@ export function buildLocalAlertBatchPushPayload(params: {
     badge: '/apple-touch-icon.png',
     tag: `local-alert-batch-${params.latestAlertId}`,
     data: {
-      url: '/school-route-news',
+      url: buildRegionNewsUrl(params.prefecture),
       type: 'local_alerts',
     },
   }
@@ -288,7 +290,7 @@ export function buildDailyDigestPushPayload(params: {
     badge: '/apple-touch-icon.png',
     tag: `daily-digest-${params.date}`,
     data: {
-      url: '/school-route-news',
+      url: regional ? buildRegionNewsUrl(params.prefecture) : '/school-route-news',
       type: 'daily_digest',
     },
   }
