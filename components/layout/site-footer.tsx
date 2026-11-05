@@ -12,6 +12,7 @@ export const SITE_FOOTER_LINKS = [
   { href: "/terms", label: "利用規約" },
   { href: "/privacy", label: "プライバシーポリシー" },
   { href: "/contact", label: "お問い合わせ" },
+  { href: "/contact?type=improvement", label: "サービス改善要望" },
 ] as const
 
 /** 運営者の表記(受け取るまでは準備中。UIUX改装 項目4) */

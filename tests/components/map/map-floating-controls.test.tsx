@@ -163,6 +163,7 @@ describe('MapFloatingControls mobile menu (bottom tab bar is hidden on the map)'
       '/terms',
       '/privacy',
       '/contact',
+      '/contact?type=improvement',
       'https://www.instagram.com/kiken_hunter_jp/',
     ])
   })

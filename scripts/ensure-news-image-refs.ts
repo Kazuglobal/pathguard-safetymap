@@ -59,15 +59,24 @@ async function main() {
       continue
     }
 
+    // 記事データ（解釈結果）と本文（テキスト）の両方で未設定であることを確かめる。
+    // 取り込み直後などに片方だけ設定されている状態で挿入すると、同名プロパティが
+    // 2つ並んで TS1117 になるため、テキスト側も必ず見る。
+    const entryStart = text.indexOf(anchor)
+    const entryEnd = text.indexOf("\n  },", entryStart)
+    const entryText = entryEnd > entryStart ? text.slice(entryStart, entryEnd) : text.slice(entryStart)
+    const hasThumbnailInText = /^\s{4}thumbnailUrl:/m.test(entryText)
+    const hasFigureInText = /^\s{4}contentImages:/m.test(entryText)
+
     const inserts: string[] = []
 
-    if (!item.thumbnailUrl) {
+    if (!item.thumbnailUrl && !hasThumbnailInText) {
       inserts.push(`    thumbnailUrl: ${JSON.stringify(thumbnailUrlFor(item.slug))},`)
       addedThumbnails.push(item.slug)
     }
 
     const needsFigure = item.category === "accident" || item.category === "suspicious"
-    if (withFigures && needsFigure && !item.contentImages?.length) {
+    if (withFigures && needsFigure && !item.contentImages?.length && !hasFigureInText) {
       const description = (item.actionAdvice ?? "").trim()
       if (!description) {
         skipped.push(`${item.slug}（actionAdvice が無いため図版を足せない）`)
