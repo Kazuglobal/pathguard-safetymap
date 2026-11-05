@@ -172,7 +172,21 @@ $ARGUMENTS にカテゴリ指定があればそのカテゴリを優先。未指
 - 日本の通学シーン要素（黄色い帽子・ランドセル・横断歩道・見守り）。カテゴリカラー（accident=赤系警告 / suspicious=オレンジ警戒 / infrastructure=青の安心 / community=緑の温かみ）
 - サムネイル・図版の使い回し禁止（slug ごとに新規）
 
-鍵のあるローカルで手動生成する場合: `npx tsx scripts/generate-missing-images.ts news`（参照されていて欠落している画像だけ生成。既存は上書きしない。作り直すときは先に該当ファイルを削除）。生成後は必ず目視し、文字状の模様・不穏な表情が出たら専用プロンプトで撮り直す。
+#### 仕組み（`.github/workflows/school-route-news-images.yml`）
+
+`news/**` ブランチへ `lib/school-route-news.ts` を含む push があると、ワークフロー **School Route News Images** が走り、次の順で処理してブランチへ画像をコミットする。
+
+1. `npx tsx scripts/ensure-news-image-refs.ts` — **参照の取りこぼしを規約どおりに埋める**。`thumbnailUrl` を書き忘れた記事があっても、ここで `/images/school-route-news/thumbnails/{slug}.jpg` が補われる
+2. `npx tsx scripts/generate-missing-images.ts news` — **参照されていて実ファイルが無い画像だけ**を生成する（サムネイル・記事内図版の両方）
+3. 生成物をブランチへ push し、`thumbnail coverage` の3テストで参照切れが無いことを検証する
+
+**順序に注意**: 2 は「参照されている画像」しか作らない。`thumbnailUrl` を書かずに 2 だけを実行しても `欠落 0 件` となり何も生成されない。1 が前段にあるのはそのためである。
+
+既存の accident / suspicious 記事にまとめて図版を足したいときは、GitHub の Actions 画面から **School Route News Images** を `figures: true` で手動実行する（`actionAdvice` を図解する図版が1件ずつ追加される）。既定は off。
+
+ワークフローの push は `GITHUB_TOKEN` で行うため、**他の CI（Cloudflare Preview 等）は再実行されない**。プレビューに画像を反映したい場合は PR へ別の push を行う。
+
+鍵のあるローカルで手動生成する場合: `npx tsx scripts/ensure-news-image-refs.ts && npx tsx scripts/generate-missing-images.ts news`（参照されていて欠落している画像だけ生成。既存は上書きしない。作り直すときは先に該当ファイルを削除）。生成後は必ず目視し、文字状の模様・不穏な表情が出たら専用プロンプトで撮り直す。
 
 ### Step 6: 公開前監査（regional-coverage-auditor・必須ゲート）
 以下をすべて確認し、1つでも不合格なら該当Stepへ差し戻す:
