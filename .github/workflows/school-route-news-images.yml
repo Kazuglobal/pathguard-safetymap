@@ -1,0 +1,143 @@
+#
+# 通学路の安全ニュースの画像（サムネイル・記事内図版）を生成してブランチへ積む。
+#
+# 日次ルーチン（.claude/commands/school-route-news-update.md）は記事データに画像の
+# 「参照」だけを書き、画像ファイルそのものはこのワークフローが作る。
+# クラウド実行のセッションには GEMINI_API_KEY が無いため、生成はここに一本化する。
+#
+# 生成対象（どちらも scripts/generate-missing-images.ts が担当する）:
+#   - サムネイル   /images/school-route-news/thumbnails/{slug}.jpg
+#   - 記事内図版   /images/school-route-news/articles/{slug}/{id}.jpg
+#
+# 参照が書かれていない記事は生成対象にならないため、前段で
+# scripts/ensure-news-image-refs.ts が欠落した参照を規約どおりに埋める。
+#
+# 注意: ここでの push は GITHUB_TOKEN で行うため、GitHub の仕様により
+# 他のワークフロー（Cloudflare Preview 等）は再実行されない。これは
+# このワークフロー自身の無限ループを防ぐ仕組みでもある。プレビューに
+# 画像を反映したい場合は、PR に空でない変更を1つ push するか手動で再実行する。
+#
+name: School Route News Images
+
+on:
+  push:
+    branches:
+      - 'news/**'
+    paths:
+      - 'lib/school-route-news.ts'
+      - 'scripts/image-prompts/school-route-news.json'
+      - 'scripts/generate-missing-images.ts'
+      - 'scripts/ensure-news-image-refs.ts'
+      - '.github/workflows/school-route-news-images.yml'
+  workflow_dispatch:
+    inputs:
+      figures:
+        description: '記事内図版(contentImages)の参照も補完する（accident/suspicious のみ・そなえの一言を図解）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  # 生成の途中で打ち切ると API 呼び出しが無駄になるため、割り込みでは止めない
+  group: school-route-news-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # push では detached HEAD になるため、押し戻せるようブランチとして取得する
+          ref: ${{ github.ref_name }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check that the image API key is configured
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY (repository secret) が未設定のため画像を生成できません。" \
+                 "Settings > Secrets and variables > Actions で登録してください。"
+            exit 1
+          fi
+          echo "GEMINI_API_KEY は設定されています（値は出力しません）。"
+
+      - name: Fill in missing image references
+        env:
+          FIGURES: ${{ inputs.figures }}
+        run: |
+          if [ "$FIGURES" = "true" ]; then
+            npx tsx scripts/ensure-news-image-refs.ts --figures
+          else
+            npx tsx scripts/ensure-news-image-refs.ts
+          fi
+
+      - name: List the images to generate
+        run: npx tsx scripts/generate-missing-images.ts news --dry-run
+
+      - name: Generate the missing images
+        id: generate
+        # 一部が安全フィルタで弾かれても、成功した分は push して残す
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: npx tsx scripts/generate-missing-images.ts news
+
+      - name: Commit the generated images
+        id: commit
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A lib/school-route-news.ts public/images/school-route-news
+          if git diff --cached --quiet; then
+            echo "変更なし（画像はすべて揃っている）。"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit \
+            -m 'chore(news): 通学路ニュースの画像を生成して追加' \
+            -m 'School Route News Images ワークフローによる自動生成。'
+          # 生成中に人の push が入っていた場合に備えて、取り込んでから押し戻す
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify every referenced image now exists
+        # 画像に関する3項目だけを対象にする（最新5件の期待値など、画像と無関係な
+        # 理由でこのワークフローが赤くならないようにするため）。
+        # --testTimeout は「uses generated artwork」が既定5秒で落ちるのを避けるため。
+        run: >-
+          pnpm exec vitest run tests/unit/lib/school-route-news-release-readiness.test.ts
+          -t 'thumbnail coverage' --testTimeout=60000
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## School Route News Images'
+            echo ''
+            echo "- 画像の生成: \`${{ steps.generate.outcome }}\`"
+            echo "- ブランチへの push: \`${{ steps.commit.outputs.pushed || 'false' }}\`"
+            if [ '${{ steps.commit.outputs.pushed }}' = 'true' ]; then
+              echo '- このワークフローの push では他の CI は再実行されません。プレビューに反映するには PR へ別の push を行ってください。'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if any image could not be generated
+        if: steps.generate.outcome == 'failure'
+        run: |
+          echo "::error::一部の画像を生成できませんでした。上のログで失敗した URL を確認し、" \
+               "安全フィルタに弾かれたものは scripts/image-prompts/school-route-news.json に" \
+               "専用プロンプトを追加してから再実行してください。"
+          exit 1

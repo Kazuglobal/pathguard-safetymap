@@ -59,6 +59,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-11-05-001",
     slug: "shiojiri-schoolway-joint-inspection-20261104",
+    thumbnailUrl: "/images/school-route-news/thumbnails/shiojiri-schoolway-joint-inspection-20261104.jpg",
     title: "【長野県塩尻市】通学路の合同点検が始まる 中学生約300人が使う県道で危険箇所を確認",
     excerpt: "長野県塩尻市で11月4日、市教委や市・警察・学校関係者による通学路の合同点検が始まった。初日は中学生約300人が通学路として使う県道290号で、市教委が把握する4か所の危険箇所を歩いて確認した。点検は11月5日にも市内の通学路4か所で行われる。市教委が毎年実施している。",
     content: `## 何が始まったか
@@ -134,6 +135,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-10-31-001",
     slug: "kobe-higashinada-mikage-hitandrun-girl-20261029",
+    thumbnailUrl: "/images/school-route-news/thumbnails/kobe-higashinada-mikage-hitandrun-girl-20261029.jpg",
     title: "【兵庫県神戸市】東灘区で8歳女児が車と接触 「ごめんなさい」と言うと運転者は立ち去る",
     excerpt: "10月29日午後5時すぎ、神戸市東灘区御影の信号機のない交差点で、8歳の女子児童が直進してきた乗用車と接触し右ひじにすり傷を負った。運転していた男は降りて声をかけたが、女児が「ごめんなさい」と言うと走り去った。帰宅後に女児から聞いた母親の通報で判明し、東灘署がひき逃げ事件として捜査している。",
     content: `## 事案の概要
@@ -229,6 +231,7 @@ export const NEWS_ITEMS: SchoolRouteNewsItem[] = [
   {
     id: "news-2026-10-31-002",
     slug: "national-junior-high-bicycle-accident-not-told-20261028",
+    thumbnailUrl: "/images/school-route-news/thumbnails/national-junior-high-bicycle-accident-not-told-20261028.jpg",
     title: "【全国】自転車事故を経験した中学生の約4割が保護者に伝えていない 民間調査",
     excerpt: "ブリヂストンサイクルが10月28日に公表した調査で、関東の中学校3校の生徒1,249人のうち148人（12%）が中学生になってから自転車利用中の事故を経験し、うち56人（37.8%）が保護者に話していなかった。保護者の50.5%は交通ルールに自信がないと答えた。関東3校の自主調査である点に留意。",
     content: `## 調査の概要
