@@ -8,6 +8,7 @@ import { LpProblem } from "@/components/lp/lp-problem"
 import { LpPhotoAi } from "@/components/lp/lp-photo-ai"
 import { LpFeatures } from "@/components/lp/lp-features"
 import { LpFeatureTour } from "@/components/lp/lp-feature-tour"
+import { LpSpotlight } from "@/components/lp/lp-spotlight"
 import { LpVideo } from "@/components/lp/lp-video"
 import { LpShowcase } from "@/components/lp/lp-showcase"
 import { LpHow } from "@/components/lp/lp-how"
@@ -28,6 +29,7 @@ export function LpPage() {
       <LpProblem />
       <LpPhotoAi />
       <LpFeatures />
+      <LpSpotlight />
       <LpFeatureTour />
       <LpVideo />
       <LpShowcase />

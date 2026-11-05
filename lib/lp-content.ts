@@ -47,7 +47,7 @@ export const LP_PROBLEM = {
     {
       tag: "間に合わない",
       title: "知ったときには、\nもう遅い",
-      body: "不審者や事故の情報は、回覧板やニュースで知る頃には何日も経っています。ほしいのは「今」の情報です。",
+      body: "不審者や事故の情報は、回覧板やニュースで知る頃には何日も経っています。ほしいのは、もっと早く届く情報です。",
       color: "green",
     },
   ],
@@ -55,8 +55,47 @@ export const LP_PROBLEM = {
 
 export type LpFeature = ProductFeature
 
-/** 機能の一覧(9件)。中身は lib/product-facts.ts */
+/** 機能の一覧。中身は lib/product-facts.ts */
 export const LP_FEATURES: readonly LpFeature[] = PRODUCT_FEATURES
+
+const featureByKey = (key: string): LpFeature => {
+  const feature = PRODUCT_FEATURES.find((item) => item.key === key)
+  if (!feature) throw new Error(`紹介HPの機能がありません: ${key}`)
+  return feature
+}
+
+/**
+ * 新しく加わった機能を実際の画面で大きく見せる(2026-11)。画面はすべて実際のアプリのスクリーンショット。
+ * AR のカメラの景色は見本の写真(public/images/ar/demo-street.png)で、ピンと事故の情報は東京駅付近の実データ。
+ */
+export const LP_SPOTLIGHT = {
+  eyebrow: "NEW",
+  headline: "地図の上と、カメラの向こうに。",
+  items: [
+    {
+      feature: featureByKey("heatmap"),
+      frame: "browser",
+      images: ["/images/lp/mocks/v3/desktop-hotspots.webp"],
+      alt: "東京駅のまわりの事故多発地点を、件数の数字つきの丸で表示した PathGuardian の実際の画面",
+      sticker: "/lottie/lp/pin-drop.json",
+    },
+    {
+      feature: featureByKey("ar"),
+      frame: "phone",
+      images: ["/images/lp/mocks/v3/phone-ar.webp"],
+      alt: "カメラの映像に、近くで実際にあった事故の場所をピンで重ねた PathGuardian の AR 画面(景色は見本の写真)",
+      sticker: "/lottie/lp/pin-drop.json",
+    },
+    {
+      feature: featureByKey("what-if"),
+      frame: "compare",
+      images: ["/images/lp/mocks/v3/whatif-before.webp", "/images/lp/mocks/v3/whatif-after.webp"],
+      labels: ["いつも", "もしも(台風のあと)"],
+      alt: "通学路の写真と、AI が描いた台風のあとの様子(ぬれた路面と飛ばされた葉)を並べた例",
+      sticker: "/lottie/lp/water-rise.json",
+    },
+  ],
+} as const
 
 /** はじめかた: 準備は2つ(登録・通学路)、そのあとは毎朝の続ける習慣(UIUX改装 項目13) */
 export const LP_HOW = {
@@ -141,22 +180,23 @@ export const LP_FAQ_OPEN_COUNT = 2
 
 export const LP_PHOTO_AI = {
   eyebrow: "いちばんの目玉",
-  headline: ["写真をとるだけ。", "AIがキケンを見える化。"],
-  body: "通学路の写真をアップロードすると、AI が危険箇所と安全設備を検出して、写真の上に色分けして描画。安全スコアも算出されるから、子どもと一緒に「どこがあぶない？」をゲーム感覚で学べます。",
+  headline: ["写真をとるだけ。", "AIといっしょに、", "キケンさがし。"],
+  body: "きけんハンターは、通学路の写真からAIが危険を見つけ、子どもがそれを「さがす」ゲームにします。答えを先に見せないから、自分の目で気づく練習になります。",
   points: [
-    "カーブミラーや横断歩道などの安全設備は緑、危険要素は赤で色分け",
-    "劣化したブロック塀のような見落としがちな危険も AI が検出",
-    "安全スコアで「どれくらい安全な道か」がひと目で分かる",
+    "写真をタッチして「あぶないかも？」をさがし、見つけると理由と気をつけ方が出る",
+    "ガードレールなど「安全のくふう」さがしや、歩き方を学ぶクイズのモードも",
+    "点数ではなく星で成長を見せ、「どう気をつける？」を家族で話すきっかけに",
   ],
-  image: "/images/lp/mocks/phone-hunter-result.png",
+  image: "/images/lp/mocks/v3/phone-hunter-explore.webp",
+  imageAlt: "きけんハンターで、通学路の写真の中から危険をさがす PathGuardian の実際の画面",
 } as const
 
-// 動画の見出しは日本語を主にする(UIUX改装 項目13)。動画ツアーは9つの場面で機能を紹介している
+// 動画の見出しは日本語を主にする(UIUX改装 項目13)。動画ツアーは機能と同じ数の場面で紹介している
 export const LP_FEATURE_TOUR = {
-  src: "/videos/lp/pathguardian-features-v2.mp4",
+  src: "/videos/lp/pathguardian-features-v3.mp4",
   eyebrow: "機能ツアー",
-  headline: `60秒でわかる ${PRODUCT_FEATURES.length}つの機能`,
-  caption: `実際の画面といっしょに、${PRODUCT_FEATURES.length}つの機能をぎゅっとまとめました。`,
+  headline: `約1分でわかる ${PRODUCT_FEATURES.length}の機能`,
+  caption: `実際の画面といっしょに、${PRODUCT_FEATURES.length}の機能をぎゅっとまとめました。`,
 } as const
 
 export const LP_MARQUEE_WORDS = ["いってらっしゃい", "いってきます", "きをつけてね", "ただいま", "おかえり"] as const

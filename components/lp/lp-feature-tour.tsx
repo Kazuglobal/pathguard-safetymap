@@ -58,7 +58,7 @@ export function LpFeatureTour() {
             playsInline
             controls
             preload="metadata"
-            aria-label="PathGuardianの機能ツアー動画(60秒)"
+            aria-label={`PathGuardianの機能ツアー動画(${LP_FEATURE_TOUR.headline})`}
           />
         </div>
       </div>

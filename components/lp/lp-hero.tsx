@@ -105,7 +105,7 @@ export function LpHero() {
             transition={{ duration: 6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
           >
             <PhoneFrame
-              src="/images/lp/mocks/phone-map-tokyo.png"
+              src="/images/lp/mocks/v3/phone-map.webp"
               alt="PathGuardian の危険マップ画面(実際のアプリのスクリーンショット)"
               priority
             />

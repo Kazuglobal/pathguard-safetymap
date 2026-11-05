@@ -4,8 +4,15 @@
  * 実装と食い違っていないかは tests/unit/lib/product-facts.test.ts が確かめる(機能の画面があるか・登録の欄の数など)。
  */
 
+import { ACCIDENT_DATA_MIN_YEAR } from "./accident-stats-year-window"
 import { AR_SPEED_SUPPRESS_THRESHOLD_KMH } from "./ar-safety"
 import { BRAND } from "./brand"
+import {
+  HOTSPOT_MAX_YEAR,
+  HOTSPOT_MIN_COUNT,
+  HOTSPOT_RADIUS_METERS,
+  HOTSPOT_YEARS,
+} from "./traffic-accident/hotspot-config"
 
 export const PRODUCT_FACTS = {
   /** 1行の紹介(ログイン・登録の画面) */
@@ -65,18 +72,21 @@ export interface ProductFeature {
   key: string
   title: string
   kicker: string
+  /** 機能ツアー動画の1行(28字以内。5秒の場面で読み切れる長さ) */
+  tourLine: string
   description: string
   /** この機能を使う画面(テストが app/ の下にその画面があるかを確かめる) */
   route: string
   image?: string
 }
 
-/** 紹介HPに載せる機能。動画ツアー(tools/feature-video)も9つの場面で紹介している */
+/** 紹介HPに載せる機能。動画ツアー(tools/feature-video)も同じ数の場面で紹介している */
 export const PRODUCT_FEATURES: readonly ProductFeature[] = [
   {
     key: "danger-map",
     title: "危険マップ",
     kicker: "地域の目が集めた危険を、地図の上に",
+    tourLine: "地域のヒヤリハット報告が、地図のピンに",
     description:
       "地域から寄せられたヒヤリハット報告が地図上のピンになり、通学路の危険を一目で確認。近い報告はまとまって表示されるので、危険が集中する場所もすぐ分かります。",
     route: "/map",
@@ -84,55 +94,79 @@ export const PRODUCT_FEATURES: readonly ProductFeature[] = [
   },
   {
     key: "heatmap",
-    title: "事故ヒートマップ",
+    title: "事故多発地点",
     kicker: "警察庁オープンデータで事故を見える化",
-    description:
-      "過去の交通事故データを地図に重ねて、事故が多い道をひと目で把握。子ども関与・歩行者関与だけに絞ったり、地点ごとの事故リスクスコアも確認できます。",
+    tourLine: "警察庁のデータで、事故の多い地点が分かる",
+    description: `警察庁の交通事故データ(${ACCIDENT_DATA_MIN_YEAR}〜${HOTSPOT_MAX_YEAR}年)から、半径${HOTSPOT_RADIUS_METERS}m以内で直近${HOTSPOT_YEARS}年に${HOTSPOT_MIN_COUNT}件以上の事故があった地点を地図に表示。切り替えると、事故の多い道をヒートマップで見たり、子どもや歩行者が関わった事故だけに絞ったりできます。`,
     route: "/map",
   },
   {
     key: "hazard",
     title: "ハザードマップ",
     kicker: "自分の地域の災害リスクを手軽にデジタルで",
+    tourLine: "洪水・津波の浸水想定を、いつもの地図に",
     description:
       "国土交通省のハザードマップを重ねて、洪水・津波の浸水想定を通学路とあわせて確認。紙のハザードマップを探さなくても、いつもの地図ですぐ分かります。",
+    route: "/map",
+  },
+  {
+    key: "ar",
+    title: "ARで通学路を見る",
+    kicker: "カメラの映像に、近くの危険を重ねる",
+    tourLine: "カメラの映像に、近くで実際にあった事故を",
+    description:
+      "スマホのカメラを道に向けると、近くのヒヤリハット報告や、実際にあった事故の場所がピンで重なります。浸水想定のデータがそろった地域では、想定の深さを水面で見せます。親子で同じ道を歩きながら確認できます。",
     route: "/map",
   },
   {
     key: "report",
     title: "ヒヤリハット報告",
     kicker: "3ステップで報告、一覧でみんなと共有",
+    tourLine: "気づいた危険を、3ステップで報告",
     description: `気づいた危険は場所を選んで3ステップで報告。地域の報告は一覧でも見られます。${PRODUCT_FACTS.moderation.adult}`,
+    route: "/report",
+  },
+  {
+    key: "what-if",
+    title: "「もしも」の画像",
+    kicker: "いつもの道が、もしもの時にどうなるか",
+    tourLine: "写真から「もしも」の時の様子を画像に",
+    description:
+      "報告の写真から、AIが「地震のあと」「台風のあと」「冠水」「火災のあと」の様子を画像にします。写っている塀や電線など、写真の中の物から起こりうることだけを描く想像図です。家族で「そのときどうする？」を話すきっかけに。",
     route: "/report",
   },
   {
     key: "alerts",
     title: "不審者アラート",
     kicker: "声かけ・不審者情報をプッシュ通知",
+    tourLine: "声かけ・不審者情報を、3時間ごとにお知らせ",
     description:
-      "地域で共有された声かけ・不審者情報を、見守る家族へそっとお知らせ。通知から地図を開けば、どこで何があったかをすぐ確認できます。",
-    route: "/map",
+      "各地で公表された声かけ・不審者の情報をAIが3時間ごとに集めて、プッシュ通知でお知らせします。夜(22時〜朝7時半)は通知せず、朝のまとめでお届け。通知を開くと、その都道府県のアラート一覧を確認できます。",
+    route: "/school-route-news",
   },
   {
     key: "news",
     title: BRAND.news,
     kicker: "毎朝3分の安全チェック習慣",
+    tourLine: "家族で話すきっかけつきの、安全ニュース",
     description:
-      "全国の通学路に関する事故・防犯・制度のニュースを編集部が毎日選定。「今日、家族で何を話すか」まで添えて届けます。",
+      "全国の通学路に関する事故・防犯・制度のニュースを、「今日、家族で何を話すか」を添えてお届けします。じっくり読める特集は SAFE MAGAZINE で。",
     route: "/school-route-news",
   },
   {
     key: "hunter",
     title: "きけんハンター(写真で危険さがし)",
     kicker: "子どもといっしょに、遊びながら気づく",
+    tourLine: "写真の中の危険を、子どもがさがす",
     description:
-      "通学路の写真をとると、AIが写真の中の危険を見つけます。子どもは「どこがあぶない？」をさがして、クイズで答え合わせ。遊びながら危険に気づく力が育ちます。",
+      "通学路の写真をとると、AIが写真の中の危険を見つけます。子どもは写真をタッチして「あぶないかも？」をさがし、見つけると理由と気をつけ方が出ます。ガードレールなどの「安全のくふう」さがしや、クイズのモードもあります。点数ではなく星で成長が見えるので、遊びながら危険に気づく目が育ちます。",
     route: "/safety-quest/hunter",
   },
   {
     key: "quiz",
     title: "安全クイズ",
     kicker: "いつもの道の危険を、クイズでおさらい",
+    tourLine: "いつもの道の危険を、クイズでおさらい",
     description:
       "地図でスタートとゴールを選ぶと、その道の近くで報告された危険がクイズになって出てきます。家族で答えながら、通学路の危険を覚えられます。",
     route: "/route-quiz",
@@ -141,6 +175,7 @@ export const PRODUCT_FEATURES: readonly ProductFeature[] = [
     key: "report-pdf",
     title: "危険箇所レポート(PDF)",
     kicker: "学校・PTAと共有できるレポートに",
+    tourLine: "学校・PTAと共有できるPDFに",
     description:
       "登録した通学路の近くで報告された危険を、地図と写真つきのPDFにまとめます。写真を除いた学校・地域向けの1ページも付けられるので、改善の話し合いにつなげられます。",
     route: "/routes",

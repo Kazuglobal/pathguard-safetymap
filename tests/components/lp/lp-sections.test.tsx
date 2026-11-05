@@ -13,6 +13,7 @@ import { LpHow } from "@/components/lp/lp-how"
 import { LpTrust } from "@/components/lp/lp-trust"
 import { LpCtaFooter } from "@/components/lp/lp-cta-footer"
 import { LpHeader } from "@/components/lp/lp-header"
+import { LpSpotlight } from "@/components/lp/lp-spotlight"
 import { AuthContextProvider } from "@/components/providers/auth-context"
 import {
   LP_FAQ,
@@ -23,6 +24,9 @@ import {
   LP_CTA,
   LP_META,
   LP_OPEN_APP,
+  LP_PHOTO_AI,
+  LP_PROBLEM,
+  LP_SPOTLIGHT,
   LP_TRUST,
   LP_VIDEO,
 } from "@/lib/lp-content"
@@ -43,11 +47,17 @@ describe("lp-content 整合性", () => {
     expect(LP_CTA.secondary.href).toBe("/login")
   })
 
-  it("機能は9件(動画ツアーの「9つの機能」と同じ数)で、きけんハンターと安全クイズを含む(項目2)", () => {
-    expect(LP_FEATURES).toHaveLength(9)
-    expect(LP_FEATURE_TOUR.caption).toContain("9つの機能")
+  it("機能は11件(動画ツアーの「11の機能」と同じ数)で、AR・もしもの画像・きけんハンター・安全クイズを含む(項目2)", () => {
+    expect(LP_FEATURES).toHaveLength(11)
+    expect(LP_FEATURE_TOUR.caption).toContain("11の機能")
     expect(LP_FEATURES.map((feature) => feature.title)).toEqual(
-      expect.arrayContaining(["きけんハンター(写真で危険さがし)", "安全クイズ"]),
+      expect.arrayContaining([
+        "ARで通学路を見る",
+        "「もしも」の画像",
+        "事故多発地点",
+        "きけんハンター(写真で危険さがし)",
+        "安全クイズ",
+      ]),
     )
     for (const feature of LP_FEATURES) {
       expect(feature.title.length).toBeGreaterThan(0)
@@ -66,6 +76,19 @@ describe("lp-content 整合性", () => {
     expect(allText).toContain(PRODUCT_FACTS.moderation.adult)
   })
 
+  it("実際の画面と合わない言い方をしない(2026-11 の見直し)", () => {
+    const allText = JSON.stringify({ LP_FEATURES, LP_PHOTO_AI, LP_PROBLEM, LP_META, LP_HERO })
+    // 毎日の選定はしていない(手で更新している)
+    expect(allText).not.toContain("編集部が毎日")
+    // きけんハンターはスコアを主役にしない。色分けと安全スコアは、リンクしていない旧画面の説明だった
+    expect(allText).not.toContain("安全スコア")
+    expect(allText).not.toContain("色分け")
+    // アラートは地図ではなく、安全ニュースの地域一覧で見る
+    const alerts = LP_FEATURES.find((feature) => feature.key === "alerts")
+    expect(alerts?.description).not.toContain("地図")
+    expect(alerts?.route).toBe("/school-route-news")
+  })
+
   it("メタ情報とアセットパスが/publicの規約に従う", () => {
     expect(LP_META.ogImage).toMatch(/^\/images\/lp\//)
     expect(LP_VIDEO.src).toMatch(/^\/videos\/lp\//)
@@ -74,7 +97,7 @@ describe("lp-content 整合性", () => {
 })
 
 describe("LPセクションのレンダリング", () => {
-  it("LpFeatures が9機能すべてを表示する", () => {
+  it("LpFeatures がすべての機能を表示する", () => {
     render(<LpFeatures />)
     for (const feature of LP_FEATURES) {
       expect(screen.getByText(feature.title)).toBeInTheDocument()
@@ -191,18 +214,34 @@ describe("LPセクションのレンダリング", () => {
     try {
       const { container } = render(<LpFeatureTour />)
       const video = container.querySelector("video")
-      expect(video).toHaveAttribute("src", "/videos/lp/pathguardian-features-v2.mp4")
+      expect(video).toHaveAttribute("src", LP_FEATURE_TOUR.src)
+      expect(LP_FEATURE_TOUR.src).toBe("/videos/lp/pathguardian-features-v3.mp4")
     } finally {
       vi.unstubAllGlobals()
     }
   })
 
+  it("LpSpotlight が新しい機能(事故多発地点・AR・もしもの画像)を実際の画面と説明つきで出す", () => {
+    render(<LpSpotlight />)
+    expect(LP_SPOTLIGHT.items.map((item) => item.feature.key)).toEqual(["heatmap", "ar", "what-if"])
+    for (const item of LP_SPOTLIGHT.items) {
+      expect(screen.getByText(item.feature.title)).toBeInTheDocument()
+      expect(screen.getByText(item.feature.description)).toBeInTheDocument()
+      for (const src of item.images) expect(src.startsWith("/images/lp/mocks/v3/")).toBe(true)
+      expect(item.sticker.startsWith("/lottie/lp/") && item.sticker.endsWith(".json")).toBe(true)
+    }
+    expect(screen.getByAltText(LP_SPOTLIGHT.items[0].alt)).toBeInTheDocument()
+  })
+
   it("LpPhotoAi(目玉機能)が見出し・実画面モック・3ポイントを表示する", () => {
     render(<LpPhotoAi />)
     expect(screen.getByText("写真をとるだけ。")).toBeInTheDocument()
-    expect(screen.getByText("AIがキケンを見える化。")).toBeInTheDocument()
-    const img = screen.getByAltText(/AIが危険箇所と安全設備を色分け描画/)
-    expect(img).toHaveAttribute("src", "/images/lp/mocks/phone-hunter-result.png")
+    expect(screen.getByText(LP_PHOTO_AI.headline[1])).toBeInTheDocument()
+    const img = screen.getByAltText(LP_PHOTO_AI.imageAlt)
+    expect(img).toHaveAttribute("src", LP_PHOTO_AI.image)
+    for (const point of LP_PHOTO_AI.points) {
+      expect(screen.getByText(point)).toBeInTheDocument()
+    }
   })
 
   it("LpCtaFooter に登録導線と規約リンク・公式 Instagram・運営者の表記がある(項目4・13・41)", () => {

@@ -5,7 +5,7 @@ import { Camera, Sparkles } from "lucide-react"
 import { LP_PHOTO_AI } from "@/lib/lp-content"
 import { PhoneFrame } from "@/components/lp/device-frame"
 
-/** 目玉機能: 写真でキケンを見える化(AI画像解析)。実アプリの解析結果画面を掲載 */
+/** 目玉機能: きけんハンター(写真の中の危険を子どもがさがす)。実アプリの画面を掲載 */
 export function LpPhotoAi() {
   return (
     <section id="photo-ai" className="overflow-hidden bg-[#F3EFE4] py-28 md:py-36">
@@ -51,7 +51,7 @@ export function LpPhotoAi() {
         >
           <PhoneFrame
             src={LP_PHOTO_AI.image}
-            alt="写真の上にAIが危険箇所と安全設備を色分け描画したPathGuardianの実際の画面"
+            alt={LP_PHOTO_AI.imageAlt}
           />
         </motion.div>
       </div>

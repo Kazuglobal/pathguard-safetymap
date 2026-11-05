@@ -4,12 +4,15 @@
   "private": true,
   "description": "PathGuardian 機能ツアー動画(Remotion)。実アプリのスクリーンショットと Gemini Omni Flash 生成クリップを合成する",
   "scripts": {
-    "render": "remotion render src/index.ts FeatureTour ../../public/videos/lp/pathguardian-features.mp4",
+    "render": "remotion render src/index.ts FeatureTour ../../public/videos/lp/pathguardian-features-v3.mp4 --concurrency=2 --browser-executable=\"C:/Program Files/Google/Chrome/Application/chrome.exe\"",
+    "make-lottie": "node scripts/make-lottie.mjs",
     "studio": "remotion studio src/index.ts"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.290",
     "@remotion/google-fonts": "^4.0.290",
+    "@remotion/lottie": "4.0.486",
+    "lottie-web": "5.12.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.290"

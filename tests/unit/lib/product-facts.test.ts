@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { AR_SPEED_SUPPRESS_THRESHOLD_KMH } from '@/lib/ar-safety'
 import { LP_FAQ, LP_FEATURE_TOUR, LP_FEATURES, LP_HOW, LP_TRUST } from '@/lib/lp-content'
 import { PRODUCT_FACTS, PRODUCT_FEATURES } from '@/lib/product-facts'
+import { TOUR_MEDIA } from '../../../tools/feature-video/src/tour-media'
 
 /**
  * 紹介HP・ログイン・登録で約束していること(lib/product-facts.ts)が、アプリの実装と食い違っていないか
@@ -22,12 +23,26 @@ describe('紹介HPの機能の一覧', () => {
     }
   })
 
-  it('機能の数は動画ツアーの場面の数(9)と同じで、紹介HPはこの一覧をそのまま出す', () => {
-    const tourScenes = (read('tools/feature-video/src/FeatureTour.tsx').match(/^\s+index: \d+,/gm) ?? []).length
-    expect(tourScenes).toBe(9)
-    expect(PRODUCT_FEATURES).toHaveLength(tourScenes)
+  it('動画ツアーは同じ一覧から場面を作り、どの機能にも実際の画面がある', () => {
+    // 動画は PRODUCT_FEATURES を読んで場面を作る(場面の文字を動画に直接書かない)
+    expect(read('tools/feature-video/src/FeatureTour.tsx')).toContain('lib/product-facts')
+    expect(Object.keys(TOUR_MEDIA).sort()).toEqual(PRODUCT_FEATURES.map((feature) => feature.key).sort())
+    for (const media of Object.values(TOUR_MEDIA)) {
+      const files = media.kind === 'phoneCompare' ? [media.before, media.after]
+        : media.kind === 'phoneSequence' ? [media.first, media.second]
+          : media.kind === 'illustration' ? [] : [media.src]
+      for (const file of files) {
+        expect(fs.existsSync(path.join(process.cwd(), 'tools/feature-video/public', file)), file).toBe(true)
+      }
+    }
     expect(LP_FEATURES).toBe(PRODUCT_FEATURES)
-    expect(LP_FEATURE_TOUR.caption).toContain(`${tourScenes}つの機能`)
+    expect(LP_FEATURE_TOUR.caption).toContain(`${PRODUCT_FEATURES.length}の機能`)
+  })
+
+  it('動画の1行は5秒の場面で読み切れる長さ(28字以内)', () => {
+    for (const feature of PRODUCT_FEATURES) {
+      expect(feature.tourLine.length, feature.key).toBeLessThanOrEqual(28)
+    }
   })
 })
 
