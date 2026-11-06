@@ -81,7 +81,7 @@ export default function PrivacyPage() {
       <LegalSection title="6. 外部のサービス(業務委託先)">
         <ul className="list-disc space-y-1 pl-5">
           <li>Supabase(ログイン・アカウント)</li>
-          <li>Cloudflare(サイトの配信・データベース・写真の保存)</li>
+          <li>Cloudflare(サイトの配信・データベース・写真の保存・アクセス解析)。アクセス解析(Cloudflare Web Analytics)は Cookie を使わず、見たページの URL、参照元、端末とブラウザの種類、表示の速さを集計します</li>
           <li>Google・Anthropic・OpenAI(AI による確認と解析。上記4.)</li>
           <li>Mapbox(地図の表示と住所の検索)</li>
           <li>Google Maps(「現地の景色」を押したときの地図・ストリートビュー表示)。地図画面では Maps Embed API を使います。選んだ事故地点の座標(地点を表す Plus Code を含む)、IP アドレス、参照元のサイトなどが Google に送られます。<a className="underline" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google のプライバシーポリシー</a>と<a className="underline" href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer">Google Maps の利用規約</a>が適用されます</li>
@@ -149,6 +149,7 @@ export default function PrivacyPage() {
       <LegalSection title="11. 改定の履歴" id="revisions">
         <ul className="list-disc space-y-1 pl-5">
           {GA_MEASUREMENT_ID && <li>2026年11月6日: アクセス解析(Google アナリティクス)と、送る情報・送信を止める方法を追記しました。</li>}
+          <li>2026年11月6日: Cloudflare のアクセス解析(Web Analytics)と、集計する情報を追記しました。</li>
           <li>2026年10月30日: 事故地点の Google 地図とストリートビューの埋め込み表示、送信する情報を追記しました。</li>
           <li>2026年10月29日: ストリートビュー表示時に Google Maps に送る情報と関連ポリシーを追記しました。</li>
           <li>

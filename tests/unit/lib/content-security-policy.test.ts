@@ -35,3 +35,12 @@ describe("buildContentSecurityPolicy: Google アナリティクス(GA4)", () => 
     expect(directive("img-src")).toContain("https://*.google-analytics.com")
   })
 })
+
+describe("buildContentSecurityPolicy: Cloudflare Web Analytics", () => {
+  const directive = (name: string) => buildContentSecurityPolicy().split("; ").find((d) => d.startsWith(`${name} `)) ?? ""
+
+  it("Cloudflare が差し込む計測スクリプト(beacon.min.js)と送信先を許可する", () => {
+    expect(directive("script-src")).toContain("https://static.cloudflareinsights.com")
+    expect(directive("connect-src")).toContain("https://cloudflareinsights.com")
+  })
+})
