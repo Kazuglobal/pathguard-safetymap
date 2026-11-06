@@ -105,8 +105,13 @@ def download(entry, root):
         pending = dest.with_suffix('.pending')
         with urllib.request.urlopen(checked_url(entry['url']), timeout=120) as source:
             checked_url(source.url)
+            expected = source.headers.get('Content-Length')
             with pending.open('wb') as target:
                 while chunk:=source.read(1024*1024): target.write(chunk)
+        # A dropped connection can end the read early; never promote a short file to the final name,
+        # or every later run would keep re-testing the same truncated archive.
+        if expected is not None and pending.stat().st_size != int(expected):
+            raise ValueError(f'Truncated download: {pending.stat().st_size} of {expected} bytes')
         pending.replace(dest)
     with zipfile.ZipFile(dest) as z:
         if z.testzip() is not None: raise ValueError('Archive checksum failed')

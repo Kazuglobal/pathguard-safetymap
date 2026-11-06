@@ -35,6 +35,19 @@ class OfficialHazardsTests(unittest.TestCase):
         with self.assertRaises(ValueError): hazards.checked_url('https://example.com/source.zip')
         with self.assertRaises(ValueError): hazards.checked_url('http://nlftp.mlit.go.jp/source.zip')
 
+    def test_truncated_download_is_not_kept_as_the_archive(self):
+        import io,tempfile
+        from unittest import mock
+        class Short(io.BytesIO):
+            url='https://nlftp.mlit.go.jp/ksj/gml/data/A40/x.zip'
+            headers={'Content-Length':'100'}
+            def __enter__(self): return self
+            def __exit__(self,*a): self.close()
+        entry=dict(filename='x.zip',url=Short.url)
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(hazards.urllib.request,'urlopen',return_value=Short(b'PK'*10)):
+            with self.assertRaisesRegex(ValueError,'Truncated download'): hazards.download(entry,Path(d))
+            self.assertFalse((Path(d)/'raw'/'x.zip').exists())
+
     def test_resume_rejects_changed_classification_even_with_same_id(self):
         import json
         row={column:None for column in importer.ZONE_COLUMNS}
