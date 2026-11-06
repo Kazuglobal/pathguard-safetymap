@@ -84,6 +84,7 @@ Mood and palette: ${tone}
 Scene rules:
 - Elementary school children wear yellow caps and randoseru backpacks, always seen from behind or small in the frame
 - Abstract, NOT depicting any actual person, injury or incident; focus on what a family can do to stay safe
+- Never draw the aftermath of an incident: no dropped or fallen yellow cap, no dropped randoseru or school bag, no scattered belongings, no fallen bicycle, no skid marks, no police car, no ambulance, no emergency lights, no onlookers. Nothing is lying on the road surface
 - No text, no letters, no kanji, no katakana, no numbers of any kind. Road surfaces carry only plain white stripes and lines, never painted words, symbols or glyph-like marks; shopfronts, banners, vests and sashes are plain without printing
 ${QUALITY_SUFFIX}`
 }
@@ -99,6 +100,7 @@ Mood and palette: ${tone}
 Rules:
 - Children wear yellow caps and randoseru backpacks and are seen from behind or drawn as faceless simple figures
 - Never depict any threatening person, stranger, silhouette, injury or incident; show only the safe action
+- Never draw the aftermath of an incident: no dropped or fallen yellow cap, no dropped randoseru or school bag, no scattered belongings, no fallen bicycle, no skid marks, no police car, no ambulance, no emergency lights. The road surface stays clean and empty in every panel
 - The figure description above is a brief for you, NOT text to draw: never render it, its step numbers, circled numerals or any English/Japanese captions in the image
 - Purely pictorial: no text, no letters, no kanji, no katakana, no numbers anywhere (the caption is added separately)
 - This includes step titles, panel labels, headings, speech-bubble words, signs, the word STOP or CHECK, and English words of any kind: every panel and the area below it must contain only drawings, never writing in any language
