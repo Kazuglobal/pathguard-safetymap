@@ -4,8 +4,11 @@ import "./globals.css"
 import { LayoutProvider } from "@/components/providers/layout-provider"
 import { getMaintenanceMode } from '@/lib/maintenance'
 import { BRAND } from '@/lib/brand'
+import { GoogleAnalytics } from '@/components/analytics/google-analytics'
+import { GA_MEASUREMENT_ID } from '@/lib/google-analytics'
 
 const metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL || BRAND.siteUrl)
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() || undefined
 
 // 各ページはページ名だけを書く(例: "マイページ" → 「マイページ | PathGuardian」)。UIUX改装 項目1・3
 export const metadata: Metadata = {
@@ -18,6 +21,8 @@ export const metadata: Metadata = {
   creator: BRAND.name,
   publisher: BRAND.name,
   robots: "index, follow",
+  // Google Search Console の所有権の確認(HTML タグ方式)。値がないときは出さない
+  ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
   openGraph: {
     type: "website",
     locale: "ja_JP",
@@ -70,6 +75,7 @@ export default function RootLayout({
         <LayoutProvider>
           {children}
         </LayoutProvider>
+        <GoogleAnalytics measurementId={GA_MEASUREMENT_ID} />
       </body>
     </html>
   )

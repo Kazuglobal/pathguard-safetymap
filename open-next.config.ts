@@ -22,6 +22,8 @@ const coreRoutes: NonNullable<typeof config.functions>[string]['routes'] = [
   'app/_not-found/page',
   // app/manifest.ts(PWA)。/manifest.webmanifest は router で CORE に流れるので CORE に載せる
   'app/manifest.webmanifest/route',
+  // app/robots.ts(/robots.txt)。router で CORE に流れる
+  'app/robots.txt/route',
   'app/page',
   'app/contact/page',
   'app/privacy/page',
@@ -37,11 +39,14 @@ const routeGroups = {
     'app/safe-magazine/[slug]/page',
     'app/school-route-news/page',
     'app/school-route-news/[slug]/page',
+    // app/sitemap.ts(/sitemap.xml)。記事のデータを読むので記事と同じ Worker に置く
+    'app/sitemap.xml/route',
   ], [
     'landing*',
     'lp*',
     'safe-magazine*',
     'school-route-news*',
+    'sitemap.xml*',
   ]),
   map3d: splitFunction([
     'app/3d-route-poc/page',

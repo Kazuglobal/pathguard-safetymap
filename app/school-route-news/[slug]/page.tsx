@@ -5,6 +5,9 @@ import { ArrowLeft, AlertTriangle, AlertCircle, Construction, FileText, Users, C
 import { getNewsItemBySlug, NEWS_CATEGORIES, formatNewsDate, type NewsCategory } from "@/lib/school-route-news"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import type { Metadata } from "next"
+import { BRAND } from "@/lib/brand"
+import { absoluteUrl, jsonLdString } from "@/lib/seo"
 
 const CATEGORY_ICONS = {
   "AlertTriangle": AlertTriangle,
@@ -20,6 +23,28 @@ type NewsDetailPageProps = {
   }>
 }
 
+export async function generateMetadata({ params }: NewsDetailPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const item = getNewsItemBySlug(slug)
+  if (!item) return { title: "記事が見つかりません", robots: { index: false } }
+  const path = `/school-route-news/${item.slug}`
+  return {
+    title: item.title,
+    description: item.excerpt,
+    keywords: ["通学路", "通学路 危険", ...item.tags],
+    alternates: { canonical: path },
+    openGraph: {
+      title: item.title,
+      description: item.excerpt,
+      url: path,
+      type: "article",
+      publishedTime: item.publishedDate,
+      images: item.thumbnailUrl ? [{ url: item.thumbnailUrl, alt: item.title }] : undefined,
+    },
+    twitter: { card: "summary_large_image", title: item.title, description: item.excerpt },
+  }
+}
+
 export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
   const { slug } = await params
   const item = getNewsItemBySlug(slug)
@@ -28,11 +53,26 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
     notFound()
   }
 
+  // 構造化データ(記事)。中身は画面に出している題・要約・日付・画像と同じ
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    headline: item.title,
+    description: item.excerpt,
+    datePublished: item.publishedDate,
+    dateModified: item.verifiedAt ?? item.publishedDate,
+    image: item.thumbnailUrl ? [absoluteUrl(item.thumbnailUrl)] : undefined,
+    mainEntityOfPage: absoluteUrl(`/school-route-news/${item.slug}`),
+    inLanguage: "ja-JP",
+    publisher: { "@type": "Organization", name: BRAND.name, logo: { "@type": "ImageObject", url: absoluteUrl("/icon-512.png") } },
+  }
+
   const category = NEWS_CATEGORIES[item.category as NewsCategory]
   const IconComponent = category ? CATEGORY_ICONS[category.icon as keyof typeof CATEGORY_ICONS] : AlertTriangle
 
   return (
     <div className="min-h-screen bg-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(articleJsonLd) }} />
       {/* ヘッダー */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3">

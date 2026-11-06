@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { SITE_URL as SEO_SITE_URL } from "@/lib/seo"
 import { notFound } from "next/navigation"
 import Script from "next/script"
 import { getArticleBySlug } from "@/lib/safe-magazine"
@@ -12,7 +13,8 @@ import {
 } from "@/lib/seo-generator"
 import { ArticleContent } from "./ArticleContent"
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com"
+// 環境変数がないときも本番のドメインにする(以前は example.com になり、正規URLが誤る恐れがあった)
+const SITE_URL = SEO_SITE_URL
 
 interface PageProps {
   params: Promise<{
