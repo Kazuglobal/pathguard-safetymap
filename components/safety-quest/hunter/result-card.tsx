@@ -51,6 +51,16 @@ export interface ResultCardProps {
   onOtherModes?: () => void
   /** 「きろくに のこす」を選んだ写真から きろく画面へ。 */
   onOpenRecords?: () => void
+  /** 0..100 の達成度(理由まで=1・場所だけ=0.6)。あれば星はこれで決める。 */
+  accuracy?: number
+  /** 理由まで分かった数(採点ルール v2)。undefined なら出さない。 */
+  understood?: number
+  /** 虫めがねののこり(採点ルール v2)。null/undefined なら出さない。 */
+  magnifiersLeft?: number | null
+  /** 理由まで分かった危険(リストに「りゆうも わかった」を付ける)。 */
+  understoodIds?: readonly string[]
+  /** こたえあわせを もういちど 見る。 */
+  onReveal?: () => void
 }
 
 const C = tokens.color
@@ -64,14 +74,28 @@ function celebrationMessage(matches: number, total: number): string {
   return "チャレンジ できたね！ つぎも いっしょに さがそう！"
 }
 
-/** 達成段階(0〜3)。点数ではなく「成長」を星であらわす。 */
-function starCount(matches: number, total: number): number {
+/**
+ * 達成段階(0〜3)。点数ではなく「成長」を星であらわす。
+ * accuracy(理由まで=1・場所だけ=0.6)があればそれで決める: 90 以上で 3・50 以上で 2・0 より上で 1。
+ */
+function starCount(matches: number, total: number, accuracy?: number): number {
   if (total <= 0) return 0
+  if (typeof accuracy === "number" && Number.isFinite(accuracy)) {
+    if (accuracy >= 90) return 3
+    if (accuracy >= 50) return 2
+    return accuracy > 0 ? 1 : 0
+  }
   const rate = matches / total
   if (matches >= total) return 3
   if (rate >= 0.5) return 2
   if (matches > 0) return 1
   return 0
+}
+
+/** 虫めがねが残ったことをほめる(よく見てからタップできた)。 */
+function magnifierPraise(left: number | null | undefined): string | null {
+  if (typeof left !== "number" || left <= 0) return null
+  return `むしめがねが ${left}こ のこったよ。よく 見てから さがせたね！`
 }
 
 interface Badge {
@@ -122,11 +146,18 @@ export function ResultCard(props: ResultCardProps) {
     persistError = false,
     onOtherModes,
     onOpenRecords,
+    accuracy,
+    understood,
+    magnifiersLeft,
+    understoodIds = [],
+    onReveal,
   } = props
 
   const reduce = useReducedMotion()
 
   const foundSet = React.useMemo(() => new Set(foundIds), [foundIds])
+  const understoodSet = React.useMemo(() => new Set(understoodIds), [understoodIds])
+  const praise = magnifierPraise(magnifiersLeft)
   const foundHazards = React.useMemo(
     () => hazards.filter((h) => foundSet.has(h.id)),
     [hazards, foundSet],
@@ -136,7 +167,7 @@ export function ResultCard(props: ResultCardProps) {
     [hazards, foundSet],
   )
 
-  const stars = starCount(matches, total)
+  const stars = starCount(matches, total, accuracy)
   const badge = badgeFor(stars)
   const mascotMood = stars >= 2 ? "wow" : "cheer"
 
@@ -238,6 +269,14 @@ export function ResultCard(props: ResultCardProps) {
           label={`はっけん（ぜんぶで ${total}）`}
           value={matches}
         />
+        {typeof understood === "number" && (
+          <StatPill
+            tone="green"
+            icon={<Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />}
+            label="りゆうも わかった"
+            value={understood}
+          />
+        )}
         {showCombo && (
           <StatPill
             tone="orange"
@@ -274,6 +313,11 @@ export function ResultCard(props: ResultCardProps) {
             </ul>
           </PaperPanel>
         </motion.div>
+      )}
+      {praise && (
+        <p className="text-center text-[13px] font-black" style={{ color: C.primaryStrong }}>
+          {praise}
+        </p>
       )}
       {persistError && (
         <p role="status" className="text-center text-[12px] font-bold" style={{ color: C.inkSoft }}>
@@ -330,8 +374,15 @@ export function ResultCard(props: ResultCardProps) {
                         {toKana(h.accidentLink)}
                       </span>
                     ) : null}
-                    <span className="ml-auto shrink-0" aria-label="みつけた">
-                      <StampSeal size={38} label="OK" tone="green" />
+                    <span
+                      className="ml-auto shrink-0"
+                      aria-label={understoodSet.has(h.id) ? "りゆうも わかった" : "みつけた"}
+                    >
+                      <StampSeal
+                        size={38}
+                        label={understoodSet.has(h.id) ? "わかった" : "OK"}
+                        tone={understoodSet.has(h.id) ? "green" : "accent"}
+                      />
                     </span>
                   </p>
                   <p className="mt-1.5 text-[13px] font-bold leading-relaxed" style={{ color: C.ink }}>
@@ -383,6 +434,12 @@ export function ResultCard(props: ResultCardProps) {
 
       {/* アクションボタン */}
       <motion.div {...rise(0.3)} className="flex flex-col gap-2.5 pt-1">
+        {onReveal && (
+          <PrimaryCTA onClick={onReveal} variant="green">
+            <Eye className="h-5 w-5" aria-hidden="true" />
+            こたえあわせを もういちど 見る
+          </PrimaryCTA>
+        )}
         <PrimaryCTA onClick={onRetry}>
           <RotateCcw className="h-5 w-5" aria-hidden="true" />
           もういちど さがす

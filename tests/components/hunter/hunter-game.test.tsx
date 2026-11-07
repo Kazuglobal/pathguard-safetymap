@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
@@ -112,7 +112,7 @@ function installFetch(sessionResponse: Response) {
   return fetchMock
 }
 
-/** home → select → mask → pin → consent → analyzing → mode → explore(全発見) まで進める。 */
+/** home → select → mask → pin → consent → analyzing → mode → explore(当たり → 理由を答えて全発見) まで進める。 */
 async function playThroughToExplore() {
   fireEvent.click(screen.getByRole("button", { name: /ぼうけんスタート/ }))
   const input = screen.getByLabelText("カメラで とる")
@@ -122,7 +122,11 @@ async function playThroughToExplore() {
   fireEvent.click(await screen.findByRole("button", { name: /OK！はじめる/ }))
   fireEvent.click(await screen.findByText("たんけんモード"))
   fireEvent.click(await screen.findByText("canvas-tap"))
-  await screen.findByText("ぜんぶ みつけた！けっかを みる")
+  // 場所が当たったら「どうして あぶない？」→ 答えるまで終われない
+  const dialog = await screen.findByRole("dialog", { name: /どうして あぶないかな/ })
+  expect(screen.getByText("りゆうを えらんでね").closest("button")).toBeDisabled()
+  fireEvent.click(within(dialog).getByRole("button", { name: "角の むこうが 見えない から" }))
+  await screen.findByText("ぜんぶ みつけた！こたえあわせへ")
 }
 
 describe("HunterGame — 結果画面の導線と採点契約", () => {
@@ -142,7 +146,12 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     render(<HunterGame />)
     await playThroughToExplore()
 
-    fireEvent.click(screen.getByText("ぜんぶ みつけた！けっかを みる"))
+    // 遊んだあとは まず こたえあわせ(写真の上で危険を見せる)→ けっかへ
+    fireEvent.click(screen.getByText("ぜんぶ みつけた！こたえあわせへ"))
+    expect(await screen.findByRole("group", { name: "こたえあわせの しゃしん" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "1ばん 見通しの悪い角（わかった）" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "けっかを みる" }))
+
     await screen.findByText("+5pt")
     expect(screen.getByText("ミッション たっせい！")).toBeInTheDocument()
     expect(screen.getByText("はじめての たんけん")).toBeInTheDocument()
@@ -152,8 +161,19 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     const sessionCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/api/hunter/session"))
     expect(sessionCall).toBeTruthy()
     const body = JSON.parse(String((sessionCall![1] as RequestInit).body))
-    expect(body).toMatchObject({ mode: "explore", sessionId: "sess-1", taps: [{ x: 0.45, y: 0.55 }] })
+    // 理由つきのタップと採点ルールの版を送る(サーバは同じ規則で数え直す)
+    expect(body).toMatchObject({
+      mode: "explore",
+      sessionId: "sess-1",
+      rules: 2,
+      taps: [{ x: 0.45, y: 0.55, reason: "blind_corner" }],
+    })
     expect(body.photoId).toBeUndefined()
+
+    // けっかから こたえあわせを もういちど見て、けっかに もどれる
+    fireEvent.click(screen.getByRole("button", { name: /こたえあわせを もういちど 見る/ }))
+    fireEvent.click(await screen.findByRole("button", { name: "けっかに もどる" }))
+    await screen.findByText("+5pt")
 
     // 同じ写真で ほかの あそびかた(安全さがし)へ戻れる = 解析結果を捨てない
     fireEvent.click(screen.getByRole("button", { name: /ほかの あそびかた/ }))
@@ -167,8 +187,10 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     render(<HunterGame />)
     await playThroughToExplore()
 
-    fireEvent.click(screen.getByText("ぜんぶ みつけた！けっかを みる"))
+    // 採点できなかったときは こたえあわせを飛ばして理由を伝える
+    fireEvent.click(screen.getByText("ぜんぶ みつけた！こたえあわせへ"))
     await screen.findByText(SESSION_FAILURE_COPY.expired)
+    expect(screen.queryByRole("group", { name: "こたえあわせの しゃしん" })).toBeNull()
     expect(screen.queryByText("がんばりポイント")).not.toBeInTheDocument()
     expect(screen.getByText("1こ みつけた がんばりは そのままだよ")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /もういちど AIに 見てもらう/ })).toBeInTheDocument()
