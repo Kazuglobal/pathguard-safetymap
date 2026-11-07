@@ -35,8 +35,9 @@ export const runtime = "nodejs"
 export const maxDuration = 60
 
 /**
- * 検出に紐づける推論モデル名 (hazard_detections.model 用)。
+ * Gemini で解析したときに検出に紐づける推論モデル名 (hazard_detections.model 用)。
  * callGeminiVision が実際に解決するモデルと同じ手順で解決し、DB記録と実呼び出しを一致させる。
+ * Claude で解析したときは analysis.model(Claude のモデル名)を記録する。
  */
 const HUNTER_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAULT_MODEL)
 /** 写真の保持期限。サーバ側で now() から算出する。日数はプライバシーポリシーの表と同じ値(lib/retention/policy.ts) */
@@ -53,6 +54,8 @@ async function savePhoto(
   imageBase64: string,
   pin: { latitude: number; longitude: number },
   hazards: readonly HunterHazard[],
+  /** 解析に使ったモデル(Claude で解析したときの名前。無ければ Gemini の既定)。 */
+  model: string = HUNTER_VISION_MODEL,
 ): Promise<{ photoId: string | null; signedUrl: string | null; savedError: boolean }> {
   try {
     const photoId = crypto.randomUUID()
@@ -80,7 +83,7 @@ async function savePhoto(
         kidExplanation: hazard.kidExplanation,
         safeAction: hazard.safeAction,
         confidence: hazard.confidence,
-        model: HUNTER_VISION_MODEL,
+        model,
         })),
       })
     } catch (error) {
@@ -171,7 +174,7 @@ export async function POST(request: NextRequest) {
     // 保存はオプトイン (save=true) かつ explore で hazards があるときのみ。
     const saved =
       save && analysis.mode === "explore" && analysis.hazards.length > 0
-        ? await savePhoto(actor, imageBase64, pin, analysis.hazards)
+        ? await savePhoto(actor, imageBase64, pin, analysis.hazards, analysis.model)
         : null
 
     return NextResponse.json({

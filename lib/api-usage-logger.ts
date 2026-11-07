@@ -16,7 +16,7 @@ import { calculateCost, calculateMapboxCost } from '@/lib/api-cost-calculator'
 // ---------------------------------------------------------------------------
 
 export type ApiUsageEntry = {
-  readonly api_provider: 'gemini' | 'openai' | 'mapbox'
+  readonly api_provider: 'gemini' | 'openai' | 'mapbox' | 'anthropic'
   readonly api_endpoint: string
   readonly model_name?: string
   readonly input_tokens?: number

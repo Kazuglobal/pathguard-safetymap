@@ -11,24 +11,39 @@ export function hasClaudeApiKey(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY?.trim())
 }
 
+/** 実際に呼ぶモデル名(座標の基準になる画像の大きさもモデルで決まる)。 */
+export function claudeVisionModel(): string {
+  return process.env.CLAUDE_VISION_MODEL?.trim() || CLAUDE_VISION_DEFAULT_MODEL
+}
+
+/** 既定の 1 コールの上限。Route Handlers の60秒枠を、リトライなしで超えないようにする。 */
+const DEFAULT_TIMEOUT_MS = 45_000
+
 /**
  * Claude Haiku 5.5 に画像とプロンプトを渡し、返答テキストを返す。
  * - Haiku 5.5 は temperature の既定外の値を 400 で拒否するため送らない。
  * - JSON 抽出用途では思考を無効にし、回答前に出力予算を使い切らないようにする。
+ * - 失敗(断り・打ち切り・空・通信エラー)は throw する。呼び出し側が別の手段へ切り替える。
  */
 export async function callClaudeVision(params: {
   base64: string
   mediaType: ImageMediaType
   prompt: string
   maxTokens?: number
+  /** 1 コールの上限ミリ秒(既定 45 秒)。 */
+  timeoutMs?: number
 }): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim()
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY")
 
-  // Route Handlers の60秒枠を、45秒のリトライで超えないようにする。
-  const client = new Anthropic({ apiKey, fetch: globalThis.fetch, maxRetries: 0, timeout: 45_000 })
+  const client = new Anthropic({
+    apiKey,
+    fetch: globalThis.fetch,
+    maxRetries: 0,
+    timeout: params.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+  })
   const response = await client.messages.create({
-    model: process.env.CLAUDE_VISION_MODEL?.trim() || CLAUDE_VISION_DEFAULT_MODEL,
+    model: claudeVisionModel(),
     max_tokens: params.maxTokens ?? 8192,
     thinking: { type: "disabled" },
     messages: [

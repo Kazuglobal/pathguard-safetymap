@@ -68,7 +68,9 @@ describe("PhotoMasker(写真を端末でぼかす)", () => {
     render(<PhotoMasker file={photo()} onConfirm={vi.fn()} onCancel={vi.fn()} />)
 
     expect(screen.getByText(/写真の中の顔をさがしています/)).toBeInTheDocument()
-    expect(screen.getByTestId("photo-masker-ai-notice")).toHaveTextContent("Google Gemini・Anthropic Claude・OpenAI")
+    // 画面には特定の AI の名前を書かない
+    expect(screen.getByTestId("photo-masker-ai-notice")).toHaveTextContent("AI による確認")
+    expect(screen.getByTestId("photo-masker-ai-notice")).not.toHaveTextContent(/Gemini|Claude|OpenAI/)
     expect(screen.getByTestId("photo-masker-ai-notice")).toHaveTextContent("元の写真は端末の外に出しません")
     expect(screen.getByRole("button", { name: "この写真で進む" })).toBeDisabled()
   })

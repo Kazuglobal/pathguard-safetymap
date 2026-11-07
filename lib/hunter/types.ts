@@ -203,6 +203,8 @@ export interface HunterAnalyzeResult {
   readonly fallbackReason: HunterFallbackReason | null
   /** おうちの人むけの根拠(hazards と同じ順)。無ければ空・省略。 */
   readonly parentNotes?: readonly HunterParentNote[]
+  /** 解析に使ったモデル(Claude で解析したときだけ入る。無ければ Gemini)。保存する検出の記録用。 */
+  readonly model?: string
 }
 
 export interface HunterQuizAnswer {

@@ -146,6 +146,8 @@ export interface ComparisonResult {
 export interface PipelineAnalysisResultWithComparison extends PipelineAnalysisResult {
   readonly comparison?: ComparisonResult
   readonly userMarking?: UserMarkingResult
+  /** 解析に使った AI(Claude で解析したときだけ入る。無ければ Gemini)。使用量ログ用で画面には出さない。 */
+  readonly analysisModel?: { readonly provider: "anthropic" | "gemini"; readonly model: string }
 }
 
 // ---- Legacy 互換型 ----

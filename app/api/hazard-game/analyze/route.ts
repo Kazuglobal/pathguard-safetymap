@@ -20,6 +20,8 @@ const HAZARD_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAUL
 /** 1解析 = 1 Vision呼び出しのトークン概算(画像+プロンプト / JSON応答)。 */
 const ESTIMATED_ANALYZE_INPUT_TOKENS = 2500
 const ESTIMATED_ANALYZE_OUTPUT_TOKENS = 1000
+/** Claude は画像を 28px 角ごとに数えるので、長い辺 1600px の写真で 約2,500 + 指示文。 */
+const ESTIMATED_CLAUDE_INPUT_TOKENS = 5500
 /** 単価表(api-cost-calculator)から解決モデルで算出し、GEMINI_VISION_MODEL 上書き時もモデル名とコストが整合する。 */
 const ESTIMATED_ANALYZE_COST_USD = calculateCost({
   provider: "gemini",
@@ -131,12 +133,14 @@ export async function POST(request: NextRequest) {
         console.log('Prompt type:', promptType || "default")
       }
 
-      // visionModelDefault はこのルート(ハザードゲーム)だけが渡す。
+      // visionModelDefault / preferClaude はこのルート(ハザードゲーム)だけが渡す。
       // 共有パイプラインの他の呼び出し元(safety-quest等)を移行させないための明示指定。
+      // 解析は Claude(Haiku 5.5)を先に使い、使えない・失敗したときは Gemini。
       pipelineResult = await analyzeImagePipeline(imageBase64, {
         userMarkers: Array.isArray(userMarkers) ? userMarkers : undefined,
         promptType: promptType || "default",
         visionModelDefault: REALTIME_VISION_DEFAULT_MODEL,
+        preferClaude: true,
       })
 
       const { score, vision } = pipelineResult
@@ -210,7 +214,22 @@ export async function POST(request: NextRequest) {
 
     // AI-derived safety scores are display-only, never persistent currency.
 
-    logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: HAZARD_VISION_MODEL, request_count: 1, estimated_cost_usd: ESTIMATED_ANALYZE_COST_USD, success: true })
+    const usedClaude = pipelineResult.analysisModel?.provider === 'anthropic'
+    logApiUsage({
+      api_provider: usedClaude ? 'anthropic' : 'gemini',
+      api_endpoint: 'hazard-analyze',
+      model_name: usedClaude ? pipelineResult.analysisModel!.model : HAZARD_VISION_MODEL,
+      request_count: 1,
+      estimated_cost_usd: usedClaude
+        ? calculateCost({
+            provider: 'anthropic',
+            model: pipelineResult.analysisModel!.model,
+            inputTokens: ESTIMATED_CLAUDE_INPUT_TOKENS,
+            outputTokens: ESTIMATED_ANALYZE_OUTPUT_TOKENS,
+          })
+        : ESTIMATED_ANALYZE_COST_USD,
+      success: true,
+    })
 
     // Return both new pipeline format and legacy-compatible fields
     return NextResponse.json({
