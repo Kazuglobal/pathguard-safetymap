@@ -69,12 +69,9 @@ export function ExploreTapFeedback({
   return (
     <AnimatePresence>
       {feedback ? (
-        <motion.div
+        // 位置合わせは外側の div、動きは内側の motion.div(framer の y/scale が中央寄せを上書きしないように)
+        <div
           key={feedback.key}
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.8 }}
-          animate={reduce ? { opacity: 1 } : { opacity: 1, y: -12, scale: 1 }}
-          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -30, scale: 0.9 }}
-          transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 340, damping: 20 }}
           style={{
             position: "absolute",
             left: feedback.left,
@@ -82,12 +79,15 @@ export function ExploreTapFeedback({
             transform: "translate(-50%, -50%)",
             zIndex: 5,
             pointerEvents: "none",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 6,
             maxWidth: "86%",
           }}
+        >
+        <motion.div
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.8 }}
+          animate={reduce ? { opacity: 1 } : { opacity: 1, y: -12, scale: 1 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -30, scale: 0.9 }}
+          transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 340, damping: 20 }}
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
         >
           {showHint && (feedback.kind === "near" || feedback.kind === "miss") && feedback.temperature ? (
             <HintChip temperature={feedback.temperature} direction={feedback.direction ?? null} />
@@ -111,6 +111,7 @@ export function ExploreTapFeedback({
             {allFound && feedback.kind !== "hit" ? "もう ぜんぶ みつけたよ！" : FEEDBACK_MESSAGES[feedback.kind]}
           </span>
         </motion.div>
+        </div>
       ) : null}
     </AnimatePresence>
   )

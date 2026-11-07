@@ -24,12 +24,15 @@ export interface HunterSessionSummary {
   readonly rules: number
   /** 虫めがねののこり。旧ルール・クイズは null。 */
   readonly magnifiersLeft: number | null
-  /** サーバが数えた発見(見つけた順)。こたえあわせ・結果画面はこれを正とする。 */
-  readonly discoveries: readonly HunterDiscovery[]
+  /**
+   * サーバが数えた発見(見つけた順)。こたえあわせ・結果画面はこれを正とする(0 件でも)。
+   * 応答に discoveries が無い(旧サーバ・クイズ)ときだけ null。
+   */
+  readonly discoveries: readonly HunterDiscovery[] | null
 }
 
-function toDiscoveries(value: unknown): HunterDiscovery[] {
-  if (!Array.isArray(value)) return []
+function toDiscoveries(value: unknown): HunterDiscovery[] | null {
+  if (!Array.isArray(value)) return null
   return value
     .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === "object")
     .filter((d) => typeof d.hazardId === "string" && d.hazardId.length > 0)

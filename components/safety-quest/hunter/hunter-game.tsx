@@ -418,8 +418,9 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   // ----- 画面記述 -----
 
   const remaining = Math.max(0, hazards.length - foundIds.length)
-  // こたえあわせ・結果画面はサーバが数えた発見を正とする(取れなければ画面の数え方。どちらも同じ関数)。
-  const discoveries = result && result.discoveries.length > 0 ? result.discoveries : round.summary.replay.discoveries
+  // こたえあわせ・結果画面はサーバが数えた発見を正とする(0 件でも)。応答に無いときだけ画面の数え方
+  // (どちらも同じ replayExplore)。0 件のときに画面側へ切り替えると、表示が食い違う。
+  const discoveries = result?.discoveries ?? round.summary.replay.discoveries
   const resultFoundIds = discoveries.map((d) => d.hazardId)
   const resultUnderstoodIds = discoveries.filter((d) => d.understood).map((d) => d.hazardId)
 

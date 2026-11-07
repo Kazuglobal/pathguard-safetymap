@@ -21,10 +21,13 @@ import type {
   HunterTapOutcome,
 } from "@/lib/hunter/types"
 
+import { KID_REASON_BY_KIND } from "@/lib/hunter/kid-copy"
+
 import { CareCard } from "./care-card"
 import { ExploreCanvas } from "./explore-canvas"
 import { MagnifierMeter } from "./magnifier-meter"
 import { ReasonSheet } from "./reason-sheet"
+import { RubyText } from "./ruby-text"
 import { BottomBar, Mascot, PrimaryCTA, tokens } from "./theme"
 
 const C = tokens.color
@@ -53,6 +56,14 @@ export interface ExploreScreenProps {
   onReason?: (kind: HunterDangerKind) => void
 }
 
+function reasonAnnouncement(props: ExploreScreenProps): string {
+  const { lastFound = null, lastReason = null } = props
+  if (!lastFound || !lastReason || lastReason.hazardId !== lastFound.id) return ""
+  if (lastReason.correct) return "せいかい！ りゆうも わかったね。"
+  const reason = lastFound.kind ? KID_REASON_BY_KIND[lastFound.kind] : null
+  return reason ? `おしい！ ほんとうは「${reason}」だよ。` : "おしい！"
+}
+
 function finishLabel(props: ExploreScreenProps): string {
   if (props.busy) return "まとめているよ…"
   if (props.pending) return "りゆうを えらんでね"
@@ -78,13 +89,18 @@ export function ExploreScreen(props: ExploreScreenProps) {
           lastOutcome={lastOutcome}
           understoodIds={props.understoodIds}
           activeHazardId={pending ? pending.hazard.id : null}
-          paused={Boolean(pending)}
-          locked={outOfMagnifiers}
+          paused={Boolean(pending) || busy}
+          // 採点を送っている間もタップさせない(送ったあとに当たっても数えられず、画面とずれる)
+          locked={outOfMagnifiers || busy}
           hudExtra={magnifiers ? <MagnifierMeter left={magnifiers.left} budget={magnifiers.budget} /> : null}
           overlay={outOfMagnifiers ? <OutOfMagnifiers /> : null}
         />
 
         <BelowPhoto {...props} />
+        {/* 理由の答えを読み上げる常設の領域(中身と一緒に挿入された live 領域は読まれないことがあるため) */}
+        <p className="sr-only" aria-live="polite">
+          {reasonAnnouncement(props)}
+        </p>
       </div>
 
       <BottomBar className="-mx-4 px-4">
@@ -97,7 +113,7 @@ export function ExploreScreen(props: ExploreScreenProps) {
             {finishLabel(props)}
           </PrimaryCTA>
           {remaining === 0 && safeCount > 0 && onSafeHunt ? (
-            <PrimaryCTA size="md" variant="paper" disabled={busy} onClick={onSafeHunt}>
+            <PrimaryCTA size="md" variant="paper" disabled={busy || Boolean(pending)} onClick={onSafeHunt}>
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
               あんぜんの くふうも さがす（{safeCount}）
             </PrimaryCTA>
@@ -132,8 +148,9 @@ function OutOfMagnifiers() {
       className="absolute inset-0 z-10 grid place-items-center p-4"
       style={{ background: "rgba(38,65,59,.55)", pointerEvents: "none" }}
     >
+      {/* 読み上げはキャンバスの常設 role=status が行う(この案内は写真の role=button の中にあるため) */}
       <div
-        aria-live="polite"
+        aria-hidden="true"
         className="flex max-w-[300px] flex-col items-center gap-2 rounded-[20px] px-5 py-4 text-center"
         style={{ background: C.card, boxShadow: tokens.shadow.card }}
       >
@@ -142,7 +159,7 @@ function OutOfMagnifiers() {
           むしめがねを ぜんぶ つかったよ！
         </p>
         <p className="text-[13px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
-          こたえあわせで、どこが あぶないか いっしょに 見てみよう。
+          <RubyText text="こたえあわせで、どこが あぶないか いっしょに 見てみよう。" />
         </p>
       </div>
     </motion.div>

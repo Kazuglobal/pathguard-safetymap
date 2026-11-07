@@ -92,10 +92,10 @@ function starCount(matches: number, total: number, accuracy?: number): number {
   return 0
 }
 
-/** 虫めがねが残ったことをほめる(よく見てからタップできた)。 */
-function magnifierPraise(left: number | null | undefined): string | null {
-  if (typeof left !== "number" || left <= 0) return null
-  return `むしめがねが ${left}こ のこったよ。よく 見てから さがせたね！`
+/** 虫めがねが残ったことをほめる(よく見てからタップできた)。1 つも見つけていなければ ほめない。 */
+function magnifierPraise(left: number | null | undefined, matches: number): string | null {
+  if (typeof left !== "number" || left <= 0 || matches <= 0) return null
+  return `むしめがねが ${left}こ のこったよ。よく みてから さがせたね！`
 }
 
 interface Badge {
@@ -157,7 +157,7 @@ export function ResultCard(props: ResultCardProps) {
 
   const foundSet = React.useMemo(() => new Set(foundIds), [foundIds])
   const understoodSet = React.useMemo(() => new Set(understoodIds), [understoodIds])
-  const praise = magnifierPraise(magnifiersLeft)
+  const praise = magnifierPraise(magnifiersLeft, matches)
   const foundHazards = React.useMemo(
     () => hazards.filter((h) => foundSet.has(h.id)),
     [hazards, foundSet],
@@ -374,13 +374,21 @@ export function ResultCard(props: ResultCardProps) {
                         {toKana(h.accidentLink)}
                       </span>
                     ) : null}
+                    {understoodSet.has(h.id) ? (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[12px] font-black text-white"
+                        style={{ background: C.primaryStrong }}
+                      >
+                        りゆうも わかった
+                      </span>
+                    ) : null}
                     <span
                       className="ml-auto shrink-0"
                       aria-label={understoodSet.has(h.id) ? "りゆうも わかった" : "みつけた"}
                     >
                       <StampSeal
-                        size={38}
-                        label={understoodSet.has(h.id) ? "わかった" : "OK"}
+                        size={44}
+                        label={understoodSet.has(h.id) ? "◎" : "○"}
                         tone={understoodSet.has(h.id) ? "green" : "accent"}
                       />
                     </span>
@@ -437,7 +445,7 @@ export function ResultCard(props: ResultCardProps) {
         {onReveal && (
           <PrimaryCTA onClick={onReveal} variant="green">
             <Eye className="h-5 w-5" aria-hidden="true" />
-            こたえあわせを もういちど 見る
+            こたえあわせを もういちど みる
           </PrimaryCTA>
         )}
         <PrimaryCTA onClick={onRetry}>

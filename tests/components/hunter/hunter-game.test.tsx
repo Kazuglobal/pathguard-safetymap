@@ -171,7 +171,7 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     expect(body.photoId).toBeUndefined()
 
     // けっかから こたえあわせを もういちど見て、けっかに もどれる
-    fireEvent.click(screen.getByRole("button", { name: /こたえあわせを もういちど 見る/ }))
+    fireEvent.click(screen.getByRole("button", { name: /こたえあわせを もういちど/ }))
     fireEvent.click(await screen.findByRole("button", { name: "けっかに もどる" }))
     await screen.findByText("+5pt")
 

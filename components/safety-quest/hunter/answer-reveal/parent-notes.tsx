@@ -6,10 +6,15 @@
 //  - AI が写真から読みとった根拠・危険の度合い・近くの事故を出す。AI の見立ては目安と明記する。
 // =============================================
 
-import { ACCIDENT_IMAGE_CONTEXT_PARAMS } from "@/lib/accident-stats-year-window"
+import {
+  ACCIDENT_IMAGE_CONTEXT_PARAMS,
+  accidentYearWindow,
+  formatAccidentYearWindow,
+} from "@/lib/accident-stats-year-window"
 import type { RevealItem } from "@/lib/hunter/reveal"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
 
+import { RubyText } from "../ruby-text"
 import { tokens } from "../theme"
 import { SEVERITY_PARENT_LABEL } from "./reveal-status"
 
@@ -35,17 +40,25 @@ export function ParentToggle({ on, onChange }: { on: boolean; onChange: (next: b
           style={{ left: on ? 21 : 3, boxShadow: tokens.shadow.soft }}
         />
       </span>
-      おうちの人むけ くわしく
+      <RubyText text="おうちの人むけ くわしく" />
     </button>
   )
 }
 
-/** 近くの事故の件数(ピン周辺の集計。写真の道そのものの件数のように見せない)。 */
-function accidentLine(accident: HunterAccidentSummary | null): string | null {
+/**
+ * 近くの事故の件数。範囲(半径)と期間を必ず添え、写真の道そのものの件数のように見せない。
+ * 0 件は「安全」と読まれないよう、保証ではないと書く。
+ */
+export function accidentLine(accident: HunterAccidentSummary | null): string | null {
   if (!accident || !accident.hasData) return null
+  const { radiusMeters, years } = ACCIDENT_IMAGE_CONTEXT_PARAMS
+  const scope = `ピンから半径${radiusMeters}m以内・${formatAccidentYearWindow(accidentYearWindow(years))}の${years}年間`
+  if (accident.totalAccidents <= 0) {
+    return `${scope}に記録された事故はありませんでした。事故が起きないという保証ではありません。`
+  }
   const child = accident.childInvolved > 0 ? `(うち子どもが関わる事故 ${accident.childInvolved}件)` : ""
   const top = accident.topAccidentType ? `。多いのは「${accident.topAccidentType}」` : ""
-  return `ピンから半径${ACCIDENT_IMAGE_CONTEXT_PARAMS.radiusMeters}m以内で ${accident.totalAccidents}件${child}${top}。この写真の道で起きたとは限りません。`
+  return `${scope}に記録された事故 ${accident.totalAccidents}件${child}${top}。この写真の道で起きたとは限りません。`
 }
 
 export function ParentDetail({ item, accident }: { item: RevealItem; accident: HunterAccidentSummary | null }) {

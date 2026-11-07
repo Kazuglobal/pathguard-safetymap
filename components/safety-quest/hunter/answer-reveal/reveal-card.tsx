@@ -5,7 +5,7 @@
 //  まえ/つぎ ボタン(48px)と、横スワイプでめくる。番号は写真のマーカーと同じ。
 // =============================================
 
-import { useRef, type ReactNode } from "react"
+import { useRef, type ReactNode, type RefObject } from "react"
 import { ChevronLeft, ChevronRight, HelpCircle, Lightbulb, ShieldCheck } from "lucide-react"
 
 import type { RevealItem } from "@/lib/hunter/reveal"
@@ -34,6 +34,7 @@ export function RevealCard({
   onNext,
   parentMode,
   accident,
+  headingRef,
 }: {
   item: RevealItem
   index: number
@@ -42,6 +43,8 @@ export function RevealCard({
   onNext: () => void
   parentMode: boolean
   accident: HunterAccidentSummary | null
+  /** めくったら見出しへフォーカスを移す(キーボード・読み上げで先頭からたどり直さないように)。 */
+  headingRef?: RefObject<HTMLHeadingElement | null>
 }) {
   const startX = useRef<number | null>(null)
   const style = STATUS_STYLE[item.status]
@@ -66,16 +69,21 @@ export function RevealCard({
           <span
             aria-hidden="true"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[16px] font-black"
-            style={{ background: style.bg, color: style.fg, border: `2.5px solid ${item.status === "missed" ? C.sunDeep : "#fff"}`, boxShadow: tokens.shadow.soft }}
+            style={{ background: style.bg, color: style.fg, border: `2.5px solid ${style.border}`, boxShadow: tokens.shadow.soft }}
           >
             {item.number}
           </span>
-          <h3 className="min-w-0 flex-1 text-[16.5px] font-black leading-snug" style={{ color: C.ink }}>
+          <h3
+            ref={headingRef}
+            tabIndex={-1}
+            className="min-w-0 flex-1 text-[16.5px] font-black leading-snug outline-none"
+            style={{ color: C.ink }}
+          >
             <RubyText text={item.hazard.type} />
           </h3>
           <span
             className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-black"
-            style={{ background: style.bg, color: style.fg, border: item.status === "missed" ? `2px solid ${C.sunDeep}` : undefined }}
+            style={{ background: style.bg, color: style.fg, border: `2px solid ${style.border === "#FFFFFF" ? style.bg : style.border}` }}
           >
             {style.label}
           </span>
@@ -142,12 +150,15 @@ function NavButton({
   onClick: () => void
   children: ReactNode
 }) {
+  // 端では disabled にせず aria-disabled にする(押した直後にフォーカスが消えないように)
   return (
     <button
       type="button"
       aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
+      aria-disabled={disabled || undefined}
+      onClick={() => {
+        if (!disabled) onClick()
+      }}
       className={`inline-flex min-h-[48px] min-w-[88px] touch-manipulation items-center justify-center gap-1 rounded-full border-2 bg-white px-4 text-[14px] font-black ${tokens.cls.focus}`}
       style={{
         borderColor: "rgba(67,57,43,.16)",

@@ -50,12 +50,10 @@ export function ExploreHintOverlay({
   }
 
   const anchor = toContainerPct(anchorOf(target), contain, box)
+  // 位置合わせは外側の div、脈打ちは内側(framer の scale が中央寄せの transform を上書きしないように)
   return (
-    <motion.div
+    <div
       aria-hidden="true"
-      initial={{ opacity: 0 }}
-      animate={reduce ? { opacity: 0.5 } : { opacity: [0.15, 0.55, 0.15], scale: [0.9, 1.12, 0.9] }}
-      transition={reduce ? { duration: 0.3 } : { duration: 1.8, repeat: Infinity }}
       style={{
         position: "absolute",
         left: `${anchor.leftPct}%`,
@@ -63,11 +61,21 @@ export function ExploreHintOverlay({
         width: 88,
         height: 88,
         transform: "translate(-50%, -50%)",
-        borderRadius: "50%",
-        background: `radial-gradient(circle, ${C.sun}72 0%, transparent 70%)`,
         zIndex: 2,
         pointerEvents: "none",
       }}
-    />
+    >
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={reduce ? { opacity: 0.5 } : { opacity: [0.15, 0.55, 0.15], scale: [0.9, 1.12, 0.9] }}
+        transition={reduce ? { duration: 0.3 } : { duration: 1.8, repeat: Infinity }}
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${C.sun}72 0%, transparent 70%)`,
+        }}
+      />
+    </div>
   )
 }

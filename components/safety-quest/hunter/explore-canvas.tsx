@@ -60,6 +60,8 @@ const ANNOUNCE: Record<FeedbackKind, string> = {
   again: "そこは もう みつけたよ！",
 }
 
+const LOCKED_ANNOUNCE = "むしめがねを ぜんぶ つかったよ！こたえあわせを しよう。"
+
 const DIRECTION_JP: Record<HunterDirection, string> = {
   up: "うえ",
   down: "した",
@@ -159,7 +161,9 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
   }, [hintLevel, remaining, paused, locked, lastTap, hazards, foundSet])
 
   // スクリーンリーダー向けの読み上げ要約(温度+方向、または発見)。
+  // この領域は写真(role=button)の外にあるので、おしまいの案内もここで読み上げる。
   const announcement = useMemo(() => {
+    if (locked) return LOCKED_ANNOUNCE
     if (!feedback) return ""
     if (feedback.kind === "hit") return ANNOUNCE.hit
     if (hintLevel >= 1 && feedbackTemp.t && (feedback.kind === "near" || feedback.kind === "miss")) {
@@ -167,7 +171,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
       return `${TEMPERATURE_LABEL[feedbackTemp.t]}${dir}`
     }
     return ANNOUNCE[feedback.kind]
-  }, [feedback, feedbackTemp, hintLevel])
+  }, [feedback, feedbackTemp, hintLevel, locked])
 
   const emitTap = useCallback(
     (clientX: number, clientY: number) => {
@@ -192,7 +196,9 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
     [emitTap],
   )
 
-  const isHit = feedback?.kind === "hit"
+  // おしまいの後は「つぎは どこかな？」やヒントを出さない(もうタップできないため)
+  const visibleFeedback = locked ? null : feedback
+  const isHit = visibleFeedback?.kind === "hit"
   // 答え待ちの危険はスタンプではなく、ふちどりで見せる
   const stamped = hazards.filter((h) => foundSet.has(h.id) && h.id !== activeHazardId)
 
@@ -264,15 +270,13 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
           <ExploreHintOverlay level={hintLevel} target={hintTarget} contain={contain} box={box} />
           <HitOutline hazard={activeHazard} contain={contain} box={box} tone={activeTone} />
 
-          {/* 発見済みマーカー(スタンプ)は focus の上に押す */}
+          {/* 発見済みマーカー(スタンプ)は focus の上に押す。◎=りゆうも わかった / ○=ばしょを みつけた。
+              位置合わせは外側の div、動きは内側の motion.div(framer の transform に中央寄せを上書きさせない) */}
           {stamped.map((hazard) => {
             const understood = understoodSet.has(hazard.id)
             return (
-              <motion.div
+              <div
                 key={hazard.id}
-                initial={reduce ? { opacity: 0 } : { scale: 2.1, opacity: 0, rotate: 14 }}
-                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1, rotate: -6 }}
-                transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 380, damping: 20 }}
                 aria-label={`みつけた きをつけるところ: ${hazard.type}${understood ? "（りゆうも わかった）" : ""}`}
                 role="img"
                 style={{
@@ -281,15 +285,21 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
                   transform: "translate(-50%, -50%)",
                   zIndex: 3,
                   pointerEvents: "none",
-                  filter: "drop-shadow(0 3px 6px rgba(38,65,59,.4))",
                 }}
               >
-                <StampSeal size={50} label={understood ? "わかった" : "はっけん"} tone={understood ? "green" : "accent"} />
-              </motion.div>
+                <motion.div
+                  initial={reduce ? { opacity: 0 } : { scale: 2.1, opacity: 0, rotate: 14 }}
+                  animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1, rotate: -6 }}
+                  transition={reduce ? { duration: 0.2 } : { type: "spring", stiffness: 380, damping: 20 }}
+                  style={{ filter: "drop-shadow(0 3px 6px rgba(38,65,59,.4))" }}
+                >
+                  <StampSeal size={52} label={understood ? "◎" : "○"} tone={understood ? "green" : "accent"} />
+                </motion.div>
+              </div>
             )
           })}
 
-          <ExploreTapFeedback feedback={feedback} showHint={hintLevel >= 1} allFound={remaining <= 0} />
+          <ExploreTapFeedback feedback={visibleFeedback} showHint={hintLevel >= 1} allFound={remaining <= 0} />
 
           {/* 発見時に よろこぶルペ */}
           <AnimatePresence>

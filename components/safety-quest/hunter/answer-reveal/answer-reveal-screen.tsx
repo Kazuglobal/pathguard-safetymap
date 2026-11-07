@@ -7,7 +7,7 @@
 //  遊ぶ前には出さない(答えが先に分かってしまうため)。
 // =============================================
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { Eye } from "lucide-react"
 
 import { buildRevealItems, countReveal } from "@/lib/hunter/reveal"
@@ -39,16 +39,33 @@ export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
   const counts = countReveal(items)
   const [selected, setSelected] = useState<number | null>(null)
   const [parentMode, setParentMode] = useState(false)
+  const cardHeadingRef = useRef<HTMLHeadingElement>(null)
+  const overviewHeadingRef = useRef<HTMLHeadingElement>(null)
+  // 押したボタンが消える(1ばんから みる / ぜんたいを みる)ので、移った先の見出しへフォーカスを移す
+  const userMoved = useRef(false)
 
-  const go = (next: number) => setSelected(Math.max(0, Math.min(items.length - 1, next)))
+  const go = (next: number) => {
+    userMoved.current = true
+    setSelected(Math.max(0, Math.min(items.length - 1, next)))
+  }
+  const showOverview = () => {
+    userMoved.current = true
+    setSelected(null)
+  }
+
+  useEffect(() => {
+    if (!userMoved.current) return
+    const target = selected === null ? overviewHeadingRef.current : cardHeadingRef.current
+    target?.focus({ preventScroll: true })
+  }, [selected])
 
   return (
     <div className="mx-auto flex w-full max-w-2xl min-h-full flex-col px-4 pt-1">
       <div className="flex flex-1 flex-col gap-3">
         <SpeechBubble mood={counts.missed === 0 ? "wow" : "cheer"}>
           {selected === null
-            ? "こたえあわせだよ！ ばんごうを じゅんばんに 見ていこう。"
-            : "ひかっている ところを よく 見てね。"}
+            ? "こたえあわせだよ！ ばんごうを じゅんばんに みていこう。"
+            : "ひかっている ところを よく みてね。"}
         </SpeechBubble>
 
         <RevealPhoto imageUrl={imageUrl} items={items} selected={selected} onSelect={go} />
@@ -59,7 +76,7 @@ export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
         </div>
 
         {selected === null ? (
-          <Overview total={items.length} onStart={() => go(0)} />
+          <Overview total={items.length} onStart={() => go(0)} headingRef={overviewHeadingRef} />
         ) : (
           <>
             <RevealCard
@@ -70,15 +87,16 @@ export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
               onNext={() => go(selected + 1)}
               parentMode={parentMode}
               accident={accident}
+              headingRef={cardHeadingRef}
             />
             <button
               type="button"
-              onClick={() => setSelected(null)}
+              onClick={showOverview}
               className={`mx-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-[13.5px] font-black ${tokens.cls.focus}`}
               style={{ color: C.primaryStrong }}
             >
               <Eye className="h-4 w-4" aria-hidden="true" />
-              ぜんたいを 見る
+              ぜんたいを みる
             </button>
           </>
         )}
@@ -110,7 +128,7 @@ function Legend({ counts }: { counts: ReturnType<typeof countReveal> }) {
           style={{
             background: STATUS_STYLE[key].bg,
             color: STATUS_STYLE[key].fg,
-            border: key === "missed" ? `2px solid ${C.sunDeep}` : undefined,
+            border: `2px solid ${key === "understood" ? STATUS_STYLE[key].bg : STATUS_STYLE[key].border}`,
           }}
         >
           {STATUS_STYLE[key].label} {n}
@@ -120,18 +138,26 @@ function Legend({ counts }: { counts: ReturnType<typeof countReveal> }) {
   )
 }
 
-function Overview({ total, onStart }: { total: number; onStart: () => void }) {
+function Overview({
+  total,
+  onStart,
+  headingRef,
+}: {
+  total: number
+  onStart: () => void
+  headingRef: RefObject<HTMLHeadingElement | null>
+}) {
   return (
     <PaperPanel tone="sun" className="px-4 py-4">
-      <p className="text-[15px] font-black leading-relaxed" style={{ color: C.ink }}>
+      <h3 ref={headingRef} tabIndex={-1} className="text-[15px] font-black leading-relaxed outline-none" style={{ color: C.ink }}>
         <RubyText text={`この 写真には 気をつけたい ところが ${total}こ あったよ。`} />
-      </p>
+      </h3>
       <p className="mt-1 text-[13px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
         <RubyText text="写真の ばんごうを タップしても 見られるよ。" />
       </p>
       <div className="mt-3">
         <PrimaryCTA size="md" variant="green" onClick={onStart}>
-          1ばんから 見る
+          1ばんから みる
         </PrimaryCTA>
       </div>
     </PaperPanel>

@@ -21,13 +21,15 @@ describe("hunter session client", () => {
       score: 250, matches: 2, total: 3, comboMax: 2, pointsAwarded: 5, persistError: false,
       missionsCompleted: [{ title: "写真ゲーム初回", rewardPoints: 50 }],
       // 旧ルールの応答: 理由は問わないので understood=matches、達成度=みつけた割合、虫めがねなし
-      understood: 2, accuracy: 67, rules: 1, magnifiersLeft: null, discoveries: [],
+      understood: 2, accuracy: 67, rules: 1, magnifiersLeft: null, discoveries: null,
     })
     expect(toSessionSummary({ score: 100, correct: 1, total: 1 }, 4)).toMatchObject({ matches: 1, total: 1, pointsAwarded: 0 })
     expect(toSessionSummary(null, 4)).toEqual({
       score: 0, matches: 0, total: 4, comboMax: 0, pointsAwarded: 0, persistError: false, missionsCompleted: [],
-      understood: 0, accuracy: 0, rules: 1, magnifiersLeft: null, discoveries: [],
+      understood: 0, accuracy: 0, rules: 1, magnifiersLeft: null, discoveries: null,
     })
+    // 0 件の発見は「無い」ではなく 0 件として返す(画面側の数え方へ切り替えさせない)
+    expect(toSessionSummary({ rules: 2, matches: 0, total: 2, discoveries: [] }, 2).discoveries).toEqual([])
   })
 
   it("maps the rules-2 explore body: understood, accuracy, magnifiers left and server discoveries", () => {

@@ -102,7 +102,8 @@ export const KID_COPY_BY_KIND: Readonly<
 export const KID_REASON_BY_KIND: Readonly<Record<HunterDangerKind, string | null>> = {
   blind_corner: "角の むこうが 見えない から",
   popout_spot: "かげから 人が 飛び出す から",
-  crossing_no_signal: "信号が なくて 車が 来る から",
+  // 「来る」は辞書の「来: こ」で「こる」と読まれてしまうので ひらがなで書く
+  crossing_no_signal: "信号が なくて 車が くる から",
   turning_car: "車が 曲がって くる から",
   narrow_sidewalk: "歩道が せまくて 車が 近い から",
   parked_car_shadow: "止まった 車で まわりが 見えない から",

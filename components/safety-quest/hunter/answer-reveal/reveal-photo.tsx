@@ -21,6 +21,9 @@ import { useContainerBox } from "../use-container-box"
 import { STATUS_STYLE } from "./reveal-status"
 
 const C = tokens.color
+/** 写真の層のズームと、それを打ち消すマーカー・枠線を同じ速さで動かす。 */
+const ZOOM_EASE = "480ms cubic-bezier(.22,1,.36,1)"
+const ZOOM_TRANSITION = `transform ${ZOOM_EASE}`
 
 function pct(region: HunterRegion) {
   return {
@@ -78,7 +81,7 @@ export function RevealPhoto({
               inset: 0,
               transformOrigin: "0 0",
               transform: `translate(${zoom.tx * 100}%, ${zoom.ty * 100}%) scale(${zoom.scale})`,
-              transition: reduce ? "none" : "transform 480ms cubic-bezier(.22,1,.36,1)",
+              transition: reduce ? "none" : ZOOM_TRANSITION,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -109,7 +112,7 @@ export function RevealPhoto({
                     border: `${(isCurrent ? 3 : 2) / zoom.scale}px ${item.status === "missed" ? "dashed" : "solid"} ${line}`,
                     boxShadow: isCurrent ? "0 0 0 9999px rgba(20,32,29,.58)" : undefined,
                     background: isCurrent ? "transparent" : `${line}1f`,
-                    transition: reduce ? "none" : "box-shadow 300ms ease",
+                    transition: reduce ? "none" : `box-shadow 300ms ease, border-width ${ZOOM_EASE}`,
                     pointerEvents: "none",
                   }}
                 />
@@ -123,6 +126,7 @@ export function RevealPhoto({
                 active={selected === i}
                 dimmed={selected !== null && selected !== i}
                 scale={zoom.scale}
+                reduce={Boolean(reduce)}
                 onClick={() => onSelect(i)}
               />
             ))}
@@ -138,12 +142,14 @@ function RevealMarker({
   active,
   dimmed,
   scale,
+  reduce,
   onClick,
 }: {
   item: RevealItem
   active: boolean
   dimmed: boolean
   scale: number
+  reduce: boolean
   onClick: () => void
 }) {
   const style = STATUS_STYLE[item.status]
@@ -159,16 +165,17 @@ function RevealMarker({
         position: "absolute",
         left: `${anchor.x * 100}%`,
         top: `${anchor.y * 100}%`,
-        // ズームしてもマーカーの大きさは変えない(拡大を打ち消す)
+        // ズームしてもマーカーの大きさは変えない(拡大を打ち消す)。親と同じ速さで動かし、途中で跳ねないようにする
         transform: `translate(-50%, -50%) scale(${(active ? 1.15 : 1) / scale})`,
-        width: 40,
-        height: 40,
+        transition: reduce ? "none" : ZOOM_TRANSITION,
+        width: 44,
+        height: 44,
         borderRadius: "50%",
         background: style.bg,
         color: style.fg,
-        border: `3px solid ${item.status === "missed" ? C.sunDeep : "#FFFFFF"}`,
+        border: `3px solid ${style.border}`,
         boxShadow: active ? `0 0 0 4px ${C.sun}, ${tokens.shadow.card}` : tokens.shadow.card,
-        fontSize: 17,
+        fontSize: 18,
         fontWeight: 900,
         opacity: dimmed ? 0.55 : 1,
         zIndex: active ? 3 : 2,

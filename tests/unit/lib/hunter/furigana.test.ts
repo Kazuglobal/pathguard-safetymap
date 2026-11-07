@@ -84,6 +84,21 @@ describe("kid-facing vocabulary furigana coverage", () => {
     }
   })
 
+  it("reads every reason with the right furigana (no 来る→こる style misreadings)", () => {
+    const read = (text: string) => splitFurigana(text).map((tk) => tk.r ?? tk.t).join("")
+    expect(Object.fromEntries(KID_DANGER_KINDS.map((k) => [k, KID_REASON_BY_KIND[k] && read(KID_REASON_BY_KIND[k]!)]))).toEqual({
+      blind_corner: "かどの むこうが みえない から",
+      popout_spot: "かげから ひとが とびだす から",
+      crossing_no_signal: "しんごうが なくて くるまが くる から",
+      turning_car: "くるまが まがって くる から",
+      narrow_sidewalk: "ほどうが せまくて くるまが ちかい から",
+      parked_car_shadow: "とまった くるまで まわりが みえない から",
+      falling_object: "うえから ものが おちて くる から",
+      flood_dip: "みずが たまって すべる から",
+      other: null,
+    })
+  })
+
   it("covers every kanji in GUIDE_COPY_BY_REASON", () => {
     for (const text of Object.values(GUIDE_COPY_BY_REASON)) {
       expect(uncoveredKanji(text)).toEqual([])

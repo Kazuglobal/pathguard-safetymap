@@ -78,9 +78,25 @@ describe("ExploreScreen — 場所 + 理由の2段階", () => {
         lastReason={{ hazardId: "s-0", reason: "flood_dip", correct: false }}
       />,
     )
-    expect(screen.getByText(/おしい！ ほんとうは/)).toBeInTheDocument()
+    // 見える文と、常設の読み上げ領域の両方で正しい理由を伝える(責めない)
+    expect(screen.getAllByText(/おしい！ ほんとうは/)).toHaveLength(2)
+    expect(screen.getByText("おしい！ ほんとうは「角の むこうが 見えない から」だよ。")).toHaveAttribute("aria-live", "polite")
     expect(screen.getByText(corner.kidExplanation)).toBeInTheDocument()
     expect(screen.getByText(/つぎに すること/)).toBeInTheDocument()
+    // 学びの見出しへフォーカスが移る(答えたあと先頭からたどり直さない)
+    expect(document.activeElement?.tagName).toBe("H3")
+  })
+
+  it("moves focus to the first reason choice when the question appears", () => {
+    const choices = buildReasonChoices(corner, [corner])!
+    render(<ExploreScreen {...base} hazards={[corner]} foundIds={["s-0"]} remaining={0} pending={{ hazard: corner, choices }} />)
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: choices[0].label }))
+  })
+
+  it("locks the photo while the score is being sent (late taps would not be counted)", () => {
+    render(<ExploreScreen {...base} hazards={[corner]} remaining={1} busy />)
+    expect(screen.getByLabelText("しゃしんの上を タップして、きけんを さがそう")).toHaveAttribute("aria-disabled", "true")
+    expect(screen.getByText("まとめているよ…").closest("button")).toBeDisabled()
   })
 
   it("shows the magnifier meter and the out-of-magnifiers overlay", () => {
