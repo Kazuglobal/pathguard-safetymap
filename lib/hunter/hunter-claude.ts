@@ -20,7 +20,7 @@ import {
 /** Claude 1 コールの上限。失敗したら Gemini を 1 回(20 秒)試しても、ルートの 60 秒に収まるように。 */
 export const CLAUDE_HUNTER_TIMEOUT_MS = 30_000
 /** 危険 4 つ + クイズ + 安全の工夫の JSON が収まる量。 */
-const CLAUDE_HUNTER_MAX_TOKENS = 8000
+export const CLAUDE_HUNTER_MAX_TOKENS = 8000
 
 export interface ClaudeHunterImage {
   readonly base64: string

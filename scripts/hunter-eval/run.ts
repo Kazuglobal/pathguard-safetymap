@@ -1,9 +1,10 @@
 // =============================================
-// きけんハンター AI 評価: 旧形式(region)と box_2d の比較を実写真で回す
+// きけんハンター AI 評価: 旧形式(region)・box_2d(Gemini)・Claude(ピクセル座標)の比較を実写真で回す
 //
-// 使い方(写真フォルダを指定して実行する。Gemini を写真 1 枚 × 形式ごとに 1 回呼ぶ):
+// 使い方(写真フォルダを指定して実行する。写真 1 枚 × 形式ごとに 1 回呼ぶ):
 //   npx tsx --env-file=.env.local scripts/hunter-eval/run.ts --dir "C:\写真のフォルダ"
-//   npx tsx --env-file=.env.local scripts/hunter-eval/run.ts --dir "C:\写真のフォルダ" --variants box2d --limit 5
+//   npx tsx --env-file=.env.local scripts/hunter-eval/run.ts --dir "C:\写真のフォルダ" --variants box2d,claude --limit 5
+// claude は ANTHROPIC_API_KEY が要る(アプリと同じモデル・同じピクセル座標のプロンプトで呼ぶ)。
 // 保存済みの応答を数え直すだけ(API 代 0):
 //   npx tsx scripts/hunter-eval/run.ts --offline .tmp/hunter-eval/<実行フォルダ>
 //
@@ -19,7 +20,10 @@ import { pathToFileURL } from "url"
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { REALTIME_VISION_DEFAULT_MODEL } from "@/lib/gemini-util"
 import { buildHunterGenerationConfig, type HunterCoordFormat } from "@/lib/hunter/ai-request-schema"
+import { callClaudeVision } from "@/lib/claude-vision"
 import { buildHunterPrompt } from "@/lib/hunter/hunter-ai"
+import { CLAUDE_HUNTER_MAX_TOKENS, CLAUDE_HUNTER_TIMEOUT_MS, prepareClaudeHunterImage } from "@/lib/hunter/hunter-claude"
+import type { ImageSize } from "@/lib/vision/image-size"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
 
 import { evaluateRaw, renderReport, summarize, type PhotoMetrics } from "./evaluate"
@@ -36,6 +40,10 @@ const NO_ACCIDENT: HunterAccidentSummary = {
   peakTimeSlot: null,
   kidMessage: "",
 }
+
+/** region・box2d は Gemini、claude は Claude(ピクセル座標)。 */
+type Variant = HunterCoordFormat | "claude"
+const VARIANTS: readonly Variant[] = ["region", "box2d", "claude"]
 
 const MIME: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" }
 
@@ -54,25 +62,57 @@ function listPhotos(dir: string): string[] {
 
 /** エラーから HTTP の状態コードだけを取り出す(本文や URL は出さない)。 */
 function statusOf(err: unknown): string {
+  const status = (err as { status?: unknown })?.status
+  if (typeof status === "number") return `HTTP ${status}`
   const msg = err instanceof Error ? err.message : ""
   const m = msg.match(/failed:\s*(\d{3})/)
   if (m) return `HTTP ${m[1]}`
   return err instanceof Error ? err.name : "error"
 }
 
-async function callOnce(file: string, format: HunterCoordFormat): Promise<string | null> {
+interface RawAnswer {
+  readonly text: string | null
+  /** Claude の座標の基準(Claude が見た縮小後の大きさ)。Gemini では無い。 */
+  readonly pixelSize?: ImageSize
+}
+
+async function callClaude(dataUrl: string, label: string): Promise<RawAnswer> {
+  const image = prepareClaudeHunterImage(dataUrl)
+  if (!image) {
+    process.stdout.write(`  ${label} 飛ばしました: ANTHROPIC_API_KEY が無いか、画像の大きさを読めません\n`)
+    return { text: null }
+  }
+  const text = await callClaudeVision({
+    base64: image.base64,
+    mediaType: image.mediaType,
+    prompt: buildHunterPrompt(undefined, NO_ACCIDENT, { pixels: image.pixelSize }),
+    maxTokens: CLAUDE_HUNTER_MAX_TOKENS,
+    timeoutMs: CLAUDE_HUNTER_TIMEOUT_MS,
+  })
+  return { text, pixelSize: image.pixelSize }
+}
+
+async function callOnce(file: string, variant: Variant): Promise<RawAnswer> {
   const dataUrl = `data:${MIME[path.extname(file).toLowerCase()]};base64,${fs.readFileSync(file).toString("base64")}`
+  const label = `${path.basename(file)} [${variant}]`
   try {
-    return await callGeminiVision(
+    if (variant === "claude") return await callClaude(dataUrl, label)
+    const text = await callGeminiVision(
       dataUrl,
-      buildHunterPrompt(undefined, NO_ACCIDENT, format),
-      buildHunterGenerationConfig(format),
+      buildHunterPrompt(undefined, NO_ACCIDENT, variant),
+      buildHunterGenerationConfig(variant),
       REALTIME_VISION_DEFAULT_MODEL,
     )
+    return { text }
   } catch (err) {
-    process.stdout.write(`  ${path.basename(file)} [${format}] 失敗: ${statusOf(err)}\n`)
-    return null
+    process.stdout.write(`  ${label} 失敗: ${statusOf(err)}\n`)
+    return { text: null }
   }
+}
+
+function readPixelSize(runDir: string, name: string, variant: string): ImageSize | undefined {
+  const sizePath = path.join(runDir, "raw", `${name}.${variant}.size.json`)
+  return fs.existsSync(sizePath) ? (JSON.parse(fs.readFileSync(sizePath, "utf8")) as ImageSize) : undefined
 }
 
 function photoEntries(runDir: string, variants: readonly string[], files: readonly string[]) {
@@ -81,7 +121,7 @@ function photoEntries(runDir: string, variants: readonly string[], files: readon
     const byVariant: Record<string, PhotoMetrics> = {}
     for (const v of variants) {
       const rawPath = path.join(runDir, "raw", `${name}.${v}.txt`)
-      if (fs.existsSync(rawPath)) byVariant[v] = evaluateRaw(fs.readFileSync(rawPath, "utf8") || null)
+      if (fs.existsSync(rawPath)) byVariant[v] = evaluateRaw(fs.readFileSync(rawPath, "utf8") || null, readPixelSize(runDir, name, v))
     }
     return { name, fileUrl: pathToFileURL(sources[name] ?? name).href, byVariant }
   })
@@ -106,7 +146,7 @@ function writeReport(runDir: string, variants: readonly string[]) {
 }
 
 async function main() {
-  const variants = (arg("variants") ?? "region,box2d").split(",").filter((v): v is HunterCoordFormat => v === "region" || v === "box2d")
+  const variants = (arg("variants") ?? "region,box2d").split(",").filter((v): v is Variant => VARIANTS.includes(v as Variant))
   const offline = arg("offline")
   if (offline) return writeReport(path.resolve(offline), variants)
 
@@ -120,10 +160,14 @@ async function main() {
   fs.writeFileSync(path.join(runDir, "sources.json"), JSON.stringify(sources, null, 2))
 
   for (const file of files) {
-    for (const format of variants) {
-      process.stdout.write(`${path.basename(file)} [${format}]\n`)
-      const text = await callOnce(file, format)
-      fs.writeFileSync(path.join(runDir, "raw", `${path.basename(file)}.${format}.txt`), text ?? "")
+    for (const variant of variants) {
+      const name = path.basename(file)
+      process.stdout.write(`${name} [${variant}]\n`)
+      const answer = await callOnce(file, variant)
+      fs.writeFileSync(path.join(runDir, "raw", `${name}.${variant}.txt`), answer.text ?? "")
+      if (answer.pixelSize) {
+        fs.writeFileSync(path.join(runDir, "raw", `${name}.${variant}.size.json`), JSON.stringify(answer.pixelSize))
+      }
     }
   }
   writeReport(runDir, variants)

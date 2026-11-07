@@ -1,6 +1,6 @@
 // =============================================
 // きけんハンター AI 評価: 生の応答 → 指標 + HTML レポート (純粋ロジック)
-// run.ts が保存した Gemini の生の応答を、アプリと同じ後処理(validate → sanitize)に通して測る。
+// run.ts が保存した Gemini・Claude の生の応答を、アプリと同じ後処理(validate → sanitize)に通して測る。
 //  - 旧ルールの当たり面積(表示枠 + 指先補正の和集合)= 適当なタップが当たる確率
 //  - 新ルールの当たり面積(当たり枠 + 指先補正の和集合)
 //  - focus が返ってきた割合・枠の中にあった割合
@@ -11,6 +11,7 @@ import { validateHunterResponse } from "@/lib/hunter/ai-schema"
 import { effectiveCoverage } from "@/lib/hunter/hit-zone"
 import { sanitizeDangerPoints } from "@/lib/hunter/sanitize"
 import type { HunterHazard } from "@/lib/hunter/types"
+import type { ImageSize } from "@/lib/vision/image-size"
 
 export interface PhotoMetrics {
   readonly parsed: boolean
@@ -26,12 +27,13 @@ export interface PhotoMetrics {
   readonly hazardList: readonly HunterHazard[]
 }
 
-export function evaluateRaw(text: string | null): PhotoMetrics {
+/** pixelSize は Claude の応答(ピクセル座標)を読むときだけ渡す。アプリと同じ基準で正規化する。 */
+export function evaluateRaw(text: string | null, pixelSize?: ImageSize): PhotoMetrics {
   const empty = { rawPoints: 0, hazards: 0, legacyCoverage: 0, hitCoverage: 0, focusProvided: 0, focusInsideBox: 0, hazardList: [] }
   if (!text) return { parsed: false, imageUsable: false, ...empty }
   const extracted = extractHunterJson(text)
   if (!extracted.ok) return { parsed: false, imageUsable: false, ...empty }
-  const validated = validateHunterResponse(extracted.value)
+  const validated = validateHunterResponse(extracted.value, pixelSize ? { pixelSize } : {})
   const { hazards } = sanitizeDangerPoints(validated.dangerPoints, { sessionId: "eval" })
   const withFocus = validated.dangerPoints.filter((p) => p.focus)
   const inside = withFocus.filter((p) => {

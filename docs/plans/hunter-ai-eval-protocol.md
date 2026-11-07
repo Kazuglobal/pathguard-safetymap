@@ -29,6 +29,7 @@
    出力の `.tmp/hunter-eval/<日時>/report.html` で、表示枠(青)・当たり枠(緑)・focus(赤)を写真に重ねて目で見る。
    採用の目安: 読めない応答・危険なしの数が旧形式より増えない、focus が枠の中に 90% 以上、focus が危険の原因の上にある(x と y の入れ違いが無い)。
    保存済みの応答の数え直しは `--offline .tmp/hunter-eval/<日時>`(API 代 0)。
+   Gemini と Claude(アプリが先に使う Haiku 5.5)を比べるときは `--variants box2d,claude`。claude は `.env.local` に `ANTHROPIC_API_KEY` が要る。Claude はピクセル座標で答えるので、Claude が見た縮小後の大きさを `raw/<写真>.claude.size.json` に残し、数え直しでもアプリと同じ基準で正規化する。比べる目安は上と同じ(読めない・危険なし・focus が枠の中・x と y の入れ違い)に加えて、危険の原因の上に枠があるか(的外れ)を写真ごとに見る。
 3. 各写真で `/safety-quest/hunter` を実プレイ(マスク→ピン→解析)。
 4. 下記チェック項目で 1 枚ずつ評価(○/△/×)。
 
