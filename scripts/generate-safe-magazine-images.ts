@@ -46,6 +46,108 @@ Technical specifications:
 // 記事ごとの画像設定（高品質プロンプト）
 const ARTICLE_IMAGES: ImageConfig[] = [
   {
+    articleId: "2026-11-07-bicycle-blue-ticket-six-month-report",
+    articleSlug: "bicycle-blue-ticket-six-month-report",
+    category: "policy-update",
+    title: "自転車青切符 導入半年の運用状況",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a high school student checking their bicycle habits six months after the bicycle traffic ticket rules started.
+
+Scene elements (Japanese specific):
+- A Japanese high school student in a school uniform on a bicycle, both feet down on the ground at a painted stop line of a narrow residential intersection, wearing a properly fastened bicycle helmet
+- The student's smartphone is clearly zipped away inside the school bag hanging on the handlebar, not in the hand - the hands are on the brakes
+- The student turns their head to look right and left at the blind corner
+- Japanese residential street in late autumn, a "とまれ" style stop marking painted on the road surface, a green belt road edge marking, a guardrail, a school zone sign further down the street
+- A small railway crossing with striped barriers visible in the far background
+- Warm late autumn afternoon light, ginkgo leaves turning yellow
+
+Mood: Calm, positive and instructive. The hero elements are the feet down on the ground and the put-away smartphone. Not frightening, no crash, no police officer writing a ticket.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Late autumn amber and warm grey, with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, punitive police enforcement imagery, a phone held in the hand, text overlays
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "violation-share-six-month",
+        prompt: `Create a clean Japanese educational infographic showing the share of four bicycle violation types as a simple horizontal bar chart, using icons and numerals only.
+
+Layout: four horizontal bars stacked vertically, longest at the top, each with a simple pictogram on the left and a numeral with a percent sign on the right.
+
+BAR 1 (longest, highlighted in a strong purple): pictogram of a hand holding a smartphone while riding a bicycle, with a small red diagonal prohibition bar over it. Numeral: 43%
+BAR 2 (second longest, muted purple): pictogram of a bicycle beside a triangular stop marking on the road with a foot touching the ground. Numeral: 35%
+BAR 3 (short, light purple): pictogram of a traffic signal showing a red lamp with a bicycle beside it. Numeral: 9%
+BAR 4 (shortest, light purple): pictogram of a railway crossing with striped barriers and a bicycle. Numeral: 7%
+
+Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric pictograms, purple and amber accent colours, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 43, 35, 9 and 7 with percent signs
+${QUALITY_SUFFIX}`,
+        description: "導入半年間の青切符の違反内訳（ながらスマホ43%・一時不停止35%・信号無視9%・踏切立入り7%／暫定値）"
+      },
+      {
+        id: "stop-then-phone",
+        prompt: `Create a clear Japanese educational infographic with two numbered panels side by side, teaching two bicycle habits for a student commuter.
+
+PANEL 1 (numbered 1) - PHONE AFTER STOPPING: a student on a bicycle has pulled over to a safe spot at the edge of the road, both feet on the ground, and only then takes out a smartphone. Beside it, a faded "wrong" ghost version shows the same student riding while looking at a phone, crossed out with a red diagonal prohibition bar.
+PANEL 2 (numbered 2) - FOOT DOWN AT THE STOP LINE: a side view of a bicycle at a painted stop line, with a bold arrow pointing to the rider's foot flat on the ground, and a faded "wrong" ghost version behind it showing the same bicycle rolling slowly through with both feet still on the pedals, crossed out with a red diagonal prohibition bar.
+
+Style: Flat Japanese infographic design on a light background, clear numbered circles 1 and 2, purple and amber accent colours, generic student character with simple non-photographic features, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 1 and 2
+${QUALITY_SUFFIX}`,
+        description: "家庭で決める2つの習慣（スマホは止まってから／一時停止では足を着く）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-11-07-zone30plus-331-districts",
+    articleSlug: "zone30plus-331-districts",
+    category: "policy-update",
+    title: "ゾーン30プラス 整備計画331地区",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a residential school route protected by area-wide speed control measures.
+
+Scene elements (Japanese specific):
+- A Japanese residential neighbourhood street with tile-roofed houses, seen from a slightly raised angle so the whole block reads as one area
+- Japanese elementary school children wearing yellow safety caps and red and black randoseru backpacks, walking in a line on a green belt road edge marking
+- A large numeral 30 painted on the road surface near the entrance of the zone, and a round zone entry sign post at the corner
+- A raised hump across the road a little further on, drawn clearly as a gentle bump with the road surface rising
+- A narrowing of the road made by planted kerb extensions, with a car slowing down as it approaches
+- A guardrail along the footway, a crosswalk, and a school zone sign
+- A crossing guard volunteer with an armband at the far corner
+- Warm late autumn morning light
+
+Mood: Reassuring and constructive - the street itself is doing the protecting. No crash, no injury, no danger depicted.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines, slightly illustrative map-like depth
+Color palette: Warm autumn green and amber, with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, text overlays other than the painted numeral 30
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "zone30plus-devices",
+        prompt: `Create a clean Japanese educational infographic showing the three physical devices used to slow cars in a residential zone, as three numbered panels side by side, each drawn as a simple side or bird's-eye view of a road.
+
+PANEL 1 (numbered 1) - HUMP: a side view cross-section of a road with a gentle raised bump, and a car approaching it with a downward curved arrow indicating the car slowing.
+PANEL 2 (numbered 2) - NARROWING: a bird's-eye view of a straight residential road where planted kerb extensions push in from both sides to narrow the carriageway, with a car threading through slowly.
+PANEL 3 (numbered 3) - COLOURED PAVEMENT AND ZONE ENTRY: a bird's-eye view of a road entrance with a coloured green edge strip along both sides, a large painted numeral 30 on the road surface, and a round sign post at the kerb.
+
+Style: Flat Japanese infographic design on a light neutral background, clear numbered circles 1, 2 and 3, purple and green accent colours, clean geometric shapes, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 1, 2, 3 and the painted 30
+${QUALITY_SUFFIX}`,
+        description: "ゾーン30プラスの物理的な装置（ハンプ／狭さく／カラー舗装と区域の入口）"
+      },
+      {
+        id: "zone-vs-legal-speed",
+        prompt: `Create a clear Japanese educational infographic comparing two different kinds of 30 km/h street, as a left and right split panel with a bold vertical divider.
+
+LEFT PANEL - AREA REGULATION WITH SIGNS: a bird's-eye view of a block of residential streets enclosed by a tinted purple boundary, with a round sign post at each entrance, a large painted numeral 30 on the road surface, a raised hump and a narrowing drawn inside the block. A magnifying glass icon sits over one of the entrance signs, indicating that the boundary is visible.
+
+RIGHT PANEL - NATIONWIDE DEFAULT, NO NEW SIGNS: a bird's-eye view of a plain narrow residential street with no centre line, no sign post and no painted numeral, drawn in neutral grey. An empty sign post silhouette is shown faded and crossed out with a red diagonal prohibition bar, indicating that no new sign is installed. A simple icon of a road with no centre line is placed beside it.
+
+Style: Flat Japanese infographic design on a light background, purple tint on the left and neutral grey on the right, clean geometric shapes, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the painted numeral 30 on the left panel
+${QUALITY_SUFFIX}`,
+        description: "ゾーン30プラス（区域規制・標識あり・装置あり）と生活道路の法定速度30km/h（全国一律・新しい標識は立たない）の違い"
+      }
+    ]
+  },
+  {
     articleId: "2026-09-11-autumn-campaign-bicycle-rules",
     articleSlug: "autumn-campaign-bicycle-rules",
     category: "policy-update",
