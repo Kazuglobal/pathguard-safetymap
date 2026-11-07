@@ -91,6 +91,19 @@ describe('SEC-02 report APIs', () => {
     expect(mocks.create).toHaveBeenCalledOnce()
   })
 
+  it('continues through mandatory D1 checks when the limiter reports Upstash unavailable (not over the limit)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.rate.mockResolvedValue({ success: false, unavailable: true })
+    expect((await POST(request())).status).toBe(201)
+    expect(mocks.create).toHaveBeenCalledOnce()
+  })
+
+  it('still answers 429 when the Redis limit is really exceeded', async () => {
+    mocks.rate.mockResolvedValue({ success: false, reset: Date.now() + 30_000 })
+    expect((await POST(request())).status).toBe(429)
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
   it('returns 503 without notification or awards when D1 fails', async () => {
     mocks.create.mockRejectedValue(new ReportCreateUnavailableError(new Error('offline')))
     expect((await POST(request({ route_context_name: 'School route' }))).status).toBe(503)
