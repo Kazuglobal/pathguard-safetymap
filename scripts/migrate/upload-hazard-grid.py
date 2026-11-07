@@ -45,6 +45,11 @@ class Throttle:
         self.lock = threading.Lock()
         self.next_at = 0.0
 
+    def pause(self, seconds: float) -> None:
+        """Hold every thread back after a rate-limit reply, not just the one that saw it."""
+        with self.lock:
+            self.next_at = max(self.next_at, self.clock() + seconds)
+
     def wait(self) -> None:
         with self.lock:
             now = self.clock()
@@ -106,16 +111,26 @@ def wrangler_token(node: str) -> str:
 
 
 class R2Client:
-    def __init__(self, account: str, bucket: str, token: str):
+    def __init__(self, account: str, bucket: str, token_source, throttle: Throttle | None = None):
         self.base = f'https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets/{bucket}/objects/'
-        self.token = token
-        self.throttle = Throttle(REQUESTS_PER_SECOND)
+        # Wrangler OAuth tokens expire during a multi-hour upload; fetch a fresh one on 401/403.
+        self.token_source = token_source
+        self.token_lock = threading.Lock()
+        self.token = token_source()
+        self.throttle = throttle or Throttle(REQUESTS_PER_SECOND)
+
+    def refresh_token(self, rejected: str) -> None:
+        with self.token_lock:
+            if self.token == rejected:  # another thread may already have refreshed it
+                self.token = self.token_source()
 
     def request(self, method: str, key: str, body: bytes | None = None, missing_ok: bool = False) -> bytes | None:
         last = RETRIES - 1
+        refreshed = False
         for attempt in range(RETRIES):
             self.throttle.wait()
-            headers = {'Authorization': 'Bearer ' + self.token}
+            token = self.token
+            headers = {'Authorization': 'Bearer ' + token}
             if body is not None:
                 headers['Content-Type'] = 'application/json'
             req = urllib.request.Request(self.base + quote(key, safe=''), data=body, method=method, headers=headers)
@@ -125,8 +140,12 @@ class R2Client:
             except urllib.error.HTTPError as error:
                 if missing_ok and error.code == 404:
                     return None
+                if error.code in (401, 403) and not refreshed and attempt < last:
+                    refreshed = True
+                    self.refresh_token(token)
+                    continue
                 if error.code == 429 and attempt < last:
-                    time.sleep(rate_limit_wait(error.headers.get('Retry-After'), attempt))
+                    self.throttle.pause(rate_limit_wait(error.headers.get('Retry-After'), attempt))
                     continue
                 if error.code in (500, 502, 503, 504) and attempt < last:
                     time.sleep(2 ** attempt)
@@ -215,7 +234,7 @@ def main() -> None:
     if not args.remote:
         print(json.dumps(dict(event='verified', remote=False, **summary)), flush=True)
         return
-    client = R2Client(account, bucket, wrangler_token(args.node))
+    client = R2Client(account, bucket, lambda: wrangler_token(args.node))
     result = upload(args.grid, manifest, objects, client)
     (args.grid / 'upload-result.json').write_text(json.dumps(dict(**result, **summary), indent=2), encoding='utf-8')
     print(json.dumps(dict(**result, bucket=bucket)), flush=True)

@@ -47,6 +47,10 @@ class OfficialHazardsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(hazards.urllib.request,'urlopen',return_value=Short(b'PK'*10)):
             with self.assertRaisesRegex(ValueError,'Truncated download'): hazards.download(entry,Path(d))
             self.assertFalse((Path(d)/'raw'/'x.zip').exists())
+        Short.headers={}  # no Content-Length: the short body is caught by the archive test
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(hazards.urllib.request,'urlopen',return_value=Short(b'PK'*10)):
+            with self.assertRaises(Exception): hazards.download(entry,Path(d))
+            self.assertFalse((Path(d)/'raw'/'x.zip').exists())
 
     def test_resume_rejects_changed_classification_even_with_same_id(self):
         import json
@@ -161,6 +165,34 @@ class HazardGridTests(unittest.TestCase):
         self.assertEqual(uploader.rate_limit_wait(None,0),30)
         self.assertEqual(uploader.rate_limit_wait(None,6),uploader.RATE_LIMIT_WAIT_MAX)
         self.assertEqual(uploader.rate_limit_wait('soon',1),60)
+
+    def _client(self,replies,tokens):
+        import io,urllib.error
+        from unittest import mock
+        now=[0.0]; sent=[]
+        def sleep(s): now[0]+=s
+        throttle=uploader.Throttle(3.0,clock=lambda: now[0],sleep=sleep)
+        client=uploader.R2Client('acct','bucket',lambda: tokens.pop(0),throttle=throttle)
+        def urlopen(req,timeout):
+            sent.append((now[0],req.headers['Authorization']))
+            code,retry=replies.pop(0)
+            if code==200: return io.BytesIO(b'ok')
+            raise urllib.error.HTTPError(req.full_url,code,'x',{'Retry-After':retry} if retry else {},None)
+        return client,sent,mock.patch.object(uploader.urllib.request,'urlopen',side_effect=urlopen)
+
+    def test_upload_waits_out_a_rate_limit_for_every_thread(self):
+        client,sent,patch=self._client([(429,'120'),(429,None),(200,None)],['t1'])
+        with patch: self.assertEqual(client.request('PUT','k',b'{}'),b'ok')
+        self.assertEqual([round(t) for t,_ in sent],[0,120,180])  # Retry-After 120, then 30 * 2**1
+        self.assertGreaterEqual(client.throttle.next_at,180)
+
+    def test_upload_refreshes_an_expired_token_once(self):
+        client,sent,patch=self._client([(401,None),(200,None)],['old','new'])
+        with patch: client.request('PUT','k',b'{}')
+        self.assertEqual([auth for _,auth in sent],['Bearer old','Bearer new'])
+        client,sent,patch=self._client([(403,None),(403,None)],['old','new'])
+        with patch, self.assertRaisesRegex(ValueError,'HTTP 403'): client.request('PUT','k',b'{}')
+        self.assertEqual(len(sent),2)
 
     def test_upload_refuses_partial_or_shrinking_grids(self):
         new=dict(complete=True,cellsPerDegree=100,sources=[dict(id='a'),dict(id='b')])

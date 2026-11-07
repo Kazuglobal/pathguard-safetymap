@@ -112,6 +112,9 @@ def download(entry, root):
         # or every later run would keep re-testing the same truncated archive.
         if expected is not None and pending.stat().st_size != int(expected):
             raise ValueError(f'Truncated download: {pending.stat().st_size} of {expected} bytes')
+        # Without Content-Length a short body is not detected above; test the archive before naming it.
+        with zipfile.ZipFile(pending) as z:
+            if z.testzip() is not None: raise ValueError('Archive checksum failed')
         pending.replace(dest)
     with zipfile.ZipFile(dest) as z:
         if z.testzip() is not None: raise ValueError('Archive checksum failed')
