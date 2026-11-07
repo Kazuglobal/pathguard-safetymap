@@ -5,6 +5,7 @@
 // =============================================
 
 import { KID_DANGER_KINDS } from "@/lib/hunter/kid-copy"
+import { HUNTER_SAFE_KINDS } from "@/lib/hunter/safe-kinds"
 import type { GeminiVisionGenerationConfig } from "@/lib/gemini-hazard"
 
 /**
@@ -87,13 +88,15 @@ function buildDangerPointSchema(format: HunterCoordFormat) {
 }
 
 function buildSafePointSchema(format: HunterCoordFormat) {
-  const region = format === "region" ? { region: regionSchema } : { box_2d: intArraySchema }
+  // 安全の工夫も focus のまわりで採点する(あんぜん さがし)。旧形式では focus を求めない。
+  const coords = format === "region" ? { region: regionSchema } : { box_2d: intArraySchema, focus: intArraySchema }
   return {
     type: "OBJECT",
     properties: {
+      safeKind: { type: "STRING", enum: [...HUNTER_SAFE_KINDS] },
       kind: { type: "STRING", enum: [...KID_DANGER_KINDS] },
       kidType: { type: "STRING" },
-      ...region,
+      ...coords,
       whyGood: { type: "STRING" },
     },
   }

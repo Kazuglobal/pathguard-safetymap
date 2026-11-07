@@ -1,7 +1,7 @@
 "use client"
 
 // =============================================
-// こたえあわせ: 1 つの危険のカード(写真のスポットライトと連動)
+// こたえあわせ: 1 つのカード(写真のスポットライトと連動)。危険 / 安全の工夫 で共通。
 //  まえ/つぎ ボタン(48px)と、横スワイプでめくる。番号は写真のマーカーと同じ。
 // =============================================
 
@@ -14,16 +14,18 @@ import type { HunterAccidentSummary } from "@/lib/hunter/types"
 import { RubyText } from "../ruby-text"
 import { PaperPanel, tokens } from "../theme"
 import { ParentDetail } from "./parent-notes"
-import { STATUS_STYLE } from "./reveal-status"
+import { REVEAL_COPY, STATUS_STYLE, type RevealCopy, type RevealVariant } from "./reveal-status"
 
 const C = tokens.color
 /** これ以上 横に動かしたら めくる(px)。 */
 const SWIPE_PX = 56
 
-function statusLine(item: RevealItem): string {
-  if (item.status === "understood") return "ばしょも りゆうも わかったね！"
-  if (item.status === "found") return "ばしょは みつけたね！ りゆうも おぼえよう。"
-  return "ここも きを つけたい ところだよ。つぎは みつけてみよう。"
+const NAV_NOUN: Record<RevealVariant, string> = { danger: "きけん", safe: "くふう" }
+
+function statusLine(item: RevealItem, copy: RevealCopy): string {
+  if (item.status === "understood") return copy.understoodLine
+  if (item.status === "found") return copy.foundLine
+  return copy.missedLine
 }
 
 export function RevealCard({
@@ -35,6 +37,7 @@ export function RevealCard({
   parentMode,
   accident,
   headingRef,
+  variant = "danger",
 }: {
   item: RevealItem
   index: number
@@ -45,9 +48,12 @@ export function RevealCard({
   accident: HunterAccidentSummary | null
   /** めくったら見出しへフォーカスを移す(キーボード・読み上げで先頭からたどり直さないように)。 */
   headingRef?: RefObject<HTMLHeadingElement | null>
+  variant?: RevealVariant
 }) {
   const startX = useRef<number | null>(null)
   const style = STATUS_STYLE[item.status]
+  const copy = REVEAL_COPY[variant]
+  const noun = NAV_NOUN[variant]
 
   return (
     <div
@@ -79,7 +85,7 @@ export function RevealCard({
             className="min-w-0 flex-1 text-[16.5px] font-black leading-snug outline-none"
             style={{ color: C.ink }}
           >
-            <RubyText text={item.hazard.type} />
+            <RubyText text={item.title} />
           </h3>
           <span
             className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-black"
@@ -90,32 +96,34 @@ export function RevealCard({
         </div>
 
         <p className="mt-1.5 text-[13px] font-bold" style={{ color: C.inkSoft }}>
-          {statusLine(item)}
+          {statusLine(item, copy)}
         </p>
 
         {item.reason ? (
-          <Row icon={<HelpCircle className="h-4 w-4" aria-hidden="true" style={{ color: C.accent }} />} title="どうして あぶない？">
+          <Row icon={<HelpCircle className="h-4 w-4" aria-hidden="true" style={{ color: C.accent }} />} title={copy.reasonTitle}>
             <RubyText text={item.reason} />
           </Row>
         ) : null}
         <Row icon={<Lightbulb className="h-4 w-4" aria-hidden="true" style={{ color: C.sunDeep }} />} title="この しゃしんでは">
-          <RubyText text={item.hazard.kidExplanation} />
+          <RubyText text={item.detail} />
         </Row>
-        <Row icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" style={{ color: C.primary }} />} title="つぎに すること">
-          <RubyText text={item.hazard.safeAction} />
-        </Row>
+        {item.action ? (
+          <Row icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" style={{ color: C.primary }} />} title="つぎに すること">
+            <RubyText text={item.action} />
+          </Row>
+        ) : null}
 
         {parentMode ? <ParentDetail item={item} accident={accident} /> : null}
 
         <div className="mt-3.5 flex items-center justify-between gap-2">
-          <NavButton label="まえの きけん" disabled={index <= 0} onClick={onPrev}>
+          <NavButton label={`まえの ${noun}`} disabled={index <= 0} onClick={onPrev}>
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             まえ
           </NavButton>
           <span className="text-[13px] font-black tabular-nums" style={{ color: C.inkSoft }} aria-live="polite">
             {index + 1} / {total}
           </span>
-          <NavButton label="つぎの きけん" disabled={index >= total - 1} onClick={onNext}>
+          <NavButton label={`つぎの ${noun}`} disabled={index >= total - 1} onClick={onNext}>
             つぎ
             <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </NavButton>

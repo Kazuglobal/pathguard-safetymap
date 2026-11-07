@@ -5,8 +5,9 @@
 
 import type { RiskSeverity } from "@/lib/hazard-game-types"
 import type { HunterDangerKind } from "@/lib/hunter/kid-copy"
+import type { HunterSafeKind } from "@/lib/hunter/safe-kinds"
 
-export type { HunterDangerKind }
+export type { HunterDangerKind, HunterSafeKind }
 
 /** 相対座標の矩形 (0..1)。端末サイズ非依存。 */
 export interface HunterRegion {
@@ -82,10 +83,16 @@ export interface HunterSafePoint {
   readonly id: string
   /** 子ども向けの種類ラベル(例: ガードレール) */
   readonly type: string
+  /** 表示用の枠(その工夫が写っている範囲)。 */
   readonly region: HunterRegion
   readonly kind?: HunterDangerKind
   /** なぜ安全か(やさしい日本語) */
   readonly whyGood: string
+  /** 工夫の種類(「どうして あんしん？」の答え合わせ用)。無い旧データは理由を問わない。 */
+  readonly safeKind?: HunterSafeKind
+  /** 採点に使う当たり枠(focus 中心の小さい枠)。無い旧データは region で判定する。 */
+  readonly hitRegion?: HunterRegion
+  readonly focusPoint?: HunterPoint
 }
 
 /** explore=探索 / quiz=クイズ / guide=ガイド(フォールバック)。 */

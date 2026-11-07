@@ -169,6 +169,16 @@ describe("analyzeHunterImage", () => {
     expect(items.required).not.toContain("focus")
   })
 
+  it("safePoints も focus と種類(safeKind)を出させる(あんぜん さがし の当たり枠と理由の3択)", () => {
+    const safe = (buildHunterResponseSchema("box2d").properties as any).safePoints.items
+    expect(Object.keys(safe.properties)).toEqual(expect.arrayContaining(["safeKind", "box_2d", "focus"]))
+    const legacy = (buildHunterResponseSchema("region").properties as any).safePoints.items
+    expect(Object.keys(legacy.properties)).not.toContain("focus")
+    const prompt = buildHunterPrompt(undefined, accident)
+    expect(prompt).toContain("curve_mirror=カーブミラー")
+    expect(prompt).toContain("focus は その工夫そのものの上で")
+  })
+
   it("responseSchema: propertyOrdering と properties のキーが完全に一致する(ずれると Gemini が 400 を返す)", () => {
     for (const format of ["box2d", "region"] as const) {
       const items = (buildHunterResponseSchema(format).properties as any).dangerPoints.items

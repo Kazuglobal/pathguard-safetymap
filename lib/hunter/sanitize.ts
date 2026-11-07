@@ -19,6 +19,7 @@ import type {
   HunterSafePoint,
 } from "@/lib/hunter/types"
 import { fitHitZones } from "@/lib/hunter/hit-zone"
+import { normalizeSafeKind } from "@/lib/hunter/safe-kinds"
 import type { RawAiQuiz, RawDangerPoint, RawSafePoint } from "@/lib/hunter/ai-schema"
 import {
   KID_COPY_BY_KIND,
@@ -296,28 +297,36 @@ export function sanitizeDangerPoints(
 /**
  * 安全ポイント(逆モード)をサニタイズする。
  * - region 必須・最小サイズ膨張は危険ポイントと共通。面積上限のみ MAX_SAFE_AREA(横長対応)。
- * - 英語/空のラベル・説明は検証済みフォールバックへ置換。
+ *   この上限は「表示してよいか」の判定で、採点は危険と同じく focus 中心の小さい当たり枠で行う
+ *   (表示枠のまま採点すると、横長の歩道・ガードレールで写真の大半が当たりになる)。
+ * - 英語/空のラベル・説明は検証済みフォールバックへ置換。種類は safeKind → kidType の順で決める。
  * - 件数は MAX_SAFE_POINTS で打ち切り。
  */
 export function sanitizeSafePoints(
   raw: readonly RawSafePoint[],
   options: SanitizeOptions,
 ): HunterSafePoint[] {
-  const out: HunterSafePoint[] = []
+  const kept: { point: RawSafePoint; region: HunterRegion }[] = []
   for (const point of raw) {
     if (!point.region) continue
     const region = clampRegion(point.region)
     const area = region.w * region.h
     if (area < MIN_AREA || area > MAX_SAFE_AREA) continue
-
-    out.push({
-      id: `${options.sessionId}-safe-${out.length}`,
-      type: safeCopy(point.kidType, SAFE_POINT_FALLBACK.type),
-      region: expandToMin(region, MIN_REGION),
-      kind: point.kind,
-      whyGood: safeCopy(point.whyGood, SAFE_POINT_FALLBACK.whyGood),
-    })
-    if (out.length >= MAX_SAFE_POINTS) break
+    kept.push({ point, region: expandToMin(region, MIN_REGION) })
+    if (kept.length >= MAX_SAFE_POINTS) break
   }
-  return out
+  const zones = fitHitZones(kept.map((k) => ({ region: k.region, focus: safeFocus(k.point.focus) })))
+  return kept.map(({ point, region }, i) => {
+    const type = safeCopy(point.kidType, SAFE_POINT_FALLBACK.type)
+    return {
+      id: `${options.sessionId}-safe-${i}`,
+      type,
+      region,
+      hitRegion: zones[i].hitRegion,
+      focusPoint: zones[i].focusPoint,
+      kind: point.kind,
+      safeKind: normalizeSafeKind(point.safeKind, point.kidType),
+      whyGood: safeCopy(point.whyGood, SAFE_POINT_FALLBACK.whyGood),
+    }
+  })
 }

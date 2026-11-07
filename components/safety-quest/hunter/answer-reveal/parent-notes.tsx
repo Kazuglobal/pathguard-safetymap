@@ -74,14 +74,16 @@ export function ParentDetail({ item, accident }: { item: RevealItem; accident: H
           <dd className="font-bold">{item.evidence}</dd>
         </div>
       ) : null}
-      <div>
-        <dt className="font-black" style={{ color: C.inkSoft }}>危険の度合い(AIの判定)</dt>
-        <dd className="font-bold">{SEVERITY_PARENT_LABEL[item.hazard.severity]}</dd>
-      </div>
-      {item.hazard.accidentLink ? (
+      {item.severity ? (
+        <div>
+          <dt className="font-black" style={{ color: C.inkSoft }}>危険の度合い(AIの判定)</dt>
+          <dd className="font-bold">{SEVERITY_PARENT_LABEL[item.severity]}</dd>
+        </div>
+      ) : null}
+      {item.accidentLink ? (
         <div>
           <dt className="font-black" style={{ color: C.inkSoft }}>関係しそうな事故の型</dt>
-          <dd className="font-bold">{item.hazard.accidentLink}</dd>
+          <dd className="font-bold">{item.accidentLink}</dd>
         </div>
       ) : null}
       {nearby ? (

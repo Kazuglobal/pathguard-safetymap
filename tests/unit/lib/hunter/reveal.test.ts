@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { buildRevealItems, countReveal, focusTransform, REVEAL_MAX_SCALE } from "@/lib/hunter/reveal"
+import { buildRevealItems, buildSafeRevealItems, countReveal, focusTransform, REVEAL_MAX_SCALE } from "@/lib/hunter/reveal"
 import { KID_REASON_BY_KIND } from "@/lib/hunter/kid-copy"
-import type { HunterHazard } from "@/lib/hunter/types"
+import { KID_SAFE_REASON_BY_KIND } from "@/lib/hunter/safe-kinds"
+import type { HunterHazard, HunterSafePoint } from "@/lib/hunter/types"
 
 function hazard(id: string, extra: Partial<HunterHazard> = {}): HunterHazard {
   return {
@@ -29,7 +30,7 @@ describe("buildRevealItems", () => {
       ],
       [{ hazardId: "a", evidence: "角の へいが 車を かくす" }],
     )
-    expect(items.map((i) => [i.number, i.hazard.id, i.status])).toEqual([
+    expect(items.map((i) => [i.number, i.id, i.status])).toEqual([
       [1, "a", "understood"],
       [2, "b", "found"],
       [3, "c", "missed"],
@@ -38,7 +39,26 @@ describe("buildRevealItems", () => {
     expect(items[1].evidence).toBeNull()
     expect(items[1].reason).toBe(KID_REASON_BY_KIND.turning_car)
     expect(items[2].reason).toBeNull()
+    expect(items[0]).toMatchObject({ title: "t", detail: "x", action: "y", severity: "high" })
+    // focus が無ければ当たり枠(無ければ表示枠)の中心にマーカーを置く
+    expect(items[0].anchor.x).toBeCloseTo(0.2, 10)
     expect(countReveal(items)).toEqual({ understood: 1, found: 1, missed: 1 })
+  })
+})
+
+describe("buildSafeRevealItems", () => {
+  it("shows safe points with their 「どうして あんしん？」 reason and no action/severity", () => {
+    const points: HunterSafePoint[] = [
+      { id: "s0", type: "ガードレール", region: { x: 0, y: 0.7, w: 0.6, h: 0.2 }, whyGood: "まもって くれるよ。", safeKind: "guardrail", focusPoint: { x: 0.3, y: 0.8 } },
+      { id: "s1", type: "あんぜんの くふう", region: { x: 0.6, y: 0.1, w: 0.2, h: 0.2 }, whyGood: "あんしん。" },
+    ]
+    const items = buildSafeRevealItems(points, [{ hazardId: "s0", understood: false }])
+    expect(items.map((i) => [i.number, i.id, i.status, i.reason])).toEqual([
+      [1, "s0", "found", KID_SAFE_REASON_BY_KIND.guardrail],
+      [2, "s1", "missed", null],
+    ])
+    expect(items[0]).toMatchObject({ title: "ガードレール", detail: "まもって くれるよ。", action: null, severity: null, evidence: null })
+    expect(items[0].anchor).toEqual({ x: 0.3, y: 0.8 })
   })
 })
 

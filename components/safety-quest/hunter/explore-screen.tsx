@@ -128,18 +128,41 @@ export function ExploreScreen(props: ExploreScreenProps) {
 function BelowPhoto(props: ExploreScreenProps) {
   const { pending = null, lastFound = null, lastReason = null, onReason, accident } = props
   if (pending) {
-    return <ReasonSheet hazard={pending.hazard} mode="ask" choices={pending.choices} onAnswer={onReason} />
+    return (
+      <ReasonSheet
+        {...sheetContent(pending.hazard)}
+        mode="ask"
+        choices={pending.choices}
+        onAnswer={(kind) => onReason?.(kind as HunterDangerKind)}
+      />
+    )
   }
   if (lastFound && lastReason && lastReason.hazardId === lastFound.id) {
-    return <ReasonSheet hazard={lastFound} mode="answered" correct={lastReason.correct} />
+    return <ReasonSheet {...sheetContent(lastFound)} mode="answered" correct={lastReason.correct} />
   }
   if (lastFound && !needsReason(lastFound)) {
-    return <ReasonSheet hazard={lastFound} mode="info" />
+    return <ReasonSheet {...sheetContent(lastFound)} mode="info" />
   }
   return accident ? <CareCard accident={accident} compact /> : null
 }
 
-function OutOfMagnifiers() {
+/** 危険 → 3択・学びのカードに出す中身。 */
+function sheetContent(hazard: HunterHazard) {
+  return {
+    id: hazard.id,
+    title: hazard.type,
+    detail: hazard.kidExplanation,
+    action: hazard.safeAction,
+    correctReason: hazard.kind ? KID_REASON_BY_KIND[hazard.kind] : null,
+  }
+}
+
+/** 虫めがねを使い切ったときに写真へ重ねる案内(たんけん / あんぜん さがし で共通)。 */
+export function OutOfMagnifiers({
+  detail = "こたえあわせで、どこが あぶないか いっしょに 見てみよう。",
+}: {
+  detail?: string
+}) {
   const reduce = useReducedMotion()
   return (
     <motion.div
@@ -159,7 +182,7 @@ function OutOfMagnifiers() {
           むしめがねを ぜんぶ つかったよ！
         </p>
         <p className="text-[13px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
-          <RubyText text="こたえあわせで、どこが あぶないか いっしょに 見てみよう。" />
+          <RubyText text={detail} />
         </p>
       </div>
     </motion.div>

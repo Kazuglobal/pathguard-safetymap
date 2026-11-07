@@ -12,6 +12,7 @@ vi.mock("framer-motion", () => ({
 
 import { AnswerRevealScreen } from "@/components/safety-quest/hunter/answer-reveal/answer-reveal-screen"
 import { accidentLine } from "@/components/safety-quest/hunter/answer-reveal/parent-notes"
+import { buildRevealItems, buildSafeRevealItems } from "@/lib/hunter/reveal"
 import type { HunterAccidentSummary, HunterHazard } from "@/lib/hunter/types"
 
 function hazard(id: string, type: string, extra: Partial<HunterHazard> = {}): HunterHazard {
@@ -48,20 +49,15 @@ const accident: HunterAccidentSummary = {
 }
 
 function renderScreen(onDone = vi.fn()) {
-  render(
-    <AnswerRevealScreen
-      imageUrl="x.jpg"
-      hazards={hazards}
-      discoveries={[
-        { hazardId: "a", understood: true },
-        { hazardId: "b", understood: false },
-      ]}
-      parentNotes={[{ hazardId: "a", evidence: "角の へいが 右から来る車を かくしている" }]}
-      accident={accident}
-      doneLabel="けっかを みる"
-      onDone={onDone}
-    />,
+  const items = buildRevealItems(
+    hazards,
+    [
+      { hazardId: "a", understood: true },
+      { hazardId: "b", understood: false },
+    ],
+    [{ hazardId: "a", evidence: "角の へいが 右から来る車を かくしている" }],
   )
+  render(<AnswerRevealScreen imageUrl="x.jpg" items={items} accident={accident} doneLabel="けっかを みる" onDone={onDone} />)
   return onDone
 }
 
@@ -145,5 +141,29 @@ describe("AnswerRevealScreen", () => {
     const onDone = renderScreen()
     fireEvent.click(screen.getByRole("button", { name: "けっかを みる" }))
     expect(onDone).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("AnswerRevealScreen — あんぜん さがし", () => {
+  it("shows safe points with 「どうして あんしん？」, no 'つぎに すること' and no parent switch", () => {
+    const items = buildSafeRevealItems(
+      [
+        { id: "s0", type: "ガードレール", region: { x: 0, y: 0.7, w: 0.6, h: 0.2 }, whyGood: "くるまから まもって くれるよ。", safeKind: "guardrail" },
+        { id: "s1", type: "カーブミラー", region: { x: 0.7, y: 0.1, w: 0.15, h: 0.2 }, whyGood: "かどの むこうが みえるよ。", safeKind: "curve_mirror" },
+      ],
+      [{ hazardId: "s0", understood: true }],
+    )
+    render(<AnswerRevealScreen imageUrl="x.jpg" items={items} variant="safe" accident={null} doneLabel="おわる" onDone={vi.fn()} />)
+    expect(screen.getByRole("button", { name: "2ばん カーブミラー（つぎは みつけよう）" })).toBeInTheDocument()
+    expect(
+      screen.getByText((_, el) => el?.tagName === "H3" && /あんしんの くふうが 2こ あったよ/.test(el.textContent ?? "")),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("switch")).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "1ばんから みる" }))
+    expect(screen.getByText("どうして あんしん？")).toBeInTheDocument()
+    expect(screen.getByText("くるまから まもって くれるよ。")).toBeInTheDocument()
+    expect(screen.queryByText("つぎに すること")).toBeNull()
+    expect(screen.getByRole("button", { name: "つぎの くふう" })).toBeInTheDocument()
   })
 })

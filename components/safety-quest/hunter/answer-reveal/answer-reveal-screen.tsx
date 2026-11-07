@@ -1,32 +1,32 @@
 "use client"
 
 // =============================================
-// きけんハンター こたえあわせ(遊んだあと)
-//  写真の上に番号つきで危険を全部見せ(全体)→ 1 つずつ スポットライト+ズームで確かめる。
-//  見つけた/見のがした も写真で分かる。おうちの人むけ スイッチで くわしい説明。
+// きけんハンター こたえあわせ(遊んだあと)。たんけん(危険)と あんぜん さがし(安全の工夫)で共通。
+//  写真の上に番号つきで全部見せ(全体)→ 1 つずつ スポットライト+ズームで確かめる。
+//  見つけた/見のがした も写真で分かる。危険は おうちの人むけ スイッチで くわしい説明。
 //  遊ぶ前には出さない(答えが先に分かってしまうため)。
 // =============================================
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
+import { useEffect, useRef, useState, type RefObject } from "react"
 import { Eye } from "lucide-react"
 
-import { buildRevealItems, countReveal } from "@/lib/hunter/reveal"
-import type { HunterAccidentSummary, HunterDiscovery, HunterHazard, HunterParentNote } from "@/lib/hunter/types"
+import { countReveal, type RevealItem } from "@/lib/hunter/reveal"
+import type { HunterAccidentSummary } from "@/lib/hunter/types"
 
 import { RubyText } from "../ruby-text"
 import { BottomBar, PaperPanel, PrimaryCTA, SpeechBubble, tokens } from "../theme"
 import { ParentDisclaimer, ParentToggle } from "./parent-notes"
 import { RevealCard } from "./reveal-card"
 import { RevealPhoto } from "./reveal-photo"
-import { STATUS_STYLE } from "./reveal-status"
+import { REVEAL_COPY, STATUS_STYLE, type RevealVariant } from "./reveal-status"
 
 const C = tokens.color
 
 export interface AnswerRevealScreenProps {
   imageUrl: string
-  hazards: readonly HunterHazard[]
-  discoveries: readonly HunterDiscovery[]
-  parentNotes?: readonly HunterParentNote[]
+  /** buildRevealItems(危険)/ buildSafeRevealItems(安全の工夫)で作った並び。 */
+  items: readonly RevealItem[]
+  variant?: RevealVariant
   accident: HunterAccidentSummary | null
   /** 下のボタンのことば(遊んだ直後=「けっかを みる」/ 結果から開いた=「けっかに もどる」)。 */
   doneLabel: string
@@ -34,8 +34,8 @@ export interface AnswerRevealScreenProps {
 }
 
 export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
-  const { imageUrl, hazards, discoveries, parentNotes = [], accident, doneLabel, onDone } = props
-  const items = useMemo(() => buildRevealItems(hazards, discoveries, parentNotes), [hazards, discoveries, parentNotes])
+  const { imageUrl, items, variant = "danger", accident, doneLabel, onDone } = props
+  const copy = REVEAL_COPY[variant]
   const counts = countReveal(items)
   const [selected, setSelected] = useState<number | null>(null)
   const [parentMode, setParentMode] = useState(false)
@@ -72,11 +72,11 @@ export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Legend counts={counts} />
-          <ParentToggle on={parentMode} onChange={setParentMode} />
+          {copy.parentMode ? <ParentToggle on={parentMode} onChange={setParentMode} /> : null}
         </div>
 
         {selected === null ? (
-          <Overview total={items.length} onStart={() => go(0)} headingRef={overviewHeadingRef} />
+          <Overview text={copy.overview(items.length)} onStart={() => go(0)} headingRef={overviewHeadingRef} />
         ) : (
           <>
             <RevealCard
@@ -88,6 +88,7 @@ export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
               parentMode={parentMode}
               accident={accident}
               headingRef={cardHeadingRef}
+              variant={variant}
             />
             <button
               type="button"
@@ -139,18 +140,18 @@ function Legend({ counts }: { counts: ReturnType<typeof countReveal> }) {
 }
 
 function Overview({
-  total,
+  text,
   onStart,
   headingRef,
 }: {
-  total: number
+  text: string
   onStart: () => void
   headingRef: RefObject<HTMLHeadingElement | null>
 }) {
   return (
     <PaperPanel tone="sun" className="px-4 py-4">
       <h3 ref={headingRef} tabIndex={-1} className="text-[15px] font-black leading-relaxed outline-none" style={{ color: C.ink }}>
-        <RubyText text={`この 写真には 気をつけたい ところが ${total}こ あったよ。`} />
+        <RubyText text={text} />
       </h3>
       <p className="mt-1 text-[13px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
         <RubyText text="写真の ばんごうを タップしても 見られるよ。" />

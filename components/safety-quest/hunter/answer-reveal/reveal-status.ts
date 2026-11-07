@@ -25,6 +25,39 @@ export const STATUS_STYLE: Readonly<Record<RevealStatus, StatusStyle>> = {
   missed: { label: "つぎは みつけよう", bg: "#FFFFFF", fg: C.ink, border: C.sunDeep, line: C.sun },
 }
 
+/** こたえあわせの種類: たんけん(危険)/ あんぜん さがし(安全の工夫)。 */
+export type RevealVariant = "danger" | "safe"
+
+export interface RevealCopy {
+  readonly reasonTitle: string
+  /** 全体のときの見出し(n = 数)。漢字は RubyText を通す。 */
+  readonly overview: (n: number) => string
+  readonly understoodLine: string
+  readonly foundLine: string
+  readonly missedLine: string
+  /** おうちの人むけ スイッチを出すか(根拠・危険度・近くの事故があるのは危険だけ)。 */
+  readonly parentMode: boolean
+}
+
+export const REVEAL_COPY: Readonly<Record<RevealVariant, RevealCopy>> = {
+  danger: {
+    reasonTitle: "どうして あぶない？",
+    overview: (n) => `この 写真には 気をつけたい ところが ${n}こ あったよ。`,
+    understoodLine: "ばしょも りゆうも わかったね！",
+    foundLine: "ばしょは みつけたね！ りゆうも おぼえよう。",
+    missedLine: "ここも きを つけたい ところだよ。つぎは みつけてみよう。",
+    parentMode: true,
+  },
+  safe: {
+    reasonTitle: "どうして あんしん？",
+    overview: (n) => `この 写真には あんしんの くふうが ${n}こ あったよ。`,
+    understoodLine: "ばしょも りゆうも わかったね！",
+    foundLine: "ばしょは みつけたね！ りゆうも おぼえよう。",
+    missedLine: "ここにも あんしんの くふうが あるよ。つぎは みつけてみよう。",
+    parentMode: false,
+  },
+}
+
 /** おうちの人むけの危険の度合い。 */
 export const SEVERITY_PARENT_LABEL: Readonly<Record<RiskSeverity, string>> = {
   high: "高い(まず気をつけたい場所)",

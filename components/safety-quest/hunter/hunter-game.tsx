@@ -27,6 +27,7 @@ import { mutate } from "swr"
 import { pickDailyMission, type HunterDailyMode } from "@/lib/hunter/daily-mission"
 import { loadLastPin, saveLastPin } from "@/lib/hunter/last-pin"
 import { HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
+import { buildRevealItems } from "@/lib/hunter/reveal"
 import {
   classifySessionFailure,
   postHunterSession,
@@ -578,9 +579,7 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
     content = (
       <AnswerRevealScreen
         imageUrl={maskedUrl}
-        hazards={hazards}
-        discoveries={discoveries}
-        parentNotes={parentNotes}
+        items={buildRevealItems(hazards, discoveries, parentNotes)}
         accident={accident}
         doneLabel={revealFrom === "result" ? "けっかに もどる" : "けっかを みる"}
         onDone={toResult}

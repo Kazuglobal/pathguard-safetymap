@@ -70,6 +70,25 @@ describe("ExploreCanvas — letterbox tap correction", () => {
   })
 })
 
+describe("ExploreCanvas — keyboard aiming", () => {
+  it("taps the center with Enter, and moves the aim with the arrow keys (not stuck at the center)", () => {
+    const onTap = vi.fn()
+    render(<ExploreCanvas imageUrl="x.jpg" hazards={[hazard("A")]} foundIds={[]} onTap={onTap} lastTap={null} lastOutcome={null} />)
+    loadImage(400, 300)
+    const surface = screen.getByLabelText("しゃしんの上を タップして、きけんを さがそう")
+    fireEvent.keyDown(surface, { key: "Enter" })
+    expect(onTap).toHaveBeenLastCalledWith({ x: 0.5, y: 0.5 })
+    fireEvent.keyDown(surface, { key: "ArrowLeft" })
+    fireEvent.keyDown(surface, { key: "ArrowUp", shiftKey: true })
+    fireEvent.keyDown(surface, { key: " " })
+    const last = onTap.mock.calls[onTap.mock.calls.length - 1][0]
+    expect(last.x).toBeCloseTo(0.45, 10)
+    expect(last.y).toBeCloseTo(0.35, 10)
+    // 操作の説明は読み上げ用の説明として付いている
+    expect(surface).toHaveAccessibleDescription(/やじるしキー/)
+  })
+})
+
 describe("ExploreCanvas — feedback and no auto-discovery", () => {
   it("announces a found tap and renders no marker for unfound hazards", () => {
     const outcome: HunterTapOutcome = { result: "hit", hazardId: "A", points: 150 }

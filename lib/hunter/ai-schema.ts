@@ -59,6 +59,10 @@ export interface RawSafePoint {
   kidType?: string
   region?: RawAiRegion
   whyGood?: string
+  /** 工夫の種類(未知・欠落は sanitize が kidType から推定)。 */
+  safeKind?: string
+  /** その工夫の上で いちばん分かりやすい 1 点(正規化座標)。 */
+  focus?: { x: number; y: number }
 }
 
 export interface ValidatedHunterResponse {
@@ -176,6 +180,8 @@ const safePointSchema = z.preprocess(preprocessCoords, z.object({
   kidType: z.string().optional().catch(undefined),
   region: regionSchema.optional().catch(undefined),
   whyGood: z.string().optional().catch(undefined),
+  safeKind: z.string().optional().catch(undefined),
+  focus: pointSchema.optional().catch(undefined),
 }))
 
 // 付随フィールド1つの型崩れで dangerPoints を巻き添えにしないよう、

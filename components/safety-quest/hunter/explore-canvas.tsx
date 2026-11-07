@@ -13,7 +13,7 @@
 //  - 写真は動かさない。ズームは こたえあわせ でだけ使う。
 // =============================================
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Search, Sparkles } from "lucide-react"
 
@@ -50,6 +50,27 @@ export interface ExploreCanvasProps {
   hudExtra?: ReactNode
   /** 写真の上に重ねるもの(おしまいの案内など)。 */
   overlay?: ReactNode
+  /** 写真(タップ面)の読み上げ名。あんぜん さがし で差し替える。 */
+  surfaceLabel?: string
+  /** 見つけたスタンプの読み上げ名。 */
+  foundLabel?: (title: string, understood: boolean) => string
+  /** 写真の下に出す操作のヒント。 */
+  guideText?: string
+}
+
+export const DANGER_SURFACE_LABEL = "しゃしんの上を タップして、きけんを さがそう"
+const DEFAULT_GUIDE = "タップして きをつけるところを さがそう"
+const defaultFoundLabel = (title: string, understood: boolean) =>
+  `みつけた きをつけるところ: ${title}${understood ? "（りゆうも わかった）" : ""}`
+
+/** キーボードの照準を 1 回で動かす量(Shift で大きく)。 */
+const CURSOR_STEP = 0.05
+const CURSOR_STEP_BIG = 0.15
+const ARROW_DELTA: Record<string, { dx: number; dy: number }> = {
+  ArrowLeft: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+  ArrowUp: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
 }
 
 /** 読み上げ用のくわしい文(表示チップは短く、SRにはあたたかく)。 */
@@ -96,6 +117,11 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
   const feedbackSeqRef = useRef(0)
   const [missStreak, setMissStreak] = useState(0)
   const [idleMs, setIdleMs] = useState(0)
+  const [cursor, setCursor] = useState({ x: 0.5, y: 0.5 })
+  const [keyboardMode, setKeyboardMode] = useState(false)
+  const surfaceLabel = props.surfaceLabel ?? DANGER_SURFACE_LABEL
+  const foundLabel = props.foundLabel ?? defaultFoundLabel
+  const describedById = useId()
 
   const foundSet = useMemo(() => new Set(foundIds), [foundIds])
   const understoodSet = useMemo(() => new Set(understoodIds), [understoodIds])
@@ -184,16 +210,27 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
     [onTap, contain, locked],
   )
 
+  // キーボード: やじるしキーで照準を動かし、Enter/Space でその場所をしらべる
+  // (写真の中央しか押せないと、虫めがねを同じ場所で使い切ってしまうため)。
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const delta = ARROW_DELTA[event.key]
+      if (delta) {
+        event.preventDefault()
+        const step = event.shiftKey ? CURSOR_STEP_BIG : CURSOR_STEP
+        setKeyboardMode(true)
+        setCursor((c) => ({
+          x: Math.min(1, Math.max(0, c.x + delta.dx * step)),
+          y: Math.min(1, Math.max(0, c.y + delta.dy * step)),
+        }))
+        return
+      }
       if (event.key !== "Enter" && event.key !== " ") return
       event.preventDefault()
-      const el = containerRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      emitTap(rect.left + rect.width / 2, rect.top + rect.height / 2)
+      setKeyboardMode(true)
+      if (!locked) onTap(cursor)
     },
-    [emitTap],
+    [cursor, locked, onTap],
   )
 
   // おしまいの後は「つぎは どこかな？」やヒントを出さない(もうタップできないため)
@@ -224,14 +261,19 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
         {props.hudExtra}
       </div>
 
+      <span id={describedById} className="sr-only">
+        やじるしキーで しらべる ばしょを うごかして、エンターキーで しらべよう。
+      </span>
       <PhotoFrame tape={false}>
         <div
           ref={containerRef}
           role="button"
           tabIndex={0}
-          aria-label="しゃしんの上を タップして、きけんを さがそう"
+          aria-label={surfaceLabel}
+          aria-describedby={describedById}
           aria-disabled={locked || undefined}
           onClick={(event) => emitTap(event.clientX, event.clientY)}
+          onPointerDown={() => setKeyboardMode(false)}
           onKeyDown={handleKeyDown}
           className={tokens.cls.focus}
           style={{
@@ -277,7 +319,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
             return (
               <div
                 key={hazard.id}
-                aria-label={`みつけた きをつけるところ: ${hazard.type}${understood ? "（りゆうも わかった）" : ""}`}
+                aria-label={foundLabel(hazard.type, understood)}
                 role="img"
                 style={{
                   position: "absolute",
@@ -317,8 +359,11 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
             ) : null}
           </AnimatePresence>
 
+          {/* キーボードの照準(やじるしキーで動かす) */}
+          {keyboardMode && !locked ? <KeyboardCursor style={place(cursor)} /> : null}
+
           {/* 操作ヒント */}
-          {!feedback && !locked && !activeHazard ? <TapGuide /> : null}
+          {!feedback && !locked && !activeHazard ? <TapGuide text={props.guideText ?? DEFAULT_GUIDE} /> : null}
           {props.overlay}
         </div>
       </PhotoFrame>
@@ -350,7 +395,32 @@ function ImageFailed() {
   )
 }
 
-function TapGuide() {
+function KeyboardCursor({ style }: { style: { left: string; top: string } }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        ...style,
+        width: 44,
+        height: 44,
+        marginLeft: -22,
+        marginTop: -22,
+        borderRadius: "50%",
+        border: "3px solid #FFFFFF",
+        boxShadow: "0 0 0 3px rgba(38,65,59,.85)",
+        zIndex: 7,
+        pointerEvents: "none",
+        display: "grid",
+        placeItems: "center",
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FFFFFF", boxShadow: "0 0 0 2px rgba(38,65,59,.85)" }} />
+    </div>
+  )
+}
+
+function TapGuide({ text }: { text: string }) {
   return (
     <div
       aria-hidden="true"
@@ -371,7 +441,7 @@ function TapGuide() {
         pointerEvents: "none",
       }}
     >
-      タップして きをつけるところを さがそう
+      {text}
     </div>
   )
 }

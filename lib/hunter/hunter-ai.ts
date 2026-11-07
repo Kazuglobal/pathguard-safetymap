@@ -46,7 +46,7 @@ function coordSection(format: HunterCoordFormat): string {
 - box_2d は [ymin, xmin, ymax, xmax]。画像の左上を0、右下を1000とした 0〜1000 の整数で、その危険「状況」が実際に写っている範囲を囲む。
 - focus は [y, x](0〜1000 の整数)。子どもが「ここ！」と指でさすべき いちばん大事な1点(例: 角を作っている へいの はし / 車のかげの すき間 / わたる場所の まんなか)。focus は必ず box_2d の内側に置く。
 - 採点は focus のまわりの小さい範囲で行う。focus は枠の中心ではなく、危険の原因そのものの上に置く。
-- 安全の工夫(safePoints)も box_2d で囲む(focus は不要)。`
+- 安全の工夫(safePoints)も box_2d で囲み、focus をその工夫そのものの上に置く。`
 }
 
 function coordExample(format: HunterCoordFormat): string {
@@ -149,7 +149,7 @@ ${coordSection(format)}
 - imageUsable: 写真が暗すぎる/通学路でない等で判断できないときは false。
 
 【安全の工夫(safePoints)】
-- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { kind, kidType(やさしい日本語), ${format === "region" ? "region" : "box_2d"}, whyGood(この写真でなぜ安全か・1文) }。無ければ空配列。
+- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { safeKind(guardrail=ガードレール・さく / sidewalk=歩道・路側帯 / curve_mirror=カーブミラー / traffic_signal=信号 / crosswalk=横断歩道 / street_light=街灯 / other), kidType(やさしい日本語), ${format === "region" ? "region" : "box_2d, focus"}, whyGood(この写真でなぜ安全か・1文) }${format === "region" ? "" : "。focus は その工夫そのものの上で いちばん分かりやすい1点(ガードレールなら写っている部分のまんなか)。工夫の写っていない路面や空には置かない"}。無ければ空配列。
 - dangerPoints が空(=あぶない所が見つからない写真)のときこそ、safePoints をていねいに探す。
 
 【confidence と severity の意味】

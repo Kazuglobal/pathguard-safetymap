@@ -10,7 +10,6 @@
 import { useMemo, useRef, useState } from "react"
 import { useReducedMotion } from "framer-motion"
 
-import { anchorOf } from "@/lib/hunter/hit-zone"
 import { containRect, type Size } from "@/lib/hunter/image-geometry"
 import { photoAspectRatio } from "@/lib/hunter/photo-aspect"
 import { focusTransform, type RevealItem } from "@/lib/hunter/reveal"
@@ -52,7 +51,7 @@ export function RevealPhoto({
   const [natural, setNatural] = useState<Size | null>(null)
   const contain = useMemo(() => (natural && box ? containRect(natural, box) : null), [natural, box])
   const current = selected === null ? null : items[selected] ?? null
-  const zoom = focusTransform(current ? current.hazard.region : null)
+  const zoom = focusTransform(current ? current.region : null)
 
   // 写真の層 = 実際に絵が描かれた矩形(測れないうちは枠いっぱい)
   const layerStyle = contain && contain.drawW > 0
@@ -103,11 +102,11 @@ export function RevealPhoto({
               const line = STATUS_STYLE[item.status].line
               return (
                 <div
-                  key={`area-${item.hazard.id}`}
+                  key={`area-${item.id}`}
                   aria-hidden="true"
                   style={{
                     position: "absolute",
-                    ...pct(item.hazard.region),
+                    ...pct(item.region),
                     borderRadius: 12,
                     border: `${(isCurrent ? 3 : 2) / zoom.scale}px ${item.status === "missed" ? "dashed" : "solid"} ${line}`,
                     boxShadow: isCurrent ? "0 0 0 9999px rgba(20,32,29,.58)" : undefined,
@@ -121,7 +120,7 @@ export function RevealPhoto({
 
             {items.map((item, i) => (
               <RevealMarker
-                key={`marker-${item.hazard.id}`}
+                key={`marker-${item.id}`}
                 item={item}
                 active={selected === i}
                 dimmed={selected !== null && selected !== i}
@@ -153,12 +152,12 @@ function RevealMarker({
   onClick: () => void
 }) {
   const style = STATUS_STYLE[item.status]
-  const anchor = anchorOf(item.hazard)
+  const anchor = item.anchor
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`${item.number}ばん ${item.hazard.type}（${style.label}）`}
+      aria-label={`${item.number}ばん ${item.title}（${style.label}）`}
       aria-pressed={active}
       className={tokens.cls.focus}
       style={{
