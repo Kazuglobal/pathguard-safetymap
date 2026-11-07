@@ -149,6 +149,19 @@ class HazardGridTests(unittest.TestCase):
             (root/'objects.json').write_text(json.dumps([dict(key='hazard-grid/v1/../media/x.json',bytes=0,md5='')]),encoding='utf-8')
             with self.assertRaisesRegex(ValueError,'outside'): uploader.load_objects(root)
 
+    def test_upload_stays_under_the_api_rate_limit(self):
+        now=[0.0]; starts=[]
+        def sleep(s): now[0]+=s
+        throttle=uploader.Throttle(3.0,clock=lambda: now[0],sleep=sleep)
+        for _ in range(1200):
+            throttle.wait(); starts.append(now[0])
+        # Cloudflare allows 1,200 requests per 300 seconds; the 1,200th starts well after that window.
+        self.assertGreater(starts[-1],300)
+        self.assertEqual(uploader.rate_limit_wait('120',0),120)
+        self.assertEqual(uploader.rate_limit_wait(None,0),30)
+        self.assertEqual(uploader.rate_limit_wait(None,6),uploader.RATE_LIMIT_WAIT_MAX)
+        self.assertEqual(uploader.rate_limit_wait('soon',1),60)
+
     def test_upload_refuses_partial_or_shrinking_grids(self):
         new=dict(complete=True,cellsPerDegree=100,sources=[dict(id='a'),dict(id='b')])
         uploader.check_publishable(new,dict(cellsPerDegree=100,sources=[dict(id='a')]))

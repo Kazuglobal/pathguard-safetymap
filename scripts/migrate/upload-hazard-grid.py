@@ -29,6 +29,39 @@ import urllib.request
 BINDING = 'HAZARD_GRID'
 MANIFEST_KEY_SUFFIX = 'manifest.json'
 WORKERS = 8
+# The Cloudflare REST API allows 1,200 requests per 5 minutes per user (4/s);
+# stay below it across all threads. 74,802 objects take about 7 hours.
+REQUESTS_PER_SECOND = 3.0
+RATE_LIMIT_WAIT_MAX = 330  # longer than the 5-minute window
+RETRIES = 8
+
+
+class Throttle:
+    """Space requests evenly across threads."""
+
+    def __init__(self, per_second: float, clock=time.monotonic, sleep=time.sleep):
+        self.interval = 1 / per_second
+        self.clock, self.sleep = clock, sleep
+        self.lock = threading.Lock()
+        self.next_at = 0.0
+
+    def wait(self) -> None:
+        with self.lock:
+            now = self.clock()
+            start = max(now, self.next_at)
+            self.next_at = start + self.interval
+        if start > now:
+            self.sleep(start - now)
+
+
+def rate_limit_wait(retry_after: str | None, attempt: int) -> float:
+    try:
+        seconds = float(retry_after) if retry_after is not None else None
+    except ValueError:
+        seconds = None
+    if seconds is None:
+        seconds = 30 * 2 ** attempt
+    return min(max(seconds, 1.0), RATE_LIMIT_WAIT_MAX)
 VERIFY_SAMPLE = 200
 
 
@@ -76,9 +109,12 @@ class R2Client:
     def __init__(self, account: str, bucket: str, token: str):
         self.base = f'https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets/{bucket}/objects/'
         self.token = token
+        self.throttle = Throttle(REQUESTS_PER_SECOND)
 
     def request(self, method: str, key: str, body: bytes | None = None, missing_ok: bool = False) -> bytes | None:
-        for attempt in range(6):
+        last = RETRIES - 1
+        for attempt in range(RETRIES):
+            self.throttle.wait()
             headers = {'Authorization': 'Bearer ' + self.token}
             if body is not None:
                 headers['Content-Type'] = 'application/json'
@@ -89,12 +125,15 @@ class R2Client:
             except urllib.error.HTTPError as error:
                 if missing_ok and error.code == 404:
                     return None
-                if error.code in (429, 500, 502, 503, 504) and attempt < 5:
+                if error.code == 429 and attempt < last:
+                    time.sleep(rate_limit_wait(error.headers.get('Retry-After'), attempt))
+                    continue
+                if error.code in (500, 502, 503, 504) and attempt < last:
                     time.sleep(2 ** attempt)
                     continue
                 raise ValueError(f'R2 {method} failed (HTTP {error.code}); response suppressed') from None
             except (TimeoutError, urllib.error.URLError):
-                if attempt < 5:
+                if attempt < last:
                     time.sleep(2 ** attempt)
                     continue
                 raise ValueError(f'R2 {method} failed after retries; response suppressed') from None
