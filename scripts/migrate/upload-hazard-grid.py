@@ -1,0 +1,244 @@
+"""Upload a built hazard grid to the HAZARD_GRID R2 bucket, additively.
+
+Default is a local check of every object against objects.json (size, MD5).
+Remote writes require --remote. The bucket is taken from the HAZARD_GRID
+binding in wrangler.server.jsonc; nothing is inferred from the environment.
+Uses the authenticated project-local Wrangler credential in memory; never
+prints, saves or passes a credential on the command line. Objects are only
+added or replaced with identical keys; nothing is deleted. Progress is kept in
+upload-receipt.ndjson so an interrupted upload resumes without re-sending.
+
+  python scripts/migrate/upload-hazard-grid.py --grid artifacts/migration/hazards/grid
+  python scripts/migrate/upload-hazard-grid.py --grid artifacts/migration/hazards/grid --remote
+"""
+from __future__ import annotations
+
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import json
+from pathlib import Path
+import random
+import subprocess
+import threading
+import time
+import urllib.error
+from urllib.parse import quote
+import urllib.request
+
+BINDING = 'HAZARD_GRID'
+MANIFEST_KEY_SUFFIX = 'manifest.json'
+WORKERS = 8
+# The Cloudflare REST API allows 1,200 requests per 5 minutes per user (4/s);
+# stay below it across all threads. 74,802 objects take about 7 hours.
+REQUESTS_PER_SECOND = 3.0
+RATE_LIMIT_WAIT_MAX = 330  # longer than the 5-minute window
+RETRIES = 8
+
+
+class Throttle:
+    """Space requests evenly across threads."""
+
+    def __init__(self, per_second: float, clock=time.monotonic, sleep=time.sleep):
+        self.interval = 1 / per_second
+        self.clock, self.sleep = clock, sleep
+        self.lock = threading.Lock()
+        self.next_at = 0.0
+
+    def pause(self, seconds: float) -> None:
+        """Hold every thread back after a rate-limit reply, not just the one that saw it."""
+        with self.lock:
+            self.next_at = max(self.next_at, self.clock() + seconds)
+
+    def wait(self) -> None:
+        with self.lock:
+            now = self.clock()
+            start = max(now, self.next_at)
+            self.next_at = start + self.interval
+        if start > now:
+            self.sleep(start - now)
+
+
+def rate_limit_wait(retry_after: str | None, attempt: int) -> float:
+    try:
+        seconds = float(retry_after) if retry_after is not None else None
+    except ValueError:
+        seconds = None
+    if seconds is None:
+        seconds = 30 * 2 ** attempt
+    return min(max(seconds, 1.0), RATE_LIMIT_WAIT_MAX)
+VERIFY_SAMPLE = 200
+
+
+def load_objects(grid: Path) -> tuple[dict, list[dict]]:
+    manifest = json.loads((grid / 'manifest.json').read_text(encoding='utf-8'))
+    objects = json.loads((grid / 'objects.json').read_text(encoding='utf-8'))
+    if len(objects) != manifest['objectCount']:
+        raise ValueError('objects.json does not match manifest objectCount')
+    if len({o['key'] for o in objects}) != len(objects):
+        raise ValueError('Duplicate object key')
+    prefix = manifest['keyPrefix'] + '/'
+    for entry in objects:
+        if not entry['key'].startswith(prefix) or '..' in entry['key']:
+            raise ValueError('Object key outside the grid prefix')
+    return manifest, objects
+
+
+def verify_local(grid: Path, objects: list[dict]) -> None:
+    for entry in objects:
+        body = (grid / 'objects' / entry['key']).read_bytes()
+        if len(body) != entry['bytes'] or hashlib.md5(body).hexdigest() != entry['md5']:
+            raise ValueError('Local object differs from objects.json: ' + entry['key'])
+
+
+def target_bucket() -> tuple[str, str]:
+    settings = json.loads(Path('wrangler.server.jsonc').read_text(encoding='utf-8'))
+    binding = next((b for b in settings['r2_buckets'] if b['binding'] == BINDING), None)
+    if binding is None:
+        raise ValueError('wrangler.server.jsonc has no HAZARD_GRID binding')
+    return settings['vars']['CLOUDFLARE_ACCOUNT_ID'], binding['bucket_name']
+
+
+def wrangler_token(node: str) -> str:
+    auth = subprocess.run([node, 'node_modules/wrangler/bin/wrangler.js', 'auth', 'token', '--json'],
+                          capture_output=True, text=True, check=False)
+    if auth.returncode:
+        raise ValueError('Wrangler authentication unavailable; raw output suppressed')
+    try:
+        return json.loads(auth.stdout)['token']
+    except (ValueError, KeyError):
+        raise ValueError('Unexpected Wrangler credential response; raw output suppressed') from None
+
+
+class R2Client:
+    def __init__(self, account: str, bucket: str, token_source, throttle: Throttle | None = None):
+        self.base = f'https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets/{bucket}/objects/'
+        # Wrangler OAuth tokens expire during a multi-hour upload; fetch a fresh one on 401/403.
+        self.token_source = token_source
+        self.token_lock = threading.Lock()
+        self.token = token_source()
+        self.throttle = throttle or Throttle(REQUESTS_PER_SECOND)
+
+    def refresh_token(self, rejected: str) -> None:
+        with self.token_lock:
+            if self.token == rejected:  # another thread may already have refreshed it
+                self.token = self.token_source()
+
+    def request(self, method: str, key: str, body: bytes | None = None, missing_ok: bool = False) -> bytes | None:
+        last = RETRIES - 1
+        refreshed = False
+        for attempt in range(RETRIES):
+            self.throttle.wait()
+            token = self.token
+            headers = {'Authorization': 'Bearer ' + token}
+            if body is not None:
+                headers['Content-Type'] = 'application/json'
+            req = urllib.request.Request(self.base + quote(key, safe=''), data=body, method=method, headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=120) as response:
+                    return response.read()
+            except urllib.error.HTTPError as error:
+                if missing_ok and error.code == 404:
+                    return None
+                if error.code in (401, 403) and not refreshed and attempt < last:
+                    refreshed = True
+                    self.refresh_token(token)
+                    continue
+                if error.code == 429 and attempt < last:
+                    self.throttle.pause(rate_limit_wait(error.headers.get('Retry-After'), attempt))
+                    continue
+                if error.code in (500, 502, 503, 504) and attempt < last:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise ValueError(f'R2 {method} failed (HTTP {error.code}); response suppressed') from None
+            except (TimeoutError, urllib.error.URLError):
+                if attempt < last:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise ValueError(f'R2 {method} failed after retries; response suppressed') from None
+        raise ValueError('R2 retries exhausted')
+
+
+def read_receipt(path: Path) -> dict[str, str]:
+    done = {}
+    if path.exists():
+        for line in path.read_text(encoding='utf-8').splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue  # a line cut off by an interrupted run; that object is re-sent
+            done[row['key']] = row['md5']
+    return done
+
+
+def check_publishable(manifest: dict, remote_manifest: dict | None) -> None:
+    """Cell objects replace stored ones; never publish a build that drops a source."""
+    if manifest.get('complete') is not True:
+        raise ValueError('Grid was built from a subset (--only); rebuild from every prepared source')
+    if remote_manifest is None:
+        return
+    if remote_manifest.get('cellsPerDegree') != manifest['cellsPerDegree']:
+        raise ValueError('Published grid uses a different cell size; use a new key prefix')
+    missing = {s['id'] for s in remote_manifest['sources']} - {s['id'] for s in manifest['sources']}
+    if missing:
+        raise ValueError('New grid lacks published sources: ' + ', '.join(sorted(missing)))
+
+
+def upload(grid: Path, manifest: dict, objects: list[dict], client: R2Client) -> dict:
+    remote = client.request('GET', manifest['keyPrefix'] + '/' + MANIFEST_KEY_SUFFIX, missing_ok=True)
+    check_publishable(manifest, json.loads(remote) if remote else None)
+    receipt_path = grid / 'upload-receipt.ndjson'
+    done = read_receipt(receipt_path)
+    pending = [o for o in objects if done.get(o['key']) != o['md5']]
+    print(json.dumps(dict(event='upload_start', objects=len(objects), pending=len(pending))), flush=True)
+    lock = threading.Lock()
+    counter = {'sent': 0}
+
+    def send(entry: dict) -> None:
+        client.request('PUT', entry['key'], (grid / 'objects' / entry['key']).read_bytes())
+        with lock:
+            with receipt_path.open('a', encoding='utf-8') as target:
+                target.write(json.dumps(dict(key=entry['key'], md5=entry['md5'])) + '\n')
+            counter['sent'] += 1
+            if counter['sent'] % 1000 == 0:
+                print(json.dumps(dict(event='uploading', sent=counter['sent'], pending=len(pending))), flush=True)
+
+    with ThreadPoolExecutor(WORKERS) as pool:
+        list(pool.map(send, pending))
+
+    # Read back a random sample plus the largest objects through the same API.
+    sample = random.Random(0).sample(objects, min(VERIFY_SAMPLE, len(objects)))
+    sample += sorted(objects, key=lambda o: o['bytes'])[-5:]
+    for entry in sample:
+        if hashlib.md5(client.request('GET', entry['key'])).hexdigest() != entry['md5']:
+            raise ValueError('Uploaded object differs from the local grid: ' + entry['key'])
+    # The manifest goes last so its presence means every object above is in place.
+    manifest_key = manifest['keyPrefix'] + '/' + MANIFEST_KEY_SUFFIX
+    client.request('PUT', manifest_key, (grid / 'manifest.json').read_bytes())
+    return dict(event='uploaded', objects=len(objects), sent=counter['sent'], verifiedSample=len(sample),
+                manifestKey=manifest_key)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--grid', type=Path, required=True)
+    parser.add_argument('--remote', action='store_true')
+    parser.add_argument('--node', default='node')
+    args = parser.parse_args()
+    manifest, objects = load_objects(args.grid)
+    check_publishable(manifest, None)
+    verify_local(args.grid, objects)
+    account, bucket = target_bucket()
+    summary = dict(objects=len(objects), totalBytes=manifest['totalBytes'], bucket=bucket,
+                   sources=len(manifest['sources']))
+    if not args.remote:
+        print(json.dumps(dict(event='verified', remote=False, **summary)), flush=True)
+        return
+    client = R2Client(account, bucket, lambda: wrangler_token(args.node))
+    result = upload(args.grid, manifest, objects, client)
+    (args.grid / 'upload-result.json').write_text(json.dumps({**summary, **result}, indent=2), encoding='utf-8')
+    print(json.dumps(dict(**result, bucket=bucket)), flush=True)
+
+
+if __name__ == '__main__':
+    main()

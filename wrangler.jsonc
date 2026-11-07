@@ -107,6 +107,12 @@
     {
       "binding": "NEXT_INC_CACHE_R2_BUCKET",
       "bucket_name": "pg-next-cache"
+    },
+    {
+      // Official inundation grid (scripts/migrate/build-hazard-grid.py).
+      // Create and upload before deploying; read-only at runtime.
+      "binding": "HAZARD_GRID",
+      "bucket_name": "pg-hazard-grid"
     }
   ],
   "images": {

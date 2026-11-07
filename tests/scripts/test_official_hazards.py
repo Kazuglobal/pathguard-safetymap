@@ -14,6 +14,9 @@ class OfficialHazardsTests(unittest.TestCase):
         self.assertEqual(hazards.tsunami_depth('0.3m以上 ～ 0.5m未満'),(.3,.5))
         self.assertEqual(hazards.tsunami_depth('0.3m未満'),(0,.3))
         self.assertEqual(hazards.tsunami_depth('20m以上'),(20,None))
+        self.assertEqual(hazards.tsunami_depth('～0.3m'),(0,.3))
+        self.assertEqual(hazards.tsunami_depth('5m～'),(5,None))
+        self.assertEqual(hazards.tsunami_depth('0.3～0.5m'),(.3,.5))
         with self.assertRaises(ValueError): hazards.tsunami_depth('不明')
 
     def test_flood_preserves_deep_interval(self):
@@ -32,6 +35,23 @@ class OfficialHazardsTests(unittest.TestCase):
         with self.assertRaises(ValueError): hazards.checked_url('https://example.com/source.zip')
         with self.assertRaises(ValueError): hazards.checked_url('http://nlftp.mlit.go.jp/source.zip')
 
+    def test_truncated_download_is_not_kept_as_the_archive(self):
+        import io,tempfile
+        from unittest import mock
+        class Short(io.BytesIO):
+            url='https://nlftp.mlit.go.jp/ksj/gml/data/A40/x.zip'
+            headers={'Content-Length':'100'}
+            def __enter__(self): return self
+            def __exit__(self,*a): self.close()
+        entry=dict(filename='x.zip',url=Short.url)
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(hazards.urllib.request,'urlopen',return_value=Short(b'PK'*10)):
+            with self.assertRaisesRegex(ValueError,'Truncated download'): hazards.download(entry,Path(d))
+            self.assertFalse((Path(d)/'raw'/'x.zip').exists())
+        Short.headers={}  # no Content-Length: the short body is caught by the archive test
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(hazards.urllib.request,'urlopen',return_value=Short(b'PK'*10)):
+            with self.assertRaises(Exception): hazards.download(entry,Path(d))
+            self.assertFalse((Path(d)/'raw'/'x.zip').exists())
+
     def test_resume_rejects_changed_classification_even_with_same_id(self):
         import json
         row={column:None for column in importer.ZONE_COLUMNS}
@@ -47,5 +67,140 @@ class OfficialHazardsTests(unittest.TestCase):
         importer.verify_existing_coverage([dict(row,imported_at='new-date')],[row])
         with self.assertRaisesRegex(ValueError,'differs'):
             importer.verify_existing_coverage([dict(row,source='different')],[row])
+
+    def _prepare_flood(self, folder, rings):
+        import json,zipfile
+        root=Path(folder); (root/'raw').mkdir()
+        entry=dict(id='A31b-25_20_5339_GEOJSON',kind='flood',year=25,region='5339',filename='t.zip',
+                   size='0MB',url='https://nlftp.mlit.go.jp/x.zip',page='https://nlftp.mlit.go.jp/p.html',license='CC-BY-4.0')
+        features=[dict(type='Feature',properties={'A31b_201':2},geometry=dict(type='Polygon',coordinates=[ring])) for ring in rings]
+        body=json.dumps(dict(type='FeatureCollection',crs={'type':'name','properties':{'name':'urn:ogc:def:crs:EPSG::6668'}},features=features))
+        with zipfile.ZipFile(root/'raw'/'t.zip','w') as z: z.writestr('A31b-20-25_20_5339.geojson',body)
+        hazards.prepare(entry,root)
+        return json.loads((root/'prepared'/entry['id']/'receipt.json').read_text(encoding='utf-8'))
+
+    def test_zero_area_source_ring_is_dropped_and_counted(self):
+        import tempfile
+        valid=[[139,35],[139.001,35],[139.001,35.001],[139,35.001],[139,35]]
+        degenerate=[[139.01,35.01],[139.02,35.01],[139.01,35.01],[139.01,35.01]]
+        with tempfile.TemporaryDirectory() as folder:
+            receipt=self._prepare_flood(folder,[valid,degenerate])
+        self.assertEqual(receipt['degenerateFeaturesDropped'],1)
+        self.assertEqual(receipt['sourceFeatures'],1)
+
+    def test_area_changing_repair_still_stops(self):
+        import tempfile
+        bowtie=[[139,35],[139.001,35.001],[139.001,35],[139,35.001],[139,35]]
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(ValueError,'changes area'): self._prepare_flood(folder,[bowtie])
+
+    def test_tsunami_shapefile_only_archive_is_read(self):
+        import io,json,tempfile,zipfile,shapefile
+        shp,shx,dbf=io.BytesIO(),io.BytesIO(),io.BytesIO()
+        w=shapefile.Writer(shp=shp,shx=shx,dbf=dbf,shapeType=shapefile.POLYGON,encoding='cp932')
+        for name in ('A40_001','A40_002','A40_003'): w.field(name,'C',40)
+        w.poly([[[130,33],[130,33.001],[130.001,33.001],[130.001,33],[130,33]]])
+        w.record('福岡県','40','0.01m以上 ～ 0.3m未満'); w.close()
+        prj='GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]'
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder); (root/'raw').mkdir()
+            with zipfile.ZipFile(root/'raw'/'t.zip','w') as z:
+                for ext,buf in (('.shp',shp),('.shx',shx),('.dbf',dbf)): z.writestr('A40-16_40'+ext,buf.getvalue())
+                z.writestr('A40-16_40.prj',prj)
+            entry=dict(id='A40-16_40_GML',kind='tsunami',year=16,region='40',filename='t.zip',size='0MB',
+                       url='https://nlftp.mlit.go.jp/x.zip',page='https://nlftp.mlit.go.jp/p.html',license='x')
+            hazards.prepare(entry,root)
+            receipt=json.loads((root/'prepared'/entry['id']/'receipt.json').read_text(encoding='utf-8'))
+            row=json.loads((root/'prepared'/entry['id']/'zones.ndjson').read_text(encoding='utf-8').splitlines()[0])
+        self.assertEqual(receipt['sourceFeatures'],1)
+        self.assertEqual((row['depth_min_m'],row['depth_max_m']),(.01,.3))
+
+grid_spec=importlib.util.spec_from_file_location('build_hazard_grid',Path(__file__).resolve().parents[2]/'scripts/migrate/build-hazard-grid.py')
+grid=importlib.util.module_from_spec(grid_spec); grid_spec.loader.exec_module(grid)
+upload_spec=importlib.util.spec_from_file_location('upload_hazard_grid',Path(__file__).resolve().parents[2]/'scripts/migrate/upload-hazard-grid.py')
+uploader=importlib.util.module_from_spec(upload_spec); upload_spec.loader.exec_module(uploader)
+
+class HazardGridTests(unittest.TestCase):
+    def test_cell_pieces_rebuild_the_polygon_exactly(self):
+        from shapely.geometry import box
+        original=Polygon([(139.005,35.005),(139.025,35.005),(139.025,35.018),(139.005,35.018)],
+                         [[(139.009,35.009),(139.012,35.009),(139.012,35.012),(139.009,35.012)]])
+        pieces=list(grid.clip_to_cells(original))
+        self.assertEqual({(y,x) for y,x,_ in pieces},{(y,x) for y in (3500,3501) for x in (13900,13901,13902)})
+        for y,x,part in pieces:
+            self.assertTrue(part.is_valid)
+            self.assertTrue(grid.cell_box(y,x).buffer(1e-12).covers(part))
+        rebuilt=union_all([part for _,_,part in pieces])
+        self.assertLess(original.symmetric_difference(rebuilt).area,1e-14)
+        self.assertFalse(rebuilt.covers(Point(139.0105,35.0105)))
+
+    def test_single_cell_polygon_is_kept_unchanged(self):
+        inner=Polygon([(139.001,35.001),(139.002,35.001),(139.002,35.002)])
+        self.assertEqual([(y,x,part.wkt) for y,x,part in grid.clip_to_cells(inner)],[(3500,13900,inner.wkt)])
+
+    def test_cell_layout_matches_the_runtime_reader(self):
+        import re
+        runtime=(Path(__file__).resolve().parents[2]/'lib/hazard-grid.ts').read_text(encoding='utf-8')
+        self.assertEqual(int(re.search(r'HAZARD_GRID_CELLS_PER_DEGREE = (\d+)',runtime)[1]),grid.CELLS_PER_DEGREE)
+        self.assertEqual(int(re.search(r'HAZARD_GRID_SCHEMA_VERSION = (\d+)',runtime)[1]),grid.SCHEMA_VERSION)
+        self.assertEqual(grid.object_key('tsunami',3964,14195),'hazard-grid/v1/tsunami/3964/14195.json')
+
+    def test_upload_rejects_keys_outside_the_grid_prefix(self):
+        import json,tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/'manifest.json').write_text(json.dumps(dict(keyPrefix='hazard-grid/v1',objectCount=1)),encoding='utf-8')
+            (root/'objects.json').write_text(json.dumps([dict(key='hazard-grid/v1/../media/x.json',bytes=0,md5='')]),encoding='utf-8')
+            with self.assertRaisesRegex(ValueError,'outside'): uploader.load_objects(root)
+
+    def test_upload_stays_under_the_api_rate_limit(self):
+        now=[0.0]; starts=[]
+        def sleep(s): now[0]+=s
+        throttle=uploader.Throttle(3.0,clock=lambda: now[0],sleep=sleep)
+        for _ in range(1200):
+            throttle.wait(); starts.append(now[0])
+        # Cloudflare allows 1,200 requests per 300 seconds; the 1,200th starts well after that window.
+        self.assertGreater(starts[-1],300)
+        self.assertEqual(uploader.rate_limit_wait('120',0),120)
+        self.assertEqual(uploader.rate_limit_wait(None,0),30)
+        self.assertEqual(uploader.rate_limit_wait(None,6),uploader.RATE_LIMIT_WAIT_MAX)
+        self.assertEqual(uploader.rate_limit_wait('soon',1),60)
+
+    def _client(self,replies,tokens):
+        import io,urllib.error
+        from unittest import mock
+        now=[0.0]; sent=[]
+        def sleep(s): now[0]+=s
+        throttle=uploader.Throttle(3.0,clock=lambda: now[0],sleep=sleep)
+        client=uploader.R2Client('acct','bucket',lambda: tokens.pop(0),throttle=throttle)
+        def urlopen(req,timeout):
+            sent.append((now[0],req.headers['Authorization']))
+            code,retry=replies.pop(0)
+            if code==200: return io.BytesIO(b'ok')
+            raise urllib.error.HTTPError(req.full_url,code,'x',{'Retry-After':retry} if retry else {},None)
+        return client,sent,mock.patch.object(uploader.urllib.request,'urlopen',side_effect=urlopen)
+
+    def test_upload_waits_out_a_rate_limit_for_every_thread(self):
+        client,sent,patch=self._client([(429,'120'),(429,None),(200,None)],['t1'])
+        with patch: self.assertEqual(client.request('PUT','k',b'{}'),b'ok')
+        self.assertEqual([round(t) for t,_ in sent],[0,120,180])  # Retry-After 120, then 30 * 2**1
+        self.assertGreaterEqual(client.throttle.next_at,180)
+
+    def test_upload_refreshes_an_expired_token_once(self):
+        client,sent,patch=self._client([(401,None),(200,None)],['old','new'])
+        with patch: client.request('PUT','k',b'{}')
+        self.assertEqual([auth for _,auth in sent],['Bearer old','Bearer new'])
+        client,sent,patch=self._client([(403,None),(403,None)],['old','new'])
+        with patch, self.assertRaisesRegex(ValueError,'HTTP 403'): client.request('PUT','k',b'{}')
+        self.assertEqual(len(sent),2)
+
+    def test_upload_refuses_partial_or_shrinking_grids(self):
+        new=dict(complete=True,cellsPerDegree=100,sources=[dict(id='a'),dict(id='b')])
+        uploader.check_publishable(new,dict(cellsPerDegree=100,sources=[dict(id='a')]))
+        with self.assertRaisesRegex(ValueError,'subset'): uploader.check_publishable(dict(new,complete=False),None)
+        with self.assertRaisesRegex(ValueError,'lacks'):
+            uploader.check_publishable(new,dict(cellsPerDegree=100,sources=[dict(id='a'),dict(id='c')]))
+        with self.assertRaisesRegex(ValueError,'cell size'):
+            uploader.check_publishable(new,dict(cellsPerDegree=50,sources=[]))
 
 if __name__=='__main__': unittest.main()

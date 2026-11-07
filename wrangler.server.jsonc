@@ -45,6 +45,10 @@
     {
       "binding": "NEXT_INC_CACHE_R2_BUCKET",
       "bucket_name": "pg-next-cache"
+    },
+    {
+      "binding": "HAZARD_GRID",
+      "bucket_name": "pg-hazard-grid"
     }
   ],
   "images": {

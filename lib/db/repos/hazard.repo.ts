@@ -1,7 +1,19 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import * as turf from '@turf/turf'
 import { and, eq, gte, lte } from 'drizzle-orm'
 import type { LineString, MultiPolygon, Point, Polygon } from 'geojson'
 
+import {
+  gridCellsAlongRoute,
+  gridCellsForBounds,
+  publishedHazardGrid,
+  readRouteCells,
+  type GridCellIndex,
+  type HazardGridBounds,
+  type HazardGridBucket,
+  type HazardGridReader,
+  type HazardGridZone,
+} from '@/lib/hazard-grid'
 import type { HazardAreaContext, HazardType } from '@/lib/types'
 
 import { assertCan, type Actor } from '../authz'
@@ -10,6 +22,12 @@ import { hazardImageCache, hazardZoneCoverage, hazardZones, imageGenerationGateL
 
 const JAPAN_BOUNDS = { minLng: 122, minLat: 20, maxLng: 154, maxLat: 46 } as const
 const MAX_ROUTE_CANDIDATES = 500
+
+const HAZARD_TYPES: readonly HazardType[] = ['flood', 'tsunami']
+
+type HazardZoneRecord = Pick<typeof hazardZones.$inferSelect,
+  'id' | 'zoneGroupId' | 'hazardType' | 'sourceLayer' | 'riskLevel'
+  | 'depthMinM' | 'depthMaxM' | 'areaContext' | 'geojson'>
 
 type Feature<G> = { type: 'Feature'; geometry: G; properties: Record<string, unknown> }
 type PointFeatureCollection = { features: Array<Feature<Point>> }
@@ -138,6 +156,69 @@ function pointMatchesArea(longitude: number, latitude: number, geometry: AreaGeo
   return turfOps.booleanPointInPolygon(turfOps.point([longitude, latitude]), areaFeature(geometry))
 }
 
+function polygonIntersectsBounds(polygon: Polygon, bounds: HazardGridBounds): boolean {
+  let minLng = Infinity
+  let minLat = Infinity
+  let maxLng = -Infinity
+  let maxLat = -Infinity
+  for (const [lng, lat] of polygon.coordinates[0] ?? []) {
+    minLng = Math.min(minLng, lng)
+    minLat = Math.min(minLat, lat)
+    maxLng = Math.max(maxLng, lng)
+    maxLat = Math.max(maxLat, lat)
+  }
+  return minLng <= bounds.maxLng && maxLng >= bounds.minLng
+    && minLat <= bounds.maxLat && maxLat >= bounds.minLat
+}
+
+function zoneFromGrid(zone: HazardGridZone, hazardType: HazardType): HazardZoneRecord {
+  return {
+    id: zone.id,
+    zoneGroupId: zone.group,
+    hazardType,
+    sourceLayer: zone.source,
+    riskLevel: zone.risk,
+    depthMinM: zone.depthMin,
+    depthMaxM: zone.depthMax,
+    areaContext: zone.context,
+    geojson: zone.geometry,
+  }
+}
+
+async function gridZones(
+  grid: HazardGridReader,
+  hazardType: HazardType,
+  cells: readonly GridCellIndex[],
+  bounds: HazardGridBounds,
+): Promise<HazardZoneRecord[]> {
+  const loaded = await Promise.all(cells.map((cell) => grid.readCell(hazardType, cell)))
+  return loaded.flatMap((cell) => cell.zones
+    .filter((zone) => polygonIntersectsBounds(zone.geometry, bounds))
+    .map((zone) => zoneFromGrid(zone, hazardType)))
+}
+
+/** A zone cut at cell edges appears once per cell; keep one entry per zone ID. */
+function uniqueById<T extends { id: string }>(rows: readonly T[]): T[] {
+  const seen = new Set<string>()
+  return rows.filter((row) => {
+    if (seen.has(row.id)) return false
+    seen.add(row.id)
+    return true
+  })
+}
+
+function pointBounds(longitude: number, latitude: number, toleranceMeters: number): HazardGridBounds {
+  const latitudeDelta = toleranceMeters / 111_320
+  const longitudeScale = Math.max(Math.cos((latitude * Math.PI) / 180), 0.01)
+  const longitudeDelta = toleranceMeters / (111_320 * longitudeScale)
+  return {
+    minLng: longitude - longitudeDelta,
+    minLat: latitude - latitudeDelta,
+    maxLng: longitude + longitudeDelta,
+    maxLat: latitude + latitudeDelta,
+  }
+}
+
 function routeBounds(route: LineString) {
   const longitudes = route.coordinates.map((coordinate) => coordinate[0])
   const latitudes = route.coordinates.map((coordinate) => coordinate[1])
@@ -194,7 +275,7 @@ function representativePoint(route: LineString, polygon: Polygon): [number, numb
 }
 
 function markerFromZone(
-  zone: typeof hazardZones.$inferSelect,
+  zone: HazardZoneRecord,
   coordinate: [number, number],
 ): RouteHazardMarkerRow {
   const hazardType = zone.hazardType as HazardType
@@ -242,7 +323,12 @@ function markerFromZone(
   }
 }
 
-export function createHazardRepo(db: AppDb) {
+/**
+ * Zone and coverage reads use the R2 grid when it is bound (nationwide data,
+ * #277) and fall back to the D1 tables otherwise. Image cache and gate logs
+ * always use D1.
+ */
+export function createHazardRepo(db: AppDb, grid: HazardGridReader | null = null) {
   return {
     async getCachedImage(actor: Actor, input: Pick<HazardImageCacheInput,
       'hazardType' | 'riskLevel' | 'areaContext' | 'scenarioKey' | 'provider' | 'promptSignature'>) {
@@ -295,24 +381,24 @@ export function createHazardRepo(db: AppDb) {
       assertCan(actor, 'select', 'hazard_zones')
       if (!isInJapan(input.longitude, input.latitude)) return []
       const toleranceMeters = clampTolerance(input.toleranceMeters)
-      const latitudeDelta = toleranceMeters / 111_320
-      const longitudeScale = Math.max(Math.cos((input.latitude * Math.PI) / 180), 0.01)
-      const longitudeDelta = toleranceMeters / (111_320 * longitudeScale)
-      const candidates = await db.select().from(hazardZones).where(and(
-        eq(hazardZones.hazardType, input.hazardType),
-        lte(hazardZones.bboxMinLng, input.longitude + longitudeDelta),
-        gte(hazardZones.bboxMaxLng, input.longitude - longitudeDelta),
-        lte(hazardZones.bboxMinLat, input.latitude + latitudeDelta),
-        gte(hazardZones.bboxMaxLat, input.latitude - latitudeDelta),
-      ))
+      const bounds = pointBounds(input.longitude, input.latitude, toleranceMeters)
+      const candidates: HazardZoneRecord[] = grid
+        ? await gridZones(grid, input.hazardType, gridCellsForBounds(bounds), bounds)
+        : await db.select().from(hazardZones).where(and(
+          eq(hazardZones.hazardType, input.hazardType),
+          lte(hazardZones.bboxMinLng, bounds.maxLng),
+          gte(hazardZones.bboxMaxLng, bounds.minLng),
+          lte(hazardZones.bboxMinLat, bounds.maxLat),
+          gte(hazardZones.bboxMaxLat, bounds.minLat),
+        ))
 
-      return candidates
+      return uniqueById(candidates
         .filter((zone) => pointMatchesPolygon(
           input.longitude,
           input.latitude,
           zone.geojson,
           toleranceMeters,
-        ))
+        )))
         .sort((left, right) => right.riskLevel - left.riskLevel
           || (right.depthMaxM ?? -Infinity) - (left.depthMaxM ?? -Infinity)
           || left.id.localeCompare(right.id))
@@ -328,12 +414,19 @@ export function createHazardRepo(db: AppDb) {
     },
 
     async hasCoverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>): Promise<boolean> {
-      return (await createHazardRepo(db).coverageAtPoint(actor, input)).length > 0
+      return (await createHazardRepo(db, grid).coverageAtPoint(actor, input)).length > 0
     },
 
     async coverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
       assertCan(actor, 'select', 'hazard_zone_coverage')
       if (!isInJapan(input.longitude, input.latitude)) return []
+      if (grid) {
+        const cells = await Promise.all(gridCellsForBounds(pointBounds(input.longitude, input.latitude, 0))
+          .map((cell) => grid.readCell(input.hazardType, cell)))
+        return uniqueById(cells.flatMap((cell) => cell.coverage)
+          .filter((row) => pointMatchesArea(input.longitude, input.latitude, row.geometry)))
+          .map((row) => ({ sourceLayer: row.source, region: row.region, source: row.label, importedAt: row.importedAt }))
+      }
       const candidates = await db.select().from(hazardZoneCoverage).where(and(
         eq(hazardZoneCoverage.hazardType, input.hazardType),
         lte(hazardZoneCoverage.bboxMinLng, input.longitude),
@@ -349,6 +442,7 @@ export function createHazardRepo(db: AppDb) {
       assertCan(actor, 'select', 'hazard_zones')
       validateRoute(route)
       const bounds = routeBounds(route)
+      if (grid) return gridRouteMarkers(grid, route, bounds)
       const candidates = await db.select().from(hazardZones).where(and(
         lte(hazardZones.bboxMinLng, bounds.maxLng),
         gte(hazardZones.bboxMaxLng, bounds.minLng),
@@ -372,29 +466,59 @@ export function createHazardRepo(db: AppDb) {
         }
       }
 
-      return {
-        markers: [...byGroup.values()].sort((left, right) => right.risk_level - left.risk_level
-          || left.id.localeCompare(right.id)),
-        truncated,
-      }
+      return { markers: sortMarkers([...byGroup.values()]), truncated }
     },
   }
 }
 
-export function zonesAtPoint(actor: Actor, input: HazardPointInput) {
-  return createHazardRepo(getDb()).zonesAtPoint(actor, input)
+function sortMarkers(markers: RouteHazardMarkerRow[]): RouteHazardMarkerRow[] {
+  return markers.sort((left, right) => right.risk_level - left.risk_level || left.id.localeCompare(right.id))
 }
 
-export function hasCoverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
-  return createHazardRepo(getDb()).hasCoverageAtPoint(actor, input)
+/**
+ * Grid route markers. Cells are read along the route, both hazard types per
+ * cell, so neither type can crowd the other out. Pieces of one zone collapse
+ * to one marker; the cap counts distinct zones that really cross the route.
+ */
+async function gridRouteMarkers(grid: HazardGridReader, route: LineString, bounds: HazardGridBounds) {
+  const read = await readRouteCells(grid, HAZARD_TYPES, gridCellsAlongRoute(route))
+  const hits = new Map<string, RouteHazardMarkerRow>()
+  let truncated = read.truncated
+  scan: for (const { hazardType, cell } of read.cells) {
+    for (const piece of cell.zones) {
+      if (hits.has(piece.id) || !polygonIntersectsBounds(piece.geometry, bounds)) continue
+      const coordinate = representativePoint(route, piece.geometry)
+      if (!coordinate) continue
+      if (hits.size >= MAX_ROUTE_CANDIDATES) {
+        truncated = true
+        break scan
+      }
+      hits.set(piece.id, { ...markerFromZone(zoneFromGrid(piece, hazardType), coordinate), id: piece.id })
+    }
+  }
+  return { markers: sortMarkers([...hits.values()]), truncated }
 }
 
-export function coverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
-  return createHazardRepo(getDb()).coverageAtPoint(actor, input)
+/** The HAZARD_GRID R2 grid once its complete manifest is published; otherwise D1. */
+function getHazardGrid(): Promise<HazardGridReader | null> {
+  const env = getCloudflareContext().env as unknown as { HAZARD_GRID?: HazardGridBucket }
+  return publishedHazardGrid(env.HAZARD_GRID)
 }
 
-export function routeIntersections(actor: Actor, route: LineString) {
-  return createHazardRepo(getDb()).routeIntersections(actor, route)
+export async function zonesAtPoint(actor: Actor, input: HazardPointInput) {
+  return createHazardRepo(getDb(), await getHazardGrid()).zonesAtPoint(actor, input)
+}
+
+export async function hasCoverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
+  return createHazardRepo(getDb(), await getHazardGrid()).hasCoverageAtPoint(actor, input)
+}
+
+export async function coverageAtPoint(actor: Actor, input: Omit<HazardPointInput, 'toleranceMeters'>) {
+  return createHazardRepo(getDb(), await getHazardGrid()).coverageAtPoint(actor, input)
+}
+
+export async function routeIntersections(actor: Actor, route: LineString) {
+  return createHazardRepo(getDb(), await getHazardGrid()).routeIntersections(actor, route)
 }
 
 export function logGateVerdict(actor: Actor, input: HazardGateLogInput) {
