@@ -8,20 +8,31 @@
 import { nearestUnfound } from "@/lib/hunter/scoring"
 import type { HunterHazard } from "@/lib/hunter/types"
 
-/** ヒント発火のしきい値(missStreak: 連続非hit / idleMs: 最後の発見からの経過)。 */
+/**
+ * ヒント発火のしきい値(missStreak: 連続した「よく見たはずれ」/ idleMs: 最後の発見からの経過)。
+ * 答えの枠(Lv3)は時間だけで出す。連打で答えを引き出せないようにするため、回数では出さない。
+ */
 export const HINT_THRESHOLDS = {
   lv1Miss: 2,
   lv1Ms: 8000,
-  lv2Miss: 4,
+  lv2Miss: 3,
   lv2Ms: 16000,
-  lv3Miss: 6,
   lv3Ms: 26000,
 } as const
+
+/** 前のタップからこれ以上あけた はずれだけを「よく見たはずれ」としてヒントに数える。 */
+export const DELIBERATE_GAP_MS = 1500
+
+/** はずれが「よく見たはずれ」か(前のタップが無ければ数える)。 */
+export function isDeliberateMiss(previousTapAt: number | null, tapAt: number): boolean {
+  return previousTapAt === null || tapAt - previousTapAt >= DELIBERATE_GAP_MS
+}
 
 /**
  * ヒントレベル(0..3)を決める。
  * - 0=非表示 / 1=温度+方向 / 2=ゾーン発光 / 3=薄枠開示
- * - 最後の1件でも答えの枠を早出しせず、通常の Lv3 しきい値を守る。
+ * - missStreak は「よく見たはずれ」の連続数(連打は数えない。呼び出し側で isDeliberateMiss を通す)。
+ * - 最後の1件でも答えの枠を早出しせず、Lv3 は時間のしきい値だけで出す。
  */
 export function computeHintLevel(
   missStreak: number,
@@ -29,9 +40,7 @@ export function computeHintLevel(
   _remaining: number,
 ): 0 | 1 | 2 | 3 {
   const T = HINT_THRESHOLDS
-  if (missStreak >= T.lv3Miss || idleMs >= T.lv3Ms) {
-    return 3
-  }
+  if (idleMs >= T.lv3Ms) return 3
   if (missStreak >= T.lv2Miss || idleMs >= T.lv2Ms) return 2
   if (missStreak >= T.lv1Miss || idleMs >= T.lv1Ms) return 1
   return 0
@@ -50,6 +59,7 @@ export function selectHintTarget(
   const hasUnfound = hazards.some((h) => !foundIds.has(h.id))
   if (!hasUnfound) return null
   if (lastTap) {
+    // 近さは focus(無ければ当たり枠の中心)まで。nearestUnfound が anchorOf で測る。
     const near = nearestUnfound(lastTap, hazards, foundIds)
     if (near.hazardId) return hazards.find((h) => h.id === near.hazardId) ?? null
   }

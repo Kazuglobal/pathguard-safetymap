@@ -5,6 +5,7 @@ import {
   KID_COPY_BY_KIND,
   KID_DANGER_KINDS,
   KID_LABEL_BY_KIND,
+  KID_REASON_BY_KIND,
 } from "@/lib/hunter/kid-copy"
 import { GUIDE_COPY_BY_REASON, selectGuideQuiz } from "@/lib/hunter/fallback-hazards"
 import { KID_ACCIDENT_LABELS, childRiskHint, kidAccidentLabel } from "@/lib/hunter/accident-context"
@@ -73,6 +74,13 @@ describe("kid-facing vocabulary furigana coverage", () => {
       const copy = KID_COPY_BY_KIND[kind]
       expect(uncoveredKanji(copy.whyDangerous)).toEqual([])
       expect(uncoveredKanji(copy.safeAction)).toEqual([])
+    }
+  })
+
+  it("covers every kanji in KID_REASON_BY_KIND (どうして あぶない？ の答え)", () => {
+    for (const kind of KID_DANGER_KINDS) {
+      const reason = KID_REASON_BY_KIND[kind]
+      if (reason) expect(uncoveredKanji(reason)).toEqual([])
     }
   })
 

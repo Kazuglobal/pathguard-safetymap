@@ -4,7 +4,8 @@
 // - explore(matches)/quiz(correct) の応答差をここで吸収する。
 // =============================================
 
-import type { HunterMissionReward } from "@/lib/hunter/rewards"
+import { normalizedAccuracy, type HunterMissionReward } from "@/lib/hunter/rewards"
+import type { HunterDiscovery } from "@/lib/hunter/types"
 
 export interface HunterSessionSummary {
   readonly score: number
@@ -15,6 +16,24 @@ export interface HunterSessionSummary {
   readonly pointsAwarded: number
   readonly persistError: boolean
   readonly missionsCompleted: readonly HunterMissionReward[]
+  /** 理由まで合った数(旧ルール・クイズは matches と同じ)。 */
+  readonly understood: number
+  /** 0..100 の達成度(星の元)。 */
+  readonly accuracy: number
+  /** 採点ルールの版(1=旧 / 2=虫めがね+理由)。 */
+  readonly rules: number
+  /** 虫めがねののこり。旧ルール・クイズは null。 */
+  readonly magnifiersLeft: number | null
+  /** サーバが数えた発見(見つけた順)。こたえあわせ・結果画面はこれを正とする。 */
+  readonly discoveries: readonly HunterDiscovery[]
+}
+
+function toDiscoveries(value: unknown): HunterDiscovery[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === "object")
+    .filter((d) => typeof d.hazardId === "string" && d.hazardId.length > 0)
+    .map((d) => ({ hazardId: d.hazardId as string, understood: d.understood === true }))
 }
 
 export type HunterSessionFailureKind = "expired" | "network" | "server"
@@ -49,10 +68,14 @@ function num(value: unknown, fallback = 0): number {
 export function toSessionSummary(body: unknown, fallbackTotal: number): HunterSessionSummary {
   const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>
   const missions = Array.isArray(b.missionsCompleted) ? b.missionsCompleted : []
+  const matches = Math.max(0, num(b.matches, num(b.correct)))
+  const total = Math.max(0, num(b.total, fallbackTotal))
+  const rules = num(b.rules, 1)
+  const budget = num(b.budget, 0)
   return {
     score: Math.max(0, num(b.score)),
-    matches: Math.max(0, num(b.matches, num(b.correct))),
-    total: Math.max(0, num(b.total, fallbackTotal)),
+    matches,
+    total,
     comboMax: Math.max(0, num(b.comboMax)),
     pointsAwarded: Math.max(0, num(b.pointsAwarded)),
     persistError: b.persistError === true,
@@ -60,6 +83,11 @@ export function toSessionSummary(body: unknown, fallbackTotal: number): HunterSe
       .filter((m): m is Record<string, unknown> => Boolean(m) && typeof m === "object")
       .filter((m) => typeof m.title === "string" && m.title.length > 0)
       .map((m) => ({ title: m.title as string, rewardPoints: Math.max(0, num(m.rewardPoints)) })),
+    understood: Math.max(0, Math.min(matches, num(b.understood, matches))),
+    accuracy: Math.max(0, Math.min(100, num(b.accuracy, normalizedAccuracy(matches, total)))),
+    rules,
+    magnifiersLeft: rules >= 2 && budget > 0 ? Math.max(0, budget - Math.max(0, num(b.misses))) : null,
+    discoveries: toDiscoveries(b.discoveries),
   }
 }
 

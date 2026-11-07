@@ -10,6 +10,8 @@ import {
 import { analyzeHunterImage } from "@/lib/hunter/hunter-ai"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
 import { putAnswerKey } from "@/lib/hunter/answer-cache"
+import { toCachedHazardKey } from "@/lib/hunter/answer-key"
+import { HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
 import { logAnalyzeFallback } from "@/lib/hunter/observability"
 import { parseAnalyzeBody } from "@/lib/hunter/validation"
 import {
@@ -68,7 +70,12 @@ async function savePhoto(
         type: hazard.type,
         kind: hazard.kind ?? null,
         accidentLink: hazard.accidentLink ?? null,
-        region: { ...hazard.region },
+        // region 列は JSON。当たり枠と focus を同居させ、きろくの再プレイでも同じ判定にする(移行不要)。
+        region: {
+          ...hazard.region,
+          ...(hazard.hitRegion ? { hitRegion: { ...hazard.hitRegion } } : {}),
+          ...(hazard.focusPoint ? { focusPoint: { ...hazard.focusPoint } } : {}),
+        },
         severity: hazard.severity,
         kidExplanation: hazard.kidExplanation,
         safeAction: hazard.safeAction,
@@ -151,18 +158,14 @@ export async function POST(request: NextRequest) {
     // サーバ権威にする。Upstash 未設定なら no-op(=従来のクライアント供給で採点)。
     // 画像/PII は保存しない。
     await putAnswerKey(sessionId, {
-      hazards: analysis.hazards.map((h) => ({
-        id: h.id,
-        region: h.region,
-        severity: h.severity,
-        confidence: h.confidence,
-      })),
+      hazards: analysis.hazards.map(toCachedHazardKey),
       quiz: analysis.quiz.map((q) => ({
         id: q.id,
         kind: q.kind,
         correctChoiceId: q.correctChoiceId,
         answerRegion: q.answerRegion,
       })),
+      rules: HUNTER_RULES_VERSION,
     })
 
     // 保存はオプトイン (save=true) かつ explore で hazards があるときのみ。
@@ -173,10 +176,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       sessionId,
+      rules: HUNTER_RULES_VERSION,
       mode: analysis.mode,
       hazards: analysis.hazards,
       quiz: analysis.quiz,
       safePoints: analysis.safePoints,
+      // おうちの人むけの根拠(こたえあわせで使う)。保存はしない。
+      parentNotes: analysis.parentNotes ?? [],
       accident: accidentSummary,
       usedFallback: analysis.usedFallback,
       fallbackReason: analysis.fallbackReason,

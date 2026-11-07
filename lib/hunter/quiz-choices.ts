@@ -9,8 +9,8 @@
 
 import type { HunterQuizChoice } from "./types"
 
-/** 文字列から非負整数ハッシュを導く(seed用、暗号強度は不要)。 */
-function hashSeed(input: string): number {
+/** 文字列から非負整数ハッシュを導く(seed用、暗号強度は不要)。reason-choices.ts も使う。 */
+export function hashSeed(input: string): number {
   let hash = 0
   for (let i = 0; i < input.length; i += 1) {
     hash = (hash * 31 + input.charCodeAt(i)) | 0

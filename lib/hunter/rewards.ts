@@ -7,6 +7,7 @@
 // - guide モード(total 0)は記録しない = 偽クレジット禁止。
 // =============================================
 
+import { discoveryAccuracy, HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
 import type { HunterTap } from "@/lib/hunter/types"
 
 /** 1 プレイの基本ポイント(app/leaderboard の「写真ゲーム +5pt」と一致させる)。 */
@@ -37,6 +38,14 @@ export interface HunterPlaySummary {
   readonly taps?: readonly HunterTap[]
   /** quiz: 回答した数(未回答で けっかを みる を区別するため)。 */
   readonly answered?: number
+  /** explore 採点ルールの版(2 = 虫めがね+理由)。2 のときだけ理由つきの達成度で記録する。 */
+  readonly rules?: number
+  /** explore v2: 理由まで合った数。 */
+  readonly understood?: number
+  /** explore v2: 虫めがねの数・使った数・採点しなかったタップ数(記録用)。 */
+  readonly budget?: number
+  readonly misses?: number
+  readonly ignoredTaps?: number
 }
 
 export interface HunterAttemptInput {
@@ -72,9 +81,29 @@ export function normalizedAccuracy(matches: number, total: number): number {
  * 再採点結果 → safety_quest_attempts 行。guide(total 0)は null(記録しない)。
  * ポイントは 1 つでも みつけた/正解したときだけ。0 のときは attempts 行だけ残る(回数の記録)。
  */
+/** 記録する達成度。explore v2 は「理由まで=1・場所だけ=0.6」、それ以外は みつけた割合。 */
+function attemptAccuracy(summary: HunterPlaySummary): number {
+  if (summary.mode === "explore" && summary.rules === HUNTER_RULES_VERSION && typeof summary.understood === "number") {
+    return discoveryAccuracy(summary.matches, summary.understood, summary.total)
+  }
+  return normalizedAccuracy(summary.matches, summary.total)
+}
+
+/** v2 の記録項目(旧ルールでは何も足さない)。 */
+function v2Payload(summary: HunterPlaySummary): Record<string, unknown> {
+  if (summary.rules !== HUNTER_RULES_VERSION) return {}
+  return {
+    rules: summary.rules,
+    understood: summary.understood ?? summary.matches,
+    budget: summary.budget ?? null,
+    misses: summary.misses ?? null,
+    ignoredTaps: summary.ignoredTaps ?? 0,
+  }
+}
+
 export function buildHunterAttempt(summary: HunterPlaySummary): HunterAttemptInput | null {
   if (summary.total <= 0) return null
-  const accuracy = normalizedAccuracy(summary.matches, summary.total)
+  const accuracy = attemptAccuracy(summary)
   return {
     challengeId: hunterChallengeId(summary.mode),
     mode: HUNTER_ATTEMPT_MODE,
@@ -89,6 +118,7 @@ export function buildHunterAttempt(summary: HunterPlaySummary): HunterAttemptInp
       matches: summary.matches,
       total: summary.total,
       foundIds: [...(summary.foundIds ?? [])],
+      ...v2Payload(summary),
     },
     score: accuracy,
     accuracy,

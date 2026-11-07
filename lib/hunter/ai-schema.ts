@@ -19,6 +19,7 @@ import {
   type HunterDangerKind,
 } from "@/lib/hunter/kid-copy"
 import type { RiskSeverity } from "@/lib/hazard-game-types"
+import { normalizeNativeCoords } from "@/lib/hunter/box2d"
 
 // ---- 生AI型 (strictNullChecks:false 環境では z.infer が緩むため明示interface) ----
 
@@ -42,6 +43,8 @@ export interface RawDangerPoint {
   kind: HunterDangerKind
   kidType?: string
   region: RawAiRegion
+  /** いちばん見るべき 1 点(正規化座標)。無い・壊れていれば undefined。 */
+  focus?: { x: number; y: number }
   severity?: RiskSeverity
   confidence?: number
   whyDangerous?: string
@@ -143,14 +146,22 @@ export function salvageRegionScale(point: unknown): unknown {
   }
 }
 
-// danger point の必須は region のみ。付随フィールドは .catch で型崩れを
-// undefined 化し、点そのものは保持する(sanitize が既定値・子ども文で補完)。
-const dangerPointSchema = z.preprocess(salvageRegionScale, z.object({
-  // 分析・eval採取専用(子ども表示経路なし。sanitize は読まず HunterHazard へ伝播しない)。
+const pointSchema = z.object({ x: zNum, y: zNum })
+
+/** Gemini ネイティブの box_2d/focus を正規化してから、旧形式 region のスケール救済へ回す。 */
+function preprocessCoords(point: unknown): unknown {
+  return salvageRegionScale(normalizeNativeCoords(point))
+}
+
+// danger point の必須は region のみ(box_2d は preprocess で region へ直る)。付随フィールドは
+// .catch で型崩れを undefined 化し、点そのものは保持する(sanitize が既定値・子ども文で補完)。
+const dangerPointSchema = z.preprocess(preprocessCoords, z.object({
+  // 分析用。HunterHazard へは入れず、検証してから おうちの人むけの parentNotes にだけ出す。
   evidence: z.string().optional().catch(undefined),
   kind: zKind,
   kidType: z.string().optional().catch(undefined),
   region: regionSchema,
+  focus: pointSchema.optional().catch(undefined),
   severity: severitySchema,
   confidence: zNum.optional().catch(undefined),
   whyDangerous: z.string().optional().catch(undefined),
@@ -160,7 +171,7 @@ const dangerPointSchema = z.preprocess(salvageRegionScale, z.object({
   quiz: quizSchema.optional().catch(undefined),
 }))
 
-const safePointSchema = z.preprocess(salvageRegionScale, z.object({
+const safePointSchema = z.preprocess(preprocessCoords, z.object({
   kind: zKind.optional().catch(undefined),
   kidType: z.string().optional().catch(undefined),
   region: regionSchema.optional().catch(undefined),

@@ -6,7 +6,11 @@ vi.mock("@/lib/gemini-hazard", () => ({
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { analyzeHunterImage, buildHunterPrompt, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
-import { HUNTER_GENERATION_CONFIG, HUNTER_RESPONSE_SCHEMA } from "@/lib/hunter/ai-request-schema"
+import {
+  buildHunterResponseSchema,
+  HUNTER_GENERATION_CONFIG,
+  HUNTER_RESPONSE_SCHEMA,
+} from "@/lib/hunter/ai-request-schema"
 import { REALTIME_VISION_DEFAULT_MODEL } from "@/lib/gemini-util"
 import { DISPLAY_CONF_MIN, MAX_AREA } from "@/lib/hunter/sanitize"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
@@ -91,8 +95,13 @@ describe("analyzeHunterImage", () => {
   it("builds a prompt that hardens against false-positive 'mundane object' hazards", () => {
     const prompt = buildHunterPrompt(undefined, accident)
     expect(prompt).toContain("死角を作っていない、ふつうに停まっている車")
-    expect(prompt).toContain("region(bbox)の正確さ")
+    expect(prompt).toContain("box_2d(枠)と focus(見るべき1点)の正確さ")
+    expect(prompt).toContain("focus は必ず box_2d の内側に置く")
     expect(prompt).toContain(`${DISPLAY_CONF_MIN} 未満の確信度なら`)
+    // 切り戻し用の旧形式も同じ関数で作れる
+    const legacy = buildHunterPrompt(undefined, accident, "region")
+    expect(legacy).toContain("region(bbox)の正確さ")
+    expect(legacy).not.toContain("box_2d")
   })
 
   it("v2プロンプト: 3ゲート二段判定・evidence先行・2周目チェック・誤答類型・面積閾値開示を含む", () => {
@@ -146,7 +155,8 @@ describe("analyzeHunterImage", () => {
       "evidence",
       "kind",
       "kidType",
-      "region",
+      "box_2d",
+      "focus",
       "severity",
       "confidence",
       "whyDangerous",
@@ -154,6 +164,17 @@ describe("analyzeHunterImage", () => {
       "accidentLink",
       "quiz",
     ])
+    // focus は必須にしない(無ければ枠の中心で採点できる)
+    expect(items.required).toContain("box_2d")
+    expect(items.required).not.toContain("focus")
+  })
+
+  it("responseSchema: propertyOrdering と properties のキーが完全に一致する(ずれると Gemini が 400 を返す)", () => {
+    for (const format of ["box2d", "region"] as const) {
+      const items = (buildHunterResponseSchema(format).properties as any).dangerPoints.items
+      expect([...items.propertyOrdering].sort()).toEqual(Object.keys(items.properties).sort())
+      for (const key of items.required) expect(Object.keys(items.properties)).toContain(key)
+    }
   })
 
   it("promotes a confident mid-size point to a place quiz (golden)", async () => {

@@ -14,7 +14,12 @@ import { DISPLAY_CONF_MIN, MAX_AREA, sanitizeDangerPoints, sanitizeSafePoints } 
 import { buildQuizItemsFromAi } from "@/lib/hunter/quiz"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
 import { accidentTypeToKind, KID_DANGER_KINDS, KID_LABEL_BY_KIND } from "@/lib/hunter/kid-copy"
-import { HUNTER_GENERATION_CONFIG, HUNTER_VISION_RETRY_TIMEOUT_MS } from "@/lib/hunter/ai-request-schema"
+import {
+  HUNTER_COORD_FORMAT,
+  HUNTER_GENERATION_CONFIG,
+  HUNTER_VISION_RETRY_TIMEOUT_MS,
+  type HunterCoordFormat,
+} from "@/lib/hunter/ai-request-schema"
 import type { HunterAccidentSummary, HunterAnalyzeResult } from "@/lib/hunter/types"
 
 export interface AnalyzeHunterOptions {
@@ -31,10 +36,31 @@ export interface AnalyzeHunterOptions {
 
 const KIND_LIST = KID_DANGER_KINDS.join(" / ")
 
+/** 枠の書き方(座標形式ごと)。採点は focus のまわりの小さい当たり枠で行うので、focus の正確さが要。 */
+function coordSection(format: HunterCoordFormat): string {
+  if (format === "region") {
+    return `【region(bbox)の正確さ】
+- x,y はその危険「状況」が実際に写っている場所の左上、w,h はその範囲(画像左上が0,0、右下が1,1の正規化座標)。`
+  }
+  return `【box_2d(枠)と focus(見るべき1点)の正確さ】
+- box_2d は [ymin, xmin, ymax, xmax]。画像の左上を0、右下を1000とした 0〜1000 の整数で、その危険「状況」が実際に写っている範囲を囲む。
+- focus は [y, x](0〜1000 の整数)。子どもが「ここ！」と指でさすべき いちばん大事な1点(例: 角を作っている へいの はし / 車のかげの すき間 / わたる場所の まんなか)。focus は必ず box_2d の内側に置く。
+- 採点は focus のまわりの小さい範囲で行う。focus は枠の中心ではなく、危険の原因そのものの上に置く。
+- 安全の工夫(safePoints)も box_2d で囲む(focus は不要)。`
+}
+
+function coordExample(format: HunterCoordFormat): string {
+  return format === "region"
+    ? `"region": { "x": 0.40, "y": 0.52, "w": 0.18, "h": 0.20 }`
+    : `"box_2d": [520, 400, 720, 580],
+      "focus": [610, 420]`
+}
+
 /** 専用ハンターAIのプロンプト。危険「ポイント」だけを子ども向けに返させる。 */
 export function buildHunterPrompt(
   accidentContext: string | undefined,
   accidentSummary: HunterAccidentSummary,
+  format: HunterCoordFormat = HUNTER_COORD_FORMAT,
 ): string {
   const topTypes = (
     accidentSummary.topAccidentTypes && accidentSummary.topAccidentTypes.length > 0
@@ -87,10 +113,9 @@ export function buildHunterPrompt(
 ${KIND_LIST}
 - blind_corner=見通しの悪い角 / popout_spot=物かげからの飛び出し地点 / crossing_no_signal=信号のない横断 / turning_car=曲がってくる車(右左折) / narrow_sidewalk=せまい歩道 / parked_car_shadow=停車中の車のかげ(死角) / falling_object=落ちてくるもの / flood_dip=水がたまりやすい所 / other=その他
 
-【region(bbox)の正確さ】
-- x,y はその危険「状況」が実際に写っている場所の左上、w,h はその範囲(画像左上が0,0、右下が1,1の正規化座標)。
+${coordSection(format)}
 - 枠は「状況」の目印になる“実際に写っている物”を囲む: blind_corner→角を作っている建物・へいの はし / parked_car_shadow→死角を作っている その車 / crossing_no_signal→実際にわたる場所の路面 / popout_spot→出てきそうな すき間・物かげ / turning_car→曲がってくる車(写っていなければ曲がり込んでくる車道の口) / narrow_sidewalk→せまくなっている歩道の区間 / falling_object→落ちてきそうな物 / flood_dip→くぼみ・水たまりの路面。
-- 画面全体や無関係に広い範囲を囲まない。枠の面積(w×h)が ${MAX_AREA} をこえる枠は、後処理で無効として捨てられる。危険の原因が写っている範囲だけを囲めば自然に収まる。
+- 画面全体や無関係に広い範囲を囲まない。枠の面積が画像全体の ${MAX_AREA} をこえる枠は、後処理で無効として捨てられる。危険の原因が写っている範囲だけを囲めば自然に収まる。
 - 確認手順: box を決めたら、そこだけを頭の中で切り出して見る。危険の原因が枠の中で小さくしか写らないなら、原因のまわりまで枠を狭める。逆に原因がはみ出すなら広げる。
 - 同じ場所・同じ状況の危険は1つにまとめる(重複して出さない)。写真の別の一部・別の角度から見えていても、同じ実世界の場所を指すものは1つに統合する。
 
@@ -102,7 +127,7 @@ ${KIND_LIST}
 【evidence(さいしょに根拠を書く)】
 - 各 dangerPoint では最初に evidence を書く: 「何が・何を・どう遮る/交わるか」をこの写真から読み取れる事実で30字以内(例:「角のへいが 右から来る車を かくす」)。写真に写っていない推測を書かない。evidence は分析用で、子どもには表示されない。
 - evidence が「物の名前だけ」にしかならない候補は G2 を満たしていない。出さない。
-- region と confidence は evidence の後で決める: 枠は evidence に書いた場所を囲み、confidence は evidence の確かさに合わせる。
+- 枠と confidence は evidence の後で決める: 枠は evidence に書いた場所を囲み、confidence は evidence の確かさに合わせる。
 
 【ことば(低学年むけ)】
 - 1〜2年生の ことば。ひらがな多め。みじかい文。むずかしい漢字や 英語は つかわない。こわがらせない。「ぜったい安全」と 断定しない。
@@ -124,7 +149,7 @@ ${KIND_LIST}
 - imageUsable: 写真が暗すぎる/通学路でない等で判断できないときは false。
 
 【安全の工夫(safePoints)】
-- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { kind, kidType(やさしい日本語), region, whyGood(この写真でなぜ安全か・1文) }。無ければ空配列。
+- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { kind, kidType(やさしい日本語), ${format === "region" ? "region" : "box_2d"}, whyGood(この写真でなぜ安全か・1文) }。無ければ空配列。
 - dangerPoints が空(=あぶない所が見つからない写真)のときこそ、safePoints をていねいに探す。
 
 【confidence と severity の意味】
@@ -133,7 +158,7 @@ ${KIND_LIST}
 
 【出力前の最終チェック】
 - 出力する前に、各 dangerPoint を G1〜G3 と【とても重要】の基準へもう一度照らし合わせ、当てはまらないものは取り除いてから出力する。
-- evidence が写真の事実か・region が evidence の場所を囲んでいるか・枠が広すぎないかを確かめる。
+- evidence が写真の事実か・枠が evidence の場所を囲んでいるか・枠が広すぎないか${format === "region" ? "" : "・focus が危険の原因の上にあるか"}を確かめる。
 
 ${accidentBlock}${ctx}
 
@@ -146,7 +171,7 @@ ${accidentBlock}${ctx}
       "evidence": "角の へいが 右から来る 車を かくしている",
       "kind": "blind_corner",
       "kidType": "見通しの悪い角",
-      "region": { "x": 0.40, "y": 0.52, "w": 0.18, "h": 0.20 },
+      ${coordExample(format)},
       "severity": "high",
       "confidence": 0.78,
       "whyDangerous": "みぎの かどは 曲がってくる 車から きみが 見えにくいよ。",
@@ -261,7 +286,7 @@ export async function analyzeHunterImage(
   }
 
   // 4) サニタイズ&選別(的外れ正解の構造排除)。空化は empty(逆モード素材は引き継ぐ)。
-  const { hazards, materials } = sanitizeDangerPoints(validated.dangerPoints, { sessionId })
+  const { hazards, materials, notes } = sanitizeDangerPoints(validated.dangerPoints, { sessionId })
   const safePoints = sanitizeSafePoints(validated.safePoints, { sessionId })
   if (hazards.length === 0) {
     return buildGuideMode(accidentSummary, "empty", safePoints, sessionId)
@@ -278,5 +303,6 @@ export async function analyzeHunterImage(
     noHazardFollow: null,
     usedFallback: false,
     fallbackReason: null,
+    parentNotes: notes,
   }
 }

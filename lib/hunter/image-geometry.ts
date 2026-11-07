@@ -99,6 +99,24 @@ export function toContainerPct(
   }
 }
 
+/**
+ * 画像内の相対矩形(0..1)を、枠に対する % の絶対配置スタイルへ変換する(枠・スポットライト用)。
+ */
+export function regionToContainerPct(
+  region: { x: number; y: number; w: number; h: number },
+  contain: ContainRect,
+  container: Size,
+): { left: string; top: string; width: string; height: string } {
+  const tl = toContainerPct({ x: region.x, y: region.y }, contain, container)
+  const br = toContainerPct({ x: region.x + region.w, y: region.y + region.h }, contain, container)
+  return {
+    left: `${tl.leftPct}%`,
+    top: `${tl.topPct}%`,
+    width: `${Math.max(0, br.leftPct - tl.leftPct)}%`,
+    height: `${Math.max(0, br.topPct - tl.topPct)}%`,
+  }
+}
+
 function clamp01(value: number): number {
   if (Number.isNaN(value)) return 0
   if (value < 0) return 0

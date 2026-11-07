@@ -11,7 +11,14 @@
 // =============================================
 
 import type { RiskSeverity } from "@/lib/hazard-game-types"
-import type { HunterHazard, HunterRegion, HunterSafePoint } from "@/lib/hunter/types"
+import type {
+  HunterHazard,
+  HunterParentNote,
+  HunterPoint,
+  HunterRegion,
+  HunterSafePoint,
+} from "@/lib/hunter/types"
+import { fitHitZones } from "@/lib/hunter/hit-zone"
 import type { RawAiQuiz, RawDangerPoint, RawSafePoint } from "@/lib/hunter/ai-schema"
 import {
   KID_COPY_BY_KIND,
@@ -45,6 +52,8 @@ export const MIN_REGION = 0.12
 export const MAX_HAZARDS = 5
 /** 逆モードで提示する安全ポイントの上限。 */
 export const MAX_SAFE_POINTS = 3
+/** おうちの人むけに出す根拠(evidence)の最大文字数。超えたら出さない。 */
+export const MAX_EVIDENCE_LENGTH = 60
 
 const WEIGHT_BY_SEVERITY: Record<RiskSeverity, number> = {
   high: 3,
@@ -61,11 +70,15 @@ export interface SanitizeResult {
   readonly hazards: HunterHazard[]
   /** materials[i] は hazards[i] のクイズ素材(place→choice フォールバック保証)。 */
   readonly materials: RawAiQuiz[]
+  /** notes[i] は hazards[i] の おうちの人むけ根拠。危険のデータには入れない。 */
+  readonly notes: HunterParentNote[]
 }
 
 interface Candidate {
   readonly kind: HunterDangerKind
   readonly region: HunterRegion
+  readonly focus: HunterPoint | null
+  readonly evidence: string | null
   readonly severity: RiskSeverity
   readonly confidence: number
   readonly rank: number
@@ -121,6 +134,26 @@ function safeCopy(text: unknown, fallback: string): string {
   if (trimmed.length === 0) return fallback
   if (/[A-Za-z]/.test(trimmed)) return fallback
   return trimmed
+}
+
+/**
+ * evidence(AI の根拠メモ)を おうちの人むけに出してよいか検証する。
+ * 英字混入・空・長すぎるものは出さない(null)。言い換えはしない。
+ */
+export function safeEvidence(text: unknown): string | null {
+  if (typeof text !== "string") return null
+  const trimmed = text.trim()
+  if (trimmed.length === 0 || trimmed.length > MAX_EVIDENCE_LENGTH) return null
+  if (/[A-Za-z]/.test(trimmed)) return null
+  return trimmed
+}
+
+function safeFocus(focus: unknown): HunterPoint | null {
+  if (typeof focus !== "object" || focus === null) return null
+  const { x, y } = focus as { x?: unknown; y?: unknown }
+  if (typeof x !== "number" || typeof y !== "number") return null
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+  return { x: clamp01(x), y: clamp01(y) }
 }
 
 /** 空文字・空白のみ・英語混入・非文字列を弾く(quiz 素材の各フィールド用)。 */
@@ -206,6 +239,8 @@ export function sanitizeDangerPoints(
     candidates.push({
       kind,
       region,
+      focus: safeFocus(point.focus),
+      evidence: safeEvidence(point.evidence),
       severity,
       confidence,
       rank: WEIGHT_BY_SEVERITY[severity] * confidence,
@@ -233,25 +268,29 @@ export function sanitizeDangerPoints(
     if (kept.length >= MAX_HAZARDS) break
   }
 
-  // 5) 最小サイズ膨張 + 安定ID + 素材並走
-  const hazards: HunterHazard[] = []
-  const materials: RawAiQuiz[] = []
-  kept.forEach((cand, i) => {
-    hazards.push({
-      id: `${options.sessionId}-${i}`,
-      kind: cand.kind,
-      type: KID_LABEL_BY_KIND[cand.kind],
-      region: expandToMin(cand.region, MIN_REGION),
-      severity: cand.severity,
-      kidExplanation: cand.whyDangerous,
-      safeAction: cand.safeAction,
-      confidence: cand.confidence,
-      accidentLink: cand.accidentLink,
-    })
-    materials.push(cand.quiz)
-  })
+  // 5) 表示枠の最小サイズ膨張 → 6) 採点用の当たり枠(focus 中心・和集合の上限つき)
+  //    → 7) 安定ID + 素材・根拠の並走
+  const displayRegions = kept.map((cand) => expandToMin(cand.region, MIN_REGION))
+  const zones = fitHitZones(
+    kept.map((cand, i) => ({ region: displayRegions[i], focus: cand.focus })),
+  )
+  const hazards: HunterHazard[] = kept.map((cand, i) => ({
+    id: `${options.sessionId}-${i}`,
+    kind: cand.kind,
+    type: KID_LABEL_BY_KIND[cand.kind],
+    region: displayRegions[i],
+    hitRegion: zones[i].hitRegion,
+    focusPoint: zones[i].focusPoint,
+    severity: cand.severity,
+    kidExplanation: cand.whyDangerous,
+    safeAction: cand.safeAction,
+    confidence: cand.confidence,
+    accidentLink: cand.accidentLink,
+  }))
+  const materials = kept.map((cand) => cand.quiz)
+  const notes = kept.map((cand, i) => ({ hazardId: hazards[i].id, evidence: cand.evidence }))
 
-  return { hazards, materials }
+  return { hazards, materials, notes }
 }
 
 /**

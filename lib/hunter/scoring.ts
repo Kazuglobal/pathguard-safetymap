@@ -19,6 +19,7 @@ import type {
   HunterTemperature,
 } from "@/lib/hunter/types"
 import { SPATIAL_TAP_MARGIN, tapWithinRegion } from "@/lib/hunter/spatial-hit"
+import { anchorOf, hitZoneOf } from "@/lib/hunter/hit-zone"
 
 /** severity ごとの基礎点 */
 export const SEVERITY_POINTS: Record<RiskSeverity, number> = {
@@ -53,10 +54,6 @@ export interface JudgeTapOptions {
   hitMargin?: number
   /** near 判定ゾーンの拡張マージン。既定 NEAR_OUTER。 */
   nearMargin?: number
-}
-
-function regionCenter(region: HunterRegion): { x: number; y: number } {
-  return { x: region.x + region.w / 2, y: region.y + region.h / 2 }
 }
 
 /** 点が region に内包されるか (端を含む)。 */
@@ -99,7 +96,10 @@ export function tapDirection(tap: HunterTap, center: { x: number; y: number }): 
   return dy >= 0 ? "down" : "up"
 }
 
-/** 未発見hazardのうち、タップに最も近いものとその距離を返す。無ければ null。 */
+/**
+ * 未発見hazardのうち、タップに最も近いものとその距離を返す。無ければ null。
+ * 距離は focus(無ければ当たり枠の中心)まで。
+ */
 export function nearestUnfound(
   tap: HunterTap,
   hazards: readonly HunterHazard[],
@@ -109,7 +109,7 @@ export function nearestUnfound(
   let best = Infinity
   for (const hazard of hazards) {
     if (foundIds.has(hazard.id)) continue
-    const d = distance(tap, regionCenter(hazard.region))
+    const d = distance(tap, anchorOf(hazard))
     if (d < best) {
       best = d
       bestId = hazard.id
@@ -139,7 +139,7 @@ export function judgeTap(
   let hitScore = -Infinity
   for (const hazard of hazards) {
     if (foundIds.has(hazard.id)) continue
-    if (tapWithinRegion(tap, hazard.region, hitMargin)) {
+    if (tapWithinRegion(tap, hitZoneOf(hazard), hitMargin)) {
       const score = WEIGHT_BY_SEVERITY[hazard.severity] * hazard.confidence
       if (score > hitScore) {
         hitScore = score
@@ -151,18 +151,23 @@ export function judgeTap(
     return { result: "hit", hazardId: hit.id, points: SEVERITY_POINTS[hit.severity] }
   }
 
+  // 見つけ済みの当たり枠をもう一度押した(はずれに数えないための印。付くのは true のときだけ)
+  const repeat = hazards.some(
+    (hazard) => foundIds.has(hazard.id) && tapWithinRegion(tap, hitZoneOf(hazard), hitMargin),
+  )
+  const repeatFlag = repeat ? { alreadyFound: true as const } : {}
+
   // 最近傍の未発見 hazard を基準にヒント(温度・方向)を作る
   const nearest = nearestUnfound(tap, hazards, foundIds)
   if (nearest.hazardId === null) {
     // 全発見済み: ヒントを出さない
-    return { result: "miss", hazardId: null, points: 0, nearestId: null }
+    return { result: "miss", hazardId: null, points: 0, nearestId: null, ...repeatFlag }
   }
 
   const nearestHazard = hazards.find((h) => h.id === nearest.hazardId) as HunterHazard
-  const center = regionCenter(nearestHazard.region)
   const temperature = tapTemperature(nearest.distance)
-  const direction = tapDirection(tap, center)
-  const inNear = regionContains(expandRegion(nearestHazard.region, nearMargin), tap)
+  const direction = tapDirection(tap, anchorOf(nearestHazard))
+  const inNear = regionContains(expandRegion(hitZoneOf(nearestHazard), nearMargin), tap)
 
   return {
     result: inNear ? "near" : "miss",
@@ -171,6 +176,7 @@ export function judgeTap(
     nearestId: nearest.hazardId,
     temperature,
     direction,
+    ...repeatFlag,
   }
 }
 

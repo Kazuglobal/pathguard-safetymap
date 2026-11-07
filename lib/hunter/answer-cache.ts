@@ -6,7 +6,7 @@
 // no-op(=現行のクライアント供給で採点、後方互換)。throw しない(ゲームを止めない)。
 // =============================================
 
-import type { HunterRegion } from "@/lib/hunter/types"
+import type { HunterDangerKind, HunterPoint, HunterRegion } from "@/lib/hunter/types"
 import type { RiskSeverity } from "@/lib/hazard-game-types"
 
 /** 探索の正解鍵(採点に要る最小フィールドのみ。kidExplanation等は保存しない)。 */
@@ -16,6 +16,14 @@ export interface CachedHazardKey {
   severity: RiskSeverity
   /** hit 候補が重なったときの優先度(severity重み×confidence)に使う。 */
   confidence: number
+  /** 理由の答え合わせ(採点ルール v2)に使う。 */
+  kind?: HunterDangerKind
+  /**
+   * 採点に使った当たり枠。採点のときにサーバで作り直さない
+   * (鍵の有効期限内に定数が変わっても、遊んでいる画面と判定がずれないように)。
+   */
+  hitRegion?: HunterRegion
+  focusPoint?: HunterPoint
 }
 
 /** クイズの正解鍵(place は region、choice は正解ID)。 */
@@ -29,6 +37,8 @@ export interface CachedQuizKey {
 export interface HunterAnswerKey {
   hazards: CachedHazardKey[]
   quiz: CachedQuizKey[]
+  /** 採点ルールの版。2 = 虫めがね+理由(explore-replay.ts)。無い鍵は旧ルールで数える。 */
+  rules?: number
 }
 
 // 3 時間。hit ごとの学習カードを親子で読み、安全さがし→クイズ→たんけんと遊ぶと

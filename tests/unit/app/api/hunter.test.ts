@@ -190,6 +190,33 @@ describe("/api/hunter/analyze", () => {
     expect(JSON.stringify(body)).not.toContain("base64")
   })
 
+  it("issues a rules-2 answer key with kind and the hit box, and returns parent notes", async () => {
+    const withZone = {
+      ...detectedHazard,
+      kind: "blind_corner",
+      hitRegion: { x: 0.42, y: 0.52, w: 0.12, h: 0.12 },
+      focusPoint: { x: 0.48, y: 0.58 },
+    }
+    vi.mocked(analyzeHunterImage).mockResolvedValue({
+      ...exploreResult([withZone]),
+      parentNotes: [{ hazardId: withZone.id, evidence: "角の へいが 車を かくす" }],
+    } as any)
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
+    const body = await res.json()
+
+    expect(body.rules).toBe(2)
+    expect(body.parentNotes).toEqual([{ hazardId: withZone.id, evidence: "角の へいが 車を かくす" }])
+    const key = vi.mocked(putAnswerKey).mock.calls[0][1]
+    expect(key.rules).toBe(2)
+    expect(key.hazards[0]).toEqual({
+      id: withZone.id, region: withZone.region, severity: "high", confidence: 0.9,
+      kind: "blind_corner", hitRegion: withZone.hitRegion, focusPoint: withZone.focusPoint,
+    })
+    // 鍵には説明文を載せない
+    expect(JSON.stringify(key)).not.toContain(withZone.kidExplanation)
+  })
+
   it("returns 200 guide mode (not 502) when detection is empty", async () => {
     vi.mocked(analyzeHunterImage).mockResolvedValue(guideResult("empty") as any)
     const { POST } = await import("@/app/api/hunter/analyze/route")
@@ -303,6 +330,24 @@ describe("/api/hunter/analyze", () => {
     expect(JSON.stringify(body)).not.toContain("base64")
   })
 
+  it("stores the hit box and focus inside the region JSON so a replay judges the same way", async () => {
+    const { saveHunterPhoto } = await import("@/lib/db/repos/hunter.repo")
+    const withZone = {
+      ...detectedHazard,
+      hitRegion: { x: 0.42, y: 0.52, w: 0.12, h: 0.12 },
+      focusPoint: { x: 0.48, y: 0.58 },
+    }
+    vi.mocked(analyzeHunterImage).mockResolvedValue(exploreResult([withZone]) as any)
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    await POST(makeJsonRequest("http://localhost/api/hunter/analyze", { ...validBody, save: true }))
+    const saved = vi.mocked(saveHunterPhoto).mock.calls[0][1] as { detections: Array<{ region: unknown }> }
+    expect(saved.detections[0].region).toEqual({
+      ...detectedHazard.region,
+      hitRegion: withZone.hitRegion,
+      focusPoint: withZone.focusPoint,
+    })
+  })
+
   it("keeps the game going (savedError) when storage upload fails", async () => {
     vi.mocked(analyzeHunterImage).mockResolvedValue(exploreResult([detectedHazard]) as any)
     vi.mocked(uploadMaskedPhoto).mockRejectedValueOnce(new Error("storage down"))
@@ -338,7 +383,7 @@ describe("/api/hunter/session", () => {
   })
 
   /** サーバ保持の正解鍵がある(=記録してよい)状態にする。 */
-  function withServerKey(key: { hazards?: unknown[]; quiz?: unknown[] }) {
+  function withServerKey(key: { hazards?: unknown[]; quiz?: unknown[]; rules?: number }) {
     vi.mocked(isAnswerCacheConfigured).mockReturnValue(true)
     vi.mocked(getAnswerKey).mockResolvedValue({ hazards: [], quiz: [], ...key } as any)
   }
@@ -405,6 +450,80 @@ describe("/api/hunter/session", () => {
       "hazard_game_play",
       "hazard_game_high_score",
     ])
+  })
+
+  describe("rules v2 (虫めがね + 理由)", () => {
+    // 当たり枠は鍵が持つ小さい枠。表示枠(region)の端は当たりにならない。
+    const v2Key = {
+      rules: 2,
+      hazards: [{
+        id: "s-0-0", region: { x: 0.3, y: 0.3, w: 0.3, h: 0.3 }, severity: "high", confidence: 0.9,
+        kind: "blind_corner", hitRegion: { x: 0.4, y: 0.4, w: 0.12, h: 0.12 }, focusPoint: { x: 0.45, y: 0.45 },
+      }],
+    }
+    async function post(taps: unknown[]) {
+      const { POST } = await import("@/app/api/hunter/session/route")
+      const res = await POST(
+        makeJsonRequest("http://localhost/api/hunter/session", {
+          mode: "explore", sessionId: "sess-v2", hazards: [scoredHazard], taps,
+        }),
+      )
+      return { res, body: await res.json() }
+    }
+
+    it("records full credit only when the reason is right", async () => {
+      withServerKey(v2Key)
+      const { body } = await post([{ x: 0.45, y: 0.45, reason: "blind_corner" }])
+      expect(body).toMatchObject({ rules: 2, matches: 1, understood: 1, accuracy: 100, budget: 4, misses: 0 })
+      expect(body.discoveries).toEqual([{ hazardId: "s-0-0", understood: true }])
+      expect(recordSafetyQuestAttemptAndAward).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({
+          accuracy: 100,
+          pointsAwarded: 5,
+          answerPayload: expect.objectContaining({ rules: 2, understood: 1, budget: 4, misses: 0, ignoredTaps: 0 }),
+        }),
+      )
+    })
+
+    it("gives location-only credit (60) for a wrong reason", async () => {
+      withServerKey(v2Key)
+      const { body } = await post([{ x: 0.45, y: 0.45, reason: "flood_dip" }])
+      expect(body).toMatchObject({ matches: 1, understood: 0, accuracy: 60 })
+      expect(recordSafetyQuestAttemptAndAward).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ accuracy: 60, score: 60 }),
+      )
+    })
+
+    it("does not count the edge of the big display box as a hit any more", async () => {
+      withServerKey(v2Key)
+      const { body } = await post([{ x: 0.31, y: 0.31 }])
+      expect(body.matches).toBe(0)
+      expect(body.misses).toBe(1)
+    })
+
+    it("ignores taps after the magnifiers run out", async () => {
+      withServerKey(v2Key)
+      const misses = Array.from({ length: 4 }, () => ({ x: 0.9, y: 0.1 }))
+      const { body } = await post([...misses, { x: 0.45, y: 0.45, reason: "blind_corner" }])
+      expect(body).toMatchObject({ matches: 0, misses: 4, ignoredTaps: 1, accuracy: 0 })
+    })
+
+    it("drops an invalid reason instead of rejecting the whole session", async () => {
+      withServerKey(v2Key)
+      const { res, body } = await post([{ x: 0.45, y: 0.45, reason: "not-a-kind" }])
+      expect(res.status).toBe(200)
+      expect(body).toMatchObject({ matches: 1, understood: 0 })
+    })
+
+    it("keeps scoring old keys (no rules) with the legacy rules", async () => {
+      withServerKey(exploreKey)
+      const { body } = await post([{ x: 0.31, y: 0.31 }])
+      expect(body).toMatchObject({ rules: 1, matches: 1, understood: 1, accuracy: 100 })
+    })
   })
 
   it("links the play to the photo only when the caller owns it", async () => {
