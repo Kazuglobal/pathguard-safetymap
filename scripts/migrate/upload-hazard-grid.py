@@ -236,7 +236,7 @@ def main() -> None:
         return
     client = R2Client(account, bucket, lambda: wrangler_token(args.node))
     result = upload(args.grid, manifest, objects, client)
-    (args.grid / 'upload-result.json').write_text(json.dumps(dict(**result, **summary), indent=2), encoding='utf-8')
+    (args.grid / 'upload-result.json').write_text(json.dumps({**summary, **result}, indent=2), encoding='utf-8')
     print(json.dumps(dict(**result, bucket=bucket)), flush=True)
 
 
