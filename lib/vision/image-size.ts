@@ -5,6 +5,8 @@
 // あわせて、Claude が画像を縮小する規則(公式の参照実装と同じ)で「Claude が見る大きさ」を出す。
 // =============================================
 
+import { exifIfd0Short } from "@/lib/media/jpeg-metadata"
+
 export interface ImageSize {
   readonly width: number
   readonly height: number
@@ -66,26 +68,8 @@ function gifSize(b: Uint8Array): ImageSize | null {
  * 5〜8(90 度回す向き)のときは幅と高さを入れ替えて扱う。
  */
 function exifOrientation(b: Uint8Array, start: number, end: number): number {
-  const isExif = b[start] === 0x45 && b[start + 1] === 0x78 && b[start + 2] === 0x69 && b[start + 3] === 0x66 && b[start + 4] === 0 && b[start + 5] === 0
-  if (!isExif) return 1
-  const tiff = start + 6
-  const little = b[tiff] === 0x49 && b[tiff + 1] === 0x49
-  if (!little && !(b[tiff] === 0x4d && b[tiff + 1] === 0x4d)) return 1
-  const u16 = (i: number) => (little ? u16le(b, i) : u16be(b, i))
-  const u32 = (i: number) => (little ? (u16le(b, i) + u16le(b, i + 2) * 65536) : u32be(b, i))
-  if (u16(tiff + 2) !== 42) return 1
-  const ifd = tiff + u32(tiff + 4)
-  if (ifd + 2 > end) return 1
-  const entries = u16(ifd)
-  for (let k = 0; k < entries; k += 1) {
-    const entry = ifd + 2 + k * 12
-    if (entry + 12 > end) return 1
-    if (u16(entry) === 0x0112) {
-      const value = u16(entry + 8)
-      return value >= 1 && value <= 8 ? value : 1
-    }
-  }
-  return 1
+  const value = exifIfd0Short(b, start, end, 0x0112)
+  return value !== null && value >= 1 && value <= 8 ? value : 1
 }
 
 /** JPEG: SOF マーカー(C0〜CF、ただし C4/C8/CC を除く)の高さ・幅。Exif の向きが 5〜8 なら入れ替える。 */

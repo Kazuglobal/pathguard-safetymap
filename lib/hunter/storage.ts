@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 
+import { jpegCarriesLocation } from '@/lib/media/jpeg-metadata'
 import { privateMediaUrl } from '@/lib/media/url'
 
 export const HUNTER_PHOTO_BUCKET = 'hunter-photos'
@@ -21,11 +22,17 @@ export function photoStoragePath(userId: string, photoId: string): string {
   return `hunter-photos/${userId}/${photoId}/masked.webp`
 }
 
-function parseWebpDataUrl(dataUrl: string): Uint8Array {
-  const match = /^data:image\/webp;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl)
-  if (!match) throw new RangeError('保存できるのはマスク済みWebP画像だけです')
-  const bytes = new Uint8Array(Buffer.from(match[1], 'base64'))
+/**
+ * マスク確認画面が書き出す形だけを受ける: WebP、または WebP を作れないブラウザ(Safari)の JPEG。
+ * JPEG は位置情報(Exif・XMP の GPS)が入っていないものだけ(canvas で描き直した写真には入らない。
+ * 入っていたら、ぼかしを通っていない元の写真の疑いがある)。どちらも保存前に WebP へ作り直す。
+ */
+function parseMaskedDataUrl(dataUrl: string): Uint8Array {
+  const match = /^data:image\/(webp|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl)
+  if (!match) throw new RangeError('保存できるのはマスク済みの WebP か JPEG の画像だけです')
+  const bytes = new Uint8Array(Buffer.from(match[2], 'base64'))
   if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) throw new RangeError('画像サイズが大きすぎます')
+  if (match[1] === 'jpeg' && jpegCarriesLocation(bytes)) throw new RangeError('位置情報の入った写真は保存できません')
   return bytes
 }
 
@@ -34,7 +41,7 @@ export async function uploadMaskedPhoto(
   photoId: string,
   dataUrl: string,
 ): Promise<{ path: string }> {
-  const bytes = parseWebpDataUrl(dataUrl)
+  const bytes = parseMaskedDataUrl(dataUrl)
   const { env } = getCloudflareContext()
   const bindings = env as unknown as { IMAGES: ImagesBinding; MEDIA_PRIVATE: Bucket }
   const sourceBuffer = new ArrayBuffer(bytes.byteLength)
