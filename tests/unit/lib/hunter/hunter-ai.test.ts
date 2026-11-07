@@ -412,6 +412,42 @@ describe("analyzeHunterImage — Claude(Haiku 5.5)を先に使う", () => {
     expect(callGeminiVision).toHaveBeenCalledTimes(2)
   })
 
+  it("reports one usage entry per AI call with real tokens: the unusable Claude answer, the failed and the retried Gemini call", async () => {
+    const onUsage = vi.fn()
+    vi.mocked(callClaudeVision).mockImplementation(async (params) => {
+      params.onUsage?.({ inputTokens: 3000, outputTokens: 40 })
+      return "ごめんなさい"
+    })
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable"))
+      .mockImplementationOnce(async (_image, _prompt, _config, _model, report) => {
+        report?.({ inputTokens: 2000, outputTokens: 900 })
+        return aiJson([pt()])
+      })
+    const r = await analyzeHunterImage(PNG, { ...opts, onUsage })
+    expect(r.mode).toBe("explore")
+    expect(onUsage.mock.calls.map(([u]) => u)).toEqual([
+      { provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 3000, outputTokens: 40, ok: false },
+      { provider: "gemini", inputTokens: 0, outputTokens: 0, ok: false },
+      { provider: "gemini", inputTokens: 2000, outputTokens: 900, ok: true },
+    ])
+  })
+
+  it("reports a used Claude answer as ok and never lets a broken usage log stop the analysis", async () => {
+    vi.mocked(callClaudeVision).mockImplementation(async (params) => {
+      params.onUsage?.({ inputTokens: 3100, outputTokens: 1500 })
+      return aiJson([claudePoint()])
+    })
+    const onUsage = vi.fn(() => {
+      throw new Error("db down")
+    })
+    const r = await analyzeHunterImage(PNG, { ...opts, onUsage })
+    expect(r.mode).toBe("explore")
+    expect(r.model).toBe("claude-haiku-5-5")
+    expect(onUsage).toHaveBeenCalledWith({ provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 3100, outputTokens: 1500, ok: true })
+    expect(callGeminiVision).not.toHaveBeenCalled()
+  })
+
   it("skips Claude for an image over its 10 MB (base64) limit and uses Gemini", async () => {
     vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
     const huge = PNG + "A".repeat(CLAUDE_MAX_IMAGE_BASE64_CHARS)

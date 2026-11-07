@@ -35,7 +35,25 @@ export interface AnalyzeHunterOptions {
   readonly purpose?: string
   /** JSON解析失敗時に1回だけ再出力を試みるか。既定 true。 */
   readonly allowRetry?: boolean
+  /** AI を 1 回呼ぶごとに使用量を渡す(ルートが使用量のログに書く)。 */
+  readonly onUsage?: (usage: HunterAiUsage) => void
 }
+
+/**
+ * AI を 1 回呼んだ記録(使用量のログ用)。
+ * ok: Gemini は呼び出しが文字を返したか、Claude は答えが読めたか(読めなければ Gemini へ切り替える)。
+ * 失敗しても応答が届いていれば課金されるので、トークン数はそのまま入れる。
+ */
+export interface HunterAiUsage {
+  readonly provider: "anthropic" | "gemini"
+  /** Claude のときのモデル名(Gemini はルートが解決したモデル名を使う)。 */
+  readonly model?: string
+  readonly inputTokens: number
+  readonly outputTokens: number
+  readonly ok: boolean
+}
+
+type UsageSink = ((usage: HunterAiUsage) => void) | undefined
 
 const KIND_LIST = KID_DANGER_KINDS.join(" / ")
 
@@ -220,13 +238,48 @@ async function callHunterVision(
   prompt: string,
   allowRetry: boolean,
   config: typeof HUNTER_GENERATION_CONFIG = HUNTER_GENERATION_CONFIG,
+  onUsage?: UsageSink,
 ): Promise<string> {
   try {
-    return await callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL)
+    return await callGeminiOnce(imageBase64, prompt, config, onUsage)
   } catch (err) {
     if (!allowRetry || !isRetryableGeminiError(err)) throw err
     await sleep(RETRY_BACKOFF_MS)
-    return await callGeminiVision(imageBase64, prompt, HUNTER_RETRY_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
+    return await callGeminiOnce(imageBase64, prompt, HUNTER_RETRY_CONFIG, onUsage)
+  }
+}
+
+/** Gemini を 1 回呼び、成否にかかわらず使用量を 1 件渡す(届かなかった呼び出しはトークン 0)。 */
+async function callGeminiOnce(
+  imageBase64: string,
+  prompt: string,
+  config: typeof HUNTER_GENERATION_CONFIG,
+  onUsage: UsageSink,
+): Promise<string> {
+  if (!onUsage) return callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL)
+  let usage = { inputTokens: 0, outputTokens: 0 }
+  let text: string
+  try {
+    text = await callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL, (u) => {
+      usage = u
+    })
+  } catch (err) {
+    onUsage({ provider: "gemini", ...usage, ok: false })
+    throw err
+  }
+  onUsage({ provider: "gemini", ...usage, ok: true })
+  return text
+}
+
+/** 使用量の記録が失敗しても、解析は止めない。 */
+function safeUsageSink(onUsage: ((usage: HunterAiUsage) => void) | undefined): UsageSink {
+  if (!onUsage) return undefined
+  return (usage) => {
+    try {
+      onUsage(usage)
+    } catch (err) {
+      console.warn(`[hunter] usage log failed (${err instanceof Error ? err.name : "error"})`)
+    }
   }
 }
 
@@ -262,17 +315,18 @@ async function analyzeHunterWithGemini(
   imageBase64: string,
   prompt: string,
   budget: GeminiBudget,
+  onUsage: UsageSink,
 ): Promise<GeminiOutcome> {
   let text: string
   try {
-    text = await callHunterVision(imageBase64, prompt, budget !== "single")
+    text = await callHunterVision(imageBase64, prompt, budget !== "single", HUNTER_GENERATION_CONFIG, onUsage)
   } catch {
     return { failure: "ai_error" }
   }
   let extracted = extractHunterJson(text)
   if (!extracted.ok && budget === "full") {
     try {
-      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false, HUNTER_RETRY_CONFIG)
+      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false, HUNTER_RETRY_CONFIG, onUsage)
       extracted = extractHunterJson(retryText)
     } catch {
       return { failure: "ai_error" }
@@ -291,13 +345,18 @@ async function requestHunterAnalysis(
   accidentContext: string | undefined,
   accidentSummary: HunterAccidentSummary,
   allowRetry: boolean,
+  onUsage: UsageSink,
 ): Promise<GeminiOutcome & { readonly model?: string }> {
   const claudeImage = prepareClaudeHunterImage(imageBase64)
   let claudeElapsedMs: number | null = null
   if (claudeImage) {
     const prompt = buildHunterPrompt(accidentContext, accidentSummary, { pixels: claudeImage.pixelSize })
     const startedAt = Date.now()
-    const validated = await analyzeHunterWithClaude(claudeImage, prompt)
+    const validated = await analyzeHunterWithClaude(
+      claudeImage,
+      prompt,
+      onUsage ? (u) => onUsage({ provider: "anthropic", model: claudeImage.model, ...u }) : undefined,
+    )
     if (validated) return { validated, model: claudeImage.model }
     claudeElapsedMs = Date.now() - startedAt
   }
@@ -305,6 +364,7 @@ async function requestHunterAnalysis(
     imageBase64,
     buildHunterPrompt(accidentContext, accidentSummary),
     geminiBudget(allowRetry, claudeElapsedMs),
+    onUsage,
   )
 }
 
@@ -319,7 +379,13 @@ export async function analyzeHunterImage(
   const { sessionId, accidentContext, accidentSummary, allowRetry = true } = options
 
   // 1)〜2) 解析(Claude → Gemini)と JSON 抽出。失敗は ai_error / parse_error のガイド。
-  const analysis = await requestHunterAnalysis(imageBase64, accidentContext, accidentSummary, allowRetry)
+  const analysis = await requestHunterAnalysis(
+    imageBase64,
+    accidentContext,
+    accidentSummary,
+    allowRetry,
+    safeUsageSink(options.onUsage),
+  )
   if (!analysis.validated) {
     return buildGuideMode(accidentSummary, analysis.failure ?? "ai_error", [], sessionId)
   }

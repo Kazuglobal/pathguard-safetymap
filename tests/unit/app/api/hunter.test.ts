@@ -21,6 +21,8 @@ vi.mock("@/lib/hunter/hunter-ai", () => ({
   analyzeHunterImage: vi.fn(),
 }))
 
+vi.mock("@/lib/api-usage-logger", () => ({ logApiUsage: vi.fn() }))
+
 vi.mock("@/lib/hunter/observability", () => ({
   logAnalyzeFallback: vi.fn(),
 }))
@@ -66,6 +68,7 @@ import { claimSessionScore, getAnswerKey, isAnswerCacheConfigured, putAnswerKey 
 import { checkApiRateLimit, checkGeminiRateLimit } from "@/lib/upstash-rate-limiter"
 import { uploadMaskedPhoto, createPhotoSignedUrl } from "@/lib/hunter/storage"
 import { writeAuditLog } from "@/lib/hunter/audit"
+import { logApiUsage } from "@/lib/api-usage-logger"
 
 const mockUser = { id: "user-1", email: "test@example.com" }
 
@@ -188,6 +191,32 @@ describe("/api/hunter/analyze", () => {
     expect(body.accident.hasData).toBe(false)
     // 画像は保存しない: レスポンスに画像が含まれない
     expect(JSON.stringify(body)).not.toContain("base64")
+  })
+
+  it("logs every AI call with its real tokens so the admin cost page sees the hunter (Claude and Gemini)", async () => {
+    vi.mocked(analyzeHunterImage).mockImplementation(async (_image, options) => {
+      options.onUsage?.({ provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 3000, outputTokens: 40, ok: false })
+      options.onUsage?.({ provider: "gemini", inputTokens: 2000, outputTokens: 1000, ok: true })
+      return exploreResult([detectedHazard]) as any
+    })
+    const { POST } = await import("@/app/api/hunter/analyze/route")
+    const res = await POST(makeJsonRequest("http://localhost/api/hunter/analyze", validBody))
+    expect(res.status).toBe(200)
+
+    const entries = vi.mocked(logApiUsage).mock.calls.map(([entry]) => entry)
+    expect(entries).toHaveLength(2)
+    expect(entries[0]).toMatchObject({
+      api_provider: "anthropic", api_endpoint: "hunter-analyze", model_name: "claude-haiku-5-5",
+      input_tokens: 3000, output_tokens: 40, success: false,
+    })
+    // $0.10 / $0.50 per 1M tokens
+    expect(entries[0].estimated_cost_usd).toBeCloseTo(0.0003 + 0.00002, 10)
+    expect(entries[1]).toMatchObject({
+      api_provider: "gemini", api_endpoint: "hunter-analyze", model_name: "gemini-3.5-flash",
+      input_tokens: 2000, output_tokens: 1000, success: true,
+    })
+    // gemini-3.5-flash: $1.50 / $9.00 per 1M tokens
+    expect(entries[1].estimated_cost_usd).toBeCloseTo(0.003 + 0.009, 10)
   })
 
   it("issues a rules-2 answer key with kind and the hit box, and returns parent notes", async () => {

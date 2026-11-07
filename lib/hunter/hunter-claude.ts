@@ -5,7 +5,7 @@
 // 失敗は throw せず null を返す。ログには失敗の種類だけを出す(画像・文面・鍵は出さない)。
 // =============================================
 
-import { callClaudeVision } from "@/lib/claude-vision"
+import { callClaudeVision, type ClaudeUsage } from "@/lib/claude-vision"
 import { extractHunterJson } from "@/lib/hunter/ai-json"
 import { validateHunterResponse, type ValidatedHunterResponse } from "@/lib/hunter/ai-schema"
 import { prepareClaudeImage, type ClaudeImage } from "@/lib/vision/claude-image"
@@ -38,7 +38,13 @@ function failureKind(err: unknown): string {
 export async function analyzeHunterWithClaude(
   image: ClaudeHunterImage,
   prompt: string,
+  /** 応答が届いたときだけ 1 回呼ぶ(断り・打ち切り・読めない答えでも課金されるため)。ok は答えが読めたか。 */
+  onUsage?: (usage: ClaudeUsage & { readonly ok: boolean }) => void,
 ): Promise<ValidatedHunterResponse | null> {
+  let usage: ClaudeUsage | null = null
+  const report = (ok: boolean) => {
+    if (usage && onUsage) onUsage({ ...usage, ok })
+  }
   let text: string
   try {
     text = await callClaudeVision({
@@ -47,15 +53,21 @@ export async function analyzeHunterWithClaude(
       prompt,
       maxTokens: CLAUDE_HUNTER_MAX_TOKENS,
       timeoutMs: CLAUDE_HUNTER_TIMEOUT_MS,
+      onUsage: (u) => {
+        usage = u
+      },
     })
   } catch (err) {
     console.warn(`[hunter] Claude analysis failed (${failureKind(err)}); falling back to Gemini`)
+    report(false)
     return null
   }
   const extracted = extractHunterJson(text)
   if (!extracted.ok) {
     console.warn("[hunter] Claude returned unreadable JSON; falling back to Gemini")
+    report(false)
     return null
   }
+  report(true)
   return validateHunterResponse(extracted.value, { pixelSize: image.pixelSize })
 }

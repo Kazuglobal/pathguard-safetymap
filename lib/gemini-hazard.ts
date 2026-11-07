@@ -90,7 +90,9 @@ export async function callGeminiVision(
   // 呼び出し元ごとに既定モデルを分けるための追加引数(後方互換)。
   // 省略時は getSanitizedGeminiVisionModel の既定(gemini-2.5-flash)。
   // リアルタイム解析(ハンター/ハザードゲーム)だけ REALTIME_VISION_DEFAULT_MODEL を渡す。
-  defaultModel?: string
+  defaultModel?: string,
+  /** 応答が届いたら(文字が無くて throw する前にも)使ったトークンを渡す。思考のトークンは出力に含める(課金も出力)。 */
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void
 ): Promise<string> {
   if (!imageBase64OrDataUrl || imageBase64OrDataUrl.length < 50) {
     throw new Error("画像データが不足しています")
@@ -146,6 +148,14 @@ export async function callGeminiVision(
   }
 
   const data = await res.json()
+  if (onUsage) {
+    const usage = data?.usageMetadata ?? {}
+    const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0)
+    onUsage({
+      inputTokens: count(usage.promptTokenCount),
+      outputTokens: count(usage.candidatesTokenCount) + count(usage.thoughtsTokenCount),
+    })
+  }
   const textPart = data?.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text
   if (!textPart || typeof textPart !== "string") {
     throw new Error("Gemini response did not contain text output")

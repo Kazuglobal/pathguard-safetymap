@@ -7,7 +7,9 @@ import {
   buildAccidentPromptContext,
   buildAccidentSummary,
 } from "@/lib/hunter/accident-context"
-import { analyzeHunterImage } from "@/lib/hunter/hunter-ai"
+import { analyzeHunterImage, type HunterAiUsage } from "@/lib/hunter/hunter-ai"
+import { logApiUsage } from "@/lib/api-usage-logger"
+import { calculateCost } from "@/lib/api-cost-calculator"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
 import { putAnswerKey } from "@/lib/hunter/answer-cache"
 import { toCachedHazardKey } from "@/lib/hunter/answer-key"
@@ -40,6 +42,27 @@ export const maxDuration = 60
  * Claude で解析したときは analysis.model(Claude のモデル名)を記録する。
  */
 const HUNTER_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAULT_MODEL)
+/** AI を 1 回呼ぶごとに、実際のトークン数で使用量のログ(管理画面の費用)へ書く。 */
+function logHunterAiUsage(usage: HunterAiUsage): void {
+  const model = usage.provider === "anthropic" && usage.model ? usage.model : HUNTER_VISION_MODEL
+  logApiUsage({
+    api_provider: usage.provider,
+    api_endpoint: "hunter-analyze",
+    model_name: model,
+    input_tokens: usage.inputTokens,
+    output_tokens: usage.outputTokens,
+    request_count: 1,
+    estimated_cost_usd: calculateCost({
+      provider: usage.provider,
+      model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+    }),
+    success: usage.ok,
+    ...(usage.ok ? {} : { error_message: usage.provider === "anthropic" ? "unusable answer; fell back to Gemini" : "request failed" }),
+  })
+}
+
 /** 写真の保持期限。サーバ側で now() から算出する。日数はプライバシーポリシーの表と同じ値(lib/retention/policy.ts) */
 const PHOTO_RETENTION_DAYS = RETENTION_DAYS.hunterPhoto
 
@@ -150,6 +173,7 @@ export async function POST(request: NextRequest) {
       accidentContext,
       accidentSummary,
       purpose: "hunter-explore",
+      onUsage: logHunterAiUsage,
     })
 
     // フォールバック理由は HTTP では検知できないため必ず構造化ログへ。
