@@ -12,7 +12,8 @@ vi.mock("@/lib/claude-vision", () => ({
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { callClaudeVision, hasClaudeApiKey } from "@/lib/claude-vision"
-import { analyzeHunterImage, buildHunterPrompt, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
+import { analyzeHunterImage, buildHunterPrompt, CLAUDE_FAST_FAILURE_MS, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
+import { CLAUDE_MAX_IMAGE_BASE64_CHARS } from "@/lib/vision/claude-image"
 import {
   buildHunterResponseSchema,
   HUNTER_GENERATION_CONFIG,
@@ -344,16 +345,47 @@ describe("analyzeHunterImage — Claude(Haiku 5.5)を先に使う", () => {
     expect(r.hazards[0].focusPoint!.y).toBeCloseTo(0.61, 5)
   })
 
-  it("falls back to Gemini once (short budget) when Claude fails, so the route stays under its time limit", async () => {
+  it("falls back to Gemini with its normal budget when Claude fails quickly (overloaded, no credit, bad key)", async () => {
     vi.mocked(callClaudeVision).mockRejectedValue(Object.assign(new Error("overloaded"), { status: 529 }))
     vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
     const r = await analyzeHunterImage(PNG, opts)
     expect(callGeminiVision).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toMatchObject({ timeoutMs: 20_000 })
+    // 1 回目は Claude を使わないときと同じ 35 秒の設定
+    expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toEqual(HUNTER_GENERATION_CONFIG)
     // Gemini には Gemini 用(0〜1000 の box_2d)のプロンプトを渡す
     expect(vi.mocked(callGeminiVision).mock.calls[0][1]).toContain("box_2d")
     expect(r.mode).toBe("explore")
     expect(r.model).toBeUndefined()
+  })
+
+  it("after a quick Claude failure, Gemini still retries a transient error and re-asks for unreadable JSON", async () => {
+    vi.mocked(callClaudeVision).mockRejectedValue(Object.assign(new Error("overloaded"), { status: 529 }))
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable"))
+      .mockResolvedValueOnce("{not json")
+      .mockResolvedValueOnce(aiJson([pt()]))
+    const r = await analyzeHunterImage(PNG, opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(3)
+    expect(r.mode).toBe("explore")
+  })
+
+  it("after a slow Claude failure (time used up), Gemini retries a transient error but does not re-ask for JSON", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      vi.mocked(callClaudeVision).mockImplementation(async () => {
+        vi.setSystemTime(Date.now() + CLAUDE_FAST_FAILURE_MS + 20_000)
+        throw Object.assign(new Error("timeout"), { name: "APIConnectionTimeoutError" })
+      })
+      vi.mocked(callGeminiVision)
+        .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable"))
+        .mockResolvedValueOnce("{not json")
+      const r = await analyzeHunterImage(PNG, opts)
+      expect(callGeminiVision).toHaveBeenCalledTimes(2)
+      expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toEqual(HUNTER_GENERATION_CONFIG)
+      expect(r.fallbackReason).toBe("parse_error")
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("falls back to Gemini when Claude's answer is not readable JSON", async () => {
@@ -371,13 +403,21 @@ describe("analyzeHunterImage — Claude(Haiku 5.5)を先に使う", () => {
     expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toEqual(HUNTER_GENERATION_CONFIG)
   })
 
-  it("lands in guide(ai_error) when both Claude and the Gemini fallback fail", async () => {
+  it("lands in guide(ai_error) when both Claude and the Gemini fallback (with its one retry) fail", async () => {
     vi.mocked(callClaudeVision).mockRejectedValue(new Error("down"))
     vi.mocked(callGeminiVision).mockRejectedValue(new Error("Gemini request failed: 503 Service Unavailable"))
     const r = await analyzeHunterImage(PNG, opts)
     expect(r.mode).toBe("guide")
     expect(r.fallbackReason).toBe("ai_error")
-    expect(callGeminiVision).toHaveBeenCalledTimes(1)
+    expect(callGeminiVision).toHaveBeenCalledTimes(2)
+  })
+
+  it("skips Claude for an image over its 10 MB (base64) limit and uses Gemini", async () => {
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    const huge = PNG + "A".repeat(CLAUDE_MAX_IMAGE_BASE64_CHARS)
+    const r = await analyzeHunterImage(huge, opts)
+    expect(callClaudeVision).not.toHaveBeenCalled()
+    expect(r.mode).toBe("explore")
   })
 })
 

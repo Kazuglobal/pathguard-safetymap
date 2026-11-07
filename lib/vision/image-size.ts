@@ -32,8 +32,11 @@ export function parseImageDataUrl(value: string): ParsedImageDataUrl | null {
   return { mediaType: mediaType as ImageMediaType, base64: value.slice(comma + 1) }
 }
 
-/** base64 の先頭 bytes だけを復号する(数 MB の画像でも先頭 64KB まで)。 */
-function headBytes(base64: string, maxBytes = 65536): Uint8Array {
+/**
+ * base64 の先頭 bytes だけを復号する(数 MB の画像でも先頭 256KB まで)。
+ * JPEG の Exif(サムネイル付きで最大 64KB)や ICC の後ろにある SOF まで届くように。
+ */
+function headBytes(base64: string, maxBytes = 262144): Uint8Array {
   const chars = Math.min(base64.length, Math.ceil(maxBytes / 3) * 4)
   const clean = base64.slice(0, chars - (chars % 4))
   const binary = typeof atob === "function" ? atob(clean) : Buffer.from(clean, "base64").toString("binary")
@@ -57,10 +60,39 @@ function gifSize(b: Uint8Array): ImageSize | null {
   return { width: u16le(b, 6), height: u16le(b, 8) }
 }
 
-/** JPEG: SOF マーカー(C0〜CF、ただし C4/C8/CC を除く)の高さ・幅。 */
+/**
+ * JPEG の Exif(APP1)にある向き(1〜8)。無い・読めないときは 1。
+ * Claude は向きを直してから画像を見る(公式「Coordinates and bounding boxes」)ので、
+ * 5〜8(90 度回す向き)のときは幅と高さを入れ替えて扱う。
+ */
+function exifOrientation(b: Uint8Array, start: number, end: number): number {
+  const isExif = b[start] === 0x45 && b[start + 1] === 0x78 && b[start + 2] === 0x69 && b[start + 3] === 0x66 && b[start + 4] === 0 && b[start + 5] === 0
+  if (!isExif) return 1
+  const tiff = start + 6
+  const little = b[tiff] === 0x49 && b[tiff + 1] === 0x49
+  if (!little && !(b[tiff] === 0x4d && b[tiff + 1] === 0x4d)) return 1
+  const u16 = (i: number) => (little ? u16le(b, i) : u16be(b, i))
+  const u32 = (i: number) => (little ? (u16le(b, i) + u16le(b, i + 2) * 65536) : u32be(b, i))
+  if (u16(tiff + 2) !== 42) return 1
+  const ifd = tiff + u32(tiff + 4)
+  if (ifd + 2 > end) return 1
+  const entries = u16(ifd)
+  for (let k = 0; k < entries; k += 1) {
+    const entry = ifd + 2 + k * 12
+    if (entry + 12 > end) return 1
+    if (u16(entry) === 0x0112) {
+      const value = u16(entry + 8)
+      return value >= 1 && value <= 8 ? value : 1
+    }
+  }
+  return 1
+}
+
+/** JPEG: SOF マーカー(C0〜CF、ただし C4/C8/CC を除く)の高さ・幅。Exif の向きが 5〜8 なら入れ替える。 */
 function jpegSize(b: Uint8Array): ImageSize | null {
   if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null
   let i = 2
+  let orientation = 1
   while (i + 9 < b.length) {
     if (b[i] !== 0xff) return null
     const marker = b[i + 1]
@@ -69,8 +101,12 @@ function jpegSize(b: Uint8Array): ImageSize | null {
       continue
     }
     const length = u16be(b, i + 2)
+    if (marker === 0xe1 && orientation === 1) orientation = exifOrientation(b, i + 4, Math.min(b.length, i + 2 + length))
     const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc
-    if (isSof) return { width: u16be(b, i + 7), height: u16be(b, i + 5) }
+    if (isSof) {
+      const stored = { width: u16be(b, i + 7), height: u16be(b, i + 5) }
+      return orientation >= 5 ? { width: stored.height, height: stored.width } : stored
+    }
     i += 2 + length
   }
   return null

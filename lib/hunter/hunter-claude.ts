@@ -5,40 +5,24 @@
 // 失敗は throw せず null を返す。ログには失敗の種類だけを出す(画像・文面・鍵は出さない)。
 // =============================================
 
-import { callClaudeVision, claudeVisionModel, hasClaudeApiKey } from "@/lib/claude-vision"
+import { callClaudeVision } from "@/lib/claude-vision"
 import { extractHunterJson } from "@/lib/hunter/ai-json"
 import { validateHunterResponse, type ValidatedHunterResponse } from "@/lib/hunter/ai-schema"
-import {
-  claudeImageLimits,
-  claudeProcessedSize,
-  parseImageDataUrl,
-  readImageSize,
-  type ImageMediaType,
-  type ImageSize,
-} from "@/lib/vision/image-size"
+import { prepareClaudeImage, type ClaudeImage } from "@/lib/vision/claude-image"
 
-/** Claude 1 コールの上限。失敗したら Gemini を 1 回(20 秒)試しても、ルートの 60 秒に収まるように。 */
+/**
+ * Claude 1 コールの上限。時間切れのあとの Gemini(35 秒 + 一時的失敗の再試行 20 秒)と合わせても
+ * 約 85 秒で、画面が待つ 95 秒(hunter-game.tsx の ANALYZE_TIMEOUT_MS)に収まる。
+ */
 export const CLAUDE_HUNTER_TIMEOUT_MS = 30_000
 /** 危険 4 つ + クイズ + 安全の工夫の JSON が収まる量。 */
 export const CLAUDE_HUNTER_MAX_TOKENS = 8000
 
-export interface ClaudeHunterImage {
-  readonly base64: string
-  readonly mediaType: ImageMediaType
-  /** Claude が見る画像の大きさ(返ってくるピクセル座標の基準)。 */
-  readonly pixelSize: ImageSize
-  readonly model: string
-}
+export type ClaudeHunterImage = ClaudeImage
 
 /** Claude で解析できる画像なら、送る形と Claude が見る大きさを返す。できなければ null。 */
 export function prepareClaudeHunterImage(imageDataUrl: string): ClaudeHunterImage | null {
-  if (!hasClaudeApiKey()) return null
-  const parsed = parseImageDataUrl(imageDataUrl)
-  if (!parsed) return null
-  const size = readImageSize(parsed)
-  if (!size) return null
-  const model = claudeVisionModel()
-  return { ...parsed, pixelSize: claudeProcessedSize(size, claudeImageLimits(model)), model }
+  return prepareClaudeImage(imageDataUrl)
 }
 
 function failureKind(err: unknown): string {

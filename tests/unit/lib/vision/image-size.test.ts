@@ -36,6 +36,26 @@ describe("readImageSize", () => {
     expect(sizeOf(dataUrl("image/jpeg", [0xff, 0xd8, ...app0, ...sof0]))).toEqual({ width: 1600, height: 1200 })
   })
 
+  it("swaps width and height for JPEGs whose Exif orientation turns them 90 degrees (Claude fixes the orientation first)", () => {
+    const sof0 = [0xff, 0xc0, ...be16(17), 8, ...be16(1200), ...be16(1600), 3, ...new Array(9).fill(0)]
+    const le32 = (n: number) => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >>> 24) & 0xff]
+    const exif = (orientation: number, little: boolean) => {
+      const u16 = little ? le16 : be16
+      const u32 = little ? le32 : be32
+      const tiff = [
+        ...(little ? ascii("II") : ascii("MM")), ...u16(42), ...u32(8),
+        ...u16(1), ...u16(0x0112), ...u16(3), ...u32(1), ...u16(orientation), 0, 0,
+        ...u32(0),
+      ]
+      return [0xff, 0xe1, ...be16(2 + 6 + tiff.length), ...ascii("Exif"), 0, 0, ...tiff]
+    }
+    const jpeg = (app1: number[]) => dataUrl("image/jpeg", [0xff, 0xd8, ...app1, ...sof0])
+    expect(sizeOf(jpeg(exif(6, true)))).toEqual({ width: 1200, height: 1600 })
+    expect(sizeOf(jpeg(exif(8, false)))).toEqual({ width: 1200, height: 1600 })
+    expect(sizeOf(jpeg(exif(3, true)))).toEqual({ width: 1600, height: 1200 })
+    expect(sizeOf(jpeg(exif(1, false)))).toEqual({ width: 1600, height: 1200 })
+  })
+
   it("reads WebP lossy (VP8), lossless (VP8L) and extended (VP8X)", () => {
     const head = (chunk: string) => [...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WEBP"), ...ascii(chunk), 0, 0, 0, 0]
     const vp8 = [...head("VP8 "), 0, 0, 0, 0x9d, 0x01, 0x2a, ...le16(1600), ...le16(1200)]

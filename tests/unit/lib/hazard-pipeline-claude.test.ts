@@ -81,6 +81,33 @@ describe("analyzeImagePipeline — preferClaude", () => {
     expect(result.vision.hazards[0].positions[0]).toEqual({ x: 0.72, y: 0.25, width: 0.18, height: 0.4 })
   })
 
+  it("reports Claude's real token usage once per answered call — also when the answer is unusable and Gemini takes over", async () => {
+    const onClaudeUsage = vi.fn()
+    vi.mocked(callClaudeVision).mockImplementation(async (params) => {
+      params.onUsage?.({ inputTokens: 3200, outputTokens: 1800 })
+      return claudePipelineJson()
+    })
+    await analyzeImagePipeline(PNG, { promptType: "default", preferClaude: true, onClaudeUsage })
+    expect(onClaudeUsage).toHaveBeenCalledTimes(1)
+    expect(onClaudeUsage).toHaveBeenCalledWith({ model: "claude-haiku-5-5", inputTokens: 3200, outputTokens: 1800, ok: true })
+
+    onClaudeUsage.mockClear()
+    vi.mocked(callClaudeVision).mockImplementation(async (params) => {
+      params.onUsage?.({ inputTokens: 3200, outputTokens: 40 })
+      return "ごめんなさい"
+    })
+    const fallback = await analyzeImagePipeline(PNG, { promptType: "default", preferClaude: true, onClaudeUsage })
+    expect(onClaudeUsage).toHaveBeenCalledWith({ model: "claude-haiku-5-5", inputTokens: 3200, outputTokens: 40, ok: false })
+    expect(fallback.analysisModel).toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    // 応答が届かなかった(通信の失敗)ときは課金されないので記録しない
+    onClaudeUsage.mockClear()
+    vi.mocked(callClaudeVision).mockRejectedValue(new Error("network"))
+    await analyzeImagePipeline(PNG, { promptType: "default", preferClaude: true, onClaudeUsage })
+    expect(onClaudeUsage).not.toHaveBeenCalled()
+  })
+
   it("falls back to Gemini when Claude fails", async () => {
     vi.mocked(callClaudeVision).mockRejectedValue(new Error("down"))
     const result = await analyzeImagePipeline(PNG, { promptType: "default", preferClaude: true })

@@ -18,18 +18,21 @@ const PROVIDER_COLORS: Record<string, string> = {
   gemini: "#3b82f6",
   openai: "#22c55e",
   mapbox: "#f97316",
+  anthropic: "#a855f7",
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
   gemini: "Gemini",
   openai: "OpenAI",
   mapbox: "Mapbox",
+  anthropic: "Anthropic",
 }
 
 const pieChartConfig = {
   gemini: { label: "Gemini", color: "#3b82f6" },
   openai: { label: "OpenAI", color: "#22c55e" },
   mapbox: { label: "Mapbox", color: "#f97316" },
+  anthropic: { label: "Anthropic", color: "#a855f7" },
 } as const
 
 const barChartConfig = {

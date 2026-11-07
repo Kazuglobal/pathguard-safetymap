@@ -20,8 +20,6 @@ const HAZARD_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAUL
 /** 1解析 = 1 Vision呼び出しのトークン概算(画像+プロンプト / JSON応答)。 */
 const ESTIMATED_ANALYZE_INPUT_TOKENS = 2500
 const ESTIMATED_ANALYZE_OUTPUT_TOKENS = 1000
-/** Claude は画像を 28px 角ごとに数えるので、長い辺 1600px の写真で 約2,500 + 指示文。 */
-const ESTIMATED_CLAUDE_INPUT_TOKENS = 5500
 /** 単価表(api-cost-calculator)から解決モデルで算出し、GEMINI_VISION_MODEL 上書き時もモデル名とコストが整合する。 */
 const ESTIMATED_ANALYZE_COST_USD = calculateCost({
   provider: "gemini",
@@ -125,6 +123,8 @@ export async function POST(request: NextRequest) {
     if (includeDebug) console.log(`Image data received, size: ${imageBase64.length} characters`)
 
     let pipelineResult: PipelineAnalysisResultWithComparison
+    /** Claude が使える答えを返したか(このあとの失敗を Gemini の失敗として記録しないため)。 */
+    let claudeAnswered = false
     let sessionId = null
 
     try {
@@ -141,6 +141,26 @@ export async function POST(request: NextRequest) {
         promptType: promptType || "default",
         visionModelDefault: REALTIME_VISION_DEFAULT_MODEL,
         preferClaude: true,
+        // Claude は応答が届いたら(使えずに Gemini へ切り替えたときも)実際のトークン数で記録する
+        onClaudeUsage: (attempt) => {
+          claudeAnswered = claudeAnswered || attempt.ok
+          logApiUsage({
+            api_provider: 'anthropic',
+            api_endpoint: 'hazard-analyze',
+            model_name: attempt.model,
+            input_tokens: attempt.inputTokens,
+            output_tokens: attempt.outputTokens,
+            request_count: 1,
+            estimated_cost_usd: calculateCost({
+              provider: 'anthropic',
+              model: attempt.model,
+              inputTokens: attempt.inputTokens,
+              outputTokens: attempt.outputTokens,
+            }),
+            success: attempt.ok,
+            ...(attempt.ok ? {} : { error_message: 'unusable answer; fell back to Gemini' }),
+          })
+        },
       })
 
       const { score, vision } = pipelineResult
@@ -182,7 +202,7 @@ export async function POST(request: NextRequest) {
         if (msg.includes('利用枠') || msg.includes('quota') || msg.includes('クレジット')) {
           return NextResponse.json(
             {
-              error: 'Gemini APIの利用枠を超過しています。Google Cloud Console でクォータ/請求設定をご確認ください。',
+              error: '画像分析サービスの利用枠を超えました。しばらくしてから、もう一度お試しください。',
               ...(includeDebug ? { debugInfo: { originalError: msg, timestamp: new Date().toISOString() } } : {}),
             },
             { status: 429 }
@@ -201,7 +221,10 @@ export async function POST(request: NextRequest) {
       else if (errorMessage.includes('rate limit') || errorMessage.includes('利用枠')) status = 429
       else if (errorMessage.includes('サイズ') || errorMessage.includes('大きすぎ')) status = 413
 
-      logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: HAZARD_VISION_MODEL, request_count: 1, estimated_cost_usd: 0, success: false, error_message: errorMessage })
+      // Claude が答えたあとに失敗したときは Gemini を呼んでいないので、Gemini の失敗としては数えない
+      if (!claudeAnswered) {
+        logApiUsage({ api_provider: 'gemini', api_endpoint: 'hazard-analyze', model_name: HAZARD_VISION_MODEL, request_count: 1, estimated_cost_usd: 0, success: false, error_message: errorMessage })
+      }
       const clientMessage = includeDebug ? errorMessage : "画像の分析中にエラーが発生しました。"
       return NextResponse.json(
         {
@@ -214,22 +237,17 @@ export async function POST(request: NextRequest) {
 
     // AI-derived safety scores are display-only, never persistent currency.
 
-    const usedClaude = pipelineResult.analysisModel?.provider === 'anthropic'
-    logApiUsage({
-      api_provider: usedClaude ? 'anthropic' : 'gemini',
-      api_endpoint: 'hazard-analyze',
-      model_name: usedClaude ? pipelineResult.analysisModel!.model : HAZARD_VISION_MODEL,
-      request_count: 1,
-      estimated_cost_usd: usedClaude
-        ? calculateCost({
-            provider: 'anthropic',
-            model: pipelineResult.analysisModel!.model,
-            inputTokens: ESTIMATED_CLAUDE_INPUT_TOKENS,
-            outputTokens: ESTIMATED_ANALYZE_OUTPUT_TOKENS,
-          })
-        : ESTIMATED_ANALYZE_COST_USD,
-      success: true,
-    })
+    // Claude で解析したときは onClaudeUsage で記録済み。Gemini で解析したときだけ、ここで記録する
+    if (pipelineResult.analysisModel?.provider !== 'anthropic') {
+      logApiUsage({
+        api_provider: 'gemini',
+        api_endpoint: 'hazard-analyze',
+        model_name: HAZARD_VISION_MODEL,
+        request_count: 1,
+        estimated_cost_usd: ESTIMATED_ANALYZE_COST_USD,
+        success: true,
+      })
+    }
 
     // Return both new pipeline format and legacy-compatible fields
     return NextResponse.json({

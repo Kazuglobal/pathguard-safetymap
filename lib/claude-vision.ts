@@ -16,6 +16,12 @@ export function claudeVisionModel(): string {
   return process.env.CLAUDE_VISION_MODEL?.trim() || CLAUDE_VISION_DEFAULT_MODEL
 }
 
+/** 1 回の呼び出しで使ったトークン(課金の実数)。 */
+export interface ClaudeUsage {
+  readonly inputTokens: number
+  readonly outputTokens: number
+}
+
 /** 既定の 1 コールの上限。Route Handlers の60秒枠を、リトライなしで超えないようにする。 */
 const DEFAULT_TIMEOUT_MS = 45_000
 
@@ -32,6 +38,8 @@ export async function callClaudeVision(params: {
   maxTokens?: number
   /** 1 コールの上限ミリ秒(既定 45 秒)。 */
   timeoutMs?: number
+  /** 応答が届いたら(断り・打ち切りで throw する前にも)使ったトークンを渡す。 */
+  onUsage?: (usage: ClaudeUsage) => void
 }): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim()
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY")
@@ -57,6 +65,10 @@ export async function callClaudeVision(params: {
     ],
   })
 
+  params.onUsage?.({
+    inputTokens: response.usage?.input_tokens ?? 0,
+    outputTokens: response.usage?.output_tokens ?? 0,
+  })
   if ((response.stop_reason as string) === "refusal") throw new Error("Claude declined the request")
   if (response.stop_reason === "max_tokens") throw new Error("Claude response was truncated")
 

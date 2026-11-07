@@ -237,28 +237,40 @@ interface GeminiOutcome {
 }
 
 /**
- * Gemini で解析する(Claude が使えない・失敗したとき)。
- * - full: 一時的失敗の再試行 1 回 + 読めない JSON の再出力 1 回(35+0.4+20+20 秒に有界)。
- * - single: 1 回だけ(allowRetry=false)。
- * - after-claude: Claude で時間を使ったあとなので 20 秒 1 回だけ(ルートの 60 秒に収める)。
+ * Claude がこの時間より早く失敗したら(過負荷・残高切れ・鍵の誤り・画像の拒否など)、
+ * Gemini は Claude を使わないときと同じ予算で解析する(成功率を下げない)。
  */
+export const CLAUDE_FAST_FAILURE_MS = 10_000
+
+/**
+ * Gemini の予算。どれも 1 回目は 35 秒。画面は 95 秒待つ(hunter-game.tsx の ANALYZE_TIMEOUT_MS)。
+ * - full: 一時的失敗の再試行 1 回 + 読めない JSON の再出力 1 回(35+0.4+20+20 秒)。
+ *   Claude がすぐ失敗したあとも使う(Claude 10 秒未満 + 75.4 秒)。
+ * - after-slow-claude: Claude が時間を使って失敗したあと。一時的失敗の再試行はするが、
+ *   JSON の再出力はしない(Claude 30 秒 + 35+0.4+20 秒)。
+ * - single: 1 回だけ(allowRetry=false)。
+ */
+type GeminiBudget = "full" | "after-slow-claude" | "single"
+
+function geminiBudget(allowRetry: boolean, claudeElapsedMs: number | null): GeminiBudget {
+  if (!allowRetry) return "single"
+  return claudeElapsedMs === null || claudeElapsedMs < CLAUDE_FAST_FAILURE_MS ? "full" : "after-slow-claude"
+}
+
+/** Gemini で解析する(Claude が使えない・失敗したとき)。 */
 async function analyzeHunterWithGemini(
   imageBase64: string,
   prompt: string,
-  budget: "full" | "single" | "after-claude",
+  budget: GeminiBudget,
 ): Promise<GeminiOutcome> {
-  const full = budget === "full"
   let text: string
   try {
-    text =
-      budget === "after-claude"
-        ? await callHunterVision(imageBase64, prompt, false, HUNTER_RETRY_CONFIG)
-        : await callHunterVision(imageBase64, prompt, full)
+    text = await callHunterVision(imageBase64, prompt, budget !== "single")
   } catch {
     return { failure: "ai_error" }
   }
   let extracted = extractHunterJson(text)
-  if (!extracted.ok && full) {
+  if (!extracted.ok && budget === "full") {
     try {
       const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false, HUNTER_RETRY_CONFIG)
       extracted = extractHunterJson(retryText)
@@ -281,13 +293,19 @@ async function requestHunterAnalysis(
   allowRetry: boolean,
 ): Promise<GeminiOutcome & { readonly model?: string }> {
   const claudeImage = prepareClaudeHunterImage(imageBase64)
+  let claudeElapsedMs: number | null = null
   if (claudeImage) {
     const prompt = buildHunterPrompt(accidentContext, accidentSummary, { pixels: claudeImage.pixelSize })
+    const startedAt = Date.now()
     const validated = await analyzeHunterWithClaude(claudeImage, prompt)
     if (validated) return { validated, model: claudeImage.model }
+    claudeElapsedMs = Date.now() - startedAt
   }
-  const budget = claudeImage ? "after-claude" : allowRetry ? "full" : "single"
-  return analyzeHunterWithGemini(imageBase64, buildHunterPrompt(accidentContext, accidentSummary), budget)
+  return analyzeHunterWithGemini(
+    imageBase64,
+    buildHunterPrompt(accidentContext, accidentSummary),
+    geminiBudget(allowRetry, claudeElapsedMs),
+  )
 }
 
 /**

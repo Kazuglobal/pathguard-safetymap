@@ -7,15 +7,16 @@
 // このモジュールは gemini-hazard.ts を import しない(循環を作らない)。
 // =============================================
 
-import { callClaudeVision, claudeVisionModel, hasClaudeApiKey } from "@/lib/claude-vision"
-import {
-  claudeImageLimits,
-  claudeProcessedSize,
-  parseImageDataUrl,
-  readImageSize,
-  type ImageSize,
-} from "@/lib/vision/image-size"
+import { callClaudeVision, type ClaudeUsage } from "@/lib/claude-vision"
+import { prepareClaudeImage } from "@/lib/vision/claude-image"
+import type { ImageSize } from "@/lib/vision/image-size"
 import { pixelBoxToRegion } from "@/lib/vision/pixel-coords"
+
+/** Claude を 1 回呼んだ記録(使用量のログ用)。ok=false は応答を使わず Gemini に切り替えたとき。 */
+export interface ClaudeAttemptUsage extends ClaudeUsage {
+  readonly model: string
+  readonly ok: boolean
+}
 
 const CATEGORIES = ["safety_equipment", "hazards", "traffic", "obstructions"] as const
 const CLAUDE_PIPELINE_TIMEOUT_MS = 30_000
@@ -105,34 +106,43 @@ function dropNullPositions(raw: unknown): unknown {
 /**
  * Claude で解析し、正規化済みの生 JSON を返す。使えない・失敗したら null(呼び出し側が Gemini へ)。
  * buildPrompt には Claude が見る画像の大きさが渡る(ピクセル座標版のプロンプトを作るため)。
+ * onUsage は応答が届いたときだけ 1 回呼ぶ(使えない応答で Gemini に切り替えたときも課金されるため)。
  */
 export async function requestPipelineWithClaude(
   imageDataUrl: string,
   buildPrompt: (pixelSize: ImageSize) => string,
+  onUsage?: (attempt: ClaudeAttemptUsage) => void,
 ): Promise<{ readonly raw: unknown; readonly model: string } | null> {
-  if (!hasClaudeApiKey()) return null
-  const parsed = parseImageDataUrl(imageDataUrl)
-  const size = parsed ? readImageSize(parsed) : null
-  if (!parsed || !size) return null
-  const model = claudeVisionModel()
-  const pixelSize = claudeProcessedSize(size, claudeImageLimits(model))
+  const image = prepareClaudeImage(imageDataUrl)
+  if (!image) return null
+  const { model, pixelSize } = image
+  let usage: ClaudeUsage | null = null
+  const report = (ok: boolean) => {
+    if (usage && onUsage) onUsage({ model, ...usage, ok })
+  }
   try {
     const text = await callClaudeVision({
-      base64: parsed.base64,
-      mediaType: parsed.mediaType,
+      base64: image.base64,
+      mediaType: image.mediaType,
       prompt: buildPrompt(pixelSize),
       maxTokens: CLAUDE_PIPELINE_MAX_TOKENS,
       timeoutMs: CLAUDE_PIPELINE_TIMEOUT_MS,
+      onUsage: (u) => {
+        usage = u
+      },
     })
     const json = firstJsonObject(text)
     if (!json) {
       console.warn("[hazard-game] Claude returned unreadable JSON; falling back to Gemini")
+      report(false)
       return null
     }
+    report(true)
     return { raw: pipelinePixelsToNormalized(json, pixelSize), model }
   } catch (err) {
     const status = (err as { status?: unknown })?.status
     console.warn(`[hazard-game] Claude analysis failed (${typeof status === "number" ? `status ${status}` : "error"}); falling back to Gemini`)
+    report(false)
     return null
   }
 }

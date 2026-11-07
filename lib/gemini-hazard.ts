@@ -13,7 +13,7 @@ import type {
 } from "./hazard-game-types"
 import { calculateSafetyScore, calculateFinalScoreWithBonus } from "./hazard-game-scorer"
 import { compareUserMarkersWithAI } from "./hazard-game-matching"
-import { requestPipelineWithClaude, toPixelPositionsExample } from "./hazard-pipeline-claude"
+import { requestPipelineWithClaude, toPixelPositionsExample, type ClaudeAttemptUsage } from "./hazard-pipeline-claude"
 import type { ImageSize } from "./vision/image-size"
 
 export type { PromptType }
@@ -462,6 +462,8 @@ export interface AnalyzeImageOptions {
    * ハザードゲーム(hazard-game/analyze)だけが true を渡す(ほかの呼び出し元は変えない)。
    */
   readonly preferClaude?: boolean
+  /** Claude を呼んで応答が届いたときに 1 回呼ばれる(使えない応答でも課金されるので、使用量ログ用)。 */
+  readonly onClaudeUsage?: (attempt: ClaudeAttemptUsage) => void
 }
 
 function normalizeAnalyzeArgs(
@@ -473,6 +475,7 @@ function normalizeAnalyzeArgs(
   accidentContext?: string
   visionModelDefault?: string
   preferClaude?: boolean
+  onClaudeUsage?: (attempt: ClaudeAttemptUsage) => void
 } {
   if (Array.isArray(optionsOrUserMarkers)) {
     return { userMarkers: optionsOrUserMarkers, promptType: legacyPromptType ?? "default" }
@@ -484,6 +487,7 @@ function normalizeAnalyzeArgs(
     accidentContext: opts.accidentContext,
     visionModelDefault: opts.visionModelDefault,
     preferClaude: opts.preferClaude === true,
+    onClaudeUsage: opts.onClaudeUsage,
   }
 }
 
@@ -498,14 +502,16 @@ export async function analyzeImagePipeline(
 ): Promise<PipelineAnalysisResultWithComparison> {
   const startTime = Date.now()
 
-  const { userMarkers, promptType, accidentContext, visionModelDefault, preferClaude } = normalizeAnalyzeArgs(
+  const { userMarkers, promptType, accidentContext, visionModelDefault, preferClaude, onClaudeUsage } = normalizeAnalyzeArgs(
     optionsOrUserMarkers,
     legacyPromptType
   )
   // Claude(ピクセル座標で受けて正規化済み)→ 使えなければ Gemini(従来どおり)
   const claude = preferClaude
-    ? await requestPipelineWithClaude(imageBase64OrDataUrl, (pixelSize) =>
-        getPipelinePromptByType(promptType, userMarkers, accidentContext, pixelSize),
+    ? await requestPipelineWithClaude(
+        imageBase64OrDataUrl,
+        (pixelSize) => getPipelinePromptByType(promptType, userMarkers, accidentContext, pixelSize),
+        onClaudeUsage,
       )
     : null
   const parsed = claude
