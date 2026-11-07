@@ -5,8 +5,9 @@
 // =============================================
 
 import type { RiskSeverity } from "@/lib/hazard-game-types"
+import { fitHitZones } from "@/lib/hunter/hit-zone"
 import { normalizeKind } from "@/lib/hunter/kid-copy"
-import type { HunterHazard, HunterRegion } from "@/lib/hunter/types"
+import type { HunterHazard, HunterPoint, HunterRegion } from "@/lib/hunter/types"
 
 export interface StoredDetectionLike {
   readonly type: string | null
@@ -35,20 +36,39 @@ function toSeverity(raw: string | null): RiskSeverity {
   return raw === "high" || raw === "medium" || raw === "low" ? raw : "medium"
 }
 
-/** 保存済み検出 → 探索用 hazards。ID は `${sessionId}-${index}`(生成時と同じ規約)。 */
-export function detectionsToHazards(
-  detections: readonly StoredDetectionLike[],
-  sessionId: string,
-): HunterHazard[] {
-  const hazards: HunterHazard[] = []
-  for (const detection of detections) {
-    const region = toRegion(detection.region)
-    const type = detection.type?.trim()
-    const kidExplanation = detection.kidExplanation?.trim()
-    const safeAction = detection.safeAction?.trim()
-    if (!region || !type || !kidExplanation || !safeAction) continue
-    hazards.push({
-      id: `${sessionId}-${hazards.length}`,
+/** region JSON に同居させた当たり枠(保存時の値)。region の内側でなければ使わない。 */
+function storedHitRegion(raw: Record<string, unknown> | null, region: HunterRegion): HunterRegion | null {
+  const hit = raw && typeof raw.hitRegion === "object" ? toRegion(raw.hitRegion as Record<string, unknown>) : null
+  if (!hit) return null
+  const eps = 1e-6
+  const inside =
+    hit.x >= region.x - eps &&
+    hit.y >= region.y - eps &&
+    hit.x + hit.w <= region.x + region.w + eps &&
+    hit.y + hit.h <= region.y + region.h + eps
+  return inside ? hit : null
+}
+
+function storedFocus(raw: Record<string, unknown> | null): HunterPoint | null {
+  const focus = raw?.focusPoint as { x?: unknown; y?: unknown } | undefined
+  if (!focus || !isUnit(focus.x) || !isUnit(focus.y)) return null
+  return { x: focus.x, y: focus.y }
+}
+
+interface ParsedDetection {
+  readonly base: Omit<HunterHazard, "id" | "hitRegion" | "focusPoint">
+  readonly hit: HunterRegion | null
+  readonly focus: HunterPoint | null
+}
+
+function parseDetection(detection: StoredDetectionLike): ParsedDetection | null {
+  const region = toRegion(detection.region)
+  const type = detection.type?.trim()
+  const kidExplanation = detection.kidExplanation?.trim()
+  const safeAction = detection.safeAction?.trim()
+  if (!region || !type || !kidExplanation || !safeAction) return null
+  return {
+    base: {
       type,
       region,
       severity: toSeverity(detection.severity),
@@ -57,7 +77,31 @@ export function detectionsToHazards(
       confidence: isUnit(detection.confidence) ? detection.confidence : 0.7,
       kind: normalizeKind(detection.kind ?? undefined),
       accidentLink: detection.accidentLink ?? null,
-    })
+    },
+    hit: storedHitRegion(detection.region, region),
+    focus: storedFocus(detection.region),
   }
-  return hazards
+}
+
+/**
+ * 保存済み検出 → 探索用 hazards。ID は `${sessionId}-${index}`(生成時と同じ規約)。
+ * 当たり枠は保存した値をそのまま使う。当たり枠の無い旧データは、保存済みの focus(無ければ枠の中心)から
+ * 同じ規則(fitHitZones)で作るので、きろくの再プレイでも「適当に押しても正解」にならない。
+ */
+export function detectionsToHazards(
+  detections: readonly StoredDetectionLike[],
+  sessionId: string,
+): HunterHazard[] {
+  const parsed = detections.map(parseDetection).filter((d): d is ParsedDetection => d !== null)
+  const allStored = parsed.every((d) => d.hit !== null)
+  const derived = allStored ? null : fitHitZones(parsed.map((d) => ({ region: d.base.region, focus: d.focus })))
+  return parsed.map((d, i) => {
+    const hit = d.hit as HunterRegion
+    const zone = derived ? derived[i] : { hitRegion: hit, focusPoint: d.focus ?? centerOf(hit) }
+    return { id: `${sessionId}-${i}`, ...d.base, hitRegion: zone.hitRegion, focusPoint: zone.focusPoint }
+  })
+}
+
+function centerOf(region: HunterRegion): HunterPoint {
+  return { x: region.x + region.w / 2, y: region.y + region.h / 2 }
 }

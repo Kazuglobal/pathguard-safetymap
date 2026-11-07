@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Transform summary object → providers array for the client
-    const providers = (['gemini', 'openai', 'mapbox'] as const).map((key) => {
+    const providers = (['gemini', 'openai', 'mapbox', 'anthropic'] as const).map((key) => {
       const s = summary[key]
       const bs = budgetSettings.find((b) => b.api_provider === key)
       return {

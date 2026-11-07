@@ -7,6 +7,8 @@ import {
   getHunterPhotoWithDetections,
 } from "@/lib/db/repos/hunter.repo"
 import { putAnswerKey } from "@/lib/hunter/answer-cache"
+import { toCachedHazardKey } from "@/lib/hunter/answer-key"
+import { HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
 import { writeAuditLog } from "@/lib/hunter/audit"
 import { detectionsToHazards } from "@/lib/hunter/replay"
 import { createPhotoSignedUrl, deletePhotoObjects } from "@/lib/hunter/storage"
@@ -57,13 +59,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   const hazards = detectionsToHazards(bundle.detections, sessionId)
 
   await putAnswerKey(sessionId, {
-    hazards: hazards.map((h) => ({
-      id: h.id,
-      region: h.region,
-      severity: h.severity,
-      confidence: h.confidence,
-    })),
+    hazards: hazards.map(toCachedHazardKey),
     quiz: [],
+    rules: HUNTER_RULES_VERSION,
   })
   await writeAuditLog(actor, "replay_photo", bundle.photo.id)
 
@@ -76,6 +74,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     pin: hasPin ? { latitude: photo.pinLat, longitude: photo.pinLng } : null,
     capturedAt: photo.capturedAt,
     retentionUntil: photo.retentionUntil,
+    rules: HUNTER_RULES_VERSION,
     hazards,
   })
 }

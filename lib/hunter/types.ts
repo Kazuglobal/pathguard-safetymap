@@ -5,8 +5,9 @@
 
 import type { RiskSeverity } from "@/lib/hazard-game-types"
 import type { HunterDangerKind } from "@/lib/hunter/kid-copy"
+import type { HunterSafeKind } from "@/lib/hunter/safe-kinds"
 
-export type { HunterDangerKind }
+export type { HunterDangerKind, HunterSafeKind }
 
 /** 相対座標の矩形 (0..1)。端末サイズ非依存。 */
 export interface HunterRegion {
@@ -14,6 +15,12 @@ export interface HunterRegion {
   readonly y: number
   readonly w: number
   readonly h: number
+}
+
+/** 相対座標の点 (0..1)。 */
+export interface HunterPoint {
+  readonly x: number
+  readonly y: number
 }
 
 /** タップとhazardの距離を表す3段階(ヒント用)。 */
@@ -49,6 +56,26 @@ export interface HunterHazard {
   readonly kind?: HunterDangerKind
   /** 近隣の多い事故タイプとの関連(やさしいラベル)。無ければ null。任意。 */
   readonly accidentLink?: string | null
+  /**
+   * 採点に使う当たり枠(region の内側・focus 中心の小さい枠)。lib/hunter/hit-zone.ts が作る。
+   * 無い(旧データ・旧クライアント)ときは region で採点する。
+   */
+  readonly hitRegion?: HunterRegion
+  /** AI が示した「いちばん見るべき 1 点」(region の内側)。ヒントの向き・スタンプ位置に使う。 */
+  readonly focusPoint?: HunterPoint
+}
+
+/** こたえあわせで、危険ごとに「見つけたか・理由まで分かったか」。 */
+export interface HunterDiscovery {
+  readonly hazardId: string
+  readonly understood: boolean
+}
+
+/** おうちの人むけの根拠(AI の evidence を検証したもの)。危険のデータとは別に返し、保存しない。 */
+export interface HunterParentNote {
+  readonly hazardId: string
+  /** 英字を含む・長すぎる・空のときは null。 */
+  readonly evidence: string | null
 }
 
 /** 安全の工夫(ガードレール・歩道・ミラー等)の地点。逆モード(安全さがし)用。 */
@@ -56,10 +83,16 @@ export interface HunterSafePoint {
   readonly id: string
   /** 子ども向けの種類ラベル(例: ガードレール) */
   readonly type: string
+  /** 表示用の枠(その工夫が写っている範囲)。 */
   readonly region: HunterRegion
   readonly kind?: HunterDangerKind
   /** なぜ安全か(やさしい日本語) */
   readonly whyGood: string
+  /** 工夫の種類(「どうして あんしん？」の答え合わせ用)。無い旧データは理由を問わない。 */
+  readonly safeKind?: HunterSafeKind
+  /** 採点に使う当たり枠(focus 中心の小さい枠)。無い旧データは region で判定する。 */
+  readonly hitRegion?: HunterRegion
+  readonly focusPoint?: HunterPoint
 }
 
 /** explore=探索 / quiz=クイズ / guide=ガイド(フォールバック)。 */
@@ -71,6 +104,8 @@ export type HunterAnalysisPurpose = "hunter-explore"
 export interface HunterTap {
   readonly x: number
   readonly y: number
+  /** 当たったあとに「どうして あぶない？」で選んだ kind(採点ルール v2)。当たり以外のタップでは無視。 */
+  readonly reason?: HunterDangerKind
 }
 
 export type HunterTapResult = "hit" | "near" | "miss"
@@ -86,6 +121,17 @@ export interface HunterTapOutcome {
   readonly temperature?: HunterTemperature
   /** 最近傍 hazard への大まかな方向。任意。 */
   readonly direction?: HunterDirection | null
+  /** 見つけ済みの当たり枠をもう一度タップした(はずれに数えない)。true のときだけ付く。 */
+  readonly alreadyFound?: boolean
+  /** 当たりのとき、理由まで合っていたか(採点ルール v2)。 */
+  readonly reasonCorrect?: boolean
+  /** 虫めがねを使い切った後・全部見つけた後のタップ(採点しない)。true のときだけ付く。 */
+  readonly ignored?: boolean
+  /**
+   * 画面だけで使う: 前のタップから間をあけた はずれか(ヒントの回数に数えるか)。
+   * false = 連打。undefined = 数える(旧呼び出し側の互換)。サーバは使わない。
+   */
+  readonly deliberate?: boolean
 }
 
 /** UI「気をつけるカード」と AI 注入の素になる事故サマリ。 */
@@ -155,6 +201,10 @@ export interface HunterAnalyzeResult {
   readonly noHazardFollow: string | null
   readonly usedFallback: boolean
   readonly fallbackReason: HunterFallbackReason | null
+  /** おうちの人むけの根拠(hazards と同じ順)。無ければ空・省略。 */
+  readonly parentNotes?: readonly HunterParentNote[]
+  /** 解析に使ったモデル(Claude で解析したときだけ入る。無ければ Gemini)。保存する検出の記録用。 */
+  readonly model?: string
 }
 
 export interface HunterQuizAnswer {

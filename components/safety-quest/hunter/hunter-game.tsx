@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -26,7 +26,8 @@ import { mutate } from "swr"
 
 import { pickDailyMission, type HunterDailyMode } from "@/lib/hunter/daily-mission"
 import { loadLastPin, saveLastPin } from "@/lib/hunter/last-pin"
-import { judgeTap } from "@/lib/hunter/scoring"
+import { HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
+import { buildRevealItems } from "@/lib/hunter/reveal"
 import {
   classifySessionFailure,
   postHunterSession,
@@ -37,16 +38,17 @@ import type {
   HunterAccidentSummary,
   HunterAnalysisMode,
   HunterHazard,
+  HunterParentNote,
   HunterQuizAnswer,
   HunterQuizItem,
   HunterSafePoint,
-  HunterTap,
-  HunterTapOutcome,
 } from "@/lib/hunter/types"
 
+import { AnswerRevealScreen } from "./answer-reveal/answer-reveal-screen"
 import { CareCard } from "./care-card"
-import { ExploreCanvas } from "./explore-canvas"
+import { ExploreScreen } from "./explore-screen"
 import { SafeHuntCanvas } from "./safe-hunt-canvas"
+import { useExploreRound } from "./use-explore-round"
 import { MaskConfirm } from "./mask-confirm"
 import { HunterQuizPanel } from "./quiz-panel"
 import { ResultCard } from "./result-card"
@@ -77,10 +79,17 @@ type Screen =
   | "explore"
   | "quiz"
   | "safe"
+  | "reveal"
   | "result"
   | "records"
 
 type PlayMode = "explore" | "quiz"
+
+/** こたえあわせを どこから開いたか(下のボタンの行き先・ことばが変わる)。 */
+type RevealFrom = "play" | "result"
+
+// たんけん画面は explore-screen.tsx へ分けた(テストと既存の import 先を保つため再エクスポート)。
+export { ExploreScreen }
 
 interface Pin {
   latitude: number
@@ -122,7 +131,8 @@ const SCREEN_DEPTH: Record<Screen, number> = {
   explore: 7,
   quiz: 7,
   safe: 7,
-  result: 8,
+  reveal: 8,
+  result: 9,
 }
 
 export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
@@ -140,10 +150,9 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [analysisMode, setAnalysisMode] = useState<HunterAnalysisMode>("explore")
   const [noHazardFollow, setNoHazardFollow] = useState<string | null>(null)
-  const [foundIds, setFoundIds] = useState<string[]>([])
-  const [taps, setTaps] = useState<HunterTap[]>([])
-  const [lastTap, setLastTap] = useState<{ x: number; y: number } | null>(null)
-  const [lastOutcome, setLastOutcome] = useState<HunterTapOutcome | null>(null)
+  // おうちの人むけの根拠(こたえあわせで使う)。保存しないので、きろくの再プレイでは空。
+  const [parentNotes, setParentNotes] = useState<readonly HunterParentNote[]>([])
+  const [revealFrom, setRevealFrom] = useState<RevealFrom>("play")
   const [result, setResult] = useState<HunterSessionSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -165,7 +174,10 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null)
 
   const reduce = useReducedMotion()
-  const foundSet = useMemo(() => new Set(foundIds), [foundIds])
+  // たんけん 1 回ぶん(タップ・理由・虫めがね)。合計はサーバと同じ replayExplore で数える。
+  const round = useExploreRound(hazards)
+  const resetRound = round.reset
+  const foundIds = round.summary.foundIds
   const quizItems = quiz
 
   useEffect(() => {
@@ -182,12 +194,9 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   )
 
   const resetPlay = useCallback(() => {
-    setFoundIds([])
-    setTaps([])
-    setLastTap(null)
-    setLastOutcome(null)
+    resetRound()
     setResult(null)
-  }, [])
+  }, [resetRound])
 
   const resetAll = useCallback(() => {
     resetPlay()
@@ -201,6 +210,7 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
     setSessionId(null)
     setAnalysisMode("explore")
     setNoHazardFollow(null)
+    setParentNotes([])
     setError(null)
     setSavedPhotoId(null)
     setSessionFailure(null)
@@ -263,6 +273,7 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
         setSessionId(body.sessionId ?? null)
         setAnalysisMode(body.mode === "guide" ? "guide" : "explore")
         setNoHazardFollow(body.noHazardFollow ?? null)
+        setParentNotes(Array.isArray(body.parentNotes) ? body.parentNotes : [])
         const photoId = typeof body.photoId === "string" && !body.savedError ? body.photoId : null
         setSavedPhotoId(photoId)
         if (save) {
@@ -289,33 +300,27 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
     [resetPlay],
   )
 
-  const handleTap = (tap: HunterTap) => {
-    setTaps([...taps, tap])
-    setLastTap(tap)
-    const outcome = judgeTap(tap, hazards, foundSet)
-    setLastOutcome(outcome)
-    if (outcome.result === "hit" && outcome.hazardId) {
-      setFoundIds([...foundIds, outcome.hazardId])
-    }
-    // 全発見でも自動で結果画面へ遷移しない: hit 直後の「なんで危ない?+つぎにすること」
-    // カードを読む時間を保証するため、遷移は CTA「けっかを みる」の明示タップに委ねる。
-    // (自動 finish だと最終 hit=hazard 1件の写真では学習カードが一度も読めなかった)
-  }
+  // 全発見でも自動で次の画面へ遷移しない: 最後の「どうして あぶない？」と学びのカードを
+  // 読む時間を保証するため、遷移は CTA の明示タップに委ねる。
+  // (自動 finish だと最終 hit=hazard 1件の写真では学習カードが一度も読めなかった)
 
   /**
-   * サーバ再採点 → 結果画面。失敗しても 0 点の結果を捏造せず、理由と復帰導線を出す。
+   * サーバ再採点 → こたえあわせ(たんけん)/ 結果画面(クイズ)。
+   * 失敗しても 0 点の結果を捏造せず、理由と復帰導線を出す(こたえあわせも飛ばす)。
    * ポイント/ミッションが動いたら SWR のキャッシュを更新し、mypage 等の表示を同期する。
    */
   const finishWith = useCallback(
-    async (payload: Record<string, unknown>, fallbackTotal: number) => {
+    async (payload: Record<string, unknown>, fallbackTotal: number, next: "reveal" | "result" = "result") => {
       setBusy(true)
       setSessionFailure(null)
+      let ok = false
       try {
         const outcome = await postHunterSession(
           { ...payload, sessionId: sessionId ?? undefined, photoId: savedPhotoId ?? undefined },
           fallbackTotal,
         )
         if (outcome.ok && outcome.result) {
+          ok = true
           setResult(outcome.result)
           if (outcome.result.pointsAwarded > 0 || outcome.result.missionsCompleted.length > 0) {
             void mutate("user_points")
@@ -328,15 +333,22 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
       } finally {
         setBusy(false)
         setDirection(1)
-        setScreen("result")
+        if (ok && next === "reveal") setRevealFrom("play")
+        setScreen(ok ? next : "result")
       }
     },
     [sessionId, savedPhotoId],
   )
 
+  const exploreTaps = round.state.taps
   const finishSession = useCallback(
-    (sessionTaps: HunterTap[]) => finishWith({ mode: "explore", hazards, taps: sessionTaps }, hazards.length),
-    [finishWith, hazards],
+    () =>
+      finishWith(
+        { mode: "explore", hazards, taps: exploreTaps, rules: HUNTER_RULES_VERSION },
+        hazards.length,
+        "reveal",
+      ),
+    [finishWith, hazards, exploreTaps],
   )
 
   const finishQuizSession = useCallback(
@@ -376,6 +388,7 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   )
 
   // 発見(hit)時に お祝い演出(ハンドラ挙動は変えず lastOutcome を監視)
+  const lastOutcome = round.state.lastOutcome
   useEffect(() => {
     if (lastOutcome?.result !== "hit") return
     setCelebratePoints(lastOutcome.points > 0 ? lastOutcome.points : null)
@@ -406,6 +419,11 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   // ----- 画面記述 -----
 
   const remaining = Math.max(0, hazards.length - foundIds.length)
+  // こたえあわせ・結果画面はサーバが数えた発見を正とする(0 件でも)。応答に無いときだけ画面の数え方
+  // (どちらも同じ replayExplore)。0 件のときに画面側へ切り替えると、表示が食い違う。
+  const discoveries = result?.discoveries ?? round.summary.replay.discoveries
+  const resultFoundIds = discoveries.map((d) => d.hazardId)
+  const resultUnderstoodIds = discoveries.filter((d) => d.understood).map((d) => d.hazardId)
 
   let title: string | undefined
   let onBack: (() => void) | undefined
@@ -534,14 +552,37 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
         maskedUrl={maskedUrl}
         hazards={hazards}
         foundIds={foundIds}
-        lastTap={lastTap}
+        lastTap={round.state.lastTap}
         lastOutcome={lastOutcome}
         busy={busy}
         remaining={remaining}
-        onTap={handleTap}
+        onTap={round.onTap}
         safeCount={safePoints.length}
         onSafeHunt={() => navigate("safe")}
-        onFinish={() => void finishSession(taps)}
+        onFinish={() => void finishSession()}
+        understoodIds={round.summary.understoodIds}
+        magnifiers={{ left: round.summary.magnifiersLeft, budget: round.summary.budget }}
+        outOfMagnifiers={round.summary.outOfMagnifiers}
+        pending={round.pending}
+        lastFound={round.lastFound}
+        lastReason={round.state.lastReason}
+        onReason={round.onReason}
+      />
+    )
+  } else if (screen === "reveal" && maskedUrl) {
+    title = "こたえあわせ"
+    const toResult = () => {
+      setDirection(1)
+      setScreen("result")
+    }
+    onBack = revealFrom === "result" ? toResult : undefined
+    content = (
+      <AnswerRevealScreen
+        imageUrl={maskedUrl}
+        items={buildRevealItems(hazards, discoveries, parentNotes)}
+        accident={accident}
+        doneLabel={revealFrom === "result" ? "けっかに もどる" : "けっかを みる"}
+        onDone={toResult}
       />
     )
   } else if (screen === "result" && sessionFailure) {
@@ -576,10 +617,23 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
           comboMax={result.comboMax}
           showCombo={mode === "explore"}
           hazards={hazards}
-          foundIds={foundIds}
+          foundIds={mode === "explore" ? resultFoundIds : foundIds}
           pointsAwarded={result.pointsAwarded}
           missionsCompleted={result.missionsCompleted}
           persistError={result.persistError}
+          accuracy={mode === "explore" ? result.accuracy : undefined}
+          understood={mode === "explore" && result.rules >= HUNTER_RULES_VERSION ? result.understood : undefined}
+          magnifiersLeft={mode === "explore" ? result.magnifiersLeft : null}
+          understoodIds={mode === "explore" ? resultUnderstoodIds : []}
+          onReveal={
+            mode === "explore" && maskedUrl && hazards.length > 0
+              ? () => {
+                  setRevealFrom("result")
+                  setDirection(-1)
+                  setScreen("reveal")
+                }
+              : undefined
+          }
           onOtherModes={canOtherModes ? () => navigate("mode") : undefined}
           onOpenRecords={savedPhotoId ? () => navigate("records") : undefined}
           onRetry={() => {
@@ -1476,74 +1530,3 @@ function ModeSelectScreen({
   )
 }
 
-/* ------------------------------------------------------------------ *
- * explore — たんけんモード(写真が主役)
- * ------------------------------------------------------------------ */
-
-export function ExploreScreen({
-  accident,
-  maskedUrl,
-  hazards,
-  foundIds,
-  lastTap,
-  lastOutcome,
-  busy,
-  remaining,
-  onTap,
-  onFinish,
-  safeCount = 0,
-  onSafeHunt,
-}: {
-  accident: HunterAccidentSummary | null
-  maskedUrl: string
-  hazards: readonly HunterHazard[]
-  foundIds: readonly string[]
-  lastTap: { x: number; y: number } | null
-  lastOutcome: HunterTapOutcome | null
-  busy: boolean
-  remaining: number
-  onTap: (tap: HunterTap) => void
-  onFinish: () => void
-  /** 安全の工夫の数。全部見つけたあとに「あんぜんの くふうも さがす」を出す。 */
-  safeCount?: number
-  onSafeHunt?: () => void
-}) {
-  return (
-    <div className="mx-auto flex w-full max-w-2xl min-h-full flex-col px-4 pt-1">
-      <div className="flex flex-1 flex-col gap-3">
-        {/* 写真が主役。先頭に置く */}
-        <ExploreCanvas
-          imageUrl={maskedUrl}
-          hazards={hazards}
-          foundIds={foundIds}
-          onTap={onTap}
-          lastTap={lastTap}
-          lastOutcome={lastOutcome}
-        />
-
-        {/* この地点の「気をつけて」情報(コンパクト) */}
-        {accident && <CareCard accident={accident} compact />}
-      </div>
-
-      <BottomBar className="-mx-4 px-4">
-        <div className="flex flex-col gap-2">
-          <PrimaryCTA disabled={busy} variant={remaining > 0 ? "green" : "sun"} onClick={onFinish}>
-            {busy ? (
-              "まとめているよ…"
-            ) : remaining > 0 ? (
-              <>けっかを みる（のこり {remaining}）</>
-            ) : (
-              "ぜんぶ みつけた！けっかを みる"
-            )}
-          </PrimaryCTA>
-          {remaining === 0 && safeCount > 0 && onSafeHunt ? (
-            <PrimaryCTA size="md" variant="paper" disabled={busy} onClick={onSafeHunt}>
-              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-              あんぜんの くふうも さがす（{safeCount}）
-            </PrimaryCTA>
-          ) : null}
-        </div>
-      </BottomBar>
-    </div>
-  )
-}

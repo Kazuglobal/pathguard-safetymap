@@ -38,6 +38,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .tmp-*.log
+# 手元の評価・検証の出力(例: scripts/hunter-eval の結果)
+.tmp/
 
 # -----------------------------------------
 # 環境変数ファイル

@@ -32,6 +32,25 @@ describe("callGeminiVision generationConfig", () => {
     process.env.GOOGLE_API_KEY = originalKey
   })
 
+  it("reports Gemini's token counts (thinking tokens count as output) when asked, and also before a no-text error", async () => {
+    const usageMetadata = { promptTokenCount: 2100, candidatesTokenCount: 700, thoughtsTokenCount: 300 }
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true, status: 200, statusText: "OK",
+      json: async () => ({ ...GEMINI_OK_RESPONSE, usageMetadata }),
+    } as Response)
+    const onUsage = vi.fn()
+    await callGeminiVision(IMAGE_DATA_URL, "prompt text", undefined, undefined, onUsage)
+    expect(onUsage).toHaveBeenCalledWith({ inputTokens: 2100, outputTokens: 1000 })
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true, status: 200, statusText: "OK",
+      json: async () => ({ candidates: [], usageMetadata: { promptTokenCount: 2100 } }),
+    } as Response)
+    onUsage.mockClear()
+    await expect(callGeminiVision(IMAGE_DATA_URL, "prompt text", undefined, undefined, onUsage)).rejects.toThrow("did not contain text")
+    expect(onUsage).toHaveBeenCalledWith({ inputTokens: 2100, outputTokens: 0 })
+  })
+
   it("omits generationConfig from the request body when not provided (backward compat)", async () => {
     const fetchSpy = mockFetchOnce()
 

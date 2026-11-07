@@ -1,12 +1,12 @@
 import { getActor } from '@/lib/auth/actor'
 import { listApiBudgets, listApiUsage, updateApiBudget } from '@/lib/db/repos/ops.repo'
 
-const VALID_PROVIDERS = ['gemini', 'openai', 'mapbox'] as const
+const VALID_PROVIDERS = ['gemini', 'openai', 'mapbox', 'anthropic'] as const
 type ApiProvider = (typeof VALID_PROVIDERS)[number]
 
 interface ProviderCostSummary { total_cost: number; request_count: number; budget: number; alert: boolean }
 type CostSummaryResult = Record<ApiProvider, ProviderCostSummary>
-interface DailyBreakdownEntry { date: string; gemini: number; openai: number; mapbox: number }
+interface DailyBreakdownEntry { date: string; gemini: number; openai: number; mapbox: number; anthropic: number }
 interface EndpointBreakdownEntry { endpoint: string; total_cost: number; request_count: number; api_provider: string }
 export interface BudgetSettingsEntry { api_provider: string; monthly_budget_usd: number; alert_threshold_percent: number }
 
@@ -28,6 +28,7 @@ function createDefaultSummary(): CostSummaryResult {
     gemini: { total_cost: 0, request_count: 0, budget: 0, alert: false },
     openai: { total_cost: 0, request_count: 0, budget: 0, alert: false },
     mapbox: { total_cost: 0, request_count: 0, budget: 0, alert: false },
+    anthropic: { total_cost: 0, request_count: 0, budget: 0, alert: false },
   }
 }
 
@@ -63,7 +64,7 @@ export async function getDailyBreakdown(yearMonth: string): Promise<DailyBreakdo
   for (const log of logs) {
     const provider = log.apiProvider as ApiProvider
     const date = log.createdAt.slice(0, 10)
-    const row = daily.get(date) ?? { date, gemini: 0, openai: 0, mapbox: 0 }
+    const row = daily.get(date) ?? { date, gemini: 0, openai: 0, mapbox: 0, anthropic: 0 }
     if (VALID_PROVIDERS.includes(provider)) row[provider] += log.estimatedCostUsd ?? 0
     daily.set(date, row)
   }

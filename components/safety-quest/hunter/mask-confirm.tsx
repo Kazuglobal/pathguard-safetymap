@@ -27,6 +27,7 @@ import {
   type DragState,
 } from "@/lib/media/masking"
 import type { HunterRegion } from "@/lib/hunter/types"
+import { encodeMaskedCanvas } from "@/lib/hunter/masked-image"
 import {
   BottomBar,
   Mascot,
@@ -275,9 +276,9 @@ export function MaskConfirm(props: MaskConfirmProps) {
     }
     try {
       // マスク済みのみを出力 (未マスク画像は一切外へ出さない)。
-      // webp で出力: canvas 再エンコードは EXIF(GPS含む) を引き継がないため、
-      // 保存時の EXIF/位置情報の残存をクライアント側でも防ぐ (サーバも webp 限定)。
-      const maskedDataUrl = canvas.toDataURL("image/webp", 0.85)
+      // canvas 再エンコードは EXIF(GPS含む) を引き継がないため、保存時の位置情報の残存をクライアント側でも防ぐ。
+      // WebP で出し、Safari など WebP を作れないブラウザでは JPEG にする(サーバは WebP と位置情報の無い JPEG だけ保存)。
+      const maskedDataUrl = encodeMaskedCanvas(canvas)
       onConfirm(maskedDataUrl, autoRegions.length + manualRegions.length)
     } catch (error) {
       console.error("マスク済み画像の生成に失敗:", error)

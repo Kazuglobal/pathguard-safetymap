@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { HINT_THRESHOLDS, computeHintLevel, selectHintTarget } from "@/lib/hunter/hint"
+import {
+  DELIBERATE_GAP_MS,
+  HINT_THRESHOLDS,
+  computeHintLevel,
+  isDeliberateMiss,
+  selectHintTarget,
+} from "@/lib/hunter/hint"
 import type { HunterHazard, HunterRegion } from "@/lib/hunter/types"
 
 function makeHazard(id: string, region: HunterRegion): HunterHazard {
@@ -24,11 +30,18 @@ describe("HINT_THRESHOLDS", () => {
     expect(HINT_THRESHOLDS).toEqual({
       lv1Miss: 2,
       lv1Ms: 8000,
-      lv2Miss: 4,
+      lv2Miss: 3,
       lv2Ms: 16000,
-      lv3Miss: 6,
       lv3Ms: 26000,
     })
+  })
+})
+
+describe("isDeliberateMiss", () => {
+  it("counts the first tap and taps after a pause, not rapid-fire taps", () => {
+    expect(isDeliberateMiss(null, 1000)).toBe(true)
+    expect(isDeliberateMiss(1000, 1000 + DELIBERATE_GAP_MS)).toBe(true)
+    expect(isDeliberateMiss(1000, 1000 + DELIBERATE_GAP_MS - 1)).toBe(false)
   })
 })
 
@@ -44,20 +57,20 @@ describe("computeHintLevel", () => {
   })
 
   it("returns 2 at the Lv2 boundary", () => {
-    expect(computeHintLevel(4, 0, 5)).toBe(2)
+    expect(computeHintLevel(3, 0, 5)).toBe(2)
     expect(computeHintLevel(0, 16000, 5)).toBe(2)
-    expect(computeHintLevel(3, 15999, 5)).toBe(1)
+    expect(computeHintLevel(2, 15999, 5)).toBe(1)
   })
 
-  it("returns 3 at the Lv3 boundary", () => {
-    expect(computeHintLevel(6, 0, 5)).toBe(3)
+  it("returns 3 only after the idle boundary", () => {
     expect(computeHintLevel(0, 26000, 5)).toBe(3)
+    expect(computeHintLevel(0, 25999, 5)).toBe(2)
   })
 
-  it("does not reveal the exact last zone before the normal Lv3 boundary", () => {
-    expect(computeHintLevel(4, 0, 1)).toBe(2)
-    expect(computeHintLevel(0, 16000, 1)).toBe(2)
-    expect(computeHintLevel(6, 0, 1)).toBe(3)
+  it("never reveals the answer box from misses alone (spam cannot pull the answer)", () => {
+    expect(computeHintLevel(6, 0, 5)).toBe(2)
+    expect(computeHintLevel(200, 0, 1)).toBe(2)
+    expect(computeHintLevel(3, 0, 1)).toBe(2)
     expect(computeHintLevel(0, 26000, 1)).toBe(3)
   })
 })

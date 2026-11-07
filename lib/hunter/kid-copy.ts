@@ -94,6 +94,33 @@ export const KID_COPY_BY_KIND: Readonly<
   },
 }
 
+/**
+ * kind -> 「どうして あぶない？」の答えになる短い理由(〜から)。
+ * 3択の選択肢に並ぶので、長さをそろえ、ひらがな多めにする。
+ * other は理由を問えない(分類できない)ので null = 質問しない。
+ */
+export const KID_REASON_BY_KIND: Readonly<Record<HunterDangerKind, string | null>> = {
+  blind_corner: "角の むこうが 見えない から",
+  popout_spot: "かげから 人が 飛び出す から",
+  // 「来る」は辞書の「来: こ」で「こる」と読まれてしまうので ひらがなで書く
+  crossing_no_signal: "信号が なくて 車が くる から",
+  turning_car: "車が 曲がって くる から",
+  narrow_sidewalk: "歩道が せまくて 車が 近い から",
+  parked_car_shadow: "止まった 車で まわりが 見えない から",
+  falling_object: "上から ものが 落ちて くる から",
+  flood_dip: "水が たまって すべる から",
+  other: null,
+}
+
+/**
+ * 理由の3択で、正解と並べるとどちらも正しく見えてしまう組(誤答に使わない)。
+ * 角・物かげ・車のかげ はどれも「見えない」/ 信号のない横断・曲がる車 はどれも「車が来る」。
+ */
+export const CONFUSABLE_KIND_GROUPS: ReadonlyArray<ReadonlyArray<HunterDangerKind>> = [
+  ["blind_corner", "popout_spot", "parked_car_shadow"],
+  ["crossing_no_signal", "turning_car"],
+]
+
 /** 安全の工夫(逆モード)で、AI文言が空/英語のときに使う検証済みフォールバック。 */
 export const SAFE_POINT_FALLBACK = {
   type: "あんぜんの くふう",

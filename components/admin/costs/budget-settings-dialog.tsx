@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+/** GET /api/admin/costs/budget が返す 1 行(lib/admin-costs-service.ts の BudgetSettingsEntry)。 */
 interface BudgetSetting {
-  readonly provider: string
+  readonly api_provider: string
   readonly monthly_budget_usd: number
   readonly alert_threshold_percent: number
 }
@@ -30,17 +31,26 @@ const PROVIDER_LABELS: Record<string, string> = {
   gemini: "Gemini",
   openai: "OpenAI",
   mapbox: "Mapbox",
+  anthropic: "Anthropic",
 }
 
-const DEFAULT_PROVIDERS = ["gemini", "openai", "mapbox"]
+/**
+ * 並べる順。サーバーに予算の行がある会社だけを出す(行の無い会社は保存できず、
+ * 保存のたびに失敗するため。anthropic は予算の行のマイグレーションを適用すると出る)。
+ */
+const PROVIDER_ORDER = ["gemini", "openai", "mapbox", "anthropic"]
+
+function providersFrom(settings: readonly BudgetSetting[]): string[] {
+  return PROVIDER_ORDER.filter((provider) => settings.some((s) => s.api_provider === provider))
+}
 
 function settingsToFormState(settings: readonly BudgetSetting[]): BudgetFormState {
   const state: Record<string, { monthly_budget_usd: string; alert_threshold_percent: string }> = {}
-  for (const provider of DEFAULT_PROVIDERS) {
-    const setting = settings.find((s) => s.provider === provider)
+  for (const provider of providersFrom(settings)) {
+    const setting = settings.find((s) => s.api_provider === provider)!
     state[provider] = {
-      monthly_budget_usd: setting ? String(setting.monthly_budget_usd) : "100",
-      alert_threshold_percent: setting ? String(setting.alert_threshold_percent) : "80",
+      monthly_budget_usd: String(setting.monthly_budget_usd),
+      alert_threshold_percent: String(setting.alert_threshold_percent),
     }
   }
   return state
@@ -51,6 +61,7 @@ export default function BudgetSettingsDialog() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [providers, setProviders] = useState<readonly string[]>([])
   const [formState, setFormState] = useState<BudgetFormState>(() =>
     settingsToFormState([])
   )
@@ -64,6 +75,7 @@ export default function BudgetSettingsDialog() {
         throw new Error(`APIエラー: ${response.status}`)
       }
       const data: BudgetSetting[] = await response.json()
+      setProviders(providersFrom(data))
       setFormState(settingsToFormState(data))
     } catch (err) {
       const message = err instanceof Error ? err.message : "設定の取得に失敗しました"
@@ -97,7 +109,7 @@ export default function BudgetSettingsDialog() {
     setSaving(true)
     setError(null)
     try {
-      const settings = DEFAULT_PROVIDERS.map((provider) => ({
+      const settings = providers.map((provider) => ({
         provider,
         monthly_budget_usd: parseFloat(formState[provider]?.monthly_budget_usd ?? "0"),
         alert_threshold_percent: parseInt(formState[provider]?.alert_threshold_percent ?? "80", 10),
@@ -162,7 +174,10 @@ export default function BudgetSettingsDialog() {
           </div>
         ) : (
           <div className="space-y-6">
-            {DEFAULT_PROVIDERS.map((provider) => (
+            {providers.length === 0 && !error && (
+              <p className="text-sm text-muted-foreground">予算の設定がまだありません。</p>
+            )}
+            {providers.map((provider) => (
               <div
                 key={provider}
                 className="space-y-3 rounded-lg border p-4"
@@ -216,7 +231,7 @@ export default function BudgetSettingsDialog() {
               >
                 キャンセル
               </Button>
-              <Button onClick={handleSave} loading={saving}>
+              <Button onClick={handleSave} loading={saving} disabled={providers.length === 0}>
                 保存
               </Button>
             </div>

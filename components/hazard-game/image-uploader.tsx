@@ -25,7 +25,8 @@ export function ImageUploader({ onImageSelect, disabled = false }: ImageUploader
   // 写真は端末でぼかしてから AI の確認に送る(UIUX改装 項目57)
   const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
     description: "ゲームに使う前に、写っている人や車が分からないようにします。",
-    notice: "この加工した写真だけを、AI(Google Gemini)による危険さがしに送ります。元の写真は端末の外に出しません。",
+    // 画面には特定の AI の名前を書かない(送り先の会社はプライバシーポリシーに記載)
+    notice: "この加工した写真だけを、AI による危険さがしに送ります。元の写真は端末の外に出しません。",
   })
 
   const handleFileSelect = async (file: File) => {

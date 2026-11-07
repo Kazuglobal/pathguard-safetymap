@@ -26,6 +26,10 @@ const chartConfig = {
     label: "Mapbox",
     color: "#f97316",
   },
+  anthropic: {
+    label: "Anthropic",
+    color: "#a855f7",
+  },
 } as const
 
 function formatDateLabel(dateStr: string): string {
@@ -93,6 +97,14 @@ export default function CostTrendChart({ dailyTrends }: CostTrendChartProps) {
               type="monotone"
               dataKey="mapbox"
               stroke="var(--color-mapbox)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="anthropic"
+              stroke="var(--color-anthropic)"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4 }}

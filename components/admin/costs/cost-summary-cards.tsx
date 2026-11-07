@@ -32,6 +32,14 @@ const PROVIDER_CONFIG = {
     textColor: "text-orange-700",
     iconBg: "bg-orange-100",
   },
+  anthropic: {
+    label: "Anthropic",
+    color: "#a855f7",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200",
+    textColor: "text-purple-700",
+    iconBg: "bg-purple-100",
+  },
 } as const
 
 function getProgressColor(percentage: number): string {
@@ -76,7 +84,7 @@ function formatRequestCount(count: number): string {
 
 export default function CostSummaryCards({ providers }: CostSummaryCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       {providers.map((provider) => {
         const config = PROVIDER_CONFIG[provider.provider]
         const budgetPercentage =

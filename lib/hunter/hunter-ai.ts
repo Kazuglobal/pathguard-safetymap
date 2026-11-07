@@ -1,20 +1,28 @@
 // =============================================
-// きけんハンター 専用画像解析 (Geminiラッパー)
+// きけんハンター 専用画像解析
 // 汎用 Vision在庫AI(analyzeImagePipeline)を流用せず、子ども向け専用
 // プロンプト+スキーマで「危険ポイントだけ」を1コールで取得する。
 // 探索もクイズも同じ1解析で賄う(コール数を増やさない)。
+// 解析は Claude(Haiku 5.5)を先に使い、キーが無い・失敗したときは Gemini に切り替える
+// (座標の形は AI ごとに得意なものを使う: lib/hunter/prompt-coords.ts)。
 // 失敗・空・解析不能は throw せず、すべてガイドモードへ吸収する。
 // =============================================
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
 import { REALTIME_VISION_DEFAULT_MODEL } from "@/lib/gemini-util"
 import { extractHunterJson } from "@/lib/hunter/ai-json"
-import { validateHunterResponse } from "@/lib/hunter/ai-schema"
+import { validateHunterResponse, type ValidatedHunterResponse } from "@/lib/hunter/ai-schema"
+import { analyzeHunterWithClaude, prepareClaudeHunterImage } from "@/lib/hunter/hunter-claude"
 import { DISPLAY_CONF_MIN, MAX_AREA, sanitizeDangerPoints, sanitizeSafePoints } from "@/lib/hunter/sanitize"
 import { buildQuizItemsFromAi } from "@/lib/hunter/quiz"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
 import { accidentTypeToKind, KID_DANGER_KINDS, KID_LABEL_BY_KIND } from "@/lib/hunter/kid-copy"
-import { HUNTER_GENERATION_CONFIG, HUNTER_VISION_RETRY_TIMEOUT_MS } from "@/lib/hunter/ai-request-schema"
+import {
+  HUNTER_COORD_FORMAT,
+  HUNTER_GENERATION_CONFIG,
+  HUNTER_VISION_RETRY_TIMEOUT_MS,
+} from "@/lib/hunter/ai-request-schema"
+import { boxKey, coordExample, coordSection, hasFocus, type HunterPromptCoords } from "@/lib/hunter/prompt-coords"
 import type { HunterAccidentSummary, HunterAnalyzeResult } from "@/lib/hunter/types"
 
 export interface AnalyzeHunterOptions {
@@ -27,14 +35,36 @@ export interface AnalyzeHunterOptions {
   readonly purpose?: string
   /** JSON解析失敗時に1回だけ再出力を試みるか。既定 true。 */
   readonly allowRetry?: boolean
+  /** AI を 1 回呼ぶごとに使用量を渡す(ルートが使用量のログに書く)。 */
+  readonly onUsage?: (usage: HunterAiUsage) => void
 }
+
+/**
+ * AI を 1 回呼んだ記録(使用量のログ用)。
+ * ok: Gemini は呼び出しが文字を返したか、Claude は答えが読めたか(読めなければ Gemini へ切り替える)。
+ * 失敗しても応答が届いていれば課金されるので、トークン数はそのまま入れる。
+ */
+export interface HunterAiUsage {
+  readonly provider: "anthropic" | "gemini"
+  /** Claude のときのモデル名(Gemini はルートが解決したモデル名を使う)。 */
+  readonly model?: string
+  readonly inputTokens: number
+  readonly outputTokens: number
+  readonly ok: boolean
+}
+
+type UsageSink = ((usage: HunterAiUsage) => void) | undefined
 
 const KIND_LIST = KID_DANGER_KINDS.join(" / ")
 
-/** 専用ハンターAIのプロンプト。危険「ポイント」だけを子ども向けに返させる。 */
+/**
+ * 専用ハンターAIのプロンプト。危険「ポイント」だけを子ども向けに返させる。
+ * format: Gemini は "box2d"(既定)/ "region"、Claude は { pixels: AI が見る画像の大きさ }。
+ */
 export function buildHunterPrompt(
   accidentContext: string | undefined,
   accidentSummary: HunterAccidentSummary,
+  format: HunterPromptCoords = HUNTER_COORD_FORMAT,
 ): string {
   const topTypes = (
     accidentSummary.topAccidentTypes && accidentSummary.topAccidentTypes.length > 0
@@ -87,10 +117,9 @@ export function buildHunterPrompt(
 ${KIND_LIST}
 - blind_corner=見通しの悪い角 / popout_spot=物かげからの飛び出し地点 / crossing_no_signal=信号のない横断 / turning_car=曲がってくる車(右左折) / narrow_sidewalk=せまい歩道 / parked_car_shadow=停車中の車のかげ(死角) / falling_object=落ちてくるもの / flood_dip=水がたまりやすい所 / other=その他
 
-【region(bbox)の正確さ】
-- x,y はその危険「状況」が実際に写っている場所の左上、w,h はその範囲(画像左上が0,0、右下が1,1の正規化座標)。
+${coordSection(format)}
 - 枠は「状況」の目印になる“実際に写っている物”を囲む: blind_corner→角を作っている建物・へいの はし / parked_car_shadow→死角を作っている その車 / crossing_no_signal→実際にわたる場所の路面 / popout_spot→出てきそうな すき間・物かげ / turning_car→曲がってくる車(写っていなければ曲がり込んでくる車道の口) / narrow_sidewalk→せまくなっている歩道の区間 / falling_object→落ちてきそうな物 / flood_dip→くぼみ・水たまりの路面。
-- 画面全体や無関係に広い範囲を囲まない。枠の面積(w×h)が ${MAX_AREA} をこえる枠は、後処理で無効として捨てられる。危険の原因が写っている範囲だけを囲めば自然に収まる。
+- 画面全体や無関係に広い範囲を囲まない。枠の面積が画像全体の ${MAX_AREA} をこえる枠は、後処理で無効として捨てられる。危険の原因が写っている範囲だけを囲めば自然に収まる。
 - 確認手順: box を決めたら、そこだけを頭の中で切り出して見る。危険の原因が枠の中で小さくしか写らないなら、原因のまわりまで枠を狭める。逆に原因がはみ出すなら広げる。
 - 同じ場所・同じ状況の危険は1つにまとめる(重複して出さない)。写真の別の一部・別の角度から見えていても、同じ実世界の場所を指すものは1つに統合する。
 
@@ -102,7 +131,7 @@ ${KIND_LIST}
 【evidence(さいしょに根拠を書く)】
 - 各 dangerPoint では最初に evidence を書く: 「何が・何を・どう遮る/交わるか」をこの写真から読み取れる事実で30字以内(例:「角のへいが 右から来る車を かくす」)。写真に写っていない推測を書かない。evidence は分析用で、子どもには表示されない。
 - evidence が「物の名前だけ」にしかならない候補は G2 を満たしていない。出さない。
-- region と confidence は evidence の後で決める: 枠は evidence に書いた場所を囲み、confidence は evidence の確かさに合わせる。
+- 枠と confidence は evidence の後で決める: 枠は evidence に書いた場所を囲み、confidence は evidence の確かさに合わせる。
 
 【ことば(低学年むけ)】
 - 1〜2年生の ことば。ひらがな多め。みじかい文。むずかしい漢字や 英語は つかわない。こわがらせない。「ぜったい安全」と 断定しない。
@@ -124,7 +153,7 @@ ${KIND_LIST}
 - imageUsable: 写真が暗すぎる/通学路でない等で判断できないときは false。
 
 【安全の工夫(safePoints)】
-- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { kind, kidType(やさしい日本語), region, whyGood(この写真でなぜ安全か・1文) }。無ければ空配列。
+- 危険と同じように、写真の中の「安全の工夫」も1周かけて探す: ガードレール / 歩道 / カーブミラー / 信号 / 横断歩道 / 街灯。見つけたら safePoints に最大3つ。各 { safeKind(guardrail=ガードレール・さく / sidewalk=歩道・路側帯 / curve_mirror=カーブミラー / traffic_signal=信号 / crosswalk=横断歩道 / street_light=街灯 / other), kidType(やさしい日本語), ${hasFocus(format) ? `${boxKey(format)}, focus` : boxKey(format)}, whyGood(この写真でなぜ安全か・1文) }${hasFocus(format) ? "。focus は その工夫そのものの上で いちばん分かりやすい1点(ガードレールなら写っている部分のまんなか)。工夫の写っていない路面や空には置かない" : ""}。無ければ空配列。
 - dangerPoints が空(=あぶない所が見つからない写真)のときこそ、safePoints をていねいに探す。
 
 【confidence と severity の意味】
@@ -133,7 +162,7 @@ ${KIND_LIST}
 
 【出力前の最終チェック】
 - 出力する前に、各 dangerPoint を G1〜G3 と【とても重要】の基準へもう一度照らし合わせ、当てはまらないものは取り除いてから出力する。
-- evidence が写真の事実か・region が evidence の場所を囲んでいるか・枠が広すぎないかを確かめる。
+- evidence が写真の事実か・枠が evidence の場所を囲んでいるか・枠が広すぎないか${hasFocus(format) ? "・focus が危険の原因の上にあるか" : ""}を確かめる。
 
 ${accidentBlock}${ctx}
 
@@ -146,7 +175,7 @@ ${accidentBlock}${ctx}
       "evidence": "角の へいが 右から来る 車を かくしている",
       "kind": "blind_corner",
       "kidType": "見通しの悪い角",
-      "region": { "x": 0.40, "y": 0.52, "w": 0.18, "h": 0.20 },
+      ${coordExample(format)},
       "severity": "high",
       "confidence": 0.78,
       "whyDangerous": "みぎの かどは 曲がってくる 車から きみが 見えにくいよ。",
@@ -209,14 +238,134 @@ async function callHunterVision(
   prompt: string,
   allowRetry: boolean,
   config: typeof HUNTER_GENERATION_CONFIG = HUNTER_GENERATION_CONFIG,
+  onUsage?: UsageSink,
 ): Promise<string> {
   try {
-    return await callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL)
+    return await callGeminiOnce(imageBase64, prompt, config, onUsage)
   } catch (err) {
     if (!allowRetry || !isRetryableGeminiError(err)) throw err
     await sleep(RETRY_BACKOFF_MS)
-    return await callGeminiVision(imageBase64, prompt, HUNTER_RETRY_CONFIG, REALTIME_VISION_DEFAULT_MODEL)
+    return await callGeminiOnce(imageBase64, prompt, HUNTER_RETRY_CONFIG, onUsage)
   }
+}
+
+/** Gemini を 1 回呼び、成否にかかわらず使用量を 1 件渡す(届かなかった呼び出しはトークン 0)。 */
+async function callGeminiOnce(
+  imageBase64: string,
+  prompt: string,
+  config: typeof HUNTER_GENERATION_CONFIG,
+  onUsage: UsageSink,
+): Promise<string> {
+  if (!onUsage) return callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL)
+  let usage = { inputTokens: 0, outputTokens: 0 }
+  let text: string
+  try {
+    text = await callGeminiVision(imageBase64, prompt, config, REALTIME_VISION_DEFAULT_MODEL, (u) => {
+      usage = u
+    })
+  } catch (err) {
+    onUsage({ provider: "gemini", ...usage, ok: false })
+    throw err
+  }
+  onUsage({ provider: "gemini", ...usage, ok: true })
+  return text
+}
+
+/** 使用量の記録が失敗しても、解析は止めない。 */
+function safeUsageSink(onUsage: ((usage: HunterAiUsage) => void) | undefined): UsageSink {
+  if (!onUsage) return undefined
+  return (usage) => {
+    try {
+      onUsage(usage)
+    } catch (err) {
+      console.warn(`[hunter] usage log failed (${err instanceof Error ? err.name : "error"})`)
+    }
+  }
+}
+
+/** Gemini で解析した結果。失敗は guide へ落とす理由。単一形状(strictNullChecks:false のため)。 */
+interface GeminiOutcome {
+  readonly validated?: ValidatedHunterResponse
+  readonly failure?: "ai_error" | "parse_error"
+}
+
+/**
+ * Claude がこの時間より早く失敗したら(過負荷・残高切れ・鍵の誤り・画像の拒否など)、
+ * Gemini は Claude を使わないときと同じ予算で解析する(成功率を下げない)。
+ */
+export const CLAUDE_FAST_FAILURE_MS = 10_000
+
+/**
+ * Gemini の予算。どれも 1 回目は 35 秒。画面は 95 秒待つ(hunter-game.tsx の ANALYZE_TIMEOUT_MS)。
+ * - full: 一時的失敗の再試行 1 回 + 読めない JSON の再出力 1 回(35+0.4+20+20 秒)。
+ *   Claude がすぐ失敗したあとも使う(Claude 10 秒未満 + 75.4 秒)。
+ * - after-slow-claude: Claude が時間を使って失敗したあと。一時的失敗の再試行はするが、
+ *   JSON の再出力はしない(Claude 30 秒 + 35+0.4+20 秒)。
+ * - single: 1 回だけ(allowRetry=false)。
+ */
+type GeminiBudget = "full" | "after-slow-claude" | "single"
+
+function geminiBudget(allowRetry: boolean, claudeElapsedMs: number | null): GeminiBudget {
+  if (!allowRetry) return "single"
+  return claudeElapsedMs === null || claudeElapsedMs < CLAUDE_FAST_FAILURE_MS ? "full" : "after-slow-claude"
+}
+
+/** Gemini で解析する(Claude が使えない・失敗したとき)。 */
+async function analyzeHunterWithGemini(
+  imageBase64: string,
+  prompt: string,
+  budget: GeminiBudget,
+  onUsage: UsageSink,
+): Promise<GeminiOutcome> {
+  let text: string
+  try {
+    text = await callHunterVision(imageBase64, prompt, budget !== "single", HUNTER_GENERATION_CONFIG, onUsage)
+  } catch {
+    return { failure: "ai_error" }
+  }
+  let extracted = extractHunterJson(text)
+  if (!extracted.ok && budget === "full") {
+    try {
+      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false, HUNTER_RETRY_CONFIG, onUsage)
+      extracted = extractHunterJson(retryText)
+    } catch {
+      return { failure: "ai_error" }
+    }
+  }
+  if (!extracted.ok) return { failure: "parse_error" }
+  return { validated: validateHunterResponse(extracted.value) }
+}
+
+/**
+ * 解析して検証済みの応答を返す。Claude(Haiku 5.5)を先に使い、キーが無い・画像を読めない・
+ * 失敗したときは Gemini に切り替える。どちらも失敗したら guide へ落とす理由を返す。
+ */
+async function requestHunterAnalysis(
+  imageBase64: string,
+  accidentContext: string | undefined,
+  accidentSummary: HunterAccidentSummary,
+  allowRetry: boolean,
+  onUsage: UsageSink,
+): Promise<GeminiOutcome & { readonly model?: string }> {
+  const claudeImage = prepareClaudeHunterImage(imageBase64)
+  let claudeElapsedMs: number | null = null
+  if (claudeImage) {
+    const prompt = buildHunterPrompt(accidentContext, accidentSummary, { pixels: claudeImage.pixelSize })
+    const startedAt = Date.now()
+    const validated = await analyzeHunterWithClaude(
+      claudeImage,
+      prompt,
+      onUsage ? (u) => onUsage({ provider: "anthropic", model: claudeImage.model, ...u }) : undefined,
+    )
+    if (validated) return { validated, model: claudeImage.model }
+    claudeElapsedMs = Date.now() - startedAt
+  }
+  return analyzeHunterWithGemini(
+    imageBase64,
+    buildHunterPrompt(accidentContext, accidentSummary),
+    geminiBudget(allowRetry, claudeElapsedMs),
+    onUsage,
+  )
 }
 
 /**
@@ -228,40 +377,27 @@ export async function analyzeHunterImage(
   options: AnalyzeHunterOptions,
 ): Promise<HunterAnalyzeResult> {
   const { sessionId, accidentContext, accidentSummary, allowRetry = true } = options
-  const prompt = buildHunterPrompt(accidentContext, accidentSummary)
 
-  // 1) Gemini 呼び出し(throw は ai_error ガイド)。低温度+構造化出力で精度を底上げ。
-  //    一時的失敗(429/5xx/空candidates/瞬断)は callHunterVision が1回だけ再試行する。
-  let text: string
-  try {
-    text = await callHunterVision(imageBase64, prompt, allowRetry)
-  } catch {
-    return buildGuideMode(accidentSummary, "ai_error", [], sessionId)
+  // 1)〜2) 解析(Claude → Gemini)と JSON 抽出。失敗は ai_error / parse_error のガイド。
+  const analysis = await requestHunterAnalysis(
+    imageBase64,
+    accidentContext,
+    accidentSummary,
+    allowRetry,
+    safeUsageSink(options.onUsage),
+  )
+  if (!analysis.validated) {
+    return buildGuideMode(accidentSummary, analysis.failure ?? "ai_error", [], sessionId)
   }
 
-  // 2) JSON抽出(失敗かつ allowRetry のとき1回だけ再出力)
-  let extracted = extractHunterJson(text)
-  if (!extracted.ok && allowRetry) {
-    try {
-      // 再出力も短い予算(合計を 35+0.4+20+20 秒に有界化。クライアント上限 95 秒より短い)
-      const retryText = await callHunterVision(imageBase64, prompt + RETRY_SUFFIX, false, HUNTER_RETRY_CONFIG)
-      extracted = extractHunterJson(retryText)
-    } catch {
-      return buildGuideMode(accidentSummary, "ai_error", [], sessionId)
-    }
-  }
-  if (!extracted.ok) {
-    return buildGuideMode(accidentSummary, "parse_error", [], sessionId)
-  }
-
-  // 3) スキーマ検証(壊れた要素はドロップ)。imageUsable=false は unusable。
-  const validated = validateHunterResponse(extracted.value)
+  // 3) スキーマ検証済み(壊れた要素はドロップ)。imageUsable=false は unusable。
+  const validated = analysis.validated
   if (!validated.imageUsable) {
     return buildGuideMode(accidentSummary, "unusable", [], sessionId)
   }
 
   // 4) サニタイズ&選別(的外れ正解の構造排除)。空化は empty(逆モード素材は引き継ぐ)。
-  const { hazards, materials } = sanitizeDangerPoints(validated.dangerPoints, { sessionId })
+  const { hazards, materials, notes } = sanitizeDangerPoints(validated.dangerPoints, { sessionId })
   const safePoints = sanitizeSafePoints(validated.safePoints, { sessionId })
   if (hazards.length === 0) {
     return buildGuideMode(accidentSummary, "empty", safePoints, sessionId)
@@ -278,5 +414,7 @@ export async function analyzeHunterImage(
     noHazardFollow: null,
     usedFallback: false,
     fallbackReason: null,
+    parentNotes: notes,
+    ...(analysis.model ? { model: analysis.model } : {}),
   }
 }

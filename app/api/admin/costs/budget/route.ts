@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminRequest } from '@/lib/admin-auth'
 import { getBudgetSettings, updateBudgetSettings } from '@/lib/admin-costs-service'
 
-const VALID_PROVIDERS = ['gemini', 'openai', 'mapbox'] as const
+const VALID_PROVIDERS = ['gemini', 'openai', 'mapbox', 'anthropic'] as const
 
 function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0

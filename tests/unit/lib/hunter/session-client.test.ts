@@ -20,9 +20,30 @@ describe("hunter session client", () => {
     expect(toSessionSummary({ score: 250, matches: 2, total: 3, comboMax: 2, pointsAwarded: 5, persistError: false, missionsCompleted: [{ title: "写真ゲーム初回", rewardPoints: 50 }, { title: "", rewardPoints: 1 }, null] }, 9)).toEqual({
       score: 250, matches: 2, total: 3, comboMax: 2, pointsAwarded: 5, persistError: false,
       missionsCompleted: [{ title: "写真ゲーム初回", rewardPoints: 50 }],
+      // 旧ルールの応答: 理由は問わないので understood=matches、達成度=みつけた割合、虫めがねなし
+      understood: 2, accuracy: 67, rules: 1, magnifiersLeft: null, discoveries: null,
     })
     expect(toSessionSummary({ score: 100, correct: 1, total: 1 }, 4)).toMatchObject({ matches: 1, total: 1, pointsAwarded: 0 })
-    expect(toSessionSummary(null, 4)).toEqual({ score: 0, matches: 0, total: 4, comboMax: 0, pointsAwarded: 0, persistError: false, missionsCompleted: [] })
+    expect(toSessionSummary(null, 4)).toEqual({
+      score: 0, matches: 0, total: 4, comboMax: 0, pointsAwarded: 0, persistError: false, missionsCompleted: [],
+      understood: 0, accuracy: 0, rules: 1, magnifiersLeft: null, discoveries: null,
+    })
+    // 0 件の発見は「無い」ではなく 0 件として返す(画面側の数え方へ切り替えさせない)
+    expect(toSessionSummary({ rules: 2, matches: 0, total: 2, discoveries: [] }, 2).discoveries).toEqual([])
+  })
+
+  it("maps the rules-2 explore body: understood, accuracy, magnifiers left and server discoveries", () => {
+    const summary = toSessionSummary({
+      rules: 2, score: 400, matches: 2, understood: 1, accuracy: 53, total: 3, budget: 6, misses: 2,
+      discoveries: [{ hazardId: "s-0", understood: true }, { hazardId: "s-2", understood: false }, { hazardId: "" }, null],
+    }, 3)
+    expect(summary).toMatchObject({ rules: 2, understood: 1, accuracy: 53, magnifiersLeft: 4 })
+    expect(summary.discoveries).toEqual([
+      { hazardId: "s-0", understood: true },
+      { hazardId: "s-2", understood: false },
+    ])
+    // understood は matches を超えない(壊れた応答でも「わかった」を水増ししない)
+    expect(toSessionSummary({ rules: 2, matches: 1, understood: 5, total: 2, budget: 5 }, 2).understood).toBe(1)
   })
 
   it("classifies 409/session_expired, network, and other failures with kid copy", () => {

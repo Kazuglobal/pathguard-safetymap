@@ -31,14 +31,30 @@ describe('admin-costs-service on D1', () => {
     const summary = await getCostSummary('2026-02')
     expect(summary.gemini).toEqual({ total_cost: 9, request_count: 2, budget: 10, alert: true })
     expect(await getDailyBreakdown('2026-02')).toEqual([
-      { date: '2026-02-01', gemini: 9, openai: 0, mapbox: 0 },
-      { date: '2026-02-02', gemini: 0, openai: 2, mapbox: 0 },
+      { date: '2026-02-01', gemini: 9, openai: 0, mapbox: 0, anthropic: 0 },
+      { date: '2026-02-02', gemini: 0, openai: 2, mapbox: 0, anthropic: 0 },
     ])
     expect(await getEndpointBreakdown('2026-02')).toEqual(expect.arrayContaining([
       { endpoint: 'generate-image', total_cost: 9, request_count: 2, api_provider: 'gemini' },
     ]))
     expect(await getBudgetSettings()).toHaveLength(3)
     expect(mocks.listApiUsage).toHaveBeenCalledWith(expect.objectContaining({ isAdmin: true }), '2026-02-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z')
+  })
+
+  it('counts Claude (anthropic) rows in the totals, the daily trend and its budget instead of dropping them', async () => {
+    mocks.listApiBudgets.mockResolvedValue([{ apiProvider: 'anthropic', monthlyBudgetUsd: 1, alertThresholdPercent: 50 }])
+    mocks.listApiUsage.mockResolvedValue([
+      { apiProvider: 'anthropic', apiEndpoint: 'hazard-analyze', estimatedCostUsd: 0.6, requestCount: 3, createdAt: '2026-02-03T01:00:00Z' },
+    ])
+    const summary = await getCostSummary('2026-02')
+    expect(summary.anthropic).toEqual({ total_cost: 0.6, request_count: 3, budget: 1, alert: true })
+    expect(summary.gemini.total_cost).toBe(0)
+    expect(await getDailyBreakdown('2026-02')).toEqual([
+      { date: '2026-02-03', gemini: 0, openai: 0, mapbox: 0, anthropic: 0.6 },
+    ])
+    mocks.updateApiBudget.mockResolvedValue({ apiProvider: 'anthropic', monthlyBudgetUsd: 30, alertThresholdPercent: 80 })
+    await expect(updateBudgetSettings('anthropic', { monthly_budget_usd: 30 }))
+      .resolves.toEqual({ api_provider: 'anthropic', monthly_budget_usd: 30, alert_threshold_percent: 80 })
   })
 
   it('updates an allowed provider and rejects invalid providers', async () => {
