@@ -181,9 +181,13 @@ describe("analyzeHunterImage", () => {
 
   it("responseSchema: propertyOrdering と properties のキーが完全に一致する(ずれると Gemini が 400 を返す)", () => {
     for (const format of ["box2d", "region"] as const) {
-      const items = (buildHunterResponseSchema(format).properties as any).dangerPoints.items
+      const props = buildHunterResponseSchema(format).properties as any
+      const items = props.dangerPoints.items
       expect([...items.propertyOrdering].sort()).toEqual(Object.keys(items.properties).sort())
       for (const key of items.required) expect(Object.keys(items.properties)).toContain(key)
+      const safe = props.safePoints.items
+      expect([...safe.propertyOrdering].sort()).toEqual(Object.keys(safe.properties).sort())
+      expect(safe.propertyOrdering[0]).toBe("safeKind")
     }
   })
 

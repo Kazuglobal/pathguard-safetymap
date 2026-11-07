@@ -99,6 +99,9 @@ function buildSafePointSchema(format: HunterCoordFormat) {
       ...coords,
       whyGood: { type: "STRING" },
     },
+    // 何の工夫かを先に書かせてから位置を出させる(指定しないと名前の ABC 順で、focus が先に出る)。
+    // properties のキーと完全に一致させる(ずれると 400 になる)。
+    propertyOrdering: ["safeKind", "kidType", ...Object.keys(coords), "whyGood", "kind"],
   }
 }
 

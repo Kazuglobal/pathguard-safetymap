@@ -10,6 +10,7 @@ import {
   MAX_HIT_AREA,
   MAX_HIT_COVERAGE,
   MIN_HIT_SIDE,
+  SAFE_HIT_PROFILE,
 } from "@/lib/hunter/hit-zone"
 import { judgeTap } from "@/lib/hunter/scoring"
 import { MAX_AREA, MAX_HAZARDS } from "@/lib/hunter/sanitize"
@@ -172,6 +173,46 @@ describe("fitHitZones", () => {
       }
     }
     expect(hits / taps).toBeLessThanOrEqual(MAX_HIT_COVERAGE)
+  })
+})
+
+describe("SAFE_HIT_PROFILE (安全の工夫は物: 細長い物は帯)", () => {
+  it("keeps the full length of a long guardrail and thins only the short side", () => {
+    const rail = deriveHitRegion({ x: 0, y: 0.7, w: 1, h: 0.2 }, { x: 0.2, y: 0.8 }, SAFE_HIT_PROFILE).hitRegion
+    expect(rail.x).toBeCloseTo(0, 10)
+    expect(rail.w).toBeCloseTo(1, 10)
+    expect(rail.h).toBeCloseTo(0.16, 10)
+    // 縦長(電柱ぞいの歩道など)も同じ
+    const tall = deriveHitRegion({ x: 0.4, y: 0, w: 0.15, h: 0.9 }, null, SAFE_HIT_PROFILE).hitRegion
+    expect(tall.h).toBeCloseTo(0.9, 10)
+    expect(tall.w).toBeCloseTo(0.15, 10)
+    // 危険の当たり枠は今までどおり focus のまわりだけ
+    const danger = deriveHitRegion({ x: 0, y: 0.7, w: 1, h: 0.2 }, { x: 0.2, y: 0.8 }).hitRegion
+    expect(danger.w * danger.h).toBeLessThanOrEqual(MAX_HIT_AREA + EPS)
+  })
+
+  it("shrinks square-ish objects to the safe area cap", () => {
+    const walk = deriveHitRegion({ x: 0, y: 0.4, w: 0.6, h: 0.6 }, { x: 0.3, y: 0.7 }, SAFE_HIT_PROFILE).hitRegion
+    expect(walk.w * walk.h).toBeLessThanOrEqual(SAFE_HIT_PROFILE.maxArea + EPS)
+  })
+
+  it("still keeps the union under the cap and inside each box on 500 seeded random photos", () => {
+    const r = rng(1107)
+    for (let photo = 0; photo < 500; photo += 1) {
+      const count = 1 + Math.floor(r() * 3)
+      const inputs = Array.from({ length: count }, () => {
+        const long = r() < 0.5
+        const w = long ? 0.5 + r() * 0.5 : 0.12 + r() * 0.5
+        const h = long ? 0.12 + r() * 0.12 : 0.12 + r() * 0.5
+        return { region: { x: r() * (1 - w), y: r() * (1 - h), w, h }, focus: { x: r(), y: r() } }
+      })
+      const zones = fitHitZones(inputs, SAFE_HIT_PROFILE)
+      expect(effectiveCoverage(zones.map((z) => z.hitRegion))).toBeLessThanOrEqual(MAX_HIT_COVERAGE + EPS)
+      zones.forEach((zone, i) => {
+        expect(inside(zone.hitRegion, inputs[i].region)).toBe(true)
+        expect(contains(zone.hitRegion, zone.focusPoint)).toBe(true)
+      })
+    }
   })
 })
 

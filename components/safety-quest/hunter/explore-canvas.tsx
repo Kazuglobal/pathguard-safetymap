@@ -228,9 +228,11 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
       if (event.key !== "Enter" && event.key !== " ") return
       event.preventDefault()
       setKeyboardMode(true)
-      if (!locked) onTap(cursor)
+      // 写真を読めていないとき・押しっぱなし(キーの自動くり返し)では しらべない
+      // (マウスと同じく、写真の外を押しても虫めがねを減らさない)
+      if (!locked && contain && !imageFailed && !event.repeat) onTap(cursor)
     },
-    [cursor, locked, onTap],
+    [cursor, locked, onTap, contain, imageFailed],
   )
 
   // おしまいの後は「つぎは どこかな？」やヒントを出さない(もうタップできないため)

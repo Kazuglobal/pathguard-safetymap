@@ -53,6 +53,11 @@ export function AnswerRevealScreen(props: AnswerRevealScreenProps) {
     setSelected(null)
   }
 
+  // 遊びの画面から来たとき、押したボタンは消えているので全体の見出しへフォーカスを移す
+  useEffect(() => {
+    overviewHeadingRef.current?.focus({ preventScroll: true })
+  }, [])
+
   useEffect(() => {
     if (!userMoved.current) return
     const target = selected === null ? overviewHeadingRef.current : cardHeadingRef.current

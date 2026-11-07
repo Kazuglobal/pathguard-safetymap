@@ -6,6 +6,7 @@ import {
   CONFUSABLE_SAFE_KIND_GROUPS,
   HUNTER_SAFE_KINDS,
   inferSafeKind,
+  KID_SAFE_LABEL_BY_KIND,
   KID_SAFE_REASON_BY_KIND,
   normalizeSafeKind,
 } from "@/lib/hunter/safe-kinds"
@@ -22,6 +23,23 @@ describe("safe kinds", () => {
     expect(inferSafeKind("街灯")).toBe("street_light")
     expect(inferSafeKind("きれいな はな")).toBe("other")
     expect(inferSafeKind(undefined)).toBe("other")
+  })
+
+  it("does not mistake words that appear inside other names (ポール・さく・白線)", () => {
+    expect(inferSafeKind("カーブミラーの ポール")).toBe("curve_mirror")
+    expect(inferSafeKind("しんごうの ポール")).toBe("traffic_signal")
+    expect(inferSafeKind("ちいさく ひかる もの")).toBe("other")
+    expect(inferSafeKind("とまれの 白線")).toBe("other")
+  })
+
+  it("uses dictionary-covered kid labels for known kinds", () => {
+    const uncovered = (text: string) =>
+      splitFurigana(text).flatMap((tk) => (tk.r ? [] : [...tk.t].filter((ch) => KANJI.test(ch))))
+    for (const kind of HUNTER_SAFE_KINDS) {
+      const label = KID_SAFE_LABEL_BY_KIND[kind]
+      if (label) expect(uncovered(label)).toEqual([])
+    }
+    expect(KID_SAFE_LABEL_BY_KIND.other).toBeNull()
   })
 
   it("prefers a known AI kind, and falls back to the label when the AI says other or something unknown", () => {

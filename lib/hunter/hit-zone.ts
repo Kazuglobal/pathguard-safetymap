@@ -22,6 +22,25 @@ const SHRINK_STEP = 0.9
 /** 縮める回数の上限(最小サイズの 5 個でも上限内なので、実際はこれより早く収まる)。 */
 const MAX_FIT_PASSES = 30
 
+/**
+ * 当たり枠の作り方。
+ * - 危険(たんけん)は「状況のある場所」なので、focus のまわりの小さい枠だけを当たりにする。
+ * - 安全の工夫(あんぜん さがし)は「物」なので、細長い物(ガードレール・横断歩道)は
+ *   長い辺を残した帯にする(物のどこを押しても当たる)。四角に近い物は面積の上限で縮める。
+ * どちらも、和集合の上限(MAX_HIT_COVERAGE)は同じ。
+ */
+export interface HitZoneProfile {
+  readonly maxArea: number
+  /** 細長い物を帯にする条件と帯の太さ。null なら帯にしない。 */
+  readonly band: { readonly minAspect: number; readonly maxThickness: number } | null
+}
+
+export const DANGER_HIT_PROFILE: HitZoneProfile = { maxArea: MAX_HIT_AREA, band: null }
+export const SAFE_HIT_PROFILE: HitZoneProfile = {
+  maxArea: 0.08,
+  band: { minAspect: 2.5, maxThickness: 0.16 },
+}
+
 export interface HitZoneInput {
   /** 表示用の枠(単位矩形の内側)。 */
   readonly region: HunterRegion
@@ -82,10 +101,25 @@ function fitSize(region: HunterRegion, maxArea: number, minSide: number): { w: n
   return { w, h }
 }
 
-/** 1 つの危険の当たり枠を作る(和集合の上限はまだ見ない)。 */
-export function deriveHitRegion(region: HunterRegion, focus?: HunterPoint | null): HitZone {
+/** 細長い枠なら、長い辺を残して短い辺だけを帯の太さにする。細長くなければ null。 */
+function bandSize(region: HunterRegion, profile: HitZoneProfile): { w: number; h: number } | null {
+  const band = profile.band
+  if (!band) return null
+  const long = Math.max(region.w, region.h)
+  const short = Math.min(region.w, region.h)
+  if (short <= 0 || long / short < band.minAspect) return null
+  const thickness = Math.min(short, Math.max(MIN_HIT_SIDE, Math.min(short, band.maxThickness)))
+  return region.w >= region.h ? { w: region.w, h: thickness } : { w: thickness, h: region.h }
+}
+
+/** 1 つの当たり枠を作る(和集合の上限はまだ見ない)。 */
+export function deriveHitRegion(
+  region: HunterRegion,
+  focus?: HunterPoint | null,
+  profile: HitZoneProfile = DANGER_HIT_PROFILE,
+): HitZone {
   const focusPoint = clampFocus(region, focus)
-  const size = fitSize(region, MAX_HIT_AREA, MIN_HIT_SIDE)
+  const size = bandSize(region, profile) ?? fitSize(region, profile.maxArea, MIN_HIT_SIDE)
   return { hitRegion: placeWithin(region, focusPoint, size.w, size.h), focusPoint }
 }
 
@@ -135,8 +169,11 @@ function shrinkToward(zone: HitZone, bounds: HunterRegion): HitZone {
  * 写真 1 枚ぶんの当たり枠を作り、和集合が MAX_HIT_COVERAGE 以下になるまで縮める。
  * 入力と同じ順・同じ数で返す(危険は捨てない)。同じ入力なら同じ出力。
  */
-export function fitHitZones(inputs: readonly HitZoneInput[]): HitZone[] {
-  let zones = inputs.map((input) => deriveHitRegion(input.region, input.focus))
+export function fitHitZones(
+  inputs: readonly HitZoneInput[],
+  profile: HitZoneProfile = DANGER_HIT_PROFILE,
+): HitZone[] {
+  let zones = inputs.map((input) => deriveHitRegion(input.region, input.focus, profile))
   for (let pass = 0; pass < MAX_FIT_PASSES; pass += 1) {
     if (effectiveCoverage(zones.map((z) => z.hitRegion)) <= MAX_HIT_COVERAGE) break
     zones = zones.map((zone, i) => shrinkToward(zone, inputs[i].region))

@@ -72,19 +72,21 @@ describe("SafeHuntCanvas — 当たり判定(適当に押しても正解にし�
     expect(screen.getByText("くるまから まもってくれるよ")).toBeInTheDocument()
   })
 
-  it("does not count the far end of a long box: only the hit zone around the focus counts", () => {
-    // 横長のガードレール(写真の幅いっぱい)。旧ルールでは枠のどこを押しても正解だった。
+  it("counts any part of a long guardrail, but not the photo off the object", () => {
+    // 写真の幅いっぱいのガードレール。安全の工夫は「物」なので、細長い物は長い辺を残した帯が当たり
+    // (focus のまわりだけにすると、正しく端を押した子が はずれになる)。
     const points = sanitizeSafePoints(
       [{ kidType: "ガードレール", safeKind: "guardrail", region: { x: 0, y: 0.7, w: 1, h: 0.2 }, focus: { x: 0.2, y: 0.8 }, whyGood: "まもって くれるよ。" }],
       { sessionId: "t" },
     )
     render(<SafeHuntCanvas imageUrl="x.jpg" safePoints={points} onDone={vi.fn()} />)
     loadImage()
-    tapAt(0.95, 0.8)
+    // ガードレールの無い場所(空・建物)は はずれ
+    tapAt(0.5, 0.3)
     expect(screen.queryByRole("dialog")).toBeNull()
     expect(screen.getByRole("img", { name: "むしめがね のこり 3こ" })).toBeInTheDocument()
-
-    tapAt(0.2, 0.8)
+    // focus から遠い端でも、ガードレールの上なら当たり
+    tapAt(0.95, 0.8)
     expect(screen.getByRole("dialog", { name: /どうして あんしんかな/ })).toBeInTheDocument()
   })
 

@@ -18,8 +18,8 @@ import type {
   HunterRegion,
   HunterSafePoint,
 } from "@/lib/hunter/types"
-import { fitHitZones } from "@/lib/hunter/hit-zone"
-import { normalizeSafeKind } from "@/lib/hunter/safe-kinds"
+import { fitHitZones, SAFE_HIT_PROFILE } from "@/lib/hunter/hit-zone"
+import { KID_SAFE_LABEL_BY_KIND, normalizeSafeKind } from "@/lib/hunter/safe-kinds"
 import type { RawAiQuiz, RawDangerPoint, RawSafePoint } from "@/lib/hunter/ai-schema"
 import {
   KID_COPY_BY_KIND,
@@ -315,9 +315,15 @@ export function sanitizeSafePoints(
     kept.push({ point, region: expandToMin(region, MIN_REGION) })
     if (kept.length >= MAX_SAFE_POINTS) break
   }
-  const zones = fitHitZones(kept.map((k) => ({ region: k.region, focus: safeFocus(k.point.focus) })))
+  // 安全の工夫は「物」なので、細長い物は長い辺を残した帯を当たりにする(SAFE_HIT_PROFILE)
+  const zones = fitHitZones(
+    kept.map((k) => ({ region: k.region, focus: safeFocus(k.point.focus) })),
+    SAFE_HIT_PROFILE,
+  )
   return kept.map(({ point, region }, i) => {
-    const type = safeCopy(point.kidType, SAFE_POINT_FALLBACK.type)
+    const safeKind = normalizeSafeKind(point.safeKind, point.kidType)
+    // 種類が分かれば決まった子ども向けの名前(ルビが付く漢字だけ)。分からなければ AI の名前。
+    const type = KID_SAFE_LABEL_BY_KIND[safeKind] ?? safeCopy(point.kidType, SAFE_POINT_FALLBACK.type)
     return {
       id: `${options.sessionId}-safe-${i}`,
       type,
@@ -325,7 +331,7 @@ export function sanitizeSafePoints(
       hitRegion: zones[i].hitRegion,
       focusPoint: zones[i].focusPoint,
       kind: point.kind,
-      safeKind: normalizeSafeKind(point.safeKind, point.kidType),
+      safeKind,
       whyGood: safeCopy(point.whyGood, SAFE_POINT_FALLBACK.whyGood),
     }
   })

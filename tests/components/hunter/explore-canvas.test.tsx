@@ -87,6 +87,19 @@ describe("ExploreCanvas — keyboard aiming", () => {
     // 操作の説明は読み上げ用の説明として付いている
     expect(surface).toHaveAccessibleDescription(/やじるしキー/)
   })
+
+  it("does not check a spot before the photo is loaded or on key auto-repeat (no lost magnifiers)", () => {
+    const onTap = vi.fn()
+    render(<ExploreCanvas imageUrl="x.jpg" hazards={[hazard("A")]} foundIds={[]} onTap={onTap} lastTap={null} lastOutcome={null} />)
+    const surface = screen.getByLabelText("しゃしんの上を タップして、きけんを さがそう")
+    fireEvent.keyDown(surface, { key: "Enter" })
+    expect(onTap).not.toHaveBeenCalled()
+    loadImage(400, 300)
+    fireEvent.keyDown(surface, { key: "Enter", repeat: true })
+    expect(onTap).not.toHaveBeenCalled()
+    fireEvent.keyDown(surface, { key: "Enter" })
+    expect(onTap).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe("ExploreCanvas — feedback and no auto-discovery", () => {

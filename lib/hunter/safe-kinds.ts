@@ -26,15 +26,16 @@ export function isHunterSafeKind(value: unknown): value is HunterSafeKind {
 
 /**
  * kidType(やさしい日本語の種類名)から種類を推定する。AI が safeKind を付け忘れたとき用。
- * 「横断歩道」は「歩道」より先に見る(含む語を取り違えない)。分からなければ other。
+ * 含む語を取り違えないよう、特定しやすい物から先に見る(横断歩道→歩道、ミラー・信号の「ポール」→ガードレール にしない)。
+ * 「さく」「ポール」「白線」のような ほかの語にも出てくる短い語は使わない。分からなければ other。
  */
 const SAFE_KIND_KEYWORDS: ReadonlyArray<readonly [RegExp, HunterSafeKind]> = [
   [/横断歩道|おうだんほどう|しましま/, "crosswalk"],
-  [/ガードレール|ガードパイプ|さく|柵|フェンス|ポール/, "guardrail"],
-  [/ミラー|かがみ/, "curve_mirror"],
+  [/カーブミラー|ミラー|かがみ/, "curve_mirror"],
   [/信号|しんごう/, "traffic_signal"],
-  [/街灯|がいとう|ライト|あかり|電灯/, "street_light"],
-  [/歩道|ほどう|路側帯|ろそくたい|グリーンベルト|みどりの 線|白線/, "sidewalk"],
+  [/街灯|がいとう|電灯|でんとう/, "street_light"],
+  [/ガードレール|ガードパイプ|柵|フェンス/, "guardrail"],
+  [/歩道|ほどう|路側帯|ろそくたい|グリーンベルト/, "sidewalk"],
 ]
 
 export function inferSafeKind(kidType: unknown): HunterSafeKind {
@@ -48,6 +49,20 @@ export function normalizeSafeKind(safeKind: unknown, kidType: unknown): HunterSa
   if (isHunterSafeKind(safeKind) && safeKind !== "other") return safeKind
   const inferred = inferSafeKind(kidType)
   return inferred !== "other" ? inferred : isHunterSafeKind(safeKind) ? safeKind : "other"
+}
+
+/**
+ * 種類 -> 画面に出す子ども向けの名前(ルビが付く漢字だけ)。other は AI の名前をそのまま使う(null)。
+ * AI の名前には ルビの無い漢字(路側帯・縁石 など)が入りうるため、種類が分かるときはこちらに そろえる。
+ */
+export const KID_SAFE_LABEL_BY_KIND: Readonly<Record<HunterSafeKind, string | null>> = {
+  guardrail: "ガードレール",
+  sidewalk: "歩道",
+  curve_mirror: "カーブミラー",
+  traffic_signal: "信号",
+  crosswalk: "横断歩道",
+  street_light: "がいとう",
+  other: null,
 }
 
 /**
