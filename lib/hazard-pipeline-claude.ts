@@ -106,7 +106,8 @@ function dropNullPositions(raw: unknown): unknown {
 /**
  * Claude で解析し、正規化済みの生 JSON を返す。使えない・失敗したら null(呼び出し側が Gemini へ)。
  * buildPrompt には Claude が見る画像の大きさが渡る(ピクセル座標版のプロンプトを作るため)。
- * onUsage は応答が届いたときだけ 1 回呼ぶ(使えない応答で Gemini に切り替えたときも課金されるため)。
+ * onUsage は試すたびに 1 回呼ぶ(使えない応答で Gemini に切り替えたときも課金されるため。
+ * 応答が届く前の失敗はトークン 0 で、件数だけを残す)。
  */
 export async function requestPipelineWithClaude(
   imageDataUrl: string,
@@ -116,12 +117,13 @@ export async function requestPipelineWithClaude(
   const image = prepareClaudeImage(imageDataUrl)
   if (!image) return null
   const { model, pixelSize } = image
-  let usage: ClaudeUsage | null = null
+  let usage: ClaudeUsage = { inputTokens: 0, outputTokens: 0 }
   const report = (ok: boolean) => {
-    if (usage && onUsage) onUsage({ model, ...usage, ok })
+    onUsage?.({ model, ...usage, ok })
   }
+  let text: string
   try {
-    const text = await callClaudeVision({
+    text = await callClaudeVision({
       base64: image.base64,
       mediaType: image.mediaType,
       prompt: buildPrompt(pixelSize),
@@ -131,18 +133,18 @@ export async function requestPipelineWithClaude(
         usage = u
       },
     })
-    const json = firstJsonObject(text)
-    if (!json) {
-      console.warn("[hazard-game] Claude returned unreadable JSON; falling back to Gemini")
-      report(false)
-      return null
-    }
-    report(true)
-    return { raw: pipelinePixelsToNormalized(json, pixelSize), model }
   } catch (err) {
     const status = (err as { status?: unknown })?.status
     console.warn(`[hazard-game] Claude analysis failed (${typeof status === "number" ? `status ${status}` : "error"}); falling back to Gemini`)
     report(false)
     return null
   }
+  const json = firstJsonObject(text)
+  if (!json) {
+    console.warn("[hazard-game] Claude returned unreadable JSON; falling back to Gemini")
+    report(false)
+    return null
+  }
+  report(true)
+  return { raw: pipelinePixelsToNormalized(json, pixelSize), model }
 }

@@ -38,12 +38,15 @@ function failureKind(err: unknown): string {
 export async function analyzeHunterWithClaude(
   image: ClaudeHunterImage,
   prompt: string,
-  /** 応答が届いたときだけ 1 回呼ぶ(断り・打ち切り・読めない答えでも課金されるため)。ok は答えが読めたか。 */
+  /**
+   * 試すたびに 1 回呼ぶ。ok は答えが読めたか。断り・打ち切り・読めない答えは届いたトークン数で、
+   * 応答が届く前の失敗(時間切れ・401/429/529・通信)はトークン 0 で渡す(Gemini の失敗と同じく件数を残す)。
+   */
   onUsage?: (usage: ClaudeUsage & { readonly ok: boolean }) => void,
 ): Promise<ValidatedHunterResponse | null> {
-  let usage: ClaudeUsage | null = null
+  let usage: ClaudeUsage = { inputTokens: 0, outputTokens: 0 }
   const report = (ok: boolean) => {
-    if (usage && onUsage) onUsage({ ...usage, ok })
+    onUsage?.({ ...usage, ok })
   }
   let text: string
   try {

@@ -83,6 +83,7 @@ describe('hunter R2 storage', () => {
   })
 
   it('accepts the JPEG Safari writes (no location data) and still stores it re-encoded as WebP', async () => {
+    mocks.imageInfo.mockResolvedValueOnce({ format: 'image/jpeg' })
     const result = await uploadMaskedPhoto(USER_ID, PHOTO_ID, jpegDataUrl(APP0))
 
     expect(result.path).toBe(`hunter-photos/${USER_ID}/${PHOTO_ID}/masked.webp`)
@@ -92,6 +93,16 @@ describe('hunter R2 storage', () => {
       expect.anything(),
       expect.objectContaining({ httpMetadata: expect.objectContaining({ contentType: 'image/webp' }) }),
     )
+  })
+
+  it('checks the label against the format read from the bytes (a camera JPEG labelled WebP is refused)', async () => {
+    mocks.imageInfo.mockResolvedValueOnce({ format: 'image/jpeg' })
+    await expect(uploadMaskedPhoto(USER_ID, PHOTO_ID, MASKED_DATA_URL)).rejects.toThrow('形式')
+    expect(mocks.r2Put).not.toHaveBeenCalled()
+
+    // 表記の揺れ(jpg / 見出しなし)では止めない
+    mocks.imageInfo.mockResolvedValueOnce({ format: 'jpg' })
+    await expect(uploadMaskedPhoto(USER_ID, PHOTO_ID, jpegDataUrl(APP0))).resolves.toMatchObject({ path: expect.any(String) })
   })
 
   it.each([

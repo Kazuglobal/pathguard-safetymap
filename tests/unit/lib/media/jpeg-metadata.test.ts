@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { exifIfd0Short, jpegCarriesLocation } from "@/lib/media/jpeg-metadata"
+import { exifIfd0Short, jpegCarriesCameraMetadata } from "@/lib/media/jpeg-metadata"
 
 const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0))
 const be16 = (n: number) => [(n >> 8) & 0xff, n & 0xff]
@@ -31,21 +31,32 @@ function xmpApp1(body: string): number[] {
   return [0xff, 0xe1, ...be16(2 + payload.length), ...payload]
 }
 
-describe("jpegCarriesLocation", () => {
+describe("jpegCarriesCameraMetadata", () => {
   it("passes a canvas-made JPEG (JFIF only) and one whose Exif has no GPS", () => {
-    expect(jpegCarriesLocation(jpeg(APP0))).toBe(false)
-    expect(jpegCarriesLocation(jpeg(APP0, exifApp1([[0x0112, 3, 1]])))).toBe(false)
-    expect(jpegCarriesLocation(jpeg(xmpApp1('<x:xmpmeta><rdf:Description xmp:CreatorTool="x"/></x:xmpmeta>')))).toBe(false)
+    expect(jpegCarriesCameraMetadata(jpeg(APP0))).toBe(false)
+    expect(jpegCarriesCameraMetadata(jpeg(APP0, exifApp1([[0x0112, 3, 1]])))).toBe(false)
+    expect(jpegCarriesCameraMetadata(jpeg(xmpApp1('<x:xmpmeta><rdf:Description xmp:CreatorTool="x"/></x:xmpmeta>')))).toBe(false)
   })
 
   it("finds GPS in Exif (a camera photo with location) and in XMP", () => {
-    expect(jpegCarriesLocation(jpeg(APP0, exifApp1([[0x0112, 3, 1], [0x8825, 4, 128]])))).toBe(true)
-    expect(jpegCarriesLocation(jpeg(xmpApp1('<rdf:Description exif:GPSLatitude="35,40.1N"/>')))).toBe(true)
+    expect(jpegCarriesCameraMetadata(jpeg(APP0, exifApp1([[0x0112, 3, 1], [0x8825, 4, 128]])))).toBe(true)
+    expect(jpegCarriesCameraMetadata(jpeg(xmpApp1('<rdf:Description exif:GPSLatitude="35,40.1N"/>')))).toBe(true)
+  })
+
+  it("finds the camera's make or model (a camera original even without location)", () => {
+    expect(jpegCarriesCameraMetadata(jpeg(APP0, exifApp1([[0x010f, 2, 0]])))).toBe(true)
+    expect(jpegCarriesCameraMetadata(jpeg(APP0, exifApp1([[0x0110, 2, 0]])))).toBe(true)
+    expect(jpegCarriesCameraMetadata(jpeg(xmpApp1('<rdf:Description tiff:Model="X"/>')))).toBe(true)
+  })
+
+  it("refuses Exif it cannot read (IFD0 outside the segment) instead of letting it through", () => {
+    const broken = [0xff, 0xe1, ...be16(2 + 6 + 8), ...ascii("Exif"), 0, 0, ...ascii("II"), ...le16(42), ...le32(4000)]
+    expect(jpegCarriesCameraMetadata(jpeg(APP0, broken))).toBe(true)
   })
 
   it("refuses what it cannot read to the end of the metadata (not a JPEG, cut short)", () => {
-    expect(jpegCarriesLocation(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(true)
-    expect(jpegCarriesLocation(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x40, 1, 2]))).toBe(true)
+    expect(jpegCarriesCameraMetadata(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(true)
+    expect(jpegCarriesCameraMetadata(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x40, 1, 2]))).toBe(true)
   })
 })
 

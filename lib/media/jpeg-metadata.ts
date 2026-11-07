@@ -1,7 +1,7 @@
 // =============================================
 // JPEG のメタデータ(Exif / XMP)を読む純粋ロジック(依存なし)
 // - Exif の IFD0 の値(写真の向きなど)を読む
-// - 位置情報(Exif の GPS・XMP の GPS)が入っているかを調べる
+// - 撮影時の情報(位置情報・カメラの機種)が入っているかを調べる
 // アプリが canvas で描き直した JPEG には、どちらも入らない。
 // =============================================
 
@@ -24,44 +24,58 @@ function includesAscii(b: Uint8Array, start: number, end: number, text: string):
   return false
 }
 
-/** APP1 の中身("Exif\0\0" + TIFF)の IFD0 で tag のエントリを探す。無い・読めないときは null。 */
-function findIfd0Entry(b: Uint8Array, start: number, end: number, tag: number): { offset: number; little: boolean } | null {
-  if (!startsWithAscii(b, start, end, "Exif") || b[start + 4] !== 0 || b[start + 5] !== 0) return null
+interface Ifd0 {
+  readonly little: boolean
+  /** tag → エントリの位置 */
+  readonly entries: ReadonlyMap<number, number>
+}
+
+/**
+ * APP1 の中身("Exif\0\0" + TIFF)の IFD0 を読む。
+ * Exif でなければ "not-exif"、Exif なのに形が壊れていて読めなければ "unreadable"。
+ */
+function readIfd0(b: Uint8Array, start: number, end: number): Ifd0 | "not-exif" | "unreadable" {
+  if (!startsWithAscii(b, start, end, "Exif") || b[start + 4] !== 0 || b[start + 5] !== 0) return "not-exif"
   const tiff = start + 6
-  if (tiff + 8 > end) return null
+  if (tiff + 8 > end) return "unreadable"
   const little = b[tiff] === 0x49 && b[tiff + 1] === 0x49
-  if (!little && !(b[tiff] === 0x4d && b[tiff + 1] === 0x4d)) return null
+  if (!little && !(b[tiff] === 0x4d && b[tiff + 1] === 0x4d)) return "unreadable"
   const u16 = (i: number) => (little ? u16le(b, i) : u16be(b, i))
   const u32 = (i: number) => (little ? u32le(b, i) : u32be(b, i))
-  if (u16(tiff + 2) !== 42) return null
+  if (u16(tiff + 2) !== 42) return "unreadable"
   const ifd = tiff + u32(tiff + 4)
-  if (ifd + 2 > end) return null
-  const entries = u16(ifd)
-  for (let k = 0; k < entries; k += 1) {
+  if (ifd + 2 > end) return "unreadable"
+  const count = u16(ifd)
+  const entries = new Map<number, number>()
+  for (let k = 0; k < count; k += 1) {
     const offset = ifd + 2 + k * 12
-    if (offset + 12 > end) return null
-    if (u16(offset) === tag) return { offset, little }
+    if (offset + 12 > end) return "unreadable"
+    entries.set(u16(offset), offset)
   }
-  return null
+  return { little, entries }
 }
 
 /** Exif の IFD0 にある SHORT の値(例: 向き 0x0112)。無い・読めないときは null。 */
 export function exifIfd0Short(b: Uint8Array, start: number, end: number, tag: number): number | null {
-  const entry = findIfd0Entry(b, start, end, tag)
-  if (!entry) return null
-  return entry.little ? u16le(b, entry.offset + 8) : u16be(b, entry.offset + 8)
+  const ifd = readIfd0(b, start, end)
+  if (typeof ifd === "string") return null
+  const offset = ifd.entries.get(tag)
+  if (offset === undefined) return null
+  return ifd.little ? u16le(b, offset + 8) : u16be(b, offset + 8)
 }
 
-/** Exif の GPS 情報の場所を指すタグ。 */
-const GPS_IFD_POINTER = 0x8825
+/** 撮影時の情報を指す Exif のタグ: GPS の場所・カメラのメーカー・機種。 */
+const CAMERA_TAGS = [0x8825, 0x010f, 0x0110]
 const XMP_HEADERS = ["http://ns.adobe.com/xap/1.0/", "http://ns.adobe.com/xmp/extension/"]
+const XMP_CAMERA_WORDS = ["GPSLatitude", "GPSLongitude", "tiff:Make", "tiff:Model"]
 
 /**
- * JPEG に位置情報が入っているか(Exif の GPS、または XMP の GPSLatitude / GPSLongitude)。
- * 画像データ(SOS)より前のメタデータだけを見る。形が壊れていて最後まで読めないときは、
+ * JPEG に撮影時の情報(Exif の GPS・カメラの機種、XMP の同じ項目)が入っているか。
+ * canvas で描き直した写真には入らないので、入っていればぼかしを通っていない元の写真の疑いがある。
+ * 画像データ(SOS)より前のメタデータだけを見る。形が壊れていて読めないときは、
  * 入っていないと言い切れないので true を返す(呼び出し側は保存しない)。
  */
-export function jpegCarriesLocation(b: Uint8Array): boolean {
+export function jpegCarriesCameraMetadata(b: Uint8Array): boolean {
   if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return true
   let i = 2
   while (i + 4 <= b.length) {
@@ -81,9 +95,11 @@ export function jpegCarriesLocation(b: Uint8Array): boolean {
     const end = i + 2 + length
     if (length < 2 || end > b.length) return true
     if (marker === 0xe1) {
-      if (findIfd0Entry(b, start, end, GPS_IFD_POINTER)) return true
+      const ifd = readIfd0(b, start, end)
+      if (ifd === "unreadable") return true
+      if (typeof ifd !== "string" && CAMERA_TAGS.some((tag) => ifd.entries.has(tag))) return true
       const isXmp = XMP_HEADERS.some((header) => startsWithAscii(b, start, end, header))
-      if (isXmp && (includesAscii(b, start, end, "GPSLatitude") || includesAscii(b, start, end, "GPSLongitude"))) return true
+      if (isXmp && XMP_CAMERA_WORDS.some((word) => includesAscii(b, start, end, word))) return true
     }
     i = end
   }

@@ -433,6 +433,15 @@ describe("analyzeHunterImage — Claude(Haiku 5.5)を先に使う", () => {
     ])
   })
 
+  it("also leaves a zero-token entry when Claude fails before answering (timeout, 529), so outages show up", async () => {
+    const onUsage = vi.fn()
+    vi.mocked(callClaudeVision).mockRejectedValue(Object.assign(new Error("overloaded"), { status: 529 }))
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    await analyzeHunterImage(PNG, { ...opts, onUsage })
+    expect(onUsage.mock.calls[0][0]).toEqual({ provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 0, outputTokens: 0, ok: false })
+    expect(onUsage).toHaveBeenCalledTimes(2)
+  })
+
   it("reports a used Claude answer as ok and never lets a broken usage log stop the analysis", async () => {
     vi.mocked(callClaudeVision).mockImplementation(async (params) => {
       params.onUsage?.({ inputTokens: 3100, outputTokens: 1500 })

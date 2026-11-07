@@ -101,11 +101,12 @@ describe("analyzeImagePipeline — preferClaude", () => {
     expect(fallback.analysisModel).toBeUndefined()
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    // 応答が届かなかった(通信の失敗)ときは課金されないので記録しない
+    // 応答が届かなかった(通信の失敗・時間切れ)ときもトークン 0 で 1 件残す(Claude の障害に気づけるように)
     onClaudeUsage.mockClear()
     vi.mocked(callClaudeVision).mockRejectedValue(new Error("network"))
     await analyzeImagePipeline(PNG, { promptType: "default", preferClaude: true, onClaudeUsage })
-    expect(onClaudeUsage).not.toHaveBeenCalled()
+    expect(onClaudeUsage).toHaveBeenCalledTimes(1)
+    expect(onClaudeUsage).toHaveBeenCalledWith({ model: "claude-haiku-5-5", inputTokens: 0, outputTokens: 0, ok: false })
   })
 
   it("falls back to Gemini when Claude fails", async () => {
