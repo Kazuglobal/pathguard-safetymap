@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   limit: vi.fn(async () => ({ success: true, reset: Date.now() + 1_000 })),
   eval: vi.fn(async () => [1, 1]),
   prefixes: [] as string[],
+  redisOptions: [] as Array<{ url: string; token: string }>,
   moduleError: null as Error | null,
   captureException: vi.fn(),
   captureMessage: vi.fn(),
@@ -26,6 +27,9 @@ vi.mock("@upstash/ratelimit", () => ({
 vi.mock("@upstash/redis", () => ({
   Redis: class FakeRedis {
     eval = mocks.eval
+    constructor(options: { url: string; token: string }) {
+      mocks.redisOptions.push(options)
+    }
   },
 }))
 
@@ -38,7 +42,11 @@ describe("checkImageGenerationRateLimit", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    // 前のテストの「1回だけ失敗させる」設定を残さない
+    mocks.limit.mockReset().mockImplementation(async () => ({ success: true, reset: Date.now() + 1_000 }))
+    mocks.eval.mockReset().mockImplementation(async () => [1, 1])
     mocks.prefixes.length = 0
+    mocks.redisOptions.length = 0
     process.env.UPSTASH_REDIS_REST_URL = "https://example.invalid"
     process.env.UPSTASH_REDIS_REST_TOKEN = "test-token"
     mocks.moduleError = null
@@ -154,6 +162,80 @@ describe("checkImageGenerationRateLimit", () => {
     consoleError.mockRestore()
   })
 
+  it("fails closed instead of throwing (no HTTP 500) when Upstash itself errors in production, and logs why each time", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    // SDK の HTTP エラーと同じ形: 文面の後ろに送ったコマンド(キー = 利用者 ID・IP 入り)が付く
+    const upstashError = Object.assign(
+      new Error('ERR max daily request limit exceeded, command was: [["evalsha","abc",3,"production:api:api:user-1:1700000000","203.0.113.5"]]'),
+      { name: "UpstashError" },
+    )
+    mocks.limit.mockRejectedValueOnce(upstashError).mockRejectedValueOnce(upstashError)
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { checkApiRateLimit, checkGeminiRateLimit } = await import("@/lib/upstash-rate-limiter")
+
+    // 「超えた」ではなく「問い合わせられなかった」と分かる形で止める(報告のルートは D1 へ進む)
+    await expect(checkApiRateLimit("api:user-1")).resolves.toEqual({ success: false, unavailable: true })
+    await expect(checkGeminiRateLimit("gemini:user-1")).resolves.toEqual({ success: false, unavailable: true })
+
+    const lines = consoleError.mock.calls.map(([line]) => String(line))
+    const errors = lines.filter((line) => line.includes("rate_limit_upstash_error"))
+    expect(errors).toHaveLength(2)
+    expect(errors[0]).toContain("UpstashError: ERR max daily request limit exceeded")
+    expect(lines.join("\n")).not.toMatch(/user-1|203\.0\.113\.5|command was|evalsha/)
+    await vi.waitFor(() => expect(mocks.captureException).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "UpstashError", message: "ERR max daily request limit exceeded" }),
+      expect.objectContaining({ tags: expect.objectContaining({ rate_limit_fallback_reason: "upstash_error" }) }),
+    ))
+    expect(mocks.captureException).toHaveBeenCalledTimes(1)
+    // Sentry にも利用者 ID・IP を渡さない
+    expect(String(mocks.captureException.mock.calls[0][0].message)).not.toMatch(/user-1|203\.0\.113\.5/)
+    consoleError.mockRestore()
+  })
+
+  it("never logs the Upstash URL, host or token even when the error message contains them", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    process.env.UPSTASH_REDIS_REST_URL = "https://secret-db.upstash.io"
+    process.env.UPSTASH_REDIS_REST_TOKEN = "secret-token-value"
+    mocks.limit.mockRejectedValueOnce(
+      new Error("getaddrinfo ENOTFOUND secret-db.upstash.io (https://secret-db.upstash.io) auth secret-token-value"),
+    )
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { checkApiRateLimit } = await import("@/lib/upstash-rate-limiter")
+
+    await expect(checkApiRateLimit("api:user-1")).resolves.toEqual({ success: false, unavailable: true })
+    const logged = consoleError.mock.calls.map(([line]) => String(line)).join("\n")
+    expect(logged).toContain("ENOTFOUND")
+    expect(logged).not.toMatch(/secret-db|secret-token-value/)
+    consoleError.mockRestore()
+  })
+
+  it("fails closed in production when Upstash answers too slowly (ratelimit returns success with reason 'timeout')", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    mocks.limit.mockResolvedValueOnce({ success: true, reset: 0, reason: "timeout" } as never)
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { checkGeminiRateLimit } = await import("@/lib/upstash-rate-limiter")
+
+    await expect(checkGeminiRateLimit("gemini:user-1")).resolves.toEqual({ success: false, unavailable: true })
+  })
+
+  it("builds the Redis client from trimmed settings (a trailing newline no longer breaks every request)", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    process.env.UPSTASH_REDIS_REST_URL = "  https://example.invalid\n"
+    const { checkApiRateLimit } = await import("@/lib/upstash-rate-limiter")
+
+    await expect(checkApiRateLimit("api:user-1")).resolves.toEqual({ success: true })
+    expect(mocks.redisOptions.at(-1)).toEqual({ url: "https://example.invalid", token: "test-token" })
+  })
+
+  it("lets requests through outside production when Upstash errors (same as a missing configuration)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    mocks.limit.mockRejectedValueOnce(new Error("fetch failed"))
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { checkApiRateLimit } = await import("@/lib/upstash-rate-limiter")
+
+    await expect(checkApiRateLimit("api:user-1")).resolves.toEqual({ success: true })
+  })
+
   it("fails open and reports when an Upstash SDK import fails outside production", async () => {
     vi.stubEnv('NODE_ENV', 'development')
     mocks.moduleError = new Error('simulated module load failure')
@@ -173,8 +255,8 @@ describe("checkPaidApiRateLimit", () => {
     vi.useRealTimers()
     process.env.UPSTASH_REDIS_REST_URL = "https://example.invalid"
     process.env.UPSTASH_REDIS_REST_TOKEN = "test-token"
-    mocks.limit.mockResolvedValue({ success: true, reset: Date.now() + 60_000 })
-    mocks.eval.mockResolvedValue([1, 1])
+    mocks.limit.mockReset().mockResolvedValue({ success: true, reset: Date.now() + 60_000 })
+    mocks.eval.mockReset().mockResolvedValue([1, 1])
     mocks.moduleError = null
   })
 
@@ -312,5 +394,16 @@ describe("checkPaidApiRateLimit", () => {
 
     await expect(checkPaidApiRateLimit("mapbox", "user-1", 0)).rejects.toThrow(RangeError)
     expect(mocks.limit).not.toHaveBeenCalled()
+  })
+
+  it("fails closed instead of throwing when the AI daily counter (EVAL) errors in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    mocks.eval.mockRejectedValueOnce(Object.assign(new Error("NOPERM this user has no permissions to run the 'eval' command"), { name: "UpstashError" }))
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { checkPaidApiRateLimit } = await import("@/lib/upstash-rate-limiter")
+
+    await expect(checkPaidApiRateLimit("ai", "user-1")).resolves.toEqual({ success: false, unavailable: true })
+    expect(consoleError.mock.calls.map(([line]) => String(line)).join("\n")).toContain("NOPERM")
+    consoleError.mockRestore()
   })
 })

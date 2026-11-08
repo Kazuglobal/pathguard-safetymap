@@ -7,14 +7,19 @@ import { NextResponse } from 'next/server'
  * allow-all でフォールバックする。
  */
 
-export type RateLimitResult = { success: boolean; reset?: number }
+/**
+ * success=false のうち unavailable=true は「超えた」のではなく「Upstash に問い合わせられなかった」
+ * (本番で止める側に倒した結果)。ほかの必須の制限を持つルート(危険箇所の報告は D1 の割り当て)は、
+ * これを見て先へ進めてよい。ほかのルートは success だけを見て 429 にする。
+ */
+export type RateLimitResult = { success: boolean; reset?: number; unavailable?: boolean }
 export type PaidApiKind = 'ai' | 'mapbox' | 'image-processing'
 
 let Ratelimit: typeof import('@upstash/ratelimit').Ratelimit | null = null
 let Redis: typeof import('@upstash/redis').Redis | null = null
 const reportedFallbacks = new Set<RateLimitFallbackReason>()
 
-type RateLimitFallbackReason = 'missing_configuration' | 'module_import_failed'
+type RateLimitFallbackReason = 'missing_configuration' | 'module_import_failed' | 'upstash_error'
 type UpstashModules = {
   Ratelimit: typeof import('@upstash/ratelimit').Ratelimit
   Redis: typeof import('@upstash/redis').Redis
@@ -80,6 +85,57 @@ async function reportFallbackToSentry(
   }
 }
 
+/**
+ * Upstash の失敗を、ログと Sentry に出せる形にする(例: "ERR max daily request limit exceeded")。
+ * - SDK は HTTP のエラーの文面に「, command was: [送ったコマンド]」を付け、そこにキー
+ *   (利用者 ID・IP を含む)が入るので、そこから後ろは落とす
+ * - 接続先の URL・ホスト名・トークンが文面に入っていても伏せる
+ */
+function sanitizeUpstashError(error: unknown): { name: string; message: string } {
+  const name = error instanceof Error ? error.name : typeof error
+  const raw = (error instanceof Error ? error.message : String(error)).replace(/,?\s*command was:[\s\S]*$/i, '')
+  const secrets = [process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
+  if (url) {
+    try {
+      secrets.push(new URL(url).host)
+    } catch {
+      // URL として読めなければ、そのままの文字列だけを伏せる
+    }
+  }
+  const message = secrets
+    .sort((a, b) => b.length - a.length)
+    .reduce((text, secret) => text.split(secret).join('[redacted]'), raw)
+    .slice(0, 300)
+  return { name, message }
+}
+
+/**
+ * Upstash への問い合わせが失敗したとき(上限超え・認証・通信・時間切れなど)。
+ * 例外を外へ投げると呼び出し元のルートが HTTP 500 になるので、設定が無いときと同じ方針
+ * (本番は止める・それ以外は通す)で扱う。原因を調べられるよう、失敗のたびに種類と文面をログに出す
+ * (利用者の ID・IP・接続先は出さない。Sentry にも同じ伏せた文面だけを渡す)。
+ */
+function upstashFailure(where: string, error: unknown): RateLimitResult {
+  const safe = sanitizeUpstashError(error)
+  console.error(JSON.stringify({
+    event: 'rate_limit_upstash_error',
+    where,
+    error: `${safe.name}: ${safe.message}`,
+  }))
+  const result = fallbackResult('upstash_error', Object.assign(new Error(safe.message), { name: safe.name }))
+  return result.success ? result : { ...result, unavailable: true }
+}
+
+function redisOptions(): { url: string; token: string } {
+  return {
+    url: process.env.UPSTASH_REDIS_REST_URL?.trim() ?? '',
+    token: process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ?? '',
+  }
+}
+
 function isConfigured(): boolean {
   return Boolean(
     process.env.UPSTASH_REDIS_REST_URL?.trim() &&
@@ -112,22 +168,25 @@ async function checkLimit(
   if (!loaded.modules) return fallbackResult('module_import_failed', loaded.error)
   const { Ratelimit: RL, Redis: R } = loaded.modules
 
-  const redis = new R({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  })
-
-  const ratelimit = new RL({
-    redis,
-    limiter: RL.slidingWindow(requests, `${windowSeconds} s`),
-    prefix: rateLimitPrefix(prefix),
-  })
-
-  const { success, reset } = cost === undefined
-    ? await ratelimit.limit(identifier)
-    : await ratelimit.limit(identifier, { rate: cost })
-  if (success) return { success: true }
-  return { success: false, reset }
+  let outcome: { success: boolean; reset: number; reason?: string }
+  try {
+    // 接続先の値がおかしいと生成の時点で投げる(UrlError)ので、生成もここに入れる
+    const ratelimit = new RL({
+      redis: new R(redisOptions()),
+      limiter: RL.slidingWindow(requests, `${windowSeconds} s`),
+      prefix: rateLimitPrefix(prefix),
+    })
+    outcome = cost === undefined
+      ? await ratelimit.limit(identifier)
+      : await ratelimit.limit(identifier, { rate: cost })
+  } catch (error) {
+    return upstashFailure(prefix, error)
+  }
+  // ratelimit は Upstash が既定 5 秒以内に返事をしないと例外ではなく success: true(reason: 'timeout')を返す。
+  // それでは本番でも制限なしになるので、失敗として扱う。
+  if (outcome.reason === 'timeout') return upstashFailure(prefix, new Error('Upstash rate limit timed out'))
+  if (outcome.success) return { success: true }
+  return { success: false, reset: outcome.reset }
 }
 
 /** 汎用API: 60リクエスト/分 */
@@ -219,15 +278,17 @@ export async function checkPaidApiRateLimit(
 
   const loaded = await getModules()
   if (!loaded.modules) return fallbackResult('module_import_failed', loaded.error)
-  const redis = new loaded.modules.Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  })
-  const result = await redis.eval<string[], [number, number]>(
-    DAILY_LIMIT_SCRIPT,
-    [rateLimitPrefix(`paid:daily:${kind}:${date}:${userId}`)],
-    [String(cost), String(dailyLimit), String(dailyReset)],
-  )
+  let result: [number, number]
+  try {
+    const redis = new loaded.modules.Redis(redisOptions())
+    result = await redis.eval<string[], [number, number]>(
+      DAILY_LIMIT_SCRIPT,
+      [rateLimitPrefix(`paid:daily:${kind}:${date}:${userId}`)],
+      [String(cost), String(dailyLimit), String(dailyReset)],
+    )
+  } catch (error) {
+    return upstashFailure(`paid:daily:${kind}`, error)
+  }
 
   return Number(result[0]) === 1
     ? { success: true }

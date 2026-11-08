@@ -118,7 +118,12 @@ export async function POST(request: Request) {
 
   try {
     const rate = await checkApiRateLimit(`report-create:${actor.id}`)
-    if (!rate.success) return rateLimitedResponse(Math.max(rate.reset ?? 0, Date.now() + 1000))
+    if (rate.unavailable) {
+      // Upstash に問い合わせられなかった(超えたのではない)。必須の割り当ては D1 がかけるので先へ進む。
+      console.error('[api/reports] Redis rate limit unavailable; enforcing D1 quotas')
+    } else if (!rate.success) {
+      return rateLimitedResponse(Math.max(rate.reset ?? 0, Date.now() + 1000))
+    }
   } catch {
     // D1 enforces the mandatory quotas even if the optional Redis guard fails.
     console.error('[api/reports] Redis rate limit unavailable; enforcing D1 quotas')
