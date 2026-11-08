@@ -16,13 +16,16 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
+      "kumamoto-higashi-bicycle-highschool-unreported-fine-20261105",
+      "kato-takino-station-highschool-girl-stalking-arrest-20261104",
+      "matsumoto-kotobuki-shirasebuchi-bicycle-highschool-20261106",
       "kagoshima-shinyashiki-crosswalk-boy-hit-20261106",
       "kobe-nada-kusugaoka-hitandrun-arrest-20261105",
+    ]))
+    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "tokyo-nakano-mitaka-voice-calls-20261104",
       "yunomae-bicycle-car-following-20261104",
       "hiroshima-asakita-ochiaiminami-voice-call-20261102",
-    ]))
-    expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
       "shiojiri-schoolway-joint-inspection-20261104",
       "national-junior-high-bicycle-accident-not-told-20261028",
       "matsumoto-arigasaki-hitandrun-referral-20261019",
