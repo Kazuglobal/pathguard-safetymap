@@ -188,7 +188,9 @@ describe("thumbnail coverage", () => {
   // 存在チェックだけでは ImageMagick の暫定画像（数十KBの図形）がすり抜ける。
   // 実画像（Gemini 生成）は 500KB 以上になるため、小さすぎる・JPEG でない・同一内容の画像を弾く。
   // 失敗したら: 該当ファイルを削除して `npx tsx scripts/generate-missing-images.ts news` で本生成する。
-  it("uses generated artwork, not placeholder images, for every referenced image", () => {
+  // 冷えた環境では 171 ファイルの読み込みと md5 計算が既定 5 秒を超えるため、タイムアウトを広げる
+  // （アサーション自体は変更していない）。
+  it("uses generated artwork, not placeholder images, for every referenced image", { timeout: 30000 }, () => {
     const MIN_GENERATED_BYTES = 100_000
     const seen = new Map<string, string>()
     for (const item of NEWS_ITEMS) {
