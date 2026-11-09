@@ -16,13 +16,14 @@ describe("school route news release readiness regressions", () => {
     const latestSlugs = latestNews.map((item) => item.slug)
     expect(latestSlugs).toHaveLength(5)
     expect(latestSlugs).toEqual(expect.arrayContaining([
+      "osaka-nishinari-children-car-attack-first-trial-20261109",
       "kagoshima-shinyashiki-crosswalk-boy-hit-20261106",
       "kobe-nada-kusugaoka-hitandrun-arrest-20261105",
       "tokyo-nakano-mitaka-voice-calls-20261104",
       "yunomae-bicycle-car-following-20261104",
-      "hiroshima-asakita-ochiaiminami-voice-call-20261102",
     ]))
     expect(allNewsItems.map((item) => item.slug)).toEqual(expect.arrayContaining([
+      "hiroshima-asakita-ochiaiminami-voice-call-20261102",
       "shiojiri-schoolway-joint-inspection-20261104",
       "national-junior-high-bicycle-accident-not-told-20261028",
       "matsumoto-arigasaki-hitandrun-referral-20261019",
@@ -187,7 +188,9 @@ describe("thumbnail coverage", () => {
   // 存在チェックだけでは ImageMagick の暫定画像（数十KBの図形）がすり抜ける。
   // 実画像（Gemini 生成）は 500KB 以上になるため、小さすぎる・JPEG でない・同一内容の画像を弾く。
   // 失敗したら: 該当ファイルを削除して `npx tsx scripts/generate-missing-images.ts news` で本生成する。
-  it("uses generated artwork, not placeholder images, for every referenced image", () => {
+  // 冷えた環境では 171 ファイルの読み込みと md5 計算が既定 5 秒を超えるため、タイムアウトを広げる
+  // （アサーション自体は変更していない）。
+  it("uses generated artwork, not placeholder images, for every referenced image", { timeout: 30000 }, () => {
     const MIN_GENERATED_BYTES = 100_000
     const seen = new Map<string, string>()
     for (const item of NEWS_ITEMS) {
