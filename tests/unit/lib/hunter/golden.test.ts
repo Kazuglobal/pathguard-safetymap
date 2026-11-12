@@ -27,6 +27,8 @@ import missingQuiz from "./golden/missing-quiz.json"
 import messyRecoverable from "./golden/messy-recoverable.json"
 import regionScaled1000 from "./golden/region-scaled-1000.json"
 import evidencePassthrough from "./golden/evidence-passthrough.json"
+import box2dNative from "./golden/box2d-native.json"
+import { effectiveCoverage, MAX_HIT_COVERAGE } from "@/lib/hunter/hit-zone"
 
 /** route 相当の後処理(imageUsable ガートは route の責務なので別途確認)。 */
 function runPipeline(raw: unknown, sessionId = "g") {
@@ -218,4 +220,61 @@ describe("salvage: a realistically messy response keeps every recoverable point"
     // region の無い turning_car は写真に置けないため唯一ドロップされる。
     expect(hazards.some((h) => h.kind === "turning_car")).toBe(false)
   })
+})
+
+describe("golden: box2d-native (Gemini の [ymin,xmin,ymax,xmax] 0〜1000 + focus)", () => {
+  const raw = box2dNative
+  it("reads native boxes in every shape Gemini sends (array / nested / JSON string)", () => {
+    const { hazards } = runPipeline(raw)
+    expect(hazards.map((h) => h.kind)).toEqual(["blind_corner", "crossing_no_signal", "parked_car_shadow"])
+    const corner = hazards[0]
+    expect(corner.region.x).toBeCloseTo(0.56, 5)
+    expect(corner.region.y).toBeCloseTo(0.3, 5)
+    expect(corner.focusPoint!.x).toBeCloseTo(0.6, 5)
+    expect(corner.focusPoint!.y).toBeCloseTo(0.52, 5)
+  })
+
+  it("puts the hit box on the focus, not on the whole display box", () => {
+    const corner = runPipeline(raw).hazards[0]
+    const hit = corner.hitRegion!
+    expect(hit.w * hit.h).toBeLessThan(corner.region.w * corner.region.h)
+    expect(hit.x).toBeLessThanOrEqual(0.6)
+    expect(hit.x + hit.w).toBeGreaterThanOrEqual(0.6)
+  })
+
+  it("returns parent notes separately and drops English evidence", () => {
+    const validated = validateHunterResponse(raw)
+    const { hazards, notes } = sanitizeDangerPoints(validated.dangerPoints, { sessionId: "g" })
+    expect(notes.map((n) => n.hazardId)).toEqual(hazards.map((h) => h.id))
+    expect(notes[0].evidence).toBe("右の へいが 角の 先を かくしている")
+    expect(notes[1].evidence).toBeNull() // 英語の evidence は出さない
+    for (const h of hazards) expect("evidence" in h).toBe(false)
+  })
+})
+
+describe("hit-zone invariants hold for every golden fixture", () => {
+  const fixtures = {
+    ideal, duplicates, englishMixed, giantBbox, lowConfidenceMixed, empty, imageUnusable,
+    stringyImageUsable, uppercaseSeverity, missingQuiz, messyRecoverable, regionScaled1000,
+    evidencePassthrough, box2dNative,
+  }
+  for (const [name, raw] of Object.entries(fixtures)) {
+    it(`${name}: random-tap coverage ≤ cap, hit box inside the display box, focus inside the hit box`, () => {
+      const { hazards } = runPipeline(raw)
+      expect(effectiveCoverage(hazards.map((h) => h.hitRegion!))).toBeLessThanOrEqual(MAX_HIT_COVERAGE + 1e-9)
+      for (const h of hazards) {
+        const r = h.region
+        const hit = h.hitRegion!
+        const f = h.focusPoint!
+        expect(hit.x).toBeGreaterThanOrEqual(r.x - 1e-9)
+        expect(hit.y).toBeGreaterThanOrEqual(r.y - 1e-9)
+        expect(hit.x + hit.w).toBeLessThanOrEqual(r.x + r.w + 1e-9)
+        expect(hit.y + hit.h).toBeLessThanOrEqual(r.y + r.h + 1e-9)
+        expect(f.x).toBeGreaterThanOrEqual(hit.x - 1e-9)
+        expect(f.x).toBeLessThanOrEqual(hit.x + hit.w + 1e-9)
+        expect(f.y).toBeGreaterThanOrEqual(hit.y - 1e-9)
+        expect(f.y).toBeLessThanOrEqual(hit.y + hit.h + 1e-9)
+      }
+    })
+  }
 })

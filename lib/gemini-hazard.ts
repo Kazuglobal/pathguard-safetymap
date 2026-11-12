@@ -13,6 +13,8 @@ import type {
 } from "./hazard-game-types"
 import { calculateSafetyScore, calculateFinalScoreWithBonus } from "./hazard-game-scorer"
 import { compareUserMarkersWithAI } from "./hazard-game-matching"
+import { requestPipelineWithClaude, toPixelPositionsExample, type ClaudeAttemptUsage } from "./hazard-pipeline-claude"
+import type { ImageSize } from "./vision/image-size"
 
 export type { PromptType }
 
@@ -88,7 +90,9 @@ export async function callGeminiVision(
   // 呼び出し元ごとに既定モデルを分けるための追加引数(後方互換)。
   // 省略時は getSanitizedGeminiVisionModel の既定(gemini-2.5-flash)。
   // リアルタイム解析(ハンター/ハザードゲーム)だけ REALTIME_VISION_DEFAULT_MODEL を渡す。
-  defaultModel?: string
+  defaultModel?: string,
+  /** 応答が届いたら(文字が無くて throw する前にも)使ったトークンを渡す。思考のトークンは出力に含める(課金も出力)。 */
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void
 ): Promise<string> {
   if (!imageBase64OrDataUrl || imageBase64OrDataUrl.length < 50) {
     throw new Error("画像データが不足しています")
@@ -144,6 +148,14 @@ export async function callGeminiVision(
   }
 
   const data = await res.json()
+  if (onUsage) {
+    const usage = data?.usageMetadata ?? {}
+    const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0)
+    onUsage({
+      inputTokens: count(usage.promptTokenCount),
+      outputTokens: count(usage.candidatesTokenCount) + count(usage.thoughtsTokenCount),
+    })
+  }
   const textPart = data?.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text
   if (!textPart || typeof textPart !== "string") {
     throw new Error("Gemini response did not contain text output")
@@ -183,37 +195,8 @@ const PIPELINE_JSON_SCHEMA = `{
   "educational_tips": ["ひび割れたブロック塀の近くを歩かないようにしましょう", "横断歩道では左右を確認してから渡りましょう", "雑草で見通しが悪い場所では立ち止まって確認しましょう"]
 }`
 
-export function getPipelinePromptByType(
-  promptType: PromptType,
-  userMarkers?: readonly UserMarker[],
-  accidentContext?: string
-): string {
-  const accidentSuffix = accidentContext && accidentContext.trim().length > 0
-    ? `\n\n${accidentContext.trim()}`
-    : ''
-  const userSuffix = userMarkers?.length
-    ? `\n\n【ユーザーマーキング情報】\nユーザーは以下の${userMarkers.length}箇所を事前に危険と判断しました:\n${userMarkers.map((m, i) =>
-        `${i + 1}. カテゴリ: ${m.category}, ラベル: ${m.label}, 位置: (x:${m.x.toFixed(2)}, y:${m.y.toFixed(2)}, w:${m.width.toFixed(2)}, h:${m.height.toFixed(2)})`
-      ).join('\n')}\nユーザーがマーキングした領域を注意深く確認し、その付近にある危険を正確にbboxで記述してください。\nまた、ユーザーが見逃した危険箇所も積極的に検出してください。\nユーザーのbboxに影響されず、AIとして独自に正確なbboxを算出すること。`
-    : ''
-
-  const commonSchema = `
-以下のJSON形式で出力してください。説明文や前置きは不要。
-${PIPELINE_JSON_SCHEMA}
-
-共通要件:
-- vision.safety_equipment: ガードレール(guardrail)、横断歩道(crosswalk)、信号機(traffic_light)、歩道(sidewalk)、カーブミラー(curve_mirror)、ガードパイプ(guard_pipe)などを検出。存在するものだけ含める。
-- vision.hazards: 工事現場、壊れたフェンス、ブロック塀のひび、老朽化建物、落下物リスクなど。
-- vision.traffic: 車両(car)、トラック(truck)、バイク(motorcycle)、自転車(bicycle)など。
-- vision.obstructions: 雑草の繁茂、放置自転車、不法投棄物、視界を遮る看板など。
-
-各カテゴリのアイテム必須フィールド:
-- label: 英語キーワード (例: guardrail, broken_fence, car)
-- description: 日本語での詳細説明（何がどこにあるか具体的に）
-- count: 検出個数 (整数、実際に見える数)
-- confidence: 検出信頼度 0.0-1.0
-- coverage_ratio: 画像面積に対する割合 0.0-1.0
-- positions: 【必須】正規化bbox配列。空配列[]は絶対に不可。
+/** 位置の書き方(Gemini 用・正規化 0..1)。従来の文面そのまま。 */
+const NORMALIZED_BBOX_RULES = `- positions: 【必須】正規化bbox配列。空配列[]は絶対に不可。
 
 Bounding Box (positions) 記述ルール:
 1. 全ての検出物に対してpositionsを必ず1つ以上記述すること。空配列[]は禁止。
@@ -243,7 +226,75 @@ Bounding Box 座標の具体例:
 - 画像の下半分にあるもの: y >= 0.5
 - 遠くの小さい物体: width, height は小さめ (0.03-0.15程度)
 - 近くの大きい物体: width, height は大きめ (0.2-0.8程度)
-- 物体同士が重なっている場合: それぞれ個別のbboxを記述
+- 物体同士が重なっている場合: それぞれ個別のbboxを記述`
+
+/** 位置の書き方(Claude 用・ピクセル座標)。Claude は正規化座標が苦手なので画像の大きさを書いて ピクセルで答えさせる。 */
+function pixelBboxRules(size: ImageSize): string {
+  const { width: W, height: H } = size
+  const px = (x: number, y: number, w: number, h: number) =>
+    `{"x1":${Math.round(x * W)},"y1":${Math.round(y * H)},"x2":${Math.round((x + w) * W)},"y2":${Math.round((y + h) * H)}}`
+  return `- positions: 【必須】ピクセル座標のbbox配列。空配列[]は絶対に不可。
+
+Bounding Box (positions) 記述ルール:
+1. 全ての検出物に対してpositionsを必ず1つ以上記述すること。空配列[]は禁止。
+2. countの値とpositions配列の要素数は必ず一致させること（count=3なら3つのbbox）。
+3. この画像は 幅 ${W} ピクセル × 高さ ${H} ピクセル。各bboxは {"x1","y1","x2","y2"}（左上の角と右下の角）を、この画像のピクセル座標の整数で書く。左上が(0,0)、右へ x、下へ y が増える。
+4. bboxは物体に密着（tight-fit）させること。余白を含めない。物体の輪郭ギリギリを囲む。
+5. confidence >= 0.8 の検出物は特に精密なbboxを記述すること。物体の実際の形状・位置を正確に反映。
+6. 物体が部分的に隠れている・画面端で切れている場合でも、可視部分全体を囲むbboxを記述。
+
+よくある間違い（避けること）:
+- NG: positions: [] （空配列は禁止）
+- NG: count: 3, positions: [bbox1] （countとpositions数が不一致）
+- NG: {"x1":0,"y1":0,"x2":${W},"y2":${H}} （画像全体を囲むのは不正確）
+- NG: 全ての検出物が同じ座標 （各物体の実際の位置を個別に特定すること）
+
+Bounding Box 座標の具体例(この画像の大きさで):
+- 画像中央やや左の車: positions: [${px(0.25, 0.4, 0.3, 0.22)}]
+- 画像下部の横断歩道: positions: [${px(0.1, 0.72, 0.55, 0.18)}]
+- 道路の左右にガードレール2本: count: 2, positions: [${px(0.02, 0.5, 0.15, 0.08)}, ${px(0.8, 0.48, 0.18, 0.09)}]`
+}
+
+/**
+ * pixelSize を渡すと、位置をピクセル座標 {x1,y1,x2,y2} で書かせる版になる(Claude 用。
+ * Claude は 0〜1 などの正規化座標が苦手)。省略時は従来の正規化 {x,y,width,height}(Gemini 用)。
+ */
+export function getPipelinePromptByType(
+  promptType: PromptType,
+  userMarkers?: readonly UserMarker[],
+  accidentContext?: string,
+  pixelSize?: ImageSize,
+): string {
+  const accidentSuffix = accidentContext && accidentContext.trim().length > 0
+    ? `\n\n${accidentContext.trim()}`
+    : ''
+  const markerPosition = (m: UserMarker) =>
+    pixelSize
+      ? `[x1, y1, x2, y2] = [${Math.round(m.x * pixelSize.width)}, ${Math.round(m.y * pixelSize.height)}, ${Math.round((m.x + m.width) * pixelSize.width)}, ${Math.round((m.y + m.height) * pixelSize.height)}](ピクセル)`
+      : `(x:${m.x.toFixed(2)}, y:${m.y.toFixed(2)}, w:${m.width.toFixed(2)}, h:${m.height.toFixed(2)})`
+  const userSuffix = userMarkers?.length
+    ? `\n\n【ユーザーマーキング情報】\nユーザーは以下の${userMarkers.length}箇所を事前に危険と判断しました:\n${userMarkers.map((m, i) =>
+        `${i + 1}. カテゴリ: ${m.category}, ラベル: ${m.label}, 位置: ${markerPosition(m)}`
+      ).join('\n')}\nユーザーがマーキングした領域を注意深く確認し、その付近にある危険を正確にbboxで記述してください。\nまた、ユーザーが見逃した危険箇所も積極的に検出してください。\nユーザーのbboxに影響されず、AIとして独自に正確なbboxを算出すること。`
+    : ''
+
+  const commonSchema = `
+以下のJSON形式で出力してください。説明文や前置きは不要。
+${pixelSize ? toPixelPositionsExample(PIPELINE_JSON_SCHEMA, pixelSize) : PIPELINE_JSON_SCHEMA}
+
+共通要件:
+- vision.safety_equipment: ガードレール(guardrail)、横断歩道(crosswalk)、信号機(traffic_light)、歩道(sidewalk)、カーブミラー(curve_mirror)、ガードパイプ(guard_pipe)などを検出。存在するものだけ含める。
+- vision.hazards: 工事現場、壊れたフェンス、ブロック塀のひび、老朽化建物、落下物リスクなど。
+- vision.traffic: 車両(car)、トラック(truck)、バイク(motorcycle)、自転車(bicycle)など。
+- vision.obstructions: 雑草の繁茂、放置自転車、不法投棄物、視界を遮る看板など。
+
+各カテゴリのアイテム必須フィールド:
+- label: 英語キーワード (例: guardrail, broken_fence, car)
+- description: 日本語での詳細説明（何がどこにあるか具体的に）
+- count: 検出個数 (整数、実際に見える数)
+- confidence: 検出信頼度 0.0-1.0
+- coverage_ratio: 画像面積に対する割合 0.0-1.0
+${pixelSize ? pixelBboxRules(pixelSize) : NORMALIZED_BBOX_RULES}
 
 - think.contextual_risks: 視覚的兆候から推測される潜在的・複合的リスク。severity は "high"/"medium"/"low"。
 - think.priority_improvements: 優先的に改善すべき項目。
@@ -256,7 +307,7 @@ Bounding Box 座標の具体例:
 出力前チェックリスト（必ず確認）:
 1. 全てのアイテムのpositionsが空配列[]になっていないか → なっていればbboxを追加
 2. countとpositions配列の要素数が一致しているか
-3. bboxの座標が0.00-1.00の範囲内か
+3. ${pixelSize ? `bboxの座標が画像の範囲内(x は 0〜${pixelSize.width}、y は 0〜${pixelSize.height})か` : "bboxの座標が0.00-1.00の範囲内か"}
 4. 各bboxが実際の物体の位置・サイズに対応しているか
 ${userSuffix}${accidentSuffix}
 必ずJSONのみを出力。`
@@ -416,6 +467,13 @@ export interface AnalyzeImageOptions {
    * 共有パイプラインの他の呼び出し元(safety-quest等)を意図せず移行させないための明示指定。
    */
   readonly visionModelDefault?: string
+  /**
+   * 解析を Claude(Haiku 5.5)で先に行う。キーが無い・画像を読めない・失敗したときは Gemini。
+   * ハザードゲーム(hazard-game/analyze)だけが true を渡す(ほかの呼び出し元は変えない)。
+   */
+  readonly preferClaude?: boolean
+  /** Claude を呼んで応答が届いたときに 1 回呼ばれる(使えない応答でも課金されるので、使用量ログ用)。 */
+  readonly onClaudeUsage?: (attempt: ClaudeAttemptUsage) => void
 }
 
 function normalizeAnalyzeArgs(
@@ -426,6 +484,8 @@ function normalizeAnalyzeArgs(
   promptType: PromptType
   accidentContext?: string
   visionModelDefault?: string
+  preferClaude?: boolean
+  onClaudeUsage?: (attempt: ClaudeAttemptUsage) => void
 } {
   if (Array.isArray(optionsOrUserMarkers)) {
     return { userMarkers: optionsOrUserMarkers, promptType: legacyPromptType ?? "default" }
@@ -436,6 +496,8 @@ function normalizeAnalyzeArgs(
     promptType: opts.promptType ?? legacyPromptType ?? "default",
     accidentContext: opts.accidentContext,
     visionModelDefault: opts.visionModelDefault,
+    preferClaude: opts.preferClaude === true,
+    onClaudeUsage: opts.onClaudeUsage,
   }
 }
 
@@ -450,18 +512,28 @@ export async function analyzeImagePipeline(
 ): Promise<PipelineAnalysisResultWithComparison> {
   const startTime = Date.now()
 
-  const { userMarkers, promptType, accidentContext, visionModelDefault } = normalizeAnalyzeArgs(
+  const { userMarkers, promptType, accidentContext, visionModelDefault, preferClaude, onClaudeUsage } = normalizeAnalyzeArgs(
     optionsOrUserMarkers,
     legacyPromptType
   )
-  const prompt = getPipelinePromptByType(promptType, userMarkers, accidentContext)
-  const textResponse = await callGeminiVision(
-    imageBase64OrDataUrl,
-    prompt,
-    undefined,
-    visionModelDefault,
-  )
-  const parsed = extractFirstJson(textResponse)
+  // Claude(ピクセル座標で受けて正規化済み)→ 使えなければ Gemini(従来どおり)
+  const claude = preferClaude
+    ? await requestPipelineWithClaude(
+        imageBase64OrDataUrl,
+        (pixelSize) => getPipelinePromptByType(promptType, userMarkers, accidentContext, pixelSize),
+        onClaudeUsage,
+      )
+    : null
+  const parsed = claude
+    ? claude.raw
+    : extractFirstJson(
+        await callGeminiVision(
+          imageBase64OrDataUrl,
+          getPipelinePromptByType(promptType, userMarkers, accidentContext),
+          undefined,
+          visionModelDefault,
+        ),
+      )
   const { vision, think, educationalTips } = parseGeminiPipelineResponse(parsed)
 
   const visionWithTiming: VisionResult = {
@@ -493,6 +565,8 @@ export async function analyzeImagePipeline(
     educationalTips,
     analysisTimestamp: new Date().toISOString(),
     comparison,
+    // 使用量ログ用: Claude で解析したときだけ入る(無ければ Gemini)
+    ...(claude ? { analysisModel: { provider: "anthropic" as const, model: claude.model } } : {}),
   }
 }
 

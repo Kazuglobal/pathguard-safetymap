@@ -249,7 +249,8 @@ export function PhotoMasker({ file, notice, onConfirm, onCancel }: PhotoMaskerPr
       )}
       <p className="flex gap-2 rounded-xl px-3 py-2 text-xs leading-relaxed" style={{ background: t.color.primarySoft, color: t.color.ink }} data-testid="photo-masker-ai-notice">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" style={{ color: t.color.primaryStrong }} aria-hidden="true" />
-        {notice ?? "この加工した写真だけを保存し、AI(Google Gemini・Anthropic Claude・OpenAI)による確認にも送ります。元の写真は端末の外に出しません。"}
+        {/* 画面には特定の AI の名前を書かない(送り先の会社はプライバシーポリシーに記載) */}
+        {notice ?? "この加工した写真だけを保存し、AI による確認にも送ります。元の写真は端末の外に出しません。"}
       </p>
       {status === "ready" && !detectionAvailable && (
         <label className="flex items-start gap-2 text-sm font-bold">

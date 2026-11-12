@@ -68,7 +68,8 @@ export default function ImageGenPage() {
   // 参照画像も、端末で顔・ナンバーなどをぼかしてから送る(ぼかす前の写真は AI に送らない。UIUX改装 項目57)
   const { requestMaskedPhoto, photoMaskerDialog } = useMaskedPhotoPicker({
     description: "画像を作る前に、写っている人や車が分からないようにします。",
-    notice: "この加工した写真だけを、画像の作成(Google Gemini。文字入りの画像は OpenAI)に送ります。元の写真は端末の外に出しません。",
+    // 画面には特定の AI の名前を書かない(送り先の会社はプライバシーポリシーに記載)
+    notice: "この加工した写真だけを、AI による画像の作成に送ります。元の写真は端末の外に出しません。",
   })
   const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target

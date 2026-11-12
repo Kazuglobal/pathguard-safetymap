@@ -32,6 +32,19 @@ const USER_ID = '11111111-1111-4111-8111-111111111111'
 const PHOTO_ID = '22222222-2222-4222-8222-222222222222'
 const MASKED_DATA_URL = 'data:image/webp;base64,UklGRg=='
 
+const be16 = (n: number) => [(n >> 8) & 0xff, n & 0xff]
+const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0))
+/** Safari の canvas が書き出す JPEG の形(JFIF だけ。位置情報なし)。 */
+const APP0 = [0xff, 0xe0, ...be16(16), ...ascii('JFIF'), 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]
+const SOS = [0xff, 0xda, ...be16(8), 1, 1, 0, 0, 0x3f, 0, 0x12, 0xff, 0xd9]
+/** カメラの写真: Exif の IFD0 に GPS の場所(0x8825)がある。 */
+const GPS_APP1 = (() => {
+  const tiff = [...ascii('II'), 42, 0, 8, 0, 0, 0, 1, 0, 0x25, 0x88, 4, 0, 1, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0]
+  return [0xff, 0xe1, ...be16(2 + 6 + tiff.length), ...ascii('Exif'), 0, 0, ...tiff]
+})()
+const jpegDataUrl = (...segments: number[][]) =>
+  `data:image/jpeg;base64,${Buffer.from([0xff, 0xd8, ...segments.flat(), ...SOS]).toString('base64')}`
+
 describe('hunter R2 storage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -69,8 +82,32 @@ describe('hunter R2 storage', () => {
     )
   })
 
+  it('accepts the JPEG Safari writes (no location data) and still stores it re-encoded as WebP', async () => {
+    mocks.imageInfo.mockResolvedValueOnce({ format: 'image/jpeg' })
+    const result = await uploadMaskedPhoto(USER_ID, PHOTO_ID, jpegDataUrl(APP0))
+
+    expect(result.path).toBe(`hunter-photos/${USER_ID}/${PHOTO_ID}/masked.webp`)
+    expect(mocks.imageOutput).toHaveBeenCalledWith({ format: 'image/webp', quality: 85 })
+    expect(mocks.r2Put).toHaveBeenCalledWith(
+      result.path,
+      expect.anything(),
+      expect.objectContaining({ httpMetadata: expect.objectContaining({ contentType: 'image/webp' }) }),
+    )
+  })
+
+  it('checks the label against the format read from the bytes (a camera JPEG labelled WebP is refused)', async () => {
+    mocks.imageInfo.mockResolvedValueOnce({ format: 'image/jpeg' })
+    await expect(uploadMaskedPhoto(USER_ID, PHOTO_ID, MASKED_DATA_URL)).rejects.toThrow('形式')
+    expect(mocks.r2Put).not.toHaveBeenCalled()
+
+    // 表記の揺れ(jpg / 見出しなし)では止めない
+    mocks.imageInfo.mockResolvedValueOnce({ format: 'jpg' })
+    await expect(uploadMaskedPhoto(USER_ID, PHOTO_ID, jpegDataUrl(APP0))).resolves.toMatchObject({ path: expect.any(String) })
+  })
+
   it.each([
-    ['JPEG', 'data:image/jpeg;base64,UklGRg=='],
+    ['JPEG with GPS (a camera photo that skipped masking)', jpegDataUrl(APP0, GPS_APP1)],
+    ['JPEG that is not a JPEG', 'data:image/jpeg;base64,UklGRg=='],
     ['PNG', 'data:image/png;base64,UklGRg=='],
     ['plain text', 'not-a-data-url'],
     ['empty payload', 'data:image/webp;base64,'],

@@ -12,7 +12,7 @@ export default function TermsPage() {
       <LegalSection title="1. サービス概要">
         <p>
           PathGuardian(通学路みまもりアプリ。以下「本サービス」)は、通学路・生活道路の危険情報や不審者情報をユーザー同士で共有し、
-          AI(Anthropic Claude / Google Geminiなど)による画像解析を活用して、地域の安全な移動をサポートすることを目的としたサービスです。
+          AI による画像解析を活用して、地域の安全な移動をサポートすることを目的としたサービスです。
         </p>
       </LegalSection>
 

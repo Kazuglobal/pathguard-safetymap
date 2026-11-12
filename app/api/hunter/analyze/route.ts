@@ -7,9 +7,13 @@ import {
   buildAccidentPromptContext,
   buildAccidentSummary,
 } from "@/lib/hunter/accident-context"
-import { analyzeHunterImage } from "@/lib/hunter/hunter-ai"
+import { analyzeHunterImage, type HunterAiUsage } from "@/lib/hunter/hunter-ai"
+import { logApiUsage } from "@/lib/api-usage-logger"
+import { calculateCost } from "@/lib/api-cost-calculator"
 import { buildGuideMode } from "@/lib/hunter/fallback-hazards"
 import { putAnswerKey } from "@/lib/hunter/answer-cache"
+import { toCachedHazardKey } from "@/lib/hunter/answer-key"
+import { HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
 import { logAnalyzeFallback } from "@/lib/hunter/observability"
 import { parseAnalyzeBody } from "@/lib/hunter/validation"
 import {
@@ -33,10 +37,32 @@ export const runtime = "nodejs"
 export const maxDuration = 60
 
 /**
- * 検出に紐づける推論モデル名 (hazard_detections.model 用)。
+ * Gemini で解析したときに検出に紐づける推論モデル名 (hazard_detections.model 用)。
  * callGeminiVision が実際に解決するモデルと同じ手順で解決し、DB記録と実呼び出しを一致させる。
+ * Claude で解析したときは analysis.model(Claude のモデル名)を記録する。
  */
 const HUNTER_VISION_MODEL = getSanitizedGeminiVisionModel(REALTIME_VISION_DEFAULT_MODEL)
+/** AI を 1 回呼ぶごとに、実際のトークン数で使用量のログ(管理画面の費用)へ書く。 */
+function logHunterAiUsage(usage: HunterAiUsage): void {
+  const model = usage.provider === "anthropic" && usage.model ? usage.model : HUNTER_VISION_MODEL
+  logApiUsage({
+    api_provider: usage.provider,
+    api_endpoint: "hunter-analyze",
+    model_name: model,
+    input_tokens: usage.inputTokens,
+    output_tokens: usage.outputTokens,
+    request_count: 1,
+    estimated_cost_usd: calculateCost({
+      provider: usage.provider,
+      model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+    }),
+    success: usage.ok,
+    ...(usage.ok ? {} : { error_message: usage.provider === "anthropic" ? "unusable answer; fell back to Gemini" : "request failed" }),
+  })
+}
+
 /** 写真の保持期限。サーバ側で now() から算出する。日数はプライバシーポリシーの表と同じ値(lib/retention/policy.ts) */
 const PHOTO_RETENTION_DAYS = RETENTION_DAYS.hunterPhoto
 
@@ -51,6 +77,8 @@ async function savePhoto(
   imageBase64: string,
   pin: { latitude: number; longitude: number },
   hazards: readonly HunterHazard[],
+  /** 解析に使ったモデル(Claude で解析したときの名前。無ければ Gemini の既定)。 */
+  model: string = HUNTER_VISION_MODEL,
 ): Promise<{ photoId: string | null; signedUrl: string | null; savedError: boolean }> {
   try {
     const photoId = crypto.randomUUID()
@@ -68,12 +96,17 @@ async function savePhoto(
         type: hazard.type,
         kind: hazard.kind ?? null,
         accidentLink: hazard.accidentLink ?? null,
-        region: { ...hazard.region },
+        // region 列は JSON。当たり枠と focus を同居させ、きろくの再プレイでも同じ判定にする(移行不要)。
+        region: {
+          ...hazard.region,
+          ...(hazard.hitRegion ? { hitRegion: { ...hazard.hitRegion } } : {}),
+          ...(hazard.focusPoint ? { focusPoint: { ...hazard.focusPoint } } : {}),
+        },
         severity: hazard.severity,
         kidExplanation: hazard.kidExplanation,
         safeAction: hazard.safeAction,
         confidence: hazard.confidence,
-        model: HUNTER_VISION_MODEL,
+        model,
         })),
       })
     } catch (error) {
@@ -140,6 +173,7 @@ export async function POST(request: NextRequest) {
       accidentContext,
       accidentSummary,
       purpose: "hunter-explore",
+      onUsage: logHunterAiUsage,
     })
 
     // フォールバック理由は HTTP では検知できないため必ず構造化ログへ。
@@ -151,32 +185,31 @@ export async function POST(request: NextRequest) {
     // サーバ権威にする。Upstash 未設定なら no-op(=従来のクライアント供給で採点)。
     // 画像/PII は保存しない。
     await putAnswerKey(sessionId, {
-      hazards: analysis.hazards.map((h) => ({
-        id: h.id,
-        region: h.region,
-        severity: h.severity,
-        confidence: h.confidence,
-      })),
+      hazards: analysis.hazards.map(toCachedHazardKey),
       quiz: analysis.quiz.map((q) => ({
         id: q.id,
         kind: q.kind,
         correctChoiceId: q.correctChoiceId,
         answerRegion: q.answerRegion,
       })),
+      rules: HUNTER_RULES_VERSION,
     })
 
     // 保存はオプトイン (save=true) かつ explore で hazards があるときのみ。
     const saved =
       save && analysis.mode === "explore" && analysis.hazards.length > 0
-        ? await savePhoto(actor, imageBase64, pin, analysis.hazards)
+        ? await savePhoto(actor, imageBase64, pin, analysis.hazards, analysis.model)
         : null
 
     return NextResponse.json({
       sessionId,
+      rules: HUNTER_RULES_VERSION,
       mode: analysis.mode,
       hazards: analysis.hazards,
       quiz: analysis.quiz,
       safePoints: analysis.safePoints,
+      // おうちの人むけの根拠(こたえあわせで使う)。保存はしない。
+      parentNotes: analysis.parentNotes ?? [],
       accident: accidentSummary,
       usedFallback: analysis.usedFallback,
       fallbackReason: analysis.fallbackReason,

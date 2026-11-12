@@ -9,6 +9,7 @@ vi.mock('@/lib/db/repos/gamification.repo', () => ({ incrementPoints: mocks.poin
 vi.mock('@/lib/upstash-rate-limiter', async original => ({
   ...await original<typeof import('@/lib/upstash-rate-limiter')>(), checkPaidApiRateLimit: mocks.rate,
 }))
+import { logApiUsage } from '@/lib/api-usage-logger'
 import { POST as hazard } from '@/app/api/hazard-game/analyze/route'
 import { POST as practice } from '@/app/api/safety-quest/private-practice/route'
 const request = (body: unknown) => new NextRequest('http://localhost/api/analyze', {
@@ -53,6 +54,36 @@ describe('paid AI analysis boundaries', () => {
       expect(await response.json()).toMatchObject({ score: analysis.score, legacyScore: 100, overallSafety: 5 })
     }
     expect(mocks.points).not.toHaveBeenCalled()
+  })
+  it('logs Claude with its real token counts, and Gemini only when Gemini answered', async () => {
+    mocks.analyze.mockImplementation(async (_image: string, options: { onClaudeUsage?: (a: unknown) => void }) => {
+      options.onClaudeUsage?.({ model: 'claude-haiku-5-5', inputTokens: 3000, outputTokens: 2000, ok: true })
+      return { ...analysis, analysisModel: { provider: 'anthropic', model: 'claude-haiku-5-5' } }
+    })
+    expect((await hazard(request({ imageBase64: 'abc' }))).status).toBe(200)
+    expect(vi.mocked(logApiUsage)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(logApiUsage).mock.calls[0][0]).toMatchObject({
+      api_provider: 'anthropic', model_name: 'claude-haiku-5-5', input_tokens: 3000, output_tokens: 2000, success: true,
+    })
+    // $0.10 / $0.50 per 1M tokens
+    expect(vi.mocked(logApiUsage).mock.calls[0][0].estimated_cost_usd).toBeCloseTo(0.0003 + 0.001, 10)
+
+    vi.mocked(logApiUsage).mockClear()
+    mocks.analyze.mockImplementation(async (_image: string, options: { onClaudeUsage?: (a: unknown) => void }) => {
+      options.onClaudeUsage?.({ model: 'claude-haiku-5-5', inputTokens: 3000, outputTokens: 20, ok: false })
+      return analysis
+    })
+    expect((await hazard(request({ imageBase64: 'abc' }))).status).toBe(200)
+    expect(vi.mocked(logApiUsage).mock.calls.map(([entry]) => [entry.api_provider, entry.success])).toEqual([
+      ['anthropic', false],
+      ['gemini', true],
+    ])
+  })
+  it('does not name an AI company in the quota message shown to users', async () => {
+    mocks.analyze.mockRejectedValue(new Error('quota exceeded'))
+    const response = await hazard(request({ imageBase64: 'abc' }))
+    expect(response.status).toBe(429)
+    expect((await response.json()).error).not.toMatch(/Gemini|Google|Claude|Anthropic|OpenAI/)
   })
   it('rejects oversized hazard images without content-length', async () => {
     const response = await hazard(request({ imageBase64: 'a'.repeat(25 * 1024 * 1024 + 1) }))

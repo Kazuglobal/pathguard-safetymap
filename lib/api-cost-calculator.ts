@@ -96,6 +96,13 @@ export const API_PRICING = {
       outputPer1kTokens: 0.015,
     },
   },
+  anthropic: {
+    // Claude Haiku 5.5: $0.10/M input, $0.50/M output(プロンプト 10万トークン以下の料金。画像解析はこの範囲)。
+    'claude-haiku-5-5': {
+      inputPer1kTokens: 0.0001,
+      outputPer1kTokens: 0.0005,
+    },
+  },
   mapbox: {
     directions: {
       freeTier: 100_000,

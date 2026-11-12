@@ -19,6 +19,9 @@ import {
   type HunterDangerKind,
 } from "@/lib/hunter/kid-copy"
 import type { RiskSeverity } from "@/lib/hazard-game-types"
+import { normalizeNativeCoords } from "@/lib/hunter/box2d"
+import type { ImageSize } from "@/lib/vision/image-size"
+import { pixelBoxToRegion, pixelPointToNormalized } from "@/lib/vision/pixel-coords"
 
 // ---- 生AI型 (strictNullChecks:false 環境では z.infer が緩むため明示interface) ----
 
@@ -42,6 +45,8 @@ export interface RawDangerPoint {
   kind: HunterDangerKind
   kidType?: string
   region: RawAiRegion
+  /** いちばん見るべき 1 点(正規化座標)。無い・壊れていれば undefined。 */
+  focus?: { x: number; y: number }
   severity?: RiskSeverity
   confidence?: number
   whyDangerous?: string
@@ -56,6 +61,10 @@ export interface RawSafePoint {
   kidType?: string
   region?: RawAiRegion
   whyGood?: string
+  /** 工夫の種類(未知・欠落は sanitize が kidType から推定)。 */
+  safeKind?: string
+  /** その工夫の上で いちばん分かりやすい 1 点(正規化座標)。 */
+  focus?: { x: number; y: number }
 }
 
 export interface ValidatedHunterResponse {
@@ -143,14 +152,22 @@ export function salvageRegionScale(point: unknown): unknown {
   }
 }
 
-// danger point の必須は region のみ。付随フィールドは .catch で型崩れを
-// undefined 化し、点そのものは保持する(sanitize が既定値・子ども文で補完)。
-const dangerPointSchema = z.preprocess(salvageRegionScale, z.object({
-  // 分析・eval採取専用(子ども表示経路なし。sanitize は読まず HunterHazard へ伝播しない)。
+const pointSchema = z.object({ x: zNum, y: zNum })
+
+/** Gemini ネイティブの box_2d/focus を正規化してから、旧形式 region のスケール救済へ回す。 */
+function preprocessCoords(point: unknown): unknown {
+  return salvageRegionScale(normalizeNativeCoords(point))
+}
+
+// danger point の必須は region のみ(box_2d は preprocess で region へ直る)。付随フィールドは
+// .catch で型崩れを undefined 化し、点そのものは保持する(sanitize が既定値・子ども文で補完)。
+const dangerPointSchema = z.preprocess(preprocessCoords, z.object({
+  // 分析用。HunterHazard へは入れず、検証してから おうちの人むけの parentNotes にだけ出す。
   evidence: z.string().optional().catch(undefined),
   kind: zKind,
   kidType: z.string().optional().catch(undefined),
   region: regionSchema,
+  focus: pointSchema.optional().catch(undefined),
   severity: severitySchema,
   confidence: zNum.optional().catch(undefined),
   whyDangerous: z.string().optional().catch(undefined),
@@ -160,11 +177,13 @@ const dangerPointSchema = z.preprocess(salvageRegionScale, z.object({
   quiz: quizSchema.optional().catch(undefined),
 }))
 
-const safePointSchema = z.preprocess(salvageRegionScale, z.object({
+const safePointSchema = z.preprocess(preprocessCoords, z.object({
   kind: zKind.optional().catch(undefined),
   kidType: z.string().optional().catch(undefined),
   region: regionSchema.optional().catch(undefined),
   whyGood: z.string().optional().catch(undefined),
+  safeKind: z.string().optional().catch(undefined),
+  focus: pointSchema.optional().catch(undefined),
 }))
 
 // 付随フィールド1つの型崩れで dangerPoints を巻き添えにしないよう、
@@ -176,6 +195,30 @@ const topSchema = z.object({
   noHazardFollow: z.string().nullable().optional().catch(null),
 })
 
+export interface ValidateHunterOptions {
+  /**
+   * 位置をピクセル座標(box = [x1,y1,x2,y2] / focus = [x,y])で受けたときの、AI が見た画像の大きさ。
+   * Claude で解析したときに渡す(Gemini の box_2d / 旧 region はこれ無しで読む)。
+   */
+  readonly pixelSize?: ImageSize
+}
+
+/** ピクセル座標の box / focus を、正規化の region / focus へ入れ直す(入力は変えない)。 */
+function fromPixelCoords(point: unknown, size: ImageSize): unknown {
+  if (typeof point !== "object" || point === null || !("box" in point)) return point
+  const { box, focus, ...rest } = point as Record<string, unknown>
+  const region = pixelBoxToRegion(box, size)
+  const normalizedFocus = focus === undefined ? null : pixelPointToNormalized(focus, size)
+  return { ...rest, ...(region ? { region } : {}), ...(normalizedFocus ? { focus: normalizedFocus } : {}) }
+}
+
+function withPixelCoords(raw: unknown, size: ImageSize | undefined): unknown {
+  if (!size || typeof raw !== "object" || raw === null) return raw
+  const r = raw as Record<string, unknown>
+  const map = (list: unknown) => (Array.isArray(list) ? list.map((p) => fromPixelCoords(p, size)) : list)
+  return { ...r, dangerPoints: map(r.dangerPoints), safePoints: map(r.safePoints) }
+}
+
 /**
  * 生AI応答を検証して、可能な限り救い出した構造を返す。
  * - imageUsable は欠落・判別不能時 true(=「使えない」と誤断定しない)。
@@ -184,8 +227,8 @@ const topSchema = z.object({
  * - dangerPoints/safePoints は要素単位 safeParse。region を復元できない
  *   要素だけをドロップし、severity/quiz 等の破損は保持したまま後段へ渡す。
  */
-export function validateHunterResponse(raw: unknown): ValidatedHunterResponse {
-  const top = topSchema.safeParse(raw)
+export function validateHunterResponse(raw: unknown, options: ValidateHunterOptions = {}): ValidatedHunterResponse {
+  const top = topSchema.safeParse(withPixelCoords(raw, options.pixelSize))
   if (!top.success) {
     return { imageUsable: true, dangerPoints: [], safePoints: [], noHazardFollow: null }
   }

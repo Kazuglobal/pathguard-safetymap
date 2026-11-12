@@ -3,10 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/lib/gemini-hazard", () => ({
   callGeminiVision: vi.fn(),
 }))
+// 実際の Claude は呼ばない(既定はキー無し = Gemini の経路)
+vi.mock("@/lib/claude-vision", () => ({
+  callClaudeVision: vi.fn(),
+  hasClaudeApiKey: vi.fn(() => false),
+  claudeVisionModel: vi.fn(() => "claude-haiku-5-5"),
+}))
 
 import { callGeminiVision } from "@/lib/gemini-hazard"
-import { analyzeHunterImage, buildHunterPrompt, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
-import { HUNTER_GENERATION_CONFIG, HUNTER_RESPONSE_SCHEMA } from "@/lib/hunter/ai-request-schema"
+import { callClaudeVision, hasClaudeApiKey } from "@/lib/claude-vision"
+import { analyzeHunterImage, buildHunterPrompt, CLAUDE_FAST_FAILURE_MS, isRetryableGeminiError } from "@/lib/hunter/hunter-ai"
+import { CLAUDE_MAX_IMAGE_BASE64_CHARS } from "@/lib/vision/claude-image"
+import {
+  buildHunterResponseSchema,
+  HUNTER_GENERATION_CONFIG,
+  HUNTER_RESPONSE_SCHEMA,
+} from "@/lib/hunter/ai-request-schema"
 import { REALTIME_VISION_DEFAULT_MODEL } from "@/lib/gemini-util"
 import { DISPLAY_CONF_MIN, MAX_AREA } from "@/lib/hunter/sanitize"
 import type { HunterAccidentSummary } from "@/lib/hunter/types"
@@ -91,8 +103,13 @@ describe("analyzeHunterImage", () => {
   it("builds a prompt that hardens against false-positive 'mundane object' hazards", () => {
     const prompt = buildHunterPrompt(undefined, accident)
     expect(prompt).toContain("死角を作っていない、ふつうに停まっている車")
-    expect(prompt).toContain("region(bbox)の正確さ")
+    expect(prompt).toContain("box_2d(枠)と focus(見るべき1点)の正確さ")
+    expect(prompt).toContain("focus は必ず box_2d の内側に置く")
     expect(prompt).toContain(`${DISPLAY_CONF_MIN} 未満の確信度なら`)
+    // 切り戻し用の旧形式も同じ関数で作れる
+    const legacy = buildHunterPrompt(undefined, accident, "region")
+    expect(legacy).toContain("region(bbox)の正確さ")
+    expect(legacy).not.toContain("box_2d")
   })
 
   it("v2プロンプト: 3ゲート二段判定・evidence先行・2周目チェック・誤答類型・面積閾値開示を含む", () => {
@@ -146,7 +163,8 @@ describe("analyzeHunterImage", () => {
       "evidence",
       "kind",
       "kidType",
-      "region",
+      "box_2d",
+      "focus",
       "severity",
       "confidence",
       "whyDangerous",
@@ -154,6 +172,31 @@ describe("analyzeHunterImage", () => {
       "accidentLink",
       "quiz",
     ])
+    // focus は必須にしない(無ければ枠の中心で採点できる)
+    expect(items.required).toContain("box_2d")
+    expect(items.required).not.toContain("focus")
+  })
+
+  it("safePoints も focus と種類(safeKind)を出させる(あんぜん さがし の当たり枠と理由の3択)", () => {
+    const safe = (buildHunterResponseSchema("box2d").properties as any).safePoints.items
+    expect(Object.keys(safe.properties)).toEqual(expect.arrayContaining(["safeKind", "box_2d", "focus"]))
+    const legacy = (buildHunterResponseSchema("region").properties as any).safePoints.items
+    expect(Object.keys(legacy.properties)).not.toContain("focus")
+    const prompt = buildHunterPrompt(undefined, accident)
+    expect(prompt).toContain("curve_mirror=カーブミラー")
+    expect(prompt).toContain("focus は その工夫そのものの上で")
+  })
+
+  it("responseSchema: propertyOrdering と properties のキーが完全に一致する(ずれると Gemini が 400 を返す)", () => {
+    for (const format of ["box2d", "region"] as const) {
+      const props = buildHunterResponseSchema(format).properties as any
+      const items = props.dangerPoints.items
+      expect([...items.propertyOrdering].sort()).toEqual(Object.keys(items.properties).sort())
+      for (const key of items.required) expect(Object.keys(items.properties)).toContain(key)
+      const safe = props.safePoints.items
+      expect([...safe.propertyOrdering].sort()).toEqual(Object.keys(safe.properties).sort())
+      expect(safe.propertyOrdering[0]).toBe("safeKind")
+    }
   })
 
   it("promotes a confident mid-size point to a place quiz (golden)", async () => {
@@ -264,6 +307,162 @@ describe("analyzeHunterImage", () => {
     const r = await analyzeHunterImage("data:image/png;base64,x", opts)
     expect(callGeminiVision).toHaveBeenCalledTimes(2)
     expect(r.fallbackReason).toBe("ai_error")
+  })
+})
+
+describe("analyzeHunterImage — Claude(Haiku 5.5)を先に使う", () => {
+  /** 1600×1200 の PNG(ヘッダだけ。サイズの読み取りに使う)。 */
+  const be32 = (n: number) => [(n >>> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]
+  const PNG = `data:image/png;base64,${Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...be32(13), 0x49, 0x48, 0x44, 0x52, ...be32(1600), ...be32(1200), 8, 2, 0, 0, 0,
+  ]).toString("base64")}`
+
+  /** Claude はピクセル座標: box = [x1,y1,x2,y2]・focus = [x,y](1600×1200 の画像で)。 */
+  function claudePoint(overrides: Record<string, unknown> = {}) {
+    const { region: _region, ...rest } = pt()
+    return { ...rest, box: [640, 624, 928, 864], focus: [672, 732], ...overrides }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(hasClaudeApiKey).mockReturnValue(true)
+  })
+
+  it("asks Claude in pixel coordinates (with the image size) and converts them to the app's 0..1 coordinates", async () => {
+    vi.mocked(callClaudeVision).mockResolvedValue(aiJson([claudePoint()]))
+    const r = await analyzeHunterImage(PNG, opts)
+    expect(callGeminiVision).not.toHaveBeenCalled()
+    const call = vi.mocked(callClaudeVision).mock.calls[0][0]
+    expect(call.mediaType).toBe("image/png")
+    expect(call.prompt).toContain("幅 1600 ピクセル × 高さ 1200 ピクセル")
+    expect(call.prompt).toContain("[x1, y1, x2, y2]")
+    expect(call.prompt).not.toContain("0〜1000")
+    expect(r.mode).toBe("explore")
+    expect(r.model).toBe("claude-haiku-5-5")
+    expect(r.hazards[0].region.x).toBeCloseTo(0.4, 5)
+    expect(r.hazards[0].region.y).toBeCloseTo(0.52, 5)
+    expect(r.hazards[0].focusPoint!.x).toBeCloseTo(0.42, 5)
+    expect(r.hazards[0].focusPoint!.y).toBeCloseTo(0.61, 5)
+  })
+
+  it("falls back to Gemini with its normal budget when Claude fails quickly (overloaded, no credit, bad key)", async () => {
+    vi.mocked(callClaudeVision).mockRejectedValue(Object.assign(new Error("overloaded"), { status: 529 }))
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    const r = await analyzeHunterImage(PNG, opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(1)
+    // 1 回目は Claude を使わないときと同じ 35 秒の設定
+    expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toEqual(HUNTER_GENERATION_CONFIG)
+    // Gemini には Gemini 用(0〜1000 の box_2d)のプロンプトを渡す
+    expect(vi.mocked(callGeminiVision).mock.calls[0][1]).toContain("box_2d")
+    expect(r.mode).toBe("explore")
+    expect(r.model).toBeUndefined()
+  })
+
+  it("after a quick Claude failure, Gemini still retries a transient error and re-asks for unreadable JSON", async () => {
+    vi.mocked(callClaudeVision).mockRejectedValue(Object.assign(new Error("overloaded"), { status: 529 }))
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable"))
+      .mockResolvedValueOnce("{not json")
+      .mockResolvedValueOnce(aiJson([pt()]))
+    const r = await analyzeHunterImage(PNG, opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(3)
+    expect(r.mode).toBe("explore")
+  })
+
+  it("after a slow Claude failure (time used up), Gemini retries a transient error but does not re-ask for JSON", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      vi.mocked(callClaudeVision).mockImplementation(async () => {
+        vi.setSystemTime(Date.now() + CLAUDE_FAST_FAILURE_MS + 20_000)
+        throw Object.assign(new Error("timeout"), { name: "APIConnectionTimeoutError" })
+      })
+      vi.mocked(callGeminiVision)
+        .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable"))
+        .mockResolvedValueOnce("{not json")
+      const r = await analyzeHunterImage(PNG, opts)
+      expect(callGeminiVision).toHaveBeenCalledTimes(2)
+      expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toEqual(HUNTER_GENERATION_CONFIG)
+      expect(r.fallbackReason).toBe("parse_error")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("falls back to Gemini when Claude's answer is not readable JSON", async () => {
+    vi.mocked(callClaudeVision).mockResolvedValue("ごめんなさい、わかりません")
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    const r = await analyzeHunterImage(PNG, opts)
+    expect(callGeminiVision).toHaveBeenCalledTimes(1)
+    expect(r.hazards).toHaveLength(1)
+  })
+
+  it("uses Gemini (full budget) when the image size cannot be read", async () => {
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    await analyzeHunterImage("data:image/png;base64,x", opts)
+    expect(callClaudeVision).not.toHaveBeenCalled()
+    expect(vi.mocked(callGeminiVision).mock.calls[0][2]).toEqual(HUNTER_GENERATION_CONFIG)
+  })
+
+  it("lands in guide(ai_error) when both Claude and the Gemini fallback (with its one retry) fail", async () => {
+    vi.mocked(callClaudeVision).mockRejectedValue(new Error("down"))
+    vi.mocked(callGeminiVision).mockRejectedValue(new Error("Gemini request failed: 503 Service Unavailable"))
+    const r = await analyzeHunterImage(PNG, opts)
+    expect(r.mode).toBe("guide")
+    expect(r.fallbackReason).toBe("ai_error")
+    expect(callGeminiVision).toHaveBeenCalledTimes(2)
+  })
+
+  it("reports one usage entry per AI call with real tokens: the unusable Claude answer, the failed and the retried Gemini call", async () => {
+    const onUsage = vi.fn()
+    vi.mocked(callClaudeVision).mockImplementation(async (params) => {
+      params.onUsage?.({ inputTokens: 3000, outputTokens: 40 })
+      return "ごめんなさい"
+    })
+    vi.mocked(callGeminiVision)
+      .mockRejectedValueOnce(new Error("Gemini request failed: 503 Service Unavailable"))
+      .mockImplementationOnce(async (_image, _prompt, _config, _model, report) => {
+        report?.({ inputTokens: 2000, outputTokens: 900 })
+        return aiJson([pt()])
+      })
+    const r = await analyzeHunterImage(PNG, { ...opts, onUsage })
+    expect(r.mode).toBe("explore")
+    expect(onUsage.mock.calls.map(([u]) => u)).toEqual([
+      { provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 3000, outputTokens: 40, ok: false },
+      { provider: "gemini", inputTokens: 0, outputTokens: 0, ok: false },
+      { provider: "gemini", inputTokens: 2000, outputTokens: 900, ok: true },
+    ])
+  })
+
+  it("also leaves a zero-token entry when Claude fails before answering (timeout, 529), so outages show up", async () => {
+    const onUsage = vi.fn()
+    vi.mocked(callClaudeVision).mockRejectedValue(Object.assign(new Error("overloaded"), { status: 529 }))
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    await analyzeHunterImage(PNG, { ...opts, onUsage })
+    expect(onUsage.mock.calls[0][0]).toEqual({ provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 0, outputTokens: 0, ok: false })
+    expect(onUsage).toHaveBeenCalledTimes(2)
+  })
+
+  it("reports a used Claude answer as ok and never lets a broken usage log stop the analysis", async () => {
+    vi.mocked(callClaudeVision).mockImplementation(async (params) => {
+      params.onUsage?.({ inputTokens: 3100, outputTokens: 1500 })
+      return aiJson([claudePoint()])
+    })
+    const onUsage = vi.fn(() => {
+      throw new Error("db down")
+    })
+    const r = await analyzeHunterImage(PNG, { ...opts, onUsage })
+    expect(r.mode).toBe("explore")
+    expect(r.model).toBe("claude-haiku-5-5")
+    expect(onUsage).toHaveBeenCalledWith({ provider: "anthropic", model: "claude-haiku-5-5", inputTokens: 3100, outputTokens: 1500, ok: true })
+    expect(callGeminiVision).not.toHaveBeenCalled()
+  })
+
+  it("skips Claude for an image over its 10 MB (base64) limit and uses Gemini", async () => {
+    vi.mocked(callGeminiVision).mockResolvedValue(aiJson([pt()]))
+    const huge = PNG + "A".repeat(CLAUDE_MAX_IMAGE_BASE64_CHARS)
+    const r = await analyzeHunterImage(huge, opts)
+    expect(callClaudeVision).not.toHaveBeenCalled()
+    expect(r.mode).toBe("explore")
   })
 })
 

@@ -70,6 +70,38 @@ describe("ExploreCanvas — letterbox tap correction", () => {
   })
 })
 
+describe("ExploreCanvas — keyboard aiming", () => {
+  it("taps the center with Enter, and moves the aim with the arrow keys (not stuck at the center)", () => {
+    const onTap = vi.fn()
+    render(<ExploreCanvas imageUrl="x.jpg" hazards={[hazard("A")]} foundIds={[]} onTap={onTap} lastTap={null} lastOutcome={null} />)
+    loadImage(400, 300)
+    const surface = screen.getByLabelText("しゃしんの上を タップして、きけんを さがそう")
+    fireEvent.keyDown(surface, { key: "Enter" })
+    expect(onTap).toHaveBeenLastCalledWith({ x: 0.5, y: 0.5 })
+    fireEvent.keyDown(surface, { key: "ArrowLeft" })
+    fireEvent.keyDown(surface, { key: "ArrowUp", shiftKey: true })
+    fireEvent.keyDown(surface, { key: " " })
+    const last = onTap.mock.calls[onTap.mock.calls.length - 1][0]
+    expect(last.x).toBeCloseTo(0.45, 10)
+    expect(last.y).toBeCloseTo(0.35, 10)
+    // 操作の説明は読み上げ用の説明として付いている
+    expect(surface).toHaveAccessibleDescription(/やじるしキー/)
+  })
+
+  it("does not check a spot before the photo is loaded or on key auto-repeat (no lost magnifiers)", () => {
+    const onTap = vi.fn()
+    render(<ExploreCanvas imageUrl="x.jpg" hazards={[hazard("A")]} foundIds={[]} onTap={onTap} lastTap={null} lastOutcome={null} />)
+    const surface = screen.getByLabelText("しゃしんの上を タップして、きけんを さがそう")
+    fireEvent.keyDown(surface, { key: "Enter" })
+    expect(onTap).not.toHaveBeenCalled()
+    loadImage(400, 300)
+    fireEvent.keyDown(surface, { key: "Enter", repeat: true })
+    expect(onTap).not.toHaveBeenCalled()
+    fireEvent.keyDown(surface, { key: "Enter" })
+    expect(onTap).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("ExploreCanvas — feedback and no auto-discovery", () => {
   it("announces a found tap and renders no marker for unfound hazards", () => {
     const outcome: HunterTapOutcome = { result: "hit", hazardId: "A", points: 150 }
@@ -89,7 +121,7 @@ describe("ExploreCanvas — feedback and no auto-discovery", () => {
     expect(screen.getByRole("status")).toHaveTextContent("みつけたね！")
   })
 
-  it("shows the photo-specific reason and safe action immediately after a hit", () => {
+  it("does not give the answer away right after a hit (the reason question comes first)", () => {
     const outcome: HunterTapOutcome = { result: "hit", hazardId: "A", points: 150 }
     render(
       <ExploreCanvas
@@ -99,10 +131,49 @@ describe("ExploreCanvas — feedback and no auto-discovery", () => {
         onTap={vi.fn()}
         lastTap={{ x: 0.4, y: 0.4 }}
         lastOutcome={outcome}
+        activeHazardId="A"
       />,
     )
-    expect(screen.getByText("あぶないよ")).toBeInTheDocument()
-    expect(screen.getByText(/とまろう/)).toBeInTheDocument()
+    // 説明は理由を答えたあと(ReasonSheet)。キャンバスには出さない
+    expect(screen.queryByText("あぶないよ")).toBeNull()
+    // 答え待ちの危険はスタンプではなく、ふちどりで見せる
+    expect(screen.queryByLabelText(/みつけた きをつけるところ/)).toBeNull()
+  })
+
+  it("stamps a found hazard, and says when the reason was understood too", () => {
+    render(
+      <ExploreCanvas
+        imageUrl="x.jpg"
+        hazards={[hazard("A"), hazard("B")]}
+        foundIds={["A", "B"]}
+        understoodIds={["A"]}
+        onTap={vi.fn()}
+        lastTap={null}
+        lastOutcome={null}
+      />,
+    )
+    expect(screen.getByLabelText("みつけた きをつけるところ: 見通しの悪い角（りゆうも わかった）")).toBeInTheDocument()
+    expect(screen.getAllByLabelText("みつけた きをつけるところ: 見通しの悪い角")).toHaveLength(1)
+  })
+
+  it("tells the child a found spot was already found instead of counting a miss", () => {
+    const again: HunterTapOutcome = { result: "miss", hazardId: null, points: 0, nearestId: null, alreadyFound: true }
+    render(
+      <ExploreCanvas imageUrl="x.jpg" hazards={[hazard("A")]} foundIds={["A"]} onTap={vi.fn()} lastTap={{ x: 0.4, y: 0.4 }} lastOutcome={again} />,
+    )
+    expect(screen.getByRole("status")).toHaveTextContent("そこは もう みつけたよ！")
+  })
+
+  it("ignores taps once the round is locked (out of magnifiers)", () => {
+    const onTap = vi.fn()
+    render(
+      <ExploreCanvas imageUrl="x.jpg" hazards={[hazard("A")]} foundIds={[]} onTap={onTap} lastTap={null} lastOutcome={null} locked />,
+    )
+    loadImage(400, 300)
+    const surface = screen.getByLabelText("しゃしんの上を タップして、きけんを さがそう")
+    expect(surface).toHaveAttribute("aria-disabled", "true")
+    fireEvent.click(surface, { clientX: 200, clientY: 150 })
+    expect(onTap).not.toHaveBeenCalled()
   })
 
   it("escalates to a warm + direction announcement after repeated misses", () => {
@@ -125,5 +196,22 @@ describe("ExploreCanvas — feedback and no auto-discovery", () => {
     // 2回連続で外すと Lv1 ヒント(温度+方向)が読み上げに出る(distinct object で effect 再発火)
     rerender(<ExploreCanvas {...props} lastOutcome={near()} />)
     expect(screen.getByRole("status")).toHaveTextContent("みぎ")
+  })
+
+  it("does not escalate hints from rapid-fire misses (spam cannot pull hints)", () => {
+    const spam = (): HunterTapOutcome => ({
+      result: "near",
+      hazardId: "A",
+      points: 0,
+      nearestId: "A",
+      temperature: "warm",
+      direction: "right",
+      deliberate: false,
+    })
+    const props = { imageUrl: "x.jpg", hazards: [hazard("A")], foundIds: [], onTap: vi.fn(), lastTap: { x: 0.1, y: 0.4 } }
+    const { rerender } = render(<ExploreCanvas {...props} lastOutcome={spam()} />)
+    for (let i = 0; i < 5; i += 1) rerender(<ExploreCanvas {...props} lastOutcome={spam()} />)
+    expect(screen.getByRole("status")).not.toHaveTextContent("みぎ")
+    expect(screen.getByRole("status")).toHaveTextContent("おしい")
   })
 })

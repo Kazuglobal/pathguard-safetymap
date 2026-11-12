@@ -9,7 +9,7 @@ import MapboxUsagePanel from "@/components/admin/costs/mapbox-usage-panel"
 import BudgetSettingsDialog from "@/components/admin/costs/budget-settings-dialog"
 
 export interface ProviderCost {
-  readonly provider: "gemini" | "openai" | "mapbox"
+  readonly provider: "gemini" | "openai" | "mapbox" | "anthropic"
   readonly total_cost_usd: number
   readonly request_count: number
   readonly budget_usd: number
@@ -21,6 +21,7 @@ export interface DailyTrend {
   readonly gemini: number
   readonly openai: number
   readonly mapbox: number
+  readonly anthropic: number
 }
 
 export interface EndpointCost {

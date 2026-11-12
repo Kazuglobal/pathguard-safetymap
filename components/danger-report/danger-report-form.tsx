@@ -1843,7 +1843,7 @@ export default function DangerReportForm({
 
                 <p className="text-[12px] font-bold leading-relaxed" style={{ color: C.inkSoft }}>
                   住所推定のため、報告地点の概算座標（約100m精度）を外部ジオコーディングサービス（Mapbox）へ送信します。
-                  投稿した写真は危険度のAI分析のため、外部AIサービス（Anthropic Claude / Google Gemini）へ送信されます。
+                  投稿した写真は危険度のAI分析のため、外部の AI サービスへ送信されます。
                   {PRODUCT_FACTS.moderation.kidsBeforeSend}
                 </p>
               </div>

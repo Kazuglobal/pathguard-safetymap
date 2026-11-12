@@ -7,7 +7,7 @@ import {
   recordSafetyQuestAttemptAndAward,
 } from "@/lib/db/repos/gamification.repo"
 import { getHunterPhoto } from "@/lib/db/repos/hunter.repo"
-import { scoreSession } from "@/lib/hunter/scoring"
+import { scoreExploreSession } from "@/lib/hunter/explore-replay"
 import { scoreQuiz } from "@/lib/hunter/quiz"
 import {
   claimSessionScore,
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 })
   }
 
-  const { mode, hazards = [], taps = [], items = [], answers = [], sessionId, photoId } = parsed.data
+  const { mode, hazards = [], taps = [], items = [], answers = [], sessionId, photoId, rules } = parsed.data
 
   // sessionId のサーバキャッシュ(正解鍵)があれば、それで採点する=改ざん耐性。
   // Upstash が「未設定」の環境のみ、クライアント供給の定義で採点する(Phase0 後方互換。ただし記録はしない)。
@@ -202,11 +202,16 @@ export async function POST(request: NextRequest) {
           kidExplanation: "",
           safeAction: "",
           confidence: h.confidence,
+          // 採点はサーバ保持の当たり枠・kind で行う(作り直さない)。旧鍵には無く、region で採点される。
+          ...(h.kind ? { kind: h.kind } : {}),
+          ...(h.hitRegion ? { hitRegion: h.hitRegion } : {}),
+          ...(h.focusPoint ? { focusPoint: h.focusPoint } : {}),
         }))
       : hazards
 
-  const result = scoreSession(taps, scoringHazards)
-  const foundIds = result.outcomes.flatMap((o) => (o.result === "hit" && o.hazardId ? [o.hazardId] : []))
+  // 鍵があれば鍵の版。鍵の無い開発環境(記録しない)だけクライアントの版を使う。
+  const result = scoreExploreSession(taps, scoringHazards, cached ? cached.rules : rules)
+  const foundIds = result.discoveries.map((d) => d.hazardId)
   const persisted = await persistIfAllowed(actor, {
     mode: "explore",
     matches: result.matches,
@@ -217,14 +222,26 @@ export async function POST(request: NextRequest) {
     photoId: ownedPhotoId,
     foundIds,
     taps,
+    rules: result.rules,
+    understood: result.understood,
+    budget: result.budget,
+    misses: result.misses,
+    ignoredTaps: result.ignoredTaps,
   }, serverKeyed)
   return NextResponse.json({
     mode: "explore",
+    rules: result.rules,
     score: result.score,
     matches: result.matches,
+    understood: result.understood,
+    accuracy: result.accuracy,
     comboMax: result.comboMax,
     total: scoringHazards.length,
+    budget: result.budget,
+    misses: result.misses,
+    ignoredTaps: result.ignoredTaps,
     outcomes: result.outcomes,
+    discoveries: result.discoveries,
     ...persisted,
   })
 }

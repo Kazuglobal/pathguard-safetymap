@@ -130,10 +130,18 @@ describe('hunter photo D1 + R2 routes', () => {
       id: `${body.sessionId}-0`, kind: 'blind_corner', accidentLink: '出会い頭', severity: 'high',
       region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 },
     })
+    // 当たり枠の無い旧データ: 同じ規則で当たり枠を作り、kind と一緒に正解鍵へ載せる(採点ルール v2)。
     expect(mocks.putAnswerKey).toHaveBeenCalledWith(body.sessionId, {
-      hazards: [{ id: `${body.sessionId}-0`, region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 }, severity: 'high', confidence: 0.9 }],
+      hazards: [{
+        id: `${body.sessionId}-0`, region: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 }, severity: 'high', confidence: 0.9,
+        kind: 'blind_corner',
+        hitRegion: { x: 0.4, y: 0.5, w: 0.2, h: 0.2 },
+        focusPoint: { x: 0.5, y: 0.6 },
+      }],
       quiz: [],
+      rules: 2,
     })
+    expect(body.rules).toBe(2)
     expect(mocks.audit).toHaveBeenCalledWith(actor, 'replay_photo', PHOTO_ID)
     expect(JSON.stringify(body)).not.toContain('imageKey')
   })

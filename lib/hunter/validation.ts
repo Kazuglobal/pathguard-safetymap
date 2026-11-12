@@ -40,11 +40,16 @@ export const hunterHazardSchema = z.object({
   // 後方互換: 旧クライアント/テストの hazard リテラルが壊れないよう任意。
   kind: z.enum(KID_DANGER_KINDS).optional(),
   accidentLink: z.string().nullable().optional(),
+  // 採点用の当たり枠と focus(lib/hunter/hit-zone.ts)。zod は知らないキーを捨てるので明記する。
+  hitRegion: hunterRegionSchema.optional(),
+  focusPoint: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
 })
 
 export const hunterTapSchema = z.object({
   x: z.number().gte(0).lte(1),
   y: z.number().gte(0).lte(1),
+  // 「どうして あぶない？」で選んだ kind。不正な値はセッションごと 400 にせず、捨てるだけ。
+  reason: z.enum(KID_DANGER_KINDS).optional().catch(undefined),
 })
 
 export const hunterQuizChoiceSchema = z.object({
@@ -125,6 +130,8 @@ export const hunterSessionSchema = z
     // 「きろくに のこす」で保存した写真の ID(任意)。所有者検証はルート側で行い、
     // 他人の ID は無視する(結果には紐づけない)。
     photoId: z.string().uuid().optional(),
+    // 採点ルールの版(サーバの正解鍵が無い開発環境だけで使う。鍵があれば鍵の版が優先)。
+    rules: z.number().int().min(1).max(9).optional().catch(undefined),
   })
   .superRefine((data, ctx) => {
     if (data.mode === "quiz") {
@@ -164,6 +171,7 @@ export interface HunterSessionInput {
   answers?: HunterQuizAnswer[]
   sessionId?: string
   photoId?: string
+  rules?: number
 }
 
 // strictNullChecks:false では判別共用体の絞り込みが効かないため、単一形状にする。

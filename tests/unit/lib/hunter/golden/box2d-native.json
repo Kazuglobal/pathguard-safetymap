@@ -1,0 +1,60 @@
+{
+  "version": "hunter-1",
+  "imageUsable": true,
+  "dangerPoints": [
+    {
+      "evidence": "右の へいが 角の 先を かくしている",
+      "kind": "blind_corner",
+      "kidType": "見通しの悪い角",
+      "box_2d": [300, 560, 760, 980],
+      "focus": [520, 600],
+      "severity": "high",
+      "confidence": 0.84,
+      "whyDangerous": "みぎの かどの へいで 車が 見えにくいよ。",
+      "safeAction": "かどの 手前で 止まって みぎを 見よう。",
+      "accidentLink": "出会い頭",
+      "quiz": {
+        "question": "見通しの わるい 角では どうする？",
+        "choices": ["止まって 左右を 見る", "車の音が しなければ 進む", "走って ぬける", "車は 来ないと 決める"],
+        "explanation": "止まれば 車に すぐ 気づけるよ。"
+      }
+    },
+    {
+      "evidence": "ひだりの 白い 車の かげが 道を かくす",
+      "kind": "parked_car_shadow",
+      "kidType": "車のかげ",
+      "box_2d": [[420, 20, 880, 470]],
+      "focus": [700, 430],
+      "severity": "medium",
+      "confidence": 0.76,
+      "whyDangerous": "ひだりの しろい 車の かげから 人が 出てくるかも。",
+      "safeAction": "車の そばは ゆっくり 歩こう。",
+      "accidentLink": null,
+      "quiz": {
+        "question": "止まっている 車の そばでは？",
+        "choices": ["ゆっくり 歩いて 見る", "かげを 走って ぬける", "かげは あんぜんと 決める", "スマホを 見ながら 歩く"],
+        "explanation": "かげから 出てくる 人に 気づけるよ。"
+      }
+    },
+    {
+      "evidence": "Crossing without a signal",
+      "kind": "crossing_no_signal",
+      "kidType": "信号のない横断",
+      "box_2d": "[760, 200, 980, 800]",
+      "severity": "high",
+      "confidence": 0.71,
+      "whyDangerous": "おくの 道は 信号が ないよ。",
+      "safeAction": "止まって 左右を 見てから わたろう。",
+      "accidentLink": "横断中",
+      "quiz": {
+        "question": "信号の ない 道を わたるには？",
+        "choices": ["止まって 左右を 見る", "走って わたる", "音で きめる", "手を あげれば 安心"],
+        "explanation": "止まって 見れば 車に 気づけるよ。"
+      }
+    }
+  ],
+  "safePoints": [
+    { "kind": "other", "kidType": "ガードレール", "box_2d": [600, 0, 1000, 250], "whyGood": "車から まもって くれるよ。" }
+  ],
+  "noHazardFollow": null
+}
