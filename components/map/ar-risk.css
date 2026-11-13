@@ -33,7 +33,7 @@
 .ar-inundation-sheet--active.ar-inundation-sheet--collapsed>.ar-depth-heading strong{font-size:20px}
 .ar-inundation-sheet--active>:not(.ar-depth-heading):not(.ar-depth-controls){grid-column:1 / -1}
 @media(max-width:350px){.ar-inundation-sheet--active{grid-template-columns:1fr}.ar-inundation-sheet--active>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active>.ar-depth-controls .ar-depth-replay{flex-direction:row;font-size:12px}}
-@media(max-width:430px){.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed){grid-template-columns:1fr}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls .ar-depth-replay{flex-direction:row}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls .ar-sheet-toggle{flex:0 0 44px}}
+.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed){grid-template-columns:1fr}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls .ar-depth-replay{flex-direction:row}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls .ar-sheet-toggle{flex:0 0 44px}
 .ar-depth-start{flex-direction:column;align-items:stretch}.ar-depth-start p{font-size:13px;line-height:1.6;margin:0}
 .ar-inundation button:disabled{opacity:.55;cursor:not-allowed}.ar-inundation button:focus-visible{outline:3px solid #f4801f;outline-offset:2px}
 .ar-depth-notice{display:flex;gap:8px;font-size:12px;line-height:1.6;margin:14px 0 8px;padding-top:12px;border-top:1px solid #e2dbcf}.ar-depth-notice svg{flex-shrink:0;margin-top:2px}
@@ -44,7 +44,10 @@
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
 .ar-scene-chip--gauge{background:#fffdf7;color:#43392b;padding:2px 7px}
 .ar-scene-chip--water{background:#f4801f;color:#2b2118;box-shadow:0 1px 6px #43392b40}
-.ar-depth-submerged{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-depth-status{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}
+.ar-depth-submerged{align-self:stretch;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-water-level-hud{background:#f4801f;color:#2b2118;border-radius:13px;padding:4px 11px;font-size:13px;font-weight:800;line-height:1.4;white-space:nowrap;box-shadow:0 1px 6px #43392b40}
+.ar-water-level-hud[hidden]{display:none}
 .ar-depth-submerged strong{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px;font-size:13px;font-weight:800;color:var(--hazard)}
 .ar-depth-submerged strong small{font-size:12px;font-weight:700;color:#43392b}
 .ar-depth-submerged span{display:block;font-size:12px;line-height:1.4;margin-top:1px}
@@ -108,7 +111,10 @@
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
 .ar-scene-chip--gauge{background:#fffdf7;color:#43392b;padding:2px 7px}
 .ar-scene-chip--water{background:#f4801f;color:#2b2118;box-shadow:0 1px 6px #43392b40}
-.ar-depth-submerged{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-depth-status{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}
+.ar-depth-submerged{align-self:stretch;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-water-level-hud{background:#f4801f;color:#2b2118;border-radius:13px;padding:4px 11px;font-size:13px;font-weight:800;line-height:1.4;white-space:nowrap;box-shadow:0 1px 6px #43392b40}
+.ar-water-level-hud[hidden]{display:none}
 .ar-depth-submerged strong{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px;font-size:13px;font-weight:800;color:var(--hazard)}
 .ar-depth-submerged strong small{font-size:12px;font-weight:700;color:#43392b}
 .ar-depth-submerged span{display:block;font-size:12px;line-height:1.4;margin-top:1px}
@@ -122,7 +128,10 @@
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
 .ar-scene-chip--gauge{background:#fffdf7;color:#43392b;padding:2px 7px}
 .ar-scene-chip--water{background:#f4801f;color:#2b2118;box-shadow:0 1px 6px #43392b40}
-.ar-depth-submerged{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-depth-status{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}
+.ar-depth-submerged{align-self:stretch;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-water-level-hud{background:#f4801f;color:#2b2118;border-radius:13px;padding:4px 11px;font-size:13px;font-weight:800;line-height:1.4;white-space:nowrap;box-shadow:0 1px 6px #43392b40}
+.ar-water-level-hud[hidden]{display:none}
 .ar-depth-submerged strong{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px;font-size:13px;font-weight:800;color:var(--hazard)}
 .ar-depth-submerged strong small{font-size:12px;font-weight:700;color:#43392b}
 .ar-depth-submerged span{display:block;font-size:12px;line-height:1.4;margin-top:1px}

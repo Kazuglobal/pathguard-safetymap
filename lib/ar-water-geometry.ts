@@ -164,6 +164,17 @@ export function gaugeWaterMarkM(depthMeters: number, gaugeTopM: number): number 
   return Math.min(depthMeters, gaugeTopM)
 }
 
+/**
+ * 「いまの水面」の表記。目盛りの印と、画面に固定する表示で同じ文字を使う。
+ * 上限のない区分で下限まで上がったら「以上」を付け、下限を水位として言い切らない。
+ * 水のない状態では空文字。
+ */
+export function waterLevelLabel(depthMeters: number, timeline: Pick<DepthTimeline, 'openUpper' | 'lowerMeters'>): string {
+  if (!isFiniteNumber(depthMeters) || depthMeters <= 0) return ''
+  const atOpenLower = timeline.openUpper && depthMeters >= timeline.lowerMeters - 0.05
+  return `水面 ${depthMeters.toFixed(1)}m${atOpenLower ? '以上' : ''}`
+}
+
 export interface DepthRange {
   depthMinMeters: number | null
   depthMaxMeters: number | null

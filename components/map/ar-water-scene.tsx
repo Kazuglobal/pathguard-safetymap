@@ -17,6 +17,7 @@ import {
   referencePlacement,
   REFERENCE_DISTANCE_M,
   submergedMurkOpacity,
+  waterLevelLabel,
   type DepthTimeline,
   type DeviceTilt,
 } from '@/lib/ar-water-geometry'
@@ -41,6 +42,11 @@ export interface ARWaterSceneProps {
   /** 元映像全体の水平FOV（度・推定値を含む） */
   sourceHorizontalFovDeg: number
   onDepthChange?: (depthMeters: number, submerged: boolean) => void
+  /**
+   * 画面に固定した「いまの水面」の表示先。目盛りの印は3D空間にあり、端末の向きによって
+   * 画面の外へ出るので、水位の数字はここにも書く（毎フレームの再描画はしない）。
+   */
+  waterLevelRef?: React.RefObject<HTMLElement | null>
   /** 仮想視点が水面下に入った・出たときだけ呼ぶ（毎フレームは呼ばない）。 */
   onSubmergedChange?: (submerged: boolean) => void
   /** WebGLの初期化失敗・描画エラー・コンテキスト喪失。人物の比較図へ退避する。 */
@@ -244,8 +250,8 @@ function DepthReference({ hazard, gaugeTopM, openUpper, lowerMeters, beyondTop, 
     }
     // 文字は0.1m単位で変わったときだけ書き換える（毎フレームの再描画をしない）。
     // 上限のない区分で下限まで上がったら「以上」を付け、下限を水位として言い切らない。
-    const atOpenLower = openUpper && depth > 0 && depth >= lowerMeters - 0.05
-    const text = depth > 0 ? `水面 ${depth.toFixed(1)}m${atOpenLower ? '以上' : ''}${depth > gaugeTopM ? ' ↑' : ''}` : ''
+    const label = waterLevelLabel(depth, { openUpper, lowerMeters })
+    const text = label && depth > gaugeTopM ? `${label} ↑` : label
     if (waterChipRef.current && waterChipTextRef.current !== text) {
       waterChipTextRef.current = text
       waterChipRef.current.textContent = text
@@ -343,6 +349,7 @@ function WaterPlane({
   replayKey,
   sourceHorizontalFovDeg,
   onDepthChange,
+  waterLevelRef,
   onSubmergedChange,
 }: ARWaterSceneProps) {
   const { camera, size, gl } = useThree()
@@ -478,6 +485,14 @@ function WaterPlane({
     uniforms.uUnderwater.value = submerged ? 1 : 0
     uniforms.uDepth.value = depth
     depthRef.current = depth
+    const levelElement = waterLevelRef?.current
+    if (levelElement) {
+      const label = waterLevelLabel(depth, timeline)
+      if (levelElement.textContent !== label) {
+        levelElement.textContent = label
+        levelElement.hidden = !label
+      }
+    }
     // 映り込みを画面座標へ投影するために、毎フレームの視点行列を渡す。
     uniforms.uViewProjection.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     uniforms.uTime.value = reducedMotion ? 0 : animationMsRef.current / 1000

@@ -18,6 +18,7 @@ import {
   SUBMERGED_MURK_MAX_OPACITY,
   submergedMurkOpacity,
   tiltToAttitude,
+  waterLevelLabel,
   TILT_STALE_MS,
 } from '@/lib/ar-water-geometry'
 
@@ -217,6 +218,14 @@ describe('depth gauge layout', () => {
   it('marks zones deeper than the gauge instead of drawing an endless column', () => {
     expect(layout(10, 20)).toEqual({ topM: DEPTH_GAUGE_MAX_M, beyondTop: true })
     expect(layout(20, null)).toEqual({ topM: DEPTH_GAUGE_MAX_M, beyondTop: true })
+  })
+  it('labels the current level, and never states an open-ended lower bound as the level', () => {
+    expect(waterLevelLabel(0, { openUpper: false, lowerMeters: 5 })).toBe('')
+    expect(waterLevelLabel(Number.NaN, { openUpper: false, lowerMeters: 5 })).toBe('')
+    expect(waterLevelLabel(7.34, { openUpper: false, lowerMeters: 5 })).toBe('水面 7.3m')
+    expect(waterLevelLabel(20, { openUpper: false, lowerMeters: 10 })).toBe('水面 20.0m')
+    expect(waterLevelLabel(3, { openUpper: true, lowerMeters: 5 })).toBe('水面 3.0m')
+    expect(waterLevelLabel(5, { openUpper: true, lowerMeters: 5 })).toBe('水面 5.0m以上')
   })
   it('places the water mark at the depth and stops at the top of the gauge', () => {
     expect(gaugeWaterMarkM(0, 10)).toBe(0)

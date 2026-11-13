@@ -14,6 +14,7 @@ vi.mock('next/dynamic', () => ({
       reducedMotion: boolean
       onFailure: (reason: string) => void
       onSubmergedChange?: (submerged: boolean) => void
+      waterLevelRef?: { current: HTMLElement | null }
     }) {
       return (
         <div
@@ -27,6 +28,18 @@ vi.mock('next/dynamic', () => ({
           </button>
           <button type="button" onClick={() => props.onSubmergedChange?.(true)}>
             submerge
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const element = props.waterLevelRef?.current
+              if (element) {
+                element.textContent = '水面 10.0m'
+                element.hidden = false
+              }
+            }}
+          >
+            write-level
           </button>
         </div>
       )
@@ -137,6 +150,25 @@ describe('inundation learning water scene', () => {
     fireEvent.click(screen.getByRole('button', { name: 'fail-scene' }))
     expect(screen.queryByText('仮想視点（水面下）')).not.toBeInTheDocument()
     expect(screen.queryByText(/仮定した端末の高さ（約1.4m）より深い想定/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the current water level on screen, apart from the gauge mark that can leave the view', () => {
+    // 2026-11-14 PR #308: 10m の区分で端末を水平に構えると、3Dの目盛りの印が画面の外へ出て水位が読めなかった。
+    setup({ min: 5, max: 10 })
+    start()
+    const hud = document.querySelector('.ar-water-level-hud') as HTMLElement
+    expect(hud).not.toBeNull()
+    expect(hud.hidden).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'write-level' }))
+    expect(hud).toHaveTextContent('水面 10.0m')
+    expect(hud.hidden).toBe(false)
+    // 水面下のカードが出ても、同じ表示先のまま残る
+    fireEvent.click(screen.getByRole('button', { name: 'submerge' }))
+    expect(document.querySelector('.ar-water-level-hud')).toBe(hud)
+    expect(hud).toHaveTextContent('水面 10.0m')
+    // 2Dの比較図へ退避したら出さない
+    fireEvent.click(screen.getByRole('button', { name: 'fail-scene' }))
+    expect(document.querySelector('.ar-water-level-hud')).toBeNull()
   })
 
   it('folds the details away but never the limits of the learning image', () => {
