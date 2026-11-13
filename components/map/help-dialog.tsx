@@ -19,6 +19,8 @@ interface HelpDialogProps {
   onOpenChange?: (open: boolean) => void
   /** 「はじめての案内をもう一度」。はじめての案内(絵本のガイド)は、このヘルプとは別に開く(UIUX改装 項目51) */
   onReplayOnboarding?: () => void
+  /** 「画面の案内をもう一度」。実際のボタンを1つずつ照らす案内(spot-guide)を、地図の上でもう一度出す */
+  onReplaySpotGuide?: () => void
 }
 
 interface HelpItem {
@@ -73,7 +75,7 @@ function HelpItemList({ items }: { items: readonly HelpItem[] }) {
 }
 
 /** 地図のヘルプ(UIUX改装 項目51)。レイヤー・パネル・しぼりこみ・ピンの色と★・報告のしかた・ポイント */
-export default function HelpDialog({ children, open, onOpenChange, onReplayOnboarding }: HelpDialogProps) {
+export default function HelpDialog({ children, open, onOpenChange, onReplayOnboarding, onReplaySpotGuide }: HelpDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = open ?? internalOpen
   const setOpen = (next: boolean) => {
@@ -151,8 +153,23 @@ export default function HelpDialog({ children, open, onOpenChange, onReplayOnboa
           </TabsContent>
         </Tabs>
 
-        {onReplayOnboarding && (
-          <div className="border-t pt-4">
+        {(onReplaySpotGuide || onReplayOnboarding) && (
+          <div className="space-y-2 border-t pt-4">
+            {onReplaySpotGuide && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setOpen(false)
+                  onReplaySpotGuide()
+                }}
+              >
+                <MapPin className="mr-2 h-4 w-4" aria-hidden="true" />
+                画面の案内をもう一度(ボタンの場所)
+              </Button>
+            )}
+            {onReplayOnboarding && (
             <Button
               type="button"
               variant="outline"
@@ -165,6 +182,7 @@ export default function HelpDialog({ children, open, onOpenChange, onReplayOnboa
               <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
               はじめての案内をもう一度
             </Button>
+            )}
           </div>
         )}
       </DialogContent>

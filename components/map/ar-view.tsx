@@ -9,7 +9,8 @@ import {
   Compass,
   RefreshCw,
   ShieldCheck,
-  Map
+  Map,
+  HelpCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -46,6 +47,9 @@ import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
 import { ARPrimaryHazardCard } from "./ar-hazard-card"
+import SpotGuide, { type SpotGuideCloseReason } from "./spot-guide"
+import { AR_GUIDE_STEPS } from "@/lib/spot-guide-steps"
+import { markSpotGuideSeen, shouldShowSpotGuide } from "@/lib/spot-guide-storage"
 import { ARLearningReviewCard } from "./ar-learning-review"
 import { ARRealRisks } from './ar-real-risks'
 import { AccidentStreetView } from './accident-street-view'
@@ -124,6 +128,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const [localTourProgress, setLocalTourProgress] = useState<Record<string, ARLearningTourStatus>>({})
   const [activeStopId, setActiveStopId] = useState<string | null>(null)
   const approachedReportIdsRef = useRef<Set<string>>(new Set())
+  const [showGuide, setShowGuide] = useState(false)
+  const guideOfferedRef = useRef(false)
 
   // AR表示中は、地図の「使い方」ボタンを隠す(シートの注意文に重なって読めなくなる)。
   useEffect(() => {
@@ -155,6 +161,18 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     null
   const hasPositionContext = Boolean(userLocation) || (isParentChildMode && manualLocationMode)
   const canRenderHazardContent = sensorsEnabled && !arError && isCameraActive && hasPositionContext
+
+  // はじめてARを開いたとき、カメラが映ってから、切りかえ・下のシート・設定の場所を案内する(1回だけ)
+  const isGuideReady = sensorsEnabled && !isLoading && !arError && isCameraActive
+  useEffect(() => {
+    if (!isGuideReady || guideOfferedRef.current) return
+    guideOfferedRef.current = true
+    if (shouldShowSpotGuide("ar")) setShowGuide(true)
+  }, [isGuideReady])
+  const handleGuideClose = useCallback((reason: SpotGuideCloseReason) => {
+    setShowGuide(false)
+    if (reason !== "empty") markSpotGuideSeen("ar")
+  }, [])
 
   // パーミッション集約
   const permissions = useMemo(() => ({
@@ -627,8 +645,19 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setShowGuide(true)}
+            className="text-ink hover:bg-paper-deep"
+            aria-label="ARの画面の案内"
+            disabled={!isGuideReady}
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setShowSettings(!showSettings)}
             className="text-ink hover:bg-paper-deep"
+            data-guide="ar-settings"
             aria-label="AR設定"
             aria-expanded={showSettings}
             aria-controls="ar-settings-panel"
@@ -704,7 +733,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         </div>
       )}
 
-      {sensorsEnabled && !arError && !isInundationLearning && <div className="absolute left-1/2 top-[72px] z-30 flex -translate-x-1/2 gap-1 rounded-full bg-paper-card p-1 text-xs font-bold text-ink" role="group" aria-label="ARで見る情報">
+      {sensorsEnabled && !arError && !isInundationLearning && <div className="absolute left-1/2 top-[72px] z-30 flex -translate-x-1/2 gap-1 rounded-full bg-paper-card p-1 text-xs font-bold text-ink" role="group" aria-label="ARで見る情報" data-guide="ar-tabs">
         {/* 中身がそのまま読める名前にする。「投稿の学習」では何が出るか分からない。 */}
         <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${showRealRisks ? 'bg-forest text-white' : ''}`}
           aria-pressed={showRealRisks} aria-label="事故と浸水の公的データ" onClick={() => setShowRealRisks(true)}>事故・浸水</button>
@@ -944,6 +973,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         {showRealRisks && manualLocationMode && <p className="absolute bottom-0 left-0 right-0 bg-paper-card p-6 text-sm text-ink">位置が取れないため、事故と浸水は表示しません。地図のタップで調べられます。</p>}
       </div>
       {streetViewTarget && <AccidentStreetView target={streetViewTarget} onClose={() => setStreetViewTarget(null)} />}
+      <SpotGuide
+        open={showGuide && isGuideReady && !streetViewTarget}
+        steps={AR_GUIDE_STEPS}
+        label="ARの画面の案内"
+        onClose={handleGuideClose}
+      />
     </div>
   )
 }
