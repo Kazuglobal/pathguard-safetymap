@@ -6,13 +6,19 @@ import {
   computeVideoProjection,
   createTiltSmoother,
   depthAtMs,
+  DEPTH_GAUGE_MAX_M,
+  depthGaugeLayout,
+  gaugeWaterMarkM,
   isTiltFresh,
   isValidTilt,
   isVirtualViewSubmerged,
   referencePlacement,
   REFERENCE_DISTANCE_M,
   screenToVideoUv,
+  SUBMERGED_MURK_MAX_OPACITY,
+  submergedMurkOpacity,
   tiltToAttitude,
+  waterLevelLabel,
   TILT_STALE_MS,
 } from '@/lib/ar-water-geometry'
 
@@ -178,5 +184,53 @@ describe('reference placement', () => {
   it('falls back to the centre when the field of view is unknown', () => {
     expect(referencePlacement(Number.NaN).offsetXM).toBe(0)
     expect(referencePlacement(0).offsetXM).toBe(0)
+  })
+})
+
+describe('submerged view legibility', () => {
+  // 2026-11-14: 津波 5〜10m で濁りが 82% の黒になり、景色・人物・目盛りが読めなくなった。
+  it('never darkens the camera past the legibility limit, however deep', () => {
+    for (const depth of [1.5, 3, 5, 10, 20, 100]) {
+      const opacity = submergedMurkOpacity(depth)
+      expect(opacity).toBeGreaterThan(0)
+      expect(opacity).toBeLessThanOrEqual(SUBMERGED_MURK_MAX_OPACITY)
+    }
+    expect(SUBMERGED_MURK_MAX_OPACITY).toBeLessThanOrEqual(0.55)
+  })
+  it('gets denser with depth and is absent above the surface', () => {
+    expect(submergedMurkOpacity(0)).toBe(0)
+    expect(submergedMurkOpacity(AR_ASSUMED_CAMERA_HEIGHT_M)).toBe(0)
+    expect(submergedMurkOpacity(Number.NaN)).toBe(0)
+    expect(submergedMurkOpacity(5)).toBeGreaterThan(submergedMurkOpacity(2))
+    expect(submergedMurkOpacity(10)).toBeGreaterThanOrEqual(submergedMurkOpacity(5))
+  })
+})
+
+describe('depth gauge layout', () => {
+  const layout = (min: number | null, max: number | null) => depthGaugeLayout(buildDepthTimeline({ depthMinMeters: min, depthMaxMeters: max })!)
+  it('reaches the upper end of a 5-10m zone', () => {
+    expect(layout(5, 10)).toEqual({ topM: DEPTH_GAUGE_MAX_M, beyondTop: false })
+  })
+  it('keeps a shallow zone short', () => {
+    expect(layout(0, 0.5)).toEqual({ topM: 1, beyondTop: false })
+    expect(layout(0.5, 3)).toEqual({ topM: 3.5, beyondTop: false })
+  })
+  it('marks zones deeper than the gauge instead of drawing an endless column', () => {
+    expect(layout(10, 20)).toEqual({ topM: DEPTH_GAUGE_MAX_M, beyondTop: true })
+    expect(layout(20, null)).toEqual({ topM: DEPTH_GAUGE_MAX_M, beyondTop: true })
+  })
+  it('labels the current level, and never states an open-ended lower bound as the level', () => {
+    expect(waterLevelLabel(0, { openUpper: false, lowerMeters: 5 })).toBe('')
+    expect(waterLevelLabel(Number.NaN, { openUpper: false, lowerMeters: 5 })).toBe('')
+    expect(waterLevelLabel(7.34, { openUpper: false, lowerMeters: 5 })).toBe('水面 7.3m')
+    expect(waterLevelLabel(20, { openUpper: false, lowerMeters: 10 })).toBe('水面 20.0m')
+    expect(waterLevelLabel(3, { openUpper: true, lowerMeters: 5 })).toBe('水面 3.0m')
+    expect(waterLevelLabel(5, { openUpper: true, lowerMeters: 5 })).toBe('水面 5.0m以上')
+  })
+  it('places the water mark at the depth and stops at the top of the gauge', () => {
+    expect(gaugeWaterMarkM(0, 10)).toBe(0)
+    expect(gaugeWaterMarkM(7.3, 10)).toBe(7.3)
+    expect(gaugeWaterMarkM(15, 10)).toBe(10)
+    expect(gaugeWaterMarkM(Number.NaN, 10)).toBe(0)
   })
 })

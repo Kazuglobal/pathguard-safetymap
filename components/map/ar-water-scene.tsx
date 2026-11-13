@@ -10,10 +10,14 @@ import {
   computeVideoProjection,
   createTiltSmoother,
   depthAtMs,
+  depthGaugeLayout,
+  gaugeWaterMarkM,
   isTiltFresh,
   isVirtualViewSubmerged,
   referencePlacement,
   REFERENCE_DISTANCE_M,
+  submergedMurkOpacity,
+  waterLevelLabel,
   type DepthTimeline,
   type DeviceTilt,
 } from '@/lib/ar-water-geometry'
@@ -38,6 +42,11 @@ export interface ARWaterSceneProps {
   /** 元映像全体の水平FOV（度・推定値を含む） */
   sourceHorizontalFovDeg: number
   onDepthChange?: (depthMeters: number, submerged: boolean) => void
+  /**
+   * 画面に固定した「いまの水面」の表示先。目盛りの印は3D空間にあり、端末の向きによって
+   * 画面の外へ出るので、水位の数字はここにも書く（毎フレームの再描画はしない）。
+   */
+  waterLevelRef?: React.RefObject<HTMLElement | null>
   /** 仮想視点が水面下に入った・出たときだけ呼ぶ（毎フレームは呼ばない）。 */
   onSubmergedChange?: (submerged: boolean) => void
   /** WebGLの初期化失敗・描画エラー・コンテキスト喪失。人物の比較図へ退避する。 */
@@ -83,9 +92,12 @@ void main() {
   grid.y += uTime * 0.35;
   vec2 cell = floor(grid);
   vec2 local = fract(grid) - 0.5;
-  float speck = smoothstep(0.42, 0.0, length(local) + hash(cell) * 0.35);
-  float shade = 1.0 + speck * 0.5;
-  gl_FragColor = vec4(uColor * shade, uOpacity);
+  float speck = 1.0 - smoothstep(0.0, 0.42, length(local) + hash(cell) * 0.35);
+  // 画面の下ほど濃く、上ほど薄い。水面が上にあることの手がかりにし、景色を塗りつぶさない。
+  float column = mix(1.0, 0.6, smoothstep(0.0, 1.0, vUv.y));
+  // 粒は明るくして、薄い濁りの中でも見えるようにする。
+  vec3 color = mix(uColor, vec3(0.86), speck * 0.6);
+  gl_FragColor = vec4(color, uOpacity * column + speck * 0.14);
 }
 `
 
@@ -173,10 +185,20 @@ void main() {
   float foam = smoothstep(1.25, 2.0, crest) * uFoam;
   color += foam * 0.3;
 
+  float alpha = clamp(0.88 + uTurbidity * 0.08, 0.0, 0.97);
   if (uUnderwater > 0.5) {
-    color = mix(color, uDeepColor, 0.5);
+    // 下から見上げた水面。上からの光で明るく揺れる面にし、暗い天井にしない。
+    // 明るい景色の上でも面として見えるよう、波の明暗をはっきり付ける。
+    // 遠くでは波の明暗を弱める。細かい波が格子のような模様に見えるのを防ぐ。
+    float fade = 1.0 / (1.0 + distance * 0.14);
+    float ripple = 0.5 + (smoothstep(-1.2, 1.6, crest) - 0.5) * fade;
+    vec3 dim = mix(uShallowColor, uDeepColor, 0.35);
+    vec3 bright = mix(uShallowColor, vec3(1.0), 0.75);
+    color = mix(behind, mix(dim, bright, ripple), 0.7);
+    // 平面の端が線として見えないよう、遠くで透かす。
+    alpha = 0.85 * (1.0 - smoothstep(20.0, 29.0, distance));
   }
-  gl_FragColor = vec4(color, clamp(0.88 + uTurbidity * 0.08, 0.0, 0.97));
+  gl_FragColor = vec4(color, alpha);
 }
 `
 
@@ -195,19 +217,46 @@ const debrisDummy = new THREE.Object3D()
 const REFERENCE_PERSON_HEIGHT_M = 1.7
 
 const GAUGE_BAND_M = 0.5
-const GAUGE_MAX_M = 6
+/** 「いまの水面」の印の色。目盛りの白・災害の色のどちらとも区別できる色にする。 */
+const WATER_MARK_COLOR = '#f4801f'
 
 /** 水面と同じ投影で見える、身長の目安と深さの目盛り。 */
-function DepthReference({ hazard, gaugeTopM, openUpper, horizontalFovRef }: {
+function DepthReference({ hazard, gaugeTopM, openUpper, lowerMeters, beyondTop, horizontalFovRef, depthRef }: {
   hazard: 'flood' | 'tsunami'
   gaugeTopM: number
   /** 上限のない区分。有限の上端を作らず、上向きの表示にとどめる。 */
   openUpper: boolean
+  /** 区分の下限（m）。上限のない区分では、ここまでしか水位を上げない。 */
+  lowerMeters: number
+  /** 区分の深さが目盛りの上限を超える。超える分は描かない。 */
+  beyondTop: boolean
   horizontalFovRef: React.RefObject<number>
+  /** いまの水位（m）。毎フレーム WaterPlane が書く。 */
+  depthRef: React.RefObject<number>
 }) {
   const personRef = useRef<THREE.Group>(null)
   const gaugeRef = useRef<THREE.Group>(null)
+  const waterMarkRef = useRef<THREE.Group>(null)
+  const waterChipRef = useRef<HTMLSpanElement>(null)
+  const waterChipTextRef = useRef('')
   useFrame(() => {
+    // いまの水面の高さを、目盛りの柱の上に示す。水面下でも「どこまで水か」が読める。
+    const depth = depthRef.current ?? 0
+    const mark = waterMarkRef.current
+    if (mark) {
+      const markM = gaugeWaterMarkM(depth, gaugeTopM)
+      mark.visible = markM > 0
+      mark.position.y = -AR_ASSUMED_CAMERA_HEIGHT_M + markM
+    }
+    // 文字は0.1m単位で変わったときだけ書き換える（毎フレームの再描画をしない）。
+    // 上限のない区分で下限まで上がったら「以上」を付け、下限を水位として言い切らない。
+    const label = waterLevelLabel(depth, { openUpper, lowerMeters })
+    const text = label && depth > gaugeTopM ? `${label} ↑` : label
+    if (waterChipRef.current && waterChipTextRef.current !== text) {
+      waterChipTextRef.current = text
+      waterChipRef.current.textContent = text
+      waterChipRef.current.style.display = text ? '' : 'none'
+    }
     const horizontalFov = horizontalFovRef.current
     if (!horizontalFov) return
     // 距離は固定。見かけの大きさは投影の結果に任せる（画面の割合にそろえない）。
@@ -222,8 +271,10 @@ function DepthReference({ hazard, gaugeTopM, openUpper, horizontalFovRef }: {
     return loaded
   }, [])
   useEffect(() => () => texture.dispose(), [texture])
-  const bands = Math.max(1, Math.round(Math.min(gaugeTopM, GAUGE_MAX_M) / GAUGE_BAND_M))
+  const bands = Math.max(1, Math.round(gaugeTopM / GAUGE_BAND_M))
   const accent = hazard === 'flood' ? '#0891b2' : '#7e22ce'
+  // 柱より上まで続く区分。有限の上端を描かず、上向きの表示にとどめる。
+  const upwardLabel = openUpper ? '↑ 上限なし' : beyondTop ? '↑ さらに上' : ''
   const ground = -AR_ASSUMED_CAMERA_HEIGHT_M
   return (
     <group>
@@ -243,16 +294,27 @@ function DepthReference({ hazard, gaugeTopM, openUpper, horizontalFovRef }: {
             <meshBasicMaterial color={index % 2 === 0 ? '#fffdf7' : accent} toneMapped={false} />
           </mesh>
         ))}
-        {Array.from({ length: Math.floor(Math.min(gaugeTopM, GAUGE_MAX_M)) }, (_, index) => index + 1).map(meters => (
+        {Array.from({ length: Math.floor(gaugeTopM) }, (_, index) => index + 1).map(meters => (
           <Html key={meters} position={[0, ground + meters, 0]} center zIndexRange={[1, 0]}>
             <span className="ar-scene-chip ar-scene-chip--gauge">{meters}m</span>
           </Html>
         ))}
-        {openUpper && (
-          <Html position={[0, ground + Math.min(gaugeTopM, GAUGE_MAX_M) + 0.3, 0]} center zIndexRange={[1, 0]}>
-            <span className="ar-scene-chip ar-scene-chip--gauge">↑ 上限なし</span>
+        {/* 画面上の位置でずらす。見上げて遠近が詰まっても、上端の数字・水面の印と重ならない。 */}
+        {upwardLabel && (
+          <Html position={[0, ground + gaugeTopM, 0]} zIndexRange={[1, 0]} style={{ transform: 'translate(-50%, -165%)' }}>
+            <span className="ar-scene-chip ar-scene-chip--gauge">{upwardLabel}</span>
           </Html>
         )}
+        <group ref={waterMarkRef} visible={false}>
+          <mesh renderOrder={0}>
+            <boxGeometry args={[0.42, 0.07, 0.2]} />
+            <meshBasicMaterial color={WATER_MARK_COLOR} toneMapped={false} />
+          </mesh>
+          {/* 数字の目盛りと重ならないよう、柱の右（画面の中央側）へずらす。 */}
+          <Html position={[0.3, 0, 0]} zIndexRange={[2, 1]} style={{ transform: 'translate(0, -50%)' }}>
+            <span ref={waterChipRef} className="ar-scene-chip ar-scene-chip--water">水面</span>
+          </Html>
+        </group>
       </group>
     </group>
   )
@@ -287,6 +349,7 @@ function WaterPlane({
   replayKey,
   sourceHorizontalFovDeg,
   onDepthChange,
+  waterLevelRef,
   onSubmergedChange,
 }: ARWaterSceneProps) {
   const { camera, size, gl } = useThree()
@@ -301,14 +364,11 @@ function WaterPlane({
   const videoTextureRef = useRef<THREE.VideoTexture | null>(null)
   const videoSizeRef = useRef<string>('')
   const palette = PALETTE[hazard]
-  // 目盛りの高さは、その地点の深さに必要な分だけにする（上は0.5mの余白）。
-  const gaugeTopM = useMemo(() => {
-    const needed = timeline.upperMeters ?? timeline.lowerMeters ?? 1
-    return THREE.MathUtils.clamp(Math.ceil(needed * 2) / 2 + 0.5, 1, GAUGE_MAX_M)
-  }, [timeline])
+  const gauge = useMemo(() => depthGaugeLayout(timeline), [timeline])
+  const depthRef = useRef(0)
 
   const murkUniforms = useMemo(
-    () => ({ uColor: { value: palette.deep.clone() }, uOpacity: { value: 0.6 }, uTime: { value: 0 } }),
+    () => ({ uColor: { value: palette.deep.clone() }, uOpacity: { value: 0 }, uTime: { value: 0 } }),
     [palette],
   )
 
@@ -424,6 +484,15 @@ function WaterPlane({
     const submerged = isVirtualViewSubmerged(depth)
     uniforms.uUnderwater.value = submerged ? 1 : 0
     uniforms.uDepth.value = depth
+    depthRef.current = depth
+    const levelElement = waterLevelRef?.current
+    if (levelElement) {
+      const label = waterLevelLabel(depth, timeline)
+      if (levelElement.textContent !== label) {
+        levelElement.textContent = label
+        levelElement.hidden = !label
+      }
+    }
     // 映り込みを画面座標へ投影するために、毎フレームの視点行列を渡す。
     uniforms.uViewProjection.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     uniforms.uTime.value = reducedMotion ? 0 : animationMsRef.current / 1000
@@ -439,9 +508,10 @@ function WaterPlane({
         const height = 2 * distance * Math.tan(THREE.MathUtils.degToRad((perspective.fov ?? 60) / 2))
         murk.scale.set(height * (perspective.aspect ?? 1) * 1.2, height * 1.2, 1)
         murk.position.set(0, 0, -distance)
-        murkUniforms.uColor.value.copy(palette.deep)
-        // 深いほど濃くする。上限を置き、数値と目盛りが読めなくならないようにする。
-        murkUniforms.uOpacity.value = Math.min(0.82, 0.5 + (depth - AR_ASSUMED_CAMERA_HEIGHT_M) * 0.04)
+        // 浅い色と深い色の中間。津波の黒っぽさは残すが、景色を黒で塗りつぶさない。
+        murkUniforms.uColor.value.copy(palette.shallow).lerp(palette.deep, 0.5)
+        // 深いほど少し濃くする。上限は低く保ち、景色・人物・目盛りを読めるままにする。
+        murkUniforms.uOpacity.value = submergedMurkOpacity(depth)
         // 動きを減らす設定では粒を流さない。
         murkUniforms.uTime.value = reducedMotion ? 0 : animationMsRef.current / 1000
       }
@@ -488,8 +558,8 @@ function WaterPlane({
           depthWrite={false}
         />
       </mesh>
-      <DepthReference hazard={hazard} horizontalFovRef={horizontalFovRef}
-        gaugeTopM={gaugeTopM} openUpper={timeline.openUpper} />
+      <DepthReference hazard={hazard} horizontalFovRef={horizontalFovRef} depthRef={depthRef}
+        gaugeTopM={gauge.topM} openUpper={timeline.openUpper} lowerMeters={timeline.lowerMeters} beyondTop={gauge.beyondTop} />
       <primitive object={camera}>
         <mesh ref={murkRef} visible={false} frustumCulled={false} renderOrder={2}>
           <planeGeometry args={[1, 1]} />

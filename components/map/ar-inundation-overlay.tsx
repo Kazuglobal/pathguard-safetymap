@@ -64,6 +64,7 @@ export function ARInundationOverlay({
   // 学習イメージの限界と注意文は、たたんでも隠さない。
   const [expanded, setExpanded] = useState(true)
   const sheet = useRef<HTMLDivElement>(null)
+  const waterLevel = useRef<HTMLSpanElement>(null)
   const [sheetHeight, setSheetHeight] = useState(325)
   const zone = risk.kind === 'inside' ? risk.zone : undefined
   const canShow = Boolean(zone) && risk.confirmed !== false && !suppressed && visible
@@ -130,11 +131,16 @@ export function ARInundationOverlay({
 
     {showScene && timeline && videoRef && tiltRef && <ARWaterScene videoRef={videoRef} tiltRef={tiltRef} timeline={timeline}
       hazard={selected} playing={playing} reducedMotion={reducedMotion} replayKey={replay}
-      sourceHorizontalFovDeg={sourceHorizontalFovDeg} onFailure={setSceneError} onSubmergedChange={setSubmerged} />}
+      sourceHorizontalFovDeg={sourceHorizontalFovDeg} onFailure={setSceneError} onSubmergedChange={setSubmerged} waterLevelRef={waterLevel} />}
 
-    {showScene && submerged && <div className="ar-depth-submerged" role="status">
-      <strong>仮想視点（水面下）</strong>
-      <span>仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深いため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。あなたや端末が実際に水没する高さを判定したものではありません。</span>
+    {showScene && <div className="ar-depth-status">
+      {submerged && <div className="ar-depth-submerged" role="status">
+        {/* カメラの景色と目盛りを隠さないよう短くする。くわしい説明はシートをひらくと読める。 */}
+        <strong>仮想視点（水面下）<small>水面はこの上 ↑</small></strong>
+        <span>あなたや端末が実際に水没する高さを判定したものではありません。</span>
+      </div>}
+      {/* いまの水位。目盛りの印が画面の外にあっても読めるよう、画面に固定する。文字は水面のシーンが書く。 */}
+      <span ref={waterLevel} className="ar-water-level-hud" aria-hidden="true" hidden />
     </div>}
 
     {canShow && acknowledged && knownDepth && !showScene && <div className="ar-depth-visual" style={{ bottom: sheetHeight + 16 }} aria-label="人物と想定浸水深の高さ比較">
@@ -190,6 +196,8 @@ export function ARInundationOverlay({
         <span>出典：{[...new Set(guideMarks.map(mark => mark.sourceName))].join('、')}</span></p>}
       {selected === 'tsunami' && <p className="ar-tsunami-action">津波警報が出たら、海や川から離れて高い場所へ避難しましょう。</p>}
       <p className="ar-depth-notice"><Info size={18} aria-hidden="true" /><span>{learningNoticeText}</span></p>
+      {expanded && showScene && submerged && <p className="ar-depth-scene-notice">
+        仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深い想定のため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。目盛りのオレンジの印と数字が、いまの水面の高さです（目盛りより上は ↑ で示します）。</p>}
       {expanded && <p className="ar-depth-source">{sample ? 'デザイン用サンプル・実地点の想定ではありません' :
         `出典：${risk.sources.map(source => `${source.name}／${source.region}／${source.dataYear ?? '対象年不明'}${source.dataYear ? '年版' : ''}`).join('、') || '公的な浸水想定データ'}`}</p>}
       {expanded && children && <div className="ar-depth-accident">{children}</div>}
