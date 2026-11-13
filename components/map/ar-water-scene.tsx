@@ -86,7 +86,7 @@ void main() {
   grid.y += uTime * 0.35;
   vec2 cell = floor(grid);
   vec2 local = fract(grid) - 0.5;
-  float speck = smoothstep(0.42, 0.0, length(local) + hash(cell) * 0.35);
+  float speck = 1.0 - smoothstep(0.0, 0.42, length(local) + hash(cell) * 0.35);
   // 画面の下ほど濃く、上ほど薄い。水面が上にあることの手がかりにし、景色を塗りつぶさない。
   float column = mix(1.0, 0.6, smoothstep(0.0, 1.0, vUv.y));
   // 粒は明るくして、薄い濁りの中でも見えるようにする。
@@ -215,11 +215,13 @@ const GAUGE_BAND_M = 0.5
 const WATER_MARK_COLOR = '#f4801f'
 
 /** 水面と同じ投影で見える、身長の目安と深さの目盛り。 */
-function DepthReference({ hazard, gaugeTopM, openUpper, beyondTop, horizontalFovRef, depthRef }: {
+function DepthReference({ hazard, gaugeTopM, openUpper, lowerMeters, beyondTop, horizontalFovRef, depthRef }: {
   hazard: 'flood' | 'tsunami'
   gaugeTopM: number
   /** 上限のない区分。有限の上端を作らず、上向きの表示にとどめる。 */
   openUpper: boolean
+  /** 区分の下限（m）。上限のない区分では、ここまでしか水位を上げない。 */
+  lowerMeters: number
   /** 区分の深さが目盛りの上限を超える。超える分は描かない。 */
   beyondTop: boolean
   horizontalFovRef: React.RefObject<number>
@@ -241,10 +243,13 @@ function DepthReference({ hazard, gaugeTopM, openUpper, beyondTop, horizontalFov
       mark.position.y = -AR_ASSUMED_CAMERA_HEIGHT_M + markM
     }
     // 文字は0.1m単位で変わったときだけ書き換える（毎フレームの再描画をしない）。
-    const text = `水面 ${depth.toFixed(1)}m${depth > gaugeTopM ? ' ↑' : ''}`
+    // 上限のない区分で下限まで上がったら「以上」を付け、下限を水位として言い切らない。
+    const atOpenLower = openUpper && depth > 0 && depth >= lowerMeters - 0.05
+    const text = depth > 0 ? `水面 ${depth.toFixed(1)}m${atOpenLower ? '以上' : ''}${depth > gaugeTopM ? ' ↑' : ''}` : ''
     if (waterChipRef.current && waterChipTextRef.current !== text) {
       waterChipTextRef.current = text
       waterChipRef.current.textContent = text
+      waterChipRef.current.style.display = text ? '' : 'none'
     }
     const horizontalFov = horizontalFovRef.current
     if (!horizontalFov) return
@@ -539,7 +544,7 @@ function WaterPlane({
         />
       </mesh>
       <DepthReference hazard={hazard} horizontalFovRef={horizontalFovRef} depthRef={depthRef}
-        gaugeTopM={gauge.topM} openUpper={timeline.openUpper} beyondTop={gauge.beyondTop} />
+        gaugeTopM={gauge.topM} openUpper={timeline.openUpper} lowerMeters={timeline.lowerMeters} beyondTop={gauge.beyondTop} />
       <primitive object={camera}>
         <mesh ref={murkRef} visible={false} frustumCulled={false} renderOrder={2}>
           <planeGeometry args={[1, 1]} />

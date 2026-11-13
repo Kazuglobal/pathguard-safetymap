@@ -184,8 +184,6 @@ export function ARInundationOverlay({
         </> : <p>この地点には深さの情報がないため、高さの比較は表示できません。</p>}
       </div>}
       {live && knownDepth && acknowledged && <p className="ar-depth-scene-notice">{sceneNoticeText}</p>}
-      {expanded && showScene && submerged && <p className="ar-depth-scene-notice">
-        仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深い想定のため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。目盛りのオレンジの印が、いまの水面の高さです。</p>}
       {sceneFallbackReason && <p className="ar-depth-scene-notice" role="status">{sceneFallbackReason}</p>}
       {expanded && guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">
         {guideMarks.map(mark => <span key={mark.depthMeters}>{mark.depthMeters}m：{mark.label}</span>)}
@@ -193,6 +191,8 @@ export function ARInundationOverlay({
         <span>出典：{[...new Set(guideMarks.map(mark => mark.sourceName))].join('、')}</span></p>}
       {selected === 'tsunami' && <p className="ar-tsunami-action">津波警報が出たら、海や川から離れて高い場所へ避難しましょう。</p>}
       <p className="ar-depth-notice"><Info size={18} aria-hidden="true" /><span>{learningNoticeText}</span></p>
+      {expanded && showScene && submerged && <p className="ar-depth-scene-notice">
+        仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深い想定のため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。目盛りのオレンジの印と数字が、いまの水面の高さです（目盛りより上は ↑ で示します）。</p>}
       {expanded && <p className="ar-depth-source">{sample ? 'デザイン用サンプル・実地点の想定ではありません' :
         `出典：${risk.sources.map(source => `${source.name}／${source.region}／${source.dataYear ?? '対象年不明'}${source.dataYear ? '年版' : ''}`).join('、') || '公的な浸水想定データ'}`}</p>}
       {expanded && children && <div className="ar-depth-accident">{children}</div>}
