@@ -127,6 +127,43 @@ export function isVirtualViewSubmerged(depthMeters: number, cameraHeightM: numbe
   return isFiniteNumber(depthMeters) && depthMeters > cameraHeightM
 }
 
+/** 水面下の濁りの不透明度の上限。これを超えると景色・人物・目盛りが読めなくなる。 */
+export const SUBMERGED_MURK_MAX_OPACITY = 0.52
+
+/**
+ * 仮想視点が水面下のときに、画面全体へ重ねる濁りの不透明度。
+ * 深いほど少し濃くするが、上限を低く保ち、カメラの景色と目盛りを読めるままにする。
+ * 水面下でなければ 0。
+ */
+export function submergedMurkOpacity(depthMeters: number, cameraHeightM: number = AR_ASSUMED_CAMERA_HEIGHT_M): number {
+  if (!isVirtualViewSubmerged(depthMeters, cameraHeightM)) return 0
+  return Math.min(SUBMERGED_MURK_MAX_OPACITY, 0.38 + (depthMeters - cameraHeightM) * 0.02)
+}
+
+/** 深さの目盛りを描く高さの上限（m）。これより深い区分は「さらに上」と示す。 */
+export const DEPTH_GAUGE_MAX_M = 10
+
+export interface DepthGaugeLayout {
+  /** 目盛りの柱の高さ（m） */
+  topM: number
+  /** 区分の深さが柱の上限を超えるか。超える分は描かず、上向きの表示にとどめる。 */
+  beyondTop: boolean
+}
+
+/** 目盛りの高さは、その地点の深さに必要な分だけにする（上は0.5mの余白）。 */
+export function depthGaugeLayout(timeline: Pick<DepthTimeline, 'lowerMeters' | 'upperMeters'>): DepthGaugeLayout {
+  const needed = timeline.upperMeters ?? timeline.lowerMeters
+  const safe = isFiniteNumber(needed) && needed > 0 ? needed : 1
+  const topM = Math.min(DEPTH_GAUGE_MAX_M, Math.max(1, Math.ceil(safe * 2) / 2 + 0.5))
+  return { topM, beyondTop: safe > DEPTH_GAUGE_MAX_M }
+}
+
+/** 目盛りの柱の上で「いまの水面」の印を置く高さ（m）。柱の上限で止める。 */
+export function gaugeWaterMarkM(depthMeters: number, gaugeTopM: number): number {
+  if (!isFiniteNumber(depthMeters) || depthMeters <= 0) return 0
+  return Math.min(depthMeters, gaugeTopM)
+}
+
 export interface DepthRange {
   depthMinMeters: number | null
   depthMaxMeters: number | null

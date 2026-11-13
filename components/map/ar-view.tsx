@@ -125,6 +125,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const [activeStopId, setActiveStopId] = useState<string | null>(null)
   const approachedReportIdsRef = useRef<Set<string>>(new Set())
 
+  // AR表示中は、地図の「使い方」ボタンを隠す(シートの注意文に重なって読めなくなる)。
+  useEffect(() => {
+    document.body.dataset.arOpen = 'true'
+    return () => { delete document.body.dataset.arOpen }
+  }, [])
+
   useEffect(() => {
     setHasSafetyAcknowledged(!isParentChildMode)
     setGuardianConsent(false)

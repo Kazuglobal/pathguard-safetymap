@@ -133,8 +133,9 @@ export function ARInundationOverlay({
       sourceHorizontalFovDeg={sourceHorizontalFovDeg} onFailure={setSceneError} onSubmergedChange={setSubmerged} />}
 
     {showScene && submerged && <div className="ar-depth-submerged" role="status">
-      <strong>仮想視点（水面下）</strong>
-      <span>仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深いため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。あなたや端末が実際に水没する高さを判定したものではありません。</span>
+      {/* カメラの景色と目盛りを隠さないよう短くする。くわしい説明はシートをひらくと読める。 */}
+      <strong>仮想視点（水面下）<small>水面はこの上 ↑</small></strong>
+      <span>あなたや端末が実際に水没する高さを判定したものではありません。</span>
     </div>}
 
     {canShow && acknowledged && knownDepth && !showScene && <div className="ar-depth-visual" style={{ bottom: sheetHeight + 16 }} aria-label="人物と想定浸水深の高さ比較">
@@ -183,6 +184,8 @@ export function ARInundationOverlay({
         </> : <p>この地点には深さの情報がないため、高さの比較は表示できません。</p>}
       </div>}
       {live && knownDepth && acknowledged && <p className="ar-depth-scene-notice">{sceneNoticeText}</p>}
+      {expanded && showScene && submerged && <p className="ar-depth-scene-notice">
+        仮定した端末の高さ（約{AR_ASSUMED_CAMERA_HEIGHT_M}m）より深い想定のため、水面の下から見た表示にしています。端末を上に向けると水面が見えます。目盛りのオレンジの印が、いまの水面の高さです。</p>}
       {sceneFallbackReason && <p className="ar-depth-scene-notice" role="status">{sceneFallbackReason}</p>}
       {expanded && guideMarks.length > 0 && acknowledged && knownDepth && <p className="ar-depth-guide-caveat">
         {guideMarks.map(mark => <span key={mark.depthMeters}>{mark.depthMeters}m：{mark.label}</span>)}

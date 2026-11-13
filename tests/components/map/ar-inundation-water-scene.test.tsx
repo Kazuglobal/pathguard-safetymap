@@ -128,9 +128,15 @@ describe('inundation learning water scene', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submerge' }))
     expect(screen.getByText('仮想視点（水面下）')).toBeInTheDocument()
     expect(screen.getByText(/あなたや端末が実際に水没する高さを判定したものではありません/)).toBeInTheDocument()
+    // カードは景色を隠さないよう短くし、水面の向きだけ添える。仮定の高さの説明はシートをひらくと読める。
+    expect(screen.getByText('水面はこの上 ↑')).toBeInTheDocument()
+    expect(screen.queryByText(/仮定した端末の高さ（約1.4m）より深い想定/)).not.toBeInTheDocument()
+    openSheet()
+    expect(screen.getByText(/仮定した端末の高さ（約1.4m）より深い想定/)).toBeInTheDocument()
     // 退避したら水面下の表示も残さない
     fireEvent.click(screen.getByRole('button', { name: 'fail-scene' }))
     expect(screen.queryByText('仮想視点（水面下）')).not.toBeInTheDocument()
+    expect(screen.queryByText(/仮定した端末の高さ（約1.4m）より深い想定/)).not.toBeInTheDocument()
   })
 
   it('folds the details away but never the limits of the learning image', () => {

@@ -859,3 +859,8 @@
     margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
   }
 }
+
+/* AR表示中は地図の「使い方」ボタンを隠す。ARのシートに重なって注意文が読めなくなる。 */
+body[data-ar-open] .map-help-fab {
+  display: none;
+}

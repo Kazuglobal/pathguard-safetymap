@@ -11,9 +11,10 @@
 .ar-inundation-sheet--collapsed .ar-depth-heading{min-width:0;overflow:hidden}
 .ar-inundation-sheet--collapsed .ar-depth-replay-label{display:none}
 .ar-inundation-sheet--collapsed .ar-depth-controls .ar-depth-replay{width:44px;min-width:44px;padding:0;display:grid;place-items:center}
-.ar-inundation-sheet--collapsed{max-height:42%}
-.ar-inundation-sheet--collapsed .ar-tsunami-action{margin-top:6px}
-.ar-inundation-sheet--collapsed .ar-depth-notice{margin:8px 0 2px;padding-top:8px}
+.ar-inundation-sheet--collapsed{max-height:42%;padding-top:12px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+.ar-inundation-sheet--collapsed .ar-depth-scene-notice{margin-top:6px;line-height:1.45}
+.ar-inundation-sheet--collapsed .ar-tsunami-action{margin-top:4px;line-height:1.45}
+.ar-inundation-sheet--collapsed .ar-depth-notice{margin:6px 0 0;padding-top:6px;line-height:1.45}
 .ar-depth-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ar-depth-heading p{font-size:14px;font-weight:700;color:var(--hazard);margin:0 0 2px}
 .ar-depth-heading strong{font-size:clamp(26px,8vw,34px);line-height:1.2;color:var(--hazard);font-weight:800}
@@ -32,6 +33,7 @@
 .ar-inundation-sheet--active.ar-inundation-sheet--collapsed>.ar-depth-heading strong{font-size:20px}
 .ar-inundation-sheet--active>:not(.ar-depth-heading):not(.ar-depth-controls){grid-column:1 / -1}
 @media(max-width:350px){.ar-inundation-sheet--active{grid-template-columns:1fr}.ar-inundation-sheet--active>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active>.ar-depth-controls .ar-depth-replay{flex-direction:row;font-size:12px}}
+@media(max-width:430px){.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed){grid-template-columns:1fr}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls{grid-column:1;grid-row:2;margin-top:10px;justify-content:space-between}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls .ar-depth-replay{flex-direction:row}.ar-inundation-sheet--active:not(.ar-inundation-sheet--collapsed)>.ar-depth-controls .ar-sheet-toggle{flex:0 0 44px}}
 .ar-depth-start{flex-direction:column;align-items:stretch}.ar-depth-start p{font-size:13px;line-height:1.6;margin:0}
 .ar-inundation button:disabled{opacity:.55;cursor:not-allowed}.ar-inundation button:focus-visible{outline:3px solid #f4801f;outline-offset:2px}
 .ar-depth-notice{display:flex;gap:8px;font-size:12px;line-height:1.6;margin:14px 0 8px;padding-top:12px;border-top:1px solid #e2dbcf}.ar-depth-notice svg{flex-shrink:0;margin-top:2px}
@@ -41,9 +43,11 @@
 .ar-water-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
 .ar-scene-chip--gauge{background:#fffdf7;color:#43392b;padding:2px 7px}
-.ar-depth-submerged{position:absolute;top:134px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7;border-radius:16px;padding:9px 13px;box-shadow:0 2px 14px #43392b24}
-.ar-depth-submerged strong{display:block;font-size:13px;font-weight:800;color:var(--hazard)}
-.ar-depth-submerged span{display:block;font-size:12px;line-height:1.55;margin-top:2px}
+.ar-scene-chip--water{background:#f4801f;color:#2b2118;box-shadow:0 1px 6px #43392b40}
+.ar-depth-submerged{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-depth-submerged strong{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px;font-size:13px;font-weight:800;color:var(--hazard)}
+.ar-depth-submerged strong small{font-size:12px;font-weight:700;color:#43392b}
+.ar-depth-submerged span{display:block;font-size:12px;line-height:1.4;margin-top:1px}
 .ar-depth-guide{position:absolute;left:0;right:104px;height:0;border-top:1px dashed #ffffffbf;z-index:1}
 .ar-depth-guide span{position:absolute;right:14px;bottom:3px;font-size:12px;font-weight:700;color:#fff;background:#43392bd9;border-radius:11px;padding:2px 8px;white-space:nowrap}
 .ar-depth-scene-notice{font-size:12px;line-height:1.6;margin:8px 0 0}
@@ -103,9 +107,11 @@
 @media(min-width:700px){.ar-inundation-sheet,.ar-risk-dock{max-width:430px;left:50%;right:auto;width:430px;transform:translateX(-50%)}.ar-water-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
 .ar-scene-chip--gauge{background:#fffdf7;color:#43392b;padding:2px 7px}
-.ar-depth-submerged{position:absolute;top:134px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7;border-radius:16px;padding:9px 13px;box-shadow:0 2px 14px #43392b24}
-.ar-depth-submerged strong{display:block;font-size:13px;font-weight:800;color:var(--hazard)}
-.ar-depth-submerged span{display:block;font-size:12px;line-height:1.55;margin-top:2px}
+.ar-scene-chip--water{background:#f4801f;color:#2b2118;box-shadow:0 1px 6px #43392b40}
+.ar-depth-submerged{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-depth-submerged strong{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px;font-size:13px;font-weight:800;color:var(--hazard)}
+.ar-depth-submerged strong small{font-size:12px;font-weight:700;color:#43392b}
+.ar-depth-submerged span{display:block;font-size:12px;line-height:1.4;margin-top:1px}
 .ar-depth-guide{position:absolute;left:0;right:104px;height:0;border-top:1px dashed #ffffffbf;z-index:1}
 .ar-depth-guide span{position:absolute;right:14px;bottom:3px;font-size:12px;font-weight:700;color:#fff;background:#43392bd9;border-radius:11px;padding:2px 8px;white-space:nowrap}
 .ar-depth-scene-notice{font-size:12px;line-height:1.6;margin:8px 0 0}
@@ -115,9 +121,11 @@
 @media(max-height:720px){.ar-water-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .ar-scene-chip{display:inline-block;white-space:nowrap;background:#43392be6;color:#fff;border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700;font-family:var(--font-app),"Zen Maru Gothic",system-ui,sans-serif;pointer-events:none}
 .ar-scene-chip--gauge{background:#fffdf7;color:#43392b;padding:2px 7px}
-.ar-depth-submerged{position:absolute;top:134px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7;border-radius:16px;padding:9px 13px;box-shadow:0 2px 14px #43392b24}
-.ar-depth-submerged strong{display:block;font-size:13px;font-weight:800;color:var(--hazard)}
-.ar-depth-submerged span{display:block;font-size:12px;line-height:1.55;margin-top:2px}
+.ar-scene-chip--water{background:#f4801f;color:#2b2118;box-shadow:0 1px 6px #43392b40}
+.ar-depth-submerged{position:absolute;top:132px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 36px));z-index:2;background:#fffdf7f2;border-radius:14px;padding:6px 12px;box-shadow:0 2px 14px #43392b24}
+.ar-depth-submerged strong{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px;font-size:13px;font-weight:800;color:var(--hazard)}
+.ar-depth-submerged strong small{font-size:12px;font-weight:700;color:#43392b}
+.ar-depth-submerged span{display:block;font-size:12px;line-height:1.4;margin-top:1px}
 .ar-depth-guide{position:absolute;left:0;right:104px;height:0;border-top:1px dashed #ffffffbf;z-index:1}
 .ar-depth-guide span{position:absolute;right:14px;bottom:3px;font-size:12px;font-weight:700;color:#fff;background:#43392bd9;border-radius:11px;padding:2px 8px;white-space:nowrap}
 .ar-depth-scene-notice{font-size:12px;line-height:1.6;margin:8px 0 0}
