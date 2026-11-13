@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import MapFloatingControls from '@/components/map/map-floating-controls'
-import { SHORT_MAP_SCREEN_QUERY } from '@/lib/map/empty-area-notice'
 
 vi.mock('@/hooks/use-gamification', () => ({
   useGamification: () => ({ points: 120, level: 3 }),
@@ -92,12 +91,12 @@ describe('MapFloatingControls mobile layout', () => {
 // 右上のポイント表示と「ピンの見方」が、上の列(検索・通学路チェック・くわしい表示)と重ならないように
 describe('MapFloatingControls corner badges', () => {
   const FOLDED = [
-    'top-[calc(env(safe-area-inset-top,0px)+8.5rem)]',
+    'top-[calc(env(safe-area-inset-top,0px)+7.25rem)]',
     'md:top-[calc(env(safe-area-inset-top,0px)+12.5rem)]',
     'lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]',
   ]
   const UNFOLDED = [
-    'top-[calc(env(safe-area-inset-top,0px)+12.5rem)]',
+    'top-[calc(env(safe-area-inset-top,0px)+11.5rem)]',
     'md:top-[calc(env(safe-area-inset-top,0px)+16.5rem)]',
     'lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]',
   ]
@@ -128,15 +127,13 @@ describe('MapFloatingControls corner badges', () => {
     expect(screen.getByTestId('map-utilities')).toHaveTextContent('120')
   })
 
-  // 横向きのスマホなど、低い画面では2つを横に並べて、下の操作の列にかからないようにする
-  it('lines the two badges up side by side on short screens, at the same height as the empty-area notice rule', () => {
+  // 2つはいつも横に並べる。縦に積むと地図の右上を2段ぶん覆い、低い画面では下の操作の列にもかかる
+  it('lines the two badges up side by side on every screen height', () => {
     renderControls({ isTopDetailsOpen: true })
 
-    expect(screen.getByTestId('map-utilities')).toHaveClass(
-      '[@media(max-height:499px)]:flex-row',
-      '[@media(max-height:499px)]:items-center',
-    )
-    expect(SHORT_MAP_SCREEN_QUERY).toBe('(max-height: 499px)')
+    const badges = screen.getByTestId('map-utilities')
+    expect(badges).toHaveClass('flex-row', 'items-center')
+    expect(badges).not.toHaveClass('flex-col')
   })
 })
 

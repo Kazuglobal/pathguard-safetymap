@@ -22,8 +22,8 @@ const floatPill = {
 
 // 右上のポイント表示と「ピンの見方」は、上の列(検索・通学路チェック・くわしい表示)のすぐ下に置き、「くわしい表示」の
 // 列を開いたらその下へずらす(列と重ならないように。BELOW_MAP_TOP_ROWS)。md〜lg 未満は上の列が画面の幅いっぱいなので、スマホと
-// 同じく列の下に置く。lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。低い画面(横向きのスマホなど。
-// 499px は lib/map/empty-area-notice.ts の SHORT_MAP_SCREEN_QUERY と同じ)では、下の操作の列にかからないよう2つを横に並べる
+// 同じく列の下に置く。lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。2つは横に並べる
+// (縦に積むと地図の右上を2段ぶん覆う。低い画面では下の操作の列にもかかる)
 const UTILITIES_TOP_CLASS = {
   folded: `${BELOW_MAP_TOP_ROWS.folded} lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]`,
   unfolded: `${BELOW_MAP_TOP_ROWS.unfolded} lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]`,
@@ -82,7 +82,7 @@ export default function MapFloatingControls({
       {showUtilities && (
         <div
           data-testid="map-utilities"
-          className={`absolute right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 [@media(max-height:499px)]:flex-row [@media(max-height:499px)]:items-center ${isTopDetailsOpen ? UTILITIES_TOP_CLASS.unfolded : UTILITIES_TOP_CLASS.folded}`}
+          className={`absolute right-3 z-20 flex flex-row items-center gap-1.5 sm:gap-2 ${isTopDetailsOpen ? UTILITIES_TOP_CLASS.unfolded : UTILITIES_TOP_CLASS.folded}`}
         >
           <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             {/* ポイント・レベル表示(スタンプらしく) */}
@@ -120,17 +120,18 @@ export default function MapFloatingControls({
         <div
           data-testid="mobile-action-dock"
           data-map-overlay="bottom"
+          data-guide="map-dock"
           className="absolute inset-x-3 z-20"
           style={{ bottom: mobileBottomNavClearance }}
         >
           <div
-            className="grid grid-cols-4 gap-1.5 rounded-[22px] border p-2"
+            className="grid grid-cols-4 gap-1.5 rounded-[22px] border p-1.5"
             style={floatPill}
           >
             <button
               type="button"
               onClick={() => setIsMenuOpen(true)}
-              className={`chunky-press flex h-12 items-center justify-center gap-1 rounded-full border-2 bg-white text-[12px] font-black ${tankenTokens.cls.focus}`}
+              className={`chunky-press flex h-11 items-center justify-center gap-1 rounded-full border-2 bg-white text-[12px] font-black ${tankenTokens.cls.focus}`}
               style={{ borderColor: "rgba(67,57,43,.12)", color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
               aria-label="メニューを開く"
             >
@@ -141,7 +142,7 @@ export default function MapFloatingControls({
               <button
                 type="button"
                 onClick={onToggleSidebar}
-                className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black ${tankenTokens.cls.focus}`}
+                className={`chunky-press flex h-11 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black ${tankenTokens.cls.focus}`}
                 style={{ borderColor: "rgba(67,57,43,.12)", color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
                 aria-label="危険地点一覧を開く"
               >
@@ -157,7 +158,7 @@ export default function MapFloatingControls({
                 type="button"
                 onClick={onReportAtCurrentLocation}
                 disabled={isAcquiringGPS || !isMapReady}
-                className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
+                className={`chunky-press flex h-11 items-center justify-center gap-1.5 rounded-full border-2 bg-white text-[13px] font-black disabled:opacity-50 ${tankenTokens.cls.focus}`}
                 style={{ borderColor: "rgba(21,158,114,.35)", color: C.primaryStrong, boxShadow: tankenTokens.shadow.pressPaper }}
                 aria-label={isAcquiringGPS ? "位置取得中" : "現在地で報告"}
               >
@@ -182,7 +183,7 @@ export default function MapFloatingControls({
               onClick={onAddReport}
               disabled={!isMapReady}
               data-testid="mobile-report-button"
-              className={`chunky-press flex h-12 items-center justify-center gap-1.5 rounded-full border-2 text-[13px] font-black text-white disabled:cursor-not-allowed disabled:opacity-55 ${tankenTokens.cls.focus}`}
+              className={`chunky-press flex h-11 items-center justify-center gap-1.5 rounded-full border-2 text-[13px] font-black text-white disabled:cursor-not-allowed disabled:opacity-55 ${tankenTokens.cls.focus}`}
               style={{
                 background: C.accent,
                 borderColor: "rgba(67,57,43,.18)",
@@ -220,6 +221,7 @@ export default function MapFloatingControls({
       {showPrimaryCta && (
         <div
           data-map-overlay="bottom"
+          data-guide="map-report"
           className="absolute left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2"
           style={ctaBottomStyle}
         >
@@ -289,7 +291,7 @@ export default function MapFloatingControls({
 
       {/* 凡例（コンパクト版） - 画面下部。絵=種類 / 色=あぶなさ */}
       {showLegend && (
-        <div data-map-overlay="bottom" className="absolute left-3 z-10" style={legendBottomStyle}>
+        <div data-map-overlay="bottom" data-guide="map-legend" className="absolute left-3 z-10" style={legendBottomStyle}>
           <div className="rounded-full border px-3 py-1.5" style={floatPill}>
             <MapLegendCompact />
           </div>

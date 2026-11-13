@@ -77,22 +77,10 @@ export function ARPrimaryHazardCard({
     >
       <Card
         data-guide="ar-report-sheet"
-        className="pointer-events-auto max-h-[60dvh] overflow-x-hidden overflow-y-auto rounded-3xl bg-white shadow-2xl"
+        // Card の既定の余白(p-6)は使わない。景色を広く見せるため、中の余白(p-4)だけにする
+        className="pointer-events-auto max-h-[60dvh] overflow-x-hidden overflow-y-auto rounded-3xl bg-white p-0 shadow-2xl"
       >
         <div className="p-4">
-          {progressLabel && (
-            <div className="mb-2 flex items-center justify-between">
-              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-semibold">
-                学習ツアー
-              </Badge>
-              <span className="text-xs font-semibold text-slate-600">{progressLabel}</span>
-            </div>
-          )}
-
-          <h3 className={`mb-2 text-base font-bold leading-snug text-gray-900 ${isExpanded ? "" : "line-clamp-2"}`}>
-            {hazard.report.title}
-          </h3>
-
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge
               className="text-xs text-white"
@@ -103,7 +91,16 @@ export function ARPrimaryHazardCard({
             <Badge variant="secondary" className="text-xs">
               {translateDangerType(hazard.report.danger_type)}
             </Badge>
+            {progressLabel && (
+              <span className="ml-auto text-xs font-semibold text-slate-600">
+                学習ツアー <span className="font-bold text-slate-900">{progressLabel}</span>
+              </span>
+            )}
           </div>
+
+          <h3 className={`mb-2 text-base font-bold leading-snug text-gray-900 ${isExpanded ? "" : "line-clamp-2"}`}>
+            {hazard.report.title}
+          </h3>
 
           <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
             {showDirection && (
@@ -178,7 +175,7 @@ export function ARPrimaryHazardCard({
           {hasDetails && (
             <button
               type="button"
-              className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-100"
+              className="mt-1 flex min-h-11 w-full items-center justify-center gap-1 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-100"
               aria-expanded={isExpanded}
               aria-controls="ar-report-sheet-details"
               onClick={() => setIsExpanded((current) => !current)}
@@ -243,7 +240,7 @@ export function ARPrimaryHazardCard({
 
           {nextHazard && (
             <p
-              className="mt-2 flex items-center gap-2 border-t border-slate-200 pt-2 text-xs text-slate-600"
+              className="mt-1 flex items-center gap-2 border-t border-slate-200 pt-2 text-xs text-slate-600"
               role="complementary"
               aria-label="次の危険個所"
             >

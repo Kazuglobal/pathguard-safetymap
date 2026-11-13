@@ -67,7 +67,8 @@ export function useHazardTileLayers({
           type: "raster",
           source: sourceId,
           paint: {
-            "raster-opacity": hazardType === "flood" ? 0.72 : 0.78,
+            // 濃すぎると下の道と地名が読めない。色の違い(深さ)が分かる範囲でうすくする
+            "raster-opacity": hazardType === "flood" ? 0.55 : 0.6,
           },
         })
       }

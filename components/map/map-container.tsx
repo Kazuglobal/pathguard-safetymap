@@ -153,6 +153,8 @@ export default function MapContainer({
   const [isEmptyAreaNoticeDismissed, setIsEmptyAreaNoticeDismissed] = useState(false)
   // 上の「くわしい表示」の列が出ているか。右上のポイント表示などを、列と重ならない位置へずらす
   const [isTopDetailsOpen, setIsTopDetailsOpen] = useState(false)
+  // 「くわしい表示」の列をたたむ合図(地図をタップ・ドラッグしたときに増やす)
+  const [foldTopDetailsSignal, setFoldTopDetailsSignal] = useState(0)
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
@@ -575,6 +577,7 @@ export default function MapContainer({
     dismissTransientMapUi({
       setActiveTopPanel,
       setDismissSearchResultsSignal,
+      setFoldTopDetailsSignal,
     })
 
     // 不審者アラート入力中は、地図クリックで中心点を指定する（プレビュー円・ピンは effect 側で更新）。
@@ -685,7 +688,11 @@ export default function MapContainer({
       });
 
       map.current.on("movestart", (event) => {
-        if ((event as { originalEvent?: unknown }).originalEvent) userMovedMapRef.current = true
+        if ((event as { originalEvent?: unknown }).originalEvent) {
+          userMovedMapRef.current = true
+          // 指で地図を動かしたら「くわしい表示」の列をたたみ、地図を広く見せる
+          setFoldTopDetailsSignal((prev) => prev + 1)
+        }
       });
 
       map.current.on("load", () => {
@@ -1221,6 +1228,7 @@ export default function MapContainer({
             onToggleHeatmap={accidentHeatmap.toggleVisibility}
             onToggleSuspicious={() => setIsSuspiciousVisible((v) => !v)}
             onDetailsVisibleChange={setIsTopDetailsOpen}
+            foldSignal={foldTopDetailsSignal}
             renderDisplayOptions={(trigger) => (
               <MapStyleSelector
                 currentStyle={mapStyle}
@@ -1235,7 +1243,7 @@ export default function MapContainer({
                 map={map.current}
                 dismissResultsSignal={dismissSearchResultsSignal}
                 className="rounded-[1.75rem]"
-                inputClassName="h-14 border-0 bg-transparent pl-5 pr-12 text-base shadow-none focus-visible:ring-0"
+                inputClassName="h-11 md:h-14 border-0 bg-transparent pl-5 pr-12 text-base shadow-none focus-visible:ring-0"
                 onSelectLocation={(coords) => {
                   if (isReportFormOpen) {
                     setSelectedLocation(coords)

@@ -214,4 +214,45 @@ describe("MapTopOverlay", () => {
     unmount()
     expect(onDetailsVisibleChange).toHaveBeenLastCalledWith(false)
   })
+
+  // 地図を広く見せる: 地図をさわったら(foldSignal が変わったら)列をたたむ
+  describe("folding when the map is touched", () => {
+    it("folds the row when foldSignal changes", async () => {
+      const user = userEvent.setup()
+      const props = overlayProps({ foldSignal: 0 })
+      const { rerender } = render(<MapTopOverlay {...props} />)
+
+      await user.click(screen.getByRole("button", { name: /くわしい表示/ }))
+      expect(screen.getByRole("group", { name: "くわしい表示" })).toBeInTheDocument()
+
+      rerender(<MapTopOverlay {...props} foldSignal={1} />)
+      expect(screen.queryByRole("group", { name: "くわしい表示" })).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /くわしい表示/ })).toHaveAttribute("aria-expanded", "false")
+    })
+
+    it("keeps the row out while a panel inside it is open", () => {
+      const props = overlayProps({ activePanel: "heatmap", isHeatmapVisible: true, foldSignal: 0 })
+      const { rerender } = render(<MapTopOverlay {...props} />)
+
+      rerender(<MapTopOverlay {...props} foldSignal={1} />)
+      expect(screen.getByRole("group", { name: "くわしい表示" })).toBeInTheDocument()
+    })
+
+    it("shows how many layers are on while the row is folded", () => {
+      renderOverlay({ is3DEnabled: true, isHeatmapVisible: true })
+
+      expect(screen.getByTestId("map-details-active-count")).toHaveTextContent("2")
+    })
+
+    it("shows no count when nothing is on, or while the row is out", async () => {
+      const user = userEvent.setup()
+      const props = overlayProps()
+      const { rerender } = render(<MapTopOverlay {...props} />)
+      expect(screen.queryByTestId("map-details-active-count")).not.toBeInTheDocument()
+
+      rerender(<MapTopOverlay {...props} is3DEnabled />)
+      await user.click(screen.getByRole("button", { name: /くわしい表示/ }))
+      expect(screen.queryByTestId("map-details-active-count")).not.toBeInTheDocument()
+    })
+  })
 })
