@@ -45,7 +45,7 @@ import { getARSafetySuppression } from "@/lib/ar-safety"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
-import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
+import { ARPrimaryHazardCard } from "./ar-hazard-card"
 import { ARLearningReviewCard } from "./ar-learning-review"
 import { ARRealRisks } from './ar-real-risks'
 import { AccidentStreetView } from './accident-street-view'
@@ -877,8 +877,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           </div>
         )}
 
-        {/* 主要危険地点カード */}
-        {canRenderHazardContent && !showRealRisks && activeStop && (
+        {/* 主要危険地点のシート(下)。回り終えたら、同じ下に出る振り返りのカードに場所をゆずる */}
+        {canRenderHazardContent && !showRealRisks && activeStop && !isTourComplete && (
           <ARPrimaryHazardCard
             hazard={activeStop.hazard}
             estimatedTimeMinutes={calculateEstimatedTime(activeStop.hazard.distance)}
@@ -891,12 +891,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
             markReviewedLabel={manualLocationMode ? "ここに着いた" : "確認した"}
             onMarkReviewed={canUpdateTourStatus ? () => updateTourStatus("reviewed") : undefined}
             onSaveForLater={canUpdateTourStatus ? () => updateTourStatus("saved") : undefined}
+            nextHazard={nextStop?.hazard}
           />
-        )}
-
-        {/* 次の危険地点カード */}
-        {canRenderHazardContent && !showRealRisks && nextStop && !isTourComplete && (
-          <ARSecondaryHazardCard hazard={nextStop.hazard} />
         )}
 
         {/* 危険地点がない場合 */}

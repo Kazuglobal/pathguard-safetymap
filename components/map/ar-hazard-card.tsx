@@ -1,6 +1,7 @@
 "use client"
 
-import { CheckCircle2, BookmarkPlus, MapPin, TreePine } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ArrowLeft, ArrowRight, BookmarkPlus, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,9 @@ import type { ARLearningContent } from "@/lib/ar-learning-tour"
 import type { KidsHazardCue } from "@/lib/ar-learning-tour-kids"
 import { ARImageGallery } from "./ar-image-gallery"
 
+/** 正面からこの角度より外れたら、右・左のどちらにあるかを出す */
+const DIRECTION_HINT_MIN_ANGLE = 15
+
 interface ARPrimaryHazardCardProps {
   hazard: ARHazardData
   estimatedTimeMinutes: number
@@ -27,8 +31,15 @@ interface ARPrimaryHazardCardProps {
   markReviewedLabel?: string
   onMarkReviewed?: () => void
   onSaveForLater?: () => void
+  /** つぎに回る地点。シートの下に1行で出す */
+  nextHazard?: ARHazardData
 }
 
+/**
+ * ARの「みんなの報告」のシート。カメラの景色を主役にするため画面の下に置き、最初は要点
+ * (題名・あぶなさ・方向と距離・確認のボタン)だけを出す。写真と学習ポイントは「くわしく見る」でひらく。
+ * 上に大きなカードを置くと、上の切りかえと重なり、景色もほとんど見えなくなる。
+ */
 export function ARPrimaryHazardCard({
   hazard,
   estimatedTimeMinutes,
@@ -41,205 +52,208 @@ export function ARPrimaryHazardCard({
   markReviewedLabel = "確認した",
   onMarkReviewed,
   onSaveForLater,
+  nextHazard,
 }: ARPrimaryHazardCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const reportId = hazard.report.id
+  // 別の報告に切りかわったら、たたんだ状態に戻す(ひらいたままだと、また景色を覆う)
+  useEffect(() => {
+    setIsExpanded(false)
+  }, [reportId])
+
   const images = getReportImageEntries(hazard.report)
   const readableDistance = distanceLabel ?? `${formatDistance(hazard.distance)}先`
-  const readableTime = estimatedTimeLabel ?? `${estimatedTimeMinutes}分`
+  const readableTime = estimatedTimeLabel ?? `徒歩 約${estimatedTimeMinutes}分`
+  const hasDetails = images.length > 0 || Boolean(learningContent)
+  const isOffToTheRight = hazard.relativeAngle > 0
+  const showDirection = Math.abs(hazard.relativeAngle) > DIRECTION_HINT_MIN_ANGLE
+  const DirectionIcon = isOffToTheRight ? ArrowRight : ArrowLeft
 
   return (
     <div
-      className="absolute top-20 left-4 right-4 z-20 pointer-events-none"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]"
       role="article"
       aria-label={`危険個所: ${hazard.report.title}、${readableDistance}`}
     >
-      <div
-        className="relative"
+      <Card
+        data-guide="ar-report-sheet"
+        className="pointer-events-auto max-h-[60dvh] overflow-x-hidden overflow-y-auto rounded-3xl bg-white shadow-2xl"
       >
-        <Card className="max-h-[calc(100vh-8rem)] overflow-x-hidden overflow-y-auto rounded-3xl bg-white shadow-2xl pointer-events-auto">
-          <ARImageGallery
-            images={images.map((image) => image.url)}
-            kinds={images.map((image) => image.kind)}
-            alt={hazard.report.title}
-          />
-
-          <div className="p-4">
-            {progressLabel && (
-              <div className="mb-3 flex items-center justify-between">
-                <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-semibold">
-                  学習ツアー
-                </Badge>
-                <span className="text-xs font-semibold text-slate-500">{progressLabel}</span>
-              </div>
-            )}
-
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              {hazard.report.title}
-            </h3>
-
-            <div className="flex items-center gap-3 mb-2">
-              <Badge
-                className="text-xs text-white"
-                style={{ backgroundColor: getDangerLevelColor(hazard.report.danger_level) }}
-              >
-                {getDangerLevelLabel(hazard.report.danger_level)}
+        <div className="p-4">
+          {progressLabel && (
+            <div className="mb-2 flex items-center justify-between">
+              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-semibold">
+                学習ツアー
               </Badge>
-              <span className="text-xs text-gray-500">·</span>
-              <Badge variant="secondary" className="text-xs">
-                {translateDangerType(hazard.report.danger_type)}
-              </Badge>
+              <span className="text-xs font-semibold text-slate-600">{progressLabel}</span>
             </div>
+          )}
 
-            <p className="text-sm text-gray-600 mb-3">
-              {readableDistance}
-            </p>
+          <h3 className={`mb-2 text-base font-bold leading-snug text-gray-900 ${isExpanded ? "" : "line-clamp-2"}`}>
+            {hazard.report.title}
+          </h3>
 
-            {childCue && (
-              <div
-                className={`mb-3 rounded-2xl border p-4 ${
-                  isApproaching
-                    ? "border-amber-300 bg-slate-950 text-white shadow-lg"
-                    : "border-slate-200 bg-white text-slate-900"
-                }`}
-                role={isApproaching ? "alert" : "note"}
-                aria-live={isApproaching ? "assertive" : "polite"}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Badge
+              className="text-xs text-white"
+              style={{ backgroundColor: getDangerLevelColor(hazard.report.danger_level) }}
+            >
+              {getDangerLevelLabel(hazard.report.danger_level)}
+            </Badge>
+            <Badge variant="secondary" className="text-xs">
+              {translateDangerType(hazard.report.danger_type)}
+            </Badge>
+          </div>
+
+          <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
+            {showDirection && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2.5 py-1 text-xs font-bold text-white"
+                role="status"
+                aria-label={`危険個所は${isOffToTheRight ? "右" : "左"}方向です`}
               >
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Badge
-                    variant={isApproaching ? "secondary" : "outline"}
-                    className={isApproaching ? "bg-amber-300 text-slate-950" : ""}
-                  >
-                    {isApproaching ? "いま確認するポイント" : "親子で確認"}
-                  </Badge>
-                  <span className={`text-xs font-semibold ${isApproaching ? "text-amber-100" : "text-slate-500"}`}>
-                    {childCue.dangerKind}
-                  </span>
-                </div>
-                <p className="text-lg font-bold leading-relaxed">{childCue.shortMessage}</p>
-                <p className={`mt-2 text-sm leading-6 ${isApproaching ? "text-slate-100" : "text-slate-700"}`}>
-                  {childCue.action}
-                </p>
-              </div>
+                <DirectionIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{isOffToTheRight ? "右方向" : "左方向"}</span>
+              </span>
             )}
-
-            {(onMarkReviewed || onSaveForLater) && (
-              <div className="mb-3 grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="min-h-11 rounded-xl"
-                  onClick={onMarkReviewed}
-                  disabled={!onMarkReviewed}
-                >
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  {markReviewedLabel}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="min-h-11 rounded-xl"
-                  onClick={onSaveForLater}
-                  disabled={!onSaveForLater}
-                >
-                  <BookmarkPlus className="mr-2 h-4 w-4" />
-                  あとで見返す
-                </Button>
-              </div>
-            )}
-
-            {learningContent && (
-              <div className="space-y-3 rounded-2xl bg-slate-50 p-3">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-slate-500">学習ポイント</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">{learningContent.summary}</p>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">確認すること</p>
-                  <ul className="space-y-1.5">
-                    {learningContent.checkpoints.map((checkpoint) => (
-                      <li key={checkpoint} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="mt-0.5 h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-                        <span>{checkpoint}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {learningContent.attentionTags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="rounded-full bg-slate-200/80 text-slate-700">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-
-              </div>
-            )}
-          </div>
-        </Card>
-
-        {/* 方向指示（This way バブル） */}
-        {Math.abs(hazard.relativeAngle) > 15 && (
-          <div
-            className="absolute top-4 flex items-center gap-2 pointer-events-auto"
-            style={{
-              left: hazard.relativeAngle > 0 ? "auto" : "16px",
-              right: hazard.relativeAngle > 0 ? "16px" : "auto",
-            }}
-            role="status"
-            aria-label={`危険個所は${hazard.relativeAngle > 0 ? "右" : "左"}方向です`}
-          >
-            <MapPin className="h-4 w-4 text-red-500" aria-hidden="true" />
-            <div className="bg-gray-800/95 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
-              {hazard.relativeAngle > 0 ? "右方向" : "左方向"}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 距離と時間のマーカー */}
-      <div className="relative mt-4 pointer-events-auto">
-        <div
-          className="absolute left-1/2 -translate-x-1/2 w-0.5 bg-white/70"
-          style={{
-            top: "-8px",
-            height: "40px",
-          }}
-        />
-
-        <div className="flex items-center justify-center gap-2 pt-8" aria-label={`徒歩で約${estimatedTimeMinutes}分`}>
-          <div className="bg-white rounded-full p-2 shadow-lg border-2 border-green-500">
-            <TreePine className="h-5 w-5 text-green-600" aria-hidden="true" />
-          </div>
-          <div className="bg-black/90 text-white px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg">
-            {readableTime}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface ARSecondaryHazardCardProps {
-  hazard: ARHazardData
-}
-
-export function ARSecondaryHazardCard({ hazard }: ARSecondaryHazardCardProps) {
-  return (
-    <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-none" role="complementary" aria-label="次の危険個所">
-      <Card className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg pointer-events-auto">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 truncate">
-              {hazard.report.title}
-            </h4>
-          </div>
-          <div className="flex items-center gap-3 ml-3 text-xs text-gray-500">
-            <span className="font-medium">{formatDistance(hazard.distance)}</span>
+            <span className="font-bold">{readableDistance}</span>
             <span aria-hidden="true">·</span>
-            <span>{formatBearing(hazard.bearing)}</span>
-          </div>
+            <span>{readableTime}</span>
+          </p>
+
+          {childCue && (
+            <div
+              className={`mb-3 rounded-2xl border p-4 ${
+                isApproaching
+                  ? "border-amber-300 bg-slate-950 text-white shadow-lg"
+                  : "border-slate-200 bg-white text-slate-900"
+              }`}
+              role={isApproaching ? "alert" : "note"}
+              aria-live={isApproaching ? "assertive" : "polite"}
+            >
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={isApproaching ? "secondary" : "outline"}
+                  className={isApproaching ? "bg-amber-300 text-slate-950" : ""}
+                >
+                  {isApproaching ? "いま確認するポイント" : "親子で確認"}
+                </Badge>
+                <span className={`text-xs font-semibold ${isApproaching ? "text-amber-100" : "text-slate-600"}`}>
+                  {childCue.dangerKind}
+                </span>
+              </div>
+              <p className="text-lg font-bold leading-relaxed">{childCue.shortMessage}</p>
+              <p className={`mt-2 text-sm leading-6 ${isApproaching ? "text-slate-100" : "text-slate-700"}`}>
+                {childCue.action}
+              </p>
+            </div>
+          )}
+
+          {(onMarkReviewed || onSaveForLater) && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="min-h-11 rounded-xl"
+                onClick={onMarkReviewed}
+                disabled={!onMarkReviewed}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {markReviewedLabel}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="min-h-11 rounded-xl"
+                onClick={onSaveForLater}
+                disabled={!onSaveForLater}
+              >
+                <BookmarkPlus className="mr-2 h-4 w-4" />
+                あとで見返す
+              </Button>
+            </div>
+          )}
+
+          {hasDetails && (
+            <button
+              type="button"
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-100"
+              aria-expanded={isExpanded}
+              aria-controls="ar-report-sheet-details"
+              onClick={() => setIsExpanded((current) => !current)}
+            >
+              {isExpanded ? (
+                <>
+                  とじる
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                </>
+              ) : (
+                <>
+                  くわしく見る{images.length > 0 ? `(写真${images.length}枚)` : ""}
+                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                </>
+              )}
+            </button>
+          )}
+
+          {hasDetails && isExpanded && (
+            <div id="ar-report-sheet-details" className="mt-2 space-y-3">
+              {/* 写真が無い報告では箱を出さない(灰色の箱が景色を隠すだけになる) */}
+              {images.length > 0 && (
+                <div className="overflow-hidden rounded-2xl">
+                  <ARImageGallery
+                    images={images.map((image) => image.url)}
+                    kinds={images.map((image) => image.kind)}
+                    alt={hazard.report.title}
+                  />
+                </div>
+              )}
+
+              {learningContent && (
+                <div className="space-y-3 rounded-2xl bg-slate-50 p-3">
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-slate-600">学習ポイント</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-700">{learningContent.summary}</p>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold tracking-wide text-slate-600">確認すること</p>
+                    <ul className="space-y-1.5">
+                      {learningContent.checkpoints.map((checkpoint) => (
+                        <li key={checkpoint} className="flex items-start gap-2 text-sm text-slate-700">
+                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+                          <span>{checkpoint}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {learningContent.attentionTags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="rounded-full bg-slate-200/80 text-slate-700">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {nextHazard && (
+            <p
+              className="mt-2 flex items-center gap-2 border-t border-slate-200 pt-2 text-xs text-slate-600"
+              role="complementary"
+              aria-label="次の危険個所"
+            >
+              <span className="shrink-0 font-bold">つぎ</span>
+              <span className="min-w-0 flex-1 truncate">{nextHazard.report.title}</span>
+              <span className="shrink-0 font-medium">
+                {formatDistance(nextHazard.distance)} · {formatBearing(nextHazard.bearing)}
+              </span>
+            </p>
+          )}
         </div>
       </Card>
     </div>

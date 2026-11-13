@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { ARPrimaryHazardCard } from "@/components/map/ar-hazard-card"
@@ -83,5 +84,106 @@ describe("ARPrimaryHazardCard parent-child learning UI", () => {
     expect(screen.getByText("手動確認")).toBeInTheDocument()
     expect(screen.getByText("現地で確認")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "ここに着いた" })).toBeInTheDocument()
+  })
+})
+
+// カードが画面をほぼ全部覆ってカメラの景色が見えなかったので、下のシートにして要点だけ先に出す
+describe("ARPrimaryHazardCard bottom sheet", () => {
+  const learningContent = {
+    summary: "車の出入りが多い場所です",
+    checkpoints: ["止まって左右を見る"],
+    attentionTags: ["見通し"],
+  }
+
+  it("写真が無い報告では、ひらいても画像の箱を出さない", async () => {
+    const user = userEvent.setup()
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard({
+          report: createMockDangerReport({ id: "no-photo", title: "写真なし", image_url: null, processed_image_urls: null }),
+        })}
+        estimatedTimeMinutes={1}
+        learningContent={learningContent}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: /くわしく見る/ }))
+    expect(screen.queryByTestId("ar-image-gallery")).not.toBeInTheDocument()
+  })
+
+  it("最初はたたんであり、「くわしく見る」で写真と学習ポイントが出る", async () => {
+    const user = userEvent.setup()
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard({
+          report: createMockDangerReport({
+            id: "with-photo",
+            title: "写真あり",
+            image_url: "https://example.supabase.co/storage/v1/object/public/a.jpg",
+          }),
+        })}
+        estimatedTimeMinutes={1}
+        learningContent={learningContent}
+      />,
+    )
+
+    const toggle = screen.getByRole("button", { name: /くわしく見る/ })
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByText("車の出入りが多い場所です")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("ar-image-gallery")).not.toBeInTheDocument()
+
+    await user.click(toggle)
+
+    expect(screen.getByRole("button", { name: /とじる/ })).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByText("車の出入りが多い場所です")).toBeInTheDocument()
+    expect(screen.getByTestId("ar-image-gallery")).toBeInTheDocument()
+  })
+
+  it("写真も学習ポイントも無いときは「くわしく見る」を出さない", () => {
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard({
+          report: createMockDangerReport({ id: "bare", title: "要点だけ", image_url: null, processed_image_urls: null }),
+        })}
+        estimatedTimeMinutes={1}
+      />,
+    )
+
+    expect(screen.queryByRole("button", { name: /くわしく見る/ })).not.toBeInTheDocument()
+  })
+
+  it("向きがそれているときは方向を、つぎの地点があればその1行を出す", () => {
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard({ relativeAngle: -40 })}
+        estimatedTimeMinutes={6}
+        nextHazard={createHazard({
+          report: createMockDangerReport({ id: "next", title: "つぎの交差点" }),
+          distance: 120,
+        })}
+      />,
+    )
+
+    expect(screen.getByText("左方向")).toBeInTheDocument()
+    expect(screen.getByText("徒歩 約6分")).toBeInTheDocument()
+    expect(screen.getByLabelText("次の危険個所")).toHaveTextContent("つぎの交差点")
+  })
+
+  it("別の報告に切りかわったら、たたんだ状態に戻す", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <ARPrimaryHazardCard hazard={createHazard()} estimatedTimeMinutes={1} learningContent={learningContent} />,
+    )
+    await user.click(screen.getByRole("button", { name: /くわしく見る/ }))
+
+    rerender(
+      <ARPrimaryHazardCard
+        hazard={createHazard({ report: createMockDangerReport({ id: "other", title: "べつの報告" }) })}
+        estimatedTimeMinutes={1}
+        learningContent={learningContent}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: /くわしく見る/ })).toHaveAttribute("aria-expanded", "false")
   })
 })
