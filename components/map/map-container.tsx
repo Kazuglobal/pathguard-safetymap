@@ -155,6 +155,10 @@ export default function MapContainer({
   const [isTopDetailsOpen, setIsTopDetailsOpen] = useState(false)
   // 「くわしい表示」の列をたたむ合図(地図をタップ・ドラッグしたときに増やす)
   const [foldTopDetailsSignal, setFoldTopDetailsSignal] = useState(0)
+  // 指で地図を動かしたら列をたたむ。列が出ていないときは何もしない(動かすたびに全体を描き直さない)
+  const foldTopDetailsOnUserMove = useEventCallback(() => {
+    if (isTopDetailsOpen) setFoldTopDetailsSignal((prev) => prev + 1)
+  })
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
@@ -691,7 +695,7 @@ export default function MapContainer({
         if ((event as { originalEvent?: unknown }).originalEvent) {
           userMovedMapRef.current = true
           // 指で地図を動かしたら「くわしい表示」の列をたたみ、地図を広く見せる
-          setFoldTopDetailsSignal((prev) => prev + 1)
+          foldTopDetailsOnUserMove()
         }
       });
 

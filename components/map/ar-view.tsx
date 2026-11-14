@@ -162,13 +162,16 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const hasPositionContext = Boolean(userLocation) || (isParentChildMode && manualLocationMode)
   const canRenderHazardContent = sensorsEnabled && !arError && isCameraActive && hasPositionContext
 
-  // はじめてARを開いたとき、カメラが映ってから、切りかえ・下のシート・設定の場所を案内する(1回だけ)
+  // はじめてARを開いたとき、切りかえ・下のシート・設定の場所を案内する(1回だけ)。
+  // 自分から出すのは、位置が取れて下のシートが出てから。カメラだけ映った時点で出すと、シートの手順を
+  // 飛ばしたまま「見た」と記録してしまう。ヘッダーの「?」は、カメラが映っていれば押せる
   const isGuideReady = sensorsEnabled && !isLoading && !arError && isCameraActive
+  const canOfferGuide = isGuideReady && canRenderHazardContent
   useEffect(() => {
-    if (!isGuideReady || guideOfferedRef.current) return
+    if (!canOfferGuide || guideOfferedRef.current) return
     guideOfferedRef.current = true
     if (shouldShowSpotGuide("ar")) setShowGuide(true)
-  }, [isGuideReady])
+  }, [canOfferGuide])
   const handleGuideClose = useCallback((reason: SpotGuideCloseReason) => {
     setShowGuide(false)
     if (reason !== "empty") markSpotGuideSeen("ar")

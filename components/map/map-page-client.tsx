@@ -34,8 +34,14 @@ export default function MapPageClient() {
   const preferredRouteId = searchParams.get("routeId")
   const initialReportId = searchParams.get("reportId")
   const [showSpotGuide, setShowSpotGuide] = useState(false)
-  // 報告や特定の報告を開く用事で来たときは、案内で先をふさがない(つぎに地図を開いたときに出す)
-  const arrivedWithTaskRef = useRef(autoOpenReport || Boolean(initialReportId))
+  // 報告・特定の報告・通学路・不審者アラートの入力など、用事があって来たときは、案内で先をふさがない
+  // (つぎに地図を開いたときに出す)。不審者アラートの入力フォームには role が無く、下の待ち条件では気づけない
+  const arrivedWithTaskRef = useRef(
+    autoOpenReport ||
+      Boolean(initialReportId) ||
+      Boolean(preferredRouteId) ||
+      searchParams.get("suspiciousAlert") === "1",
+  )
 
   // はじめて地図を開いたとき、実際のボタンを1つずつ照らして場所を案内する。
   // 地図の部品が出そろい、ほかのダイアログが開いていないのを待ってから出す

@@ -169,6 +169,42 @@ describe("ARPrimaryHazardCard bottom sheet", () => {
     expect(screen.getByLabelText("次の危険個所")).toHaveTextContent("つぎの交差点")
   })
 
+  // 親子モード: 注意の箱を毎回ぜんぶ出すと、たたんでも画面の6割を覆う
+  it("近づいていないときの子ども向けの注意は、たたむとひとことだけ。ひらくと行動まで出る", async () => {
+    const user = userEvent.setup()
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard()}
+        estimatedTimeMinutes={1}
+        childCue={{ shortMessage: "ここでは止まろう", action: "車が止まったのを見てからわたろう", dangerKind: "交通" }}
+      />,
+    )
+
+    expect(screen.getByText("ここでは止まろう")).toBeInTheDocument()
+    expect(screen.queryByText("車が止まったのを見てからわたろう")).not.toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /くわしく見る/ }))
+    expect(screen.getByText("車が止まったのを見てからわたろう")).toBeInTheDocument()
+  })
+
+  it("手動確認のときは、つぎの地点の距離と方角を出さない(0m・北と出さない)", () => {
+    render(
+      <ARPrimaryHazardCard
+        hazard={createHazard()}
+        estimatedTimeMinutes={0}
+        distanceLabel="手動確認"
+        estimatedTimeLabel="現地で確認"
+        nextHazard={createHazard({ report: createMockDangerReport({ id: "next", title: "つぎの交差点" }), distance: 0, bearing: 0 })}
+      />,
+    )
+
+    const next = screen.getByLabelText("次の危険個所")
+    expect(next).toHaveTextContent("つぎの交差点")
+    expect(next).not.toHaveTextContent("0m")
+    expect(next).not.toHaveTextContent("北")
+  })
+
   it("別の報告に切りかわったら、たたんだ状態に戻す", async () => {
     const user = userEvent.setup()
     const { rerender } = render(

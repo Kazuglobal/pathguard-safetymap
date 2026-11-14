@@ -64,7 +64,10 @@ export function ARPrimaryHazardCard({
   const images = getReportImageEntries(hazard.report)
   const readableDistance = distanceLabel ?? `${formatDistance(hazard.distance)}先`
   const readableTime = estimatedTimeLabel ?? `徒歩 約${estimatedTimeMinutes}分`
-  const hasDetails = images.length > 0 || Boolean(learningContent)
+  // 近づいていないときの子ども向けの注意は、たたむとひとことだけになる。全部はひらいて読む
+  const hasDetails = images.length > 0 || Boolean(learningContent) || (Boolean(childCue) && !isApproaching)
+  // 手動確認(位置が取れない)のときは距離も方角も分からない。「0m・北」と出さない
+  const showNextMeta = distanceLabel === undefined
   const isOffToTheRight = hazard.relativeAngle > 0
   const showDirection = Math.abs(hazard.relativeAngle) > DIRECTION_HINT_MIN_ANGLE
   const DirectionIcon = isOffToTheRight ? ArrowRight : ArrowLeft
@@ -118,7 +121,14 @@ export function ARPrimaryHazardCard({
             <span>{readableTime}</span>
           </p>
 
-          {childCue && (
+          {/* 子ども向けの注意。近づいているとき(いま確認するとき)と、ひらいたときは全部出す。
+              それ以外でたたんでいるときは、ひとことだけにして景色を広く残す */}
+          {childCue && !isApproaching && !isExpanded && (
+            <p className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold leading-snug text-slate-900" role="note">
+              {childCue.shortMessage}
+            </p>
+          )}
+          {childCue && (isApproaching || isExpanded) && (
             <div
               className={`mb-3 rounded-2xl border p-4 ${
                 isApproaching
@@ -246,9 +256,11 @@ export function ARPrimaryHazardCard({
             >
               <span className="shrink-0 font-bold">つぎ</span>
               <span className="min-w-0 flex-1 truncate">{nextHazard.report.title}</span>
-              <span className="shrink-0 font-medium">
-                {formatDistance(nextHazard.distance)} · {formatBearing(nextHazard.bearing)}
-              </span>
+              {showNextMeta && (
+                <span className="shrink-0 font-medium">
+                  {formatDistance(nextHazard.distance)} · {formatBearing(nextHazard.bearing)}
+                </span>
+              )}
             </p>
           )}
         </div>

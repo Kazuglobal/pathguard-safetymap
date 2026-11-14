@@ -37,10 +37,10 @@ export function MapStatusOverlays({
 
   return (
     <>
-      {/* モバイルマップヒント */}
+      {/* モバイルマップヒント。右上のポイント表示と「ピンの見方」(横1列。BELOW_MAP_TOP_ROWS.folded から 36px)の下に置く */}
       {showMobileMapHint && (
         <div
-          className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+6.75rem)]"
+          className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+10rem)]"
         >
           <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-100/80 text-blue-700 text-xs font-medium pointer-events-auto">
             <MapPin className="h-4 w-4 text-blue-500" />
