@@ -305,3 +305,79 @@ describe("ARView の位置情報待ちの案内", () => {
     expect(screen.queryByText("位置情報を取得できません")).not.toBeInTheDocument()
   })
 })
+
+// 最後の地点を「あとで見返す」にすると回り終えたことになり、報告のシートが消える。
+// それでも振り返りから、その地点の写真と確認ポイントを開き直せること
+describe("ARView 回り終えたあとの見返し", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.useARCamera.mockReturnValue({
+      videoRef: { current: null }, isCameraActive: true, isLoading: false, loadingStep: "",
+      estimatedFov: null, cameraPermission: true, error: null, stopCamera: vi.fn(), retry: vi.fn(),
+    })
+    mocks.useAROrientation.mockReturnValue({ userHeading: 0, orientationPermission: true, error: null, retry: vi.fn() })
+    mocks.useARLocation.mockReturnValue({
+      userLocation: { lat: 35.6895, lon: 139.6917, accuracy: 12 }, locationPermission: true, timedOut: false, error: null, retry: vi.fn(),
+    })
+  })
+
+  it("振り返りから地点を開き直し、「確認した」に変えて振り返りへ戻れる", async () => {
+    const user = userEvent.setup()
+    render(
+      <ARView
+        mode={{
+          kind: "nearby",
+          reports: [
+            createMockDangerReport({
+              id: "danger-last",
+              title: "見通しの悪い交差点",
+              danger_type: "traffic",
+              latitude: 35.6896,
+              longitude: 139.6917,
+            }),
+          ],
+        }}
+        onClose={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: /みんなの報告/ }))
+    await user.click(await screen.findByRole("button", { name: "あとで見返す" }))
+
+    // 回り終えた: 報告のシートは消え、振り返りが出る
+    expect(await screen.findByText("通学路の振り返り")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "あとで見返す" })).not.toBeInTheDocument()
+
+    // 振り返りから開き直す
+    await user.click(screen.getByRole("button", { name: "見通しの悪い交差点 をもう一度見る" }))
+    expect(screen.queryByText("通学路の振り返り")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "ふりかえりにもどる" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /くわしく見る/ })).toBeInTheDocument()
+
+    // 「確認した」に変えると振り返りへ戻り、見返す地点は無くなる
+    await user.click(screen.getByRole("button", { name: "確認した" }))
+    expect(await screen.findByText("通学路の振り返り")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "見通しの悪い交差点 をもう一度見る" })).not.toBeInTheDocument()
+  })
+
+  it("開き直したあと、何も変えずに振り返りへ戻れる", async () => {
+    const user = userEvent.setup()
+    render(
+      <ARView
+        mode={{
+          kind: "nearby",
+          reports: [createMockDangerReport({ id: "danger-last", title: "見通しの悪い交差点", danger_type: "traffic", latitude: 35.6896, longitude: 139.6917 })],
+        }}
+        onClose={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: /みんなの報告/ }))
+    await user.click(await screen.findByRole("button", { name: "あとで見返す" }))
+    await user.click(await screen.findByRole("button", { name: "見通しの悪い交差点 をもう一度見る" }))
+    await user.click(screen.getByRole("button", { name: "ふりかえりにもどる" }))
+
+    expect(await screen.findByText("通学路の振り返り")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "見通しの悪い交差点 をもう一度見る" })).toBeInTheDocument()
+  })
+})

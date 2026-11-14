@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HelpCircle } from "lucide-react"
 
 import AppOnboarding from "@/components/onboarding/app-onboarding"
 import HelpDialog from "@/components/map/help-dialog"
+import SpotGuide, { type SpotGuideCloseReason } from "@/components/map/spot-guide"
+import { MAP_DETAILS_GUIDE_STEPS, MAP_GUIDE_STEPS } from "@/lib/spot-guide-steps"
+import { markSpotGuideSeen, shouldShowSpotGuide } from "@/lib/spot-guide-storage"
 import { Button } from "@/components/ui/button"
 import { tankenTokens } from "@/lib/design/tanken"
 // 地図を開いた直後(app/map/loading.tsx)と同じ待ち表示
@@ -17,6 +20,10 @@ const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   loading: () => <MapLoadingPlaceholder />,
 })
 
+/** 地図の部品が出そろうのを待つ間隔と回数(20秒まで) */
+const MAP_GUIDE_POLL_MS = 500
+const MAP_GUIDE_MAX_TRIES = 40
+
 export default function MapPageClient() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
@@ -26,6 +33,67 @@ export default function MapPageClient() {
   const autoOpenReport = searchParams.get("report") === "open"
   const preferredRouteId = searchParams.get("routeId")
   const initialReportId = searchParams.get("reportId")
+  const [showSpotGuide, setShowSpotGuide] = useState(false)
+  // 報告・特定の報告・通学路・不審者アラートの入力など、用事があって来たときは、案内で先をふさがない
+  // (つぎに地図を開いたときに出す)。不審者アラートの入力フォームには role が無く、下の待ち条件では気づけない
+  const arrivedWithTaskRef = useRef(
+    autoOpenReport ||
+      Boolean(initialReportId) ||
+      Boolean(preferredRouteId) ||
+      searchParams.get("suspiciousAlert") === "1",
+  )
+
+  // 報告や不審者アラートの入力など、地図の上で何かをしている最中か(MapContainer が知らせる)。
+  // 最中は案内を出さず、出ていたら引っこめる(見た記録は付けない。つぎの機会に出す)
+  const isMapBusyRef = useRef(false)
+  const handleMapBusyChange = (isBusy: boolean) => {
+    isMapBusyRef.current = isBusy
+    if (!isBusy) return
+    setShowSpotGuide(false)
+    setShowDetailsGuide(false)
+  }
+
+  // はじめて地図を開いたとき、実際のボタンを1つずつ照らして場所を案内する。
+  // 地図の部品が出そろい、ほかのダイアログが開いていないのを待ってから出す
+  useEffect(() => {
+    if (arrivedWithTaskRef.current || !shouldShowSpotGuide("map")) return
+
+    let tries = 0
+    const timer = window.setInterval(() => {
+      tries += 1
+      const isReady = document.querySelector('[data-guide="map-search"]') !== null
+      const isBusy =
+        isMapBusyRef.current || document.querySelector('[role="dialog"], [role="alertdialog"]') !== null
+      if (isReady && !isBusy) {
+        window.clearInterval(timer)
+        setShowSpotGuide(true)
+      } else if (tries >= MAP_GUIDE_MAX_TRIES) {
+        window.clearInterval(timer)
+      }
+    }, MAP_GUIDE_POLL_MS)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  // 「くわしい表示」をはじめてひらいたとき、中の5つを1つずつ案内する(地図の案内とは別に覚える)
+  const [showDetailsGuide, setShowDetailsGuide] = useState(false)
+  const handleTopDetailsVisibleChange = (isVisible: boolean) => {
+    if (!isVisible) {
+      setShowDetailsGuide(false)
+      return
+    }
+    if (showSpotGuide || showTutorial || showHelp || isMapBusyRef.current) return
+    if (shouldShowSpotGuide("map-details")) setShowDetailsGuide(true)
+  }
+  const handleDetailsGuideClose = (reason: SpotGuideCloseReason) => {
+    setShowDetailsGuide(false)
+    if (reason !== "empty") markSpotGuideSeen("map-details")
+  }
+
+  const handleSpotGuideClose = (reason: SpotGuideCloseReason) => {
+    setShowSpotGuide(false)
+    // 照らせる部品が1つも無かったときは、見たことにしない
+    if (reason !== "empty") markSpotGuideSeen("map")
+  }
 
   // 初回表示は AppOnboardingGate(layout-provider)が担当。
   // ここでは右下の「使い方」ボタンからの再生のみ扱う。
@@ -47,9 +115,11 @@ export default function MapPageClient() {
         autoOpenReport={autoOpenReport}
         preferredRouteId={preferredRouteId}
         initialReportId={initialReportId}
+        onTopDetailsVisibleChange={handleTopDetailsVisibleChange}
+        onBusyChange={handleMapBusyChange}
       />
 
-      <div className="map-help-fab fixed left-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+6.75rem)] md:left-auto md:bottom-4 md:right-4">
+      <div data-guide="map-help" className="map-help-fab fixed left-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:left-auto md:bottom-4 md:right-4">
         <Button
           type="button"
           variant="outline"
@@ -70,7 +140,26 @@ export default function MapPageClient() {
         </Button>
       </div>
 
-      <HelpDialog open={showHelp} onOpenChange={setShowHelp} onReplayOnboarding={() => setShowTutorial(true)} />
+      <HelpDialog
+        open={showHelp}
+        onOpenChange={setShowHelp}
+        onReplayOnboarding={() => setShowTutorial(true)}
+        onReplaySpotGuide={() => setShowSpotGuide(true)}
+      />
+
+      <SpotGuide
+        open={showSpotGuide && !showTutorial}
+        steps={MAP_GUIDE_STEPS}
+        label="地図の画面の案内"
+        onClose={handleSpotGuideClose}
+      />
+
+      <SpotGuide
+        open={showDetailsGuide && !showSpotGuide && !showTutorial}
+        steps={MAP_DETAILS_GUIDE_STEPS}
+        label="くわしい表示の案内"
+        onClose={handleDetailsGuideClose}
+      />
 
       <AppOnboarding
         open={showTutorial}

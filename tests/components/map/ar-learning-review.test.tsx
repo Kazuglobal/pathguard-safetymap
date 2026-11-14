@@ -89,6 +89,38 @@ describe("ARLearningReviewCard", () => {
     expect(onCompleteQuiz).toHaveBeenCalledWith(expect.any(Object), 1, 1)
   })
 
+  // 回り終えたあとも、あとで見返す地点の写真と確認ポイントを開き直せる
+  it("あとで見返す地点は押せて、その地点を開き直す", async () => {
+    const user = userEvent.setup()
+    const onOpenRevisitStop = vi.fn()
+    render(
+      <ARLearningReviewCard
+        isParentChildMode={true}
+        routeId="route-1"
+        routeProgressSummary={{ ...routeSummary, reviewedCount: 0, savedCount: 1, revisitReports: [report] }}
+        learningSummary={learningSummary}
+        checklist={[]}
+        quiz={null}
+        quizAnswers={{}}
+        quizScore={0}
+        quizTotal={0}
+        quizCompletedAt={null}
+        onToggleChecklistItem={vi.fn()}
+        onCompleteQuiz={vi.fn()}
+        onRestartTour={vi.fn()}
+        onClose={vi.fn()}
+        onQuizLinkClick={vi.fn()}
+        onOpenRevisitStop={onOpenRevisitStop}
+      />,
+    )
+
+    const revisit = screen.getByRole("button", { name: "見通しの悪い交差点 をもう一度見る" })
+    expect(revisit).toHaveClass("min-h-11")
+    await user.click(revisit)
+
+    expect(onOpenRevisitStop).toHaveBeenCalledWith(report.id)
+  })
+
   it("クイズ完了後は理解度を表示する", () => {
     render(
       <ARLearningReviewCard

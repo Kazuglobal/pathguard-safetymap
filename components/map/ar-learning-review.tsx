@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { CheckCircle2, HelpCircle, RotateCcw, X } from "lucide-react"
+import { CheckCircle2, ChevronRight, HelpCircle, RotateCcw, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -27,6 +27,8 @@ interface ARLearningReviewCardProps {
   onRestartTour: () => void
   onClose: () => void
   onQuizLinkClick: () => void
+  /** 「あとで見返す地点」を開き直す(写真と確認ポイントを見て、「確認した」に変えられる) */
+  onOpenRevisitStop?: (reportId: string) => void
 }
 
 export function ARLearningReviewCard({
@@ -45,6 +47,7 @@ export function ARLearningReviewCard({
   onRestartTour,
   onClose,
   onQuizLinkClick,
+  onOpenRevisitStop,
 }: ARLearningReviewCardProps) {
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [draftAnswers, setDraftAnswers] = useState<KidsQuizAnswers>(quizAnswers)
@@ -123,11 +126,24 @@ export function ARLearningReviewCard({
           <div className="mt-4">
             <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">あとで見返す地点</p>
             <div className="flex flex-wrap gap-2">
-              {revisitItems.map((report) => (
-                <Badge key={report.id} variant="secondary" className="rounded-full">
-                  {report.title}
-                </Badge>
-              ))}
+              {revisitItems.map((report) =>
+                onOpenRevisitStop ? (
+                  <button
+                    key={report.id}
+                    type="button"
+                    className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-3 text-left text-sm font-bold text-amber-950 hover:bg-amber-100"
+                    aria-label={`${report.title} をもう一度見る`}
+                    onClick={() => onOpenRevisitStop(report.id)}
+                  >
+                    <span className="truncate">{report.title}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  </button>
+                ) : (
+                  <Badge key={report.id} variant="secondary" className="rounded-full">
+                    {report.title}
+                  </Badge>
+                ),
+              )}
             </div>
           </div>
         )}

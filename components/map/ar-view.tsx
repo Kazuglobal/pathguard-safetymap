@@ -9,7 +9,8 @@ import {
   Compass,
   RefreshCw,
   ShieldCheck,
-  Map
+  Map,
+  HelpCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -45,7 +46,10 @@ import { getARSafetySuppression } from "@/lib/ar-safety"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { ARSafetySuppressionNotice } from "./ar-safety-suppression-notice"
 import { ARSettingsPanel } from "./ar-settings-panel"
-import { ARPrimaryHazardCard, ARSecondaryHazardCard } from "./ar-hazard-card"
+import { ARPrimaryHazardCard } from "./ar-hazard-card"
+import SpotGuide, { type SpotGuideCloseReason, type SpotGuideStep } from "./spot-guide"
+import { AR_GUIDE_SHEET_STEPS, buildARGuideSteps, getARGuideIdsSeen, type ARGuideTab } from "@/lib/spot-guide-steps"
+import { markSpotGuideSeen, shouldShowSpotGuide } from "@/lib/spot-guide-storage"
 import { ARLearningReviewCard } from "./ar-learning-review"
 import { ARRealRisks } from './ar-real-risks'
 import { AccidentStreetView } from './accident-street-view'
@@ -124,6 +128,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
   const [localTourProgress, setLocalTourProgress] = useState<Record<string, ARLearningTourStatus>>({})
   const [activeStopId, setActiveStopId] = useState<string | null>(null)
   const approachedReportIdsRef = useRef<Set<string>>(new Set())
+  // 出している案内の手順(null は出していない)
+  const [guideSteps, setGuideSteps] = useState<readonly SpotGuideStep[] | null>(null)
+  const guideIntroOfferedRef = useRef(false)
+  const guideOfferedTabsRef = useRef<Set<ARGuideTab>>(new Set())
+  // 回り終えたあと、振り返りから「あとで見返す地点」を開き直しているあいだ true
+  const [isRevisitingStop, setIsRevisitingStop] = useState(false)
 
   // AR表示中は、地図の「使い方」ボタンを隠す(シートの注意文に重なって読めなくなる)。
   useEffect(() => {
@@ -155,6 +165,36 @@ export default function ARView({ mode, onClose }: ARViewProps) {
     null
   const hasPositionContext = Boolean(userLocation) || (isParentChildMode && manualLocationMode)
   const canRenderHazardContent = sensorsEnabled && !arError && isCameraActive && hasPositionContext
+
+  // はじめてARを開いたとき、切りかえ・下のシート・設定の場所を案内する(1回だけ)。
+  // 自分から出すのは、位置が取れて下のシートが出てから。カメラだけ映った時点で出すと、シートの手順を
+  // 飛ばしたまま「見た」と記録してしまう。ヘッダーの「?」は、カメラが映っていれば押せる
+  const isGuideReady = sensorsEnabled && !isLoading && !arError && isCameraActive
+  const canOfferGuide = isGuideReady && canRenderHazardContent
+  // 下のシートは、選んでいるタブのぶんしか画面に無い。案内のあいだはタブを切りかえられないので、
+  // もう一方のタブのシートは、そのタブをはじめて開いたときに案内する(タブごとに別に覚える)
+  const guideTab: ARGuideTab = showRealRisks ? "risk" : "report"
+  const isGuideOpen = guideSteps !== null
+  useEffect(() => {
+    if (!canOfferGuide || isGuideOpen) return
+    if (!guideIntroOfferedRef.current) {
+      guideIntroOfferedRef.current = true
+      if (shouldShowSpotGuide("ar")) {
+        guideOfferedTabsRef.current.add(guideTab)
+        setGuideSteps(buildARGuideSteps(guideTab, true))
+        return
+      }
+    }
+    if (guideOfferedTabsRef.current.has(guideTab)) return
+    guideOfferedTabsRef.current.add(guideTab)
+    if (shouldShowSpotGuide(AR_GUIDE_SHEET_STEPS[guideTab].id)) setGuideSteps(buildARGuideSteps(guideTab, false))
+  }, [canOfferGuide, isGuideOpen, guideTab])
+  const handleGuideClose = useCallback((reason: SpotGuideCloseReason, shownTargets: readonly string[]) => {
+    setGuideSteps(null)
+    if (reason === "empty") return
+    // 実際に照らした手順のぶんだけ「見た」と記録する(画面に無くて飛ばしたシートは、つぎに出す)
+    getARGuideIdsSeen(shownTargets).forEach(markSpotGuideSeen)
+  }, [])
 
   // パーミッション集約
   const permissions = useMemo(() => ({
@@ -584,7 +624,15 @@ export default function ARView({ mode, onClose }: ARViewProps) {
       setLocalTourProgress({})
     }
     setActiveStopId(learningStops[0]?.report.id ?? null)
+    setIsRevisitingStop(false)
   }, [isParentChildMode, learningSession, learningStops])
+
+  // 回り終えたあとも、振り返りから「あとで見返す地点」の写真と確認ポイントを開き直せるようにする
+  const handleOpenRevisitStop = useCallback((reportId: string) => {
+    setActiveStopId(reportId)
+    setIsRevisitingStop(true)
+  }, [])
+  const handleCloseRevisitStop = useCallback(() => setIsRevisitingStop(false), [])
 
   const handleQuizLinkClick = useCallback(() => {
     if (!isParentChildMode) return
@@ -627,8 +675,19 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setGuideSteps(buildARGuideSteps(guideTab, true))}
+            className="text-ink hover:bg-paper-deep"
+            aria-label="ARの画面の案内"
+            disabled={!isGuideReady}
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setShowSettings(!showSettings)}
             className="text-ink hover:bg-paper-deep"
+            data-guide="ar-settings"
             aria-label="AR設定"
             aria-expanded={showSettings}
             aria-controls="ar-settings-panel"
@@ -704,7 +763,7 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         </div>
       )}
 
-      {sensorsEnabled && !arError && !isInundationLearning && <div className="absolute left-1/2 top-[72px] z-30 flex -translate-x-1/2 gap-1 rounded-full bg-paper-card p-1 text-xs font-bold text-ink" role="group" aria-label="ARで見る情報">
+      {sensorsEnabled && !arError && !isInundationLearning && <div className="absolute left-1/2 top-[72px] z-30 flex -translate-x-1/2 gap-1 rounded-full bg-paper-card p-1 text-xs font-bold text-ink" role="group" aria-label="ARで見る情報" data-guide="ar-tabs">
         {/* 中身がそのまま読める名前にする。「投稿の学習」では何が出るか分からない。 */}
         <button type="button" className={`min-h-11 whitespace-nowrap rounded-full px-4 ${showRealRisks ? 'bg-forest text-white' : ''}`}
           aria-pressed={showRealRisks} aria-label="事故と浸水の公的データ" onClick={() => setShowRealRisks(true)}>事故・浸水</button>
@@ -877,8 +936,8 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           </div>
         )}
 
-        {/* 主要危険地点カード */}
-        {canRenderHazardContent && !showRealRisks && activeStop && (
+        {/* 主要危険地点のシート(下)。回り終えたら、同じ下に出る振り返りのカードに場所をゆずる */}
+        {canRenderHazardContent && !showRealRisks && activeStop && (!isTourComplete || isRevisitingStop) && (
           <ARPrimaryHazardCard
             hazard={activeStop.hazard}
             estimatedTimeMinutes={calculateEstimatedTime(activeStop.hazard.distance)}
@@ -889,14 +948,11 @@ export default function ARView({ mode, onClose }: ARViewProps) {
             isApproaching={isActiveStopApproaching}
             progressLabel={`${Math.max(activeStopIndex + 1, 1)} / ${learningStops.length}`}
             markReviewedLabel={manualLocationMode ? "ここに着いた" : "確認した"}
-            onMarkReviewed={canUpdateTourStatus ? () => updateTourStatus("reviewed") : undefined}
-            onSaveForLater={canUpdateTourStatus ? () => updateTourStatus("saved") : undefined}
+            onMarkReviewed={canUpdateTourStatus ? () => { updateTourStatus("reviewed"); setIsRevisitingStop(false) } : undefined}
+            onSaveForLater={canUpdateTourStatus ? () => { updateTourStatus("saved"); setIsRevisitingStop(false) } : undefined}
+            nextHazard={isRevisitingStop ? undefined : nextStop?.hazard}
+            onBackToReview={isRevisitingStop ? handleCloseRevisitStop : undefined}
           />
-        )}
-
-        {/* 次の危険地点カード */}
-        {canRenderHazardContent && !showRealRisks && nextStop && !isTourComplete && (
-          <ARSecondaryHazardCard hazard={nextStop.hazard} />
         )}
 
         {/* 危険地点がない場合 */}
@@ -911,8 +967,9 @@ export default function ARView({ mode, onClose }: ARViewProps) {
           </div>
         )}
 
-        {canRenderHazardContent && !showRealRisks && isTourComplete && (
+        {canRenderHazardContent && !showRealRisks && isTourComplete && !isRevisitingStop && (
           <ARLearningReviewCard
+            onOpenRevisitStop={handleOpenRevisitStop}
             isParentChildMode={isParentChildMode}
             routeId={parentRouteId}
             routeProgressSummary={routeProgressSummary}
@@ -948,6 +1005,12 @@ export default function ARView({ mode, onClose }: ARViewProps) {
         {showRealRisks && manualLocationMode && <p className="absolute bottom-0 left-0 right-0 bg-paper-card p-6 text-sm text-ink">位置が取れないため、事故と浸水は表示しません。地図のタップで調べられます。</p>}
       </div>
       {streetViewTarget && <AccidentStreetView target={streetViewTarget} onClose={() => setStreetViewTarget(null)} />}
+      <SpotGuide
+        open={isGuideOpen && isGuideReady && !streetViewTarget}
+        steps={guideSteps ?? []}
+        label="ARの画面の案内"
+        onClose={handleGuideClose}
+      />
     </div>
   )
 }

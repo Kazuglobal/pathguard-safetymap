@@ -103,12 +103,21 @@ interface MapContainerProps {
   preferredRouteId?: string | null
   /** Push通知などのディープリンクから最初に開く報告ID */
   initialReportId?: string | null
+  /** 上の「くわしい表示」の列が出た・たたまれた(はじめてひらいたときの案内を出すのに使う) */
+  onTopDetailsVisibleChange?: (isVisible: boolean) => void
+  /**
+   * 報告・不審者アラートの入力、場所えらび、一覧、報告の詳細、AR など、利用者が何かをしている最中か。
+   * している最中は、画面の案内で入力をふさがない
+   */
+  onBusyChange?: (isBusy: boolean) => void
 }
 
 export default function MapContainer({
   autoOpenReport = false,
   preferredRouteId = null,
   initialReportId = null,
+  onTopDetailsVisibleChange,
+  onBusyChange,
 }: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -153,6 +162,16 @@ export default function MapContainer({
   const [isEmptyAreaNoticeDismissed, setIsEmptyAreaNoticeDismissed] = useState(false)
   // 上の「くわしい表示」の列が出ているか。右上のポイント表示などを、列と重ならない位置へずらす
   const [isTopDetailsOpen, setIsTopDetailsOpen] = useState(false)
+  // 「くわしい表示」の列をたたむ合図(地図をタップ・ドラッグしたときに増やす)
+  const [foldTopDetailsSignal, setFoldTopDetailsSignal] = useState(0)
+  const notifyTopDetailsVisible = useEventCallback((isVisible: boolean) => onTopDetailsVisibleChange?.(isVisible))
+  useEffect(() => {
+    notifyTopDetailsVisible(isTopDetailsOpen)
+  }, [isTopDetailsOpen, notifyTopDetailsVisible])
+  // 指で地図を動かしたら列をたたむ。列が出ていないときは何もしない(動かすたびに全体を描き直さない)
+  const foldTopDetailsOnUserMove = useEventCallback(() => {
+    if (isTopDetailsOpen) setFoldTopDetailsSignal((prev) => prev + 1)
+  })
   const [dismissSearchResultsSignal, setDismissSearchResultsSignal] = useState(0)
   const mapInitialized = useRef(false)
   const navigationControlRef = useRef<mapboxgl.NavigationControl | null>(null)
@@ -575,6 +594,7 @@ export default function MapContainer({
     dismissTransientMapUi({
       setActiveTopPanel,
       setDismissSearchResultsSignal,
+      setFoldTopDetailsSignal,
     })
 
     // 不審者アラート入力中は、地図クリックで中心点を指定する（プレビュー円・ピンは effect 側で更新）。
@@ -685,7 +705,11 @@ export default function MapContainer({
       });
 
       map.current.on("movestart", (event) => {
-        if ((event as { originalEvent?: unknown }).originalEvent) userMovedMapRef.current = true
+        if ((event as { originalEvent?: unknown }).originalEvent) {
+          userMovedMapRef.current = true
+          // 指で地図を動かしたら「くわしい表示」の列をたたみ、地図を広く見せる
+          foldTopDetailsOnUserMove()
+        }
       });
 
       map.current.on("load", () => {
@@ -1172,6 +1196,22 @@ export default function MapContainer({
       isSubmittedPreviewOpen,
   })
 
+  // 画面の案内(map-page-client)に、いま入力や閲覧の最中かを知らせる。不審者アラートのフォームには
+  // role が無く、DOM を見るだけでは気づけないので、状態で知らせる
+  const isBusyForGuide =
+    isReportFormOpen ||
+    awaitingLocationSelection ||
+    isSuspiciousAlertOpen ||
+    isARMode ||
+    isSidebarOpen ||
+    isDetailModalOpen ||
+    isSubmittedPreviewOpen ||
+    accidentInspection !== null
+  const notifyBusy = useEventCallback((isBusy: boolean) => onBusyChange?.(isBusy))
+  useEffect(() => {
+    notifyBusy(isBusyForGuide)
+  }, [isBusyForGuide, notifyBusy])
+
   // --- Render ---
   return (
     <div className="fullscreen-map-container">
@@ -1221,6 +1261,7 @@ export default function MapContainer({
             onToggleHeatmap={accidentHeatmap.toggleVisibility}
             onToggleSuspicious={() => setIsSuspiciousVisible((v) => !v)}
             onDetailsVisibleChange={setIsTopDetailsOpen}
+            foldSignal={foldTopDetailsSignal}
             renderDisplayOptions={(trigger) => (
               <MapStyleSelector
                 currentStyle={mapStyle}
@@ -1235,7 +1276,7 @@ export default function MapContainer({
                 map={map.current}
                 dismissResultsSignal={dismissSearchResultsSignal}
                 className="rounded-[1.75rem]"
-                inputClassName="h-14 border-0 bg-transparent pl-5 pr-12 text-base shadow-none focus-visible:ring-0"
+                inputClassName="h-11 md:h-14 border-0 bg-transparent pl-5 pr-12 text-base shadow-none focus-visible:ring-0"
                 onSelectLocation={(coords) => {
                   if (isReportFormOpen) {
                     setSelectedLocation(coords)

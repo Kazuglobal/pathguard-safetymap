@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { describe, expect, it, vi, beforeEach } from "vitest"
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest"
 
 import MapPageClient from "@/components/map/map-page-client"
 
@@ -16,15 +16,29 @@ vi.mock("@/components/map/map-container", () => ({
     autoOpenReport?: boolean
     preferredRouteId?: string | null
     initialReportId?: string | null
+    onTopDetailsVisibleChange?: (isVisible: boolean) => void
+    onBusyChange?: (isBusy: boolean) => void
   }) => {
     mocks.mapContainer(props)
-    return <div data-testid="map-container" />
+    return (
+      <div data-testid="map-container">
+        <button type="button" onClick={() => props.onTopDetailsVisibleChange?.(true)}>open-details</button>
+        <button type="button" onClick={() => props.onTopDetailsVisibleChange?.(false)}>fold-details</button>
+        <button type="button" onClick={() => props.onBusyChange?.(true)}>open-form</button>
+        <button type="button" onClick={() => props.onBusyChange?.(false)}>close-form</button>
+      </div>
+    )
   },
 }))
 
 vi.mock("@/components/onboarding/app-onboarding", () => ({
   default: ({ open }: { open: boolean }) =>
     open ? <div data-testid="app-onboarding">onboarding-open</div> : null,
+}))
+
+vi.mock("@/components/map/spot-guide", () => ({
+  default: ({ open, label }: { open: boolean; label: string }) =>
+    open ? <div data-testid={label === "くわしい表示の案内" ? "details-guide-open" : "spot-guide-open"} /> : null,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -99,6 +113,132 @@ describe("MapPageClient", () => {
       expect(mocks.mapContainer).toHaveBeenCalledWith(
         expect.objectContaining({ initialReportId: "report-42" }),
       )
+    })
+  })
+
+  // はじめて地図を開いたとき、実際のボタンを照らす案内を出す。用事があって来たときは先をふさがない
+  describe("first-visit spot guide", () => {
+    let search: HTMLElement
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      localStorage.clear()
+      // 地図の部品が出そろった状態(本物の MapContainer はモックなので、検索の部品だけ置く)
+      search = document.createElement("div")
+      search.setAttribute("data-guide", "map-search")
+      document.body.appendChild(search)
+    })
+
+    afterEach(() => {
+      search.remove()
+      vi.useRealTimers()
+    })
+
+    const tick = () => act(() => vi.advanceTimersByTime(600))
+
+    it("shows the guide once the map controls are on screen", () => {
+      render(<MapPageClient />)
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+
+      tick()
+      expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+    })
+
+    it("does not show it again once it has been seen", () => {
+      localStorage.setItem("pathguard-map-guide", JSON.stringify({ version: 1 }))
+      render(<MapPageClient />)
+
+      tick()
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+    })
+
+    it.each(["report=open", "reportId=r1", "routeId=route-1", "suspiciousAlert=1"])(
+      "stays out of the way when the visitor arrives with a task (?%s)",
+      (query) => {
+        mocks.useSearchParams.mockReturnValue(new URLSearchParams(query))
+        render(<MapPageClient />)
+
+        tick()
+        tick()
+        expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+      },
+    )
+
+    it("waits while another dialog is open, then shows", () => {
+      const dialog = document.createElement("div")
+      dialog.setAttribute("role", "dialog")
+      document.body.appendChild(dialog)
+      render(<MapPageClient />)
+
+      tick()
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+
+      dialog.remove()
+      tick()
+      expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+    })
+
+    // 不審者アラートの入力フォームには role が無い。DOM を見るだけでは気づけないので、地図が状態で知らせる
+    it("holds back while a form is open on the map, and shows once it is closed", () => {
+      render(<MapPageClient />)
+      fireEvent.click(screen.getByRole("button", { name: "open-form" }))
+
+      tick()
+      tick()
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "close-form" }))
+      tick()
+      expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+    })
+
+    it("steps aside without being marked as seen when a form opens while it is up", () => {
+      render(<MapPageClient />)
+      tick()
+      expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "open-form" }))
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+      expect(localStorage.getItem("pathguard-map-guide")).toBeNull()
+    })
+
+    it("does not start the 「くわしい表示」 guide while a form is open", () => {
+      localStorage.setItem("pathguard-map-guide", JSON.stringify({ version: 1 }))
+      render(<MapPageClient />)
+
+      fireEvent.click(screen.getByRole("button", { name: "open-form" }))
+      fireEvent.click(screen.getByRole("button", { name: "open-details" }))
+      expect(screen.queryByTestId("details-guide-open")).not.toBeInTheDocument()
+    })
+
+    it("guides through 「くわしい表示」 the first time the row is opened, and not again once seen", () => {
+      localStorage.setItem("pathguard-map-guide", JSON.stringify({ version: 1 }))
+      const { unmount } = render(<MapPageClient />)
+
+      fireEvent.click(screen.getByRole("button", { name: "open-details" }))
+      expect(screen.getByTestId("details-guide-open")).toBeInTheDocument()
+
+      // 列がたたまれたら案内も消える
+      fireEvent.click(screen.getByRole("button", { name: "fold-details" }))
+      expect(screen.queryByTestId("details-guide-open")).not.toBeInTheDocument()
+      unmount()
+
+      localStorage.setItem("pathguard-map-details-guide", JSON.stringify({ version: 1 }))
+      render(<MapPageClient />)
+      fireEvent.click(screen.getByRole("button", { name: "open-details" }))
+      expect(screen.queryByTestId("details-guide-open")).not.toBeInTheDocument()
+    })
+
+    it("stops watching after the page is left", () => {
+      search.remove()
+      const setIntervalSpy = vi.spyOn(window, "setInterval")
+      const clearIntervalSpy = vi.spyOn(window, "clearInterval")
+      const { unmount } = render(<MapPageClient />)
+      const watcher = setIntervalSpy.mock.results[0]?.value
+      expect(watcher).toBeDefined()
+
+      unmount()
+      expect(clearIntervalSpy).toHaveBeenCalledWith(watcher)
     })
   })
 })

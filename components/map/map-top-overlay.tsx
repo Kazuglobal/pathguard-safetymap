@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ReactElement, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react"
 import { Building2, ChevronDown, Flame, Layers, Route, ScanEye } from "lucide-react"
 
 import { useEventCallback } from "@/hooks/use-event-callback"
@@ -35,6 +35,11 @@ interface MapTopOverlayProps {
    * 右上のポイント表示と「ピンの見方」を、列と重ならない位置へずらすのに使う
    */
   onDetailsVisibleChange?: (isVisible: boolean) => void
+  /**
+   * 値が変わったら「くわしい表示」の列をたたむ(地図をタップ・ドラッグしたとき)。地図を広く見せるため。
+   * 中のパネルを開いているあいだは、たたまない
+   */
+  foldSignal?: number
 }
 
 type AdvancedPanel = Exclude<MapTopOverlayPanel, "hazard" | null>
@@ -111,6 +116,15 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
   // くわしい表示の中のパネルを開いているあいだは、たたまない
   const showDetails = isDetailsOpen || ADVANCED_IDS.has(props.activePanel)
 
+  // 地図をさわったら列をたたむ。最初の描画では何もしない(合図が変わったときだけ)
+  const { foldSignal } = props
+  const lastFoldSignalRef = useRef(foldSignal)
+  useEffect(() => {
+    if (lastFoldSignalRef.current === foldSignal) return
+    lastFoldSignalRef.current = foldSignal
+    setIsDetailsOpen(false)
+  }, [foldSignal])
+
   // 列が出ているかを知らせる。この部品が消えたとき(報告の場所を選んでいるあいだなど)は「出ていない」に戻す
   const notifyDetailsVisible = useEventCallback((isVisible: boolean) => props.onDetailsVisibleChange?.(isVisible))
   useEffect(() => {
@@ -159,11 +173,14 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
     (id === "suspicious" && props.isSuspiciousVisible)
 
   const isRouteCheckActive = props.activePanel === "hazard"
+  // たたんでいても、出している表示(3D・ヒートマップなど)の数は分かるようにする
+  const activeAdvancedCount = ADVANCED_CHIPS.filter((chip) => isAdvancedActive(chip.id)).length
 
   return (
     <div className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+4.75rem)] z-30">
       <div data-map-overlay="top" className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
         <div
+          data-guide="map-search"
           className="overflow-visible rounded-[1.75rem] border shadow-tanken-float"
           style={{
             background: "rgba(255,253,247,.95)",
@@ -178,6 +195,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
         <div className="flex gap-2">
           <button
             type="button"
+            data-guide="map-route-check"
             aria-label="通学路チェック"
             aria-pressed={isRouteCheckActive}
             className={CHIP_CLASS}
@@ -191,12 +209,23 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
             type="button"
             aria-expanded={showDetails}
             aria-controls="map-detail-layers"
+            data-guide="map-details"
             className={CHIP_CLASS}
             style={IDLE_STYLE}
             onClick={toggleDetails}
           >
             <Layers className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden="true" />
             くわしい表示
+            {!showDetails && activeAdvancedCount > 0 && (
+              <span
+                data-testid="map-details-active-count"
+                className="grid h-5 min-w-[1.25rem] place-items-center rounded-full px-1 text-xs font-black leading-none text-white"
+                style={{ background: "#0C7A55" }}
+              >
+                {activeAdvancedCount}
+                <span className="sr-only">件を表示中</span>
+              </span>
+            )}
             <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showDetails ? "rotate-180" : ""}`} strokeWidth={2.4} aria-hidden="true" />
           </button>
         </div>
@@ -216,6 +245,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                     key={chip.id}
                     type="button"
                     aria-label={chip.label}
+                    data-guide={`map-chip-${chip.id}`}
                     aria-pressed={isActive}
                     className={CHIP_CLASS}
                     style={isActive ? ACTIVE_STYLE : IDLE_STYLE}
@@ -226,7 +256,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                 )
               })}
               {props.renderDisplayOptions?.(
-                <button type="button" aria-label="地図の見た目" className={CHIP_CLASS} style={IDLE_STYLE}>
+                <button type="button" aria-label="地図の見た目" data-guide="map-chip-style" className={CHIP_CLASS} style={IDLE_STYLE}>
                   <TwoLineChipBody icon={Layers} label="地図の見た目" description="背景・多発地点・浸水" />
                 </button>,
               )}

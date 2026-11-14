@@ -194,6 +194,7 @@ export function MapLegendButton() {
         <button
           type="button"
           data-testid="map-legend-button"
+          data-guide="map-legend"
           className={`chunky-press flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-black ${tankenTokens.cls.focus}`}
           style={{
             background: "rgba(255,253,247,.95)",
