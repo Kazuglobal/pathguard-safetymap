@@ -26,6 +26,7 @@ import {
   LP_OPEN_APP,
   LP_PHOTO_AI,
   LP_PROBLEM,
+  LP_SIGNUP_SHORT_LABEL,
   LP_SPOTLIGHT,
   LP_TRUST,
   LP_VIDEO,
@@ -159,7 +160,14 @@ describe("LPセクションのレンダリング", () => {
 
     view("unauthenticated")
     expect(screen.getByRole("link", { name: "ログイン" })).toHaveAttribute("href", "/login")
-    expect(screen.getByRole("link", { name: "無料ではじめる" })).toHaveAttribute("href", "/register")
+    // 幅で表示を切り替える2つの文字は CSS(display:none)で片方だけ見える。jsdom は CSS を当てないので名前に両方が入る
+    const signup = screen.getByRole("link", { name: /無料ではじめる/ })
+    expect(signup).toHaveAttribute("href", "/register")
+    // スマホの幅で「ログ/イン」「無料ではじめ/る」と折れないように、どちらも折り返さない
+    expect(screen.getByRole("link", { name: "ログイン" })).toHaveClass("whitespace-nowrap", "shrink-0")
+    expect(signup).toHaveClass("whitespace-nowrap", "shrink-0")
+    // 360px 未満では短い表示に切り替える
+    expect(signup).toHaveTextContent(LP_SIGNUP_SHORT_LABEL)
     expect(screen.getByTestId("brand-logo")).toHaveTextContent("PathGuardian")
   })
 

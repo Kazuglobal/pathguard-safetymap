@@ -17,6 +17,8 @@ export const LP_META = {
 
 /** 登録とログインの入口(ヒーロー・ヘッダー・最後の呼びかけで同じ行き先にする) */
 export const LP_SIGNUP = { label: "無料ではじめる", href: "/register" } as const
+/** 幅360px未満のヘッダーで、登録ボタンが折れないように見せる短い表示 */
+export const LP_SIGNUP_SHORT_LABEL = "無料登録"
 export const LP_LOGIN = { label: "ログイン", href: "/login" } as const
 
 export const LP_HERO = {

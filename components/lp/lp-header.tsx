@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { useLpAuthStatus } from "@/components/lp/use-lp-auth-status"
-import { LP_LOGIN, LP_OPEN_APP, LP_SIGNUP } from "@/lib/lp-content"
+import { LP_LOGIN, LP_OPEN_APP, LP_SIGNUP, LP_SIGNUP_SHORT_LABEL } from "@/lib/lp-content"
 
 const NAV_LINKS = [
   { label: "課題", href: "#problem" },
@@ -37,19 +37,25 @@ function HeaderActions() {
     )
   }
 
+  // スマホの幅ではロゴと2つのボタンが入りきらず「ログ/イン」「無料ではじめ/る」と折れていた。
+  // 折り返しを禁止し、狭い幅では余白と文字を詰める。360px 未満では登録の表示だけ短くする。
+  // 使わない方の表示は display:none なので、読み上げの名前もその幅で見えている文字にそろう(音声操作で見えている名前が通じる)。
   return (
     <>
       <Link
         href={LP_LOGIN.href}
-        className="rounded-full bg-[#2B2723] px-3 py-2.5 text-xs font-bold text-white transition-transform hover:scale-[1.03] active:scale-[0.98] sm:px-5 sm:text-sm"
+        className="shrink-0 whitespace-nowrap rounded-full bg-[#2B2723] px-3 py-2.5 text-xs font-bold text-white transition-transform hover:scale-[1.03] active:scale-[0.98] sm:px-5 sm:text-sm"
       >
         {LP_LOGIN.label}
       </Link>
       <Link
         href={LP_SIGNUP.href}
-        className="font-lp-display rounded-full bg-[#E8A33D] px-5 py-2.5 text-sm font-black text-[#2B2723] transition-transform hover:scale-[1.03] active:scale-[0.98]"
+        className="font-lp-display shrink-0 whitespace-nowrap rounded-full bg-[#E8A33D] px-3.5 py-2.5 text-[13px] font-black text-[#2B2723] transition-transform hover:scale-[1.03] active:scale-[0.98] sm:px-5 sm:text-sm"
       >
-        {LP_SIGNUP.label}
+        <span className="min-[360px]:hidden">{LP_SIGNUP_SHORT_LABEL}</span>
+        <span className="hidden min-[360px]:inline">
+          {LP_SIGNUP.label}
+        </span>
       </Link>
     </>
   )
@@ -80,7 +86,7 @@ export function LpHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <HeaderActions />
         </div>
       </div>

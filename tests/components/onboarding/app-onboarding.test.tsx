@@ -66,10 +66,39 @@ describe("AppOnboarding", () => {
   it("shows a one-page summary that opens the map", () => {
     render(<AppOnboarding open onClose={vi.fn()} summaryOnly />)
 
-    expect(screen.getAllByRole("button", { name: /ページ目/ })).toHaveLength(1)
+    // 1ページだけなので、ページの点と最後のページの代わりの導線(空の枠)は出さず、その高さを絵に回す
+    expect(screen.queryAllByRole("button", { name: /ページ目/ })).toHaveLength(0)
+    expect(screen.queryByTestId("onboarding-open-map")).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "ちずを みてみる" }))
 
     expect(mocks.markTutorialCompleted).toHaveBeenCalledOnce()
     expect(mocks.push).toHaveBeenCalledWith("/map")
+  })
+
+  it("keeps the picture whole: the picture area shrinks instead of the text", () => {
+    render(<AppOnboarding open onClose={vi.fn()} summaryOnly />)
+
+    const area = screen.getByTestId("onboarding-picture-area")
+    // 高さが足りないときに縮むのは絵の場所。中の白い枠は高さに合わせて幅ごと小さくなる(切り取らない)
+    expect(area).toHaveClass("shrink")
+    expect(area.style.height).toContain("100cqw")
+    // 中の白い枠の幅(min(100%, 420px, 高さから計算した幅))は jsdom が読めないので、実際のブラウザの撮影で確かめる
+    expect(screen.getByTestId("onboarding-slide-text").parentElement).toHaveClass("shrink-0")
+  })
+
+  it("reserves the tallest page's text height so the picture keeps one size across pages", () => {
+    render(<AppOnboarding open onClose={vi.fn()} />)
+
+    // 見えているページの見出しだけが読める。ほかのページの文章は見えない状態で高さだけ取る
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1)
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("かぞくでつかう")
+    const textArea = screen.getByTestId("onboarding-slide-text").parentElement as HTMLElement
+    const ghosts = Array.from(textArea.children).filter((el) => el.getAttribute("aria-hidden") === "true")
+    expect(ghosts).toHaveLength(3)
+    for (const ghost of ghosts) expect((ghost as HTMLElement).style.visibility).toBe("hidden")
+
+    fireEvent.click(screen.getByTestId("onboarding-next"))
+    // めくる途中は前のページも一瞬残るので、新しいページの見出しがあることだけを確かめる
+    expect(screen.getAllByRole("heading", { level: 2 }).some((h) => h.textContent?.includes("ちずを ひらくと"))).toBe(true)
   })
 })
