@@ -35,6 +35,19 @@ describe("spot-guide-storage", () => {
     expect(shouldShowSpotGuide("map")).toBe(false)
   })
 
+  it("自動操作のブラウザ(E2E)では、まだ見ていなくても自分からは出さない", () => {
+    // jsdom の navigator には webdriver が無いので、この検査のあいだだけ足す
+    Object.defineProperty(navigator, "webdriver", { value: true, configurable: true })
+    try {
+      expect(shouldShowSpotGuide("map")).toBe(false)
+      expect(shouldShowSpotGuide("map-details")).toBe(false)
+      expect(shouldShowSpotGuide("ar")).toBe(false)
+    } finally {
+      Reflect.deleteProperty(navigator, "webdriver")
+    }
+    expect(shouldShowSpotGuide("map")).toBe(true)
+  })
+
   it("保存先が使えないときは出さず、記録に失敗しても落ちない", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("denied")

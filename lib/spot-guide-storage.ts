@@ -23,6 +23,9 @@ const GUIDE_VERSIONS: Record<SpotGuideId, number> = {
  * 保存先が使えない環境(プライベートブラウズなど)では、見た記録を残せず毎回出てしまうので、出さない。
  */
 export function shouldShowSpotGuide(id: SpotGuideId): boolean {
+  // 自動操作のブラウザ(Playwright の E2E・scripts/ui-audit.mjs など)では、自分からは出さない。
+  // 出すと全面の案内が操作をふさぎ、/map を開く既存のスペックがすべて止まる。「使い方」からは出せる
+  if (typeof navigator !== "undefined" && navigator.webdriver) return false
   try {
     const stored = localStorage.getItem(STORAGE_KEYS[id])
     if (!stored) return true
