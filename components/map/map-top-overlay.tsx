@@ -245,6 +245,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                     key={chip.id}
                     type="button"
                     aria-label={chip.label}
+                    data-guide={`map-chip-${chip.id}`}
                     aria-pressed={isActive}
                     className={CHIP_CLASS}
                     style={isActive ? ACTIVE_STYLE : IDLE_STYLE}
@@ -255,7 +256,7 @@ export function MapTopOverlay(props: MapTopOverlayProps) {
                 )
               })}
               {props.renderDisplayOptions?.(
-                <button type="button" aria-label="地図の見た目" className={CHIP_CLASS} style={IDLE_STYLE}>
+                <button type="button" aria-label="地図の見た目" data-guide="map-chip-style" className={CHIP_CLASS} style={IDLE_STYLE}>
                   <TwoLineChipBody icon={Layers} label="地図の見た目" description="背景・多発地点・浸水" />
                 </button>,
               )}

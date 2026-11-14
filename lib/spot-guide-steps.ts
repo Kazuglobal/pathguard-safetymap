@@ -21,7 +21,7 @@ export const MAP_GUIDE_STEPS: readonly SpotGuideStep[] = [
   {
     target: '[data-guide="map-details"]',
     title: "くわしい表示",
-    body: "事故ヒートマップ・不審者情報・AR・3D と、洪水・津波などの「地図の見た目」は、ここをひらいて選びます。地図を動かすと自動でたたまれます。",
+    body: "事故ヒートマップ・不審者情報・AR・3D と、洪水・津波などの「地図の見た目」は、ここをひらいて選びます。はじめてひらいたときに、1つずつ案内します。",
   },
   {
     target: '[data-guide="map-legend"]',
@@ -29,19 +29,65 @@ export const MAP_GUIDE_STEPS: readonly SpotGuideStep[] = [
     body: "ピンの絵は危険の種類、色はあぶなさです。迷ったらここで確かめられます。",
   },
   {
+    target: ".danger-marker",
+    title: "ピンをタップ",
+    body: "ピンをタップすると、報告の内容や写真が出ます。数字の丸は、近くのピンをまとめたものです。",
+    visibleInMiddleOnly: true,
+  },
+  {
     target: '[data-guide="map-dock"]',
     title: "一覧と報告",
     body: "「一覧」で近くの報告を並べて見られます。危ない場所を見つけたら「現在地」か「報告」から知らせてください。",
   },
   {
+    target: '[data-guide="map-menu"]',
+    title: "メニュー",
+    body: "ホーム・きけんハンター・通学路・マイページ・報告一覧など、ほかの画面へはここから行けます。",
+    note: "この案内は、左下の「?」(使い方)からいつでも見直せます。",
+  },
+  {
     target: '[data-guide="map-report"]',
     title: REPORT_ENTRY_LABEL,
     body: "危ない場所を見つけたら、ここから地図にピンを立てて知らせてください。",
+    note: "この案内は、右下の「使い方」からいつでも見直せます。",
+  },
+]
+
+/**
+ * 「くわしい表示」をはじめてひらいたときに出す、中の5つの案内。
+ * 列は横にスクロールするので、画面の外のボタンは見える位置まで送ってから照らす。
+ */
+export const MAP_DETAILS_GUIDE_STEPS: readonly SpotGuideStep[] = [
+  {
+    target: '[data-guide="map-chip-heatmap"]',
+    title: "事故ヒートマップ",
+    body: "実際に起きた交通事故の多い場所が、色の濃さでわかります。",
+    scrollIntoView: true,
   },
   {
-    target: '[data-guide="map-help"]',
-    title: "使い方",
-    body: "この案内は、ここからいつでも見直せます。",
+    target: '[data-guide="map-chip-suspicious"]',
+    title: "不審者情報",
+    body: "不審者の情報を、おおよその範囲の円で地図に出します。",
+    scrollIntoView: true,
+  },
+  {
+    target: '[data-guide="map-chip-ar"]',
+    title: "AR",
+    body: "カメラに映した景色の上に、近くの事故・浸水の想定・みんなの報告を重ねます。立ち止まって使ってください。",
+    scrollIntoView: true,
+  },
+  {
+    target: '[data-guide="map-chip-3d"]',
+    title: "3D",
+    body: "建物と地形を立体で見られます。坂や見通しを確かめるときに使います。",
+    scrollIntoView: true,
+  },
+  {
+    target: '[data-guide="map-chip-style"]',
+    title: "地図の見た目",
+    body: "地図の背景を変えたり、事故多発地点・洪水・津波の想定を重ねたりできます。",
+    note: "地図を動かすと、この列は自動でたたまれます。出している表示の数は「くわしい表示」に数字で出ます。",
+    scrollIntoView: true,
   },
 ]
 

@@ -20,6 +20,16 @@ export interface SpotGuideStep {
   body: string
   /** 小さな添え書き(安全の注意など) */
   note?: string
+  /**
+   * 横にスクロールする列の中の部品など、画面の外にあるかもしれないもの。照らす前に見える位置まで送る。
+   * 地図のピンのように「送ると画面がずれる」ものには付けない
+   */
+  scrollIntoView?: boolean
+  /**
+   * 同じ部品がたくさんあるもの(地図のピン)。画面のまんなかの帯に見えているものだけを照らし、無ければ飛ばす
+   * (上下のボタンの下に隠れたものを照らさない)
+   */
+  visibleInMiddleOnly?: boolean
 }
 
 /** done: 最後まで見た / skipped: 途中でやめた / empty: 照らせる要素が1つも無かった(見た記録は付けない) */
@@ -48,17 +58,36 @@ const BUBBLE_GAP = 14
 /** 画面の並びが変わっても枠がずれないよう、測り直す間隔 */
 const MEASURE_INTERVAL_MS = 250
 
-function measureTarget(selector: string): SpotRect | null {
-  const element = document.querySelector(selector)
+/** 画面のまんなかの帯(上下のボタンにかからない高さ)。visibleInMiddleOnly の手順で使う */
+const MIDDLE_BAND = { top: 0.28, bottom: 0.78 }
+
+function findTarget(step: SpotGuideStep): Element | null {
+  for (const element of Array.from(document.querySelectorAll(step.target))) {
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) continue
+    if (!step.visibleInMiddleOnly) return element
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const isInMiddle =
+      centerX >= 0 &&
+      centerX <= window.innerWidth &&
+      centerY >= window.innerHeight * MIDDLE_BAND.top &&
+      centerY <= window.innerHeight * MIDDLE_BAND.bottom
+    if (isInMiddle) return element
+  }
+  return null
+}
+
+function measureTarget(step: SpotGuideStep): SpotRect | null {
+  const element = findTarget(step)
   if (!element) return null
   const rect = element.getBoundingClientRect()
-  if (rect.width <= 0 || rect.height <= 0) return null
   return { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
 }
 
 function findStepFrom(steps: readonly SpotGuideStep[], start: number): number {
   for (let index = start; index < steps.length; index += 1) {
-    if (measureTarget(steps[index].target)) return index
+    if (measureTarget(steps[index])) return index
   }
   return -1
 }
@@ -110,9 +139,15 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
   useEffect(() => {
     if (!open || index < 0) return
 
+    // 横にスクロールする列の中の部品は、照らす前に見える位置まで送る
+    const enteredStep = stepsRef.current[index]
+    if (enteredStep?.scrollIntoView) {
+      findTarget(enteredStep)?.scrollIntoView?.({ block: "nearest", inline: "center" })
+    }
+
     const measure = () => {
       const step = stepsRef.current[index]
-      const nextRect = step ? measureTarget(step.target) : null
+      const nextRect = step ? measureTarget(step) : null
       if (!nextRect) {
         // 案内の途中で要素が消えたら、つぎの手順へ進む(無ければ終わる)
         const next = findStepFrom(stepsRef.current, index + 1)
@@ -186,7 +221,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
   if (!step) return null
 
   // 何番目かは、いま照らせる手順だけで数える(無い手順を飛ばしても「2 / 5」が飛ばないように)
-  const visibleIndexes = steps.map((item, itemIndex) => (itemIndex === index || measureTarget(item.target) ? itemIndex : -1)).filter((itemIndex) => itemIndex >= 0)
+  const visibleIndexes = steps.map((item, itemIndex) => (itemIndex === index || measureTarget(item) ? itemIndex : -1)).filter((itemIndex) => itemIndex >= 0)
   const position = visibleIndexes.indexOf(index) + 1
   const total = visibleIndexes.length
   const isLast = position === total

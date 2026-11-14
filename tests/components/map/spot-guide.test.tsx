@@ -113,6 +113,43 @@ describe("SpotGuide", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
+  it("scrollIntoView の手順は、照らす前に部品を見える位置まで送る", () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    render(
+      <>
+        <button data-guide="one">3D</button>
+        <SpotGuide
+          open
+          steps={[{ target: '[data-guide="one"]', title: "3D", body: "立体で見る", scrollIntoView: true }]}
+          label="画面の案内"
+          onClose={vi.fn()}
+        />
+      </>,
+    )
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "center" })
+  })
+
+  it("visibleInMiddleOnly の手順は、画面のまんなかに見えている部品が無ければ飛ばす", () => {
+    // stubRects の部品は top 40(画面の上のほう)。まんなかの帯には無い
+    const onClose = vi.fn()
+    render(
+      <>
+        <button data-guide="one">ピン</button>
+        <SpotGuide
+          open
+          steps={[{ target: '[data-guide="one"]', title: "ピンをタップ", body: "中身が出る", visibleInMiddleOnly: true }]}
+          label="画面の案内"
+          onClose={onClose}
+        />
+      </>,
+    )
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(onClose).toHaveBeenCalledWith("empty")
+  })
+
   it("Tab は吹き出しの中のボタンだけを回す", async () => {
     const user = userEvent.setup()
     render(<Screen onClose={vi.fn()} />)

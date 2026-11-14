@@ -8,7 +8,7 @@ import { HelpCircle } from "lucide-react"
 import AppOnboarding from "@/components/onboarding/app-onboarding"
 import HelpDialog from "@/components/map/help-dialog"
 import SpotGuide, { type SpotGuideCloseReason } from "@/components/map/spot-guide"
-import { MAP_GUIDE_STEPS } from "@/lib/spot-guide-steps"
+import { MAP_DETAILS_GUIDE_STEPS, MAP_GUIDE_STEPS } from "@/lib/spot-guide-steps"
 import { markSpotGuideSeen, shouldShowSpotGuide } from "@/lib/spot-guide-storage"
 import { Button } from "@/components/ui/button"
 import { tankenTokens } from "@/lib/design/tanken"
@@ -63,6 +63,21 @@ export default function MapPageClient() {
     return () => window.clearInterval(timer)
   }, [])
 
+  // 「くわしい表示」をはじめてひらいたとき、中の5つを1つずつ案内する(地図の案内とは別に覚える)
+  const [showDetailsGuide, setShowDetailsGuide] = useState(false)
+  const handleTopDetailsVisibleChange = (isVisible: boolean) => {
+    if (!isVisible) {
+      setShowDetailsGuide(false)
+      return
+    }
+    if (showSpotGuide || showTutorial || showHelp) return
+    if (shouldShowSpotGuide("map-details")) setShowDetailsGuide(true)
+  }
+  const handleDetailsGuideClose = (reason: SpotGuideCloseReason) => {
+    setShowDetailsGuide(false)
+    if (reason !== "empty") markSpotGuideSeen("map-details")
+  }
+
   const handleSpotGuideClose = (reason: SpotGuideCloseReason) => {
     setShowSpotGuide(false)
     // 照らせる部品が1つも無かったときは、見たことにしない
@@ -89,6 +104,7 @@ export default function MapPageClient() {
         autoOpenReport={autoOpenReport}
         preferredRouteId={preferredRouteId}
         initialReportId={initialReportId}
+        onTopDetailsVisibleChange={handleTopDetailsVisibleChange}
       />
 
       <div data-guide="map-help" className="map-help-fab fixed left-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:left-auto md:bottom-4 md:right-4">
@@ -124,6 +140,13 @@ export default function MapPageClient() {
         steps={MAP_GUIDE_STEPS}
         label="地図の画面の案内"
         onClose={handleSpotGuideClose}
+      />
+
+      <SpotGuide
+        open={showDetailsGuide && !showSpotGuide && !showTutorial}
+        steps={MAP_DETAILS_GUIDE_STEPS}
+        label="くわしい表示の案内"
+        onClose={handleDetailsGuideClose}
       />
 
       <AppOnboarding

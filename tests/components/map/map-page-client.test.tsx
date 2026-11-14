@@ -16,9 +16,15 @@ vi.mock("@/components/map/map-container", () => ({
     autoOpenReport?: boolean
     preferredRouteId?: string | null
     initialReportId?: string | null
+    onTopDetailsVisibleChange?: (isVisible: boolean) => void
   }) => {
     mocks.mapContainer(props)
-    return <div data-testid="map-container" />
+    return (
+      <div data-testid="map-container">
+        <button type="button" onClick={() => props.onTopDetailsVisibleChange?.(true)}>open-details</button>
+        <button type="button" onClick={() => props.onTopDetailsVisibleChange?.(false)}>fold-details</button>
+      </div>
+    )
   },
 }))
 
@@ -28,7 +34,8 @@ vi.mock("@/components/onboarding/app-onboarding", () => ({
 }))
 
 vi.mock("@/components/map/spot-guide", () => ({
-  default: ({ open }: { open: boolean }) => (open ? <div data-testid="spot-guide-open" /> : null),
+  default: ({ open, label }: { open: boolean; label: string }) =>
+    open ? <div data-testid={label === "くわしい表示の案内" ? "details-guide-open" : "spot-guide-open"} /> : null,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -168,12 +175,34 @@ describe("MapPageClient", () => {
       expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
     })
 
-    it("stops watching after the page is left", () => {
-      search.remove()
+    it("guides through 「くわしい表示」 the first time the row is opened, and not again once seen", () => {
+      localStorage.setItem("pathguard-map-guide", JSON.stringify({ version: 1 }))
       const { unmount } = render(<MapPageClient />)
+
+      fireEvent.click(screen.getByRole("button", { name: "open-details" }))
+      expect(screen.getByTestId("details-guide-open")).toBeInTheDocument()
+
+      // 列がたたまれたら案内も消える
+      fireEvent.click(screen.getByRole("button", { name: "fold-details" }))
+      expect(screen.queryByTestId("details-guide-open")).not.toBeInTheDocument()
       unmount()
 
-      expect(vi.getTimerCount()).toBe(0)
+      localStorage.setItem("pathguard-map-details-guide", JSON.stringify({ version: 1 }))
+      render(<MapPageClient />)
+      fireEvent.click(screen.getByRole("button", { name: "open-details" }))
+      expect(screen.queryByTestId("details-guide-open")).not.toBeInTheDocument()
+    })
+
+    it("stops watching after the page is left", () => {
+      search.remove()
+      const setIntervalSpy = vi.spyOn(window, "setInterval")
+      const clearIntervalSpy = vi.spyOn(window, "clearInterval")
+      const { unmount } = render(<MapPageClient />)
+      const watcher = setIntervalSpy.mock.results[0]?.value
+      expect(watcher).toBeDefined()
+
+      unmount()
+      expect(clearIntervalSpy).toHaveBeenCalledWith(watcher)
     })
   })
 })

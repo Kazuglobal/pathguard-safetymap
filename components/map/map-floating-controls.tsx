@@ -133,6 +133,7 @@ export default function MapFloatingControls({
               onClick={() => setIsMenuOpen(true)}
               className={`chunky-press flex h-11 items-center justify-center gap-1 rounded-full border-2 bg-white text-[12px] font-black ${tankenTokens.cls.focus}`}
               style={{ borderColor: "rgba(67,57,43,.12)", color: C.inkSoft, boxShadow: tankenTokens.shadow.pressPaper }}
+              data-guide="map-menu"
               aria-label="メニューを開く"
             >
               <Menu className="h-4 w-4" strokeWidth={2.6} />

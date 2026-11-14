@@ -103,12 +103,15 @@ interface MapContainerProps {
   preferredRouteId?: string | null
   /** Push通知などのディープリンクから最初に開く報告ID */
   initialReportId?: string | null
+  /** 上の「くわしい表示」の列が出た・たたまれた(はじめてひらいたときの案内を出すのに使う) */
+  onTopDetailsVisibleChange?: (isVisible: boolean) => void
 }
 
 export default function MapContainer({
   autoOpenReport = false,
   preferredRouteId = null,
   initialReportId = null,
+  onTopDetailsVisibleChange,
 }: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -155,6 +158,10 @@ export default function MapContainer({
   const [isTopDetailsOpen, setIsTopDetailsOpen] = useState(false)
   // 「くわしい表示」の列をたたむ合図(地図をタップ・ドラッグしたときに増やす)
   const [foldTopDetailsSignal, setFoldTopDetailsSignal] = useState(0)
+  const notifyTopDetailsVisible = useEventCallback((isVisible: boolean) => onTopDetailsVisibleChange?.(isVisible))
+  useEffect(() => {
+    notifyTopDetailsVisible(isTopDetailsOpen)
+  }, [isTopDetailsOpen, notifyTopDetailsVisible])
   // 指で地図を動かしたら列をたたむ。列が出ていないときは何もしない(動かすたびに全体を描き直さない)
   const foldTopDetailsOnUserMove = useEventCallback(() => {
     if (isTopDetailsOpen) setFoldTopDetailsSignal((prev) => prev + 1)
