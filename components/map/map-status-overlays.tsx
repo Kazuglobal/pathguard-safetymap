@@ -37,7 +37,7 @@ export function MapStatusOverlays({
 
   return (
     <>
-      {/* モバイルマップヒント。右上のポイント表示と「ピンの見方」(横1列。BELOW_MAP_TOP_ROWS.folded から 36px)の下に置く */}
+      {/* モバイルマップヒント。右上の「ピンの見方」(BELOW_MAP_TOP_ROWS.folded から 36px)の下に置く */}
       {showMobileMapHint && (
         <div
           className="absolute left-1/2 z-10 sm:hidden pointer-events-none -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+10rem)]"

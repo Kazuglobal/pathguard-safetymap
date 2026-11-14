@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 /**
  * HunterGame(オーケストレータ)の特性テスト。
  * 重い子コンポーネント(マスク/地図/写真キャンバス)はスタブに差し替え、
- * 画面遷移・fetch 契約・結果画面の導線(ポイント/ミッション/ほかの あそびかた/採点失敗)を固定する。
+ * 画面遷移・fetch 契約・結果画面の導線(ミッション/ほかの あそびかた/採点失敗)を固定する。
  */
 
 const mocks = vi.hoisted(() => ({
@@ -135,7 +135,7 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     window.localStorage.clear()
   })
 
-  it("sends the session with sessionId/taps, shows +pt and missions, and can return to other modes", async () => {
+  it("sends the session with sessionId/taps, shows missions without +pt, and can return to other modes", async () => {
     const fetchMock = installFetch(
       jsonResponse(200, {
         mode: "explore", score: 150, matches: 1, total: 1, comboMax: 1,
@@ -152,8 +152,10 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     expect(screen.getByRole("button", { name: "1ばん 見通しの悪い角（わかった）" })).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "けっかを みる" }))
 
-    await screen.findByText("+5pt")
-    expect(screen.getByText("ミッション たっせい！")).toBeInTheDocument()
+    expect(await screen.findByText("ミッション たっせい！")).toBeInTheDocument()
+    // たまるポイントは画面に出さない(付与はサーバで続いている)
+    expect(screen.queryByText(/[0-9]pt/)).not.toBeInTheDocument()
+    expect(screen.queryByText("たまった ポイント")).not.toBeInTheDocument()
     expect(screen.getByText("はじめての たんけん")).toBeInTheDocument()
     expect(mocks.mutate).toHaveBeenCalledWith("user_points")
     expect(mocks.mutate).toHaveBeenCalledWith("missions")
@@ -173,7 +175,7 @@ describe("HunterGame — 結果画面の導線と採点契約", () => {
     // けっかから こたえあわせを もういちど見て、けっかに もどれる
     fireEvent.click(screen.getByRole("button", { name: /こたえあわせを もういちど/ }))
     fireEvent.click(await screen.findByRole("button", { name: "けっかに もどる" }))
-    await screen.findByText("+5pt")
+    await screen.findByText("ミッション たっせい！")
 
     // 同じ写真で ほかの あそびかた(安全さがし)へ戻れる = 解析結果を捨てない
     fireEvent.click(screen.getByRole("button", { name: /ほかの あそびかた/ }))

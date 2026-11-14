@@ -42,7 +42,7 @@ export function showPopupInView(
   const container = map.getContainer()
   const point = map.project(lngLat)
   const popup = new mapboxgl.Popup({
-    // 右上のポイント・右下の表示ボタンより上に重ねる（app/globals.css）
+    // 右上の「ピンの見方」より上に重ねる（app/globals.css）
     className: 'map-popup-in-view',
     offset: options.offset ?? 12,
     // スマホでも画面からはみ出さない幅にする

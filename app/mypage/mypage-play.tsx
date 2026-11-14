@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Award, Gamepad2, Target, Trophy } from "lucide-react"
+import { ArrowRight, Gamepad2, Target } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardIcon, CardTitle } from "@/components/ui/card"
@@ -24,7 +24,7 @@ export interface MypagePlayProps {
 }
 
 /**
- * マイページの「あそぶ」(UIUX改装 項目7・8)。きけんハンター・ミッション・バッジ・ランキングを
+ * マイページの「あそぶ」(UIUX改装 項目7・8)。きけんハンターとミッションを
  * 「きけんハンター」の仲間として1か所に並べる(同じ行き先のボタンを重ねて置かない)。
  */
 export function MypagePlay(props: MypagePlayProps) {
@@ -33,7 +33,7 @@ export function MypagePlay(props: MypagePlayProps) {
       id="mypage-play"
       eyebrow={BRAND.kidsUmbrella}
       title="あそぶ"
-      description="写真で危険をさがすゲームや、ミッション・バッジ・ランキングです。"
+      description="写真で危険をさがすゲームと、ミッションです。"
     >
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Card className="border" style={mypageCardStyle}>
@@ -48,7 +48,7 @@ export function MypagePlay(props: MypagePlayProps) {
           </CardHeader>
           <CardContent className="pt-0">
             <p className="text-sm" style={{ color: t.color.inkSoft }}>
-              通学路の写真から危険を見つけるゲーム。遊ぶとポイントとミッションが進み、写真は「たんけんの きろく」に残せます。
+              通学路の写真から危険を見つけるゲーム。遊ぶとミッションが進み、写真は「たんけんの きろく」に残せます。
             </p>
           </CardContent>
           <CardFooter className="justify-end pt-4">
@@ -62,32 +62,6 @@ export function MypagePlay(props: MypagePlayProps) {
         </Card>
 
         <MissionCard {...props} />
-
-        <Card className="border md:col-span-2" style={mypageCardStyle}>
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle style={{ color: t.color.ink }}>バッジ・ランキング</CardTitle>
-                <CardDescription style={{ color: t.color.inkSoft }}>集めたバッジと、安全活動のポイントのランキング</CardDescription>
-              </div>
-              <CardIcon icon={<Award className="h-5 w-5" />} color="info" />
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2 pt-0">
-            <Button asChild size="sm" variant="outline" className={t.cls.focus}>
-              <Link href="/badges">
-                <Award className="mr-2 h-4 w-4" aria-hidden="true" />
-                バッジコレクション
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className={t.cls.focus}>
-              <Link href="/leaderboard">
-                <Trophy className="mr-2 h-4 w-4" aria-hidden="true" />
-                ランキングを見る
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </MypageGroup>
   )

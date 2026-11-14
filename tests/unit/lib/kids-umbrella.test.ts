@@ -13,8 +13,6 @@ const KIDS_PLAY_SCREENS = [
   'app/route-quiz/page.tsx',
   'app/safety-quest/safety-quest-client.tsx',
   'app/missions/page.tsx',
-  'app/badges/page.tsx',
-  'app/leaderboard/page.tsx',
 ]
 
 describe('きけんハンターの傘の名前(UIUX改装 項目8)', () => {

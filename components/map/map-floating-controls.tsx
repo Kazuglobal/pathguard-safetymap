@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { MapPin, MapPinPlus, Trophy, PlusCircle, List, Loader2, Menu } from "lucide-react"
+import { MapPin, MapPinPlus, PlusCircle, List, Loader2, Menu } from "lucide-react"
 import { MapLegendButton, MapLegendCompact } from "./map-legend"
-import { useGamification } from "@/hooks/use-gamification"
 import { BELOW_MAP_TOP_ROWS, MOBILE_MAP_DOCK_BOTTOM } from "@/lib/map-overlay-ui"
 import { MapMenuSheet } from "./map-menu-sheet"
 import { tankenTokens } from "@/lib/design/tanken"
@@ -20,10 +19,10 @@ const floatPill = {
   WebkitBackdropFilter: "blur(10px)",
 } as const
 
-// 右上のポイント表示と「ピンの見方」は、上の列(検索・通学路チェック・くわしい表示)のすぐ下に置き、「くわしい表示」の
+// 右上の「ピンの見方」は、上の列(検索・通学路チェック・くわしい表示)のすぐ下に置き、「くわしい表示」の
 // 列を開いたらその下へずらす(列と重ならないように。BELOW_MAP_TOP_ROWS)。md〜lg 未満は上の列が画面の幅いっぱいなので、スマホと
-// 同じく列の下に置く。lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。2つは横に並べる
-// (縦に積むと地図の右上を2段ぶん覆う。低い画面では下の操作の列にもかかる)
+// 同じく列の下に置く。lg 以上は上の列が中央に寄って右端と重ならないので、列を開いても動かさない。
+// ポイントとレベルは地図に出さない(地図が見えにくくなる。ほかの画面にも出していない)
 const UTILITIES_TOP_CLASS = {
   folded: `${BELOW_MAP_TOP_ROWS.folded} lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]`,
   unfolded: `${BELOW_MAP_TOP_ROWS.unfolded} lg:top-[calc(env(safe-area-inset-top,0px)+7.75rem)]`,
@@ -56,7 +55,6 @@ export default function MapFloatingControls({
   isTopDetailsOpen = false,
   isEmptyAreaNoticeVisible = false,
 }: MapFloatingControlsProps) {
-  const { points, level } = useGamification()
   const isSelecting = !!isSelectingLocation
   const showPrimaryCta = !isMobile
   // 地図では下部タブバーを出さないので、ボタン列は画面の一番下に置く
@@ -72,9 +70,10 @@ export default function MapFloatingControls({
   const showMobileFocusedDock = isMobile && isReportFormOpen && !isSelecting
   const showMobileActionDock = isMobile && !showMobileFocusedDock
   const showLegend = !isMobile
-  // スマホで「この地域の報告はまだありません」の案内が出ているあいだは、右上の部品を出さない。案内は地図のまんなかに
+  // 右上に置くのはスマホの「ピンの見方」だけ(広い画面は凡例を下にいつも出している)。
+  // 「この地域の報告はまだありません」の案内が出ているあいだは出さない。案内は地図のまんなかに
   // 出るので、画面の低いスマホや「くわしい表示」を開いたときに重なる(ピンが無いので「ピンの見方」もいらない)
-  const showUtilities = !(isMobile && isEmptyAreaNoticeVisible)
+  const showUtilities = isMobile && !isEmptyAreaNoticeVisible
 
   return (
     <>
@@ -84,32 +83,9 @@ export default function MapFloatingControls({
           data-testid="map-utilities"
           className={`absolute right-3 z-20 flex flex-row items-center gap-1.5 sm:gap-2 ${isTopDetailsOpen ? UTILITIES_TOP_CLASS.unfolded : UTILITIES_TOP_CLASS.folded}`}
         >
-          <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-            {/* ポイント・レベル表示(スタンプらしく) */}
-            <div
-              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 sm:px-3 sm:py-2"
-              style={floatPill}
-            >
-              <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: C.sunDeep }} strokeWidth={2.4} />
-              <span className="text-xs font-black sm:text-sm" style={{ color: C.ink }}>
-                {points}
-                <span className="hidden sm:inline">pt</span>
-              </span>
-              <div
-                className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 sm:h-6 sm:min-w-[1.5rem]"
-                style={{ background: C.primarySoft }}
-              >
-                <span className="text-xs font-black leading-none" style={{ color: C.primaryStrong }}>
-                  L{level}
-                </span>
-              </div>
-            </div>
-
-            {/* ヘルプは地図の「使い方」ボタン(map-page-client.tsx)の1つにまとめた */}
-          </div>
-
+          {/* ヘルプは地図の「使い方」ボタン(map-page-client.tsx)の1つにまとめた */}
           {/* スマホは凡例を常時出す場所がないため、ボタンから開く */}
-          {isMobile && <MapLegendButton />}
+          <MapLegendButton />
         </div>
       )}
 

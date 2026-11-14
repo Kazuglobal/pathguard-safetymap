@@ -41,8 +41,6 @@ export interface ResultCardProps {
   foundIds: readonly string[]
   onRetry: () => void
   onNewPhoto: () => void
-  /** きょう この あそびかたで はじめて みつけたときの +pt(0 なら出さない=否定しない)。 */
-  pointsAwarded?: number
   /** このプレイで達成したミッション。 */
   missionsCompleted?: readonly HunterMissionReward[]
   /** サーバに記録できなかった(あそび自体は成立)。正直に小さく伝える。 */
@@ -141,7 +139,6 @@ export function ResultCard(props: ResultCardProps) {
     foundIds,
     onRetry,
     onNewPhoto,
-    pointsAwarded = 0,
     missionsCompleted = [],
     persistError = false,
     onOtherModes,
@@ -285,14 +282,6 @@ export function ResultCard(props: ResultCardProps) {
             value={comboMax}
           />
         )}
-        {pointsAwarded > 0 && (
-          <StatPill
-            tone="green"
-            icon={<Trophy className="h-3.5 w-3.5" aria-hidden="true" />}
-            label="たまった ポイント"
-            value={`+${pointsAwarded}pt`}
-          />
-        )}
       </motion.div>
 
       {/* ミッション達成(このプレイで進んだぶんだけ) */}
@@ -307,7 +296,6 @@ export function ResultCard(props: ResultCardProps) {
               {missionsCompleted.map((mission) => (
                 <li key={mission.title} className="text-[13px] font-bold" style={{ color: C.inkSoft }}>
                   <RubyText text={mission.title} />
-                  {mission.rewardPoints > 0 ? `（+${mission.rewardPoints}pt）` : ""}
                 </li>
               ))}
             </ul>
@@ -321,7 +309,7 @@ export function ResultCard(props: ResultCardProps) {
       )}
       {persistError && (
         <p role="status" className="text-center text-[12px] font-bold" style={{ color: C.inkSoft }}>
-          きょうの ポイントは のこせなかったよ。あそびは ちゃんと できているよ。
+          きょうの きろくは のこせなかったよ。あそびは ちゃんと できているよ。
         </p>
       )}
 

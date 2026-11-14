@@ -8,7 +8,6 @@ import { useOptionalAuth } from "@/components/providers/auth-context"
 import { ProfileEditDialog } from "@/components/profile/profile-edit-dialog"
 import { isReportUnderReview } from "@/components/danger-report/detail/report-detail-utils"
 import { useToast } from "@/components/ui/use-toast"
-import { useGamification } from "@/hooks/use-gamification"
 import { useMissions } from "@/hooks/use-missions"
 import { usePushSubscription } from "@/hooks/use-push-subscription"
 import { useUserRoutes } from "@/hooks/use-user-routes"
@@ -44,7 +43,6 @@ export default function MyPage() {
   const reduceMotion = useReducedMotion()
   const { toast } = useToast()
   const auth = useOptionalAuth()
-  const { level, points, isLoading: isGamificationLoading } = useGamification()
   const { missions, progress, isLoading: isMissionsLoading } = useMissions()
   const { routes, isLoading: isRoutesLoading } = useUserRoutes()
   const push = usePushSubscription()
@@ -227,9 +225,6 @@ export default function MyPage() {
 
         <motion.div {...fade(2)}>
           <MypageRecords
-            points={points}
-            level={level}
-            isGamificationLoading={isGamificationLoading}
             reports={reports}
             isReportsLoading={isReportsLoading}
             reportsError={reportsError}

@@ -3,10 +3,6 @@ import { render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import MapFloatingControls from '@/components/map/map-floating-controls'
 
-vi.mock('@/hooks/use-gamification', () => ({
-  useGamification: () => ({ points: 120, level: 3 }),
-}))
-
 vi.mock('@/components/map/map-3d-toggle', () => ({
   default: () => <button type="button">3D</button>,
 }))
@@ -88,7 +84,7 @@ describe('MapFloatingControls mobile layout', () => {
   })
 })
 
-// 右上のポイント表示と「ピンの見方」が、上の列(検索・通学路チェック・くわしい表示)と重ならないように
+// 右上の「ピンの見方」が、上の列(検索・通学路チェック・くわしい表示)と重ならないように
 describe('MapFloatingControls corner badges', () => {
   const FOLDED = [
     'top-[calc(env(safe-area-inset-top,0px)+7.25rem)]',
@@ -121,19 +117,20 @@ describe('MapFloatingControls corner badges', () => {
     expect(screen.getByTestId('mobile-action-dock')).toBeInTheDocument()
   })
 
-  it('stays on wider screens, where the notice sits in the middle away from the corner', () => {
-    renderControls({ isMobile: false, isEmptyAreaNoticeVisible: true })
-
-    expect(screen.getByTestId('map-utilities')).toHaveTextContent('120')
-  })
-
-  // 2つはいつも横に並べる。縦に積むと地図の右上を2段ぶん覆い、低い画面では下の操作の列にもかかる
-  it('lines the two badges up side by side on every screen height', () => {
-    renderControls({ isTopDetailsOpen: true })
+  // ポイントとレベルは地図に出さない(地図が見えにくくなる。ほかの画面にも出していない)
+  it('keeps points and level off the map, leaving only the legend button in the corner', () => {
+    renderControls()
 
     const badges = screen.getByTestId('map-utilities')
-    expect(badges).toHaveClass('flex-row', 'items-center')
-    expect(badges).not.toHaveClass('flex-col')
+    expect(within(badges).getAllByRole('button')).toHaveLength(1)
+    expect(badges).not.toHaveTextContent(/\d/)
+  })
+
+  // 広い画面は凡例を下にいつも出しているので、右上には何も置かない
+  it('leaves the corner empty on wider screens', () => {
+    renderControls({ isMobile: false })
+
+    expect(screen.queryByTestId('map-utilities')).not.toBeInTheDocument()
   })
 })
 

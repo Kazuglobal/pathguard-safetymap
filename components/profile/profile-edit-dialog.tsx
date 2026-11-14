@@ -272,7 +272,7 @@ export function ProfileEditDialog({
                 aria-describedby={errors.display_name ? "display-name-hint display-name-error" : "display-name-hint"}
               />
               <p id="display-name-hint" className="text-xs text-muted-foreground">
-                ランキングやコメントで、ほかの人にも表示されます。本名ではなくニックネームにしてください
+                コメントで、ほかの人にも表示されます。本名ではなくニックネームにしてください
               </p>
               {errors.display_name && (
                 <p

@@ -33,7 +33,6 @@ vi.mock("@/components/providers/supabase-provider", () => ({ useSupabase: () => 
 vi.mock("@/components/providers/auth-context", () => ({ useOptionalAuth: () => null }))
 vi.mock("@/components/ui/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }))
 vi.mock("@/components/profile/profile-edit-dialog", () => ({ ProfileEditDialog: () => null }))
-vi.mock("@/hooks/use-gamification", () => ({ useGamification: () => ({ level: 1, points: 120, isLoading: false }) }))
 vi.mock("@/hooks/use-missions", () => ({
   useMissions: () => ({
     missions: [{ id: "1", title: "危険を1つ見つけよう", description: null, period: "daily", target_value: 1, reward_points: 5, reward_badge_id: null, target_type: "report" }],
@@ -97,13 +96,12 @@ describe("マイページ(UIUX改装 項目6・7・37)", () => {
     expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["自分の記録", "あそぶ", "設定"])
   })
 
-  it("自分の記録に、もとのダッシュボードのポイント・レベル・確認中の件数を出す", async () => {
+  it("自分の記録に、もとのダッシュボードの確認中の件数を出す。ポイントとレベルは出さない", async () => {
     await renderPage()
     const records = screen.getByRole("region", { name: "自分の記録" })
 
     await waitFor(() => expect(within(records).getByText("確認中の報告").parentElement).toHaveTextContent("1件"))
-    expect(within(records).getByText("ポイント").parentElement).toHaveTextContent("120pt")
-    expect(within(records).getByText("ポイント").parentElement).toHaveTextContent("レベル 1")
+    expect(within(records).queryByText(/ポイント|レベル|[0-9]pt/)).toBeNull()
     expect(within(records).getByText("見通しの悪い交差点")).toBeInTheDocument()
   })
 
@@ -115,14 +113,18 @@ describe("マイページ(UIUX改装 項目6・7・37)", () => {
     expect(document.querySelector('a[href="/dashboard"]')).toBeNull()
   })
 
-  it("あそぶ には、きけんハンター・ミッション・バッジ・ランキングを1つずつ置く(同じ行き先を重ねない)", async () => {
+  it("あそぶ には、きけんハンターとミッションを1つずつ置く(同じ行き先を重ねない)。バッジ・ランキング・ポイントは出さない", async () => {
     await renderPage()
     const play = screen.getByRole("region", { name: "あそぶ" })
 
     expect(within(play).getByText("きけんハンター", { selector: "p" })).toBeInTheDocument()
-    for (const href of ["/safety-quest/hunter", "/missions", "/badges", "/leaderboard"]) {
+    for (const href of ["/safety-quest/hunter", "/missions"]) {
       expect(document.querySelectorAll(`a[href="${href}"]`)).toHaveLength(1)
     }
+    for (const href of ["/badges", "/leaderboard"]) {
+      expect(document.querySelector(`a[href="${href}"]`)).toBeNull()
+    }
+    expect(screen.queryByText(/ポイント|レベル|バッジ|ランキング|[0-9]pt/)).toBeNull()
   })
 
   it("通知が未設定なら、いちばん上(自分の記録より前)に通知のカードを出し、設定には場所の案内だけを出す", async () => {
