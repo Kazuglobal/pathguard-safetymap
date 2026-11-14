@@ -10,7 +10,7 @@
 import { discoveryAccuracy, HUNTER_RULES_VERSION } from "@/lib/hunter/explore-replay"
 import type { HunterTap } from "@/lib/hunter/types"
 
-/** 1 プレイの基本ポイント(app/leaderboard の「写真ゲーム +5pt」と一致させる)。 */
+/** 1 プレイの基本ポイント(画面には出さない。付与だけ続けている)。 */
 export const HUNTER_PLAY_POINTS = 5
 /** hazard_game_high_score ミッションの達成ライン(正規化スコア %)。 */
 export const HUNTER_HIGH_SCORE_ACCURACY = 80

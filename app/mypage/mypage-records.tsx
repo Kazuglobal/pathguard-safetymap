@@ -4,11 +4,9 @@ import Link from "next/link"
 import { Compass, Flag, Images, Trash2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardIcon, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getReportStatusPresentation } from "@/components/danger-report/detail/report-detail-utils"
 import { tankenTokens } from "@/lib/design/tanken"
-import { getLevelProgress } from "@/lib/gamification-levels"
 import { REPORT_ENTRY_LABEL, REPORT_PATH } from "@/lib/report-entry"
 import { MypageGroup, formatReportDate, mypageCardStyle, mypageInnerPanelStyle, type MypageReport } from "./mypage-shared"
 
@@ -18,9 +16,6 @@ const t = tankenTokens
 const RECENT_UPLOAD_COUNT = 3
 
 export interface MypageRecordsProps {
-  points: number
-  level: number
-  isGamificationLoading: boolean
   reports: MypageReport[]
   isReportsLoading: boolean
   /** 報告を読み込めなかった(0件とは見分ける) */
@@ -41,11 +36,11 @@ export interface MypageRecordsProps {
 
 /**
  * マイページの「自分の記録」(UIUX改装 項目6・7)。
- * もとの /dashboard にあったポイント・レベル・確認中の件数も、ここにまとめた。
+ * もとの /dashboard にあった確認中の件数も、ここにまとめた。ポイントとレベルは画面に出さない。
  */
 export function MypageRecords(props: MypageRecordsProps) {
   return (
-    <MypageGroup id="mypage-records" title="自分の記録" description="ポイントや報告のようす、アップロードした写真をまとめました。">
+    <MypageGroup id="mypage-records" title="自分の記録" description="報告のようすと、アップロードした写真をまとめました。">
       <WeeklyRecordCard {...props} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <UploadHistoryCard {...props} />
@@ -78,9 +73,6 @@ function SummaryTile({ label, value, note, loading }: { label: string; value: st
 }
 
 function WeeklyRecordCard({
-  points,
-  level,
-  isGamificationLoading,
   isReportsLoading,
   reportsError,
   isReportListCapped,
@@ -90,7 +82,6 @@ function WeeklyRecordCard({
   routesCount,
   isRoutesLoading,
 }: MypageRecordsProps) {
-  const progress = getLevelProgress(points, level)
   return (
     <Card className="border" style={mypageCardStyle}>
       <CardHeader className="pb-4">
@@ -104,7 +95,6 @@ function WeeklyRecordCard({
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
         <div className="flex flex-wrap gap-3">
-          <SummaryTile label="ポイント" value={`${points}pt`} note={`レベル ${progress.level}`} loading={isGamificationLoading} />
           {/* 読み込めなかったときは「0件」と出さず「—」にする */}
           <SummaryTile label="確認中の報告" value={reportsError ? "—" : `${reviewingCount}件`} note="公開の前の確認を待っています" loading={isReportsLoading} />
           <SummaryTile label="今週の報告" value={reportsError ? "—" : `${reportsThisWeek}件`} loading={isReportsLoading} />
@@ -115,19 +105,6 @@ function WeeklyRecordCard({
             報告の件数は、最近の{reportListLimit}件から数えています。
           </p>
         )}
-        <div className="space-y-2 rounded-2xl border px-4 py-3" style={mypageInnerPanelStyle}>
-          <div className="flex items-center justify-between text-xs" style={{ color: t.color.inkSoft }}>
-            <span>レベル {progress.level} の進み具合</span>
-            <span>
-              あと {progress.pointsToNextLevel}pt でレベル {progress.nextLevel}
-            </span>
-          </div>
-          <Progress value={Math.round(progress.ratio * 100)} className="h-2.5" aria-label={`レベル ${progress.nextLevel} までの進み具合`} />
-          <p className="text-xs" style={{ color: t.color.inkSoft }}>
-            ポイントは報告やミッション達成でたまり、レベルとバッジに反映されます。
-            {isGamificationLoading && "（更新中…）"}
-          </p>
-        </div>
       </CardContent>
     </Card>
   )

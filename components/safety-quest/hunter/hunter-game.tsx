@@ -307,7 +307,7 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
   /**
    * サーバ再採点 → こたえあわせ(たんけん)/ 結果画面(クイズ)。
    * 失敗しても 0 点の結果を捏造せず、理由と復帰導線を出す(こたえあわせも飛ばす)。
-   * ポイント/ミッションが動いたら SWR のキャッシュを更新し、mypage 等の表示を同期する。
+   * ポイント/ミッションが動いたら SWR のキャッシュを更新する(ポイントはいま画面に出していない。戻すとき用に残す)。
    */
   const finishWith = useCallback(
     async (payload: Record<string, unknown>, fallbackTotal: number, next: "reveal" | "result" = "result") => {
@@ -618,7 +618,6 @@ export function HunterGame({ userId = null }: { userId?: string | null } = {}) {
           showCombo={mode === "explore"}
           hazards={hazards}
           foundIds={mode === "explore" ? resultFoundIds : foundIds}
-          pointsAwarded={result.pointsAwarded}
           missionsCompleted={result.missionsCompleted}
           persistError={result.persistError}
           accuracy={mode === "explore" ? result.accuracy : undefined}

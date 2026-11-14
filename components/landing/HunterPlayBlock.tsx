@@ -11,7 +11,7 @@ const C = tankenTokens.color
 
 /**
  * ホームの、子ども向けの遊びの入口(UIUX改装 項目8)。
- * ゲームの入口は、この「きけんハンターで あそぶ」の1つにまとめる(ミッション・バッジ・ランキングはマイページの「あそぶ」)。
+ * ゲームの入口は、この「きけんハンターで あそぶ」の1つにまとめる(ミッションはマイページの「あそぶ」)。
  */
 export function HunterPlayBlock() {
   return (
@@ -28,7 +28,7 @@ export function HunterPlayBlock() {
                 {BRAND.kidsUmbrella}で あそぶ
               </h2>
               <p className="mt-1 text-sm font-bold leading-relaxed" style={{ color: C.inkSoft }}>
-                つうがくろの しゃしんで、きけんを さがそう。みつけると ポイントと ミッションが すすむよ。
+                つうがくろの しゃしんで、きけんを さがそう。みつけると ミッションが すすむよ。
               </p>
             </div>
           </div>

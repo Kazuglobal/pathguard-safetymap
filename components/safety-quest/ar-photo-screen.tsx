@@ -29,9 +29,7 @@ export function ArPhotoScreen({ onBack }: { onBack: () => void }) {
       })
       if (!response.ok) return
 
-      const body = await response.json().catch(() => null)
-      const pointsAwarded = Number(body?.pointsAwarded ?? 0)
-      setPracticeStatus(pointsAwarded > 0 ? `AIが安全ポイントを確認しました +${pointsAwarded}pt` : "AIが安全ポイントを確認しました")
+      setPracticeStatus("AIが安全ポイントを確認しました")
     } catch {
       setPracticeStatus("練習写真を準備しました")
     }

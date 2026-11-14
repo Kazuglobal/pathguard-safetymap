@@ -32,7 +32,7 @@ interface MapTopOverlayProps {
   renderDisplayOptions?: (trigger: ReactElement) => ReactNode
   /**
    * 「くわしい表示」の列が出ているか(開いた・たたんだ・この部品が消えた)を知らせる。
-   * 右上のポイント表示と「ピンの見方」を、列と重ならない位置へずらすのに使う
+   * 右上の「ピンの見方」を、列と重ならない位置へずらすのに使う
    */
   onDetailsVisibleChange?: (isVisible: boolean) => void
   /**

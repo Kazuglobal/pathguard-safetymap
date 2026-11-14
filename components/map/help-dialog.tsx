@@ -1,14 +1,11 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { Filter, Flag, HelpCircle, Layers, List, MapPin, Move, Route, Search, Sparkles, Trophy } from "lucide-react"
+import { Filter, Flag, HelpCircle, Layers, List, MapPin, Move, Route, Search, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapLegendDetails } from "@/components/map/map-legend"
-import { BRAND } from "@/lib/brand"
-import { POINTS_PER_LEVEL, REPORT_PUBLISHED_POINTS } from "@/lib/gamification-levels"
-import { HUNTER_PLAY_POINTS } from "@/lib/hunter/rewards"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
@@ -51,13 +48,6 @@ const REPORT_STEPS: readonly { title: string; text: string }[] = [
   { title: "確かめて送る", text: PRODUCT_FACTS.moderation.adult },
 ]
 
-const POINT_ITEMS: readonly string[] = [
-  `報告が公開されると +${REPORT_PUBLISHED_POINTS}pt`,
-  `${BRAND.kidsUmbrella}で危険を見つけると +${HUNTER_PLAY_POINTS}pt(遊びかたごとに1日1回)`,
-  "ミッションを達成すると、そのミッションに書いてあるポイント",
-  `${POINTS_PER_LEVEL}ptごとに、レベルが1つ上がります`,
-]
-
 function HelpItemList({ items }: { items: readonly HelpItem[] }) {
   return (
     <ul className="space-y-3">
@@ -74,7 +64,7 @@ function HelpItemList({ items }: { items: readonly HelpItem[] }) {
   )
 }
 
-/** 地図のヘルプ(UIUX改装 項目51)。レイヤー・パネル・しぼりこみ・ピンの色と★・報告のしかた・ポイント */
+/** 地図のヘルプ(UIUX改装 項目51)。レイヤー・パネル・しぼりこみ・ピンの色と★・報告のしかた */
 export default function HelpDialog({ children, open, onOpenChange, onReplayOnboarding, onReplaySpotGuide }: HelpDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = open ?? internalOpen
@@ -96,12 +86,11 @@ export default function HelpDialog({ children, open, onOpenChange, onReplayOnboa
         </DialogHeader>
 
         <Tabs defaultValue="view" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="view">見かた</TabsTrigger>
             <TabsTrigger value="pins">ピン</TabsTrigger>
             <TabsTrigger value="filter">しぼりこみ</TabsTrigger>
             <TabsTrigger value="report">報告</TabsTrigger>
-            <TabsTrigger value="points">ポイント</TabsTrigger>
           </TabsList>
 
           <TabsContent value="view" className="pt-2">
@@ -135,21 +124,6 @@ export default function HelpDialog({ children, open, onOpenChange, onReplayOnboa
                 </li>
               ))}
             </ol>
-          </TabsContent>
-
-          <TabsContent value="points" className="space-y-3 pt-2">
-            <h4 className="flex items-center gap-2 font-bold text-slate-900">
-              <Trophy className="h-5 w-5 text-amber-600" aria-hidden="true" />
-              ポイントのもらいかた
-            </h4>
-            <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-700">
-              {POINT_ITEMS.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <p className="text-sm leading-relaxed text-slate-700">
-              ポイント・レベル・バッジは、マイページの「自分の記録」と「あそぶ」で見られます。
-            </p>
           </TabsContent>
         </Tabs>
 

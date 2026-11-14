@@ -160,7 +160,7 @@ export default function MapContainer({
   const [activeARKind, setActiveARKind] = useState<ActiveARKind>("nearby")
   const [activeTopPanel, setActiveTopPanel] = useState<MapTopOverlayPanel>(null)
   const [isEmptyAreaNoticeDismissed, setIsEmptyAreaNoticeDismissed] = useState(false)
-  // 上の「くわしい表示」の列が出ているか。右上のポイント表示などを、列と重ならない位置へずらす
+  // 上の「くわしい表示」の列が出ているか。右上の「ピンの見方」を、列と重ならない位置へずらす
   const [isTopDetailsOpen, setIsTopDetailsOpen] = useState(false)
   // 「くわしい表示」の列をたたむ合図(地図をタップ・ドラッグしたときに増やす)
   const [foldTopDetailsSignal, setFoldTopDetailsSignal] = useState(0)

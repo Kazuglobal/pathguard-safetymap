@@ -17,7 +17,7 @@ export function dismissTransientMapUi({
 
 /**
  * 地図の上の列(検索・「通学路チェック」・「くわしい表示」)のすぐ下の高さ。map-top-overlay の列の高さに合わせた固定の値で、
- * 右上のポイント表示(map-floating-controls)と0件の案内(map-empty-area-notice)が使う。unfolded は「くわしい表示」の列を
+ * 右上の「ピンの見方」(map-floating-controls)と0件の案内(map-empty-area-notice)が使う。unfolded は「くわしい表示」の列を
  * 開いたとき。md 以上は上にヘッダーがあるぶん下がる。上の列の高さを変えたら、この値も測り直す。
  * スマホは検索を低く(44px)しているので、md 以上より上の列が 12px 低い
  */

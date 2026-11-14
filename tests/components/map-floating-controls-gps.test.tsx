@@ -8,11 +8,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import MapFloatingControls from "@/components/map/map-floating-controls"
 
-// useGamification フックをモック
-vi.mock("@/hooks/use-gamification", () => ({
-  useGamification: () => ({ points: 100, level: 3 }),
-}))
-
 const defaultProps = {
   onAddReport: vi.fn(),
   isReportFormOpen: false,

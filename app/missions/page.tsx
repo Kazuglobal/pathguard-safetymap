@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useMissions, type MissionRow } from "@/hooks/use-missions"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { ArrowRight, BadgeCheck, Gift } from "lucide-react"
+import { ArrowRight, BadgeCheck } from "lucide-react"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 import { REPORT_PATH } from "@/lib/report-entry"
 import { KidsUmbrellaLabel } from "@/components/brand/kids-umbrella-label"
@@ -72,15 +72,9 @@ export default function MissionsPage() {
                     {completed && <BadgeCheck className="h-6 w-6 text-emerald-500" />}
                   </div>
                   <Progress value={pct} />
-                  <div className="flex justify-between items-end text-xs text-gray-500">
-                    <p>
-                      {prog?.progress ?? 0} / {m.target_value}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <Gift className="h-4 w-4 text-yellow-500" />
-                      {m.reward_points ?? 0}pt
-                    </div>
-                  </div>
+                  <p className="text-xs text-gray-500">
+                    {prog?.progress ?? 0} / {m.target_value}
+                  </p>
                   {!completed && (
                     <Link href={missionHref(m)} className={`mt-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-black text-white ${t.cls.focus}`} style={{ background: t.color.primary, boxShadow: t.shadow.pressGreen }}>
                       あと {Math.max((m.target_value ?? 0) - (prog?.progress ?? 0), 0)}回 · ここから始める

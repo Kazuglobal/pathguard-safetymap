@@ -181,8 +181,8 @@ export function Navigation({
   const desktopNavItems = [...mainNavItems.filter((i) => !i.isAction), ...secondaryNavItems, ...adminNavItems]
   const bottomNavItems = mainNavItems
 
-  // /hazard-game, /missions, /leaderboard はすべて「マイページ」タブをアクティブにする
-  const activityPaths = ["/mypage", "/hazard-game", "/safety-quest/hunter", "/missions", "/leaderboard", "/badges"]
+  // /hazard-game, /missions はすべて「マイページ」タブをアクティブにする
+  const activityPaths = ["/mypage", "/hazard-game", "/safety-quest/hunter", "/missions"]
 
   const isActivePath = (item: NavItem) => {
     if (item.isAction) return false
