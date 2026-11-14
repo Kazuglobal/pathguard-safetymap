@@ -1,4 +1,5 @@
 import type { SpotGuideStep } from "@/components/map/spot-guide"
+import type { SpotGuideId } from "@/lib/spot-guide-storage"
 import { PRODUCT_FACTS } from "@/lib/product-facts"
 import { REPORT_ENTRY_LABEL } from "@/lib/report-entry"
 
@@ -91,26 +92,60 @@ export const MAP_DETAILS_GUIDE_STEPS: readonly SpotGuideStep[] = [
   },
 ]
 
-export const AR_GUIDE_STEPS: readonly SpotGuideStep[] = [
-  {
-    target: '[data-guide="ar-tabs"]',
-    title: "見る情報を切りかえる",
-    body: "「事故・浸水」は公的なデータ、「みんなの報告」は近くの人が知らせた危険です。",
-    note: `立ち止まって使ってください。${PRODUCT_FACTS.ar.speedSuppress}`,
+/** ARの上の切りかえで選んでいるほう。risk=事故・浸水 / report=みんなの報告(親子モードでは通学路の学習) */
+export type ARGuideTab = "risk" | "report"
+
+export const AR_GUIDE_TABS_STEP: SpotGuideStep = {
+  target: '[data-guide="ar-tabs"]',
+  title: "見る情報を切りかえる",
+  body: "「事故・浸水」は公的なデータ、もう一方は近くの人が知らせた危険(みんなの報告・通学路の学習)です。",
+  note: `立ち止まって使ってください。${PRODUCT_FACTS.ar.speedSuppress}`,
+}
+
+export const AR_GUIDE_SETTINGS_STEP: SpotGuideStep = {
+  target: '[data-guide="ar-settings"]',
+  title: "見る距離を変える",
+  body: "どこまで遠くの情報を出すかは、ここで変えられます。",
+}
+
+/**
+ * 下のシートの手順。シートは選んでいるタブのぶんしか画面に無い(案内のあいだはタブを切りかえられない)ので、
+ * タブごとに別の手順・別の記録にして、そのタブをはじめて開いたときに案内する
+ */
+export const AR_GUIDE_SHEET_STEPS: Record<ARGuideTab, { id: SpotGuideId; step: SpotGuideStep }> = {
+  risk: {
+    id: "ar-risk-sheet",
+    step: {
+      target: ".ar-risk-dock",
+      title: "近くの事故と浸水の想定",
+      body: "カメラを向けた先の実事故と、この場所の浸水の想定がここに出ます。右の矢印でくわしくひらけます。",
+    },
   },
-  {
-    target: ".ar-risk-dock",
-    title: "近くの事故と浸水の想定",
-    body: "カメラを向けた先の実事故と、この場所の浸水の想定がここに出ます。右の矢印でくわしくひらけます。",
+  report: {
+    id: "ar-report-sheet",
+    step: {
+      target: '[data-guide="ar-report-sheet"]',
+      title: "近くの報告",
+      body: "いちばん近い報告の要点です。「くわしく見る」で写真と確認ポイントがひらきます。",
+    },
   },
-  {
-    target: '[data-guide="ar-report-sheet"]',
-    title: "近くの報告",
-    body: "いちばん近い報告の要点です。「くわしく見る」で写真と確認ポイントがひらきます。",
-  },
-  {
-    target: '[data-guide="ar-settings"]',
-    title: "見る距離を変える",
-    body: "どこまで遠くの情報を出すかは、ここで変えられます。",
-  },
-]
+}
+
+/**
+ * ARの案内の手順を組む。withIntro: 切りかえと設定の手順も入れる(はじめてARを開いたとき・「?」から)。
+ * 入れないときは、そのタブのシートの手順だけ(もう一方のタブをはじめて開いたとき)
+ */
+export function buildARGuideSteps(tab: ARGuideTab, withIntro: boolean): readonly SpotGuideStep[] {
+  const sheetStep = AR_GUIDE_SHEET_STEPS[tab].step
+  return withIntro ? [AR_GUIDE_TABS_STEP, sheetStep, AR_GUIDE_SETTINGS_STEP] : [sheetStep]
+}
+
+/** 実際に照らした手順から、見たと記録する案内を決める(画面に無くて飛ばしたシートは記録しない) */
+export function getARGuideIdsSeen(shownTargets: readonly string[]): SpotGuideId[] {
+  const ids: SpotGuideId[] = []
+  if (shownTargets.includes(AR_GUIDE_TABS_STEP.target)) ids.push("ar")
+  for (const sheet of Object.values(AR_GUIDE_SHEET_STEPS)) {
+    if (shownTargets.includes(sheet.step.target)) ids.push(sheet.id)
+  }
+  return ids
+}

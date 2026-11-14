@@ -3,12 +3,14 @@
  * 絵本のはじめての案内(lib/tutorial-storage.ts)とは別に持つ。
  */
 
-export type SpotGuideId = "map" | "map-details" | "ar"
+export type SpotGuideId = "map" | "map-details" | "ar" | "ar-risk-sheet" | "ar-report-sheet"
 
 const STORAGE_KEYS: Record<SpotGuideId, string> = {
   map: "pathguard-map-guide",
   "map-details": "pathguard-map-details-guide",
   ar: "pathguard-ar-guide",
+  "ar-risk-sheet": "pathguard-ar-risk-sheet-guide",
+  "ar-report-sheet": "pathguard-ar-report-sheet-guide",
 }
 
 /** 案内の中身(手順や指す場所)を大きく変えたら上げる。上げると、もう一度だけ出る */
@@ -16,6 +18,8 @@ const GUIDE_VERSIONS: Record<SpotGuideId, number> = {
   map: 1,
   "map-details": 1,
   ar: 1,
+  "ar-risk-sheet": 1,
+  "ar-report-sheet": 1,
 }
 
 /**

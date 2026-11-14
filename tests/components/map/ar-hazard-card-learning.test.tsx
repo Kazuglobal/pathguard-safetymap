@@ -205,6 +205,20 @@ describe("ARPrimaryHazardCard bottom sheet", () => {
     expect(next).not.toHaveTextContent("北")
   })
 
+  it("振り返りから開き直したときだけ、振り返りへ戻るボタンを出す", async () => {
+    const user = userEvent.setup()
+    const onBackToReview = vi.fn()
+    const { rerender } = render(<ARPrimaryHazardCard hazard={createHazard()} estimatedTimeMinutes={1} />)
+    expect(screen.queryByRole("button", { name: "ふりかえりにもどる" })).not.toBeInTheDocument()
+
+    rerender(<ARPrimaryHazardCard hazard={createHazard()} estimatedTimeMinutes={1} onBackToReview={onBackToReview} />)
+    const back = screen.getByRole("button", { name: "ふりかえりにもどる" })
+    expect(back).toHaveClass("min-h-11")
+    await user.click(back)
+
+    expect(onBackToReview).toHaveBeenCalledTimes(1)
+  })
+
   it("別の報告に切りかわったら、たたんだ状態に戻す", async () => {
     const user = userEvent.setup()
     const { rerender } = render(

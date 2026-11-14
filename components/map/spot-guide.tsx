@@ -40,7 +40,11 @@ interface SpotGuideProps {
   steps: readonly SpotGuideStep[]
   /** スクリーンリーダー向けの名前(例: 「地図の画面の案内」) */
   label: string
-  onClose: (reason: SpotGuideCloseReason) => void
+  /**
+   * shownTargets は、実際に照らした手順の target。画面に無くて飛ばした手順は入らない
+   * (飛ばした手順まで「見た」と記録しないために使う)
+   */
+  onClose: (reason: SpotGuideCloseReason, shownTargets: readonly string[]) => void
 }
 
 interface SpotRect {
@@ -111,6 +115,12 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
   const stepsRef = useRef(steps)
   stepsRef.current = steps
 
+  // 実際に照らした手順の target(とじるときに知らせる)
+  const shownTargetsRef = useRef<Set<string>>(new Set())
+  const close = useCallback((reason: SpotGuideCloseReason) => {
+    onCloseRef.current(reason, Array.from(shownTargetsRef.current))
+  }, [])
+
   // ひらいたら、照らせる最初の手順から始める
   useEffect(() => {
     if (!open) {
@@ -118,22 +128,23 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
       setRect(null)
       return
     }
+    shownTargetsRef.current = new Set()
     const first = findStepFrom(stepsRef.current, 0)
     if (first === -1) {
-      onCloseRef.current("empty")
+      close("empty")
       return
     }
     setIndex(first)
-  }, [open])
+  }, [open, close])
 
   const goNext = useCallback(() => {
     const next = findStepFrom(stepsRef.current, index + 1)
     if (next === -1) {
-      onCloseRef.current("done")
+      close("done")
       return
     }
     setIndex(next)
-  }, [index])
+  }, [index, close])
 
   // 照らす要素の位置を測りつづける(画面の回転・列の開け閉め・シートの伸び縮みに追いつく)
   useEffect(() => {
@@ -141,6 +152,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
 
     // 横にスクロールする列の中の部品は、照らす前に見える位置まで送る
     const enteredStep = stepsRef.current[index]
+    if (enteredStep) shownTargetsRef.current.add(enteredStep.target)
     if (enteredStep?.scrollIntoView) {
       findTarget(enteredStep)?.scrollIntoView?.({ block: "nearest", inline: "center" })
     }
@@ -151,7 +163,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
       if (!nextRect) {
         // 案内の途中で要素が消えたら、つぎの手順へ進む(無ければ終わる)
         const next = findStepFrom(stepsRef.current, index + 1)
-        if (next === -1) onCloseRef.current("done")
+        if (next === -1) close("done")
         else setIndex(next)
         return
       }
@@ -170,7 +182,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
       window.clearInterval(timer)
       window.removeEventListener("resize", measure)
     }
-  }, [open, index])
+  }, [open, index, close])
 
   // キーボード: Esc でやめる。Tab は吹き出しの中だけを回す。
   // AR の画面は自分でも Esc(とじる)と Tab を見ているので、先に受け取って止める(capture)
@@ -181,7 +193,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
       if (event.key === "Escape") {
         event.preventDefault()
         event.stopPropagation()
-        onCloseRef.current("skipped")
+        close("skipped")
         return
       }
       if (event.key !== "Tab") return
@@ -199,7 +211,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
 
     document.addEventListener("keydown", onKeyDown, true)
     return () => document.removeEventListener("keydown", onKeyDown, true)
-  }, [open])
+  }, [open, close])
 
   // フォーカスを案内に移し、とじたら元の場所へ戻す
   useEffect(() => {
@@ -303,7 +315,7 @@ export function SpotGuide({ open, steps, label, onClose }: SpotGuideProps) {
             type="button"
             className={`min-h-11 rounded-full px-3 text-sm font-black underline underline-offset-4 ${tankenTokens.cls.focus}`}
             style={{ color: C.inkSoft }}
-            onClick={() => onClose("skipped")}
+            onClick={() => close("skipped")}
           >
             スキップ
           </button>

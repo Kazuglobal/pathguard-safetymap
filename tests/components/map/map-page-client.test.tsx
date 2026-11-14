@@ -17,12 +17,15 @@ vi.mock("@/components/map/map-container", () => ({
     preferredRouteId?: string | null
     initialReportId?: string | null
     onTopDetailsVisibleChange?: (isVisible: boolean) => void
+    onBusyChange?: (isBusy: boolean) => void
   }) => {
     mocks.mapContainer(props)
     return (
       <div data-testid="map-container">
         <button type="button" onClick={() => props.onTopDetailsVisibleChange?.(true)}>open-details</button>
         <button type="button" onClick={() => props.onTopDetailsVisibleChange?.(false)}>fold-details</button>
+        <button type="button" onClick={() => props.onBusyChange?.(true)}>open-form</button>
+        <button type="button" onClick={() => props.onBusyChange?.(false)}>close-form</button>
       </div>
     )
   },
@@ -173,6 +176,39 @@ describe("MapPageClient", () => {
       dialog.remove()
       tick()
       expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+    })
+
+    // 不審者アラートの入力フォームには role が無い。DOM を見るだけでは気づけないので、地図が状態で知らせる
+    it("holds back while a form is open on the map, and shows once it is closed", () => {
+      render(<MapPageClient />)
+      fireEvent.click(screen.getByRole("button", { name: "open-form" }))
+
+      tick()
+      tick()
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "close-form" }))
+      tick()
+      expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+    })
+
+    it("steps aside without being marked as seen when a form opens while it is up", () => {
+      render(<MapPageClient />)
+      tick()
+      expect(screen.getByTestId("spot-guide-open")).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "open-form" }))
+      expect(screen.queryByTestId("spot-guide-open")).not.toBeInTheDocument()
+      expect(localStorage.getItem("pathguard-map-guide")).toBeNull()
+    })
+
+    it("does not start the 「くわしい表示」 guide while a form is open", () => {
+      localStorage.setItem("pathguard-map-guide", JSON.stringify({ version: 1 }))
+      render(<MapPageClient />)
+
+      fireEvent.click(screen.getByRole("button", { name: "open-form" }))
+      fireEvent.click(screen.getByRole("button", { name: "open-details" }))
+      expect(screen.queryByTestId("details-guide-open")).not.toBeInTheDocument()
     })
 
     it("guides through 「くわしい表示」 the first time the row is opened, and not again once seen", () => {

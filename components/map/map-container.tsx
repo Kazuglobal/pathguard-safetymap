@@ -105,6 +105,11 @@ interface MapContainerProps {
   initialReportId?: string | null
   /** 上の「くわしい表示」の列が出た・たたまれた(はじめてひらいたときの案内を出すのに使う) */
   onTopDetailsVisibleChange?: (isVisible: boolean) => void
+  /**
+   * 報告・不審者アラートの入力、場所えらび、一覧、報告の詳細、AR など、利用者が何かをしている最中か。
+   * している最中は、画面の案内で入力をふさがない
+   */
+  onBusyChange?: (isBusy: boolean) => void
 }
 
 export default function MapContainer({
@@ -112,6 +117,7 @@ export default function MapContainer({
   preferredRouteId = null,
   initialReportId = null,
   onTopDetailsVisibleChange,
+  onBusyChange,
 }: MapContainerProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
@@ -1189,6 +1195,22 @@ export default function MapContainer({
       isSuspiciousAlertOpen ||
       isSubmittedPreviewOpen,
   })
+
+  // 画面の案内(map-page-client)に、いま入力や閲覧の最中かを知らせる。不審者アラートのフォームには
+  // role が無く、DOM を見るだけでは気づけないので、状態で知らせる
+  const isBusyForGuide =
+    isReportFormOpen ||
+    awaitingLocationSelection ||
+    isSuspiciousAlertOpen ||
+    isARMode ||
+    isSidebarOpen ||
+    isDetailModalOpen ||
+    isSubmittedPreviewOpen ||
+    accidentInspection !== null
+  const notifyBusy = useEventCallback((isBusy: boolean) => onBusyChange?.(isBusy))
+  useEffect(() => {
+    notifyBusy(isBusyForGuide)
+  }, [isBusyForGuide, notifyBusy])
 
   // --- Render ---
   return (

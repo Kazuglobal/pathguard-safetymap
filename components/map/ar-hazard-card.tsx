@@ -33,6 +33,8 @@ interface ARPrimaryHazardCardProps {
   onSaveForLater?: () => void
   /** つぎに回る地点。シートの下に1行で出す */
   nextHazard?: ARHazardData
+  /** 回り終えたあと、振り返りから開き直したとき。振り返りへ戻るボタンを出す */
+  onBackToReview?: () => void
 }
 
 /**
@@ -53,6 +55,7 @@ export function ARPrimaryHazardCard({
   onMarkReviewed,
   onSaveForLater,
   nextHazard,
+  onBackToReview,
 }: ARPrimaryHazardCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const reportId = hazard.report.id
@@ -84,6 +87,16 @@ export function ARPrimaryHazardCard({
         className="pointer-events-auto max-h-[60dvh] overflow-x-hidden overflow-y-auto rounded-3xl bg-white p-0 shadow-2xl"
       >
         <div className="p-4">
+          {onBackToReview && (
+            <button
+              type="button"
+              className="-ml-1 mb-1 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-slate-700 hover:bg-slate-100"
+              onClick={onBackToReview}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              ふりかえりにもどる
+            </button>
+          )}
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge
               className="text-xs text-white"

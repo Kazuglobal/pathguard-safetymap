@@ -66,7 +66,8 @@ describe("SpotGuide", () => {
     expect(dialog).not.toHaveTextContent("無いもの")
 
     await user.click(screen.getByRole("button", { name: "わかった" }))
-    expect(onClose).toHaveBeenCalledWith("done")
+    // 実際に照らした手順だけを知らせる(画面に無くて飛ばした missing は入らない)
+    expect(onClose).toHaveBeenCalledWith("done", ['[data-guide="one"]', '[data-guide="two"]'])
   })
 
   it("「スキップ」と Esc でやめられる", async () => {
@@ -75,11 +76,12 @@ describe("SpotGuide", () => {
     render(<Screen onClose={onClose} />)
 
     await user.click(screen.getByRole("button", { name: "スキップ" }))
-    expect(onClose).toHaveBeenLastCalledWith("skipped")
+    // 1つめで やめたら、見たのは1つめだけ
+    expect(onClose).toHaveBeenLastCalledWith("skipped", ['[data-guide="one"]'])
 
     await user.keyboard("{Escape}")
     expect(onClose).toHaveBeenCalledTimes(2)
-    expect(onClose).toHaveBeenLastCalledWith("skipped")
+    expect(onClose).toHaveBeenLastCalledWith("skipped", ['[data-guide="one"]'])
   })
 
   it("Esc をほかの画面(ARのとじる)に渡さない", async () => {
@@ -99,7 +101,7 @@ describe("SpotGuide", () => {
     render(<Screen onClose={onClose} withTargets={false} />)
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    expect(onClose).toHaveBeenCalledWith("empty")
+    expect(onClose).toHaveBeenCalledWith("empty", [])
   })
 
   it("とじているあいだは何も出さない", () => {
@@ -147,7 +149,7 @@ describe("SpotGuide", () => {
     )
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    expect(onClose).toHaveBeenCalledWith("empty")
+    expect(onClose).toHaveBeenCalledWith("empty", [])
   })
 
   it("Tab は吹き出しの中のボタンだけを回す", async () => {

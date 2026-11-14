@@ -43,6 +43,16 @@ export default function MapPageClient() {
       searchParams.get("suspiciousAlert") === "1",
   )
 
+  // 報告や不審者アラートの入力など、地図の上で何かをしている最中か(MapContainer が知らせる)。
+  // 最中は案内を出さず、出ていたら引っこめる(見た記録は付けない。つぎの機会に出す)
+  const isMapBusyRef = useRef(false)
+  const handleMapBusyChange = (isBusy: boolean) => {
+    isMapBusyRef.current = isBusy
+    if (!isBusy) return
+    setShowSpotGuide(false)
+    setShowDetailsGuide(false)
+  }
+
   // はじめて地図を開いたとき、実際のボタンを1つずつ照らして場所を案内する。
   // 地図の部品が出そろい、ほかのダイアログが開いていないのを待ってから出す
   useEffect(() => {
@@ -52,7 +62,8 @@ export default function MapPageClient() {
     const timer = window.setInterval(() => {
       tries += 1
       const isReady = document.querySelector('[data-guide="map-search"]') !== null
-      const isBusy = document.querySelector('[role="dialog"], [role="alertdialog"]') !== null
+      const isBusy =
+        isMapBusyRef.current || document.querySelector('[role="dialog"], [role="alertdialog"]') !== null
       if (isReady && !isBusy) {
         window.clearInterval(timer)
         setShowSpotGuide(true)
@@ -70,7 +81,7 @@ export default function MapPageClient() {
       setShowDetailsGuide(false)
       return
     }
-    if (showSpotGuide || showTutorial || showHelp) return
+    if (showSpotGuide || showTutorial || showHelp || isMapBusyRef.current) return
     if (shouldShowSpotGuide("map-details")) setShowDetailsGuide(true)
   }
   const handleDetailsGuideClose = (reason: SpotGuideCloseReason) => {
@@ -105,6 +116,7 @@ export default function MapPageClient() {
         preferredRouteId={preferredRouteId}
         initialReportId={initialReportId}
         onTopDetailsVisibleChange={handleTopDetailsVisibleChange}
+        onBusyChange={handleMapBusyChange}
       />
 
       <div data-guide="map-help" className="map-help-fab fixed left-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:left-auto md:bottom-4 md:right-4">
