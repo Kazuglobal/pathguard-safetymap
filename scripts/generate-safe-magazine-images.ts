@@ -46,6 +46,115 @@ Technical specifications:
 // 記事ごとの画像設定（高品質プロンプト）
 const ARTICLE_IMAGES: ImageConfig[] = [
   {
+    articleId: "2026-11-14-year-end-traffic-safety-2026",
+    articleSlug: "year-end-traffic-safety-2026",
+    category: "policy-update",
+    title: "年末の交通安全運動は県ごとに別日程",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a parent and child checking how to cross a road safely on an early-dark December evening, during the year-end traffic safety campaign season.
+
+Scene elements (Japanese specific):
+- A Japanese elementary school child wearing a yellow school cap and a randoseru backpack, standing well back from the kerb at a zebra crosswalk, one hand raised straight up
+- A parent standing beside and slightly behind the child, one hand lightly on the child's shoulder, both looking right along the road
+- Reflective tape on the randoseru shoulder strap and on the child's shoe heel is catching light and glowing softly
+- A Japanese residential street just after sunset in December: deep blue evening sky with a thin warm band of afterglow near the horizon, bare winter trees, low houses with lit windows
+- A car in the middle distance has stopped before the crosswalk with its headlights already switched on, beams visible in the cold air
+- Street furniture: a green belt road edge marking, a guardrail, a school zone sign, a street lamp just coming on
+- The child's breath is faintly visible in the cold
+
+Mood: Calm, warm and reassuring despite the darkness. The hero elements are the glowing reflective material and the car that has stopped. Not frightening, no crash, no injury, no emergency vehicles.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Deep winter blue and indigo for the sky, warm amber for the window and headlight glow, with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, snow-covered road (this is not a snow article), text overlays, readable signage lettering
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "prefecture-dates-differ",
+        prompt: `Create a clean Japanese educational infographic showing that four different prefectures run their year-end traffic safety campaign over four different date ranges in December, using a simple horizontal timeline with bars.
+
+Layout: a single horizontal axis representing one month, left edge to right edge. Four horizontal bars are stacked below the axis, each starting and ending at a different point along the axis, so the reader instantly sees that the bars do not line up.
+
+BAR 1 (strong purple, starts at the far left, short): spans roughly the first third of the axis. Numerals at its two ends: 1 and 10
+BAR 2 (medium purple, also starts at the far left, medium length): spans roughly the first half of the axis. Numerals at its two ends: 1 and 15
+BAR 3 (light purple, starts around the middle, longest): spans from the middle to the far right edge. Numerals at its two ends: 11 and 31
+BAR 4 (muted amber, starts just after the middle, short): a short bar in the right half. Numerals at its two ends: 14 and 23
+
+Add a small simple calendar page pictogram at the top left corner of the axis as a visual anchor.
+
+Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric shapes, purple and amber accent colours, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, prefecture names or any place names, any lettering other than the numerals 1, 10, 15, 11, 31, 14 and 23
+${QUALITY_SUFFIX}`,
+        description: "年末の交通安全運動の期間は県ごとに違う（12月1日〜10日／1日〜15日／11日〜31日／14日〜23日の4パターン）"
+      },
+      {
+        id: "crossing-at-dusk-steps",
+        prompt: `Create a clear Japanese educational infographic with three numbered panels in a row, teaching how a child should cross a road at dusk in winter.
+
+PANEL 1 (numbered 1) - STOP BACK FROM THE KERB: a child in a yellow school cap and randoseru has stopped a full step back from the kerb at a zebra crosswalk, feet together, not leaning forward. A bold arrow points to the gap between the child's toes and the kerb edge.
+PANEL 2 (numbered 2) - CONFIRM THE CAR HAS ACTUALLY STOPPED: the same child looks at an approaching car whose wheels are shown stopped before the crosswalk with its headlights on; a bold check mark sits over the stopped car. Behind it, a faded ghost version shows the child stepping out while a car is still rolling, crossed out with a red diagonal prohibition bar.
+PANEL 3 (numbered 3) - RAISE A HAND AND CROSS: the child walks across the zebra crossing with one hand raised straight up, and reflective tape on the randoseru strap and shoe heel glows brightly in the headlight beam.
+
+All three panels share a dusk setting: deep blue evening sky, a street lamp, a guardrail and a green belt road edge marking.
+
+Style: Flat Japanese infographic design on a light background, clear numbered circles 1, 2 and 3, deep blue and amber with a purple accent, generic child character with simple non-photographic features, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, depiction of a collision or injury, garbled text, any lettering other than the numerals 1, 2 and 3
+${QUALITY_SUFFIX}`,
+        description: "暗い時間の渡り方3ステップ（縁石から一歩下がって止まる／車が止まったのを目で確かめる／手を挙げて渡る）"
+      }
+    ]
+  },
+  {
+    articleId: "2026-11-14-otta-mimamori-ogaki-seino",
+    articleSlug: "otta-mimamori-ogaki-seino",
+    category: "safety-tips",
+    title: "IoT見守り端末 大垣市の3者協定",
+    thumbnailPrompt: `Create a Japanese editorial illustration about an IoT school-route watch service that records when a child passes a small roadside receiver.
+
+Scene elements (Japanese specific):
+- A Japanese elementary school child wearing a yellow school cap and a randoseru backpack, walking cheerfully along a residential street on the way home from school
+- A small charm-shaped tag hangs from the side of the randoseru; faint concentric signal ripples radiate from it
+- Mounted on a utility pole at the edge of the street, and again on the wall beside a small neighbourhood shop front, are two small plain white box devices receiving those ripples - drawn as simple anonymous boxes with no lettering
+- A parent in the foreground corner, seen from behind over the shoulder, holds a smartphone showing an abstract map with a few dots along a route - no readable text on the screen, just dots and a line
+- Japanese residential street in late autumn: low houses, a green belt road edge marking, a guardrail, a school zone sign, a crosswalk further along, ginkgo leaves turning yellow
+- Warm late afternoon light
+
+Mood: Reassuring, modern and practical. The hero elements are the charm tag on the backpack and the small receivers on the street. Not surveillance-like, not frightening, no crash, no cameras pointing at the child's face.
+Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
+Color palette: Warm late autumn amber and soft green, with a blue accent to match the safety-tips category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, real brand logos or product names, security camera imagery pointed at the child, depiction of a crash or injury, text overlays, readable signage or screen lettering
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "three-party-roles",
+        prompt: `Create a clean Japanese educational infographic showing three parties joining together around one child, as a simple triangle diagram.
+
+Layout: three circular nodes arranged in a triangle, connected to each other by plain lines, with a small fourth circle at the centre of the triangle.
+
+NODE 1 (top, blue): a simple pictogram of a Japanese city hall building, with a small pictogram of an envelope and a letter beside it to suggest notifying families
+NODE 2 (bottom left, teal): a simple pictogram of a small plain box device with concentric signal ripples, mounted on a short pole, to suggest installing roadside receivers
+NODE 3 (bottom right, amber): a simple pictogram of a generic delivery truck and a warehouse, with a small pictogram of a hand holding the same small box device, to suggest a local company helping install receivers
+CENTRE circle (small, light blue): a simple pictogram of a child in a school cap with a randoseru and a charm-shaped tag
+
+Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric pictograms, blue, teal and amber accent colours, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos or company names, garbled text, any lettering or numerals at all
+${QUALITY_SUFFIX}`,
+        description: "3者協定の役割（市は対象世帯への周知／事業者と地元企業が固定基地局の設置などの環境整備／対象は小学生）"
+      },
+      {
+        id: "passage-record-not-tracking",
+        prompt: `Create a clear Japanese educational infographic with two panels side by side, contrasting continuous location tracking with passage-point recording.
+
+LEFT PANEL (marked with a red diagonal prohibition bar over it, drawn faded) - NOT CONTINUOUS TRACKING: a residential street map seen from above with one unbroken dense line following a child pictogram along every metre of the route, and a large radar-like pulsing circle constantly centred on the child.
+
+RIGHT PANEL (marked with a bold green check mark, drawn bright and clear) - PASSAGE RECORDING: the same residential street map seen from above, but now only four small plain box receivers sit at specific points - beside a school gate, at a park, at a shop front, and at a fork in the route. The child pictogram's path is drawn as a faint dashed line, and only four solid dots appear, one at each receiver, each with a small clock pictogram beside it. One stretch of the route in the lower part of the map has no receiver at all and is drawn as a plain grey dashed line with a small question-mark pictogram, to show that this stretch leaves no record.
+
+Style: Flat Japanese infographic design on a light background, simple top-down map style, blue and teal with a grey neutral for the unrecorded stretch, clean geometric pictograms, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, real map data or place names, garbled text, any lettering or numerals at all
+${QUALITY_SUFFIX}`,
+        description: "常時追跡ではなく「通過記録」（基地局を通った地点と時刻だけが残り、基地局のない区間は記録に残らない）"
+      }
+    ]
+  },
+  {
     articleId: "2026-11-07-bicycle-blue-ticket-six-month-report",
     articleSlug: "bicycle-blue-ticket-six-month-report",
     category: "policy-update",
