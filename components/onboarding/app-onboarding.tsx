@@ -29,7 +29,13 @@ interface Slide {
   body: string
   /** おうちの人向けの小さな添え書き(任意) */
   parentNote?: string
+  /** 絵のまわりのクリーム色の余白を落として場面を大きく見せる倍率(任意。場面の端が切れない値だけ) */
+  zoom?: number
 }
+
+/** 絵を入れる白い枠の幅(枠線1px+内側の余白8pxを左右に足した18px)。高さの計算に使う */
+const CARD_FRAME_PX = 18
+const CARD_MAX_WIDTH_PX = 420
 
 const SLIDES: readonly Slide[] = [
   {
@@ -39,6 +45,7 @@ const SLIDES: readonly Slide[] = [
     title: "かぞくでつかう つうがくろの あんぜんノート",
     body: "PathGuardian(パスガーディアン)は、通学路の「気をつけて」を家族で見つけて、地図にのこせるアプリ。あいぼうの ルペと いっしょに つかってね。",
     parentNote: "おうちの人へ: 準備は1分。お子さんと同じ画面で一緒に使えます。",
+    zoom: 1.12,
   },
   {
     image: "/images/onboarding/app-onboarding-2.png",
@@ -63,8 +70,46 @@ const SLIDES: readonly Slide[] = [
     title: "まずは つうがくろを 1本 とうろく！",
     body: "とうろくすると、毎朝の「通学3分チェック」で わが子のルートの注意点が わかるよ。さっそく やってみよう！",
     parentNote: "学校名と自宅周辺を選ぶだけ。あとから何本でも追加できます。",
+    zoom: 1.1,
   },
 ]
+
+/**
+ * 1ページ分の見出し・本文・おうちの人への一言。
+ * ghost のときは見えない・読み上げない状態で場所だけ取る(ページ間で文章の場所の高さをそろえるため)。
+ */
+function SlideText({ slide, ghost }: { slide: Slide; ghost: boolean }) {
+  const Title = ghost ? "div" : "h2"
+  return (
+    <div
+      className="[grid-area:1/1]"
+      aria-hidden={ghost || undefined}
+      style={ghost ? { visibility: "hidden" } : undefined}
+      data-testid={ghost ? undefined : "onboarding-slide-text"}
+    >
+      <Title className="text-[21px] font-black leading-snug" style={{ color: C.ink, textWrap: "balance" }}>
+        {slide.title}
+      </Title>
+      <p
+        className="mx-auto mt-2 max-w-[340px] text-[14.5px] font-bold leading-relaxed"
+        style={{ color: C.inkSoft, textWrap: "balance" }}
+      >
+        {slide.body}
+      </p>
+      {/* 補足の有無でカード位置が跳ねないよう、常に高さを確保する */}
+      <div className="mt-2.5 flex min-h-[44px] items-start justify-center">
+        {slide.parentNote ? (
+          <p
+            className="inline-block rounded-full px-3.5 py-1.5 text-[12px] font-bold leading-snug"
+            style={{ color: C.inkSoft, background: "rgba(67,57,43,.06)" }}
+          >
+            {slide.parentNote}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
 
 export function AppOnboarding({
   open,
@@ -268,8 +313,14 @@ export function AppOnboarding({
                 </button>
               </div>
 
-              {/* ページ本体(スワイプ可) */}
-              <div className="relative min-h-0 flex-1 overflow-hidden px-5">
+              {/*
+                ページ本体(スワイプ可)。幅を絵の大きさの計算(cqw)に使う。
+                絵を最小まで縮めても入りきらないとても低い画面では、縦にスクロールして読めるようにする(切らない)。
+              */}
+              <div
+                className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5"
+                style={{ containerType: "inline-size" }}
+              >
                 <AnimatePresence mode="popLayout" custom={dir} initial={false}>
                   <motion.div
                     key={index}
@@ -283,66 +334,79 @@ export function AppOnboarding({
                     dragConstraints={{ left: 0, right: 0 }}
                     dragElastic={0.16}
                     onDragEnd={handleDragEnd}
-                    className="flex h-full cursor-grab flex-col justify-center pb-4 active:cursor-grabbing"
+                    className="flex h-full cursor-grab flex-col active:cursor-grabbing"
                   >
-                    {/* 絵(ノートに貼った1枚) */}
+                    {/*
+                      上下の空き。余る高さを半分ずつ受け持って中身を真ん中に置く。
+                      justify-center と違い、入りきらないときは最小の余白(上12px・下16px)だけになり、上端が切れない。
+                    */}
+                    <div aria-hidden="true" className="min-h-3 flex-1" />
+                    {/*
+                      絵(ノートに貼った1枚)。高さが足りないときは、文章ではなくこの枠が縮む。
+                      枠の中の絵は4:3を保ったまま幅ごと小さくし、切り取らない(低い画面で下半分が切れていた)。
+                    */}
                     <div
-                      className="relative mx-auto mt-3 w-full max-w-[420px] overflow-hidden rounded-[20px] border bg-white p-2"
-                      style={{ borderColor: "rgba(67,57,43,.09)", boxShadow: tankenTokens.shadow.card }}
+                      className="min-h-[96px] w-full shrink"
+                      style={{
+                        height: `calc((min(100cqw, ${CARD_MAX_WIDTH_PX}px) - ${CARD_FRAME_PX}px) * 0.75 + ${CARD_FRAME_PX}px)`,
+                        containerType: "size",
+                      }}
+                      data-testid="onboarding-picture-area"
                     >
-                      <div className="absolute left-4 top-4 z-10">
-                        <span
-                          className="inline-block rounded-[10px] border-2 px-2.5 py-1 text-[12px] font-black"
-                          style={{
-                            background: C.sun,
-                            borderColor: "rgba(67,57,43,.25)",
-                            color: C.ink,
-                            transform: "rotate(-4deg)",
-                            boxShadow: "0 2px 0 rgba(67,57,43,.18)",
-                          }}
+                      <div
+                        className="relative mx-auto overflow-hidden rounded-[20px] border bg-white p-2"
+                        style={{
+                          width: `min(100%, ${CARD_MAX_WIDTH_PX}px, calc((100cqh - ${CARD_FRAME_PX}px) * 4 / 3 + ${CARD_FRAME_PX}px))`,
+                          borderColor: "rgba(67,57,43,.09)",
+                          boxShadow: tankenTokens.shadow.card,
+                        }}
+                      >
+                        {/* 「その1」の札。絵が小さくなる低い画面では札も小さくして、絵を覆わないようにする(cqh=絵の場所の高さ) */}
+                        <div
+                          className="absolute z-10"
+                          style={{ left: "clamp(8px, 6cqh, 16px)", top: "clamp(8px, 6cqh, 16px)" }}
                         >
-                          {slide.sticker}
-                        </span>
-                      </div>
-                      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[13px]">
-                        <Image
-                          src={slide.image}
-                          alt={slide.alt}
-                          fill
-                          sizes="(max-width: 480px) 92vw, 420px"
-                          priority={index === 0}
-                          className="object-cover"
-                          draggable={false}
-                        />
+                          <span
+                            className="inline-block rounded-[10px] border-2 font-black"
+                            style={{
+                              fontSize: "clamp(9px, 4.8cqh, 12px)",
+                              padding: "0.33em 0.83em",
+                              background: C.sun,
+                              borderColor: "rgba(67,57,43,.25)",
+                              color: C.ink,
+                              transform: "rotate(-4deg)",
+                              boxShadow: "0 2px 0 rgba(67,57,43,.18)",
+                            }}
+                          >
+                            {slide.sticker}
+                          </span>
+                        </div>
+                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[13px]">
+                          <Image
+                            src={slide.image}
+                            alt={slide.alt}
+                            fill
+                            sizes="(max-width: 480px) 92vw, 420px"
+                            priority={index === 0}
+                            className="object-cover"
+                            style={slide.zoom ? { transform: `scale(${slide.zoom})` } : undefined}
+                            draggable={false}
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* ことば */}
-                    <div className="mx-auto mt-4 w-full max-w-[420px] text-center">
-                      <h2
-                        className="text-[21px] font-black leading-snug"
-                        style={{ color: C.ink, textWrap: "balance" }}
-                      >
-                        {slide.title}
-                      </h2>
-                      <p
-                        className="mx-auto mt-2 max-w-[340px] text-[14.5px] font-bold leading-relaxed"
-                        style={{ color: C.inkSoft, textWrap: "balance" }}
-                      >
-                        {slide.body}
-                      </p>
-                      {/* 補足の有無でカード位置が跳ねないよう、常に高さを確保する */}
-                      <div className="mt-2.5 flex min-h-[44px] items-start justify-center">
-                        {slide.parentNote ? (
-                          <p
-                            className="inline-block rounded-full px-3.5 py-1.5 text-[12px] font-bold leading-snug"
-                            style={{ color: C.inkSoft, background: "rgba(67,57,43,.06)" }}
-                          >
-                            {slide.parentNote}
-                          </p>
-                        ) : null}
-                      </div>
+                    {/*
+                      ことば(縮めない。足りない高さは上の絵が受け持つ)。
+                      ほかのページの文章も見えない状態で同じ場所に重ね、いちばん長いページの高さにそろえる。
+                      こうしないと、文章の長さでページごとに絵の大きさが変わってしまう。
+                    */}
+                    <div className="mx-auto mt-4 grid w-full max-w-[420px] shrink-0 grid-cols-[minmax(0,1fr)] text-center">
+                      {slides.map((s, i) => (
+                        <SlideText key={s.image} slide={s} ghost={i !== index} />
+                      ))}
                     </div>
+                    <div aria-hidden="true" className="min-h-4 flex-1" />
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -352,34 +416,37 @@ export function AppOnboarding({
                 className="shrink-0 px-5 pt-2"
                 style={{ paddingBottom: "max(env(safe-area-inset-bottom), 18px)" }}
               >
-                <div className="mb-4 flex items-center justify-center gap-2" role="group" aria-label="ガイドのページ">
-                  {slides.map((s, i) => {
-                    const active = i === index
-                    return (
-                      <button
-                        key={s.image}
-                        type="button"
-                        aria-current={active ? "step" : undefined}
-                        aria-label={`${i + 1}ページ目`}
-                        onClick={() => go(i)}
-                        className={`grid h-11 w-11 place-items-center rounded-full ${tankenTokens.cls.focus}`}
-                        style={{
-                          touchAction: "manipulation",
-                        }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="block rounded-full transition-all duration-300"
+                {/* 1ページだけの要約では点が1つになるだけなので出さず、その高さを絵に回す */}
+                {slides.length > 1 ? (
+                  <div className="mb-4 flex items-center justify-center gap-2" role="group" aria-label="ガイドのページ">
+                    {slides.map((s, i) => {
+                      const active = i === index
+                      return (
+                        <button
+                          key={s.image}
+                          type="button"
+                          aria-current={active ? "step" : undefined}
+                          aria-label={`${i + 1}ページ目`}
+                          onClick={() => go(i)}
+                          className={`grid h-11 w-11 place-items-center rounded-full ${tankenTokens.cls.focus}`}
                           style={{
-                            width: active ? 26 : 9,
-                            height: 9,
-                            background: active ? C.primary : "rgba(67,57,43,.18)",
+                            touchAction: "manipulation",
                           }}
-                        />
-                      </button>
-                    )
-                  })}
-                </div>
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="block rounded-full transition-all duration-300"
+                            style={{
+                              width: active ? 26 : 9,
+                              height: 9,
+                              background: active ? C.primary : "rgba(67,57,43,.18)",
+                            }}
+                          />
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
 
                 <div className="mx-auto w-full max-w-[420px]">
                   <motion.button
@@ -421,20 +488,25 @@ export function AppOnboarding({
                     )}
                   </motion.button>
 
-                  {/* 最終ページの代替導線。高さを常に確保してボタン位置が跳ねないようにする */}
-                  <div className="mt-2 flex min-h-[36px] items-center justify-center">
-                    {isLast && !summaryOnly ? (
-                      <button
-                        type="button"
-                        onClick={() => finish("/map")}
-                        className={`rounded-full px-4 py-1.5 text-[13px] font-black underline underline-offset-4 ${tankenTokens.cls.focus}`}
-                        style={{ color: C.inkSoft }}
-                        data-testid="onboarding-open-map"
-                      >
-                        あとで。まずは ちずを みてみる
-                      </button>
-                    ) : null}
-                  </div>
+                  {/*
+                    最終ページの代替導線。4ページ版では高さを常に確保してボタン位置が跳ねないようにする。
+                    要約(1ページ)では中身が入らないので枠ごと出さない。
+                  */}
+                  {summaryOnly ? null : (
+                    <div className="mt-2 flex min-h-[36px] items-center justify-center">
+                      {isLast ? (
+                        <button
+                          type="button"
+                          onClick={() => finish("/map")}
+                          className={`rounded-full px-4 py-1.5 text-[13px] font-black underline underline-offset-4 ${tankenTokens.cls.focus}`}
+                          style={{ color: C.inkSoft }}
+                          data-testid="onboarding-open-map"
+                        >
+                          あとで。まずは ちずを みてみる
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
