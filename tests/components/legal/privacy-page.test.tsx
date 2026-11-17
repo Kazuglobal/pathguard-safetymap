@@ -54,7 +54,10 @@ describe("プライバシーポリシーは実際の動きと同じことを書�
     const { container } = render(<PrivacyPage />)
     const text = container.textContent ?? ""
 
-    expect(text).toContain(`運営者: ${BRAND.operator}`)
+    expect(text).toContain(`運営者: ${BRAND.operator.name}(代表 ${BRAND.operator.representative})`)
+    expect(text).toContain("運営者: PathGuardian(代表 大舘和史)")
+    // フッターの「運営: PathGuardian」から飛んでくる場所
+    expect(container.querySelector("#operator")).toHaveTextContent("代表 大舘和史")
     expect(text).toContain("住所: お問い合わせいただければ、遅滞なくお知らせします")
     expect(text).toContain("開示")
     expect(text).toContain("利用の停止・消去")

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 
-import { InstagramLink, OPERATOR_LABEL, SITE_FOOTER_LINKS } from "@/components/layout/site-footer"
+import { InstagramLink, OperatorLink, SITE_FOOTER_LINKS } from "@/components/layout/site-footer"
 import { useLpAuthStatus } from "@/components/lp/use-lp-auth-status"
 import { LP_CTA, LP_OPEN_APP } from "@/lib/lp-content"
 
@@ -89,7 +89,9 @@ export function LpCtaFooter() {
             <InstagramLink className="transition-colors hover:text-white" />
           </nav>
           <div className="text-center text-xs text-white/70 md:text-right">
-            <p>{OPERATOR_LABEL}</p>
+            <p>
+              <OperatorLink className="transition-colors hover:text-white" />
+            </p>
             {/* 年はサーバーとブラウザで年明けにずれることがあるので、食い違いを警告しない */}
             <p className="mt-1" suppressHydrationWarning>© {new Date().getFullYear()} PathGuardian</p>
           </div>

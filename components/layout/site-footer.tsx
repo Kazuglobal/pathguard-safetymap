@@ -15,8 +15,24 @@ export const SITE_FOOTER_LINKS = [
   { href: "/contact?type=improvement", label: "サービス改善要望" },
 ] as const
 
-/** 運営者の表記(lib/brand.ts の operator。未設定のときは準備中。UIUX改装 項目4) */
-export const OPERATOR_LABEL = BRAND.operator ? `運営: ${BRAND.operator}` : "運営者の表記は準備中です"
+/** 運営者の表記(lib/brand.ts の operator。UIUX改装 項目4) */
+export const OPERATOR_LABEL = `運営: ${BRAND.operator.name}`
+
+/**
+ * 運営者の表記。サービス名だけを出し、押すとプライバシーポリシーの運営者の節(代表者の名前)へ進む。
+ * アプリの共通フッターと紹介HPのフッターで同じものを使う。
+ */
+export function OperatorLink({ className = "", style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <Link
+      href={BRAND.operator.detailsHref}
+      className={`inline-flex min-h-11 items-center underline underline-offset-4 ${tankenTokens.cls.focus} ${className}`}
+      style={style}
+    >
+      {OPERATOR_LABEL}
+    </Link>
+  )
+}
 
 function InstagramIcon() {
   return (
@@ -75,7 +91,9 @@ export function SiteFooter({ reserveBottomNav = false }: { reserveBottomNav?: bo
         ))}
         <InstagramLink style={{ color: C.inkSoft }} />
       </nav>
-      <p className="mt-2 text-xs">{OPERATOR_LABEL}</p>
+      <p className="mt-1 text-xs">
+        <OperatorLink style={{ color: C.inkSoft }} />
+      </p>
       {/* 年はサーバー(UTC・ビルドの時点)とブラウザ(日本時間)で年明けにずれることがあるので、食い違いを警告しない */}
       <p className="mt-1 text-xs" suppressHydrationWarning>
         © {year} {BRAND.name}

@@ -27,8 +27,15 @@ export const BRAND = {
   },
   /** 外部の Google フォーム(項目4)。今はアプリ内の /contact フォームを使うので null。外部フォームに切り替えるときだけ URL を入れる */
   contactFormUrl: null as string | null,
-  /** 運営者の表記(フッターに「運営: ◯◯」と出す。null にすると「準備中」の表記に戻る) */
-  operator: '大舘和史' as string | null,
+  /**
+   * 運営者。フッターにはサービス名だけ(「運営: PathGuardian」)を出し、押すとプライバシーポリシーの
+   * 運営者の節(detailsHref)で代表者の名前を見られるようにする。代表者の名前はフッターに直接書かない。
+   */
+  operator: {
+    name: 'PathGuardian',
+    representative: '大舘和史',
+    detailsHref: '/privacy#operator',
+  },
 } as const
 
 /** ページのタイトル(ページ名だけを渡す。null ならホームのタイトル) */

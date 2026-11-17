@@ -15,7 +15,9 @@ export default function TermsPage() {
           PathGuardian(通学路みまもりアプリ。以下「本サービス」)は、通学路・生活道路の危険情報や不審者情報をユーザー同士で共有し、
           AI による画像解析を活用して、地域の安全な移動をサポートすることを目的としたサービスです。
         </p>
-        <p>本サービスは、{BRAND.operator}(以下「運営者」)が提供します。</p>
+        <p>
+          本サービスは、{BRAND.operator.name}(代表 {BRAND.operator.representative}。以下「運営者」)が提供します。
+        </p>
       </LegalSection>
 
       <LegalSection title="2. 禁止事項">

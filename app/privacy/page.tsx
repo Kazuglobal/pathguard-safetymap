@@ -186,9 +186,11 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="12. 運営者・お問い合わせ">
+      <LegalSection title="12. 運営者・お問い合わせ" id="operator">
         <ul className="list-disc space-y-1 pl-5">
-          <li>運営者: {BRAND.operator}</li>
+          <li>
+            運営者: {BRAND.operator.name}(代表 {BRAND.operator.representative})
+          </li>
           {/* 個人情報保護法32条1項の「本人の求めに応じて遅滞なく回答する」形で知らせる */}
           <li>住所: お問い合わせいただければ、遅滞なくお知らせします</li>
           <li>
