@@ -160,9 +160,9 @@ export default function PrivacyPage() {
           <li>不具合の記録(Sentry)には、個人を指す情報を消してから送ります</li>
           <li>外部のサービスには、機能の提供に必要な範囲だけを預けます</li>
           <li>
-            外部のサービスには Google・Cloudflare など米国の大手事業者のサービスを使っており、預かった情報は主に米国のサーバーで保存・処理されることがあります
+            外部のサービスには Google・Cloudflare など米国の大手事業者のサービスを使っており、預かった情報は主に日本と米国のサーバーで保存・処理されることがあります
             (氏名は預からず、写真はぼかしたもの、通学路は粗くしたものだけを保存しています)。
-            米国の個人情報の保護に関する制度は、
+            このうち米国の個人情報の保護に関する制度は、
             <a className="underline" href="https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/" target="_blank" rel="noopener noreferrer">個人情報保護委員会の資料(アメリカ合衆国)</a>
             で確認できます。運営者はこれを把握したうえで、上の措置をとっています
           </li>

@@ -48,7 +48,7 @@ describe("プライバシーポリシーは実際の動きと同じことを書�
     expect(text).toContain("利用の停止・消去")
     expect(text).toContain("手数料はいただきません")
     expect(text).toContain("安全管理のためにしていること")
-    expect(text).toContain("主に米国のサーバーで保存・処理されることがあります")
+    expect(text).toContain("主に日本と米国のサーバーで保存・処理されることがあります")
     // 外的環境の把握: 保存先の国の制度を、個人情報保護委員会の資料で示す
     expect(screen.getByRole("link", { name: "個人情報保護委員会の資料(アメリカ合衆国)" })).toHaveAttribute(
       "href",
