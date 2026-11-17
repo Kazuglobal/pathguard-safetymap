@@ -10,16 +10,28 @@ import { RETENTION_DAYS } from "@/lib/retention/policy"
 import { BRAND } from "@/lib/brand"
 
 describe("プライバシーポリシーは実際の動きと同じことを書く(UIUX改装 項目55〜62)", () => {
-  it("氏名を預からないこと、写真は端末でぼかしてから3つの AI に送ること、Sentry の録画をしないことを書く", () => {
+  it("氏名を預からないこと、写真は端末でぼかしてから外部の AI サービスに送ること、不具合の記録で録画をしないことを書く", () => {
     const { container } = render(<PrivacyPage />)
     const text = container.textContent ?? ""
 
     expect(text).toContain("氏名は預かりません")
     expect(text).not.toMatch(/氏名、メールアドレスなどアカウント登録情報/)
-    expect(text).toContain("Google(Gemini)・Anthropic(Claude)・OpenAI")
+    expect(text).toContain("外部の AI サービス(米国の事業者)へ送ります")
     expect(text).toContain("保存するのは、このぼかした写真だけです")
     expect(text).toContain("通常時の画面の録画はしません")
     expect(text).toContain("道すじの両端それぞれ200m以上(削る長さは毎回変えます)は保存せず")
+  })
+
+  // 会社名は、規約で開示が必要な Google(アナリティクス・マップ)だけ。ほかは役割で書き、問い合わせがあれば答える
+  it("Google 以外の外部の事業者は名前を出さず役割で書き、問い合わせがあれば答えると書く", () => {
+    const { container } = render(<PrivacyPage />)
+    const text = container.textContent ?? ""
+
+    for (const name of ["Supabase", "Cloudflare", "Gemini", "Anthropic", "Claude", "OpenAI", "Sentry", "Mapbox", "Resend"]) {
+      expect(text, name).not.toContain(name)
+    }
+    expect(text).toContain("Google Maps")
+    expect(text).toContain("名前を書いていない事業者は、お問い合わせいただければお答えします")
   })
 
   it("保存の期間の表は lib/retention/policy.ts の値と同じ", () => {
