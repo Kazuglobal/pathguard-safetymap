@@ -25,7 +25,7 @@ const RETENTION_ROWS: ReadonlyArray<[string, string]> = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年10月30日">
+    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年11月17日">
       <LegalSection title="1. 基本の考え方">
         <p>
           PathGuardian(通学路みまもりアプリ)は、通学路の安全を見守るために必要な情報だけを預かり、
@@ -102,6 +102,7 @@ export default function PrivacyPage() {
             </li>
           )}
         </ul>
+        <p>この一覧には、お使いの端末から直接これらのサービスへ送られる情報(外部送信)も含みます。</p>
         <p>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</p>
       </LegalSection>
 
@@ -136,18 +137,69 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="9. Cookie・アクセス解析">
+        {/* Google アナリティクスの有無(lib/google-analytics.ts の測定ID)で書き分ける。6. の一覧と食い違わないようにする */}
+        {GA_MEASUREMENT_ID ? (
+          <p>
+            ログイン状態の維持のため Cookie を使います。サイトの利用状況を知るため、Google アナリティクスが Cookie などの識別子を使います
+            (送る情報と、送信を止める方法は「6. 外部のサービス」)。広告のためには使いません。Cloudflare のアクセス解析は Cookie を使いません。
+          </p>
+        ) : (
+          <p>
+            ログイン状態の維持のため Cookie を使います。Cookie を使うアクセス解析ツールは導入していません(Cloudflare のアクセス解析は Cookie を使いません)。
+            導入する場合は、このポリシーを改定してお知らせします。
+          </p>
+        )}
+      </LegalSection>
+
+      <LegalSection title="10. 安全管理のためにしていること">
+        <ul className="list-disc space-y-1 pl-5">
+          <li>預かる情報を必要なものだけにしています(氏名・自宅や学校の正確な場所・ぼかす前の写真は預かりません)</li>
+          <li>保存の期間を決め、期間を過ぎたデータは毎日自動で削除します(「7. 保存の期間」)</li>
+          <li>運営者が責任者として管理し、情報を見られる人と範囲を、機能の提供と確認に必要なものに限っています</li>
+          <li>通信は暗号化し、パスワードは暗号化して保存します</li>
+          <li>不具合の記録(Sentry)には、個人を指す情報を消してから送ります</li>
+          <li>外部のサービスには、機能の提供に必要な範囲だけを預けます</li>
+          <li>
+            外部のサービスには Google・Cloudflare など米国の大手事業者のサービスを使っており、預かった情報は主に米国のサーバーで保存・処理されることがあります
+            (氏名は預からず、写真はぼかしたもの、通学路は粗くしたものだけを保存しています)。
+            米国の個人情報の保護に関する制度は、
+            <a className="underline" href="https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/" target="_blank" rel="noopener noreferrer">個人情報保護委員会の資料(アメリカ合衆国)</a>
+            で確認できます。運営者はこれを把握したうえで、上の措置をとっています
+          </li>
+        </ul>
+        <p>さらにくわしい内容は、お問い合わせいただければお答えします。</p>
+      </LegalSection>
+
+      <LegalSection title="11. 開示・訂正・利用停止などのご請求">
+        <p>ご自身の情報について、次のことを求めることができます。</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>利用目的のお知らせ</li>
+          <li>開示(第三者へ提供した記録の開示を含みます)</li>
+          <li>内容が事実でないときの訂正・追加・削除</li>
+          <li>利用の停止・消去、第三者への提供の停止</li>
+        </ul>
         <p>
-          ログイン状態の維持のため Cookie を使います。アクセス解析ツールによる第三者のトラッキングは行っていません。
-          導入する場合は、このポリシーを改定してお知らせします。
+          お問い合わせページからご連絡ください。ご本人であることを確かめるため、登録しているメールアドレスからのご連絡をお願いすることがあります。
+          手数料はいただきません。多くの情報は、マイページや通学路の画面からご自身で見たり消したりもできます(「8. 削除と退会」)。
+          このポリシーや情報の扱いについての苦情・ご相談も、同じお問い合わせページで受け付けます。
         </p>
       </LegalSection>
 
-      <LegalSection title="10. お問い合わせ">
-        <p>このポリシーについてのお問い合わせは、お問い合わせページをご確認ください。</p>
+      <LegalSection title="12. 運営者・お問い合わせ">
+        <ul className="list-disc space-y-1 pl-5">
+          <li>運営者: {BRAND.operator}</li>
+          {/* 個人情報保護法32条1項の「本人の求めに応じて遅滞なく回答する」形で知らせる */}
+          <li>住所: お問い合わせいただければ、遅滞なくお知らせします</li>
+          <li>
+            お問い合わせ: <a className="underline" href="/contact">お問い合わせページ</a>
+          </li>
+        </ul>
       </LegalSection>
 
-      <LegalSection title="11. 改定の履歴" id="revisions">
+      <LegalSection title="13. 改定の履歴" id="revisions">
         <ul className="list-disc space-y-1 pl-5">
+          <li>2026年11月17日: 運営者、安全管理のためにしていること、開示などのご請求の方法を追記しました。</li>
+          {GA_MEASUREMENT_ID && <li>2026年11月17日: Cookie の説明を、Google アナリティクスを使っている実際の動きに合わせました。</li>}
           {GA_MEASUREMENT_ID && <li>2026年11月6日: アクセス解析(Google アナリティクス)と、送る情報・送信を止める方法を追記しました。</li>}
           <li>2026年11月6日: Cloudflare のアクセス解析(Web Analytics)と、集計する情報を追記しました。</li>
           <li>2026年10月30日: 事故地点の Google 地図とストリートビューの埋め込み表示、送信する情報を追記しました。</li>

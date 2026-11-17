@@ -15,7 +15,7 @@ export const SITE_FOOTER_LINKS = [
   { href: "/contact?type=improvement", label: "サービス改善要望" },
 ] as const
 
-/** 運営者の表記(受け取るまでは準備中。UIUX改装 項目4) */
+/** 運営者の表記(lib/brand.ts の operator。未設定のときは準備中。UIUX改装 項目4) */
 export const OPERATOR_LABEL = BRAND.operator ? `運営: ${BRAND.operator}` : "運営者の表記は準備中です"
 
 function InstagramIcon() {

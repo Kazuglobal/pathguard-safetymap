@@ -264,6 +264,6 @@ describe("LPセクションのレンダリング", () => {
     const instagram = screen.getByRole("link", { name: /公式Instagram @kiken_hunter_jp/ })
     expect(instagram).toHaveAttribute("href", "https://www.instagram.com/kiken_hunter_jp/")
     expect(instagram).toHaveAttribute("rel", "noopener noreferrer")
-    expect(screen.getByText("運営者の表記は準備中です")).toBeInTheDocument()
+    expect(screen.getByText("運営: 大舘和史")).toBeInTheDocument()
   })
 })

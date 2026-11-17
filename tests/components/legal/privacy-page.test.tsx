@@ -7,6 +7,7 @@ vi.mock("next/link", () => ({
 
 import PrivacyPage from "@/app/privacy/page"
 import { RETENTION_DAYS } from "@/lib/retention/policy"
+import { BRAND } from "@/lib/brand"
 
 describe("プライバシーポリシーは実際の動きと同じことを書く(UIUX改装 項目55〜62)", () => {
   it("氏名を預からないこと、写真は端末でぼかしてから3つの AI に送ること、Sentry の録画をしないことを書く", () => {
@@ -34,5 +35,46 @@ describe("プライバシーポリシーは実際の動きと同じことを書�
   it("お知らせの「くわしく」から飛べる改定の履歴がある", () => {
     const { container } = render(<PrivacyPage />)
     expect(container.querySelector("#revisions")).toHaveTextContent("2026年10月29日")
+  })
+
+  // 個人情報保護法32条1項: 氏名・住所、開示などの手続、安全管理措置を「本人の知り得る状態(求めに応じて遅滞なく回答する場合を含む)」に置く
+  it("運営者の氏名と、住所は求めに応じて知らせること、開示などのご請求の方法、安全管理のためにしていることを書く", () => {
+    const { container } = render(<PrivacyPage />)
+    const text = container.textContent ?? ""
+
+    expect(text).toContain(`運営者: ${BRAND.operator}`)
+    expect(text).toContain("住所: お問い合わせいただければ、遅滞なくお知らせします")
+    expect(text).toContain("開示")
+    expect(text).toContain("利用の停止・消去")
+    expect(text).toContain("手数料はいただきません")
+    expect(text).toContain("安全管理のためにしていること")
+    expect(text).toContain("主に米国のサーバーで保存・処理されることがあります")
+    // 外的環境の把握: 保存先の国の制度を、個人情報保護委員会の資料で示す
+    expect(screen.getByRole("link", { name: "個人情報保護委員会の資料(アメリカ合衆国)" })).toHaveAttribute(
+      "href",
+      "https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/",
+    )
+    expect(screen.getByRole("link", { name: "お問い合わせページ" })).toHaveAttribute("href", "/contact")
+  })
+
+  it("Google アナリティクスを使わないときは、Cookie を使う解析ツールは入れていないと書く", () => {
+    const { container } = render(<PrivacyPage />)
+    expect(container.textContent).toContain("Cookie を使うアクセス解析ツールは導入していません")
+  })
+
+  it("Google アナリティクスを使うときは、Cookie の節でもそれを書き、「第三者のトラッキングは行っていません」と食い違わない", async () => {
+    vi.resetModules()
+    vi.doMock("@/lib/google-analytics", () => ({ GA_MEASUREMENT_ID: "G-TEST1234" }))
+    try {
+      const { default: PageWithGa } = await import("@/app/privacy/page")
+      const { container } = render(<PageWithGa />)
+      const text = container.textContent ?? ""
+
+      expect(text).not.toContain("第三者のトラッキングは行っていません")
+      expect(text).toContain("Google アナリティクスが Cookie などの識別子を使います")
+    } finally {
+      vi.doUnmock("@/lib/google-analytics")
+      vi.resetModules()
+    }
   })
 })
