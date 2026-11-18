@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { RULES, evaluate, fisherTwoSided, rateOf } from "../../../artifacts/series-20/mining/gaps-lib.mjs"
 import { CANDIDATES } from "../../../artifacts/series-20/mining/candidates.mjs"
+import { CANDIDATES as CANDIDATES_04_20 } from "../../../artifacts/series-20/mining/candidates_ep04-20.mjs"
 import { UNSPEAKABLE, sayOf } from "../../../artifacts/series-20/mining/speech.mjs"
 import {
   BASE_TOTAL,
@@ -314,27 +315,32 @@ describe("focusRatio（第1位を明かす場面の大きな倍率は、声の�
     return { index, baseIndex: 0, ratio: formatRatio(r[index], r[0]) }
   }
 
-  it("EP01〜30 のうち、変わるのは EP07・EP26・EP27 だけ", () => {
+  it("作り直していない回（EP01〜03・EP17）と EP21〜30 で、前の作りから変わるのは EP26・EP27 だけ", () => {
     const changed = all
+      .filter((e) => ["01", "02", "03", "17"].includes(e.id) || Number(e.id) >= 21)
       .filter((e) => {
         const n = focusRatio(ratesOf(e), e.narration, hookOf(e))
         const o = old(e)
         return n.index !== o.index || n.baseIndex !== o.baseIndex || n.ratio !== o.ratio
       })
       .map((e) => e.id)
-    expect(changed).toEqual(["07", "26", "27"])
+    expect(changed).toEqual(["26", "27"])
   })
 
-  it("EP26 は第1位÷第2位（同じ年齢）、EP27 は第1位÷第2位（高速道路）、EP07 は声と同じ第1位の21倍", () => {
+  it("EP26 は第1位÷第2位（同じ年齢）、EP27 は第1位÷第2位（高速道路）", () => {
     const by = (id: string) => all.find((e) => e.id === id)!
     expect(focusRatio(ratesOf(by("26")), by("26").narration, hookOf(by("26")))).toMatchObject({ index: 3, baseIndex: 2, ratio: "2.2", exact: true })
     expect(focusRatio(ratesOf(by("27")), by("27").narration, hookOf(by("27")))).toMatchObject({ index: 3, baseIndex: 2, ratio: "2.6", exact: true })
-    expect(focusRatio(ratesOf(by("07")), by("07").narration, hookOf(by("07")))).toMatchObject({ index: 3, baseIndex: 0, ratio: "21" })
   })
 
-  it("EP21〜30 は全部、声の倍率がちょうど画面の倍率になる（exact）", () => {
+  it("フックの最初の数字ではなく、第1位を言う文の倍率を出す（前の EP07: フック「軽は1.8倍、大型バイクは21倍」）", () => {
+    const narration = "普通乗用車の致死率は0.50%。一方、軽乗用車は0.90%と約1.8倍、大型トラックは3.87%で約7.7倍、そして大型バイクは10.53%と、普通車の約21倍に達します。"
+    expect(focusRatio([0.5, 0.9, 3.87, 10.53], narration, "普通車と比べて軽は1.8倍、大型バイクは21倍")).toMatchObject({ index: 3, baseIndex: 0, ratio: "21" })
+  })
+
+  it("作り直した回（EP04〜20 の EP17 以外と EP21〜30）は全部、声の倍率がちょうど画面の倍率になる（exact）", () => {
     const notExact = all
-      .filter((e) => Number(e.id) >= 21)
+      .filter((e) => Number(e.id) >= 4 && e.id !== "17")
       .filter((e) => !focusRatio(ratesOf(e), e.narration, hookOf(e)).exact)
       .map((e) => e.id)
     expect(notExact).toEqual([])
@@ -343,5 +349,42 @@ describe("focusRatio（第1位を明かす場面の大きな倍率は、声の�
   it("声の倍率がどの比とも合わなければ exact にならず、±20%以内の一番近い柱にする", () => {
     // 参考1%・第3位2%・第2位3%・第1位5.9%。声は「約6倍」→ 5.9倍の柱（EP02 と同じ形）
     expect(focusRatio([1, 2, 3, 5.9], "第1位は5.90%、約6倍です。", "")).toMatchObject({ index: 3, ratio: "5.9", exact: false })
+  })
+})
+
+describe("EP04〜20 の作り直しの区分（candidates_ep04-20.mjs）", () => {
+  const cand = (id: string) => CANDIDATES_04_20.find((c: { id: string }) => c.id === id)!
+  const row = (over: Record<string, string>) => ({ 事故類型: "21", "年齢（当事者A）": "75", ...over })
+
+  it("D08 は単独事故を年代別に、車同士は75歳以上だけを参考として数える", () => {
+    const d08 = cand("D08")
+    expect(d08.categorize(row({ 事故類型: "41" }))).toBe("75歳以上・単独事故")
+    expect(d08.categorize(row({ 事故類型: "41", "年齢（当事者A）": "45" }))).toBe("25〜64歳・単独事故")
+    expect(d08.categorize(row({}))).toBe("75歳以上・車同士")
+    expect(d08.categorize(row({ "年齢（当事者A）": "45" }))).toBeNull()
+    expect(d08.categorize(row({ 事故類型: "01" }))).toBeNull()
+  })
+
+  it("D15 は参考が凍結で、非舗装は並べない", () => {
+    const d15 = cand("D15")
+    expect(d15.ref).toBe("舗装・凍結")
+    expect(d15.notRanked).toEqual(["非舗装"])
+    expect(d15.categorize({ 路面状態: "2" })).toBe("舗装・湿潤")
+  })
+
+  it("D18 は四輪の AT/MT を乗用車・貨物車に分け、二輪や不明は数えない", () => {
+    const d18 = cand("D18")
+    expect(d18.categorize({ "オートマチック車（当事者A）": "2", "当事者種別（当事者A）": "11" })).toBe("MT・貨物車")
+    expect(d18.categorize({ "オートマチック車（当事者A）": "1", "当事者種別（当事者A）": "03" })).toBe("AT・乗用車")
+    expect(d18.categorize({ "オートマチック車（当事者A）": "0", "当事者種別（当事者A）": "03" })).toBeNull()
+    expect(d18.categorize({ "オートマチック車（当事者A）": "2", "当事者種別（当事者A）": "31" })).toBeNull()
+  })
+
+  it("D20 は踏切（第一種・第三種・第四種）をまとめ、交差点付近は交差点と分ける", () => {
+    const d20 = cand("D20")
+    for (const code of ["21", "22", "23"]) expect(d20.categorize({ 道路形状: code })).toBe("踏切")
+    expect(d20.categorize({ 道路形状: "01" })).toBe("交差点")
+    expect(d20.categorize({ 道路形状: "07" })).toBe("交差点付近")
+    expect(d20.rules).toEqual({ minWorstN: 100 })
   })
 })

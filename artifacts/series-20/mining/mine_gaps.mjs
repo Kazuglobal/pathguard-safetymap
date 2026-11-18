@@ -4,10 +4,14 @@
 // コードの意味は警察庁 codebook_2023.xlsx の原本で確認したもの（npa-codebook.json に無い項目を含む）。
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { CANDIDATES } from './candidates.mjs';
 import { RULES, aggregate, assertDefinition, evaluate } from './gaps-lib.mjs';
 
-const [csvPath, outPath = fileURLToPath(new URL('./ep21-30_candidates.csv', import.meta.url))] = process.argv.slice(2);
+// --set ep04-20 で EP04〜20 の作り直し用の区分（candidates_ep04-20.mjs）を数える
+const argv = process.argv.slice(2);
+const setIdx = argv.indexOf('--set');
+const set = setIdx >= 0 ? argv.splice(setIdx, 2)[1] : 'ep21-30';
+const { CANDIDATES } = await import(set === 'ep04-20' ? './candidates_ep04-20.mjs' : './candidates.mjs');
+const [csvPath, outPath = fileURLToPath(new URL(`./${set}_candidates.csv`, import.meta.url))] = argv;
 if (!csvPath) {
   console.error('usage: node mine_gaps.mjs <honhyo_2023_to-degree.csv> [out.csv]');
   process.exit(2);
@@ -42,7 +46,8 @@ function printSummary(results) {
   for (const { cand, ref, worst, verdict, reasons } of results) {
     const w = worst.map((r) => `${r.role} ${r.label} ${r.rate.toFixed(2)}%（${r.n}件中${r.fatal}件・${r.ratio.toFixed(1)}倍）`).join(' / ');
     const refText = ref ? `${cand.ref} ${ref.rate.toFixed(2)}%（${ref.n}件中${ref.fatal}件）` : cand.ref;
-    console.log(`[${verdict}] ${cand.id} ${cand.title}\n  参考: ${refText}\n  ${w}\n  ${reasons.join(' / ')}`);
+    const o = cand.original ? `\n  今の数字: 参考 ${cand.original.ref}% / 第1位 ${cand.original.w1Label} ${cand.original.w1}%` : '';
+    console.log(`[${verdict}] ${cand.id} ${cand.title}\n  参考: ${refText}\n  ${w}\n  ${reasons.join(' / ')}${o}`);
   }
 }
 

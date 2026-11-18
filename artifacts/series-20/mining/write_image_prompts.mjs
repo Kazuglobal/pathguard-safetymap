@@ -3,13 +3,14 @@
 // 使い方: node write_image_prompts.mjs
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { EPISODES } from './ep21-30_content.mjs'
+import { EPISODES as EPISODES_21_30 } from './ep21-30_content.mjs'
+import { EPISODES as EPISODES_04_20 } from './ep04-20_content.mjs'
 import { IMAGES, ORIENT, composePrompt } from './ep21-30_images.mjs'
 
 // 問いの写真（hook）は第1位を明かす前に全面に出るので、その回の伏せる語（spoilers）を含めない（2026-11-18 のレビュー・ユーザーの決定）
 const problems = []
-for (const content of EPISODES) {
-  const hook = IMAGES[content.id]?.hook?.prompt ?? ''
+for (const content of [...EPISODES_04_20, ...EPISODES_21_30]) {
+  const hook = IMAGES[Number(content.id)]?.hook?.prompt ?? ''
   for (const word of content.spoilers ?? []) {
     if (hook.toUpperCase().includes(word.toUpperCase())) problems.push(`EP${content.id} の hook のプロンプトに伏せる語「${word}」がある`)
   }
@@ -29,7 +30,8 @@ for (const [ep, items] of Object.entries(IMAGES)) {
   episodes[ep] = {}
   for (const key of Object.keys(items)) {
     let fx = items[key].fx ?? null
-    if (fx && fx.glow === 'auto') fx = { ...fx, glow: detected[ep]?.[key] ?? [] }
+    // find_glows.py は images/ep04 のフォルダ名から「04」と書く。IMAGES の鍵は「4」
+    if (fx && fx.glow === 'auto') fx = { ...fx, glow: (detected[ep] ?? detected[ep.padStart(2, '0')])?.[key] ?? [] }
     episodes[ep][key] = { orient: ORIENT[key], prompt: composePrompt(ep, key), fx }
   }
 }

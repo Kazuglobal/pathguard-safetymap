@@ -2,8 +2,8 @@
 // コードは警察庁 codebook_2023.xlsx（原本）で確認した。衝突部位の図は「前が上」:
 //   ①前 ②右側面 ③後ろ ④左側面 ⑤右前 ⑥右後ろ ⑦左後ろ ⑧左前（二輪は①〜④）。2桁の上の桁が1次衝突点。
 
-const FOUR_WHEEL = new Set(['01', '02', '03', '04', '05', '07', '11', '12', '13', '14', '17']);
-const isFourWheel = (code) => FOUR_WHEEL.has(code);
+export const FOUR_WHEEL = new Set(['01', '02', '03', '04', '05', '07', '11', '12', '13', '14', '17']);
+export const isFourWheel = (code) => FOUR_WHEEL.has(code);
 
 function vehicleGroup(code) {
   if (['03', '05'].includes(code)) return '普通乗用車';
@@ -100,7 +100,7 @@ function collisionPair(row) {
   return names[key] ?? '（その他の組み合わせ）';
 }
 
-function routeType(row) {
+export function routeType(row) {
   const u = Math.floor(Number(row['路線コード']) / 10);
   if (u >= 1 && u <= 999) return '国道';
   // コード表: 1000〜1499 主要地方道－都道府県道 / 1500〜1999 主要地方道－市道 / 2000〜2999 一般都道府県道 / 3000〜3999 一般市町村道

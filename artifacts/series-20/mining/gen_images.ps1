@@ -16,13 +16,16 @@ $Keys = @($Keys | ForEach-Object { $_ -split ',' } | Where-Object { $_ })  # pws
 if ($Keys.Count -gt 2) { throw '1回に2枚まで（Codex は約10分で打ち切られる）' }
 
 $series = Split-Path -Parent $PSScriptRoot
+# -Ep 4 と -Ep 04 のどちらでもよい（prompts.json の鍵は「4」、フォルダは images/ep04）
+$EpKey = [string][int]$Ep
+$EpDir = 'ep' + $EpKey.PadLeft(2, '0')
 $prompts = Get-Content (Join-Path $series 'images/prompts.json') -Raw -Encoding utf8 | ConvertFrom-Json
-$epData = $prompts.episodes.$Ep
+$epData = $prompts.episodes.$EpKey
 if (-not $epData) { throw "prompts.json に EP$Ep がない" }
-$work = Join-Path $Scratch "codex-img/ep$Ep"
+$work = Join-Path $Scratch "codex-img/$EpDir"
 $raw = Join-Path $work 'raw'
 New-Item -ItemType Directory -Force -Path $raw | Out-Null
-$outDir = Join-Path $series "images/ep$Ep"
+$outDir = Join-Path $series "images/$EpDir"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 if (-not $GradeOnly) {

@@ -3,7 +3,7 @@
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
 
-export const RULES = { minRefN: 1000, minWorstN: 200, minWorstFatal: 10, minTopRatio: 2.0, maxP: 0.01 };
+export const RULES = { minRefN: 1000, minWorstN: 200, minWorstFatal: 10, minTopRatio: 2.0, maxP: 0.01, maxP23: 0.05 };
 
 export async function aggregate(path, candidates) {
   const rl = createInterface({ input: createReadStream(path, { encoding: 'utf8' }), crlfDelay: Infinity });
@@ -86,8 +86,9 @@ export function fisherTwoSided(a, r1, c, r2) {
 
 export const rateOf = (e) => (100 * e.fatal) / e.n;
 
-/** 候補1つを採用条件で判定する。worst は条件を満たす区分の致死率上位3つ。 */
-export function evaluate(cand, m, rules = RULES) {
+/** 候補1つを採用条件で判定する。worst は条件を満たす区分の致死率上位3つ。cand.rules で回ごとに条件をゆるめられる（理由は cand.rulesNote）。 */
+export function evaluate(cand, m, base = RULES) {
+  const rules = { ...base, ...(cand.rules ?? {}) };
   const ref = m.get(cand.ref);
   const rows = [...m.entries()].map(([label, e]) => ({ label, ...e, rate: rateOf(e) }));
   const problems = [];
@@ -108,9 +109,9 @@ export function evaluate(cand, m, rules = RULES) {
   if (worst.length < 3) problems.push(`ワースト3がそろわない（条件を満たす区分が${worst.length}つ）`);
   if (worst[0] && worst[0].ratio < rules.minTopRatio) problems.push(`第1位が${rules.minTopRatio}倍未満（${worst[0].ratio.toFixed(2)}倍）`);
   if (worst[0] && !(worst[0].p < rules.maxP)) problems.push(`第1位の差が有意でない（p=${worst[0].p.toExponential(1)}）`);
-  for (const r of worst.slice(1)) if (!(r.p < 0.05)) problems.push(`${r.role}の差がはっきりしない（p=${r.p.toFixed(3)}）`);
+  for (const r of worst.slice(1)) if (!(r.p < rules.maxP23)) problems.push(`${r.role}の差がはっきりしない（p=${r.p.toFixed(3)}）`);
   if (ref) rows.find((r) => r.label === cand.ref).role = '参考';
   const verdict = cand.reject || problems.length ? '不採用' : cand.caution ? '条件つき' : '採用候補';
-  const reasons = [...problems, cand.reject, cand.caution].filter(Boolean);
+  const reasons = [...problems, cand.reject, cand.caution, cand.rulesNote && `条件をゆるめた: ${cand.rulesNote}`].filter(Boolean);
   return { cand, rows, worst, ref: ref ? rows.find((r) => r.role === '参考') : null, verdict, reasons, problems };
 }

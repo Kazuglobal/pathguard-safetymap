@@ -33,7 +33,9 @@ const MOOD = { hook: TENSION, danger: TENSION, safe: CALM, cta: CALM }
 
 const auto = (extra = {}) => ({ rain: false, wet: false, approach: false, glow: 'auto', ...extra })
 
-export const IMAGES = {
+import { IMAGES as IMAGES_04_20 } from './ep04-20_images.mjs'
+
+const IMAGES_21_30 = {
   21: {
     hook: { prompt: '雨の夜、車のフロントガラス越しの視点。ワイパーの跡と雨粒の向こうに、前を走る車の赤いテールランプと、対向車の白いヘッドライトがにじんで入り混じり、どの車が危ないのか分からない。車内はほとんど写さない。', fx: auto({ rain: true, wet: true, approach: true }) },
     safe: { prompt: '昼の郊外の片側1車線の直線道路。同じ向きに乗用車が3台、車間をあけて走っている様子を、少し高い位置から斜め後ろに見た写真。ナンバープレートは小さくぼけていて読めない。' },
@@ -103,6 +105,9 @@ export const IMAGES = {
     cta: { prompt: '昼、車道と分かれた自転車レーンを走る自転車の後ろ姿。落ち着いた道。', fx: auto() },
   },
 }
+
+// EP04〜20（ep04-20_images.mjs・2026-11-18 作り直し）と EP21〜30 をまとめる
+export const IMAGES = { ...IMAGES_04_20, ...IMAGES_21_30 }
 
 /** Codex に渡すプロンプト（1枚分）。 */
 export function composePrompt(ep, key) {
