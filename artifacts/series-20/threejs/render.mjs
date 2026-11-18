@@ -91,7 +91,9 @@ try {
     const out = join(outDir, `ep${id}_${ep.slug}_threejs${hasAudio ? '_final' : '_preview'}.mp4`)
     const ffArgs = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(fps), '-i', '-']
     if (hasAudio) ffArgs.push('-i', wav, '-c:a', 'aac', '-b:a', '192k', '-shortest')
-    ffArgs.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', String(fps), '-movflags', '+faststart', out)
+    // 入力の JPEG はフルレンジ。-pix_fmt yuv420p だけだと yuvj420p（フルレンジ）のまま出るので、TV レンジに変換して yuv420p にする
+    ffArgs.push('-vf', 'scale=in_range=pc:out_range=tv,format=yuv420p', '-color_range', 'tv',
+      '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', String(fps), '-movflags', '+faststart', out)
     const ff = spawn('ffmpeg', ffArgs, { stdio: ['pipe', 'inherit', 'inherit'] })
     const done = new Promise((r, j) => ff.on('close', (c) => (c === 0 ? r() : j(new Error(`ffmpeg exit ${c}`)))))
 

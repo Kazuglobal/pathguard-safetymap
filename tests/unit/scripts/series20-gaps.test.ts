@@ -93,6 +93,23 @@ describe("candidates の分類", () => {
     expect(c14.categorize(row({ 路線コード: "10010" }))).toBe("都道府県道")
   })
 
+  it("C31（交差点の中を除く）は衝突地点が交差点内(30)の事故だけを外す", () => {
+    const c31 = candidate("C31")
+    const headOn = { "車両の衝突部位（当事者B）": "10" }
+    expect(c31.categorize(row({ ...headOn, 衝突地点: "01" }))).toBe("正面衝突（前と前）")
+    expect(c31.categorize(row({ ...headOn, 衝突地点: "20" }))).toBe("正面衝突（前と前）")
+    expect(c31.categorize(row({ ...headOn, 衝突地点: "30" }))).toBeNull()
+  })
+
+  it("自転車の候補（C23・C24）は相手が四輪の事故だけを数える", () => {
+    const bike = { "当事者種別（当事者A）": "03", "当事者種別（当事者B）": "51", "年齢（当事者B）": "75" }
+    expect(candidate("C23").categorize(row(bike))).toBe("75歳以上")
+    expect(candidate("C24").categorize(row(bike))).toBe("30km/h")
+    const vsMotorcycle = { ...bike, "当事者種別（当事者A）": "35" }
+    expect(candidate("C23").categorize(row(vsMotorcycle))).toBeNull()
+    expect(candidate("C24").categorize(row(vsMotorcycle))).toBeNull()
+  })
+
   it("「車にはねられた歩行者」は相手が四輪の事故だけを数える", () => {
     const c22 = candidate("C22")
     const ped = { 事故類型: "01", "当事者種別（当事者B）": "61", "年齢（当事者B）": "75" }
