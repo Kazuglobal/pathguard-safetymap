@@ -25,7 +25,7 @@ const RETENTION_ROWS: ReadonlyArray<[string, string]> = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年10月30日">
+    <LegalPageShell title="プライバシーポリシー" updatedAt="2026年11月18日">
       <LegalSection title="1. 基本の考え方">
         <p>
           PathGuardian(通学路みまもりアプリ)は、通学路の安全を見守るために必要な情報だけを預かり、
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
       <LegalSection title="2. 預かる情報と、預からない情報">
         <ul className="list-disc space-y-1 pl-5">
           <li>ログイン用のメールアドレスとパスワード(パスワードは暗号化して保存)。LINE でログインした場合は LINE のユーザーID と、許可があればメールアドレス。表示名・アイコンは受け取りません</li>
-          <li>Google でログインした場合のメールアドレス。Google の名前・写真の URL は、ログインのたびに削除します(認証サービス Supabase の認証の記録には残ります)</li>
+          <li>Google でログインした場合のメールアドレス。Google の名前・写真の URL は、ログインのたびに削除します(ログインの認証サービスの記録には残ります)</li>
           <li>表示名(ニックネーム)とアイコン(任意)。ランキングやコメントで、ほかの利用者にも表示されます</li>
           <li>お子さまの呼び名・学年・小学校区(任意)。本名は登録しないでください</li>
           <li>通学路。道すじの両端それぞれ200m以上(削る長さは毎回変えます)は保存せず(約450m未満の短い道すじは保存しません)、出発地・到着地は約1km(「粗く保存」では約10km)の粗さ、住所は市区町村までにして保存します。作成した端末には元の線を残し、自分でログアウトすると消します</li>
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
           保存するのは、このぼかした写真だけです。元の写真は端末の外に出しません(撮影場所などの情報も残りません)。
         </p>
         <p>
-          投稿内容と写真は、公開してよいかの確認や危険の解析のため、Google(Gemini)・Anthropic(Claude)・OpenAI の AI サービスへ送ります。
+          投稿内容と写真は、公開してよいかの確認や危険の解析のため、外部の AI サービス(米国の事業者)へ送ります。
           送るのはぼかした写真だけですが、ぼかしは完全ではないため、写っている人や車が分かりにくい写真をお選びください。
           {/* 紹介HP・よくある質問と同じ説明(lib/product-facts.ts) */}
           {PRODUCT_FACTS.moderation.adult}
@@ -80,15 +80,15 @@ export default function PrivacyPage() {
 
       <LegalSection title="6. 外部のサービス(業務委託先)">
         <ul className="list-disc space-y-1 pl-5">
-          <li>Supabase(ログイン・アカウント)</li>
-          <li>Cloudflare(サイトの配信・データベース・写真の保存・アクセス解析)。アクセス解析(Cloudflare Web Analytics)は Cookie を使わず、見たページの URL、参照元、端末とブラウザの種類、表示の速さを集計します</li>
-          <li>Google・Anthropic・OpenAI(AI による確認と解析。上記4.)</li>
-          <li>Mapbox(地図の表示と住所の検索)</li>
+          <li>ログインとアカウントの管理に使う認証サービス</li>
+          <li>サイトの配信・データベース・写真の保存に使うクラウドサービス。同じサービスでアクセス解析もしています(Cookie を使わず、見たページの URL、参照元、端末とブラウザの種類、表示の速さを集計します)</li>
+          <li>外部の AI サービス(米国の事業者。AI による確認と解析。上記4.)</li>
+          <li>地図の表示と住所の検索のサービス</li>
           <li>Google Maps(「現地の景色」を押したときの地図・ストリートビュー表示)。地図画面では Maps Embed API を使います。選んだ事故地点の座標(地点を表す Plus Code を含む)、IP アドレス、参照元のサイトなどが Google に送られます。<a className="underline" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google のプライバシーポリシー</a>と<a className="underline" href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer">Google Maps の利用規約</a>が適用されます</li>
-          <li>国土地理院(Mapbox で住所が分からなかった報告の都道府県・市区町村を調べるため。約100mの粗さに丸めた場所だけを送ります)</li>
-          <li>Sentry(不具合の記録)。通常時の画面の録画はしません。エラーが起きたときだけ、その前後の画面を、文字と画像を隠した状態で記録します。通信の記録からは、住所の検索語や地図の範囲などが入る URL の後半(「?」から後ろ)を消して送ります</li>
+          <li>国土地理院(地図のサービスで住所が分からなかった報告の都道府県・市区町村を調べるため。約100mの粗さに丸めた場所だけを送ります)</li>
+          <li>不具合の記録のサービス。通常時の画面の録画はしません。エラーが起きたときだけ、その前後の画面を、文字と画像を隠した状態で記録します。通信の記録からは、住所の検索語や地図の範囲などが入る URL の後半(「?」から後ろ)を消して送ります</li>
           <li>ブラウザの通知サービス(通知を受け取る設定をした場合)</li>
-          <li>Resend(お問い合わせ・サービス改善要望の内容と、返信のために書いていただいた連絡先を、運営者のメールへ転送します)</li>
+          <li>メールの送信サービス(お問い合わせ・サービス改善要望の内容と、返信のために書いていただいた連絡先を、運営者のメールへ転送します)</li>
           {/* お問い合わせのフォーム(lib/brand.ts の contactFormUrl)を公開したら、預け先として自動で載る */}
           {BRAND.contactFormUrl && <li>Google フォーム(お問い合わせの内容と、返信のために書いていただいた連絡先)</li>}
           {/* アクセス解析(lib/google-analytics.ts の測定IDを設定したときだけ読み込み、ここにも載る) */}
@@ -102,6 +102,8 @@ export default function PrivacyPage() {
             </li>
           )}
         </ul>
+        <p>この一覧には、お使いの端末から直接これらのサービスへ送られる情報(外部送信)も含みます。</p>
+        <p>名前を書いていない事業者は、お問い合わせいただければお答えします。</p>
         <p>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</p>
       </LegalSection>
 
@@ -136,20 +138,74 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="9. Cookie・アクセス解析">
+        {/* Google アナリティクスの有無(lib/google-analytics.ts の測定ID)で書き分ける。6. の一覧と食い違わないようにする */}
+        {GA_MEASUREMENT_ID ? (
+          <p>
+            ログイン状態の維持のため Cookie を使います。サイトの利用状況を知るため、Google アナリティクスが Cookie などの識別子を使います
+            (送る情報と、送信を止める方法は「6. 外部のサービス」)。広告のためには使いません。クラウドサービスのアクセス解析は Cookie を使いません。
+          </p>
+        ) : (
+          <p>
+            ログイン状態の維持のため Cookie を使います。Cookie を使うアクセス解析ツールは導入していません(クラウドサービスのアクセス解析は Cookie を使いません)。
+            導入する場合は、このポリシーを改定してお知らせします。
+          </p>
+        )}
+      </LegalSection>
+
+      <LegalSection title="10. 安全管理のためにしていること">
+        <ul className="list-disc space-y-1 pl-5">
+          <li>預かる情報を必要なものだけにしています(氏名・自宅や学校の正確な場所・ぼかす前の写真は預かりません)</li>
+          <li>保存の期間を決め、期間を過ぎたデータは毎日自動で削除します(「7. 保存の期間」)</li>
+          <li>運営者が責任者として管理し、情報を見られる人と範囲を、機能の提供と確認に必要なものに限っています</li>
+          <li>通信は暗号化し、パスワードは暗号化して保存します</li>
+          <li>不具合の記録には、個人を指す情報を消してから送ります</li>
+          <li>外部のサービスには、機能の提供に必要な範囲だけを預けます</li>
+          <li>
+            外部のサービスには Google など米国の大手事業者のサービスを使っており、預かった情報は主に日本と米国のサーバーで保存・処理されることがあります
+            (氏名は預からず、写真はぼかしたもの、通学路は粗くしたものだけを保存しています)。
+            このうち米国の個人情報の保護に関する制度は、
+            <a className="underline" href="https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/" target="_blank" rel="noopener noreferrer">個人情報保護委員会の資料(アメリカ合衆国)</a>
+            で確認できます。運営者はこれを把握したうえで、上の措置をとっています
+          </li>
+        </ul>
+        <p>さらにくわしい内容は、お問い合わせいただければお答えします。</p>
+      </LegalSection>
+
+      <LegalSection title="11. 開示・訂正・利用停止などのご請求">
+        <p>ご自身の情報について、次のことを求めることができます。</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>利用目的のお知らせ</li>
+          <li>開示(第三者へ提供した記録の開示を含みます)</li>
+          <li>内容が事実でないときの訂正・追加・削除</li>
+          <li>利用の停止・消去、第三者への提供の停止</li>
+        </ul>
         <p>
-          ログイン状態の維持のため Cookie を使います。アクセス解析ツールによる第三者のトラッキングは行っていません。
-          導入する場合は、このポリシーを改定してお知らせします。
+          お問い合わせページからご連絡ください。ご本人であることを確かめるため、登録しているメールアドレスからのご連絡をお願いすることがあります。
+          手数料はいただきません。多くの情報は、マイページや通学路の画面からご自身で見たり消したりもできます(「8. 削除と退会」)。
+          このポリシーや情報の扱いについての苦情・ご相談も、同じお問い合わせページで受け付けます。
         </p>
       </LegalSection>
 
-      <LegalSection title="10. お問い合わせ">
-        <p>このポリシーについてのお問い合わせは、お問い合わせページをご確認ください。</p>
+      <LegalSection title="12. 運営者・お問い合わせ" id="operator">
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            運営者: {BRAND.operator.name}(代表 {BRAND.operator.representative})
+          </li>
+          {/* 個人情報保護法32条1項の「本人の求めに応じて遅滞なく回答する」形で知らせる */}
+          <li>住所: お問い合わせいただければ、遅滞なくお知らせします</li>
+          <li>
+            お問い合わせ: <a className="underline" href="/contact">お問い合わせページ</a>
+          </li>
+        </ul>
       </LegalSection>
 
-      <LegalSection title="11. 改定の履歴" id="revisions">
+      <LegalSection title="13. 改定の履歴" id="revisions">
         <ul className="list-disc space-y-1 pl-5">
+          <li>2026年11月18日: 外部のサービスと AI の書き方を、役割で示す形に改めました(名前を書いていない事業者は、お問い合わせいただければお答えします)。</li>
+          <li>2026年11月17日: 運営者、安全管理のためにしていること、開示などのご請求の方法を追記しました。</li>
+          {GA_MEASUREMENT_ID && <li>2026年11月17日: Cookie の説明を、Google アナリティクスを使っている実際の動きに合わせました。</li>}
           {GA_MEASUREMENT_ID && <li>2026年11月6日: アクセス解析(Google アナリティクス)と、送る情報・送信を止める方法を追記しました。</li>}
-          <li>2026年11月6日: Cloudflare のアクセス解析(Web Analytics)と、集計する情報を追記しました。</li>
+          <li>2026年11月6日: Cookie を使わないアクセス解析と、集計する情報を追記しました。</li>
           <li>2026年10月30日: 事故地点の Google 地図とストリートビューの埋め込み表示、送信する情報を追記しました。</li>
           <li>2026年10月29日: ストリートビュー表示時に Google Maps に送る情報と関連ポリシーを追記しました。</li>
           <li>
@@ -160,7 +216,7 @@ export default function PrivacyPage() {
             2026年10月29日: 氏名を預からないようにしました(登録の氏名欄をなくし、既存の氏名と LINE・Google のお名前・アイコンを削除)。
             写真は端末でぼかしてから保存し、AI にもぼかした写真だけを送るようにしました。通学路の位置の保存を粗くし、
             「粗く保存」を選べるようにしました。保存の期間を定めて自動で削除し、設定から退会できるようにしました。
-            不具合の記録(Sentry)での通常時の画面の録画をやめました。
+            不具合の記録での通常時の画面の録画をやめました。
           </li>
           <li>2026年7月4日: 制定</li>
         </ul>

@@ -264,6 +264,9 @@ describe("LPセクションのレンダリング", () => {
     const instagram = screen.getByRole("link", { name: /公式Instagram @kiken_hunter_jp/ })
     expect(instagram).toHaveAttribute("href", "https://www.instagram.com/kiken_hunter_jp/")
     expect(instagram).toHaveAttribute("rel", "noopener noreferrer")
-    expect(screen.getByText("運営者の表記は準備中です")).toBeInTheDocument()
+    // 運営はサービス名で出し、押すと運営者の詳細(代表者)へ進む。代表者の名前はフッターに直接書かない
+    const operator = screen.getByRole("link", { name: "運営: PathGuardian" })
+    expect(operator).toHaveAttribute("href", "/privacy#operator")
+    expect(screen.queryByText(/大舘和史/)).not.toBeInTheDocument()
   })
 })

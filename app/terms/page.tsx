@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell"
+import { BRAND } from "@/lib/brand"
 
 export const metadata: Metadata = {
   title: "利用規約",
@@ -8,11 +9,14 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPageShell title="利用規約" updatedAt="2026年10月30日">
+    <LegalPageShell title="利用規約" updatedAt="2026年11月17日">
       <LegalSection title="1. サービス概要">
         <p>
           PathGuardian(通学路みまもりアプリ。以下「本サービス」)は、通学路・生活道路の危険情報や不審者情報をユーザー同士で共有し、
           AI による画像解析を活用して、地域の安全な移動をサポートすることを目的としたサービスです。
+        </p>
+        <p>
+          本サービスは、{BRAND.operator.name}(代表 {BRAND.operator.representative}。以下「運営者」)が提供します。
         </p>
       </LegalSection>
 
@@ -67,6 +71,12 @@ export default function TermsPage() {
           <a className="underline" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google のプライバシーポリシー</a>が適用されます。
         </p>
         <p>景色は事故当時や現在の状況を保証するものではなく、撮影位置が事故地点と異なる場合があります。</p>
+      </LegalSection>
+
+      <LegalSection title="8. 準拠法・管轄">
+        <p>
+          本規約は日本法に準拠します。本サービスに関して紛争が生じた場合は、運営者の住所地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。
+        </p>
       </LegalSection>
     </LegalPageShell>
   )
