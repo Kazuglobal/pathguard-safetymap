@@ -5,6 +5,8 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { IMPACT, T, computeMarks, makeTimeMap, parseSilences, rateText } from './timeline.mjs'
 
 export const SPEED = 1.08
+// 声のあとの余白（秒）。締めの文字と出典の行を読める長さにする（最後の文の長さだけだと出典が1秒弱しか出なかった）
+export const TAIL = 2.5
 const SR = 48000
 
 const ffmpeg = (args) => execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...args], { stdio: ['ignore', 'ignore', 'inherit'] })
@@ -41,11 +43,14 @@ export function soundEvents(duration, marks) {
   }
 }
 
-/** 声＋BGM＋効果音を混ぜて wav にする（長さは声に合わせる）。 */
+/** 声＋BGM＋効果音を混ぜて wav にする（長さは duration。声のあとは無音で埋め、BGM はそこまで鳴らす）。 */
 export function mixAudio(narr, duration, events, dst) {
   const d = duration.toFixed(3)
-  const graph = [`aevalsrc='0.032*sin(2*PI*49*t)+0.018*sin(2*PI*73.5*t)+0.035*pow(0.5+0.5*sin(2*PI*2*t),12)*sin(2*PI*180*t)':s=${SR}:d=${d},lowpass=f=280[bgm]`]
-  const inputs = ['[0:a]', '[bgm]']
+  const graph = [
+    `[0:a]apad=whole_dur=${d}[narr]`,
+    `aevalsrc='0.032*sin(2*PI*49*t)+0.018*sin(2*PI*73.5*t)+0.035*pow(0.5+0.5*sin(2*PI*2*t),12)*sin(2*PI*180*t)':s=${SR}:d=${d},lowpass=f=280[bgm]`,
+  ]
+  const inputs = ['[narr]', '[bgm]']
   const add = (name, expr, len, t) => {
     const ms = Math.max(0, Math.round(t * 1000))
     graph.push(`aevalsrc='${expr}':s=${SR}:d=${len},adelay=${ms}|${ms}[${name}]`)

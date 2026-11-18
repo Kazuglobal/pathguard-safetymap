@@ -74,7 +74,11 @@ function weight(ch) {
  *   各柱の区切り = その数字を含む節（読点・句点で区切った塊）の始まり
  *   hookEnd = 最初の「？」の直後 / reasons = 第1位の数字の次の文の始まり / cta = 最後の文の始まり
  */
-export function narrationFractions(narration, rates) {
+/**
+ * 区切りごとに { f: 割合, sentence: 文の切れ目か } を返す（見つからない区切りは null）。
+ * 文の切れ目（「。」「？」の直後）は無音が長いので、近くでいちばん長い無音に合わせる。節の切れ目（「、」の直後）は近い無音に合わせる。
+ */
+export function narrationBoundaries(narration, rates) {
   const chars = [...narration]
   const cum = [0]
   for (const ch of chars) cum.push(cum[cum.length - 1] + weight(ch))
@@ -83,43 +87,93 @@ export function narrationFractions(narration, rates) {
   const text = chars.join('')
   const posOf = (s) => (s ? [...text.slice(0, Math.max(0, text.indexOf(s)))].length : -1)
   const back = (i, stops) => { let j = i; while (j > 0 && !stops.includes(chars[j - 1])) j--; return j }
-  const clauseStart = (i) => back(i, '、。？')
-  const sentenceStart = (i) => back(i, '。？')
+  const isSentenceStart = (i) => i === 0 || '。？'.includes(chars[i - 1])
   const sentenceEnds = chars.flatMap((ch, i) => ('。？'.includes(ch) ? [i + 1] : [])).filter((i) => i < chars.length)
+  const at = (i) => ({ f: frac(i), sentence: isSentenceStart(i) })
   const out = { hookEnd: null, refStart: null, r3Start: null, r2Start: null, r1Start: null, reasons: null, cta: null }
   const q = chars.indexOf('？')
-  if (q >= 0 && q < chars.length - 1) out.hookEnd = frac(q + 1)
+  if (q >= 0 && q < chars.length - 1) out.hookEnd = at(q + 1)
   // 参考の柱は、その数字を含む文の始まり（「警察庁のデータでは…」から見出しと参考の柱を出す。節にすると数秒なにも出ない）
   // 第3位・第2位・第1位は、その数字を含む節の始まり（「◯◯は」と言い始める所で伸び始める）
-  for (const [key, rate, start] of [['refStart', rates.ref, sentenceStart], ['r3Start', rates.w3, clauseStart], ['r2Start', rates.w2, clauseStart], ['r1Start', rates.w1, clauseStart]]) {
+  for (const [key, rate, stops] of [['refStart', rates.ref, '。？'], ['r3Start', rates.w3, '、。？'], ['r2Start', rates.w2, '、。？'], ['r1Start', rates.w1, '、。？']]) {
     if (!rate || !text.includes(rate)) continue
-    out[key] = frac(start(posOf(rate)))
+    out[key] = at(back(posOf(rate), stops))
   }
   if (rates.w1 && text.includes(rates.w1)) {
     const after = sentenceEnds.find((i) => i > posOf(rates.w1))
-    if (after != null && after < chars.length) out.reasons = frac(after)
+    if (after != null && after < chars.length) out.reasons = at(after)
   }
-  if (sentenceEnds.length) out.cta = frac(sentenceEnds[sentenceEnds.length - 1])
+  if (sentenceEnds.length) out.cta = at(sentenceEnds[sentenceEnds.length - 1])
+  return out
+}
+
+/** 台本のどこで各区切りが始まるかを、読みの長さの割合（0〜1）で返す。見つからない区切りは null。 */
+export function narrationFractions(narration, rates) {
+  return Object.fromEntries(Object.entries(narrationBoundaries(narration, rates)).map(([k, v]) => [k, v ? v.f : null]))
+}
+
+/** 0.1秒未満の間で隣り合う無音をつなぐ（1つの間が2つに割れて出ることがある）。 */
+export function mergeSilences(silences, gap = 0.1) {
+  const out = []
+  for (const s of [...silences].sort((a, b) => a.start - b.start)) {
+    const last = out[out.length - 1]
+    if (last && s.start - last.end < gap) last.end = Math.max(last.end, s.end)
+    else out.push({ ...s })
+  }
   return out
 }
 
 /**
- * 割合から実時間の見込みを出し、近くの無音に合わせる（±window 秒）。
- * hookEnd は無音の始まり（話し終わり）、ほかは無音の終わり（次を話し始める所）に合わせる。
- * silences: [{ start, end }]（声の wav を silencedetect した結果）
+ * 割合から実時間の見込みを出し、近くの無音に合わせる。
+ * - 文の切れ目（問いの終わり・参考・文頭の柱・理由・締め）: 窓に重なる無音のうち、いちばん長いもの
+ *   （見込みは問いの所で約1秒遅れるので、問いの終わりは窓を広く ±1.8秒にする）
+ * - 問いの終わり＝その無音の始まり、参考の始まり＝同じ無音の終わり（台本の上で同じ位置のとき）
+ * - 節の切れ目（「、」の直後の柱）: いちばん近い無音の終わり（±window 秒）
+ * 見つからなければ見込みのまま。silences: [{ start, end }]（声の wav を silencedetect した結果）
  */
 export function computeMarks(narration, rates, duration, silences, window = 1.2) {
-  const fr = narrationFractions(narration, rates)
-  const marks = {}
-  for (const [key, f] of Object.entries(fr)) {
-    if (f == null) continue
-    const est = f * duration
-    const edges = silences.map((s) => (key === 'hookEnd' ? s.start : s.end)).filter((x) => x > 0.2 && x < duration - 0.2)
+  const b = narrationBoundaries(narration, rates)
+  const sil = mergeSilences(silences).filter((s) => s.end > 0.2 && s.start < duration - 0.2)
+  const longestNear = (est, w) => sil.filter((s) => s.end >= est - w && s.start <= est + w)
+    .sort((x, y) => (y.end - y.start) - (x.end - x.start))[0] ?? null
+  const nearestEnd = (est, w) => {
     let best = null
-    for (const x of edges) if (Math.abs(x - est) <= window && (best == null || Math.abs(x - est) < Math.abs(best - est))) best = x
-    marks[key] = Math.round((best ?? est) * 1000) / 1000
+    for (const s of sil) if (Math.abs(s.end - est) <= w && (best == null || Math.abs(s.end - est) < Math.abs(best - est))) best = s.end
+    return best
+  }
+  const round = (x) => Math.round(x * 1000) / 1000
+  const marks = {}
+  let hookSil = null
+  if (b.hookEnd) {
+    const est = b.hookEnd.f * duration
+    hookSil = longestNear(est, 1.8)
+    marks.hookEnd = round(hookSil ? hookSil.start : est)
+  }
+  for (const key of ['refStart', 'r3Start', 'r2Start', 'r1Start', 'reasons', 'cta']) {
+    const x = b[key]
+    if (!x) continue
+    const est = x.f * duration
+    if (key === 'refStart' && b.hookEnd && Math.abs(x.f - b.hookEnd.f) < 1e-9) {
+      marks.refStart = round(hookSil ? hookSil.end : est)
+      continue
+    }
+    const s = x.sentence ? longestNear(est, window) : null
+    marks[key] = round(x.sentence ? (s ? s.end : est) : (nearestEnd(est, window) ?? est))
   }
   return marks
+}
+
+/** 順番どおり（MARK_BASE の順に増えていく）区切りだけを残し、捨てたものを返す（ログに出すため）。 */
+export function orderMarks(marks) {
+  const kept = {}
+  const dropped = []
+  let last = -Infinity
+  for (const [key] of MARK_BASE) {
+    const v = marks?.[key]
+    if (!Number.isFinite(v)) continue
+    if (v > last) { kept[key] = v; last = v } else dropped.push(key)
+  }
+  return { marks: kept, dropped }
 }
 
 /** ffmpeg の silencedetect の出力（stderr）から無音の区間を取り出す。 */

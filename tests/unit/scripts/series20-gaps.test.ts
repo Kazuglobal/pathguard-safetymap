@@ -8,9 +8,49 @@ import {
   T,
   computeMarks,
   makeTimeMap,
+  mergeSilences,
   narrationFractions,
+  orderMarks,
   parseSilences,
+  rateText,
 } from "../../../artifacts/series-20/threejs/timeline.mjs"
+import episodes from "../../../artifacts/series-20/episodes.json"
+
+describe("timeline の区切り（レビューで見つかった失敗の再発防止）", () => {
+  const ep24 = (episodes as Array<{ id: string; narration: string; ref: { rate: number }; worst: { rate: number }[] }>).find(
+    (e) => e.id === "24",
+  )!
+  const rates = {
+    ref: rateText(ep24.ref.rate),
+    w1: rateText(ep24.worst[0].rate),
+    w2: rateText(ep24.worst[1].rate),
+    w3: rateText(ep24.worst[2].rate),
+  }
+
+  it("問いの終わりは「？」の後の長い無音に合わせ、参考は同じ無音の終わりから（EP24 の実際の無音）", () => {
+    // 4.81〜5.72 =「？」の後（0.90秒）、6.99〜7.34 =「警察庁のデータでは、」の後（0.35秒）
+    const silences = [
+      { start: 4.81, end: 5.72 },
+      { start: 6.99, end: 7.34 },
+    ]
+    const marks = computeMarks(ep24.narration, rates, 32.94, silences)
+    expect(marks.hookEnd).toBeCloseTo(4.81, 3)
+    expect(marks.refStart).toBeCloseTo(5.72, 3)
+  })
+
+  it("0.1秒未満の間で割れた無音はつなぐ", () => {
+    expect(mergeSilences([{ start: 5.13, end: 5.45 }, { start: 5.53, end: 5.95 }, { start: 8, end: 8.3 }])).toEqual([
+      { start: 5.13, end: 5.95 },
+      { start: 8, end: 8.3 },
+    ])
+  })
+
+  it("順番が合わない区切りは捨てて、捨てたものを返す（ログに出す）", () => {
+    const { marks, dropped } = orderMarks({ hookEnd: 7.8, refStart: 6.6, r3Start: 12, r1Start: 18 })
+    expect(Object.keys(marks)).toEqual(["hookEnd", "r3Start", "r1Start"])
+    expect(dropped).toEqual(["refStart"])
+  })
+})
 
 describe("timeline（声に合わせた時間割）", () => {
   const narration =

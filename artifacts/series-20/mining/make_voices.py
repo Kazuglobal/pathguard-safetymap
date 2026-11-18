@@ -60,9 +60,9 @@ def flash_model(c):
     return max(flash, key=lambda n: float(re.search(r"\d+(\.\d+)?", n).group()))
 
 
-def check(c, model, ep):
-    """書き起こしが台本どおりで、数字が一致すれば True。"""
-    wav = AUDIO / f"ep{ep['id']}.wav"
+def check(c, model, ep, wav=None):
+    """書き起こしが台本どおりで、数字が順番どおり一致すれば True。"""
+    wav = wav or AUDIO / f"ep{ep['id']}.wav"
     if not wav.exists():
         print(f"EP{ep['id']}: wav がない")
         return False
@@ -73,7 +73,8 @@ def check(c, model, ep):
     transcript = lines[0] if lines else ""
     ok = bool(lines) and lines[-1].strip().upper().startswith("OK")
     want, got = numbers_in(ep["narration"]), numbers_in(transcript)
-    num_ok = sorted(map(float, want)) == sorted(map(float, got))
+    # 順番も比べる（第3位と第2位の数を入れ替えて読んだら NG にする）
+    num_ok = list(map(float, want)) == list(map(float, got))
     verdict = "OK" if ok and num_ok else ("NUM" if ok else "NG")
     print(f"EP{ep['id']} {verdict} | {transcript}\n  want {want}\n  got  {got}", flush=True)
     return verdict == "OK"
@@ -88,7 +89,7 @@ def verify(ids):
 
 
 def make(ids, tries=3):
-    """作る → 照合 → だめなら作り直す（最大 tries 回）。最後までだめなら BAD に出す（wav は最後に作ったもの）。"""
+    """作る → 照合 → だめなら作り直す（最大 tries 回）。照合に通ったものだけを epXX.wav にする（だめなら置き換えない）。"""
     c = client()
     tts_model, flash = tts_models(c)[0], flash_model(c)
     print("TTS model:", tts_model, "voice:", VOICE, "| verify model:", flash)
@@ -96,13 +97,16 @@ def make(ids, tries=3):
     bad = []
     for ep in episodes(ids):
         out = AUDIO / f"ep{ep['id']}.wav"
+        tmp = AUDIO / f"ep{ep['id']}.tmp.wav"
         for attempt in range(1, tries + 1):
-            d = retry(lambda: synth(c, tts_model, VOICE, STYLE, ep["narration"], out, 1.0), f"EP{ep['id']}")
+            d = retry(lambda: synth(c, tts_model, VOICE, STYLE, ep["narration"], tmp, 1.0), f"EP{ep['id']}")
             print(f"EP{ep['id']} try {attempt}: {d:.2f}s", flush=True)
-            if check(c, flash, ep):
+            if check(c, flash, ep, tmp):
+                tmp.replace(out)
                 break
         else:
             bad.append(ep["id"])
+            print(f"EP{ep['id']}: {tries} 回とも照合に通らない（{out.name} は置き換えていない。最後の試しは {tmp.name}）")
     print("BAD:", bad)
 
 

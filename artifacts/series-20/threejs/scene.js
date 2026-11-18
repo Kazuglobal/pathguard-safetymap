@@ -471,7 +471,8 @@ function renderAt(t) {
   renderer.render(scene, camera)
   // 写真の層を重ねる（問いは全面で始まり、フックの終わりで3Dへ溶ける。締めは暗く敷く）→ 締めの粒はその上
   renderer.autoClear = false
-  const hookOn = updatePhoto(hookPhoto, { opacity: 1 - seg(b, HOOK_END - 0.3, 0.6), local: t, span: HOOK_END + 0.3, shade: 0.45, shadeY: 1 - 715 / H })
+  // 寄りと光の近づきは、問いの写真が実際に出ている長さ（声に合わせると伸びる）で進める
+  const hookOn = updatePhoto(hookPhoto, { opacity: 1 - seg(b, HOOK_END - 0.3, 0.6), local: t, span: fromBase(HOOK_END + 0.3), shade: 0.45, shadeY: 1 - 715 / H })
   if (hookOn) renderer.render(hookPhoto.scene, hookPhoto.camera)
   const ctaAt = fromBase(T.cta)
   const ctaOn = updatePhoto(ctaPhoto, { opacity: seg(b, T.cta, 1.0), local: Math.max(0, t - ctaAt), span: total - ctaAt, dark: 0.35, shade: 0.35, shadeY: 1 - 850 / H })

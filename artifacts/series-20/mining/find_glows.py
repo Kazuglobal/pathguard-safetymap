@@ -19,10 +19,11 @@ SCALE = 270  # 解析は幅270pxに縮めて行う
 
 
 def glows(path: Path, top: int = 4):
-    img = Image.open(path).convert("L")
-    w, h = img.size
-    small = img.resize((SCALE, round(SCALE * h / w)), Image.BILINEAR)
-    a = np.asarray(small, dtype=np.float32) / 255.0
+    rgb = Image.open(path).convert("RGB")
+    w, h = rgb.size
+    small_rgb = rgb.resize((SCALE, round(SCALE * h / w)), Image.BILINEAR)
+    color = np.asarray(small_rgb, dtype=np.float32) / 255.0
+    a = np.asarray(small_rgb.convert("L"), dtype=np.float32) / 255.0
     if float(a.mean()) > 0.30:  # 昼の写真（全体が明るい）には光のにじみを足さない
         return []
     thresh = max(0.85, float(np.quantile(a, 0.997)))
@@ -45,6 +46,16 @@ def glows(path: Path, top: int = 4):
         if ring.size and float(blob.mean()) - float(ring.mean()) < 0.22:
             continue
         if cy / a.shape[0] > 0.62:  # 画面の下のほうの光は、たいてい濡れた路面の映り込み
+            continue
+        # 信号（青＝緑・赤）は外す。白〜暖色（ヘッドライト・街灯）だけを残す。
+        # 信号は中心が白く飛ぶので、塊そのものとまわりの両方の色を見る
+        ring_rgb = color[y0:y1, x0:x1][labels[y0:y1, x0:x1] != i]
+        for r_, g_, b_ in [color[labels == i].mean(axis=0), ring_rgb.mean(axis=0) if ring_rgb.size else (0, 0, 0)]:
+            if (g_ > r_ * 1.12 and g_ > b_ * 1.02) or (r_ > g_ * 1.45 and r_ > b_ * 1.45):
+                break
+        else:
+            r_ = None
+        if r_ is not None:
             continue
         r = max(0.012, min(0.06, 2.2 * np.sqrt(area / np.pi) / a.shape[1]))
         found.append({"x": round(float(cx / a.shape[1]), 3), "y": round(float(cy / a.shape[0]), 3), "r": round(float(r), 3), "area": area})

@@ -11,7 +11,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, createReadStream, statSync } from 'node:fs'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { detectSilences, marksFor, mixAudio, prepareNarration, probeDuration, soundEvents } from './audio.mjs'
+import { TAIL, detectSilences, marksFor, mixAudio, prepareNarration, probeDuration, soundEvents } from './audio.mjs'
+import { orderMarks } from './timeline.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const seriesDir = resolve(here, '..')
@@ -73,12 +74,15 @@ try {
       mkdirSync(tmp, { recursive: true })
       const narr = join(tmp, `ep${id}_narr.wav`)
       prepareNarration(wav, narr)
-      duration = probeDuration(narr)
+      const speech = probeDuration(narr)
+      duration = speech + TAIL // 声のあとに余白（締めと出典を読めるように）
       const silences = detectSilences(narr)
-      marks = marksFor(ep, duration, silences)
+      const ordered = orderMarks(marksFor(ep, speech, silences)) // 区切りの見込みは声の長さで出す
+      marks = ordered.marks
       mix = join(tmp, `ep${id}_mix.wav`)
       mixAudio(narr, duration, soundEvents(duration, marks), mix)
-      console.log(`EP${id}: 声 ${duration.toFixed(2)}s・無音 ${silences.length}か所・区切り ${JSON.stringify(marks)}`)
+      console.log(`EP${id}: 声 ${speech.toFixed(2)}s＋余白 ${TAIL}s・無音 ${silences.length}か所・区切り ${JSON.stringify(marks)}`)
+      if (ordered.dropped.length) console.warn(`EP${id}: 順番が合わず捨てた区切り: ${ordered.dropped.join(', ')}`)
     }
 
     const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 })

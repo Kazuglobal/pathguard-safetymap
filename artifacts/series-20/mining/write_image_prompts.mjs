@@ -3,7 +3,21 @@
 // 使い方: node write_image_prompts.mjs
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { EPISODES } from './ep21-30_content.mjs'
 import { IMAGES, ORIENT, composePrompt } from './ep21-30_images.mjs'
+
+// 問いの写真（hook）は第1位を明かす前に全面に出るので、その回の伏せる語（spoilers）を含めない（2026-11-18 のレビュー・ユーザーの決定）
+const problems = []
+for (const content of EPISODES) {
+  const hook = IMAGES[content.id]?.hook?.prompt ?? ''
+  for (const word of content.spoilers ?? []) {
+    if (hook.toUpperCase().includes(word.toUpperCase())) problems.push(`EP${content.id} の hook のプロンプトに伏せる語「${word}」がある`)
+  }
+}
+if (problems.length) {
+  console.error(problems.join('\n'))
+  process.exit(1)
+}
 
 const dir = fileURLToPath(new URL('../images/', import.meta.url))
 mkdirSync(dir, { recursive: true })

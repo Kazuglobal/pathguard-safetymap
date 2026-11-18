@@ -66,7 +66,8 @@ void main() {
   }
 
   // 文字が乗る帯を少し暗く（読みやすさ）、周辺減光、粒子、全体の暗さ
-  col *= 1.0 - uShade * exp(-pow((vUv.y - uShadeY) / 0.13, 2.0));
+  float sy = (vUv.y - uShadeY) / 0.13; // pow(負, 2.0) は GLSL では未定義なので掛け算にする
+  col *= 1.0 - uShade * exp(-sy * sy);
   col *= 1.0 - 0.36 * pow(length(vUv - 0.5) * 1.25, 2.0);
   col += (hash(floor(vUv * vec2(540.0, 960.0)) + floor(uTime * 30.0)) - 0.5) * 0.045;
   col *= 1.0 - uDark;

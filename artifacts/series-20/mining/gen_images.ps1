@@ -46,12 +46,15 @@ if (-not $GradeOnly) {
   Get-Content $promptFile -Raw -Encoding utf8 | codex exec -m $Model --skip-git-repo-check --sandbox workspace-write -C $work *> $logFile
   $elapsed = [int]((Get-Date) - $start).TotalSeconds
   # 生成した画像は作業フォルダではなく ~/.codex/generated_images/<セッション>/ に出る → 開始後に書かれた png を古い順に取り出す
+  # 混ざらないように、この実行の後に作られたセッションのフォルダの中だけを見る。枚数がちょうど合わなければ止める
+  # （多すぎるのは作り直しや別の実行が混ざった印。順番がずれて「安全」のカードに危険の写真が載るのを防ぐ）
   $gen = Join-Path $HOME '.codex/generated_images'
-  $pngs = @(Get-ChildItem -Path $gen -Recurse -Filter '*.png' | Where-Object { $_.LastWriteTime -gt $start } | Sort-Object LastWriteTime)
-  "codex: $elapsed 秒・画像 $($pngs.Count) 枚（ログ: $logFile）"
-  if ($pngs.Count -lt $Keys.Count) {
+  $sessions = @(Get-ChildItem -Path $gen -Directory | Where-Object { $_.CreationTime -gt $start })
+  $pngs = @($sessions | ForEach-Object { Get-ChildItem -Path $_.FullName -Filter '*.png' } | Sort-Object LastWriteTime)
+  "codex: $elapsed 秒・画像 $($pngs.Count) 枚（セッション $($sessions.Count) 個・ログ: $logFile）"
+  if ($pngs.Count -ne $Keys.Count) {
     Get-Content $logFile -Tail 20
-    throw "画像が足りない（$($pngs.Count)/$($Keys.Count)）。使用上限なら codex exec ""Reply PING"" で戻る時刻を確かめる"
+    throw "画像の枚数が合わない（$($pngs.Count)/$($Keys.Count)）。使用上限なら codex exec ""Reply PING"" で戻る時刻を確かめる。多すぎるなら1枚ずつ作り直す"
   }
   for ($j = 0; $j -lt $Keys.Count; $j++) { Copy-Item $pngs[$j].FullName (Join-Path $raw "$($Keys[$j]).png") -Force }
 }
