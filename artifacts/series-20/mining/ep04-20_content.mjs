@@ -169,7 +169,7 @@ export const EPISODES = [
     reasonRight: { title: '☀️ {w1.label}（{w1.rate}%）', body: '{w2.label}・{w3.label}とほぼ同じ' },
     ctaTitle: '遠出の運転はこまめに休憩',
     bgs: [BG.sunny, BG.rural, BG.evening],
-    narration: '交通事故の死亡率が一番低い月より、{w1.r}倍死にやすい月を知っていますか？警察庁のデータでは、一番低い{ref.say}の致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして第1位は{w1.say}で{w1.rate}%、約{w1.r}倍です。ただし、この三つの月の差はわずかです。夏や年末に遠出する家族に送ってください。',
+    narration: '交通事故の死亡率が一番低い月より、{w1.r}倍死にやすい月を知っていますか？警察庁のデータでは、一番低い{ref.say}の致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして第1位は{w1.say}で{w1.rate}%、約{w1.r}倍です。ただし、上位の月どうしの差はわずかです。夏や年末に遠出する家族に送ってください。',
     caption: {
       hook: '交通事故の死亡率が一番低い月より「{w1.r}倍」死にやすい月があります☀️❄️',
       panel: '月別・致死率',
