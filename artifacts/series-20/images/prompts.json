@@ -309,7 +309,13 @@
           "rain": false,
           "wet": false,
           "approach": true,
-          "glow": []
+          "glow": [
+            {
+              "x": 0.752,
+              "y": 0.384,
+              "r": 0.06
+            }
+          ]
         }
       },
       "safe": {
