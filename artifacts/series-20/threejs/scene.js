@@ -2,6 +2,7 @@
 // episodes.json の1件で1本を描く。renderAt(t) に秒を渡すと、その時刻の1フレームが決まる（乱数は種を固定）。
 // 数字はすべて episodes.json から読む。ここに統計の数字を書かない。
 import * as THREE from 'three'
+import { assignPhoto, createPhotoLayer, loadPhotos, updatePhoto } from './photo.js'
 
 const W = 1080
 const H = 1920
@@ -59,6 +60,7 @@ const epId = (params.get('ep') || '01').padStart(2, '0')
 const total = Math.max(HOOK_END + 10, Number(params.get('duration')) || BASE_TOTAL)
 const k = (total - HOOK_END) / (BASE_TOTAL - HOOK_END)
 const toBase = (t) => (t <= HOOK_END ? t : HOOK_END + (t - HOOK_END) / k)
+const fromBase = (bt) => (bt <= HOOK_END ? bt : HOOK_END + (bt - HOOK_END) * k)
 
 // ---------- three.js の土台 ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $('#gl'), antialias: true, preserveDrawingBuffer: true })
@@ -172,7 +174,14 @@ const ctaStart = Array.from({ length: CTA_N }, () => {
 const ctaGeo = new THREE.BufferGeometry()
 ctaGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CTA_N * 3), 3))
 const ctaMat = new THREE.PointsMaterial({ color: 0xffd36b, size: 0.08, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })
-scene.add(new THREE.Points(ctaGeo, ctaMat))
+// 締めの粒は、締めの写真の上に描くので別の場面に置く（霧は同じ）
+const overlayScene = new THREE.Scene()
+overlayScene.fog = scene.fog
+overlayScene.add(new THREE.Points(ctaGeo, ctaMat))
+
+// 写真の層（問い・締め）。写真が無い回（EP01〜20）は何も描かない
+const hookPhoto = createPhotoLayer()
+const ctaPhoto = createPhotoLayer()
 
 // ---------- エピソードの読み込みと DOM ----------
 let ep, bars, labelEls, refShort
@@ -258,6 +267,16 @@ async function load() {
   q.id = 'qmark'
   q.innerHTML = '<div class="rate" style="color:#ff5a6a;font-size:96px">？倍</div>'
   layer.append(q)
+
+  // 写真（Codex で作ったイメージ）。理由カードの写真は2枚そろったときだけ出す
+  const photos = await loadPhotos(epId)
+  assignPhoto(hookPhoto, photos.hook, photos.fx.hook)
+  assignPhoto(ctaPhoto, photos.cta, photos.fx.cta)
+  if (photos.safe && photos.danger) {
+    $('#cardL .ph img').src = photos.safe
+    $('#cardR .ph img').src = photos.danger
+    $('#reasons').classList.add('with-img')
+  }
 
   await document.fonts.ready
   // 1行で出す文字は、Reels の右120px（と左右対称の余白）に入らない幅まで小さくする
@@ -465,6 +484,15 @@ function renderAt(t) {
   ctaMat.opacity = b >= T.cta ? 0.9 * (1 - 0.6 * seg(b, T.cta + 1.4, 2)) : 0
 
   renderer.render(scene, camera)
+  // 写真の層を重ねる（問いは全面で始まり、フックの終わりで3Dへ溶ける。締めは暗く敷く）→ 締めの粒はその上
+  renderer.autoClear = false
+  const hookOn = updatePhoto(hookPhoto, { opacity: 1 - seg(b, HOOK_END - 0.3, 0.6), local: t, span: HOOK_END + 0.3, shade: 0.45, shadeY: 1 - 715 / H })
+  if (hookOn) renderer.render(hookPhoto.scene, hookPhoto.camera)
+  const ctaAt = fromBase(T.cta)
+  const ctaOn = updatePhoto(ctaPhoto, { opacity: seg(b, T.cta, 1.0), local: Math.max(0, t - ctaAt), span: total - ctaAt, dark: 0.35, shade: 0.35, shadeY: 1 - 850 / H })
+  if (ctaOn) renderer.render(ctaPhoto.scene, ctaPhoto.camera)
+  renderer.render(overlayScene, camera)
+  renderer.autoClear = true
 
   // ---------- DOM ----------
   const m = Math.floor(t / 60); const s = t - m * 60
@@ -536,6 +564,14 @@ function renderAt(t) {
     setOpacity(el, seg(b, at, 0.25) * (1 - out))
     el.style.transform = `translateX(${dir * 700 * (1 - p)}px) translateY(${-80 * easeInCubic(out)}px) rotateY(${dir * 80 * (1 - p)}deg)`
   }
+
+  // 理由カードの写真: ゆっくり寄る
+  document.querySelectorAll('#reasons .ph img').forEach((img, i) => {
+    img.style.transform = `scale(${1.02 + 0.08 * seg(b, T.reasons + (i ? 1.6 : 0.2), T.reasonsEnd - T.reasons)})`
+  })
+  // 写真が出ている間は「AIで作ったイメージ」と出す
+  const cardPhotos = $('#reasons').classList.contains('with-img') ? seg(b, T.reasons + 0.2, 0.25) * (1 - out) : 0
+  setOpacity($('#aiNote'), Math.max(hookPhoto.uniforms.uOpacity.value, ctaPhoto.uniforms.uOpacity.value, cardPhotos))
 
   // 締めと出典
   const c = seg(b, T.cta + 1.0, 0.35)

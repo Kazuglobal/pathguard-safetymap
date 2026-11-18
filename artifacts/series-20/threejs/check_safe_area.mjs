@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 const SAFE = { top: 220, bottom: 1920 - 380, right: 1080 - 120, left: 0 }
 const TIMES = [3, 6, 12, 17, 21.5, 23, 23.8, 24.2, 27, 32, 35]
 const TITLES = ['#hud', '#badge', '#panelTitle']
-const MAIN = ['#hud', '#badge', '#panelTitle', '#hook .l1', '#hook .hi', '#hook .l2', '#ratio .pre', '#ratio .num', '#cardL', '#cardR', '#cta', '#source']
+const MAIN = ['#hud', '#badge', '#panelTitle', '#hook .l1', '#hook .hi', '#hook .l2', '#ratio .pre', '#ratio .num', '#cardL', '#cardR', '#cta', '#source', '#aiNote']
 const BAR = ['.bar-label', '.bar-name']
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -25,7 +25,7 @@ const ids = argv.includes('--all') ? episodes.map((e) => e.id) : String(opt('eps
 
 const req = createRequire(join(repoRoot, 'package.json'))
 const threeDir = process.env.THREE_DIR ? join(resolve(process.env.THREE_DIR), 'build') : dirname(req.resolve('three'))
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json' }
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg' }
 const server = createServer((r, res) => {
   const url = decodeURIComponent(new URL(r.url, 'http://x').pathname)
   const [root, rel] = url.startsWith('/three/') ? [threeDir, url.slice('/three/'.length)] : [seriesDir, url.slice(1)]

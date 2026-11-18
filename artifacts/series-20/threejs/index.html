@@ -54,6 +54,14 @@
   .card .b { font-size: 40px; font-weight: 700; line-height: 1.4; }
   #cardL { top: 0; background: rgba(20,60,130,.72); border: 3px solid var(--blue); box-shadow: 0 0 40px rgba(61,155,255,.5); }
   #cardR { top: 330px; background: rgba(120,10,25,.75); border: 3px solid var(--red); box-shadow: 0 0 50px rgba(255,59,59,.6); }
+  /* 理由カードの写真（images/epXX/safe.jpg・danger.jpg があるときだけ） */
+  .card .ph { display: none; height: 200px; margin: -10px -12px 18px; border-radius: 14px; overflow: hidden; }
+  .card .ph img { display: block; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 60%; }
+  #reasons.with-img .card .ph { display: block; }
+  #reasons.with-img #cardR { top: 420px; }
+  /* 写真が出ている間の注記（下380pxより上・出典の行のすぐ上） */
+  #aiNote { position: absolute; left: 64px; top: 1456px; font-size: 22px; font-weight: 500; color: rgba(255,255,255,.78);
+            text-shadow: 0 2px 8px rgba(0,0,0,.95); opacity: 0; }
 
   /* 締め・出典 */
   #cta { position: absolute; left: 60px; right: 140px; top: 760px; text-align: center; text-wrap: balance; font-size: 70px; line-height: 1.3; font-weight: 900; opacity: 0;
@@ -72,11 +80,12 @@
   <div id="hook"><div class="l1"></div><div class="hi"></div><div class="l2"></div></div>
   <div id="ratio"><div class="pre"></div><div class="num"></div></div>
   <div id="reasons">
-    <div class="card" id="cardL"><div class="t"></div><div class="b"></div></div>
-    <div class="card" id="cardR"><div class="t"></div><div class="b"></div></div>
+    <div class="card" id="cardL"><div class="ph"><img alt=""></div><div class="t"></div><div class="b"></div></div>
+    <div class="card" id="cardR"><div class="ph"><img alt=""></div><div class="t"></div><div class="b"></div></div>
   </div>
   <div id="cta"></div>
   <div id="source">出典：警察庁 交通事故統計オープンデータ（2023年 本票）</div>
+  <div id="aiNote">※画像はAIで作ったイメージです</div>
   <div class="layer" id="flash"></div>
 </div>
 <script type="module" src="./scene.js"></script>
