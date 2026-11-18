@@ -21,6 +21,49 @@ export function rateDigits(rate) {
 }
 export const rateText = (rate) => `${rate.toFixed(rateDigits(rate))}%`
 
+/** 倍率の表示。既存EPの note（例: 21.3倍・28倍）と同じく小数1桁で切り捨て（100倍以上は整数）。 */
+export function formatRatio(rate, refRate) {
+  if (!(refRate > 0)) return null
+  const r = rate / refRate
+  if (r >= 100) return String(Math.floor(r))
+  const v = Math.floor(r * 10) / 10
+  return Number.isInteger(v) ? String(v) : v.toFixed(1)
+}
+
+const toAscii = (s) => s.replace(/[０-９．]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+
+/**
+ * 第1位を明かす場面で大きく見せる倍率。rates は [参考, 第3位, 第2位, 第1位] の致死率。
+ * 返り値 { index, baseIndex, ratio, exact }: 柱 index は柱 baseIndex の ratio 倍（baseIndex 0 は参考）。
+ * 声と画面を合わせるため、第1位の数字を言う文の「約○倍」を使う（その文になければフックの「○倍」）。
+ *   1. 参考との比がちょうど同じ柱 → 2. 順位どうしの比がちょうど同じ組（EP26「同じ年齢で2.2倍」・EP27「高速道路の2.6倍」）
+ *   → 3. 参考との比が一番近い柱（±20%以内。EP02「約6倍」→5.9倍）→ 4. 第1位と参考
+ * exact は 1 か 2 で決まったとき true（build の検査に使う）。
+ */
+export function focusRatio(rates, narration = '', hook = '') {
+  const top = { index: 3, baseIndex: 0, ratio: formatRatio(rates[3], rates[0]), exact: false }
+  const w1 = rateText(rates[3])
+  const sentence = narration.includes(w1)
+    ? narration.slice(narration.indexOf(w1)).split(/[。？]/)[0]
+    : ''
+  const m = /([0-9０-９]+(?:[.．][0-9０-９]+)?)倍/.exec(sentence) ?? /([0-9０-９]+(?:[.．][0-9０-９]+)?)倍/.exec(hook)
+  if (!m) return top
+  const said = toAscii(m[1])
+  for (const i of [3, 2, 1]) {
+    if (formatRatio(rates[i], rates[0]) === said) return { index: i, baseIndex: 0, ratio: said, exact: true }
+  }
+  for (const [i, j] of [[3, 2], [3, 1], [2, 1]]) {
+    if (formatRatio(rates[i], rates[j]) === said) return { index: i, baseIndex: j, ratio: said, exact: true }
+  }
+  const n = Number(said)
+  let best = top; let diff = Infinity
+  for (const i of [1, 2, 3]) {
+    const d = Math.abs(rates[i] / rates[0] - n) / n
+    if (d < diff) { diff = d; best = { index: i, baseIndex: 0, ratio: formatRatio(rates[i], rates[0]), exact: false } }
+  }
+  return diff <= 0.2 ? best : top
+}
+
 // 声の区切り（実時間の秒）と、それに合わせる基準タイムライン上の時刻
 export const MARK_BASE = [
   ['hookEnd', HOOK_END], ['refStart', T.refStart], ['r3Start', T.r3Start], ['r2Start', T.r2Start],

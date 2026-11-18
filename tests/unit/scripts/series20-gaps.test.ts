@@ -7,6 +7,8 @@ import {
   HOOK_END,
   T,
   computeMarks,
+  focusRatio,
+  formatRatio,
   makeTimeMap,
   mergeSilences,
   narrationFractions,
@@ -275,5 +277,71 @@ describe("candidates の分類", () => {
     expect(
       c22.categorize(row({ 事故類型: "01", "当事者種別（当事者A）": "61", "当事者種別（当事者B）": "00", "年齢（当事者A）": "75" })),
     ).toBeNull() // 相手不明
+  })
+})
+
+describe("focusRatio（第1位を明かす場面の大きな倍率は、声の「約○倍」と同じ）", () => {
+  type Ep = {
+    id: string
+    narration: string
+    hookLine1: string
+    hookHighlight: string
+    hookLine2: string
+    ref: { rate: number }
+    worst: { rate: number }[]
+  }
+  const all = episodes as Ep[]
+  const ratesOf = (e: Ep) => [e.ref.rate, e.worst[2].rate, e.worst[1].rate, e.worst[0].rate]
+  const hookOf = (e: Ep) => e.hookLine1 + e.hookHighlight + e.hookLine2
+  // 前の作り（フックの「○倍」に一番近い柱・±20%以内）。EP07・EP26・EP27 以外は今と同じ結果になること
+  const old = (e: Ep) => {
+    const r = ratesOf(e)
+    const m = /([0-9０-９]+(?:\.[0-9]+)?)倍/.exec(e.hookHighlight + e.hookLine1 + e.hookLine2)
+    let index = 3
+    if (m) {
+      const n = Number(m[1])
+      let diff = Infinity
+      let best = 3
+      for (const i of [1, 2, 3]) {
+        const d = Math.abs(r[i] / r[0] - n) / n
+        if (d < diff) {
+          diff = d
+          best = i
+        }
+      }
+      index = diff <= 0.2 ? best : 3
+    }
+    return { index, baseIndex: 0, ratio: formatRatio(r[index], r[0]) }
+  }
+
+  it("EP01〜30 のうち、変わるのは EP07・EP26・EP27 だけ", () => {
+    const changed = all
+      .filter((e) => {
+        const n = focusRatio(ratesOf(e), e.narration, hookOf(e))
+        const o = old(e)
+        return n.index !== o.index || n.baseIndex !== o.baseIndex || n.ratio !== o.ratio
+      })
+      .map((e) => e.id)
+    expect(changed).toEqual(["07", "26", "27"])
+  })
+
+  it("EP26 は第1位÷第2位（同じ年齢）、EP27 は第1位÷第2位（高速道路）、EP07 は声と同じ第1位の21倍", () => {
+    const by = (id: string) => all.find((e) => e.id === id)!
+    expect(focusRatio(ratesOf(by("26")), by("26").narration, hookOf(by("26")))).toMatchObject({ index: 3, baseIndex: 2, ratio: "2.2", exact: true })
+    expect(focusRatio(ratesOf(by("27")), by("27").narration, hookOf(by("27")))).toMatchObject({ index: 3, baseIndex: 2, ratio: "2.6", exact: true })
+    expect(focusRatio(ratesOf(by("07")), by("07").narration, hookOf(by("07")))).toMatchObject({ index: 3, baseIndex: 0, ratio: "21" })
+  })
+
+  it("EP21〜30 は全部、声の倍率がちょうど画面の倍率になる（exact）", () => {
+    const notExact = all
+      .filter((e) => Number(e.id) >= 21)
+      .filter((e) => !focusRatio(ratesOf(e), e.narration, hookOf(e)).exact)
+      .map((e) => e.id)
+    expect(notExact).toEqual([])
+  })
+
+  it("声の倍率がどの比とも合わなければ exact にならず、±20%以内の一番近い柱にする", () => {
+    // 参考1%・第3位2%・第2位3%・第1位5.9%。声は「約6倍」→ 5.9倍の柱（EP02 と同じ形）
+    expect(focusRatio([1, 2, 3, 5.9], "第1位は5.90%、約6倍です。", "")).toMatchObject({ index: 3, ratio: "5.9", exact: false })
   })
 })

@@ -3,7 +3,7 @@
 // 数字はすべて episodes.json から読む。ここに統計の数字を書かない。
 import * as THREE from 'three'
 import { assignPhoto, createPhotoLayer, loadPhotos, updatePhoto } from './photo.js'
-import { BASE_TOTAL, HOOK_END, IMPACT, T, makeTimeMap, rateDigits } from './timeline.mjs'
+import { BASE_TOTAL, HOOK_END, IMPACT, T, focusRatio, formatRatio, makeTimeMap, rateDigits } from './timeline.mjs'
 
 export { rateDigits }
 
@@ -30,14 +30,7 @@ function mulberry32(seed) {
   }
 }
 
-/** 倍率の表示。既存EPの note（例: 21.3倍・28倍）と同じく切り捨て。 */
-export function formatRatio(rate, refRate) {
-  if (!(refRate > 0)) return null
-  const r = rate / refRate
-  if (r >= 100) return String(Math.floor(r))
-  const v = Math.floor(r * 10) / 10
-  return Number.isInteger(v) ? String(v) : v.toFixed(1)
-}
+export { formatRatio } // 以前は scene.js にあった（timeline.mjs に移した）
 
 const $ = (sel) => document.querySelector(sel)
 const params = new URLSearchParams(location.search)
@@ -226,7 +219,9 @@ async function load() {
   $('#cardR .t').textContent = ep.reasonRight.title
   $('#cardR .b').textContent = ep.reasonRight.body
   $('#cta').textContent = ep.ctaTitle
-  const focus = focusRatio()
+  // 声と同じ倍率を出す（第1位を言う文の「約○倍」。timeline.mjs の focusRatio・build も同じ関数で検査する）
+  const f = focusRatio(bars.map((x) => x.rate), ep.narration, ep.hookLine1 + ep.hookHighlight + ep.hookLine2)
+  const focus = { bar: bars[f.index], base: bars[f.baseIndex], ratio: f.ratio }
   ratioBar = focus
   const pre = $('#ratio .pre')
   pre.textContent = `${focus.bar.label}は${focus.base.isRef ? ' 参考の' : ''}`
@@ -281,32 +276,6 @@ function fitWidth(el, maxWidth) {
 }
 let hookChars = []
 let ratioBar = null
-
-/**
- * 大きく見せる倍率 { bar, base, ratio }（bar は base の ratio 倍）。
- * フックの「○倍」が、順位どうしの比（例: 第1位は第2位の2.2倍＝EP26 の「同じ年齢なのに」）とちょうど同じならそれ。
- * そうでなければ参考との比で、フックの倍率に一番近い柱（±20%以内）。フックに倍率がなければ第1位。
- */
-function focusRatio(list = bars, hook = ep.hookHighlight + ep.hookLine1 + ep.hookLine2) {
-  const ref = list[0]
-  const top = { bar: list[3], base: ref, ratio: list[3].ratio }
-  const m = /([0-9０-９]+(?:\.[0-9]+)?)倍/.exec(hook)
-  if (!m) return top
-  const said = m[1].replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-  const n = Number(said)
-  if (!list.slice(1).some((bar) => bar.ratio === said)) {
-    for (const [i, j] of [[3, 2], [3, 1], [2, 1]]) {
-      const ratio = formatRatio(list[i].rate, list[j].rate)
-      if (ratio === said) return { bar: list[i], base: list[j], ratio }
-    }
-  }
-  let best = top; let diff = Infinity
-  for (const bar of list.slice(1)) {
-    const d = Math.abs(bar.rate / ref.rate - n) / n
-    if (d < diff) { diff = d; best = { bar, base: ref, ratio: bar.ratio } }
-  }
-  return diff <= 0.2 ? best : top
-}
 
 // ---------- カメラ ----------
 const V = (x, y, z) => new THREE.Vector3(x, y, z)

@@ -8,6 +8,7 @@ import { CANDIDATES } from './candidates.mjs';
 import { EPISODES } from './ep21-30_content.mjs';
 import { aggregate, assertDefinition, evaluate } from './gaps-lib.mjs';
 import { UNSPEAKABLE, sayOf } from './speech.mjs';
+import { focusRatio } from '../threejs/timeline.mjs';
 
 const YEAR = 2023;
 const NARRATION_CHARS = [145, 165];
@@ -171,6 +172,9 @@ function lint(ep, f, spoilers, hookRatio) {
     }
   }
   if (!first.includes(`${r1}倍`) && !first.includes(`${hookRatio.ri}倍`)) errs.push('最初の文に倍率がない');
+  // 第1位を明かす場面の大きな倍率は、声が言う「約○倍」と同じでなければならない（scene.js と同じ関数で選ぶ）
+  const focus = focusRatio([ep.ref.rate, ep.worst[2].rate, ep.worst[1].rate, ep.worst[0].rate], ep.narration, hook);
+  if (!focus.exact) errs.push(`第1位を言う文の「約○倍」が、画面の柱の倍率（参考との比・順位どうしの比）のどれとも同じでない（画面には約${focus.ratio}倍が出る）`);
   const sentences = ep.narration.split('。').filter(Boolean);
   if (!/送ってください$/.test(sentences.at(-1))) errs.push('最後の文が「誰に送るか」でない');
   if (/保存/.test(ep.narration)) errs.push('ナレーションに保存依頼がある');
