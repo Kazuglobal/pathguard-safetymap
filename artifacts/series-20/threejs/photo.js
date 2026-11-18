@@ -14,7 +14,7 @@ void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
 
 const FRAG = /* glsl */ `
 uniform sampler2D uTex;
-uniform float uOpacity, uTime, uZoom, uDark, uShade, uShadeY, uRain, uWet, uGrow;
+uniform float uOpacity, uTime, uZoom, uDark, uShade, uShadeY, uRain, uWet, uGrow, uApproach;
 uniform vec2 uShift;
 uniform vec3 uGlow[${MAX_GLOW}];
 uniform int uGlowN;
@@ -43,7 +43,8 @@ void main() {
     if (i >= uGlowN) break;
     vec2 gp = vec2(uGlow[i].x, 1.0 - uGlow[i].y);
     vec2 d = (uv - gp) * vec2(1080.0 / 1920.0, 1.0);
-    float r = uGlow[i].z * (1.0 + 0.10 * sin(uTime * 1.9 + float(i) * 1.7) + 0.25 * uGrow);
+    // approach の回は、光が近づいてくるように大きく広がる
+    float r = uGlow[i].z * (1.0 + 0.10 * sin(uTime * 1.9 + float(i) * 1.7) + (0.25 + 0.55 * uApproach) * uGrow);
     float dd = dot(d, d);
     float core = exp(-dd / (r * r));
     float halo = exp(-dd / (r * r * 10.0));
@@ -78,7 +79,7 @@ export function createPhotoLayer() {
   const uniforms = {
     uTex: { value: null }, uOpacity: { value: 0 }, uTime: { value: 0 }, uZoom: { value: 1 }, uDark: { value: 0 },
     uShade: { value: 0 }, uShadeY: { value: 0.6 }, uRain: { value: 0 }, uWet: { value: 0 }, uGrow: { value: 0 },
-    uShift: { value: new THREE.Vector2() },
+    uShift: { value: new THREE.Vector2() }, uApproach: { value: 0 },
     uGlow: { value: Array.from({ length: MAX_GLOW }, () => new THREE.Vector3()) }, uGlowN: { value: 0 },
   }
   const material = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthTest: false, depthWrite: false })
@@ -94,6 +95,7 @@ export function assignPhoto(layer, tex, fx) {
   u.uTex.value = tex
   u.uRain.value = fx?.rain ? 1 : 0
   u.uWet.value = fx?.wet ? 1 : 0
+  u.uApproach.value = fx?.approach ? 1 : 0
   const glow = (fx?.glow ?? []).slice(0, MAX_GLOW)
   glow.forEach((g, i) => u.uGlow.value[i].set(g.x, g.y, g.r))
   u.uGlowN.value = glow.length
@@ -109,8 +111,10 @@ export function updatePhoto(layer, { opacity, local, span, dark = 0, shade = 0, 
   u.uOpacity.value = layer.tex ? opacity : 0
   u.uTime.value = local
   u.uGrow.value = p
-  u.uZoom.value = 1.04 + 0.08 * p
-  u.uShift.value.set(Math.sin(local * 0.9) * 0.0022, Math.cos(local * 0.73 + 1) * 0.0016)
+  const near = u.uApproach.value // 迫る回は寄りを強め、手持ちの揺れも少し大きく
+  u.uZoom.value = 1.04 + (0.08 + 0.06 * near) * p
+  const shake = 1 + 0.6 * near
+  u.uShift.value.set(Math.sin(local * 0.9) * 0.0022 * shake, Math.cos(local * 0.73 + 1) * 0.0016 * shake)
   u.uDark.value = dark
   u.uShade.value = shade
   u.uShadeY.value = shadeY
