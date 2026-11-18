@@ -2,6 +2,68 @@ import { describe, expect, it } from "vitest"
 import { RULES, evaluate, fisherTwoSided, rateOf } from "../../../artifacts/series-20/mining/gaps-lib.mjs"
 import { CANDIDATES } from "../../../artifacts/series-20/mining/candidates.mjs"
 import { UNSPEAKABLE, sayOf } from "../../../artifacts/series-20/mining/speech.mjs"
+import {
+  BASE_TOTAL,
+  HOOK_END,
+  T,
+  computeMarks,
+  makeTimeMap,
+  narrationFractions,
+  parseSilences,
+} from "../../../artifacts/series-20/threejs/timeline.mjs"
+
+describe("timeline（声に合わせた時間割）", () => {
+  const narration =
+    "車同士の事故で、追突の67.7倍も死にやすいぶつかり方を知っていますか？警察庁のデータで交差点の中を除くと、追突の致死率は0.035%。横からの衝突は0.83%、斜めの衝突は1.51%。そして第1位は正面衝突で2.34%、約67.7倍です。お互いの速度が足し算になるからです。車で通勤する家族に送ってください。"
+  const rates = { ref: "0.035%", w3: "0.83%", w2: "1.51%", w1: "2.34%" }
+
+  it("marks が無ければ、今まで（フック3.5秒固定・残りを比例）と同じ", () => {
+    const total = 33
+    const k = (total - HOOK_END) / (BASE_TOTAL - HOOK_END)
+    const { toBase, fromBase } = makeTimeMap(total, null)
+    for (const t of [0, 1.2, 3.5, 10, 20, 33]) {
+      const old = t <= HOOK_END ? t : HOOK_END + (t - HOOK_END) / k
+      expect(toBase(t)).toBeCloseTo(old, 9)
+      expect(fromBase(toBase(t))).toBeCloseTo(t, 9)
+    }
+  })
+
+  it("marks があれば、各区切りが基準タイムラインの区切りに対応する", () => {
+    const marks = { hookEnd: 4.2, refStart: 4.6, r3Start: 11.0, r2Start: 13.5, r1Start: 16.8, reasons: 22.4, cta: 27.0 }
+    const { toBase } = makeTimeMap(31, marks)
+    expect(toBase(4.6)).toBeCloseTo(T.refStart, 9)
+    expect(toBase(16.8)).toBeCloseTo(T.r1Start, 9)
+    expect(toBase(27.0)).toBeCloseTo(T.cta, 9)
+    expect(toBase(31)).toBeCloseTo(BASE_TOTAL, 9)
+  })
+
+  it("順番が逆の区切りは捨てる（時間が逆戻りしない）", () => {
+    const { knots } = makeTimeMap(30, { refStart: 10, r3Start: 8, r1Start: 15 })
+    for (let i = 1; i < knots.length; i++) {
+      expect(knots[i][0]).toBeGreaterThan(knots[i - 1][0])
+      expect(knots[i][1]).toBeGreaterThan(knots[i - 1][1])
+    }
+  })
+
+  it("台本から、問い→参考→第3位→第2位→第1位→理由→締めの順に区切りが出る", () => {
+    const f = narrationFractions(narration, rates)
+    const order = [f.hookEnd, f.refStart, f.r3Start, f.r2Start, f.r1Start, f.reasons, f.cta]
+    for (const v of order) expect(v).not.toBeNull()
+    // 参考の柱は問いの次の文の始まりなので、台本の上では問いの終わりと同じ位置（時間は無音の始まりと終わりで分かれる）
+    expect(f.refStart).toBe(f.hookEnd)
+    for (let i = 2; i < order.length; i++) expect(order[i]!).toBeGreaterThan(order[i - 1]!)
+  })
+
+  it("区切りは近くの無音に合わせる（話し始め＝無音の終わり、問いの終わり＝無音の始まり）", () => {
+    const silences = parseSilences(
+      ["[silencedetect] silence_start: 6.10", "[silencedetect] silence_end: 6.45 | silence_duration: 0.35"].join("\n"),
+    )
+    expect(silences).toEqual([{ start: 6.1, end: 6.45 }])
+    const marks = computeMarks(narration, rates, 31, silences)
+    expect(marks.hookEnd).toBeCloseTo(6.1, 3) // 見込み約6.4秒 → 0.3秒前の無音の始まりに合わせる
+    expect(marks.refStart).toBeCloseTo(6.45, 3) // 参考の柱は次の文の始まり（無音の終わり）
+  })
+})
 
 type Counts = Map<string, { n: number; fatal: number }>
 const counts = (entries: Record<string, [number, number]>): Counts =>

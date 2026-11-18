@@ -25,7 +25,7 @@ const ids = argv.includes('--all') ? episodes.map((e) => e.id) : String(opt('eps
 
 const req = createRequire(join(repoRoot, 'package.json'))
 const threeDir = process.env.THREE_DIR ? join(resolve(process.env.THREE_DIR), 'build') : dirname(req.resolve('three'))
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg' }
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg' }
 const server = createServer((r, res) => {
   const url = decodeURIComponent(new URL(r.url, 'http://x').pathname)
   const [root, rel] = url.startsWith('/three/') ? [threeDir, url.slice('/three/'.length)] : [seriesDir, url.slice(1)]

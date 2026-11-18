@@ -2,14 +2,16 @@
 //   node artifacts/series-20/threejs/render.mjs --eps 01,04          # mp4 を書き出す
 //   node artifacts/series-20/threejs/render.mjs --eps 01 --stills    # 確認用の静止画だけ
 //   node artifacts/series-20/threejs/render.mjs --all
-// audio/epXX.wav があれば、その長さに合わせて伸び縮みさせ、音声を重ねる。なければ36秒・無音。
+// audio/epXX.wav があれば: 声を 1.08 倍速・-14 LUFS にし、文の切れ目（無音）から映像の区切りを決めて（?marks=）
+// 柱が数字を言う瞬間に伸びるように合わせ、BGM・効果音を混ぜて _final.mp4 にする。なければ36秒・無音の _preview。
 // フレームごとに renderAt(t) で時刻を指定して撮る（リアルタイム録画ではないので、PCが遅くてもコマ落ちしない）。
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
-import { spawn, execFileSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, createReadStream, statSync } from 'node:fs'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { detectSilences, marksFor, mixAudio, prepareNarration, probeDuration, soundEvents } from './audio.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const seriesDir = resolve(here, '..')
@@ -57,22 +59,32 @@ async function launch() {
 const browser = await launch()
 mkdirSync(outDir, { recursive: true })
 
-function audioDuration(wav) {
-  const out = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', wav]).toString().trim()
-  return Number(out)
-}
-
 try {
   for (const id of ids) {
     const ep = episodes.find((e) => e.id === id)
     if (!ep) { console.error(`skip: EP${id} は episodes.json にない`); continue }
     const wav = join(seriesDir, 'audio', `ep${id}.wav`)
-    const hasAudio = existsSync(wav)
-    const duration = Number(opt('duration', hasAudio ? audioDuration(wav) : 36))
+    const hasAudio = existsSync(wav) && !flag('no-audio')
+    let duration = Number(opt('duration', 36))
+    let marks = null
+    let mix = null
+    if (hasAudio) {
+      const tmp = join(outDir, '_audio')
+      mkdirSync(tmp, { recursive: true })
+      const narr = join(tmp, `ep${id}_narr.wav`)
+      prepareNarration(wav, narr)
+      duration = probeDuration(narr)
+      const silences = detectSilences(narr)
+      marks = marksFor(ep, duration, silences)
+      mix = join(tmp, `ep${id}_mix.wav`)
+      mixAudio(narr, duration, soundEvents(duration, marks), mix)
+      console.log(`EP${id}: 声 ${duration.toFixed(2)}s・無音 ${silences.length}か所・区切り ${JSON.stringify(marks)}`)
+    }
 
     const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 })
     page.on('pageerror', (e) => console.error(`[EP${id}] page error:`, e.message))
-    await page.goto(`${base}/threejs/index.html?ep=${id}&duration=${duration}&static=1`)
+    const marksParam = marks ? `&marks=${encodeURIComponent(JSON.stringify(marks))}` : ''
+    await page.goto(`${base}/threejs/index.html?ep=${id}&duration=${duration}&static=1${marksParam}`)
     await page.evaluate(() => window.ready)
     const stage = page.locator('#stage')
 
@@ -83,6 +95,11 @@ try {
         await page.evaluate((tt) => window.renderAt(tt), t)
         await stage.screenshot({ path: join(dir, `t${String(t).padStart(4, '0')}.png`) })
       }
+      // 声に合わせたときは、各区切りの少し後も撮る（柱が数字を言う所で伸び始めているかを見る）
+      for (const [key, t] of Object.entries(marks ?? {})) {
+        await page.evaluate((tt) => window.renderAt(tt), Math.min(duration, t + 0.4))
+        await stage.screenshot({ path: join(dir, `m_${key}.png`) })
+      }
       console.log(`EP${id}: stills -> ${dir}`)
       await page.close()
       continue
@@ -90,7 +107,7 @@ try {
 
     const out = join(outDir, `ep${id}_${ep.slug}_threejs${hasAudio ? '_final' : '_preview'}.mp4`)
     const ffArgs = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(fps), '-i', '-']
-    if (hasAudio) ffArgs.push('-i', wav, '-c:a', 'aac', '-b:a', '192k', '-shortest')
+    if (hasAudio) ffArgs.push('-i', mix, '-c:a', 'aac', '-b:a', '192k', '-shortest')
     // 入力の JPEG はフルレンジ。-pix_fmt yuv420p だけだと yuvj420p（フルレンジ）のまま出るので、TV レンジに変換して yuv420p にする
     ffArgs.push('-vf', 'scale=in_range=pc:out_range=tv,format=yuv420p', '-color_range', 'tv',
       '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', String(fps), '-movflags', '+faststart', out)

@@ -3,25 +3,15 @@
 // 数字はすべて episodes.json から読む。ここに統計の数字を書かない。
 import * as THREE from 'three'
 import { assignPhoto, createPhotoLayer, loadPhotos, updatePhoto } from './photo.js'
+import { BASE_TOTAL, HOOK_END, IMPACT, T, makeTimeMap, rateDigits } from './timeline.mjs'
+
+export { rateDigits }
 
 const W = 1080
 const H = 1920
-const HOOK_END = 3.5 // フック（問い）の長さは音声の長さに関係なく固定
-const BASE_TOTAL = 36 // タイムラインの基準尺。実際の尺に合わせて HOOK_END 以降を伸び縮みさせる
 const H_MAX = 6.2 // barMax に当たる柱の高さ（ワールド単位）
 const BAR_X = [-1.95, -0.65, 0.65, 1.95] // 左から 参考・第3位・第2位・第1位
 const COLORS = { blue: 0x3d9bff, gold: 0xffc21a, red: 0xff3b3b, extreme: 0xff1f4f }
-
-// 時刻（基準タイムライン上の秒）
-const T = {
-  refStart: 3.6, refGrow: 2.4,
-  r3Start: 9.0, r2Start: 14.0, grow: 1.8,
-  r1Start: 19.0, r1Grow: 2.2,
-  ratioEnd: 24.0,
-  reasons: 24.0, reasonsEnd: 30.0,
-  cta: 30.0, source: 34.0,
-}
-const IMPACT = T.r1Start + T.r1Grow
 
 // ---------- 小道具 ----------
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
@@ -49,18 +39,13 @@ export function formatRatio(rate, refRate) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1)
 }
 
-/** 致死率の桁数。0.1%未満は小数3桁（0.03% と出すと倍率の割り算が合わなく見えるため）。数え上げ中も最終値で決める。 */
-export function rateDigits(rate) {
-  return rate < 0.1 ? 3 : 2
-}
-
 const $ = (sel) => document.querySelector(sel)
 const params = new URLSearchParams(location.search)
 const epId = (params.get('ep') || '01').padStart(2, '0')
 const total = Math.max(HOOK_END + 10, Number(params.get('duration')) || BASE_TOTAL)
-const k = (total - HOOK_END) / (BASE_TOTAL - HOOK_END)
-const toBase = (t) => (t <= HOOK_END ? t : HOOK_END + (t - HOOK_END) / k)
-const fromBase = (bt) => (bt <= HOOK_END ? bt : HOOK_END + (bt - HOOK_END) * k)
+// 声の区切り（render.mjs が声の無音から決めて ?marks= で渡す）。無ければフック3.5秒固定・残りを比例で伸ばす
+const marks = (() => { try { return JSON.parse(params.get('marks') || 'null') } catch { return null } })()
+const { toBase, fromBase } = makeTimeMap(total, marks)
 
 // ---------- three.js の土台 ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $('#gl'), antialias: true, preserveDrawingBuffer: true })
