@@ -48,6 +48,11 @@ export function formatRatio(rate, refRate) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1)
 }
 
+/** 致死率の桁数。0.1%未満は小数3桁（0.03% と出すと倍率の割り算が合わなく見えるため）。数え上げ中も最終値で決める。 */
+export function rateDigits(rate) {
+  return rate < 0.1 ? 3 : 2
+}
+
 const $ = (sel) => document.querySelector(sel)
 const params = new URLSearchParams(location.search)
 const epId = (params.get('ep') || '01').padStart(2, '0')
@@ -255,6 +260,18 @@ async function load() {
   layer.append(q)
 
   await document.fonts.ready
+  // 1行で出す文字は、Reels の右120px（と左右対称の余白）に入らない幅まで小さくする
+  for (const sel of ['#panelTitle', '#ratio .pre', '#ratio .num']) fitWidth($(sel), SAFE_TEXT_WIDTH)
+}
+
+const SAFE_TEXT_WIDTH = W - 2 * 120
+/** 文字の幅が maxWidth を超えるときだけ、文字の大きさを縮めて収める。幅は Range で文字そのものを測る。 */
+function fitWidth(el, maxWidth) {
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  const scale = $('#stage').getBoundingClientRect().width / W
+  const width = range.getBoundingClientRect().width / scale
+  if (width > maxWidth) el.style.fontSize = `${parseFloat(getComputedStyle(el).fontSize) * (maxWidth / width)}px`
 }
 let hookChars = []
 let ratioBar = null
@@ -276,13 +293,46 @@ function focusIndex() {
 // ---------- カメラ ----------
 const V = (x, y, z) => new THREE.Vector3(x, y, z)
 function barTop(i, b) { return bars[i].height * growth(i, b) }
+
+// 第2位・第3位が第1位に近い回は柱が高く、数字のラベルが見出しや上のUIにかかる。
+// その場面だけ、ラベルの付け根が画面の上から約540pxより下に来るまでカメラを後ろへ引く（収まる回は元の位置のまま）。
+const LABEL_LIMIT_NDC = 0.43
+const fitCam = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
+const fitVec = new THREE.Vector3()
+const fitCache = new Map()
+function framed(key, pos, tgt, idxs) {
+  if (fitCache.has(key)) return fitCache.get(key)
+  const at = (k) => tgt.clone().add(pos.clone().sub(tgt).multiplyScalar(k))
+  const highest = (k) => {
+    fitCam.position.copy(at(k))
+    fitCam.lookAt(tgt)
+    fitCam.updateMatrixWorld()
+    return Math.max(...idxs.map((i) => fitVec.set(BAR_X[i], bars[i].height + 0.12, 0).project(fitCam).y))
+  }
+  let k = 1
+  if (highest(1) > LABEL_LIMIT_NDC) {
+    let lo = 1; let hi = 4
+    for (let n = 0; n < 30; n++) { const mid = (lo + hi) / 2; if (highest(mid) > LABEL_LIMIT_NDC) lo = mid; else hi = mid }
+    k = hi
+  }
+  const out = { pos: at(k), tgt: tgt.clone() }
+  fitCache.set(key, out)
+  return out
+}
+// cameraAt が lerp で書き換えるので、毎回コピーを返す
+const framedKey = (key, pos, tgt, idxs) => ({
+  pos: () => framed(key, pos, tgt, idxs).pos.clone(),
+  tgt: () => framed(key, pos, tgt, idxs).tgt.clone(),
+})
+
 const camKeys = [
   { at: 0, dur: 0.01, pos: (b) => V(0, 0.9, 24 - 13 * easeOutCubic(clamp(b / HOOK_END))), tgt: () => V(0, 1.6, 0) },
-  { at: T.refStart, dur: 1.0, pos: () => V(-2.6, 1.1, 8.0), tgt: () => V(-1.4, 0.9, 0) },
-  { at: T.r3Start, dur: 1.0, pos: () => V(-0.6, 1.9, 9.6), tgt: () => V(-0.2, 1.4, 0) },
-  { at: T.r2Start, dur: 1.0, pos: () => V(1.0, 2.6, 12.2), tgt: () => V(0.2, 2.2, 0) },
+  { at: T.refStart, dur: 1.0, ...framedKey('ref', V(-2.6, 1.1, 8.0), V(-1.4, 0.9, 0), [0]) },
+  { at: T.r3Start, dur: 1.0, ...framedKey('r3', V(-0.6, 1.9, 9.6), V(-0.2, 1.4, 0), [0, 1]) },
+  { at: T.r2Start, dur: 1.0, ...framedKey('r2', V(1.0, 2.6, 12.2), V(0.2, 2.2, 0), [0, 1, 2]) },
   { at: T.r1Start, dur: 0.7, pos: () => V(2.9, 0.25, 6.4), tgt: (b) => V(BAR_X[3], Math.max(1.2, barTop(3, b) * 0.9), 0) },
-  { at: IMPACT + 0.15, dur: 1.1, pos: () => V(0, 3.4, 13.0), tgt: () => V(0.2, 3.0, 0) },
+  // 注視点を少し下げ、柱の名前を下380px（Reels の UI）より上に収める
+  { at: IMPACT + 0.15, dur: 1.1, pos: () => V(0, 3.4, 13.0), tgt: () => V(0.2, 2.6, 0) },
   { at: T.reasons, dur: 1.2, pos: (b) => { const a = 0.35 - (b - T.reasons) * 0.08; return V(Math.sin(a) * 12, 4.2, Math.cos(a) * 12) }, tgt: () => V(0, 2.4, 0) },
   { at: T.cta, dur: 1.2, pos: (b) => V(0, 6.5 + (b - T.cta) * 0.2, 9.5 - (b - T.cta) * 0.3), tgt: () => V(0, 2.8, 0) },
 ]
@@ -437,7 +487,7 @@ function renderAt(t) {
     const shown = seg(b, bar.start, 0.25) * labelDim
     const top = toScreen(BAR_X[i], bar.height * g + 0.12, 0)
     rate.style.left = `${top.x}px`; rate.style.top = `${top.y}px`
-    rate.querySelector('.rate').textContent = `${(bar.rate * clamp(g)).toFixed(2)}%`
+    rate.querySelector('.rate').textContent = `${(bar.rate * clamp(g)).toFixed(rateDigits(bar.rate))}%`
     const underRatio = 1 - 0.75 * seg(b, IMPACT, 0.3) * (1 - seg(b, T.ratioEnd - 0.4, 0.4))
     setOpacity(rate, top.visible ? shown * underRatio : 0)
     const mult = rate.querySelector('.mult')
