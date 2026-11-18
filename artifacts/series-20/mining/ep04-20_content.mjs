@@ -126,7 +126,7 @@ export const EPISODES = [
   {
     // 当事者Aを四輪に絞った（絞らないと75歳以上の単独事故の59%が自転車）。車同士＝四輪どうし。第3位・第2位の柱に「単独事故」と出るので、
     // 問いは事故の形ではなく年代にした（参考は全年代の車同士＝答えの年代を出さない）。単独事故は年代が上がるほど高い（0〜24歳 6.79% も車同士より高い）
-    id: '08', cand: 'D08',
+    id: '08', cand: 'D08', hookRatio: 'w1w3', // 78倍の大半は事故の形の差。年代の差（75歳以上÷25〜64歳）を言う（3回目のレビュー）
     hideUntilReveal: ['75'], // 問いの答えそのもの。第1位を言う前の声と、先に伸びる柱に出さない
     expectWorst: ['75歳以上・単独事故', '65〜74歳・単独事故', '25〜64歳・単独事故'],
     labels: {
@@ -137,22 +137,22 @@ export const EPISODES = [
     },
     spoilers: ['75', '高齢', 'SENIOR'],
     slug: 'solo-crash-age-{w1.rs}x', badge: 'SOLO CRASH // {w1.r}X', caseTitle: '単独事故の真実',
-    hookLine1: '車が一人で起こす単独事故', hookHighlight: '{w1.r}倍死ぬ年代', hookLine2: '何歳だと思う？',
+    hookLine1: '車の単独事故で', hookHighlight: '{w1w3.r}倍死ぬ年代', hookLine2: '働く世代と比べて',
     panelTitle: '車の単独事故×運転者の年代 致死率',
     reasonLeft: { title: '🚗 {ref.label}（{ref.rate}%）', body: '件数は多いが 致死率は低い' },
     reasonRight: { title: '💥 {w1.label}（{w1.rate}%）', body: '体が衝撃に弱くなるといわれる' },
     ctaTitle: '運転の続け方を家族で話そう',
     bgs: [BG.rural, BG.curve, BG.evening],
-    narration: '車が一人で起こす単独事故で、死亡率が{w1.r}倍になる年代を知っていますか？警察庁のデータでは、車同士の事故の致死率は{ref.rate}%。単独事故は{w3.say}でも{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、約{w1.r}倍です。年を重ねると体が衝撃に弱くなるといわれます。車を運転する祖父母に送ってください。',
+    narration: '車が一人で起こす単独事故で、働く世代の{w1w3.r}倍死にやすい年代を知っていますか？警察庁のデータでは、車同士の事故は{ref.rate}%。単独事故は{w3.say}でも{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、{w3.say}の約{w1w3.r}倍です。体が衝撃に弱くなるといわれます。車を運転する祖父母に送ってください。',
     caption: {
-      hook: '車が一人で起こす単独事故で、死亡率が「{w1.r}倍」になる年代があります🚗💥',
+      hook: '車の単独事故で、働く世代の「{w1w3.r}倍」死にやすい年代があります🚗💥',
       panel: '車（四輪）の単独事故（運転者の年代別）と、四輪どうしの事故の致死率',
       refShort: '{ref.label}',
-      explain: '車の単独事故は、どの年代でも車同士の事故よりはるかに高く、年代が上がるほど高くなります。{w1.label}は{w1.n}件のうち{w1.f}件が死亡事故でした。年を重ねると体が衝撃に弱くなるといわれます。運転を続けるかどうか、家族で話し合うきっかけにしてください。\n※年齢は事故の第一当事者（過失が重い側）の運転者のものです。四輪の車の事故だけを数えています。',
+      explain: '車の単独事故は、どの年代でも車同士の事故（{ref.rate}%）よりはるかに高く、年代が上がるほど高くなります。{w1.label}は{w1.n}件のうち{w1.f}件が死亡事故で、{w3.label}の約{w1w3.r}倍でした。年を重ねると体が衝撃に弱くなるといわれます。運転を続けるかどうか、家族で話し合うきっかけにしてください。\n※年齢は事故の第一当事者（過失が重い側）の運転者のものです。四輪の車の事故だけを数えています。',
       share: '車を運転する祖父母や親へ【保存＆シェア】してください👴👵',
       tags: `${TAG_HEAD} #高齢ドライバー #単独事故 #免許返納 #交通安全 #データ解説 #豆知識 #家族`,
     },
-    mdSubtitle: '車の単独事故は「{w1.label}」が{ref.label}の{w1.r}倍死ぬ',
+    mdSubtitle: '車の単独事故は「{w1.label}」が{w3.label}の{w1w3.r}倍死ぬ',
   },
   {
     // 第1位は1.3倍（2倍未満）。8月・12月・11月の差ははっきりしない（8月と12月 p≈0.69）→ 12月との対比はやめ、差がわずかだと言う（レビューの指摘）。
@@ -163,7 +163,7 @@ export const EPISODES = [
     labels: {},
     spoilers: ['8月', '夏', 'SUMMER', 'お盆'],
     slug: 'month-death-rate', badge: 'MONTH // {w1.r}X', caseTitle: '季節と月の罠',
-    hookLine1: '一番安全な月より', hookHighlight: '{w1.r}倍死ぬ月', hookLine2: '何月だと思う？',
+    hookLine1: '死亡率が一番低い月より', hookHighlight: '{w1.r}倍死ぬ月', hookLine2: '何月だと思う？',
     panelTitle: '月別 致死率',
     reasonLeft: { title: '☔ {ref.label}（{ref.rate}%）', body: '一年でいちばん低い' },
     reasonRight: { title: '☀️ {w1.label}（{w1.rate}%）', body: '{w2.label}・{w3.label}とほぼ同じ' },
@@ -234,19 +234,19 @@ export const EPISODES = [
   },
   {
     // 運転者（当事者Aが四輪）に絞り、時間帯にまとめた（1時間ずつだと7時台に自転車・歩行者が入り、3時台などが死亡10件未満で外れる・レビューの指摘）。
-    // 参考はいちばん低い昼10〜15時
+    // 参考は昼間（7〜18時をまとめた。3回目のレビュー）
     id: '12', cand: 'D12',
     hideUntilReveal: ['深夜', '0〜3'], // 問いの答えそのもの。第1位を言う前の声と、先に伸びる柱に出さない
     expectWorst: ['深夜0〜3時', '明け方4〜6時', '夜19〜23時'],
     labels: {
-      '昼10〜15時': { label: '昼10〜15時', say: '昼間' }, '深夜0〜3時': { label: '深夜0〜3時', say: '深夜' },
+      '昼間7〜18時': { label: '昼間7〜18時', say: '昼間' }, '深夜0〜3時': { label: '深夜0〜3時', say: '深夜' },
       '明け方4〜6時': { label: '明け方4〜6時', say: '明け方' }, '夜19〜23時': { label: '夜19〜23時', say: '夜' },
     },
     spoilers: ['深夜', '0〜3', 'MIDNIGHT'],
     slug: 'young-driver-hour-{w1.rs}x', badge: 'YOUNG DRIVER // {w1.r}X', caseTitle: '若者の魔の時間',
     hookLine1: '{def.age}のドライバー', hookHighlight: '{w1.r}倍死ぬ時間帯', hookLine2: '何時ごろだと思う？',
     panelTitle: '若い運転者の事故・時間帯別 致死率',
-    reasonLeft: { title: '☀️ {ref.label}（{ref.rate}%）', body: '明るく 道も混んでいる' },
+    reasonLeft: { title: '☀️ {ref.label}（{ref.rate}%）', body: '明るく 見通しがよい' },
     reasonRight: { title: '🌙 {w1.label}（{w1.rate}%）', body: '空いた夜道で速度が出やすい' },
     ctaTitle: '夜のドライブこそ制限速度を',
     bgs: [BG.am1, BG.evening, BG.city],
@@ -387,7 +387,7 @@ export const EPISODES = [
       hook: 'AT乗用車と比べて「{w1.r}倍」死にやすい車があります。MT乗用車ではありません🚚⚠️',
       panel: '事故の第一当事者の車（四輪）・AT/MT と乗用車/貨物車の別 致死率',
       refShort: '{ref.label}',
-      explain: 'MT車が危ないというより、MTのトラックが高くなっています。大きさをそろえて比べても、軽トラックや中型トラックなど多くの大きさでMTのほうが高く、理由はこのデータだけでは分かりません。トラックを運転するときは、速度を控えめにしましょう。\n※AT/MT は事故の第一当事者（過失が重い側）の車のものです。',
+      explain: 'MTの乗用車も{ref.label}の約{w3.r}倍ですが、いちばん高いのはMTのトラックです。トラックの大きさをそろえて比べても、軽トラックや中型トラックなど多くの大きさでMTのほうが高く、理由はこのデータだけでは分かりません。トラックを運転するときは、速度を控えめにしましょう。\n※AT/MT は事故の第一当事者（過失が重い側）の車のものです。',
       share: 'トラックや仕事の車を運転する家族へ【保存＆シェア】してください🚚',
       tags: `${TAG_HEAD} #AT車 #MT車 #トラック #交通安全 #データ解説 #豆知識 #安全運転`,
     },
