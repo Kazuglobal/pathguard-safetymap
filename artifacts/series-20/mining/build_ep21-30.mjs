@@ -125,7 +125,7 @@ function buildEpisode(content, f) {
 }
 
 /** 決めごと（指示書 §1・§3）の検査。違反はまとめて返す。 */
-function lint(ep, f) {
+function lint(ep, f, spoilers = []) {
   const errs = [];
   const len = ep.narration.length;
   if (len < NARRATION_CHARS[0] || len > NARRATION_CHARS[1]) errs.push(`narration ${len}字（${NARRATION_CHARS.join('〜')}字）`);
@@ -133,9 +133,15 @@ function lint(ep, f) {
   const r1 = fmtRatio(f.w1.ratio);
   if (!hook.includes(`${r1}倍`)) errs.push(`フックに倍率「${r1}倍」がない`);
   const core = f.w1.label.replace(/（.*）/, '');
-  if (hook.includes(core)) errs.push(`フックに第1位「${core}」が出ている`);
   const first = ep.narration.split('？')[0];
-  if (!ep.narration.includes('？') || first.includes(core)) errs.push('最初の文が問いでない／第1位を明かしている');
+  if (!ep.narration.includes('？')) errs.push('最初の文が問いでない');
+  // 第1位を明かす前に画面に出る文字（HUD の caseTitle は0秒から、badge と panelTitle は参考の柱から）と最初の問い
+  const early = { caseTitle: ep.caseTitle, badge: ep.badge, hook, panelTitle: ep.panelTitle, 最初の問い: first };
+  for (const word of [core, ...spoilers]) {
+    for (const [where, text] of Object.entries(early)) {
+      if (text.toUpperCase().includes(word.toUpperCase())) errs.push(`${where}に答え「${word}」が出ている`);
+    }
+  }
   if (!first.includes(`${r1}倍`) && !first.includes(`${Math.floor(f.w1.ratio)}倍`)) errs.push('最初の文に倍率がない');
   const sentences = ep.narration.split('。').filter(Boolean);
   if (!/送ってください$/.test(sentences.at(-1))) errs.push('最後の文が「誰に送るか」でない');
@@ -233,7 +239,8 @@ for (const { content, cand } of chosen) {
   if (!isDeepStrictEqual(gotWorst, content.expectWorst)) throw new Error(`EP${content.id}: ワースト3が原稿の前提と違う: ${gotWorst.join(' / ')}`);
   const f = factsFor(content, result);
   const ep = buildEpisode(content, f);
-  const errs = lint(ep, f);
+  if (!Array.isArray(content.spoilers) || content.spoilers.length === 0) throw new Error(`EP${content.id}: spoilers（伏せる語）がない`);
+  const errs = lint(ep, f, content.spoilers);
   if (errs.length) problems.push(`EP${content.id}: ${errs.join(' / ')}`);
   console.log(`EP${ep.id} ${ep.caseTitle}: narration ${ep.narration.length}字 / 第1位 ${f.w1.label} ${fmtRate(f.w1.rate)}%（${fmtRatio(f.w1.ratio)}倍）`);
   eps.push(ep);

@@ -45,6 +45,11 @@ function bicycleVsMotor(row) {
   if (isBicycle(b) && MOTOR.has(a)) return ['B', 'A'];
   return null;
 }
+// 自転車と四輪（「車」）の事故なら [自転車の側, 車の側]。原稿で「車とぶつかった」と言う候補はこちらで数える
+function bicycleVsCar(row) {
+  const side = bicycleVsMotor(row);
+  return side && isFourWheel(row[`当事者種別（当事者${side[1]}）`]) ? side : null;
+}
 const AGE = { '01': '0〜24歳', 25: '25〜34歳', 35: '35〜44歳', 45: '45〜54歳', 55: '55〜64歳', 65: '65〜74歳', 75: '75歳以上' };
 
 const SPEED = {
@@ -96,8 +101,9 @@ function collisionPair(row) {
 function routeType(row) {
   const u = Math.floor(Number(row['路線コード']) / 10);
   if (u >= 1 && u <= 999) return '国道';
-  if (u >= 1000 && u <= 2999) return '都道府県道（主要地方道を含む）';
-  if (u >= 3000 && u <= 3999) return '市町村道';
+  // コード表: 1000〜1499 主要地方道－都道府県道 / 1500〜1999 主要地方道－市道 / 2000〜2999 一般都道府県道 / 3000〜3999 一般市町村道
+  if ((u >= 1000 && u <= 1499) || (u >= 2000 && u <= 2999)) return '都道府県道';
+  if ((u >= 1500 && u <= 1999) || (u >= 3000 && u <= 3999)) return '市町村道';
   if (u >= 4000 && u <= 5999) return '高速道路・自動車専用道';
   if (u >= 7000 && u <= 8499) return '農道・林道';
   if (u >= 9000 && u <= 9499) return '私道';
@@ -235,27 +241,31 @@ export const CANDIDATES = [
     caution: '交差点の幅員は EP11 で使用済み',
   },
   {
-    id: 'C22', title: 'はねられた歩行者の年齢', column: '年齢（歩行者の側）', subject: '人対車両',
+    id: 'C22', title: '車にはねられた歩行者の年齢', column: '年齢（歩行者の側）', subject: '人対車両（相手が四輪）',
     ref: '0〜24歳',
     categorize: (r) => {
       if (r['事故類型'] !== '01') return null;
-      const side = r['当事者種別（当事者A）'] === '61' ? 'A' : r['当事者種別（当事者B）'] === '61' ? 'B' : null;
+      const a = r['当事者種別（当事者A）'];
+      const b = r['当事者種別（当事者B）'];
+      // 「車にはねられた」と言うので、相手が四輪の事故だけ（自転車・バイク・相手不明は数えない）
+      const side = a === '61' && isFourWheel(b) ? 'A' : b === '61' && isFourWheel(a) ? 'B' : null;
       return side ? AGE[r[`年齢（当事者${side}）`]] ?? null : null;
     },
     caution: '年齢は EP08・EP19 で使用済み（どちらも運転する側）。歩行者の側の年齢は新しい。0〜24歳に子どもを含むが「子ども」とは言えない',
   },
   {
-    id: 'C23', title: '車とぶつかった自転車の人の年齢', column: '年齢（自転車の側）', subject: '自転車と車・バイクの事故',
+    id: 'C23', title: '車とぶつかった自転車の人の年齢', column: '年齢（自転車の側）', subject: '自転車と四輪の事故',
     ref: '0〜24歳',
     categorize: (r) => {
-      const side = bicycleVsMotor(r);
+      const side = bicycleVsCar(r);
       return side ? AGE[r[`年齢（当事者${side[0]}）`]] ?? null : null;
     },
     caution: '年齢は EP08・EP19 で使用済み（運転する側）。0〜24歳に子どもを含むが「子ども」とは言えない',
   },
   {
-    id: 'C24', title: '自転車がはねられた道の制限速度', column: '速度規制（指定のみ）', subject: '自転車と車・バイクの事故（車の側の規制）',
-    ref: '30km/h', categorize: (r) => (bicycleVsMotor(r) ? vehicleSpeed(r) : null),
+    id: 'C24', title: '自転車がはねられた道の制限速度', column: '速度規制（指定のみ）', subject: '自転車と四輪の事故（車の側の規制）',
+    ref: '30km/h', categorize: (r) => (bicycleVsCar(r) ? vehicleSpeed(r) : null),
+    caution: '60km/h の道は 50km/h・40km/h より低いが死亡10件未満で並ばない。「速い道ほど危ない」とは言えない',
   },
   {
     id: 'C25', title: '歩行者×市街地の外×昼夜', column: '地形×昼夜', subject: '人対車両',
@@ -290,22 +300,36 @@ export const CANDIDATES = [
   {
     id: 'C29', title: 'バイクと車の事故、ぶつかる向き', column: '車両の衝突部位（A・B）', subject: 'バイク・原付と四輪の事故',
     ref: 'バイクが車に追突（バイクの前×車の後ろ）', notRanked: ['（その他の組み合わせ）'],
-    categorize: (r) => {
-      if (r['事故類型'] !== '21') return null;
-      const twoWheel = (c) => ['31', '32', '33', '34', '35', '36'].includes(c);
-      const a = r['当事者種別（当事者A）'];
-      const b = r['当事者種別（当事者B）'];
-      let bikePart; let carPart;
-      if (twoWheel(a) && isFourWheel(b)) { bikePart = r['車両の衝突部位（当事者A）'][0]; carPart = r['車両の衝突部位（当事者B）'][0]; }
-      else if (twoWheel(b) && isFourWheel(a)) { bikePart = r['車両の衝突部位（当事者B）'][0]; carPart = r['車両の衝突部位（当事者A）'][0]; }
-      else return null;
-      const bp = { 1: '前', 2: '横', 4: '横', 3: '後ろ' }[bikePart];
-      const cp = PART[carPart];
-      const names = {
-        '前|前': '正面衝突（バイクの前×車の前）', '前|横': 'バイクが車の横に突っ込む', '前|斜め前': 'バイクが車の斜め前に突っ込む',
-        '前|後ろ': 'バイクが車に追突（バイクの前×車の後ろ）', '横|前': '車がバイクの横に突っ込む', '後ろ|前': '車がバイクに追突',
-      };
-      return names[`${bp}|${cp}`] ?? '（その他の組み合わせ）';
-    },
+    categorize: bikeCarDirection,
+    caution: '「前どうし」の7割は交差点内の衝突（右折車とのぶつかりを含むと思われる）。警察庁の「正面衝突」とは呼べない。第1位と第2・3位の差ははっきりしない',
+  },
+  {
+    id: 'C30', title: 'バイクと車の事故、ぶつかる向き（交差点の中を除く）', column: '車両の衝突部位（A・B）×衝突地点', subject: 'バイク・原付と四輪の事故（衝突地点が単路・交差点付近）',
+    ref: 'バイクが車に追突（バイクの前×車の後ろ）', notRanked: ['（その他の組み合わせ）'],
+    categorize: (r) => (r['衝突地点'] === '01' ? bikeCarDirection(r) : null),
+  },
+  {
+    id: 'C31', title: '車同士の事故、ぶつかる向き（交差点の中を除く）', column: '車両の衝突部位（A・B）×衝突地点', subject: '四輪どうしの車両相互事故（衝突地点が単路・交差点付近）',
+    ref: '追突（前と後ろ）', notRanked: ['（その他の組み合わせ）'],
+    categorize: (r) => (r['衝突地点'] === '01' ? collisionPair(r) : null),
   },
 ];
+
+/** バイク・原付と四輪の事故を、両方の1次衝突点の組み合わせで分ける。 */
+function bikeCarDirection(r) {
+  if (r['事故類型'] !== '21') return null;
+  const twoWheel = (c) => ['31', '32', '33', '34', '35', '36'].includes(c);
+  const a = r['当事者種別（当事者A）'];
+  const b = r['当事者種別（当事者B）'];
+  let bikePart; let carPart;
+  if (twoWheel(a) && isFourWheel(b)) { bikePart = r['車両の衝突部位（当事者A）'][0]; carPart = r['車両の衝突部位（当事者B）'][0]; }
+  else if (twoWheel(b) && isFourWheel(a)) { bikePart = r['車両の衝突部位（当事者B）'][0]; carPart = r['車両の衝突部位（当事者A）'][0]; }
+  else return null;
+  const bp = { 1: '前', 2: '横', 4: '横', 3: '後ろ' }[bikePart];
+  const cp = PART[carPart];
+  const names = {
+    '前|前': '前どうし（バイクの前×車の前）', '前|横': 'バイクが車の横に突っ込む', '前|斜め前': 'バイクが車の斜め前に突っ込む',
+    '前|後ろ': 'バイクが車に追突（バイクの前×車の後ろ）', '横|前': '車がバイクの横に突っ込む', '後ろ|前': '車がバイクに追突',
+  };
+  return names[`${bp}|${cp}`] ?? '（その他の組み合わせ）';
+}

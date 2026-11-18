@@ -10,7 +10,8 @@ import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const SAFE = { top: 220, bottom: 1920 - 380, right: 1080 - 120, left: 0 }
-const TIMES = [3, 6, 12, 17, 21.5, 23, 27, 32, 35]
+const TIMES = [3, 6, 12, 17, 21.5, 23, 23.8, 24.2, 27, 32, 35]
+const TITLES = ['#hud', '#badge', '#panelTitle']
 const MAIN = ['#hud', '#badge', '#panelTitle', '#hook .l1', '#hook .hi', '#hook .l2', '#ratio .pre', '#ratio .num', '#cardL', '#cardR', '#cta', '#source']
 const BAR = ['.bar-label', '.bar-name']
 
@@ -65,6 +66,31 @@ function measure([selectors, safe]) {
   return out
 }
 
+// ページの中で動かす: 見えている柱の数字が、見えている見出し類（HUD・バッジ・パネル見出し）と重なっていないか
+function overlaps(titles) {
+  const opacityOf = (el) => { let o = 1; for (let n = el; n && n.nodeType === 1; n = n.parentElement) o *= Number(getComputedStyle(n).opacity); return o }
+  const textRect = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect() }
+  const visible = (el) => el.textContent.trim() && opacityOf(el) >= 0.3
+  const heads = titles.flatMap((s) => [...document.querySelectorAll(s)]).filter(visible).map((el) => ({ el, r: textRect(el) }))
+  const out = []
+  const hit = (a, r) => a.left < r.right && r.left < a.right && a.top < r.bottom && r.top < a.bottom
+  for (const label of document.querySelectorAll('.bar-label')) {
+    if (!visible(label)) continue
+    const a = label.getBoundingClientRect()
+    for (const { el, r } of heads) {
+      if (hit(a, r)) out.push({ text: label.textContent.trim().slice(0, 12), head: `#${el.id || el.className}` })
+    }
+  }
+  // 柱の名前どうし（文字そのものの範囲）
+  const names = [...document.querySelectorAll('.bar-name')].filter(visible).map((el) => ({ el, r: textRect(el) }))
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      if (hit(names[i].r, names[j].r)) out.push({ text: names[i].el.textContent.trim().slice(0, 12), head: `柱の名前「${names[j].el.textContent.trim().slice(0, 12)}」` })
+    }
+  }
+  return out
+}
+
 let mainViolations = 0
 try {
   for (const id of ids) {
@@ -77,6 +103,7 @@ try {
       await page.evaluate((tt) => window.renderAt(tt), t)
       for (const v of await page.evaluate(measure, [MAIN, SAFE])) { mainViolations++; lines.push(`  t=${t} ${v.sel}「${v.text}」 ${v.bad}`) }
       for (const v of await page.evaluate(measure, [BAR, SAFE])) lines.push(`  t=${t} （柱）${v.sel}「${v.text}」 ${v.bad}`)
+      for (const v of await page.evaluate(overlaps, TITLES)) { mainViolations++; lines.push(`  t=${t} 柱の文字「${v.text}」が ${v.head} と重なる`) }
     }
     console.log(`EP${id}: ${lines.length ? `\n${lines.join('\n')}` : 'OK'}`)
     await page.close()

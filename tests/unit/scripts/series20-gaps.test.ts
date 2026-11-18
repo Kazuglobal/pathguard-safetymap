@@ -88,5 +88,19 @@ describe("candidates の分類", () => {
     expect(c14.categorize(row({ 路線コード: "30010" }))).toBe("市町村道")
     expect(c14.categorize(row({ 路線コード: "00010" }))).toBe("国道")
     expect(c14.categorize(row({ 路線コード: "40010" }))).toBe("高速道路・自動車専用道")
+    // 1500〜1999 は「主要地方道－市道」なので市町村道に入れる
+    expect(c14.categorize(row({ 路線コード: "15010" }))).toBe("市町村道")
+    expect(c14.categorize(row({ 路線コード: "10010" }))).toBe("都道府県道")
+  })
+
+  it("「車にはねられた歩行者」は相手が四輪の事故だけを数える", () => {
+    const c22 = candidate("C22")
+    const ped = { 事故類型: "01", "当事者種別（当事者B）": "61", "年齢（当事者B）": "75" }
+    expect(c22.categorize(row({ ...ped, "当事者種別（当事者A）": "03" }))).toBe("75歳以上")
+    expect(c22.categorize(row({ ...ped, "当事者種別（当事者A）": "51" }))).toBeNull() // 自転車
+    expect(c22.categorize(row({ ...ped, "当事者種別（当事者A）": "35" }))).toBeNull() // バイク
+    expect(
+      c22.categorize(row({ 事故類型: "01", "当事者種別（当事者A）": "61", "当事者種別（当事者B）": "00", "年齢（当事者A）": "75" })),
+    ).toBeNull() // 相手不明
   })
 })

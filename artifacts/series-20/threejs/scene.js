@@ -296,43 +296,61 @@ function barTop(i, b) { return bars[i].height * growth(i, b) }
 
 // 第2位・第3位が第1位に近い回は柱が高く、数字のラベルが見出しや上のUIにかかる。
 // その場面だけ、ラベルの付け根が画面の上から約540pxより下に来るまでカメラを後ろへ引く（収まる回は元の位置のまま）。
+// baseIdxs を渡した場面では、柱の名前の付け根も上から1365pxより上（4行の名前でも下380pxに入らない）に収める。
+// barMax を超えて「突き抜ける」演出の柱（EP01 の列車など）は上の条件から外す。
+// 引くほど柱の間隔が詰まって名前どうしが重なるので、baseIdxs のある場面では注視点の高さも動かし、引く量が最小の組を選ぶ。
 const LABEL_LIMIT_NDC = 0.43
+const NAME_LIMIT_NDC = 1 - (2 * 1365) / H
+const MAX_PULL = 4
 const fitCam = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
 const fitVec = new THREE.Vector3()
 const fitCache = new Map()
-function framed(key, pos, tgt, idxs) {
-  if (fitCache.has(key)) return fitCache.get(key)
-  const at = (k) => tgt.clone().add(pos.clone().sub(tgt).multiplyScalar(k))
-  const highest = (k) => {
-    fitCam.position.copy(at(k))
+const pulledBack = (pos, tgt, k) => tgt.clone().add(pos.clone().sub(tgt).multiplyScalar(k))
+/** その注視点で、条件を満たす最小の引き量（1 なら元の位置のまま）。満たせなければ MAX_PULL。 */
+function minimalPull(pos, tgt, tops, baseIdxs) {
+  const fits = (k) => {
+    fitCam.position.copy(pulledBack(pos, tgt, k))
     fitCam.lookAt(tgt)
     fitCam.updateMatrixWorld()
-    return Math.max(...idxs.map((i) => fitVec.set(BAR_X[i], bars[i].height + 0.12, 0).project(fitCam).y))
+    const top = Math.max(-Infinity, ...tops.map((i) => fitVec.set(BAR_X[i], bars[i].height + 0.12, 0).project(fitCam).y))
+    const low = Math.min(Infinity, ...baseIdxs.map((i) => fitVec.set(BAR_X[i], 0, 0.9).project(fitCam).y))
+    return top <= LABEL_LIMIT_NDC && low >= NAME_LIMIT_NDC
   }
-  let k = 1
-  if (highest(1) > LABEL_LIMIT_NDC) {
-    let lo = 1; let hi = 4
-    for (let n = 0; n < 30; n++) { const mid = (lo + hi) / 2; if (highest(mid) > LABEL_LIMIT_NDC) lo = mid; else hi = mid }
-    k = hi
+  if (fits(1)) return 1
+  if (!fits(MAX_PULL)) return MAX_PULL
+  let lo = 1; let hi = MAX_PULL
+  for (let n = 0; n < 30; n++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid }
+  return hi
+}
+function framed(key, pos, tgt, idxs, baseIdxs = []) {
+  if (fitCache.has(key)) return fitCache.get(key)
+  const tops = idxs.filter((i) => bars[i].height <= H_MAX * 1.05)
+  let best = { k: minimalPull(pos, tgt, tops, baseIdxs), tgt: tgt.clone() }
+  if (baseIdxs.length && best.k > 1) {
+    for (let dy = -1.5; dy <= 1.5001; dy += 0.05) {
+      const t2 = tgt.clone(); t2.y += dy
+      const k = minimalPull(pos, t2, tops, baseIdxs)
+      if (k < best.k - 0.005) best = { k, tgt: t2 }
+    }
   }
-  const out = { pos: at(k), tgt: tgt.clone() }
+  const out = { pos: pulledBack(pos, best.tgt, best.k), tgt: best.tgt }
   fitCache.set(key, out)
   return out
 }
 // cameraAt が lerp で書き換えるので、毎回コピーを返す
-const framedKey = (key, pos, tgt, idxs) => ({
-  pos: () => framed(key, pos, tgt, idxs).pos.clone(),
-  tgt: () => framed(key, pos, tgt, idxs).tgt.clone(),
+const framedKey = (key, pos, tgt, idxs, baseIdxs) => ({
+  pos: () => framed(key, pos, tgt, idxs, baseIdxs).pos.clone(),
+  tgt: () => framed(key, pos, tgt, idxs, baseIdxs).tgt.clone(),
 })
 
 const camKeys = [
   { at: 0, dur: 0.01, pos: (b) => V(0, 0.9, 24 - 13 * easeOutCubic(clamp(b / HOOK_END))), tgt: () => V(0, 1.6, 0) },
-  { at: T.refStart, dur: 1.0, ...framedKey('ref', V(-2.6, 1.1, 8.0), V(-1.4, 0.9, 0), [0]) },
-  { at: T.r3Start, dur: 1.0, ...framedKey('r3', V(-0.6, 1.9, 9.6), V(-0.2, 1.4, 0), [0, 1]) },
-  { at: T.r2Start, dur: 1.0, ...framedKey('r2', V(1.0, 2.6, 12.2), V(0.2, 2.2, 0), [0, 1, 2]) },
+  { at: T.refStart, dur: 1.0, ...framedKey('ref', V(-2.6, 1.1, 8.0), V(-1.4, 0.9, 0), [0], [0]) },
+  { at: T.r3Start, dur: 1.0, ...framedKey('r3', V(-0.6, 1.9, 9.6), V(-0.2, 1.4, 0), [0, 1], [0, 1]) },
+  { at: T.r2Start, dur: 1.0, ...framedKey('r2', V(1.0, 2.6, 12.2), V(0.2, 2.2, 0), [0, 1, 2], [0, 1, 2]) },
   { at: T.r1Start, dur: 0.7, pos: () => V(2.9, 0.25, 6.4), tgt: (b) => V(BAR_X[3], Math.max(1.2, barTop(3, b) * 0.9), 0) },
-  // 注視点を少し下げ、柱の名前を下380px（Reels の UI）より上に収める
-  { at: IMPACT + 0.15, dur: 1.1, pos: () => V(0, 3.4, 13.0), tgt: () => V(0.2, 2.6, 0) },
+  // 全体の場面: 第1位の数字が見出しにかからず、柱の名前が下380px（Reels の UI）に入らないところまで引く
+  { at: IMPACT + 0.15, dur: 1.1, ...framedKey('impact', V(0, 3.4, 13.0), V(0.2, 3.0, 0), [0, 1, 2, 3], [0, 1, 2, 3]) },
   { at: T.reasons, dur: 1.2, pos: (b) => { const a = 0.35 - (b - T.reasons) * 0.08; return V(Math.sin(a) * 12, 4.2, Math.cos(a) * 12) }, tgt: () => V(0, 2.4, 0) },
   { at: T.cta, dur: 1.2, pos: (b) => V(0, 6.5 + (b - T.cta) * 0.2, 9.5 - (b - T.cta) * 0.3), tgt: () => V(0, 2.8, 0) },
 ]
