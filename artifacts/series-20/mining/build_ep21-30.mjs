@@ -7,6 +7,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { CANDIDATES } from './candidates.mjs';
 import { EPISODES } from './ep21-30_content.mjs';
 import { aggregate, assertDefinition, evaluate } from './gaps-lib.mjs';
+import { UNSPEAKABLE, sayOf } from './speech.mjs';
 
 const YEAR = 2023;
 const NARRATION_CHARS = [145, 165];
@@ -35,12 +36,16 @@ const fmtRatio = (x) => {
 const RATE_DECIMALS = 6; // 画面は JSON の rate どうしで倍率を割り算するので、丸めで倍率がずれない桁数で入れる
 const digitsOf = (s) => (s.match(/[0-9０-９]+/g) ?? []).join(',');
 
+// labels の値は表示名の文字列か { label, say }。say を省くと表示名から作る（speech.mjs の sayOf）
+const shownOf = (entry, raw) => (entry == null ? raw : typeof entry === 'string' ? entry : entry.label);
+
 function factsFor(content, result) {
-  const label = (raw) => content.labels[raw] ?? raw;
-  const pack = (row) => ({
-    rawLabel: row.label, label: label(row.label), n: row.n, fatal: row.fatal,
-    rate: row.rate, ratio: row.ratio,
-  });
+  const pack = (row) => {
+    const entry = content.labels[row.label];
+    const label = shownOf(entry, row.label);
+    const say = typeof entry === 'object' && entry.say ? entry.say : sayOf(label);
+    return { rawLabel: row.label, label, say, n: row.n, fatal: row.fatal, rate: row.rate, ratio: row.ratio };
+  };
   return { ref: pack(result.ref), w1: pack(result.worst[0]), w2: pack(result.worst[1]), w3: pack(result.worst[2]) };
 }
 
@@ -48,6 +53,7 @@ function placeholders(f) {
   const out = { year: String(YEAR) };
   for (const [role, v] of Object.entries(f)) {
     out[`${role}.label`] = v.label;
+    out[`${role}.say`] = v.say;
     out[`${role}.rate`] = fmtRate(v.rate);
     out[`${role}.n`] = v.n.toLocaleString('en-US');
     out[`${role}.f`] = v.fatal.toLocaleString('en-US');
@@ -94,8 +100,10 @@ function buildEpisode(content, f) {
   const v = placeholders(f);
   const where = `EP${content.id}`;
   const r = (t, k) => render(t, v, `${where}.${k}`);
-  for (const [raw, shown] of Object.entries(content.labels)) {
-    if (digitsOf(shown) && digitsOf(shown) !== digitsOf(raw)) throw new Error(`${where}: 表示名「${shown}」の数字が区分「${raw}」と違う`);
+  for (const [raw, entry] of Object.entries(content.labels)) {
+    for (const shown of [shownOf(entry, raw), typeof entry === 'object' ? entry.say : null].filter(Boolean)) {
+      if (digitsOf(shown) && digitsOf(shown) !== digitsOf(raw)) throw new Error(`${where}: 表示名・読み「${shown}」の数字が区分「${raw}」と違う`);
+    }
   }
   const ratioNote = (w) => `約${fmtRatio(w.ratio)}倍`;
   return {
@@ -146,6 +154,8 @@ function lint(ep, f, spoilers = []) {
   const sentences = ep.narration.split('。').filter(Boolean);
   if (!/送ってください$/.test(sentences.at(-1))) errs.push('最後の文が「誰に送るか」でない');
   if (/保存/.test(ep.narration)) errs.push('ナレーションに保存依頼がある');
+  // ナレーションは AI Studio の TTS で読むだけの文（画面には出ない）。読み違えやすい記号を残さない
+  for (const mark of UNSPEAKABLE) if (ep.narration.includes(mark)) errs.push(`ナレーションに読み上げにくい「${mark}」がある（{x.say} を使う）`);
   if (ep.bgs.length !== 3) errs.push('bgs が3つでない');
   ep.worst.forEach((w, i) => {
     const onScreen = fmtRatio(w.rate / ep.ref.rate);

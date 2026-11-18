@@ -57,7 +57,7 @@ export const EPISODES = [
     reasonRight: { title: '👴 {w1.label}（{w1.rate}%）', body: '骨がもろく重症になりやすい' },
     ctaTitle: '夜道は明るい服と反射材を',
     bgs: [BG.evening, BG.am1, BG.city],
-    narration: '車にはねられた時、死亡率が{w1.r}倍になる年齢を知っていますか？警察庁のデータでは、はねられた歩行者が{ref.label}なら致死率は{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして{w1.label}は{w1.rate}%、約{w1.r}倍です。同じ衝撃でも体へのダメージが大きくなるからです。歩いて買い物に出かける祖父母に送ってください。',
+    narration: '車にはねられた時、死亡率が{w1.r}倍になる年齢を知っていますか？警察庁のデータでは、はねられた歩行者が{ref.say}なら致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、約{w1.r}倍です。同じ衝撃でも体へのダメージが大きいからです。歩いて出かける祖父母に送ってください。',
     caption: {
       hook: '車にはねられた歩行者の年齢で、死亡率は「{w1.r}倍」も違います🚶⚠️',
       panel: '歩行者が車（四輪）にはねられた事故・年齢別 致死率',
@@ -80,7 +80,7 @@ export const EPISODES = [
     reasonRight: { title: '🚚 {w1.label}（{w1.rate}%）', body: '死角が広く 重さも桁違い' },
     ctaTitle: 'トラックの左側に並ばない',
     bgs: [BG.city, BG.evening, BG.sunny],
-    narration: '自転車で車とぶつかった時、相手によって死亡率が{w1.r}倍も変わるのを知っていますか？警察庁のデータでは、相手が{ref.label}なら致死率は{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして{w1.label}は{w1.rate}%、約{w1.r}倍です。死角が広く、重さも桁違いだからです。自転車で通学する家族に送ってください。',
+    narration: '自転車で車とぶつかった時、相手によって死亡率が{w1.r}倍も変わるのを知っていますか？警察庁のデータでは、相手が{ref.say}なら致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、約{w1.r}倍です。死角が広く、重さも桁違いだからです。自転車で通学する家族に送ってください。',
     caption: {
       hook: '自転車で車とぶつかった時、相手によって死亡率が「{w1.r}倍」も変わります🚲⚠️',
       panel: '自転車と車・バイクの事故・相手の車別 致死率',
@@ -106,7 +106,7 @@ export const EPISODES = [
     reasonRight: { title: '🌙 市街地の外の夜（{w1.rate}%）', body: '暗いうえに速度が出やすい' },
     ctaTitle: '郊外の夜はハイビームを',
     bgs: [BG.rural, BG.am1, BG.fog],
-    narration: '同じ事故でも、死亡率が{w1.r}倍に跳ね上がる場所と時間を知っていますか？警察庁のデータでは、人口が集まる街なかの昼の致死率は{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして第1位は{w1.label}で{w1.rate}%、約{w1.r}倍です。暗いうえに速度が出やすいからです。夜に郊外を車で走る家族に送ってください。',
+    narration: '同じ事故でも、死亡率が{w1.r}倍に跳ね上がる場所と時間を知っていますか？警察庁のデータでは、人口が集まる街なかの昼の致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして第1位は{w1.say}で{w1.rate}%、約{w1.r}倍です。暗いうえに速度が出やすいからです。夜に郊外を車で走る家族に送ってください。',
     caption: {
       hook: '同じ事故でも、死亡率が「{w1.r}倍」に跳ね上がる場所と時間があります🌙⚠️',
       panel: '地形（警察庁の区分）×昼夜別・致死率',
@@ -121,7 +121,10 @@ export const EPISODES = [
     // 60km/h の道は 50km/h より低い。「速い道ほど危ない」とは言わない（レビューの指摘）
     id: '25', cand: 'C02',
     expectWorst: ['50km/h', '40km/h', '60km/h'],
-    labels: { '30km/h': '30km/hの道', '50km/h': '50km/hの道', '40km/h': '40km/hの道', '60km/h': '60km/hの道' },
+    labels: {
+      '30km/h': { label: '30km/hの道', say: '制限速度30キロの道' }, '50km/h': { label: '50km/hの道', say: '50キロの道' },
+      '40km/h': { label: '40km/hの道', say: '40キロの道' }, '60km/h': { label: '60km/hの道', say: '60キロの道' },
+    },
     spoilers: ['50'],
     slug: 'pedestrian-speed-limit-{w1.rs}x', badge: 'SPEED LIMIT // {w1.r}X', caseTitle: '制限速度の罠',
     hookLine1: '歩行者がはねられた時', hookHighlight: '{w1.r}倍死ぬ道がある', hookLine2: 'その道とは？',
@@ -130,7 +133,7 @@ export const EPISODES = [
     reasonRight: { title: '⚡ {w1.label}（{w1.rate}%）', body: 'ぶつかる速度が上がりやすい' },
     ctaTitle: '広い道は横断歩道で渡る',
     bgs: [BG.city, BG.evening, BG.rain],
-    narration: '歩行者がはねられた時、道によって死亡率が{w1.r}倍違うのを知っていますか？警察庁のデータでは、制限速度{ref.label}の致死率は{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして{w1.label}は{w1.rate}%、約{w1.r}倍です。速くぶつかるほど命の危険は高まるといわれます。広い道を渡る家族に送ってください。',
+    narration: '歩行者がはねられた時、道によって死亡率が{w1.r}倍違うのを知っていますか？警察庁のデータでは、{ref.say}の致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、約{w1.r}倍です。速くぶつかるほど命の危険は高まるといわれます。広い道を渡る家族に送ってください。',
     caption: {
       hook: '歩行者がはねられた時、道によって死亡率が「{w1.r}倍」も違います🚶⚠️',
       panel: '歩行者事故・車やバイクの側の制限速度別 致死率',
@@ -154,7 +157,7 @@ export const EPISODES = [
     reasonRight: { title: '👴 {w1.label}（{w1.rate}%）', body: '転倒や衝撃で重症になりやすい' },
     ctaTitle: 'ヘルメットで頭を守る',
     bgs: [BG.sunny, BG.evening, BG.city],
-    narration: '自転車で車とぶつかった時、年齢で死亡率が{w1.r}倍も違うのを知っていますか？警察庁のデータでは、{ref.label}なら致死率は{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして{w1.label}は{w1.rate}%、約{w1.r}倍です。同じ事故でも体へのダメージが大きくなるからです。自転車で出かける祖父母に送ってください。',
+    narration: '自転車で車とぶつかった時、年齢で死亡率が{w1.r}倍も違うのを知っていますか？警察庁のデータでは、{ref.say}なら致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、約{w1.r}倍です。同じ事故でも体へのダメージが大きいからです。自転車で出かける祖父母に送ってください。',
     caption: {
       hook: '自転車で車とぶつかった時、乗っている人の年齢で死亡率が「{w1.r}倍」も違います🚲⚠️',
       panel: '自転車と車（四輪）の事故・自転車の人の年齢別 致死率',
@@ -177,7 +180,7 @@ export const EPISODES = [
     reasonRight: { title: '🌾 {w1.label}（{w1.rate}%）', body: '街灯やガードレールが少ない道も' },
     ctaTitle: '見通しの悪い道ほど減速',
     bgs: [BG.rural, BG.curve, BG.fog],
-    narration: 'いつもの市町村道より、{w1.r}倍も死にやすい道を知っていますか？警察庁のデータでは、市町村道の致死率は{ref.rate}%。{w3.label}は{w3.rate}%、高速道路と自動車専用道は{w2.rate}%。そして第1位は{w1.label}で{w1.rate}%、約{w1.r}倍です。件数は少ないものの、街灯やガードレールが少ない道もあります。田舎道を走る家族に送ってください。',
+    narration: 'いつもの市町村道より、{w1.r}倍も死にやすい道を知っていますか？警察庁のデータでは、市町村道の致死率は{ref.rate}%。{w3.say}は{w3.rate}%、高速道路と自動車専用道は{w2.rate}%。そして第1位は{w1.say}で{w1.rate}%、約{w1.r}倍です。件数は少ないものの、街灯やガードレールが少ない道もあります。田舎道を走る家族に送ってください。',
     caption: {
       hook: 'いつもの市町村道より「{w1.r}倍」死にやすい道があります🌾⚠️',
       panel: '道路の種類別・致死率',
@@ -200,7 +203,7 @@ export const EPISODES = [
     reasonRight: { title: '🚚 {w1.label}（{w1.rate}%）', body: '重いうえに 足元が見えにくい' },
     ctaTitle: 'トラックの死角に入らない',
     bgs: [BG.city, BG.evening, BG.am3],
-    narration: '歩行者がはねられた時、相手の車で死亡率が{w1.ri}倍以上違うのを知っていますか？警察庁のデータでは、{ref.label}にはねられた時の致死率は{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして{w1.label}は{w1.rate}%、約{w1.r}倍です。重いうえに、足元が見えにくいからです。トラックの通る道を歩く家族に送ってください。',
+    narration: '歩行者がはねられた時、相手の車で死亡率が{w1.ri}倍以上違うのを知っていますか？警察庁のデータでは、{ref.say}にはねられた時の致死率は{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%、約{w1.r}倍です。重いうえに、足元が見えにくいからです。トラックの通る道を歩く家族に送ってください。',
     caption: {
       hook: '歩行者がはねられた時、相手の車で死亡率が「{w1.r}倍」も違います🚚⚠️',
       panel: '歩行者事故・はねた車別 致死率',
@@ -243,7 +246,10 @@ export const EPISODES = [
     // 相手が四輪の事故だけ。60km/h の道は死亡10件未満で並ばず、40km/h・50km/h より低い。「速い道ほど危ない」とは言わない
     id: '30', cand: 'C24',
     expectWorst: ['50km/h', '40km/h', '標識の指定なし'],
-    labels: { '30km/h': '30km/hの道', '50km/h': '50km/hの道', '40km/h': '40km/hの道', 標識の指定なし: '速度標識のない道' },
+    labels: {
+      '30km/h': { label: '30km/hの道', say: '制限速度30キロの道' }, '50km/h': { label: '50km/hの道', say: '50キロの道' },
+      '40km/h': { label: '40km/hの道', say: '40キロの道' }, 標識の指定なし: '速度標識のない道',
+    },
     spoilers: ['50'],
     slug: 'bicycle-speed-limit-{w1.rs}x', badge: 'BICYCLE // SPEED {w1.r}X', caseTitle: '自転車と制限速度',
     hookLine1: '自転車で毎日走る道にも', hookHighlight: '{w1.r}倍危ない道', hookLine2: 'どんな道？',
@@ -252,7 +258,7 @@ export const EPISODES = [
     reasonRight: { title: '⚡ {w1.label}（{w1.rate}%）', body: '車の速度が高くなりやすい' },
     ctaTitle: '{w1.label}は特に慎重に',
     bgs: [BG.sunny, BG.city, BG.evening],
-    narration: '自転車で走る道、制限速度で死亡率が{w1.ri}倍以上違うのを知っていますか？警察庁のデータでは、車とぶつかった時の致死率は{ref.label}で{ref.rate}%。{w3.label}は{w3.rate}%、{w2.label}は{w2.rate}%。そして{w1.label}は{w1.rate}%で約{w1.r}倍。速くぶつかるほど、けがが重くなるといわれます。自転車で通う家族に送ってください。',
+    narration: '自転車で走る道、制限速度で死亡率が{w1.ri}倍以上違うのを知っていますか？警察庁のデータでは、車とぶつかった時の致死率は{ref.say}で{ref.rate}%。{w3.say}は{w3.rate}%、{w2.say}は{w2.rate}%。そして{w1.say}は{w1.rate}%で約{w1.r}倍。速くぶつかるほど、けがが重くなるといわれます。自転車で通う家族に送ってください。',
     caption: {
       hook: '自転車で車とぶつかった時、走っていた道の制限速度で死亡率が「{w1.r}倍」も違います🚲⚠️',
       panel: '自転車と車（四輪）の事故・車の側の制限速度別 致死率',

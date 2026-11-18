@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { RULES, evaluate, fisherTwoSided, rateOf } from "../../../artifacts/series-20/mining/gaps-lib.mjs"
 import { CANDIDATES } from "../../../artifacts/series-20/mining/candidates.mjs"
+import { UNSPEAKABLE, sayOf } from "../../../artifacts/series-20/mining/speech.mjs"
 
 type Counts = Map<string, { n: number; fatal: number }>
 const counts = (entries: Record<string, [number, number]>): Counts =>
@@ -17,6 +18,22 @@ describe("fisherTwoSided", () => {
 
   it("差がなければ 1 になる", () => {
     expect(fisherTwoSided(10, 1000, 10, 1000)).toBeCloseTo(1, 10)
+  })
+})
+
+describe("sayOf（読み上げ用の言い換え）", () => {
+  it("km/h・年齢の範囲・〜 を TTS が読みやすい言い方にする", () => {
+    expect(sayOf("30km/hの道")).toBe("時速30キロの道")
+    expect(sayOf("0〜24歳")).toBe("0歳から24歳")
+    expect(sayOf("65〜74歳")).toBe("65歳から74歳")
+    expect(sayOf("A〜B")).toBe("AからB")
+    expect(sayOf("75歳以上")).toBe("75歳以上")
+  })
+
+  it("言い換えた結果に読み上げにくい記号が残らない", () => {
+    for (const label of ["30km/hの道", "0〜24歳", "高速道路・専用道"]) {
+      for (const mark of UNSPEAKABLE) expect(sayOf(label)).not.toContain(mark)
+    }
   })
 })
 
