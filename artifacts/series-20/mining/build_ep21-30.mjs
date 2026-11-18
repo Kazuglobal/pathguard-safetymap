@@ -166,7 +166,7 @@ function buildEpisode(content, f) {
 }
 
 /** 決めごと（指示書 §1・§3）の検査。違反はまとめて返す。 */
-function lint(ep, f, spoilers, hookRatio) {
+function lint(ep, f, spoilers, hookRatio, hideUntilReveal) {
   const errs = [];
   const len = ep.narration.length;
   if (len < NARRATION_CHARS[0] || len > NARRATION_CHARS[1]) errs.push(`narration ${len}字（${NARRATION_CHARS.join('〜')}字）`);
@@ -184,6 +184,20 @@ function lint(ep, f, spoilers, hookRatio) {
     }
   }
   if (!first.includes(`${r1}倍`) && !first.includes(`${hookRatio.ri}倍`)) errs.push('最初の文に倍率がない');
+  // 第1位を言う節より前の声と、先に伸びる柱（参考・第3位・第2位）の名前にも、問いの答えそのものを出さない（EP08 で「単独事故」が第3位の文と柱に出ていた・レビューの指摘）。
+  // 答えの語は回ごとの hideUntilReveal（なければ第1位の名前）。第3位「深夜1時台」→第1位「深夜3時台」のように同じ仲間が先に出るのは、ランキングの形なので認める
+  const w1Text = `${fmtRate(f.w1.rate)}%`;
+  const at = ep.narration.indexOf(w1Text);
+  let revealStart = at;
+  while (revealStart > 0 && !'、。？'.includes(ep.narration[revealStart - 1])) revealStart--;
+  const beforeReveal = at >= 0 ? ep.narration.slice(0, revealStart) : '';
+  const barsBefore = { 参考の柱: f.ref.label, 第3位の柱: f.w3.label, 第2位の柱: f.w2.label };
+  for (const word of hideUntilReveal ?? [core]) {
+    if (beforeReveal.toUpperCase().includes(word.toUpperCase())) errs.push(`第1位を言う前の声に答え「${word}」が出ている`);
+    for (const [where, text] of Object.entries(barsBefore)) {
+      if (text.toUpperCase().includes(word.toUpperCase())) errs.push(`${where}（第1位より先に出る）に答え「${word}」が出ている`);
+    }
+  }
   // 第1位を明かす場面の大きな倍率は、声が言う「約○倍」と同じでなければならない（scene.js と同じ関数で選ぶ）
   const focus = focusRatio([ep.ref.rate, ep.worst[2].rate, ep.worst[1].rate, ep.worst[0].rate], ep.narration, hook);
   if (!focus.exact) errs.push(`第1位を言う文の「約○倍」が、画面の柱の倍率（参考との比・順位どうしの比）のどれとも同じでない（画面には約${focus.ratio}倍が出る）`);
@@ -323,7 +337,7 @@ for (const { content, cand } of chosen) {
   const f = factsFor(content, result);
   const ep = buildEpisode(content, f);
   if (!Array.isArray(content.spoilers) || content.spoilers.length === 0) throw new Error(`EP${content.id}: spoilers（伏せる語）がない`);
-  const errs = lint(ep, f, content.spoilers, hookRatioOf(content, placeholders(f, content.defs)));
+  const errs = lint(ep, f, content.spoilers, hookRatioOf(content, placeholders(f, content.defs)), content.hideUntilReveal);
   if (errs.length) problems.push(`EP${content.id}: ${errs.join(' / ')}`);
   console.log(`EP${ep.id} ${ep.caseTitle}: narration ${ep.narration.length}字 / 第1位 ${f.w1.label} ${fmtRate(f.w1.rate)}%（${fmtRatio(f.w1.ratio)}倍）`);
   eps.push(ep);

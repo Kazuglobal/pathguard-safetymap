@@ -356,13 +356,24 @@ describe("EP04〜20 の作り直しの区分（candidates_ep04-20.mjs）", () =>
   const cand = (id: string) => CANDIDATES_04_20.find((c: { id: string }) => c.id === id)!
   const row = (over: Record<string, string>) => ({ 事故類型: "21", "年齢（当事者A）": "75", ...over })
 
-  it("D08 は単独事故を年代別に、車同士は75歳以上だけを参考として数える", () => {
+  it("D08 は四輪の単独事故を年代別に、参考は全年代の四輪どうしの事故（自転車・二輪は数えない）", () => {
     const d08 = cand("D08")
-    expect(d08.categorize(row({ 事故類型: "41" }))).toBe("75歳以上・単独事故")
-    expect(d08.categorize(row({ 事故類型: "41", "年齢（当事者A）": "45" }))).toBe("25〜64歳・単独事故")
-    expect(d08.categorize(row({}))).toBe("75歳以上・車同士")
-    expect(d08.categorize(row({ "年齢（当事者A）": "45" }))).toBeNull()
-    expect(d08.categorize(row({ 事故類型: "01" }))).toBeNull()
+    const car = { "当事者種別（当事者A）": "03", "当事者種別（当事者B）": "04" }
+    expect(d08.categorize(row({ ...car, 事故類型: "41" }))).toBe("75歳以上・単独事故")
+    expect(d08.categorize(row({ ...car, 事故類型: "41", "年齢（当事者A）": "45" }))).toBe("25〜64歳・単独事故")
+    expect(d08.categorize(row({ ...car, "年齢（当事者A）": "45" }))).toBe("車同士（全年代）")
+    expect(d08.categorize(row({ ...car, "当事者種別（当事者B）": "51" }))).toBeNull() // 車と自転車
+    expect(d08.categorize(row({ ...car, 事故類型: "41", "当事者種別（当事者A）": "51" }))).toBeNull() // 自転車の単独事故
+    expect(d08.categorize(row({ ...car, 事故類型: "01" }))).toBeNull()
+  })
+
+  it("D05・D12 は時間帯にまとめる（1時間ずつだと死亡10件未満の高い時間が黙って外れる）、D12・D19 は四輪の運転者だけ", () => {
+    expect(cand("D05").categorize({ "当事者種別（当事者A）": "03", "当事者種別（当事者B）": "51", 発生日時_時: "4" })).toBe("明け方4〜6時")
+    expect(cand("D05").categorize({ "当事者種別（当事者A）": "03", "当事者種別（当事者B）": "51", 発生日時_時: "0" })).toBe("深夜0〜3時")
+    expect(cand("D12").categorize({ "年齢（当事者A）": "01", "当事者種別（当事者A）": "03", 発生日時_時: "12" })).toBe("昼10〜15時")
+    expect(cand("D12").categorize({ "年齢（当事者A）": "01", "当事者種別（当事者A）": "51", 発生日時_時: "12" })).toBeNull()
+    expect(cand("D19").categorize({ "年齢（当事者A）": "01", "当事者種別（当事者A）": "61" })).toBeNull()
+    expect(cand("D19").categorize({ "年齢（当事者A）": "75", "当事者種別（当事者A）": "04" })).toBe("75歳以上")
   })
 
   it("D15 は参考が凍結で、非舗装は並べない", () => {

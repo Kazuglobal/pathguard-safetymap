@@ -1,9 +1,12 @@
 // EP04〜20 を EP21〜30 と同じ作りで作り直すための区分の定義（2026-11-18 ユーザーの指示「4から20までもこの方で」）。
 // 題材は今の回のまま。コードは警察庁 codebook_2023.xlsx の原本で確認した（道路線形・中央分離帯施設等・オートマチック車・祝日・信号機）。
 // original は今の episodes.json の数字（数え直しで再現できるかの比較用。原稿には使わない）。
-import { isFourWheel } from './candidates.mjs';
+import { FOUR_WHEEL, isFourWheel } from './candidates.mjs';
 
 const hourLabel = (r) => `${Number(r['発生日時_時'])}時台`;
+// 時間帯（1時間ずつだと死亡10件未満の時間が並べられず、それより高い時間が黙って外れる → まとめる。レビューの指摘）
+const BAND = (h) => (h <= 3 ? '深夜0〜3時' : h <= 6 ? '明け方4〜6時' : h <= 9 ? '朝7〜9時' : h <= 15 ? '昼10〜15時' : h <= 18 ? '夕方16〜18時' : '夜19〜23時');
+const bandLabel = (r) => BAND(Number(r['発生日時_時']));
 const isBicycle = (c) => c === '51' || c === '52';
 const AGE = { '01': '0〜24歳', 25: '25〜34歳', 35: '35〜44歳', 45: '45〜54歳', 55: '55〜64歳', 65: '65〜74歳', 75: '75歳以上' };
 const WEEKDAY = { 1: '日曜日', 2: '月曜日', 3: '火曜日', 4: '水曜日', 5: '木曜日', 6: '金曜日', 7: '土曜日' };
@@ -52,8 +55,9 @@ export const CANDIDATES = [
     original: { ref: 0.63, w1: 13.45, w1Label: '深夜3時台' },
   },
   {
-    id: 'D05', title: '自転車×時刻（自転車が当事者のどちらか）', column: '発生時', subject: '自転車が当事者A・Bのどちらかの事故', ref: '8時台',
-    categorize: (r) => (isBicycle(r['当事者種別（当事者A）']) || isBicycle(r['当事者種別（当事者B）']) ? hourLabel(r) : null),
+    // 1時間ずつだと 4時台（4.23%）・2時台（3.70%）が死亡10件未満で外れ、第1位の0時台より高いのに黙って消える → 時間帯にまとめる（レビューの指摘）
+    id: 'D05', title: '自転車×時間帯（自転車が当事者のどちらか）', column: '発生時（時間帯）', subject: '自転車が当事者A・Bのどちらかの事故', ref: '朝7〜9時',
+    categorize: (r) => (isBicycle(r['当事者種別（当事者A）']) || isBicycle(r['当事者種別（当事者B）']) ? bandLabel(r) : null),
     original: { ref: 0.16, w1: 4.48, w1Label: '早朝4時台' },
   },
   {
@@ -68,14 +72,15 @@ export const CANDIDATES = [
     original: { ref: 0.50, w1: 10.53, w1Label: '大型バイク（751cc超）' },
   },
   {
-    // 75歳以上×事故類型だけだと並べられる区分が2つ（列車は件数不足）→ 車両単独を当事者Aの年代別に並べ、参考は75歳以上の車同士
-    id: 'D08', title: '単独事故×運転者の年代（参考は75歳以上の車同士）', column: '事故類型×年齢（当事者A）', subject: '車両単独事故と、75歳以上の車両相互事故', ref: '75歳以上・車同士',
+    // 当事者Aを四輪に絞る（絞らないと75歳以上の単独事故の59%が自転車・レビューの指摘）。車同士＝四輪どうしの車両相互。
+    // 第3位・第2位の柱に「単独事故」と出るので、問いは事故の形ではなく年代にする（参考は全年代の車同士＝答えの年代を出さない）
+    id: 'D08', title: '車（四輪）の単独事故×運転者の年代（参考は全年代の車同士）', column: '事故類型×年齢（当事者A・四輪）', subject: '当事者Aが四輪の単独事故と、四輪どうしの事故', ref: '車同士（全年代）',
     categorize: (r) => {
+      if (!isFourWheel(r['当事者種別（当事者A）'])) return null;
+      if (r['事故類型'] === '21') return isFourWheel(r['当事者種別（当事者B）']) ? '車同士（全年代）' : null;
+      if (r['事故類型'] !== '41') return null;
       const age = AGE_BAND[r['年齢（当事者A）']];
-      if (!age) return null;
-      if (r['事故類型'] === '41') return `${age}・単独事故`;
-      if (r['事故類型'] === '21' && age === '75歳以上') return '75歳以上・車同士';
-      return null;
+      return age ? `${age}・単独事故` : null;
     },
     original: { ref: 0.31, w1: 8.14, w1Label: '車両単独事故' },
   },
@@ -94,14 +99,16 @@ export const CANDIDATES = [
   },
   {
     id: 'D11', title: '交差点の道幅の組み合わせ', column: '車道幅員（交差点）', subject: '交差点の事故', ref: '狭い道×狭い道',
-    defs: { big: '13m以上', mid: '5.5m以上', small: '5.5m未満' }, // codebook の車道幅員（交差点）: 小＝5.5m未満・中＝5.5m以上・大＝13.0m以上
+    defs: { big: '13m以上', mid: '5.5m以上13m未満', small: '5.5m未満' }, // codebook の車道幅員（交差点）: 小＝5.5m未満・中＝5.5m以上・大＝13.0m以上
     categorize: (r) => CROSS_WIDTH[r['車道幅員']] ?? null,
     original: { ref: 0.25, w1: 1.34, w1Label: '大通り × 中通り' },
   },
   {
-    id: 'D12', title: '24歳以下の運転者（当事者A）×時刻', column: '発生時', subject: '当事者Aが0〜24歳の事故', ref: '7時台',
+    // 運転者（当事者Aが四輪）に絞る（絞らないと7時台に自転車・歩行者が入り倍率が大きく出る）。時間帯にまとめる（3時台などが死亡10件未満で外れるため）。
+    // 参考はいちばん低い昼10〜15時（レビューの指摘）
+    id: 'D12', title: '24歳以下の車の運転者（当事者A・四輪）×時間帯', column: '発生時（時間帯）', subject: '当事者Aが0〜24歳で四輪の事故', ref: '昼10〜15時',
     defs: { age: '24歳以下' }, // 年齢の区分は 0〜24歳（運転者なので実際は免許を取れる年齢から）
-    categorize: (r) => (r['年齢（当事者A）'] === '01' ? hourLabel(r) : null),
+    categorize: (r) => (r['年齢（当事者A）'] === '01' && isFourWheel(r['当事者種別（当事者A）']) ? bandLabel(r) : null),
     original: { ref: 0.13, w1: 3.66, w1Label: '深夜3時台' },
   },
   {
@@ -144,15 +151,17 @@ export const CANDIDATES = [
     },
   },
   {
-    id: 'D19', title: '当事者Aの年齢', column: '年齢（当事者A）', subject: '全事故', ref: '0〜24歳',
+    // 運転者（当事者Aが四輪）に絞る（絞らないと0〜24歳に自転車・歩行者が入る・レビューの指摘）。第1位は1.9倍（2倍未満）なので正直に言う
+    id: 'D19', title: '車の運転者（当事者A・四輪）の年齢', column: '年齢（当事者A・四輪）', subject: '当事者Aが四輪の事故', ref: '0〜24歳',
     defs: { young: '24歳以下' }, // 運転者なので 0〜24歳の区分は実際には免許を取れる年齢から
-    categorize: (r) => AGE[r['年齢（当事者A）']] ?? null,
+    rules: { minTopRatio: 1 }, rulesNote: '第1位が2倍未満（題材はユーザーの指定。倍率を正直に言う）',
+    categorize: (r) => (isFourWheel(r['当事者種別（当事者A）']) ? AGE[r['年齢（当事者A）']] ?? null : null),
     original: { ref: 0.63, w1: 1.28, w1Label: '75歳以上' },
   },
   {
-    // 踏切（第三種・第四種は50件未満でまとめても足りない）。第一種の踏切は122件と少ないので件数の条件を100件にする
+    // 踏切は第一種122件・第三種2件・第四種8件をまとめて132件。少ないので件数の条件を100件にする
     id: 'D20', title: '道路形状（踏切）', column: '道路形状', subject: '全事故', ref: '交差点',
-    rules: { minWorstN: 100 }, rulesNote: '踏切は122件と少ない（件数の条件を100件に。死亡10件の条件は満たす）',
+    rules: { minWorstN: 100 }, rulesNote: '踏切は132件と少ない（件数の条件を100件に。死亡10件の条件は満たす）',
     categorize: (r) => ROAD_SHAPE[r['道路形状']] ?? null,
     original: { ref: 0.85, w1: 65.08, w1Label: '列車との衝突（踏切等）' },
   },
