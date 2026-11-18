@@ -38,6 +38,29 @@ describe("timeline の区切り（レビューで見つかった失敗の再発�
     expect(marks.refStart).toBeCloseTo(5.72, 3)
   })
 
+  it("問いのあとに「〜ではありません。」がある回は、問いの絵をその文の終わりまで出す（EP25 の実際の無音）", () => {
+    const ep25 = (episodes as Array<{ id: string; narration: string; ref: { rate: number }; worst: { rate: number }[] }>).find(
+      (e) => e.id === "25",
+    )!
+    expect(ep25.narration).toContain("？60キロの道ではありません。")
+    const r25 = {
+      ref: rateText(ep25.ref.rate),
+      w1: rateText(ep25.worst[0].rate),
+      w2: rateText(ep25.worst[1].rate),
+      w3: rateText(ep25.worst[2].rate),
+    }
+    // 4.21〜4.86 =「？」の後（0.65秒・こちらの方が長い）、6.46〜6.99 =「ではありません。」の後、8.18〜8.61 =「警察庁のデータで、」の後
+    const silences = [
+      { start: 1.529, end: 1.91 },
+      { start: 4.211, end: 4.857 },
+      { start: 6.462, end: 6.986 },
+      { start: 8.177, end: 8.61 },
+    ]
+    const marks = computeMarks(ep25.narration, r25, 33.363, silences)
+    expect(marks.hookEnd).toBeCloseTo(6.462, 3)
+    expect(marks.refStart).toBeCloseTo(6.986, 3)
+  })
+
   it("0.1秒未満の間で割れた無音はつなぐ", () => {
     expect(mergeSilences([{ start: 5.13, end: 5.45 }, { start: 5.53, end: 5.95 }, { start: 8, end: 8.3 }])).toEqual([
       { start: 5.13, end: 5.95 },
@@ -227,6 +250,20 @@ describe("candidates の分類", () => {
     const vsMotorcycle = { ...bike, "当事者種別（当事者A）": "35" }
     expect(candidate("C23").categorize(row(vsMotorcycle))).toBeNull()
     expect(candidate("C24").categorize(row(vsMotorcycle))).toBeNull()
+  })
+
+  it("C32 は自転車の側の種別（52＝電動アシスト）と年齢で分け、相手が四輪の事故だけを数える", () => {
+    const c32 = candidate("C32")
+    const bike = { "当事者種別（当事者A）": "03", "当事者種別（当事者B）": "51", "年齢（当事者B）": "75" }
+    expect(c32.categorize(row(bike))).toBe("普通・75歳以上")
+    expect(c32.categorize(row({ ...bike, "当事者種別（当事者B）": "52" }))).toBe("電動アシスト・75歳以上")
+    // 自転車が当事者Aでも、年齢は自転車の側のもの
+    expect(
+      c32.categorize(row({ "当事者種別（当事者A）": "52", "年齢（当事者A）": "45", "当事者種別（当事者B）": "03", "年齢（当事者B）": "75" })),
+    ).toBe("電動アシスト・25〜64歳")
+    expect(c32.categorize(row({ ...bike, "年齢（当事者B）": "65" }))).toBe("普通・65〜74歳")
+    expect(c32.categorize(row({ ...bike, "当事者種別（当事者A）": "35" }))).toBeNull() // 相手がバイク
+    expect(c32.categorize(row({ ...bike, "年齢（当事者B）": "00" }))).toBeNull() // 年齢不明
   })
 
   it("「車にはねられた歩行者」は相手が四輪の事故だけを数える", () => {

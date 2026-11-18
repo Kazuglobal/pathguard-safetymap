@@ -226,10 +226,12 @@ async function load() {
   $('#cardR .t').textContent = ep.reasonRight.title
   $('#cardR .b').textContent = ep.reasonRight.body
   $('#cta').textContent = ep.ctaTitle
-  const top = bars[focusIndex()]
-  ratioBar = top
-  $('#ratio .pre').textContent = `${top.label}は 参考の`
-  $('#ratio .num').textContent = top.ratio ? `約${top.ratio}倍` : ''
+  const focus = focusRatio()
+  ratioBar = focus
+  const pre = $('#ratio .pre')
+  pre.textContent = `${focus.bar.label}は${focus.base.isRef ? ' 参考の' : ''}`
+  if (!focus.base.isRef) pre.append(document.createElement('br'), `${focus.base.label}の`) // 順位どうしの比は2行に
+  $('#ratio .num').textContent = focus.ratio ? `約${focus.ratio}倍` : ''
 
   const layer = $('#labels')
   labelEls = bars.map((b) => {
@@ -280,18 +282,30 @@ function fitWidth(el, maxWidth) {
 let hookChars = []
 let ratioBar = null
 
-/** 大きく見せる倍率の柱。フックに「○倍」があれば、倍率がそれに一番近い柱（±20%以内）。なければ第1位。 */
-function focusIndex() {
-  const m = /([0-9０-９]+(?:\.[0-9]+)?)倍/.exec(ep.hookHighlight + ep.hookLine1 + ep.hookLine2)
-  if (!m) return 3
-  const n = Number(m[1].replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)))
-  let best = 3; let diff = Infinity
-  bars.forEach((bar, i) => {
-    if (bar.isRef) return
-    const d = Math.abs(bar.rate / ep.ref.rate - n) / n
-    if (d < diff) { diff = d; best = i }
-  })
-  return diff <= 0.2 ? best : 3
+/**
+ * 大きく見せる倍率 { bar, base, ratio }（bar は base の ratio 倍）。
+ * フックの「○倍」が、順位どうしの比（例: 第1位は第2位の2.2倍＝EP26 の「同じ年齢なのに」）とちょうど同じならそれ。
+ * そうでなければ参考との比で、フックの倍率に一番近い柱（±20%以内）。フックに倍率がなければ第1位。
+ */
+function focusRatio(list = bars, hook = ep.hookHighlight + ep.hookLine1 + ep.hookLine2) {
+  const ref = list[0]
+  const top = { bar: list[3], base: ref, ratio: list[3].ratio }
+  const m = /([0-9０-９]+(?:\.[0-9]+)?)倍/.exec(hook)
+  if (!m) return top
+  const said = m[1].replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+  const n = Number(said)
+  if (!list.slice(1).some((bar) => bar.ratio === said)) {
+    for (const [i, j] of [[3, 2], [3, 1], [2, 1]]) {
+      const ratio = formatRatio(list[i].rate, list[j].rate)
+      if (ratio === said) return { bar: list[i], base: list[j], ratio }
+    }
+  }
+  let best = top; let diff = Infinity
+  for (const bar of list.slice(1)) {
+    const d = Math.abs(bar.rate / ref.rate - n) / n
+    if (d < diff) { diff = d; best = { bar, base: ref, ratio: bar.ratio } }
+  }
+  return diff <= 0.2 ? best : top
 }
 
 // ---------- カメラ ----------

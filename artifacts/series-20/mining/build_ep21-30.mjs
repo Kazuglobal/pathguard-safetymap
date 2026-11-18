@@ -63,7 +63,26 @@ function placeholders(f) {
       out[`${role}.rs`] = String(Math.round(v.ratio));
     }
   }
+  // 順位どうしの倍率 {w1w2.r} など（第1位は第2位の何倍か）。画面の致死率（小数2桁）で割っても同じ値になるときだけ使える
+  for (const [a, b] of PAIRS) {
+    const x = f[a].rate / f[b].rate;
+    const shown = Number(fmtRate(f[a].rate)) / Number(fmtRate(f[b].rate));
+    const ok = fmtRatio(x) === fmtRatio(shown);
+    out[`${a}${b}.r`] = ok ? fmtRatio(x) : UNUSABLE;
+    out[`${a}${b}.ri`] = ok ? String(Math.floor(x)) : UNUSABLE;
+    out[`${a}${b}.rs`] = ok ? String(Math.round(x)) : UNUSABLE;
+  }
   return out;
+}
+const PAIRS = [['w1', 'w2'], ['w1', 'w3'], ['w2', 'w3']];
+const UNUSABLE = Symbol('画面の数字で割ると倍率が変わる');
+
+/** フックと最初の問いに出す倍率（hookRatio: 'w1' は参考との比、'w1w2' などは順位どうしの比）。 */
+function hookRatioOf(content, v) {
+  const key = content.hookRatio ?? 'w1';
+  if (!/^w[1-3](w[1-3])?$/.test(key)) throw new Error(`EP${content.id}: hookRatio「${key}」が不正`);
+  if (v[`${key}.r`] === UNUSABLE) throw new Error(`EP${content.id}: hookRatio「${key}」は画面の致死率で割ると倍率が変わるので使えない`);
+  return { r: v[`${key}.r`], ri: v[`${key}.ri`] };
 }
 
 /** 手書きの数字がないか（第1位〜第3位だけは許す）を確かめてから差し込む。 */
@@ -72,6 +91,7 @@ function render(template, values, where) {
   if (/[0-9０-９]/.test(bare)) throw new Error(`${where}: 手書きの数字がある → 「${template}」`);
   return template.replace(/\{([a-z0-9]+(?:\.[a-z]+)?)\}/g, (_, key) => {
     if (!(key in values)) throw new Error(`${where}: 不明な差し込み {${key}}`);
+    if (values[key] === UNUSABLE) throw new Error(`${where}: {${key}} は画面の致死率で割ると倍率が変わるので使えない`);
     return values[key];
   });
 }
@@ -133,12 +153,12 @@ function buildEpisode(content, f) {
 }
 
 /** 決めごと（指示書 §1・§3）の検査。違反はまとめて返す。 */
-function lint(ep, f, spoilers = []) {
+function lint(ep, f, spoilers, hookRatio) {
   const errs = [];
   const len = ep.narration.length;
   if (len < NARRATION_CHARS[0] || len > NARRATION_CHARS[1]) errs.push(`narration ${len}字（${NARRATION_CHARS.join('〜')}字）`);
   const hook = ep.hookLine1 + ep.hookHighlight + ep.hookLine2;
-  const r1 = fmtRatio(f.w1.ratio);
+  const r1 = hookRatio.r;
   if (!hook.includes(`${r1}倍`)) errs.push(`フックに倍率「${r1}倍」がない`);
   const core = f.w1.label.replace(/（.*）/, '');
   const first = ep.narration.split('？')[0];
@@ -150,7 +170,7 @@ function lint(ep, f, spoilers = []) {
       if (text.toUpperCase().includes(word.toUpperCase())) errs.push(`${where}に答え「${word}」が出ている`);
     }
   }
-  if (!first.includes(`${r1}倍`) && !first.includes(`${Math.floor(f.w1.ratio)}倍`)) errs.push('最初の文に倍率がない');
+  if (!first.includes(`${r1}倍`) && !first.includes(`${hookRatio.ri}倍`)) errs.push('最初の文に倍率がない');
   const sentences = ep.narration.split('。').filter(Boolean);
   if (!/送ってください$/.test(sentences.at(-1))) errs.push('最後の文が「誰に送るか」でない');
   if (/保存/.test(ep.narration)) errs.push('ナレーションに保存依頼がある');
@@ -250,7 +270,7 @@ for (const { content, cand } of chosen) {
   const f = factsFor(content, result);
   const ep = buildEpisode(content, f);
   if (!Array.isArray(content.spoilers) || content.spoilers.length === 0) throw new Error(`EP${content.id}: spoilers（伏せる語）がない`);
-  const errs = lint(ep, f, content.spoilers);
+  const errs = lint(ep, f, content.spoilers, hookRatioOf(content, placeholders(f)));
   if (errs.length) problems.push(`EP${content.id}: ${errs.join(' / ')}`);
   console.log(`EP${ep.id} ${ep.caseTitle}: narration ${ep.narration.length}字 / 第1位 ${f.w1.label} ${fmtRate(f.w1.rate)}%（${fmtRatio(f.w1.ratio)}倍）`);
   eps.push(ep);

@@ -99,6 +99,9 @@ export function narrationBoundaries(narration, rates) {
     if (!rate || !text.includes(rate)) continue
     out[key] = at(back(posOf(rate), stops))
   }
+  // 問いのあとに「雨の夜ではありません。」のような文が続く回は、問いの絵（フックの文字に「〜ではない」がある）をその文の終わりまで出す。
+  // 問いの終わりで切ると、フックの「〜ではない」が声より先に消える（EP25 で 2.8秒早かった・2026-11-18）
+  if (out.hookEnd && out.refStart && out.refStart.f > out.hookEnd.f) out.hookEnd = { ...out.refStart, extended: true }
   if (rates.w1 && text.includes(rates.w1)) {
     const after = sentenceEnds.find((i) => i > posOf(rates.w1))
     if (after != null && after < chars.length) out.reasons = at(after)
@@ -146,7 +149,8 @@ export function computeMarks(narration, rates, duration, silences, window = 1.2)
   let hookSil = null
   if (b.hookEnd) {
     const est = b.hookEnd.f * duration
-    hookSil = longestNear(est, 1.8)
+    // 「〜ではありません。」まで伸ばした回は、問いの後の無音（そちらの方が長いことがある）を拾わないよう、文の始まりと同じ幅で探す
+    hookSil = longestNear(est, b.hookEnd.extended ? window : 1.8)
     marks.hookEnd = round(hookSil ? hookSil.start : est)
   }
   for (const key of ['refStart', 'r3Start', 'r2Start', 'r1Start', 'reasons', 'cta']) {
