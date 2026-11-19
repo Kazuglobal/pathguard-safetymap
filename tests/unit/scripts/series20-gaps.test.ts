@@ -64,6 +64,13 @@ describe("timeline の区切り（レビューで見つかった失敗の再発�
     expect(marks.refStart).toBeCloseTo(6.986, 3)
   })
 
+  it("第3位と第2位が同じ値でも、第2位の区切りは第2位の数字の節から（EP18: どちらも1.27%）", () => {
+    const narration = "ATの乗用車より、5.8倍も死にやすい車を知っていますか？警察庁のデータでは、ATの乗用車の致死率は0.59%。MTの乗用車は1.27%、ATのトラックは1.27%。そして第1位はMTのトラックで3.49%、約5.8倍です。"
+    const f = narrationFractions(narration, { ref: "0.59%", w3: "1.27%", w2: "1.27%", w1: "3.49%" })
+    expect(f.r2Start).toBeGreaterThan(f.r3Start!)
+    expect(f.r1Start).toBeGreaterThan(f.r2Start!)
+  })
+
   it("0.1秒未満の間で割れた無音はつなぐ", () => {
     expect(mergeSilences([{ start: 5.13, end: 5.45 }, { start: 5.53, end: 5.95 }, { start: 8, end: 8.3 }])).toEqual([
       { start: 5.13, end: 5.95 },

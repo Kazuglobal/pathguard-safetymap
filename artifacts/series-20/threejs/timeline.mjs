@@ -138,9 +138,15 @@ export function narrationBoundaries(narration, rates) {
   if (q >= 0 && q < chars.length - 1) out.hookEnd = at(q + 1)
   // 参考の柱は、その数字を含む文の始まり（「警察庁のデータでは…」から見出しと参考の柱を出す。節にすると数秒なにも出ない）
   // 第3位・第2位・第1位は、その数字を含む節の始まり（「◯◯は」と言い始める所で伸び始める）
+  // 数字は台本の順（参考→第3位→第2位→第1位）に、前の数字の後ろから探す。同じ値の柱が2本ある回で、
+  // 後の柱が先の柱の位置に重なって区切りが捨てられないように（EP18: 第3位・第2位がどちらも1.27%・2026-11-19）。後ろに無ければ先頭から探す
+  let from = 0
   for (const [key, rate, stops] of [['refStart', rates.ref, '。？'], ['r3Start', rates.w3, '、。？'], ['r2Start', rates.w2, '、。？'], ['r1Start', rates.w1, '、。？']]) {
     if (!rate || !text.includes(rate)) continue
-    out[key] = at(back(posOf(rate), stops))
+    let idx = text.indexOf(rate, from)
+    if (idx < 0) idx = text.indexOf(rate)
+    from = idx + rate.length
+    out[key] = at(back([...text.slice(0, idx)].length, stops))
   }
   // 問いのあとに「雨の夜ではありません。」のような文が続く回は、問いの絵（フックの文字に「〜ではない」がある）をその文の終わりまで出す。
   // 問いの終わりで切ると、フックの「〜ではない」が声より先に消える（EP25 で 2.8秒早かった・2026-11-18）
