@@ -59,7 +59,7 @@ export default function AccidentExplorer() {
   const regionLabel=prefecture ? [prefectures.find(a=>a.code===prefecture)?.name??'選択した都道府県',municipality ? cities.find(a=>a.code===municipality)?.name??'選択した市区町村' : 'すべての市区町村'].join(' / ') : '全国'
   return <main className="min-h-screen bg-paper text-ink px-4 py-6 sm:px-8">
     <div className="mx-auto max-w-6xl">
-      <header className="mb-2 flex items-center justify-between"><Link href="/" className="flex min-h-11 items-center gap-2 text-xl font-bold"><MapPin className="text-forest-strong"/>PathGuardian</Link><button className="min-h-11 px-3 text-forest-strong" aria-label="地図へ切り替え" onClick={()=>change({view:'map'})}><Map/></button></header>
+      <header className="mb-2 flex items-center justify-between"><Link href="/lp" className="flex min-h-11 items-center gap-2 text-xl font-bold"><MapPin className="text-forest-strong"/>PathGuardian</Link><button className="min-h-11 px-3 text-forest-strong" aria-label="地図へ切り替え" onClick={()=>change({view:'map'})}><Map/></button></header>
       <h1 className="text-2xl font-bold sm:text-3xl">あなたの街の事故を調べる</h1>
       <p className="mt-2 mb-4 leading-6">地域や移動の種類を選んで、<br className="sm:hidden"/>事故の多い場所を確認できます。</p>
       <section aria-label="検索条件" className="max-w-xl space-y-3">

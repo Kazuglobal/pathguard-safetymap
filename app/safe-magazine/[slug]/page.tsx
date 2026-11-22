@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
-import { SITE_URL as SEO_SITE_URL } from "@/lib/seo"
+import { SITE_URL as SEO_SITE_URL, jsonLdString } from "@/lib/seo"
 import { notFound } from "next/navigation"
-import Script from "next/script"
+
 import { getArticleBySlug } from "@/lib/safe-magazine"
 import {
   generateSEOTitle,
@@ -30,7 +30,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!article) {
     return {
       title: "記事が見つかりません | SAFE MAGAZINE",
-      description: "お探しの記事は見つかりませんでした。"
+      description: "お探しの記事は見つかりませんでした。",
+      robots: { index: false },
     }
   }
 
@@ -108,12 +109,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
   return (
     <>
-      {/* 構造化データ（JSON-LD） */}
-      <Script
+      {/* 構造化データ（JSON-LD）をSSR HTMLに直接出力する */}
+      <script
         id="structured-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData)
+          __html: jsonLdString(structuredData)
         }}
       />
 

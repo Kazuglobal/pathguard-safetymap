@@ -1,6 +1,12 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft, LockKeyhole, Map } from "lucide-react"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
+
+export const metadata: Metadata = {
+  title: "アクセス権限がありません",
+  robots: { index: false, follow: false },
+}
 
 export default function AccessDeniedPage() {
   const t = tankenTokens

@@ -6,7 +6,10 @@ import { tankenTokens } from "@/lib/design/tanken"
 
 const C = tankenTokens.color
 
-export const metadata: Metadata = { title: "ページが見つかりません" }
+export const metadata: Metadata = {
+  title: "ページが見つかりません",
+  robots: { index: false, follow: false },
+}
 
 /** 見つからないページ(UIUX改装 項目42)。英語の既定の画面の代わりに、ホームと地図への入口を出す */
 export default function NotFound() {
@@ -27,6 +30,7 @@ export default function NotFound() {
         </Link>
         <Link
           href="/map"
+          rel="nofollow"
           className={`inline-flex min-h-11 items-center rounded-full border-2 px-6 text-sm font-bold ${tankenTokens.cls.focus}`}
           style={{ background: C.card, borderColor: tankenTokens.border.soft, color: C.ink }}
         >

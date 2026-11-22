@@ -9,12 +9,16 @@ function toDate(value: string): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
+function latestDate(dates: Array<Date | undefined>): Date | undefined {
+  let latest: Date | undefined
+  for (const date of dates) {
+    if (!date) continue
+    if (!latest || date.getTime() > latest.getTime()) latest = date
+  }
+  return latest
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const pages: MetadataRoute.Sitemap = STATIC_SITEMAP_PAGES.map((page) => ({
-    url: absoluteUrl(page.path),
-    changeFrequency: page.changeFrequency,
-    priority: page.priority,
-  }))
   const news: MetadataRoute.Sitemap = getAllNewsItems().map((item) => ({
     url: absoluteUrl(`/school-route-news/${item.slug}`),
     lastModified: toDate(item.verifiedAt ?? item.publishedDate),
@@ -26,6 +30,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: toDate(article.publishedDate),
     changeFrequency: "monthly",
     priority: 0.6,
+  }))
+  const latestNewsDate = latestDate(news.map((entry) => (entry.lastModified instanceof Date ? entry.lastModified : undefined)))
+  const latestMagazineDate = latestDate(magazine.map((entry) => (entry.lastModified instanceof Date ? entry.lastModified : undefined)))
+  const latestContentDate = latestDate([latestNewsDate, latestMagazineDate])
+
+  const pages: MetadataRoute.Sitemap = STATIC_SITEMAP_PAGES.map((page) => ({
+    url: absoluteUrl(page.path),
+    lastModified:
+      page.path === "/school-route-news"
+        ? latestNewsDate
+        : page.path === "/safe-magazine"
+          ? latestMagazineDate
+          : page.path === "/landing"
+            ? latestContentDate
+            : undefined,
+    changeFrequency: page.changeFrequency,
+    priority: page.priority,
   }))
   return [...pages, ...news, ...magazine]
 }

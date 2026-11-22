@@ -16,6 +16,7 @@ export function HazardMapBanner() {
       <div className="mx-auto max-w-6xl">
         <Link
           href="/map"
+          rel="nofollow"
           className={`group relative block w-full overflow-hidden rounded-[22px] border p-6 text-left transition-transform active:translate-y-[2px] md:p-10 ${tankenTokens.cls.focus}`}
           style={{
             background: C.night,

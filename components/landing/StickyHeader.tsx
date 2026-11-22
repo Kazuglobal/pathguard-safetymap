@@ -39,6 +39,7 @@ export function StickyHeader() {
         <div className="flex items-center gap-2">
           <Link
             href="/map"
+            rel="nofollow"
             className={`rounded-full px-4 py-1.5 text-sm font-bold text-white transition-transform active:translate-y-[2px] active:shadow-none ${tankenTokens.cls.focus}`}
             style={{
               background: C.primary,
