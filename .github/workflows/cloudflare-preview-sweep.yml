@@ -1,0 +1,209 @@
+#
+# 残ってしまったプレビュー Worker を棚卸しして削除する、手動実行専用のワークフロー。
+#
+# 背景: プレビューは1つのPRにつき 15 個の Worker（ルーター1＋サービス14）を作る。
+# Cloudflare アカウントの Worker 数の上限は 500 なので、約 33 PR 分で埋まる。
+# cloudflare-preview.yml の cleanup ジョブは PR のクローズ時にしか動かないため、
+# cleanup 導入前のPRや、cleanup が失敗したPRの分が残ると上限に達して
+# 新しいPRのプレビューが配備できなくなる（API エラー code: 10037）。
+#
+# このワークフローは、その残骸を安全に片付けるためのものである。
+#
+# 使い方:
+#   1) mode=inventory（既定）で実行する。Cloudflare 上に実在する `*-pr-<番号>` の
+#      Worker を数え、各 PR が open か closed かと突き合わせて一覧を出す。
+#      読み取りのみで、何も削除しない。
+#   2) 一覧を見て消す対象を決める。
+#   3) mode=delete、confirm=DELETE で実行する。pr_numbers が空なら、
+#      棚卸しで見つかった「クローズ済みPR」の分だけを削除する。
+#
+# 安全策:
+#   - open な PR のプレビューは、pr_numbers に明示されていても削除しない。
+#   - confirm に DELETE と入力しない限り削除しない。
+#   - 削除は既存の pnpm delete:cloudflare-preview を通すため、対象は
+#     PR スコープの Worker だけで、D1・R2・本番 Worker には触れない。
+#   - 削除前に対象の一覧を必ず出力する。
+#
+name: Cloudflare Preview Sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'inventory=棚卸しのみ（読み取り専用） / delete=削除する'
+        type: choice
+        options:
+          - inventory
+          - delete
+        default: inventory
+      pr_numbers:
+        description: '削除する PR 番号を空白区切りで指定（例: 255 257 258）。空なら棚卸しで見つかったクローズ済みPRすべて'
+        type: string
+        default: ''
+      confirm:
+        description: 'mode=delete のときは DELETE と入力する（未入力なら削除しない）'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: cloudflare-preview-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    environment: cloudflare-preview
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check that the Cloudflare credentials are configured
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN と CLOUDFLARE_ACCOUNT_ID が必要です（値は出力しません）。"
+            exit 1
+          fi
+          echo "Cloudflare の資格情報は設定されています（値は出力しません）。"
+
+      - name: Take an inventory of the preview Workers
+        id: inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          node --input-type=module -e '
+            const account = process.env.CLOUDFLARE_ACCOUNT_ID
+            const token = process.env.CLOUDFLARE_API_TOKEN
+            const headers = { Authorization: `Bearer ${token}` }
+
+            const res = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts`,
+              { headers },
+            )
+            const payload = await res.json().catch(() => null)
+            if (!res.ok || !payload?.success) {
+              const reason = payload?.errors?.map((e) => `${e.code}: ${e.message}`).join(", ")
+              console.error(`::error::Cloudflare の Worker 一覧を取得できませんでした (HTTP ${res.status})${reason ? " " + reason : ""}`)
+              process.exit(1)
+            }
+            const names = (payload.result ?? []).map((s) => s.id)
+            console.log(`アカウント上の Worker 総数: ${names.length}`)
+
+            const byPr = new Map()
+            for (const name of names) {
+              const m = /-pr-(\d+)$/.exec(name)
+              if (!m) continue
+              const pr = Number(m[1])
+              byPr.set(pr, (byPr.get(pr) ?? 0) + 1)
+            }
+            console.log(`プレビュー由来の Worker: ${[...byPr.values()].reduce((a, b) => a + b, 0)} 個 / ${byPr.size} PR 分`)
+
+            // 各 PR が open か closed かを GitHub に問い合わせる
+            const [owner, repo] = process.env.REPO.split("/")
+            const gh = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: "application/vnd.github+json" }
+            const states = new Map()
+            for (const pr of [...byPr.keys()].sort((a, b) => a - b)) {
+              const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pr}`, { headers: gh })
+              states.set(pr, r.ok ? (await r.json()).state : "unknown")
+            }
+
+            const closed = [...byPr.keys()].filter((pr) => states.get(pr) === "closed").sort((a, b) => a - b)
+            const open = [...byPr.keys()].filter((pr) => states.get(pr) !== "closed").sort((a, b) => a - b)
+
+            console.log("")
+            console.log("PR番号  Worker数  状態")
+            for (const pr of [...byPr.keys()].sort((a, b) => a - b)) {
+              console.log(String(pr).padStart(6) + String(byPr.get(pr)).padStart(10) + "  " + states.get(pr))
+            }
+            console.log("")
+            console.log(`削除候補（クローズ済み）: ${closed.length} PR / ${closed.reduce((a, pr) => a + byPr.get(pr), 0)} Worker`)
+            console.log(`  ${closed.join(" ") || "なし"}`)
+            console.log(`残すもの（open または不明）: ${open.join(" ") || "なし"}`)
+
+            const out = process.env.GITHUB_OUTPUT
+            if (out) {
+              const { appendFileSync } = await import("node:fs")
+              appendFileSync(out, `closed_prs=${closed.join(" ")}\n`)
+              appendFileSync(out, `open_prs=${open.join(" ")}\n`)
+              appendFileSync(out, `total_workers=${names.length}\n`)
+            }
+          '
+
+      - name: Work out what to delete
+        id: plan
+        if: inputs.mode == 'delete'
+        env:
+          REQUESTED: ${{ inputs.pr_numbers }}
+          CLOSED: ${{ steps.inventory.outputs.closed_prs }}
+          OPEN: ${{ steps.inventory.outputs.open_prs }}
+        run: |
+          if [ -n "$REQUESTED" ]; then
+            CANDIDATES="$REQUESTED"
+            echo "指定された PR: $CANDIDATES"
+          else
+            CANDIDATES="$CLOSED"
+            echo "指定が無いため、棚卸しで見つかったクローズ済みPRを対象にします: $CANDIDATES"
+          fi
+          TARGETS=""
+          for pr in $CANDIDATES; do
+            skip=""
+            for o in $OPEN; do
+              if [ "$pr" = "$o" ]; then skip="yes"; fi
+            done
+            if [ -n "$skip" ]; then
+              echo "::warning::PR #$pr はまだ open のため削除しません。"
+            else
+              TARGETS="$TARGETS $pr"
+            fi
+          done
+          TARGETS="$(echo "$TARGETS" | xargs || true)"
+          echo "削除する PR: ${TARGETS:-なし}"
+          echo "targets=$TARGETS" >> "$GITHUB_OUTPUT"
+
+      - name: Delete the preview Workers
+        if: inputs.mode == 'delete' && inputs.confirm == 'DELETE' && steps.plan.outputs.targets != ''
+        run: |
+          for pr in ${{ steps.plan.outputs.targets }}; do
+            echo "::group::pr-$pr"
+            pnpm delete:cloudflare-preview -- --preview=pr-"$pr" || echo "::warning::pr-$pr の削除で一部失敗しました（既に消えている Worker を含む可能性があります）。"
+            echo "::endgroup::"
+          done
+
+      - name: Say why nothing was deleted
+        if: inputs.mode == 'delete' && inputs.confirm != 'DELETE'
+        run: |
+          echo "::warning::confirm に DELETE が入力されていないため、削除は実行していません。棚卸しの結果のみ出力しました。"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## Cloudflare Preview Sweep'
+            echo ''
+            echo "- モード: \`${{ inputs.mode }}\`"
+            echo "- アカウント上の Worker 総数（棚卸し時点）: \`${{ steps.inventory.outputs.total_workers }}\`"
+            echo "- クローズ済みPRのプレビュー: \`${{ steps.inventory.outputs.closed_prs }}\`"
+            echo "- open なPRのプレビュー（残す）: \`${{ steps.inventory.outputs.open_prs }}\`"
+            if [ '${{ inputs.mode }}' = 'delete' ]; then
+              echo "- 削除対象: \`${{ steps.plan.outputs.targets }}\`"
+              echo "- 実際に削除したか: \`${{ inputs.confirm == 'DELETE' }}\`"
+            fi
+            echo ''
+            echo '1プレビューにつき 15 個の Worker（ルーター1＋サービス14）を使います。上限 500 は約 33 プレビュー分です。'
+          } >> "$GITHUB_STEP_SUMMARY"
