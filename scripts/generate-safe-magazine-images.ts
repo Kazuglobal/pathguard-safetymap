@@ -89,18 +89,18 @@ ${QUALITY_SUFFIX}`,
       },
       {
         id: "seen-but-not-seen-at-night",
-        prompt: `Create a Japanese educational infographic explaining that at night a child can see a car's headlights long before the driver can see the child, and that reflective material and bright places close that gap.
+        prompt: `Create a Japanese educational illustration, in a wide horizontal format, explaining that at night a child can see a car's headlights long before the driver can see the child, and that a lit place and reflective material close that gap.
 
-Layout: three stacked bands sharing one dark winter evening street scene.
+Layout: three equal panels placed side by side in a single horizontal row, separated by thin gaps. The whole picture is wider than it is tall. Each panel carries a plain numbered circle in its top-left corner, containing only the numeral 1, 2 or 3. There are no words anywhere in the picture.
 
-BAND 1 - THE CHILD'S VIEW: a child in a yellow school cap and randoseru stands at the roadside; two bright headlight beams are clearly visible to the child, drawn as strong glowing cones. A simple eye pictogram with a check mark sits beside the child.
+Panel with the numeral 1: a child in a yellow school cap and randoseru stands at the roadside on a dark winter evening. Two bright headlight beams reach the child, drawn as strong glowing cones, so it is obvious the child can see the car. A simple eye pictogram with a green check mark sits beside the child.
 
-BAND 2 - THE DRIVER'S VIEW: the same scene seen from inside the car, almost entirely dark, with the child reduced to a barely visible faint silhouette outside the beam. A simple eye pictogram with a question mark sits beside the windscreen.
+Panel with the numeral 2: the same moment seen from inside the car, almost entirely dark. The child is only a faint, barely visible silhouette outside the beam. A simple eye pictogram with an orange question mark sits beside the windscreen.
 
-BAND 3 - WHAT CLOSES THE GAP: the same roadside, now with the child standing under a lit street lamp, with reflective tape on the randoseru shoulder strap, the randoseru side and the shoe heels glowing brightly where the headlight beam touches them. Short bold arrows point to each of the three glowing spots. A simple eye pictogram with a check mark sits beside the car.
+Panel with the numeral 3: the same roadside, but now the child stands under a lit street lamp, and reflective tape on the randoseru shoulder strap, on the side of the randoseru and on the shoe heels glows brightly where the headlight beam touches it. Three short bold arrows point to those three glowing spots. A simple eye pictogram with a green check mark sits beside the car.
 
-Style: Flat Japanese infographic design, deep indigo night background with bright amber glow for light and reflective material, clean geometric shapes, generic child character with simple non-photographic features, educational aesthetic, not frightening
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, depiction of a collision or injury, blood, distressing imagery, garbled text, any readable lettering or signage wording
+Style: Flat Japanese infographic design, deep indigo night background with warm amber glow for light and reflective material, clean geometric shapes, generic child character with simple non-photographic features, educational and calm, not frightening
+Avoid (negative prompt): any letters, any words, any captions, any headings, any labels, any signage wording, any writing of any kind in any language except the three numerals 1, 2 and 3 inside the corner circles; portrait or vertical composition; photographic faces; identifiable real people; real brand logos; depiction of a collision or injury; blood; distressing imagery
 ${QUALITY_SUFFIX}`,
         description: "夜は「ライトが見えている」と「運転者から見えている」が違う（教則 第2章第5節1）。明るい場所と反射材でその差を埋める"
       }
@@ -132,34 +132,33 @@ ${QUALITY_SUFFIX}`,
     contentImages: [
       {
         id: "grade-ladder-first-year-peak",
-        prompt: `Create a clean Japanese educational infographic showing that within each school stage the first-year students have the highest number of serious bicycle crashes, using two small grouped bar charts side by side.
+        prompt: `Create a clean Japanese educational infographic of two grouped bar charts placed side by side, showing that within each school stage the first-year students have the highest number of serious bicycle crashes.
 
-LEFT CHART (three vertical bars, purple): the first bar is clearly the tallest, the second is noticeably shorter, the third is slightly shorter again. Numerals printed above the bars, left to right: 621, 491, 470
-RIGHT CHART (three vertical bars, deeper purple, drawn on the same scale so all its bars tower over the left chart): the first bar is clearly the tallest, the second shorter, the third much shorter. Numerals printed above the bars, left to right: 1349, 1144, 845
+Both charts sit on one shared horizontal baseline and use one shared vertical scale, so the right-hand group's bars are visibly much taller than the left-hand group's.
 
-Both charts sit on a shared horizontal baseline. In each chart, draw a small ring highlight or a short bold arrow pointing at the first, tallest bar.
+Left group: three vertical bars in light purple. The first bar is the tallest, the second noticeably shorter, the third slightly shorter again. Above each bar, printed as plain numerals only: 621 above the first, 491 above the second, 470 above the third. A thin ring highlight surrounds the top of the first, tallest bar.
 
-Add two simple pictograms as anchors above the charts: above the left chart a small generic student bust silhouette, above the right chart a slightly taller generic student bust silhouette, so the reader sees the two groups are two different school stages.
+Right group: three vertical bars in deeper purple, all clearly taller than every bar in the left group. The first bar is the tallest, the second shorter, the third much shorter. Above each bar, printed as plain numerals only: 1349 above the first, 1144 above the second, 845 above the third. A thin ring highlight surrounds the top of the first, tallest bar.
+
+Above the left group sits a small generic student bust silhouette; above the right group sits a slightly taller generic student bust silhouette. These two silhouettes are the only indication of which group is which, and they replace any written label.
 
 Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric bars, purple accent palette, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 621, 491, 470, 1349, 1144 and 845
+Avoid (negative prompt): any letters, any words, any captions, any headings, any axis labels, any legend, any writing of any kind in any language except the six numerals 621, 491, 470, 1349, 1144 and 845; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "学年別の自転車事故における死亡・重傷事故件数（2020〜2024年合計）。中学生は621・491・470件、高校生は1,349・1,144・845件で、どちらも1年生が最多"
       },
       {
         id: "age-13-changes-where-you-ride",
-        prompt: `Create a clear Japanese educational infographic contrasting where a child may ride a bicycle before and after the age of thirteen, drawn as two panels of the same street.
+        prompt: `Create a clean Japanese educational illustration contrasting where a child may ride a bicycle before and after the age of thirteen, drawn as two panels of the same street placed side by side with a thin vertical divider between them. A plain circle containing only the numeral 13, followed by a right-pointing chevron, sits at the centre of the divider. There is no writing anywhere else in the picture, and every road sign in the scene is drawn as a pictogram with no lettering on it.
 
-LEFT PANEL - BEFORE: a shorter generic child wearing a bicycle helmet rides slowly on the footpath, keeping to the side of the footpath furthest from the shops, while two pedestrian silhouettes walk past with clear space between them. A small bold arrow points to the footpath surface under the wheels. A simple pictogram of a slow pace, such as a tortoise or a low speed gauge, sits in the corner to signal that pedestrians have priority there.
+Left panel, before: a shorter generic child wearing a correctly fastened bicycle helmet rides slowly along a clearly raised footpath, which is drawn as a paved strip lifted above the carriageway by a kerb and separated from it by a painted edge line. Two pedestrian silhouettes walk on the same footpath with clear space between them, and the child keeps to the side furthest from them. A small pictogram of a tortoise sits in the lower corner to signal a slow pace and that people on foot come first there. The carriageway beside the footpath is empty.
 
-RIGHT PANEL - AFTER: a taller generic student wearing a bicycle helmet rides on the roadway, hugging the left edge of the carriageway, with a car passing safely to the right. A short bold arrow points to the left edge line under the wheels. The rider is turning their head to look back over the right shoulder, and a small bold arrow highlights that backward glance.
+Right panel, after: a taller generic student wearing a correctly fastened bicycle helmet rides on the carriageway itself, hugging its left edge, with a car passing safely to the right. The footpath beside them is empty. The rider is turning their head to look back over the right shoulder, and a short bold arrow highlights that backward glance.
 
-Between the two panels, draw a single vertical divider with a simple numeral 13 in a circle at its centre, and a right-pointing chevron showing the direction of the change.
-
-Shared setting: a Japanese residential street with a footpath on one side, a green belt road edge marking along the carriageway shoulder, a guardrail and a school zone sign.
+Shared setting: a Japanese residential street with a green edge strip along the carriageway shoulder, a guardrail, low houses and a lettering-free diamond school zone sign showing only a pictogram of two walking children.
 
 Style: Flat Japanese infographic design on a light neutral background, clean geometric shapes, purple and green accent colours, generic characters with simple non-photographic features, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, depiction of a collision or injury, helmet worn unfastened, riding on the right side of the carriageway, garbled text, any lettering other than the numeral 13
+Avoid (negative prompt): any letters, any words, any captions, any headings, any signage wording, any shop names, any writing of any kind in any language except the numeral 13 in the central circle; photographic faces; identifiable real people; real brand logos; helmet worn unfastened; riding on the right-hand side of the carriageway; depiction of a collision or injury; garbled text
 ${QUALITY_SUFFIX}`,
         description: "13歳で走る場所が変わる。13歳未満は歩道を通行できる（歩行者優先）、13歳からは原則として車道の左側端。高学年のうちに後方確認を練習しておく"
       }
@@ -189,19 +188,19 @@ ${QUALITY_SUFFIX}`,
     contentImages: [
       {
         id: "prefecture-dates-differ",
-        prompt: `Create a clean Japanese educational infographic showing that four different prefectures run their year-end traffic safety campaign over four different date ranges in December, using a simple horizontal timeline with bars.
+        prompt: `Create a clean Japanese educational infographic showing that four different areas run their year-end traffic safety campaign over four different date ranges within the same single month, drawn as a simple horizontal timeline.
 
-Layout: a single horizontal axis representing one month, left edge to right edge. Four horizontal bars are stacked below the axis, each starting and ending at a different point along the axis, so the reader instantly sees that the bars do not line up.
+Layout: one horizontal axis spanning the full width, representing one month from its first day at the left edge to its last day at the right edge. Four horizontal bars are stacked below the axis, each starting and ending at a different point along it, so the reader instantly sees that the bars do not line up. There is no title and no row label of any kind.
 
-BAR 1 (strong purple, starts at the far left, short): spans roughly the first third of the axis. Numerals at its two ends: 1 and 10
-BAR 2 (medium purple, also starts at the far left, medium length): spans roughly the first half of the axis. Numerals at its two ends: 1 and 15
-BAR 3 (light purple, starts around the middle, longest): spans from the middle to the far right edge. Numerals at its two ends: 11 and 31
-BAR 4 (muted amber, starts just after the middle, short): a short bar in the right half. Numerals at its two ends: 14 and 23
+Top bar, strong purple, starting at the far left and short: it spans roughly the first third of the axis. A plain numeral 1 sits just before its left end and a plain numeral 10 just after its right end.
+Second bar, medium purple, also starting at the far left and longer: it spans roughly the first half of the axis. A plain numeral 1 sits just before its left end and 15 just after its right end.
+Third bar, light purple and the longest: it starts near the middle and runs to the far right edge. A plain numeral 11 sits just before its left end and 31 just after its right end.
+Bottom bar, muted amber and short: it sits in the right half, starting just after the middle. A plain numeral 14 sits just before its left end and 23 just after its right end.
 
-Add a small simple calendar page pictogram at the top left corner of the axis as a visual anchor.
+A small, simple calendar page pictogram sits at the top left as the only visual anchor. Each bar is identified only by its colour and position, never by writing.
 
 Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric shapes, purple and amber accent colours, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, prefecture names or any place names, any lettering other than the numerals 1, 10, 15, 11, 31, 14 and 23
+Avoid (negative prompt): any letters, any words, any captions, any headings, any titles, any row labels, any month name, any place name, any writing of any kind in any language except the eight numerals 1, 10, 1, 15, 11, 31, 14 and 23; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "年末の交通安全運動の期間は県ごとに違う（12月1日〜10日／1日〜15日／11日〜31日／14日〜23日の4パターン）"
       },
@@ -297,17 +296,19 @@ ${QUALITY_SUFFIX}`,
     contentImages: [
       {
         id: "violation-share-six-month",
-        prompt: `Create a clean Japanese educational infographic showing the share of four bicycle violation types as a simple horizontal bar chart, using icons and numerals only.
+        prompt: `Create a clean Japanese educational infographic of a horizontal bar chart with four rows, showing the share of four kinds of bicycle traffic violation, from most common at the top to least common at the bottom.
 
-Layout: four horizontal bars stacked vertically, longest at the top, each with a simple pictogram on the left and a numeral with a percent sign on the right.
+Each row consists of a small pictogram at the left, then a horizontal purple bar, then a percentage figure at the right. The pictogram is the only thing identifying each row: there is no written label anywhere.
 
-BAR 1 (longest, highlighted in a strong purple): pictogram of a hand holding a smartphone while riding a bicycle, with a small red diagonal prohibition bar over it. Numeral: 43%
-BAR 2 (second longest, muted purple): pictogram of a bicycle beside a triangular stop marking on the road with a foot touching the ground. Numeral: 35%
-BAR 3 (short, light purple): pictogram of a traffic signal showing a red lamp with a bicycle beside it. Numeral: 9%
-BAR 4 (shortest, light purple): pictogram of a railway crossing with striped barriers and a bicycle. Numeral: 7%
+Top row: a pictogram of a hand holding a smartphone beside a person riding a bicycle, with a small red prohibition circle over it. Its bar is the longest. The figure at its right reads 43%.
+Second row: a pictogram of a bicycle crossing a stop line with a triangular road marking. Its bar is slightly shorter. The figure at its right reads 35%.
+Third row: a pictogram of a traffic signal showing red beside a bicycle. Its bar is much shorter. The figure at its right reads 9%.
+Bottom row: a pictogram of a railway crossing with a lowered barrier beside a bicycle. Its bar is the shortest. The figure at its right reads 7%.
 
-Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric pictograms, purple and amber accent colours, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 43, 35, 9 and 7 with percent signs
+Bars share one baseline at the left and one scale, so their lengths are directly comparable.
+
+Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric bars, purple accent palette with one red prohibition mark, educational aesthetic
+Avoid (negative prompt): any letters, any words, any captions, any headings, any row labels, any legend, any writing of any kind in any language except the four figures 43%, 35%, 9% and 7%; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "導入半年間の青切符の違反内訳（ながらスマホ43%・一時不停止35%・信号無視9%・踏切立入り7%／暫定値）"
       },
@@ -350,27 +351,29 @@ ${QUALITY_SUFFIX}`,
     contentImages: [
       {
         id: "zone30plus-devices",
-        prompt: `Create a clean Japanese educational infographic showing the three physical devices used to slow cars in a residential zone, as three numbered panels side by side, each drawn as a simple side or bird's-eye view of a road.
+        prompt: `Create a clean Japanese educational infographic of three panels placed side by side, each showing one physical measure used to slow cars in a residential neighbourhood. Each panel carries a plain numbered circle in its top-left corner containing only the numeral 1, 2 or 3. There is no writing anywhere else in the picture, and no caption under any panel.
 
-PANEL 1 (numbered 1) - HUMP: a side view cross-section of a road with a gentle raised bump, and a car approaching it with a downward curved arrow indicating the car slowing.
-PANEL 2 (numbered 2) - NARROWING: a bird's-eye view of a straight residential road where planted kerb extensions push in from both sides to narrow the carriageway, with a car threading through slowly.
-PANEL 3 (numbered 3) - COLOURED PAVEMENT AND ZONE ENTRY: a bird's-eye view of a road entrance with a coloured green edge strip along both sides, a large painted numeral 30 on the road surface, and a round sign post at the kerb.
+Panel with the numeral 1, seen from the side: a car passes over a raised hump in the road surface, with a curved arrow showing the car rising and settling. The hump is drawn clearly as a gentle ridge across the carriageway.
 
-Style: Flat Japanese infographic design on a light neutral background, clear numbered circles 1, 2 and 3, purple and green accent colours, clean geometric shapes, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 1, 2, 3 and the painted 30
+Panel with the numeral 2, seen from above: a straight residential road is pinched in the middle by planted kerb build-outs on both sides, so the carriageway narrows. One car is drawn passing slowly through the narrowed point, with a thin arrow along its path.
+
+Panel with the numeral 3, seen in perspective along the road: the entrance to the neighbourhood, where the road surface is coloured and the numeral 30 is painted large on it, with green edge strips along both sides and a plain round sign on a post.
+
+Style: Flat Japanese infographic design on a light neutral background, clean geometric shapes, soft purple and green accent colours, generous white space, educational aesthetic
+Avoid (negative prompt): any letters, any words, any captions, any headings, any panel titles, any writing of any kind in any language except the numerals 1, 2 and 3 inside the corner circles and the numeral 30 painted on the road; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "ゾーン30プラスの物理的な装置（ハンプ／狭さく／カラー舗装と区域の入口）"
       },
       {
         id: "zone-vs-legal-speed",
-        prompt: `Create a clear Japanese educational infographic comparing two different kinds of 30 km/h street, as a left and right split panel with a bold vertical divider.
+        prompt: `Create a clean Japanese educational illustration contrasting two residential neighbourhoods seen as two simple isometric blocks placed side by side, with a thin vertical divider between them. There is no writing anywhere in the picture: the difference is shown entirely through what is drawn.
 
-LEFT PANEL - AREA REGULATION WITH SIGNS: a bird's-eye view of a block of residential streets enclosed by a tinted purple boundary, with a round sign post at each entrance, a large painted numeral 30 on the road surface, a raised hump and a narrowing drawn inside the block. A magnifying glass icon sits over one of the entrance signs, indicating that the boundary is visible.
+Left block: a neighbourhood that has been deliberately treated. Round red-bordered speed limit signs showing the numeral 30 stand at two of its entrances. The numeral 30 is also painted large on the road surface. The roads have raised humps drawn as gentle ridges, and narrowed points where planted kerb build-outs pinch the carriageway. A magnifying glass pictogram in the upper left corner enlarges one of the round signs so the numeral 30 inside it is clearly readable. Low Japanese houses, small trees and a few parked cars fill the block. The whole block has a soft purple tint.
 
-RIGHT PANEL - NATIONWIDE DEFAULT, NO NEW SIGNS: a bird's-eye view of a plain narrow residential street with no centre line, no sign post and no painted numeral, drawn in neutral grey. An empty sign post silhouette is shown faded and crossed out with a red diagonal prohibition bar, indicating that no new sign is installed. A simple icon of a road with no centre line is placed beside it.
+Right block: an ordinary neighbourhood with no treatment at all. There are no speed limit signs, no road markings, no humps and no narrowed points: one plain grey road runs between the houses with no centre line painted on it. A single plain signpost stands empty with a thin red diagonal stroke across a blank disc, showing the absence of a sign. The whole block has a neutral grey tint.
 
-Style: Flat Japanese infographic design on a light background, purple tint on the left and neutral grey on the right, clean geometric shapes, educational aesthetic
-Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the painted numeral 30 on the left panel
+Style: Flat Japanese infographic illustration, isometric view, clean lines, soft shading, purple accent for the treated side and neutral grey for the untreated side, educational aesthetic
+Avoid (negative prompt): any letters, any words, any captions, any headings, any annotations, any leader-line notes, any signage wording, any writing of any kind in any language except the numeral 30 where it appears on the signs and the road surface; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "ゾーン30プラス（区域規制・標識あり・装置あり）と生活道路の法定速度30km/h（全国一律・新しい標識は立たない）の違い"
       }
