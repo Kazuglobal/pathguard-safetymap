@@ -138,29 +138,41 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Verify every configured article now has a thumbnail
-        # ARTICLE_IMAGES に設定のある記事すべてについて、サムネイルの実ファイルを確かめる。
-        # 本文図解の網羅は、公開統合（ARTICLES への登録）後に
-        # tests/unit/lib/safe-magazine-release-readiness.test.ts が検証する。
+      - name: Verify every configured image now exists
+        # ARTICLE_IMAGES に設定のあるサムネイルと本文図解の両方について、実ファイルを確かめる。
+        # 読み込み準備テストは本文図解の網羅を検証しない（thumbnailUrl の存在と、
+        # 既に在るファイルの拡張子とバイナリ形式の一致しか見ていない）ため、
+        # 「サムネイルだけ成功して図解が失敗した記事」をここで止める必要がある。
         run: |
           node --input-type=module -e '
             import fs from "node:fs"
             const source = fs.readFileSync("scripts/generate-safe-magazine-images.ts", "utf8")
-            const slugs = [...source.matchAll(/articleSlug: "([^"]+)"/g)].map((m) => m[1])
-            if (!slugs.length) {
+            const blocks = source.split(/articleSlug: "/).slice(1)
+            if (!blocks.length) {
               console.error("::error::ARTICLE_IMAGES から記事を読み取れませんでした。")
               process.exit(1)
             }
-            const missing = slugs.filter(
-              (slug) => !fs.existsSync(`public/images/safe-magazine/thumbnails/${slug}.jpg`),
-            )
+            const expected = []
+            for (const block of blocks) {
+              const slug = block.slice(0, block.indexOf("\""))
+              expected.push(`public/images/safe-magazine/thumbnails/${slug}.jpg`)
+              // 次の記事ブロックまでを本文図解の探索範囲にする。
+              // articleId は除きたいので id の直前に article が付かないものだけを拾う。
+              const body = block.slice(0, block.search(/\n  \{|\n\]/) + 1 || undefined)
+              for (const m of body.matchAll(/(?<!article)\bid: "([^"]+)"/g)) {
+                expected.push(`public/images/safe-magazine/articles/${slug}/${m[1]}.jpg`)
+              }
+            }
+            const missing = expected.filter((path) => !fs.existsSync(path))
             if (missing.length) {
               console.error(
-                `::error::サムネイルを生成できなかった記事が ${missing.length} 件あります: ${missing.join(", ")}`,
+                `::error::生成できなかった画像が ${missing.length} 件あります:\n  ${missing.join("\n  ")}`,
               )
               process.exit(1)
             }
-            console.log(`サムネイル ${slugs.length} 件すべてが存在します。`)
+            console.log(
+              `記事 ${blocks.length} 件・画像 ${expected.length} 件すべてが存在します。`,
+            )
           '
 
       - name: Check the committed images against the readiness test
