@@ -4,7 +4,11 @@ import RegisterForm from "@/components/auth/register-form"
 import { AuthShell } from "@/components/auth/auth-shell"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "新規登録" }
+export const metadata: Metadata = {
+  title: "新規登録",
+  description: "PathGuardian(通学路みまもりアプリ)の無料アカウント登録ページです。インストール不要で今日から使えます。",
+  alternates: { canonical: "/register" },
+}
 
 export default async function RegisterPage() {
   // Supabase クライアントを取得（Next.js 15 の async cookies() API 対応）

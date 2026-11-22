@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import {
   StickyHeader,
   LandingHero,
@@ -10,8 +11,24 @@ import {
   SafeMagazine,
   HiyariHatReport,
 } from "@/components/landing"
+import { BRAND } from "@/lib/brand"
 import { tankenTokens, PAPER_NOISE } from "@/lib/design/tanken"
 import { getLandingNewsPreview } from "@/lib/landing-news-preview"
+
+const DESCRIPTION =
+  "今日の地域アラート・通学路の安全ニュース・SAFE MAGAZINE・みんなのヒヤリハット報告をまとめて確認できる PathGuardian のホーム画面です。"
+
+export const metadata: Metadata = {
+  title: "ホーム",
+  description: DESCRIPTION,
+  alternates: { canonical: "/landing" },
+  openGraph: {
+    title: `ホーム | ${BRAND.name}`,
+    description: DESCRIPTION,
+    url: "/landing",
+    type: "website",
+  },
+}
 
 export default function LandingPage() {
   const newsPreview = getLandingNewsPreview(2).map((item) => ({

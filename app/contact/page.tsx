@@ -7,6 +7,7 @@ import { contactKindFromParam } from "@/lib/contact/contact-schema"
 export const metadata: Metadata = {
   title: "お問い合わせ",
   description: "PathGuardian(通学路みまもりアプリ)へのお問い合わせ・サービス改善要望の送信フォームと、アカウントの削除のご案内です。",
+  alternates: { canonical: "/contact" },
 }
 
 /**
@@ -36,7 +37,7 @@ export default async function ContactPage({
         </p>
         <p>お子さまの登録は「マイページ」の「設定」から、通学路は「通学路」の画面から、一つずつ消すこともできます。</p>
         <p>
-          <Link href="/mypage" className="font-bold underline underline-offset-4">
+          <Link href="/mypage" rel="nofollow" className="font-bold underline underline-offset-4">
             マイページを開く
           </Link>
         </p>

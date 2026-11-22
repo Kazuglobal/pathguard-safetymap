@@ -36,6 +36,13 @@ function CtaButtons() {
   )
 }
 
+const LP_PUBLIC_CONTENT_LINKS = [
+  { href: "/school-route-news", label: "通学路の安全ニュース" },
+  { href: "/safe-magazine", label: "SAFE MAGAZINE" },
+  { href: "/accidents", label: "街の事故を調べる" },
+  { href: "/safety-quest", label: "セーフティクエスト" },
+] as const
+
 export function LpCtaFooter() {
   return (
     <footer className="relative overflow-hidden bg-[#2B2723]">
@@ -78,6 +85,11 @@ export function LpCtaFooter() {
             Path<span className="text-[#E8A33D]">Guardian</span>
           </p>
           <nav aria-label="サイトの情報" className="flex flex-wrap items-center justify-center gap-x-6 text-sm text-white/75">
+            {LP_PUBLIC_CONTENT_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                {link.label}
+              </Link>
+            ))}
             {SITE_FOOTER_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className="inline-flex min-h-11 items-center transition-colors hover:text-white">
                 {link.label}

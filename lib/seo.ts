@@ -29,6 +29,14 @@ export const SEO_KEYWORDS = [
   "見守りアプリ 無料",
 ] as const
 
+/** 公開ページの描画に必要な公開読み取り専用APIは許可し、それ以外の /api/ は robots.txt でブロックする */
+export const ROBOTS_ALLOW = [
+  "/",
+  "/api/accidents/",
+  "/api/local-safety-alerts",
+  "/api/safety-quest/",
+] as const
+
 /** ログインが要る画面(lib/auth/protected-paths.ts と同じ一覧)・管理・API・認証の途中の画面は検索に出さない */
 export const ROBOTS_DISALLOW = [
   ...PROTECTED_PREFIXES,
@@ -51,6 +59,7 @@ export const STATIC_SITEMAP_PAGES: readonly StaticSitemapPage[] = [
   { path: "/lp", changeFrequency: "weekly", priority: 1 },
   { path: "/school-route-news", changeFrequency: "daily", priority: 0.9 },
   { path: "/safe-magazine", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/landing", changeFrequency: "daily", priority: 0.7 },
   { path: "/accidents", changeFrequency: "monthly", priority: 0.7 },
   { path: "/safety-quest", changeFrequency: "monthly", priority: 0.6 },
   { path: "/register", changeFrequency: "yearly", priority: 0.5 },

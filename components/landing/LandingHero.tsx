@@ -60,6 +60,7 @@ export function LandingHero() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               href="/map"
+              rel="nofollow"
               className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-bold text-white transition-transform active:translate-y-1 active:shadow-none ${tankenTokens.cls.focus}`}
               style={{
                 background: C.primary,
@@ -71,6 +72,7 @@ export function LandingHero() {
             </Link>
             <Link
               href="/routes"
+              rel="nofollow"
               className={`inline-flex items-center gap-2 rounded-full border-2 px-5 py-[10px] text-sm font-bold transition-transform active:translate-y-[3px] active:shadow-none ${tankenTokens.cls.focus}`}
               style={{
                 background: C.card,

@@ -1,4 +1,20 @@
-"use client"
+import type { Metadata } from "next"
+import { BRAND } from "@/lib/brand"
+
+const DESCRIPTION =
+  "通学路の交通安全・防犯対策・ヒヤリハット事例・子どもと学ぶ安全習慣をわかりやすくまとめた特集記事一覧です。"
+
+export const metadata: Metadata = {
+  title: BRAND.magazine,
+  description: DESCRIPTION,
+  alternates: { canonical: "/safe-magazine" },
+  openGraph: {
+    title: `${BRAND.magazine} | ${BRAND.name}`,
+    description: DESCRIPTION,
+    url: "/safe-magazine",
+    type: "website",
+  },
+}
 
 import Link from "next/link"
 import Image from "next/image"
