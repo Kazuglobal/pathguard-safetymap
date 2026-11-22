@@ -46,6 +46,126 @@ Technical specifications:
 // 記事ごとの画像設定（高品質プロンプト）
 const ARTICLE_IMAGES: ImageConfig[] = [
   {
+    articleId: "2026-11-21-kyousoku-child-walking-rules",
+    articleSlug: "kyousoku-child-walking-rules",
+    category: "safety-tips",
+    title: "教則「子供の安全」10項目で読む通学路",
+    thumbnailPrompt: `Create a warm Japanese editorial illustration about a parent and child reading an official booklet of road rules together at the family dining table, then putting it into practice on the way to school.
+
+Composition: a single illustration split by a soft diagonal of light. The larger left side is the indoor scene, the smaller right side is the morning street seen through a window.
+
+Indoor side (left):
+- A parent and a Japanese elementary school child sit side by side at a plain wooden dining table in the early morning, both looking down at an open booklet with blank unlettered pages and simple diagram shapes printed on them
+- The child's yellow school cap and randoseru backpack are placed ready on the chair beside them, with reflective tape on the shoulder strap catching the warm lamp light
+- A simple paper checklist is pinned to the wall nearby, drawn as blank ruled lines with empty tick boxes, no readable writing
+- A wall clock shows an early hour, suggesting they left extra time
+
+Window side (right):
+- A quiet Japanese residential street in the morning: a zebra crosswalk, a green belt road edge marking along the shoulder, a guardrail, a school zone sign and a volunteer crossing guard in a high-visibility vest holding a flag
+- A parent and child are walking there, with the parent on the roadway side of the child
+
+Mood: Calm, warm, encouraging, domestic. The point is that the rules come from a book and are practised together, not that danger is near. No crash, no injury, no emergency vehicle, nobody scolding anybody.
+Style: Japanese manga/anime inspired editorial illustration, soft morning light, clean lines, gentle shading
+Color palette: Warm cream and amber indoors, fresh light blue and soft green outdoors, with a blue accent to match the safety-tips category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, recognisable real locations, reconstruction of a real crash site, depiction of a collision or injury, real brand logos, text overlays, any readable lettering on the booklet, checklist, clock face or signage
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "walk-on-the-roadway-side",
+        prompt: `Create a clear Japanese educational infographic contrasting two ways a parent and child can walk side by side on a road without a footpath, teaching that the parent should take the roadway side.
+
+Layout: two panels side by side, the same street drawn twice from the same angle.
+
+LEFT PANEL - marked with a large red diagonal prohibition bar: the child in a yellow school cap and randoseru walks on the outer, roadway side while the parent walks on the inner side near the houses. A car approaches from behind along the road, passing closest to the child.
+
+RIGHT PANEL - marked with a large green check mark: the same pair have swapped, so the parent walks on the roadway side and the child walks on the inner side away from the traffic. The same car passes closest to the parent. A short bold arrow points at the parent's position on the roadway side.
+
+Shared setting: a narrow Japanese residential street with no footpath, a green belt road edge marking along the shoulder, a low boundary wall and hedges on the house side, and a school zone sign.
+
+Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric shapes, blue and green accent colours with one red prohibition bar, generic child and adult characters with simple non-photographic features, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, depiction of a collision or injury, garbled text, any readable lettering or signage wording
+${QUALITY_SUFFIX}`,
+        description: "子どもを連れて歩くときは保護者が車の通る側を歩く（教則 第2章第9節3）。左＝子どもが車道側でNG、右＝保護者が車道側でOK"
+      },
+      {
+        id: "seen-but-not-seen-at-night",
+        prompt: `Create a Japanese educational infographic explaining that at night a child can see a car's headlights long before the driver can see the child, and that reflective material and bright places close that gap.
+
+Layout: three stacked bands sharing one dark winter evening street scene.
+
+BAND 1 - THE CHILD'S VIEW: a child in a yellow school cap and randoseru stands at the roadside; two bright headlight beams are clearly visible to the child, drawn as strong glowing cones. A simple eye pictogram with a check mark sits beside the child.
+
+BAND 2 - THE DRIVER'S VIEW: the same scene seen from inside the car, almost entirely dark, with the child reduced to a barely visible faint silhouette outside the beam. A simple eye pictogram with a question mark sits beside the windscreen.
+
+BAND 3 - WHAT CLOSES THE GAP: the same roadside, now with the child standing under a lit street lamp, with reflective tape on the randoseru shoulder strap, the randoseru side and the shoe heels glowing brightly where the headlight beam touches them. Short bold arrows point to each of the three glowing spots. A simple eye pictogram with a check mark sits beside the car.
+
+Style: Flat Japanese infographic design, deep indigo night background with bright amber glow for light and reflective material, clean geometric shapes, generic child character with simple non-photographic features, educational aesthetic, not frightening
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, depiction of a collision or injury, blood, distressing imagery, garbled text, any readable lettering or signage wording
+${QUALITY_SUFFIX}`,
+        description: "夜は「ライトが見えている」と「運転者から見えている」が違う（教則 第2章第5節1）。明るい場所と反射材でその差を埋める"
+      }
+    ]
+  },
+  {
+    articleId: "2026-11-21-bicycle-safety-education-guideline",
+    articleSlug: "bicycle-safety-education-guideline",
+    category: "policy-update",
+    title: "自転車の交通安全教育ガイドライン 学年別の教え方",
+    thumbnailPrompt: `Create a Japanese editorial illustration about a parent coaching a child on a bicycle in preparation for cycling to a new school, with the stages of growing up suggested behind them.
+
+Foreground:
+- A Japanese upper-elementary-age child rides a bicycle on a quiet residential street, wearing a correctly fitted bicycle helmet with the chin strap done up, keeping to the left edge of the roadway
+- The child is turning their head to look back over the right shoulder to check behind, which is the main action of the picture
+- A parent jogs alongside on the inner side, one arm raised in an encouraging gesture, also wearing a helmet and standing as a model of correct behaviour
+- A randoseru backpack and a school bag rest together on a low wall at the roadside, suggesting the change from primary school to the next stage
+
+Background, softly faded so it reads as a secondary layer:
+- Three stepped silhouettes of the same rider at three ages, from a small child with a pedal-less balance bike, to an elementary child on a bicycle, to a taller middle or high school student on a commuter bicycle, arranged as an ascending staircase from left to right
+
+Street elements (Japanese specific): a green belt road edge marking along the left shoulder, a guardrail, a school zone sign, low houses with tidy hedges, a zebra crosswalk in the middle distance, and a volunteer crossing guard in a high-visibility vest further away
+
+Mood: Encouraging, forward looking, calm. It is a practice session, not an accident. No crash, no injury, no emergency vehicle.
+Style: Japanese manga/anime inspired editorial illustration, bright morning light, clean lines, soft shading
+Color palette: Fresh green and light blue for the street, with a purple accent to match the policy-update category colour
+Avoid (negative prompt): photographic realistic faces, identifiable real people, recognisable real locations, reconstruction of a real crash site, depiction of a collision or injury, helmet worn unfastened or tipped back, riding on the right side of the road presented positively, real brand logos, text overlays, readable lettering on signage or bags
+${QUALITY_SUFFIX}`,
+    contentImages: [
+      {
+        id: "grade-ladder-first-year-peak",
+        prompt: `Create a clean Japanese educational infographic showing that within each school stage the first-year students have the highest number of serious bicycle crashes, using two small grouped bar charts side by side.
+
+LEFT CHART (three vertical bars, purple): the first bar is clearly the tallest, the second is noticeably shorter, the third is slightly shorter again. Numerals printed above the bars, left to right: 621, 491, 470
+RIGHT CHART (three vertical bars, deeper purple, drawn on the same scale so all its bars tower over the left chart): the first bar is clearly the tallest, the second shorter, the third much shorter. Numerals printed above the bars, left to right: 1349, 1144, 845
+
+Both charts sit on a shared horizontal baseline. In each chart, draw a small ring highlight or a short bold arrow pointing at the first, tallest bar.
+
+Add two simple pictograms as anchors above the charts: above the left chart a small generic student bust silhouette, above the right chart a slightly taller generic student bust silhouette, so the reader sees the two groups are two different school stages.
+
+Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric bars, purple accent palette, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, garbled text, any lettering other than the numerals 621, 491, 470, 1349, 1144 and 845
+${QUALITY_SUFFIX}`,
+        description: "学年別の自転車事故における死亡・重傷事故件数（2020〜2024年合計）。中学生は621・491・470件、高校生は1,349・1,144・845件で、どちらも1年生が最多"
+      },
+      {
+        id: "age-13-changes-where-you-ride",
+        prompt: `Create a clear Japanese educational infographic contrasting where a child may ride a bicycle before and after the age of thirteen, drawn as two panels of the same street.
+
+LEFT PANEL - BEFORE: a shorter generic child wearing a bicycle helmet rides slowly on the footpath, keeping to the side of the footpath furthest from the shops, while two pedestrian silhouettes walk past with clear space between them. A small bold arrow points to the footpath surface under the wheels. A simple pictogram of a slow pace, such as a tortoise or a low speed gauge, sits in the corner to signal that pedestrians have priority there.
+
+RIGHT PANEL - AFTER: a taller generic student wearing a bicycle helmet rides on the roadway, hugging the left edge of the carriageway, with a car passing safely to the right. A short bold arrow points to the left edge line under the wheels. The rider is turning their head to look back over the right shoulder, and a small bold arrow highlights that backward glance.
+
+Between the two panels, draw a single vertical divider with a simple numeral 13 in a circle at its centre, and a right-pointing chevron showing the direction of the change.
+
+Shared setting: a Japanese residential street with a footpath on one side, a green belt road edge marking along the carriageway shoulder, a guardrail and a school zone sign.
+
+Style: Flat Japanese infographic design on a light neutral background, clean geometric shapes, purple and green accent colours, generic characters with simple non-photographic features, educational aesthetic
+Avoid (negative prompt): photographic faces, identifiable real people, real brand logos, depiction of a collision or injury, helmet worn unfastened, riding on the right side of the carriageway, garbled text, any lettering other than the numeral 13
+${QUALITY_SUFFIX}`,
+        description: "13歳で走る場所が変わる。13歳未満は歩道を通行できる（歩行者優先）、13歳からは原則として車道の左側端。高学年のうちに後方確認を練習しておく"
+      }
+    ]
+  },
+  {
     articleId: "2026-11-14-year-end-traffic-safety-2026",
     articleSlug: "year-end-traffic-safety-2026",
     category: "policy-update",
