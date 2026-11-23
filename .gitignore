@@ -114,6 +114,7 @@ env.defaults.json
 .github/workflows/*
 !.github/workflows/cloudflare-preview.yml
 !.github/workflows/school-route-news-images.yml
+!.github/workflows/cloudflare-preview-sweep.yml
 .goose/
 .junie/
 .kilocode/
