@@ -54,6 +54,37 @@ describe('お問い合わせメール', () => {
     const down = vi.fn().mockRejectedValue(new Error('network'))
     await expect(forwardContactMail(input, { apiKey: 'k' }, down as unknown as typeof fetch)).resolves.toEqual({ status: 'failed', error: 'network' })
   })
+
+  it('Cloudflare Email Sending バインディングがあれば Resend を呼ばずに送信する', async () => {
+    const send = vi.fn().mockResolvedValue({ messageId: 'msg-123' })
+    const fetchImpl = vi.fn()
+    const result = await forwardContactMail(
+      input,
+      { binding: { send }, apiKey: 'unused-resend-key' },
+      fetchImpl as unknown as typeof fetch,
+    )
+    expect(result).toEqual({ status: 'sent' })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send.mock.calls[0][0]).toMatchObject({
+      to: DEFAULT_CONTACT_FORWARD_TO,
+      replyTo: 'parent@example.com',
+      subject: expect.stringContaining('サービス改善要望'),
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('Cloudflare Email Sending が失敗したとき RESEND_API_KEY があればフォールバックする', async () => {
+    const send = vi.fn().mockRejectedValue(new Error('domain not verified'))
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    const result = await forwardContactMail(
+      input,
+      { binding: { send }, apiKey: 'k' },
+      fetchImpl as unknown as typeof fetch,
+    )
+    expect(result).toEqual({ status: 'sent' })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('お問い合わせの入力検証', () => {

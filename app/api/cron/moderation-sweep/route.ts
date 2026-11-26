@@ -11,6 +11,7 @@ import {
 } from '@/lib/danger-report-moderation-d1'
 import { hasModerationSweepTimeRemaining } from '@/lib/danger-report-moderation-sweep'
 import { isDangerReportNotificationReady } from '@/lib/db/repos/push.repo'
+import { sendOperatorAlert } from '@/lib/email/operator-mail'
 import { queueDangerReportNotification } from '@/lib/push-notifications/notify-danger-report'
 
 export const runtime = 'nodejs'
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
   let failed = 0
   let processed = 0
   let deferred = 0
+  const exhaustedReportIds: string[] = []
+  const failedReportIds: string[] = []
 
   for (const report of reports) {
     if (!hasModerationSweepTimeRemaining(sweepStartedAt)) {
@@ -50,8 +53,12 @@ export async function GET(request: NextRequest) {
         const fallbackCount = await getDangerModerationFallbackCount(report.id)
         if (fallbackCount >= MAX_DANGER_MODERATION_FALLBACKS) {
           const failedReport = await markDangerReportModerationFailed(report.id, new Date())
-          if (failedReport) exhausted += 1
-          else conflict += 1
+          if (failedReport) {
+            exhausted += 1
+            exhaustedReportIds.push(report.id)
+          } else {
+            conflict += 1
+          }
           continue
         }
       }
@@ -67,7 +74,30 @@ export async function GET(request: NextRequest) {
       if (result.outcome === 'retry') retry += 1
     } catch (error) {
       failed += 1
+      failedReportIds.push(report.id)
       console.error('[cron/moderation-sweep] report failed:', report.id, error instanceof Error ? error.message : 'unknown')
+    }
+  }
+
+  if (exhausted > 0 || failed > 0) {
+    const alertResult = await sendOperatorAlert({
+      category: 'moderation-sweep',
+      title: `AIモデレーション異常 (失敗: ${failed}件 / 上限到達: ${exhausted}件)`,
+      severity: failed > 0 ? 'error' : 'warning',
+      details: {
+        mode,
+        processed,
+        updated,
+        retry,
+        exhausted,
+        failed,
+        deferred,
+        exhaustedReportIds: exhaustedReportIds.length > 0 ? exhaustedReportIds.join(', ') : '(なし)',
+        failedReportIds: failedReportIds.length > 0 ? failedReportIds.join(', ') : '(なし)',
+      },
+    })
+    if (alertResult.status === 'failed') {
+      console.error('[cron/moderation-sweep] operator alert failed:', alertResult.error)
     }
   }
 

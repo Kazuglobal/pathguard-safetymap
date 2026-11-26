@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getActor } from '@/lib/auth/actor'
 import { flagDangerReport } from '@/lib/db/repos/social.repo'
+import { sendAbuseReportNotification } from '@/lib/email/operator-mail'
 import { checkApiRateLimit, rateLimitedResponse } from "@/lib/upstash-rate-limiter"
 
 export const runtime = "nodejs"
@@ -50,6 +51,15 @@ export async function POST(request: NextRequest) {
       { error: "通報の送信に失敗しました" },
       { status: 500 },
     )
+  }
+
+  const mailResult = await sendAbuseReportNotification({
+    targetReportId: target_report_id,
+    reporterUserId: actor.id,
+    reason,
+  })
+  if (mailResult.status === 'failed') {
+    console.error('[api/abuse-report] operator email failed:', mailResult.error)
   }
 
   return NextResponse.json({ success: true })
