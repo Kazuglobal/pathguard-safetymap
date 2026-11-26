@@ -118,6 +118,12 @@
   "images": {
     "binding": "IMAGES"
   },
+  "send_email": [
+    {
+      "name": "OPERATOR_EMAIL",
+      "destination_address": "globalbunny77@gmail.com"
+    }
+  ],
   "workflows": [
     {
       "name": "pathguardian-d1-backup",

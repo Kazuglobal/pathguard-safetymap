@@ -54,6 +54,12 @@
   "images": {
     "binding": "IMAGES"
   },
+  "send_email": [
+    {
+      "name": "OPERATOR_EMAIL",
+      "destination_address": "globalbunny77@gmail.com"
+    }
+  ],
   "vars": {
     "CLOUDFLARE_ACCOUNT_ID": "64a7afb6120cc316b618480f4a17cc21",
     "D1_DATABASE_ID": "8e92d8a8-4b40-4530-89a9-43f6cbc37099"
