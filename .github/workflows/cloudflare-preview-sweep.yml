@@ -1,0 +1,59 @@
+name: Cloudflare Preview Worker Sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'inventory（棚卸しのみ）または delete（クローズ済み PR のプレビュー残骸を削除）'
+        required: true
+        default: 'inventory'
+        type: choice
+        options:
+          - inventory
+          - delete
+      confirm:
+        description: 'delete 実行時のみ DELETE と入力'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sweep:
+    if: github.repository == 'Kazuglobal/pathguard-safetymap'
+    runs-on: ubuntu-latest
+    environment: cloudflare-preview
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+
+      - name: Run preview Worker sweep
+        shell: bash
+        env:
+          SWEEP_MODE: ${{ inputs.mode }}
+          SWEEP_CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          if [ "$SWEEP_MODE" = "delete" ]; then
+            if [ "$SWEEP_CONFIRM" != "DELETE" ]; then
+              echo "confirm に DELETE を入力しない限り削除は実行しません。"
+              node scripts/cloudflare/sweep-preview-workers.mjs
+              exit 1
+            fi
+            node scripts/cloudflare/sweep-preview-workers.mjs --delete
+          else
+            node scripts/cloudflare/sweep-preview-workers.mjs
+          fi
