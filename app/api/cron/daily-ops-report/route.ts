@@ -174,11 +174,20 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  return NextResponse.json({
-    ok: reportResult.status !== 'failed',
-    reportDelivery: reportResult,
-    budgetAlertDelivery: budgetAlertResult,
-    hasWarnings: reportMail.hasWarnings,
-    metrics,
-  })
+  // The scheduled runner only checks response.ok, so a report or budget warning
+  // that never reached the operator must surface as a non-2xx response.
+  const reportDelivered = reportResult.status === 'sent'
+  const budgetAlertDelivered = budgetAlertResult === null || budgetAlertResult.status === 'sent'
+  const ok = reportDelivered && budgetAlertDelivered
+
+  return NextResponse.json(
+    {
+      ok,
+      reportDelivery: reportResult,
+      budgetAlertDelivery: budgetAlertResult,
+      hasWarnings: reportMail.hasWarnings,
+      metrics,
+    },
+    { status: ok ? 200 : 502 },
+  )
 }
