@@ -1,6 +1,11 @@
 // Generated modules are present after `pnpm build:cloudflare`.
 import openNextWorker from './.open-next/worker.js'
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers'
+import {
+  D1_EXPORT_MAX_POLLS,
+  d1ExportPollDelaySeconds,
+  d1ExportTotalWaitSeconds,
+} from './cloudflare/d1-backup-schedule'
 
 /**
  * 本番 D1 の traffic_accidents 件数として正しい値。取り込み途中・二重取り込みを検知するため完全一致で見る。
@@ -132,7 +137,7 @@ export class D1BackupWorkflow extends WorkflowEntrypoint<D1BackupEnv> {
         },
       )
 
-      for (let attempt = 1; attempt <= 43; attempt += 1) {
+      for (let attempt = 1; attempt <= D1_EXPORT_MAX_POLLS; attempt += 1) {
         const outcome = await step.do(
           `poll D1 export ${attempt}`,
           { retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' }, timeout: '5 minutes' },
@@ -175,10 +180,12 @@ export class D1BackupWorkflow extends WorkflowEntrypoint<D1BackupEnv> {
 
         if ('key' in outcome) return { key: outcome.key }
         bookmark = outcome.nextBookmark
-        await step.sleep(`wait for D1 export ${attempt}`, '1 second')
+        await step.sleep(`wait for D1 export ${attempt}`, d1ExportPollDelaySeconds(attempt) * 1000)
       }
 
-      throw new Error('D1 export did not complete before the Workers Free subrequest limit')
+      throw new Error(
+        `D1 export did not finish after ${D1_EXPORT_MAX_POLLS} polls (~${Math.round(d1ExportTotalWaitSeconds() / 60)} min)`,
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       await notifyRouterOperator(
