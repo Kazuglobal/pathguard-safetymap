@@ -140,10 +140,10 @@ Left group: three vertical bars in light purple. The first bar is the tallest, t
 
 Right group: three vertical bars in deeper purple, all clearly taller than every bar in the left group. The first bar is the tallest, the second shorter, the third much shorter. Above each bar, printed as plain numerals only: 1349 above the first, 1144 above the second, 845 above the third. A thin ring highlight surrounds the top of the first, tallest bar.
 
-Above the left group sits a small generic student bust silhouette; above the right group sits a slightly taller generic student bust silhouette. These two silhouettes are the only indication of which group is which, and they replace any written label.
+Above the left group sits a small, younger-looking Japanese junior-high-school student icon in a dark gakuran-style stand-collar uniform; above the right group sits a clearly taller, older-looking Japanese high-school student icon in a blazer with a tie. Both icons show the same gender-neutral short hairstyle, so the only difference the reader sees is age and school stage, never boy versus girl. These two icons are the only indication of which group is which, and they replace any written label.
 
 Style: Flat Japanese infographic design on a light neutral background, generous white space, clean geometric bars, purple accent palette, educational aesthetic
-Avoid (negative prompt): any letters, any words, any captions, any headings, any axis labels, any legend, any writing of any kind in any language except the six numerals 621, 491, 470, 1349, 1144 and 845; photographic faces; identifiable real people; real brand logos; garbled text
+Avoid (negative prompt): any letters, any words, any captions, any headings, any axis labels, any legend, any writing of any kind in any language except the six numerals 621, 491, 470, 1349, 1144 and 845; one icon looking female and the other male, long hair on only one icon, skirts; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "学年別の自転車事故における死亡・重傷事故件数（2020〜2024年合計）。中学生は621・491・470件、高校生は1,349・1,144・845件で、どちらも1年生が最多"
       },
@@ -151,14 +151,14 @@ ${QUALITY_SUFFIX}`,
         id: "age-13-changes-where-you-ride",
         prompt: `Create a clean Japanese educational illustration contrasting where a child may ride a bicycle before and after the age of thirteen, drawn as two panels of the same street placed side by side with a thin vertical divider between them. A plain circle containing only the numeral 13, followed by a right-pointing chevron, sits at the centre of the divider. There is no writing anywhere else in the picture, and every road sign in the scene is drawn as a pictogram with no lettering on it.
 
-Left panel, before: a shorter generic child wearing a correctly fastened bicycle helmet rides slowly along a clearly raised footpath, which is drawn as a paved strip lifted above the carriageway by a kerb and separated from it by a painted edge line. Two pedestrian silhouettes walk on the same footpath with clear space between them, and the child keeps to the side furthest from them. A small pictogram of a tortoise sits in the lower corner to signal a slow pace and that people on foot come first there. The carriageway beside the footpath is empty.
+Left panel, before: a shorter generic child wearing a correctly fastened bicycle helmet rides slowly ON the raised footpath itself: both bicycle wheels are clearly on the paved footpath surface, above and inside the kerb, never on the carriageway, never on the road shoulder and never between the kerb and the white edge line. The footpath is drawn wide and obvious, lifted above the carriageway by a tall kerb. Two pedestrian silhouettes walk on the same footpath with clear space between them, and the child keeps to the carriageway side of the footpath, away from them. A small pictogram of a tortoise sits in the lower corner to signal a slow pace and that people on foot come first there. The carriageway beside the footpath is completely empty: no bicycle, no person and no vehicle on it.
 
 Right panel, after: a taller generic student wearing a correctly fastened bicycle helmet rides on the carriageway itself, hugging its left edge, with a car passing safely to the right. The footpath beside them is empty. The rider is turning their head to look back over the right shoulder, and a short bold arrow highlights that backward glance.
 
 Shared setting: a Japanese residential street with a green edge strip along the carriageway shoulder, a guardrail, low houses and a lettering-free diamond school zone sign showing only a pictogram of two walking children.
 
 Style: Flat Japanese infographic design on a light neutral background, clean geometric shapes, purple and green accent colours, generic characters with simple non-photographic features, educational aesthetic
-Avoid (negative prompt): any letters, any words, any captions, any headings, any signage wording, any shop names, any writing of any kind in any language except the numeral 13 in the central circle; photographic faces; identifiable real people; real brand logos; helmet worn unfastened; riding on the right-hand side of the carriageway; depiction of a collision or injury; garbled text
+Avoid (negative prompt): any letters, any words, any captions, any headings, any signage wording, any shop names, any writing of any kind in any language except the numeral 13 in the central circle; photographic faces; identifiable real people; real brand logos; helmet worn unfastened; riding on the right-hand side of the carriageway; in the left panel, the child riding on the carriageway or road shoulder; depiction of a collision or injury; garbled text
 ${QUALITY_SUFFIX}`,
         description: "13歳で走る場所が変わる。13歳未満は歩道を通行できる（歩行者優先）、13歳からは原則として車道の左側端。高学年のうちに後方確認を練習しておく"
       }
@@ -284,14 +284,14 @@ Scene elements (Japanese specific):
 - A Japanese high school student in a school uniform on a bicycle, both feet down on the ground at a painted stop line of a narrow residential intersection, wearing a properly fastened bicycle helmet
 - The student's smartphone is clearly zipped away inside the school bag hanging on the handlebar, not in the hand - the hands are on the brakes
 - The student turns their head to look right and left at the blind corner
-- Japanese residential street in late autumn, a "とまれ" style stop marking painted on the road surface, a green belt road edge marking, a guardrail, a school zone sign further down the street
+- Japanese residential street in late autumn, a plain white stop line and an inverted white triangle marking painted on the road surface (lines and shapes only, never any painted characters or words), a green belt road edge marking, a guardrail, a diamond school zone sign further down the street showing only a pictogram of two walking children
 - A small railway crossing with striped barriers visible in the far background
 - Warm late autumn afternoon light, ginkgo leaves turning yellow
 
 Mood: Calm, positive and instructive. The hero elements are the feet down on the ground and the put-away smartphone. Not frightening, no crash, no police officer writing a ticket.
 Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines
 Color palette: Late autumn amber and warm grey, with a purple accent to match the policy-update category colour
-Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, punitive police enforcement imagery, a phone held in the hand, text overlays
+Avoid (negative prompt): any letters, any words, any kana or kanji, any painted characters on the road surface, any writing on signs, shopfronts or the bicycle, garbled text; photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, punitive police enforcement imagery, a phone held in the hand, text overlays
 ${QUALITY_SUFFIX}`,
     contentImages: [
       {
@@ -336,17 +336,17 @@ ${QUALITY_SUFFIX}`,
 Scene elements (Japanese specific):
 - A Japanese residential neighbourhood street with tile-roofed houses, seen from a slightly raised angle so the whole block reads as one area
 - Japanese elementary school children wearing yellow safety caps and red and black randoseru backpacks, walking in a line on a green belt road edge marking
-- A large numeral 30 painted on the road surface near the entrance of the zone, and a round zone entry sign post at the corner
+- A large numeral 30 painted on the road surface near the entrance of the zone, and a round red-bordered speed limit sign at the corner showing only the numeral 30 and nothing else (no panel or plate underneath it, no words)
 - A raised hump across the road a little further on, drawn clearly as a gentle bump with the road surface rising
 - A narrowing of the road made by planted kerb extensions, with a car slowing down as it approaches
-- A guardrail along the footway, a crosswalk, and a school zone sign
+- A guardrail along the footway, a crosswalk, and a diamond school zone sign showing only a pictogram of two walking children
 - A crossing guard volunteer with an armband at the far corner
 - Warm late autumn morning light
 
 Mood: Reassuring and constructive - the street itself is doing the protecting. No crash, no injury, no danger depicted.
 Style: Japanese manga/anime inspired editorial illustration, soft shading, clean lines, slightly illustrative map-like depth
 Color palette: Warm autumn green and amber, with a purple accent to match the policy-update category colour
-Avoid (negative prompt): photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, text overlays other than the painted numeral 30
+Avoid (negative prompt): any letters, any words, any kana or kanji, any supplementary plates or text panels under signs, any writing on signs, banners, vests or armbands, garbled text, any numerals other than 30; photographic realistic faces, identifiable real people, depiction of a crash or injury, real brand logos, text overlays
 ${QUALITY_SUFFIX}`,
     contentImages: [
       {
@@ -370,10 +370,10 @@ ${QUALITY_SUFFIX}`,
 
 Left block: a neighbourhood that has been deliberately treated. Round red-bordered speed limit signs showing the numeral 30 stand at two of its entrances. The numeral 30 is also painted large on the road surface. The roads have raised humps drawn as gentle ridges, and narrowed points where planted kerb build-outs pinch the carriageway. A magnifying glass pictogram in the upper left corner enlarges one of the round signs so the numeral 30 inside it is clearly readable. Low Japanese houses, small trees and a few parked cars fill the block. The whole block has a soft purple tint.
 
-Right block: an ordinary neighbourhood with no treatment at all. There are no speed limit signs, no road markings, no humps and no narrowed points: one plain grey road runs between the houses with no centre line painted on it. A single plain signpost stands empty with a thin red diagonal stroke across a blank disc, showing the absence of a sign. The whole block has a neutral grey tint.
+Right block: an ordinary neighbourhood with no treatment at all. There are no speed limit signs, no road markings, no humps and no narrowed points: one plain grey road runs between the houses with no centre line painted on it. There are no signposts and no signs of any kind on this side: nothing standing at the roadside but houses, trees, low walls and parked cars. The absence of signs is shown simply by there being none. The whole block has a neutral grey tint.
 
 Style: Flat Japanese infographic illustration, isometric view, clean lines, soft shading, purple accent for the treated side and neutral grey for the untreated side, educational aesthetic
-Avoid (negative prompt): any letters, any words, any captions, any headings, any annotations, any leader-line notes, any signage wording, any writing of any kind in any language except the numeral 30 where it appears on the signs and the road surface; photographic faces; identifiable real people; real brand logos; garbled text
+Avoid (negative prompt): any letters, any words, any captions, any headings, any annotations, any leader-line notes, any signage wording, any writing of any kind in any language except the numeral 30 where it appears on the signs and the road surface; on the right block, any sign, signpost, red circle, diagonal stroke, prohibition or no-entry symbol; photographic faces; identifiable real people; real brand logos; garbled text
 ${QUALITY_SUFFIX}`,
         description: "ゾーン30プラス（区域規制・標識あり・装置あり）と生活道路の法定速度30km/h（全国一律・新しい標識は立たない）の違い"
       }
