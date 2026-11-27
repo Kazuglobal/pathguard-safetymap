@@ -9,7 +9,6 @@
   },
   "include": [
     "custom-worker.ts",
-    "cloudflare/workers/**/*.ts",
     "worker-configuration.d.ts"
   ],
   "exclude": ["node_modules"]

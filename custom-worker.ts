@@ -1,10 +1,12 @@
 // Generated modules are present after `pnpm build:cloudflare`.
-import { handleCdnCgiImageRequest, handleImageRequest } from './.open-next/cloudflare/images.js'
-import { runWithCloudflareRequestContext } from './.open-next/cloudflare/init.js'
-import { maybeGetSkewProtectionResponse } from './.open-next/cloudflare/skew-protection.js'
-import { handler as middlewareHandler } from './.open-next/middleware/handler.mjs'
-import { routeBindingForPath } from './cloudflare/router-paths'
+import openNextWorker from './.open-next/worker.js'
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers'
+
+/**
+ * 本番 D1 の traffic_accidents 件数として正しい値。取り込み途中・二重取り込みを検知するため完全一致で見る。
+ * 2019〜2024年 = 1,869,032 件、2025年（287,020 件）を追加後 = 2,156,052 件。
+ */
+const EXPECTED_TRAFFIC_ACCIDENT_COUNTS: readonly number[] = [1_869_032, 2_156_052]
 
 type RouterSendEmail = {
   send(message: {
@@ -59,20 +61,8 @@ type D1BackupEnv = CloudflareEnv & {
 type RouterEnv = CloudflareEnv & {
   D1_BACKUP_WORKFLOW: Workflow
   OPERATOR_EMAIL?: RouterSendEmail
-  CORE: Fetcher
-  EDITORIAL: Fetcher
-  MAP_3D: Fetcher
-  MAP_UI: Fetcher
-  ROUTE_QUIZ: Fetcher
-  ROUTE_LIST: Fetcher
-  MAP_DATA: Fetcher
-  AI_VISION: Fetcher
-  HUNTER: Fetcher
-  SAFETY_QUEST: Fetcher
-  AUTH_ADMIN: Fetcher
-  COMMUNITY: Fetcher
-  USER: Fetcher
-  OPERATIONS: Fetcher
+  TRAFFIC_DB: D1Database
+  CRON_SECRET?: string
 }
 
 type D1ExportResult = {
@@ -205,8 +195,18 @@ export class D1BackupWorkflow extends WorkflowEntrypoint<D1BackupEnv> {
   }
 }
 
-function serverForPath(pathname: string, env: RouterEnv): Fetcher {
-  return env[routeBindingForPath(pathname)]
+async function handleTrafficAccidentsHealth(request: Request, env: RouterEnv): Promise<Response> {
+  const authorization = request.headers.get('authorization')
+  if (!env.CRON_SECRET || authorization !== `Bearer ${env.CRON_SECRET}`) {
+    return new Response(null, { status: 404 })
+  }
+
+  const result = await env.TRAFFIC_DB.prepare(
+    'SELECT count(*) AS count FROM traffic_accidents',
+  ).first<{ count: number }>()
+
+  const count = result?.count ?? null
+  return Response.json({ ok: count != null && EXPECTED_TRAFFIC_ACCIDENT_COUNTS.includes(count), count })
 }
 
 function scheduledRoutes(controller: ScheduledController): string[] {
@@ -272,7 +272,7 @@ async function runScheduledRoutes(
         const request = new Request(`https://pathguardian.internal${route}`, {
           headers: { authorization: `Bearer ${env.CRON_SECRET}` },
         })
-        const response = await serverForPath(route, env).fetch(request)
+        const response = await openNextWorker.fetch(request, env, ctx)
         if (response.ok) return { route, ok: true as const, status: response.status }
         const snippet = (await response.text().catch(() => '')).slice(0, 200)
         return { route, ok: false as const, status: response.status, detail: snippet }
@@ -306,39 +306,12 @@ async function runScheduledRoutes(
 
 const worker = {
   async fetch(request, env, ctx) {
-    return runWithCloudflareRequestContext(request, env, ctx, async () => {
-      const skewResponse = maybeGetSkewProtectionResponse(request)
-      if (skewResponse) return skewResponse
+    const url = new URL(request.url)
+    if (url.pathname === '/api/traffic-accidents/__health') {
+      return handleTrafficAccidentsHealth(request, env)
+    }
 
-      const url = new URL(request.url)
-      if (url.pathname.startsWith('/cdn-cgi/image/')) {
-        return handleCdnCgiImageRequest(url, env)
-      }
-
-      // This authenticated operational probe is implemented by the private
-      // map-data Worker and is intentionally not part of the Next.js route tree.
-      if (url.pathname === '/api/traffic-accidents/__health') {
-        return env.MAP_DATA.fetch(request)
-      }
-
-      const nextGlobals = globalThis as typeof globalThis & {
-        __NEXT_BASE_PATH__?: string
-        __TRAILING_SLASH__?: boolean
-      }
-      const imagePath = `${nextGlobals.__NEXT_BASE_PATH__ ?? ''}/_next/image${nextGlobals.__TRAILING_SLASH__ ? '/' : ''}`
-      if (url.pathname === imagePath) {
-        return handleImageRequest(url, request.headers, env)
-      }
-
-      const requestOrResponse = await middlewareHandler(request, env, ctx)
-      if (requestOrResponse instanceof Response) return requestOrResponse
-
-      const pathname = new URL(requestOrResponse.url).pathname
-      return serverForPath(pathname, env).fetch(requestOrResponse, {
-        redirect: 'manual',
-        cf: { cacheEverything: false },
-      })
-    })
+    return openNextWorker.fetch(request, env, ctx)
   },
   scheduled(controller, env, ctx) {
     ctx.waitUntil(Promise.all([runScheduledRoutes(controller, env, ctx), startD1Backup(controller, env)]).then(() => undefined))

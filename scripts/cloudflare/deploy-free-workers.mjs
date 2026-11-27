@@ -6,42 +6,15 @@ import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import dotenv from 'dotenv'
 import { isSensitiveBuildVariable } from './secret-policy.mjs'
-import { serverWorkerDeployEnv } from './ci-worker-env.mjs'
 import { assertProductionSource } from './production-source-guard.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const wranglerCli = path.join(projectRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
 const buildScript = path.join(projectRoot, 'scripts', 'cloudflare', 'build-free-workers.mjs')
-const serverConfig = path.join(projectRoot, 'wrangler.server.jsonc')
 const routerConfig = path.join(projectRoot, 'wrangler.jsonc')
 const dryRun = process.argv.includes('--dry-run')
 const skipBuild = process.argv.includes('--skip-build')
-const onlyArg = process.argv.find((argument) => argument.startsWith('--only='))
-const only = onlyArg ? new Set(onlyArg.slice('--only='.length).split(',').filter(Boolean)) : null
-
-const servers = [
-  ['pathguardian-editorial', 'server-editorial.ts'],
-  ['pathguardian-map-3d', 'server-map-3d.ts'],
-  ['pathguardian-map-ui', 'server-map-ui.ts'],
-  ['pathguardian-route-quiz', 'server-route-quiz.ts'],
-  ['pathguardian-route-list', 'server-route-list.ts'],
-  ['pathguardian-map-data', 'server-map-data.ts'],
-  ['pathguardian-ai-vision', 'server-ai-vision.ts'],
-  ['pathguardian-hunter', 'server-hunter.ts'],
-  ['pathguardian-safety-quest', 'server-safety-quest.ts'],
-  ['pathguardian-auth-admin', 'server-auth-admin.ts'],
-  ['pathguardian-community', 'server-community.ts'],
-  ['pathguardian-user', 'server-user.ts'],
-  ['pathguardian-operations', 'server-operations.ts'],
-  ['pathguardian-core', 'server-core.ts'],
-]
-const serversToDeploy = only
-  ? servers.filter(([name]) => only.has(name.replace(/^pathguardian-/, '')))
-  : servers
-const deployRouter = only === null || only.has('router')
-if (only && serversToDeploy.length + (deployRouter ? 1 : 0) !== only.size) {
-  throw new Error(`Unknown --only target: ${[...only].join(', ')}`)
-}
+const paidWorkerLimitKiB = 10 * 1024
 
 const secretNames = [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -109,8 +82,8 @@ function runDryRun(args, label) {
   if (!size) throw new Error(`Wrangler did not report a compressed size for ${label}`)
   const compressedKiB = Number(size[1])
   console.log(`${label}: ${compressedKiB.toFixed(2)} KiB gzip`)
-  if (compressedKiB > 3 * 1024) {
-    throw new Error(`${label} exceeds the Cloudflare Free 3 MiB limit`)
+  if (compressedKiB > paidWorkerLimitKiB) {
+    throw new Error(`${label} exceeds the Cloudflare Paid 10 MiB limit`)
   }
 }
 
@@ -144,11 +117,9 @@ for (const generatedModule of generatedModules) {
   }
 }
 
-const requiredOutputs = serversToDeploy.map(([, entry]) =>
-  path.join(projectRoot, 'cloudflare', 'workers', entry),
-)
-for (const output of requiredOutputs) {
-  if (!existsSync(output)) throw new Error(`Worker entry is missing: ${output}`)
+const openNextWorkerEntry = path.join(projectRoot, '.open-next', 'worker.js')
+if (!existsSync(openNextWorkerEntry)) {
+  throw new Error(`OpenNext worker entry is missing: ${openNextWorkerEntry}`)
 }
 
 const secretValues = Object.fromEntries(
@@ -167,40 +138,15 @@ if (dryRun) {
 }
 
 try {
-  for (const [name, entry] of serversToDeploy) {
-    const entryPath = path.join('cloudflare', 'workers', entry)
-    const args = [
-      wranglerCli,
-      'deploy',
-      entryPath,
-      '--config',
-      serverConfig,
-      '--name',
-      name,
-      '--keep-vars',
-    ]
-    if (dryRun) {
-      args.push('--dry-run', '--outdir', path.join(dryRunRoot, name), '--metafile')
-    } else if (Object.keys(secretValues).length > 0) {
-      args.push('--secrets-file', tempSecretPath)
-    }
-    console.log(`\n=== ${dryRun ? 'Checking' : 'Deploying'} ${name} ===`)
-    if (dryRun) runDryRun(args, name)
-    // Workers Builds の名前・タグ固定を外さないと、--name を無視して router に上書きされる（ci-worker-env.mjs）
-    else run(args, serverWorkerDeployEnv(process.env))
+  const routerArgs = [wranglerCli, 'deploy', '--config', routerConfig, '--keep-vars']
+  if (dryRun) {
+    routerArgs.push('--dry-run', '--outdir', path.join(dryRunRoot, 'pathguardian'), '--metafile')
+  } else if (Object.keys(secretValues).length > 0) {
+    routerArgs.push('--secrets-file', tempSecretPath)
   }
-
-  if (deployRouter) {
-    const routerArgs = [wranglerCli, 'deploy', '--config', routerConfig, '--keep-vars']
-    if (dryRun) {
-      routerArgs.push('--dry-run', '--outdir', path.join(dryRunRoot, 'pathguardian'), '--metafile')
-    } else if (Object.keys(secretValues).length > 0) {
-      routerArgs.push('--secrets-file', tempSecretPath)
-    }
-    console.log(`\n=== ${dryRun ? 'Checking' : 'Deploying'} pathguardian router ===`)
-    if (dryRun) runDryRun(routerArgs, 'pathguardian')
-    else run(routerArgs)
-  }
+  console.log(`\n=== ${dryRun ? 'Checking' : 'Deploying'} pathguardian ===`)
+  if (dryRun) runDryRun(routerArgs, 'pathguardian')
+  else run(routerArgs)
 } finally {
   if (existsSync(tempSecretPath)) rmSync(tempSecretPath, { force: true })
 }

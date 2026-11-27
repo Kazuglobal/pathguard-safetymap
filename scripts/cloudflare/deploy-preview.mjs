@@ -38,9 +38,7 @@ const readConfig = (name) => {
   return result.config
 }
 const routerBase = readConfig('wrangler.jsonc')
-const serverBase = readConfig('wrangler.server.jsonc')
 const resources = readConfig('wrangler.preview-resources.json')
-const serverNames = routerBase.services.filter((service) => service.binding !== 'WORKER_SELF_REFERENCE').map((service) => service.service)
 
 // Never implicitly load production environment files for a preview.
 dotenv.config({ path: path.join(root, '.env.preview.local'), quiet: true })
@@ -55,11 +53,21 @@ try {
   const router = createPreviewConfig(routerBase, resources, id, root, true)
   const routerConfig = writeConfig('router', router)
   if (remove) {
-    // Delete only the exact PR-scoped Workers, not D1/R2 or production Workers.
-    for (const name of [...serverNames, 'pathguardian']) {
-      const target = previewName(name, id)
-      if (dryRun) console.log(`Would delete ${target}`)
-      else run(process.execPath, [wrangler, 'delete', '--config', routerConfig, '--name', target, '--force'], { env })
+    // Delete only the exact PR-scoped Worker, not D1/R2 or production Workers.
+    const target = previewName('pathguardian', id)
+    if (dryRun) {
+      console.log(`Would delete ${target}`)
+    } else {
+      try {
+        run(process.execPath, [wrangler, 'delete', '--config', routerConfig, '--name', target, '--force'], { env })
+      } catch (error) {
+        const output = String(error?.output ?? '')
+        if (/not found|does not exist|code:\s*10007/i.test(output)) {
+          console.log(`Preview Worker ${target} already deleted or not found; skipping.`)
+        } else {
+          throw error
+        }
+      }
     }
   } else {
     const secrets = previewSecrets(env)
@@ -82,22 +90,6 @@ try {
           await new Promise((resolve) => setTimeout(resolve, wait))
         }
       }
-    }
-    if (!dryRun) {
-      // Break the initial router -> servers -> router service-binding cycle.
-      // Returning 503 also avoids mixed frontend/server versions during updates.
-      const bootstrap = writeConfig('bootstrap', {
-        name: router.name, account_id: resources.account_id,
-        main: path.join(root, 'cloudflare/preview-bootstrap.mjs'),
-        compatibility_date: router.compatibility_date, workers_dev: true, preview_urls: false,
-      })
-      await deploy(bootstrap)
-    }
-    for (const name of serverNames) {
-      const config = createPreviewConfig({ ...serverBase, name,
-        main: `cloudflare/workers/server-${name.slice('pathguardian-'.length)}.ts`,
-      }, resources, id, root)
-      await deploy(writeConfig(name, config))
     }
     const output = await deploy(routerConfig)
     if (!dryRun) {
