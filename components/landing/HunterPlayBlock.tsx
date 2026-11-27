@@ -34,6 +34,7 @@ export function HunterPlayBlock() {
           </div>
           <Link
             href="/safety-quest/hunter"
+            rel="nofollow"
             className={`chunky-press inline-flex min-h-12 flex-shrink-0 items-center justify-center gap-1.5 self-stretch rounded-full px-6 text-base font-black text-white md:self-center ${tankenTokens.cls.focus}`}
             style={{ background: C.primary, boxShadow: tankenTokens.shadow.pressGreen }}
           >

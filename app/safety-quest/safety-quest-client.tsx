@@ -353,7 +353,7 @@ export default function SafetyQuestClient() {
 
               if (item.href) {
                 return (
-                  <Link key={item.href} href={item.href} className={className}>
+                  <Link key={item.href} href={item.href} rel="nofollow" className={className}>
                     {content}
                   </Link>
                 )

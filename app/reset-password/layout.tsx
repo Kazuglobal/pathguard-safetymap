@@ -2,7 +2,10 @@ import type { Metadata } from "next"
 import type { ReactNode } from "react"
 
 // このページは client コンポーネントなので、タイトルはここで決める(「ページ名 | PathGuardian」)
-export const metadata: Metadata = { title: "新しいパスワード" }
+export const metadata: Metadata = {
+  title: "新しいパスワード",
+  robots: { index: false, follow: false },
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   return children

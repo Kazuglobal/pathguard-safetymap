@@ -8,6 +8,7 @@ import { GA_MEASUREMENT_ID } from "@/lib/google-analytics"
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
   description: "PathGuardian(通学路みまもりアプリ)が預かる情報と、預からない情報、その使い方と保存の期間です。",
+  alternates: { canonical: "/privacy" },
 }
 
 const years = (days: number) => (days % 365 === 0 ? `${days / 365}年` : `${days}日`)

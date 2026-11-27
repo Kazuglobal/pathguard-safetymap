@@ -12,6 +12,7 @@ import { SITE_URL, buildLpJsonLd, jsonLdString } from "@/lib/seo"
 describe("robots.txt", () => {
   const rules = robots().rules
   const rule = Array.isArray(rules) ? rules[0] : rules
+  const allow = [rule?.allow ?? []].flat()
   const disallow = [rule?.disallow ?? []].flat()
 
   it("ログインが要る画面と API をすべて検索から外す", () => {
@@ -21,8 +22,15 @@ describe("robots.txt", () => {
     expect(disallow).toContain("/api/")
   })
 
-  it("紹介ページ・ニュース・マガジンは外さず、サイトマップを示す", () => {
-    for (const path of ["/lp", "/school-route-news", "/safe-magazine"]) {
+  it("公開ページの描画に必要な公開APIを明示的に許可する", () => {
+    expect(allow).toContain("/")
+    expect(allow).toContain("/api/accidents/")
+    expect(allow).toContain("/api/local-safety-alerts")
+    expect(allow).toContain("/api/safety-quest/")
+  })
+
+  it("紹介ページ・ニュース・マガジン・ホームは外さず、サイトマップを示す", () => {
+    for (const path of ["/lp", "/landing", "/school-route-news", "/safe-magazine", "/accidents", "/safety-quest"]) {
       expect(disallow.some((d) => path.startsWith(d)), path).toBe(false)
     }
     expect(robots().sitemap).toBe(`${SITE_URL}/sitemap.xml`)
@@ -37,12 +45,19 @@ describe("sitemap.xml", () => {
     expect(paths.filter((path) => isProtectedPath(path))).toEqual([])
   })
 
-  it("紹介ページと、すべてのニュース・マガジン記事を絶対URLで載せる", () => {
-    expect(paths).toContain("/lp")
+  it("紹介ページ・主要公開ページと、すべてのニュース・マガジン記事を絶対URLで載せる", () => {
+    for (const path of ["/lp", "/landing", "/school-route-news", "/safe-magazine", "/accidents", "/safety-quest"]) {
+      expect(paths).toContain(path)
+    }
     for (const item of getAllNewsItems()) expect(paths).toContain(`/school-route-news/${item.slug}`)
     for (const article of getAllArticles()) expect(paths).toContain(`/safe-magazine/${article.slug}`)
     for (const entry of entries) expect(entry.url.startsWith(SITE_URL)).toBe(true)
     expect(new Set(paths).size).toBe(paths.length)
+
+    const newsIndex = entries.find((entry) => new URL(entry.url).pathname === "/school-route-news")
+    const magazineIndex = entries.find((entry) => new URL(entry.url).pathname === "/safe-magazine")
+    expect(newsIndex?.lastModified).toBeInstanceOf(Date)
+    expect(magazineIndex?.lastModified).toBeInstanceOf(Date)
   })
 })
 

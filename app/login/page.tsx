@@ -6,7 +6,11 @@ import { getSafeNextPath } from "@/lib/auth/safe-next"
 import { tankenTokens } from "@/lib/design/tanken"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "ログイン" }
+export const metadata: Metadata = {
+  title: "ログイン",
+  alternates: { canonical: "/login" },
+  robots: { index: false, follow: true },
+}
 
 export default async function LoginPage({
   searchParams,

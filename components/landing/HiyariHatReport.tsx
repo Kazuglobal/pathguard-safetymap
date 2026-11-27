@@ -147,6 +147,7 @@ export function HiyariHatReport() {
           </div>
           <Link
             href="/report"
+            rel="nofollow"
             className={`flex items-center gap-0.5 rounded-full text-sm font-bold ${tankenTokens.cls.focus}`}
             style={{ color: C.primaryStrong }}
           >
@@ -302,6 +303,7 @@ export function HiyariHatReport() {
         <div className="mt-4 px-4 text-center md:mt-6">
           <Link
             href={REPORT_PATH}
+            rel="nofollow"
             className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-8 py-3 text-base font-bold text-white transition-transform active:translate-y-1 active:shadow-none md:w-auto ${tankenTokens.cls.focus}`}
             style={{ background: C.accent, boxShadow: tankenTokens.shadow.pressAccent }}
           >

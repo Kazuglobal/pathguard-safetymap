@@ -128,6 +128,36 @@ jobs:
           echo "Production health check failed with HTTP $status"
           exit 1
 
+      - name: Notify operator of deployment result
+        if: always()
+        shell: bash
+        env:
+          DEPLOY_JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET is not set; skipping deploy email notification"
+            exit 0
+          fi
+          payload=$(node -e '
+            console.log(JSON.stringify({
+              status: process.env.DEPLOY_JOB_STATUS === "success"
+                ? "success"
+                : process.env.DEPLOY_JOB_STATUS === "cancelled"
+                  ? "cancelled"
+                  : "failure",
+              workflow: process.env.GITHUB_WORKFLOW || "Cloudflare Production",
+              ref: process.env.GITHUB_REF || "refs/heads/main",
+              sha: process.env.GITHUB_SHA || "0000000",
+              actor: process.env.GITHUB_ACTOR || "github-actions",
+              runUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            }))
+          ')
+          curl --silent --show-error --max-time 15 \
+            -X POST "https://path-guardian.com/api/cron/ci-deploy-notify" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$payload" || echo "Deploy email notification failed (non-fatal)"
+
   publish-accidents:
     needs: deploy
     if: github.ref == 'refs/heads/main' && github.repository == 'Kazuglobal/pathguard-safetymap'

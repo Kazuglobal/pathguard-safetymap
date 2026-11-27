@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { forwardContactMail } from '@/lib/contact/contact-mail'
 import { ContactSchema } from '@/lib/contact/contact-schema'
 import { insertContactMessage, markContactDelivery } from '@/lib/db/repos/contact.repo'
+import { getOperatorEmailBinding } from '@/lib/email/operator-mail'
 import { checkContactRateLimit, rateLimitedResponse } from '@/lib/upstash-rate-limiter'
 
 export const runtime = 'nodejs'
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
   const result = await forwardContactMail(
     { id, kind, message, replyEmail: email, createdAt },
     {
+      binding: getOperatorEmailBinding(),
       apiKey: process.env.RESEND_API_KEY,
       to: process.env.CONTACT_FORWARD_TO,
       from: process.env.CONTACT_FROM_EMAIL,

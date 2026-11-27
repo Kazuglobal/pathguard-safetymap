@@ -20,6 +20,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { isAdminUser } from "@/lib/admin"
+import { isProtectedPath } from "@/lib/auth/protected-paths"
 import { ReportBottomSheet } from "@/components/report/report-bottom-sheet"
 import { REPORT_SHEET_TITLE } from "@/lib/report-entry"
 import { tankenTokens } from "@/lib/design/tanken"
@@ -233,7 +234,7 @@ export function Navigation({
                 const Icon = item.icon
                 const active = isActivePath(item)
                 return (
-                  <Link key={item.href} href={item.href}>
+                  <Link key={item.href} href={item.href} rel={isProtectedPath(item.href) ? "nofollow" : undefined}>
                     <span
                       className={cn(
                         "relative inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition-colors",
@@ -404,6 +405,7 @@ export function Navigation({
               <Link
                 key={item.href}
                 href={item.href}
+                rel={isProtectedPath(item.href) ? "nofollow" : undefined}
                 className={cn(
                   "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[12px] leading-tight",
                   active ? "font-black" : "font-bold",
