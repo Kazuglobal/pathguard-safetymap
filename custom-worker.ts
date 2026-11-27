@@ -2,10 +2,11 @@
 import openNextWorker from './.open-next/worker.js'
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers'
 import {
-  D1_EXPORT_MAX_POLLS,
-  d1ExportPollDelaySeconds,
-  d1ExportTotalWaitSeconds,
-} from './cloudflare/d1-backup-schedule'
+  D1_EXPORT_MAX_DURATION_MS,
+  D1_EXPORT_POLL_INTERVAL_MS,
+  runD1Export,
+  uploadStreamToR2,
+} from './cloudflare/d1-backup'
 
 /**
  * 本番 D1 の traffic_accidents 件数として正しい値。取り込み途中・二重取り込みを検知するため完全一致で見る。
@@ -123,69 +124,54 @@ async function requestD1Export(env: D1BackupEnv, payload: Record<string, string>
   return result
 }
 
-/** Durable daily D1 export. Workflows retries polling, download, and R2 writes independently. */
+/**
+ * Durable daily D1 export.
+ *
+ * The export API cancels an export that is not polled continually, so polling
+ * happens inside one long step at a short interval instead of across steps with
+ * sleeps in between. A retry of that step starts a fresh export.
+ */
 export class D1BackupWorkflow extends WorkflowEntrypoint<D1BackupEnv> {
   async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep): Promise<{ key: string }> {
     try {
-      let bookmark = await step.do(
-        'start D1 export',
-        { retries: { limit: 5, delay: '10 seconds', backoff: 'exponential' } },
+      const exported = await step.do(
+        'run D1 export',
+        { retries: { limit: 2, delay: '1 minute', backoff: 'constant' }, timeout: '55 minutes' },
+        async () =>
+          runD1Export((payload) => requestD1Export(this.env, payload), {
+            intervalMs: D1_EXPORT_POLL_INTERVAL_MS,
+            maxDurationMs: D1_EXPORT_MAX_DURATION_MS,
+          }),
+      )
+
+      // The signed URL is valid for one hour, so download right away.
+      const key = await step.do(
+        'save D1 export to R2',
+        { retries: { limit: 3, delay: '30 seconds', backoff: 'exponential' }, timeout: '30 minutes' },
         async () => {
-          const result = await requestD1Export(this.env, { output_format: 'polling' })
-          if (!result.at_bookmark) throw new Error('D1 export did not return at_bookmark')
-          return result.at_bookmark
+          const signedUrl = new URL(exported.signedUrl)
+          if (signedUrl.protocol !== 'https:') throw new Error('D1 export returned a non-HTTPS URL')
+
+          const dump = await fetch(signedUrl)
+          if (!dump.ok || !dump.body) throw new Error(`Failed to download D1 export (${dump.status})`)
+
+          const date = (event.schedule?.scheduledTime
+            ? new Date(event.schedule.scheduledTime)
+            : event.timestamp).toISOString().slice(0, 10)
+          const objectKey = `d1/${date}.sql.gz`
+          await uploadStreamToR2(this.env.BACKUPS, objectKey, dump.body.pipeThrough(new CompressionStream('gzip')), {
+            httpMetadata: { contentType: 'application/gzip' },
+            customMetadata: {
+              databaseId: this.env.D1_DATABASE_ID,
+              bookmark: exported.bookmark,
+              sourceFilename: exported.filename,
+            },
+          })
+          return objectKey
         },
       )
 
-      for (let attempt = 1; attempt <= D1_EXPORT_MAX_POLLS; attempt += 1) {
-        const outcome = await step.do(
-          `poll D1 export ${attempt}`,
-          { retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' }, timeout: '5 minutes' },
-          async () => {
-            const result = await requestD1Export(this.env, {
-              output_format: 'polling',
-              current_bookmark: bookmark,
-            })
-            if (result.status === 'error') throw new Error(`D1 export failed${result.error ? `: ${result.error}` : ''}`)
-            const download = result.result ?? result
-            if (!download.signed_url) {
-              return {
-                nextBookmark: result.at_bookmark ?? bookmark,
-                status: result.status ?? 'unknown',
-                messages: result.messages?.slice(-3) ?? [],
-              }
-            }
-            const signedUrl = new URL(download.signed_url)
-            if (signedUrl.protocol !== 'https:') throw new Error('D1 export returned a non-HTTPS URL')
-
-            const dump = await fetch(signedUrl)
-            if (!dump.ok || !dump.body) throw new Error(`Failed to download D1 export (${dump.status})`)
-            const compressed = await new Response(dump.body.pipeThrough(new CompressionStream('gzip'))).arrayBuffer()
-
-            const date = (event.schedule?.scheduledTime
-              ? new Date(event.schedule.scheduledTime)
-              : event.timestamp).toISOString().slice(0, 10)
-            const key = `d1/${date}.sql.gz`
-            await this.env.BACKUPS.put(key, compressed, {
-              httpMetadata: { contentType: 'application/gzip' },
-              customMetadata: {
-                databaseId: this.env.D1_DATABASE_ID,
-                bookmark,
-                sourceFilename: download.filename ?? 'export.sql',
-              },
-            })
-            return { key }
-          },
-        )
-
-        if ('key' in outcome) return { key: outcome.key }
-        bookmark = outcome.nextBookmark
-        await step.sleep(`wait for D1 export ${attempt}`, d1ExportPollDelaySeconds(attempt) * 1000)
-      }
-
-      throw new Error(
-        `D1 export did not finish after ${D1_EXPORT_MAX_POLLS} polls (~${Math.round(d1ExportTotalWaitSeconds() / 60)} min)`,
-      )
+      return { key }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       await notifyRouterOperator(

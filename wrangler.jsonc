@@ -91,6 +91,11 @@
     "CLOUDFLARE_ACCOUNT_ID": "64a7afb6120cc316b618480f4a17cc21",
     "D1_DATABASE_ID": "8e92d8a8-4b40-4530-89a9-43f6cbc37099"
   },
+  "limits": {
+    // The nightly D1 backup gzips the whole SQL dump inside one Workflow step.
+    // The default 30 s CPU limit is too tight for a dump of several hundred MB.
+    "cpu_ms": 300000
+  },
   "triggers": {
     "crons": [
       "*/5 * * * *"
